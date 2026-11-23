@@ -119,6 +119,7 @@ describe("ob channels pages", () => {
     ["an option without its value", ["channels", "--limit"]],
     ["a second prefix", ["channels", "dev", "ops"]],
     ["a positional field given as an option", ["channels", "--prefix", "dev"]],
+    ["a word that looks like an option, without --", ["post", "dev", "--text"]],
   ])("exits 2 for %s", async (_, argv) => {
     const board = fakeBoard(200, {});
     const { output } = capture();

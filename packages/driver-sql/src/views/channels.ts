@@ -1,6 +1,11 @@
 import type { BoardScope, BoardView, ChannelsQuery } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
-import { query, sql } from "../sql.ts";
+import { type Fragment, query, sql } from "../sql.ts";
+
+/** Paths compare and sort by code point on both engines (Postgres's built-in `ucs_basic`), as SQLite and upstream do. */
+const codePointOrder: Fragment = Object.freeze({
+  fragment: (dialect: Dialect) => (dialect.name === "postgres" ? " COLLATE ucs_basic" : ""),
+});
 
 /**
  * The page's filters sit in the join, so the board's row (and its head) comes back even when no channel matches.
@@ -8,9 +13,9 @@ import { query, sql } from "../sql.ts";
  */
 export const channelStatements = {
   listChannels: sql`SELECT boards.head, channels.path, channels.last_index, channels.messages, channels.threads
-    FROM boards LEFT JOIN channels ON channels.board_id = boards.id AND channels.path > ${"after"}
+    FROM boards LEFT JOIN channels ON channels.board_id = boards.id AND channels.path${codePointOrder} > ${"after"}
       AND substr(channels.path, 1, ${"prefixLength"}) = ${"prefix"}
-    WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"} ORDER BY channels.path LIMIT ${"limit"}`,
+    WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"} ORDER BY channels.path${codePointOrder} LIMIT ${"limit"}`,
 };
 
 /** Read the counts and the board head from the same snapshot, including for an empty board. */

@@ -20,7 +20,7 @@ writes:
 conformance: ["core/lists channels a page at a time, and the ones under a prefix"]
 modes: [local]
 depends_on: [52]
-status: claimed
+status: done
 claimed_by: claude-t91
 issue: 91
 ---
@@ -29,7 +29,7 @@ issue: 91
 As a person, I list a board's channels a page at a time, or only those under a prefix.
 
 ## Done when
-- [ ] `ob channels dev --limit 1` prints one channel and the command for the next page; following it lists `dev` and `dev/web` once each
+- [x] `ob channels dev --limit 1` prints one channel and the command for the next page; following it lists `dev` and `dev/web` once each
 
 ## Out of scope
 - Creating channels (92).
