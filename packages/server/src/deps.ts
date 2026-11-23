@@ -43,7 +43,8 @@ export interface Deps {
 
 /** Who a request writes as, once the pipeline has authenticated it. */
 export type Principal = Author & {
-  readonly [credentialKind]?: "local" | "connection" | "agent" | "session";
+  readonly [credentialKind]?: "local" | "connection" | "agent" | "session" | "personal";
+  readonly [credentialExpiry]?: number;
   readonly [connectionOf]?: ConnectionIdentity;
   /** The agent an `obt_` token was claimed as, `ag_…`. */
   readonly [agentOf]?: string;
@@ -76,6 +77,7 @@ export interface ConnectionIdentity {
 
 /** Request-only metadata. Symbol keys stay out of serialized message authors. */
 export const credentialKind = Symbol("credential kind");
+export const credentialExpiry = Symbol("credential expiry");
 export const connectionOf = Symbol("connection");
 export const agentOf = Symbol("agent");
 export const pinnedCan = Symbol("pinned can");

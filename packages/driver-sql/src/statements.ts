@@ -6,6 +6,7 @@ import { agentStatements } from "./views/agents.ts";
 import { boardPlatformStatements, boardStatements } from "./views/boards.ts";
 import { channelStatements } from "./views/channels.ts";
 import { connectionStatements } from "./views/connections.ts";
+import { devicePlatform, deviceScoped } from "./views/device.ts";
 import { eventStatements } from "./views/events.ts";
 import { invitationStatements } from "./views/invitations.ts";
 import { membershipStatements } from "./views/memberships.ts";
@@ -27,6 +28,8 @@ export const statements: Readonly<Record<string, string>> = Object.freeze(
       ...boardStatements,
       ...channelStatements,
       ...connectionStatements,
+      ...devicePlatform,
+      ...deviceScoped,
       ...eventStatements,
       ...invitationStatements,
       ...membershipStatements,
@@ -40,6 +43,7 @@ export const statements: Readonly<Record<string, string>> = Object.freeze(
 /** Statements that run outside any tenant (accounts, sign-in); exempt from the tenant filter rule. */
 export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...accountPlatformStatements,
+  ...Object.keys(devicePlatform),
   ...boardPlatformStatements,
   ...orgPlatformStatements,
   "orgMembership",

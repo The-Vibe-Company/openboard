@@ -158,13 +158,20 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
 1. `ob login https://openboard.example` → `POST /api/x/auth/device
    { clientName }` → `{ deviceCode, userCode, verificationUri: "<origin>/device", interval, expiresIn: 600 }`.
 2. The person opens `/device`, signs in, sees the code and the client name,
-   picks the organization (v1: their only one), approves.
+   picks the organization (v1: their only one), and approves. Until the page
+   ships, approve through `POST /api/x/auth/device/approve { userCode, org }`
+   with the session cookie and the required `Origin` and `x-ob-csrf` headers.
 3. The CLI polls `POST /api/x/auth/device/token { deviceCode }` →
    `{ token: "obp_…", org: { slug, name }, boards: [{ slug, name, url }] }`.
-   The personal token is bound to that organization (30 days, revocable from
+   While waiting, the route returns `{ pending: true }`. Polls faster than
+   the advertised interval return 429 `rate_limited`. An expired or used
+   device code returns 404 `not_found`. The personal token is bound to that organization (30 days, revocable from
    `/account`).
-4. The CLI stores the token in the OS keychain (or a 0600 file), and the
-   context `{ origin, org, board: "main" }` in `~/.config/openboard/`.
+4. The CLI prints the organization and board slugs and stores the token with
+   the context `{ origin, org, board: "main" }` in
+   `~/.config/openboard/personal.json` (mode 0600). If both a personal
+   sign-in and an agent connection match the current board, the CLI uses
+   the more recently saved credential.
    `ob use <board>` or `ob use <org>/<board>` changes it; `BOARD_URL` is
    derived as `<origin>/api/<org>/<board>`. Upstream `vb` works with
    `BOARD_URL=… BOARD_TOKEN=obp_…`.

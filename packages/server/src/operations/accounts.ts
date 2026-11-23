@@ -1,4 +1,14 @@
-import type { getAccount, getSession, revokeAllSessions } from "@openboard/contract";
+import {
+  type approveDeviceSignIn,
+  BoardError,
+  type getAccount,
+  type getSession,
+  type pollDeviceSignIn,
+  type revokeAllSessions,
+  type startDeviceSignIn,
+} from "@openboard/contract";
+import { base32, hashToken, mintSecret, SECRET_BYTES } from "../auth/secrets.ts";
+import { base64url } from "../auth/sessions.ts";
 import type { Handler } from "./index.ts";
 import { signedIn } from "./orgs.ts";
 
@@ -26,4 +36,52 @@ export const revokeAllSessionsHandler: Handler<typeof revokeAllSessions> = async
   const { id } = signedIn(ctx);
   await ctx.platform.revokeAllSessions(id, ctx.now());
   return { ok: true };
+};
+
+const DEVICE_LIFETIME = 600;
+const POLL_INTERVAL = 5;
+const TOKEN_LIFETIME = 30 * 86_400_000;
+
+export const startDeviceSignInHandler: Handler<typeof startDeviceSignIn> = async (ctx, { clientName }) => {
+  const deviceCode = base64url(ctx.randomBytes(32));
+  const userCode = base32(ctx.randomBytes(10))
+    .toUpperCase()
+    .replace(/(.{4})(?=.)/g, "$1-");
+  const now = ctx.now();
+  await ctx.platform.startDevice(hashToken(deviceCode), userCode, clientName, now, now + DEVICE_LIFETIME * 1000);
+  return {
+    deviceCode,
+    userCode,
+    verificationUri: `${ctx.publicUrl}/device`,
+    interval: POLL_INTERVAL,
+    expiresIn: DEVICE_LIFETIME,
+  };
+};
+
+export const approveDeviceSignInHandler: Handler<typeof approveDeviceSignIn> = async (ctx, { userCode, org }) => {
+  const { id } = signedIn(ctx);
+  if (!(await ctx.platform.approveDevice(userCode, org, id, ctx.now()))) {
+    throw new BoardError("not_found", "no available device approval for this organization");
+  }
+  return { ok: true };
+};
+
+export const pollDeviceSignInHandler: Handler<typeof pollDeviceSignIn> = async (ctx, { deviceCode }) => {
+  const now = ctx.now();
+  const secret = mintSecret("obp_", ctx.randomBytes(SECRET_BYTES));
+  const result = await ctx.platform.pollDevice(hashToken(deviceCode), POLL_INTERVAL * 1000, {
+    id: `pt_${secret.name}`,
+    tokenHash: secret.hash,
+    now,
+    expiresAt: now + TOKEN_LIFETIME,
+  });
+  if (result.status === "pending") return { pending: true };
+  if (result.status === "too_soon") throw new BoardError("rate_limited", "device code polled too soon");
+  if (result.status !== "issued") throw new BoardError("not_found", "the device code expired or was used");
+  const { org, boards } = result;
+  return {
+    token: secret.token,
+    org,
+    boards: boards.map((board) => ({ ...board, url: `${ctx.publicUrl}/api/${org.slug}/${board.slug}` })),
+  };
 };

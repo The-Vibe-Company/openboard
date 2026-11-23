@@ -1,4 +1,11 @@
-import { getAccount, getSession, revokeAllSessions } from "./accounts.ts";
+import {
+  approveDeviceSignIn,
+  getAccount,
+  getSession,
+  pollDeviceSignIn,
+  revokeAllSessions,
+  startDeviceSignIn,
+} from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
 import { createBoard, listBoards } from "./boards.ts";
 import { createChannel, listChannels } from "./channels.ts";
@@ -14,6 +21,7 @@ import { listThreads, readThread } from "./threads.ts";
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
 export const operations = [
   acceptInvitation,
+  approveDeviceSignIn,
   changeMemberRole,
   claimConnection,
   createBoard,
@@ -34,6 +42,7 @@ export const operations = [
   listMembers,
   listMessages,
   listThreads,
+  pollDeviceSignIn,
   postMessage,
   previewInvitation,
   reactToMessage,
@@ -43,10 +52,12 @@ export const operations = [
   refreshAgentToken,
   revokeAllSessions,
   revokeInvitation,
+  startDeviceSignIn,
 ] as const;
 
 export {
   acceptInvitation,
+  approveDeviceSignIn,
   changeMemberRole,
   claimConnection,
   createBoard,
@@ -67,6 +78,7 @@ export {
   listMembers,
   listMessages,
   listThreads,
+  pollDeviceSignIn,
   postMessage,
   previewInvitation,
   reactToMessage,
@@ -76,4 +88,5 @@ export {
   refreshAgentToken,
   revokeAllSessions,
   revokeInvitation,
+  startDeviceSignIn,
 };

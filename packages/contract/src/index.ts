@@ -37,6 +37,7 @@ export {
 } from "./operation.ts";
 export {
   acceptInvitation,
+  approveDeviceSignIn,
   changeMemberRole,
   claimConnection,
   createBoard,
@@ -58,6 +59,7 @@ export {
   listMessages,
   listThreads,
   operations,
+  pollDeviceSignIn,
   postMessage,
   previewInvitation,
   reactToMessage,
@@ -67,5 +69,6 @@ export {
   refreshAgentToken,
   revokeAllSessions,
   revokeInvitation,
+  startDeviceSignIn,
 } from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";
