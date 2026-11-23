@@ -378,3 +378,39 @@ describe("reading a post by client ID", () => {
     }
   });
 });
+
+describe("editing a message", () => {
+  test("returns ok and reads an edited reply through its thread and the event feed", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "root" });
+    await call(app, "POST", "/messages", { re: "2", text: "old text" });
+    const edited = await call(app, "POST", "/messages/3/edit", { text: "new text" });
+    expect(edited.status).toBe(200);
+    expect(await edited.json()).toEqual({ ok: true });
+
+    const thread = await call(app, "GET", "/messages/2");
+    const expected = {
+      id: "3",
+      thread: "2",
+      re: "2",
+      text: "new text",
+      createdAt: "2023-11-14T22:13:20.000Z",
+      editedAt: "2023-11-14T22:13:20.000Z",
+      revision: 1,
+      version: 4,
+    };
+    expect(await thread.json()).toMatchObject({ replies: [expected] });
+    const feed = await call(app, "GET", "/events?after=3");
+    expect(await feed.json()).toMatchObject({
+      cursor: "4",
+      events: [{ type: "message.edited", payload: { id: "3", text: "new text" }, message: expected }],
+    });
+  });
+
+  test("answers message_not_found when the ID belongs to an event without a message", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const { status, body } = await answer(call(app, "POST", "/messages/1/edit", { text: "new text" }));
+    expect([status, body.error.code]).toEqual([404, "message_not_found"]);
+  });
+});

@@ -38,6 +38,7 @@ export {
   createChannel,
   createConnection,
   discoverBoard,
+  editMessage,
   getMe,
   getOpenApi,
   getSession,

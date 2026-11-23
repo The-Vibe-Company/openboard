@@ -8,7 +8,7 @@ import type {
   Thread,
   ThreadSummary,
 } from "@openboard/contract";
-import type { BoardEvent, Grant, MessagePosted, messages } from "@openboard/core";
+import type { BoardEvent, Grant, MessageEdited, MessagePosted, messages } from "@openboard/core";
 
 declare const minted: unique symbol;
 
@@ -94,6 +94,8 @@ export interface BoardWriter {
   channel(path: string): Promise<Channel | null>;
   /** The message at log position `id`, read under the lock, or null when no message has that ID. */
   replyTarget(id: number): Promise<messages.ReplyTarget | null>;
+  /** The message view at log position `id`, read under the write lock. */
+  message(id: number): Promise<Message | null>;
   /** The first reply in the thread of root `thread` after log position `after`, deleted or not, read under the lock. */
   newerReply(thread: number, after: number): Promise<number | null>;
   /** The message posted under the client ID, as the board holds it, read under the lock; null when none was. */
@@ -161,7 +163,7 @@ export interface BoardView {
   /** The first `limit` channels the query selects, by path, with their counts and the board head at the time of the read. */
   listChannels(query: ChannelsQuery): Promise<{ channels: Channel[]; head: number }>;
   /** Scans up to 200 log entries and returns the default feed and scanned cursor. */
-  readEvents(after?: number): Promise<{ head: number; cursor: number; events: MessagePosted[] }>;
+  readEvents(after?: number): Promise<{ head: number; cursor: number; events: (MessagePosted | MessageEdited)[] }>;
   /** The message at log position `id` with its replies, oldest first, or null when no message has that ID. */
   thread(id: number): Promise<Thread | null>;
   /** The channel's latest 50 threads in ascending activity order, with the same snapshot's board head. */
