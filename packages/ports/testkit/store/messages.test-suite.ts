@@ -243,7 +243,7 @@ function deleteMessageSuite(open: OpenStore) {
       for (const id of [3, 2]) {
         await board.write(async (writer) => {
           const target = await writer.message(id);
-          const event = decideDelete({ head: writer.head, target }, String(id), { by, now: at });
+          const event = decideDelete({ head: writer.head, target }, { id: String(id) }, { by, now: at });
           if (!event) throw new Error("expected a deletion");
           await writer.append([event]);
         });

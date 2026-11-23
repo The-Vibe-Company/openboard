@@ -43,6 +43,8 @@ export const postMessage = defineOperation({
   upstream: true,
 });
 
+const Revision = Type.Integer({ minimum: 0, description: "The message revision observed before editing or deleting." });
+
 export const editMessage = defineOperation({
   name: "editMessage",
   operationId: "edit",
@@ -51,13 +53,16 @@ export const editMessage = defineOperation({
   scope: "board",
   input: {
     params: Type.Object({ id: Ref("message") }, { additionalProperties: false }),
-    body: Type.Object({ text: Type.String({ maxLength: MESSAGE_TEXT_MAX }) }, { additionalProperties: false }),
+    body: Type.Object(
+      { text: Type.String({ maxLength: MESSAGE_TEXT_MAX }), revision: Type.Optional(Revision) },
+      { additionalProperties: false },
+    ),
   },
   output: Type.Object({ ok: Type.Literal(true) }),
-  errors: ["invalid_request", "message_not_found", "message_deleted"],
+  errors: ["invalid_request", "message_not_found", "message_deleted", "revision_conflict"],
   access: { permission: "post", channel: "fromMessage" },
   effects: { readOnly: false, idempotent: false, emits: ["message.edited"] },
-  cli: { command: ["edit"], args: ["id", "text"] },
+  cli: { command: ["edit"], args: ["id", "text"], options: { revision: "if-revision" } },
   mcp: { tool: "edit_message" },
   upstream: true,
 });
@@ -70,13 +75,13 @@ export const deleteMessage = defineOperation({
   scope: "board",
   input: {
     params: Type.Object({ id: Ref("message") }, { additionalProperties: false }),
-    body: Type.Object({}, { additionalProperties: false }),
+    body: Type.Object({ revision: Type.Optional(Revision) }, { additionalProperties: false }),
   },
   output: Type.Object({ ok: Type.Literal(true) }),
-  errors: ["invalid_request", "message_not_found", "forbidden"],
+  errors: ["invalid_request", "message_not_found", "forbidden", "revision_conflict"],
   access: { permission: "post", channel: "fromMessage" },
   effects: { readOnly: false, idempotent: true, emits: ["message.deleted"] },
-  cli: { command: ["delete"], args: ["id"] },
+  cli: { command: ["delete"], args: ["id"], options: { revision: "if-revision" } },
   mcp: { tool: "delete_message" },
   upstream: true,
 });

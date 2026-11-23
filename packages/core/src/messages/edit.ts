@@ -1,6 +1,7 @@
 import { type Author, BoardError, type Message } from "@openboard/contract";
 import { isoTime, parseId } from "../ids.ts";
 import { checkMessageText } from "./post.ts";
+import { checkRevision } from "./revision.ts";
 
 export interface MessageEdited {
   readonly id: number;
@@ -25,11 +26,12 @@ export interface MessageEdited {
 /** Decide the next edit while the target and the board's log head are held under the same lock. */
 export function decideEdit(
   { head, target }: { readonly head: number; readonly target: Message | null },
-  { id, text }: { readonly id: string; readonly text: string },
+  { id, text, revision }: { readonly id: string; readonly text: string; readonly revision?: number },
   { by, now }: { readonly by: Author; readonly now: number },
 ): MessageEdited {
   checkMessageText(text);
   if (!target) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
+  checkRevision(target, revision);
   if (target.deleted) throw new BoardError("message_deleted", `Message #${id} is deleted.`);
   const message = parseId(target.id);
   const thread = parseId(target.thread);

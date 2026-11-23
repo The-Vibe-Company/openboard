@@ -407,6 +407,35 @@ describe("editing a message", () => {
     });
   });
 
+  test("lets one edit win a shared revision and leaves stale edits and deletes without effects", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "original" });
+    const attempts = await Promise.all(
+      ["first", "second"].map((text) => answer(call(app, "POST", "/messages/2/edit", { text, revision: 0 }))),
+    );
+    expect(attempts.map(({ status }) => status).sort()).toEqual([200, 409]);
+    expect(attempts.find(({ status }) => status === 409)?.body.error.code).toBe("revision_conflict");
+    const text = attempts[0]?.status === 200 ? "first" : "second";
+
+    const stale = await answer(call(app, "POST", "/messages/2/delete", { revision: 0 }));
+    expect([stale.status, stale.body.error.code]).toEqual([409, "revision_conflict"]);
+    expect(await (await call(app, "GET", "/messages/2")).json()).toMatchObject({
+      message: { text, deleted: false, revision: 1, version: 3 },
+    });
+    expect(await (await call(app, "GET", "/events?after=3")).json()).toMatchObject({ cursor: "3", events: [] });
+
+    const deleted = await call(app, "POST", "/messages/2/delete", { revision: 1 });
+    expect(deleted.status).toBe(200);
+    const staleEdit = await answer(call(app, "POST", "/messages/2/edit", { text: "late", revision: 1 }));
+    const staleDelete = await answer(call(app, "POST", "/messages/2/delete", { revision: 1 }));
+    for (const { status, body } of [staleEdit, staleDelete]) {
+      expect([status, body.error.code]).toEqual([409, "revision_conflict"]);
+    }
+    expect(await (await call(app, "GET", "/messages/2")).json()).toMatchObject({
+      message: { text: "", deleted: true, revision: 2, version: 4 },
+    });
+  });
+
   test("answers message_not_found when the ID belongs to an event without a message", async () => {
     app = makeApp();
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });

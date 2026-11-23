@@ -133,8 +133,9 @@ answers. OpenBoard adds:
 | GET | `/messages/:id` | U | |
 | GET | `/posts/:id` | U | `{ message }` as it landed, by the caller's client ID; 404 `post_not_found` for missing or foreign IDs |
 | POST | `/messages` | U | `sync` targets: 400 `invalid_request` "this board syncs nowhere" |
-| POST | `/messages/:id/edit` | U | `ob edit <id> <text>` replaces the text and advances the message revision |
-| POST | `/messages/:id/delete`, `/reactions`, `/labels` | U | |
+| POST | `/messages/:id/edit` | U | `ob edit <id> <text>` replaces the text and advances the message revision. Pass `--if-revision <n>` to edit only at the observed revision. |
+| POST | `/messages/:id/delete` | U | `ob delete <id> --if-revision <n>` deletes only at the observed revision. Both edit and delete send the optional `revision` in the body and return 409 `revision_conflict` if it differs. |
+| POST | `/messages/:id/reactions`, `/messages/:id/labels` | U | |
 | GET | `/events` | U | JSON feed with `after`; SSE and long-poll planned |
 
 Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --idempotency-key`.

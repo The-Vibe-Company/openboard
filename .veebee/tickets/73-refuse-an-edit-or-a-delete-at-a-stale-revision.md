@@ -13,11 +13,16 @@ writes:
   - packages/core/src/messages/edit.ts
   - packages/core/src/messages/delete.ts
   - packages/core/test/messages/edit.test.ts
+  - .veebee/tickets/73-refuse-an-edit-or-a-delete-at-a-stale-revision.md
+  - docs/protocol.md
+  - packages/core/src/messages/revision.ts
+  - packages/core/test/messages/delete.test.ts
+  - packages/server/openapi.json
 conformance: ["core/edits and deletes a message only at the revision it was read at, which only edits and deletes change"]
 modes: [local]
 depends_on: [72]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 73
 ---
 
@@ -25,8 +30,8 @@ issue: 73
 As an agent, my edit or delete lands only if nobody changed the message since I read it.
 
 ## Done when
-- [ ] `ob edit 1 x --if-revision 0` after another edit prints `error: revision_conflict`, exits 1 and changes nothing
-- [ ] `ob delete 1 --if-revision 0` does the same and leaves the message in place
+- [x] `ob edit 1 x --if-revision 0` after another edit prints `error: revision_conflict`, exits 1 and changes nothing
+- [x] `ob delete 1 --if-revision 0` does the same and leaves the message in place
 
 ## Out of scope
 - Label conditions (79).
