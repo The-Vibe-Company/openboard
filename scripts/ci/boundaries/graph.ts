@@ -1,7 +1,10 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { checkDbClientImport, checkDbClientNames } from "./db-client.ts";
 import { describeAllowed } from "./describe.ts";
 import { checkDriverImport } from "./driver.ts";
 import { checkDriverSqlImport } from "./driver-sql.ts";
-import { isBare, matchesExternal, packageOf, readImports, resolveImport } from "./imports.ts";
+import { isBare, matchesExternal, packageOf, resolveImport, scanImports } from "./imports.ts";
 import type { Config, Rule, Violation } from "./types.ts";
 import { findWorkspaces, sourceFiles, type Workspace } from "./workspaces.ts";
 
@@ -32,6 +35,7 @@ type FileContext = {
   test: boolean;
   testExternal: string[];
   drivers: Config["drivers"];
+  dbClients: Config["dbClients"]["clients"];
 };
 
 /** The provider directory a resolved path belongs to, or null for the registry and everything else. */
@@ -86,6 +90,8 @@ function checkImport(ctx: FileContext, specifier: string, typeOnly: boolean): st
   if (ctx.test && matchesExternal(specifier, ctx.testExternal)) return null;
   const target = ctx.byName.get(packageOf(specifier));
   const kind = typeOnly ? "type-only import of " : "";
+  const dbClient = checkDbClientImport(workspace, specifier, `${kind}${specifier}`, ctx.dbClients);
+  if (dbClient) return dbClient;
   const driverSql = checkDriverSqlImport(workspace, target, `${kind}${specifier}`, ctx.drivers);
   if (driverSql) return driverSql;
   const driver = checkDriverImport(ctx.file, workspace, target, `${kind}${specifier}`, ctx.drivers);
@@ -106,9 +112,14 @@ function checkImport(ctx: FileContext, specifier: string, typeOnly: boolean): st
 
 /** Scans one file; a file that cannot be scanned is a violation, so the check fails closed. */
 async function checkFile(root: string, file: string, ctx: FileContext): Promise<Violation[]> {
-  const imports = await readImports(root, file);
-  if ("message" in imports) return [imports];
-  const violations: Violation[] = [];
+  const source = await readFile(join(root, file), "utf8");
+  let imports: ReturnType<typeof scanImports>;
+  try {
+    imports = scanImports(file, source);
+  } catch (error) {
+    return [{ file, message: `cannot scan imports: ${(error as Error).message}` }];
+  }
+  const violations = checkDbClientNames(file, source, ctx.workspace, ctx.dbClients);
   for (const specifier of [...imports.all].sort()) {
     const message = checkImport(ctx, specifier, !imports.values.has(specifier));
     if (message) violations.push({ file, message });
@@ -139,6 +150,7 @@ export async function checkBoundaries(root: string, config: Config): Promise<Vio
         test: isTestFile(workspace, file),
         testExternal: config.tests.external,
         drivers: config.drivers,
+        dbClients: config.dbClients.clients,
       };
       violations.push(...(await checkFile(root, file, ctx)));
     }
@@ -158,6 +170,13 @@ export function checkConfig(config: Config, workspaces: Workspace[]): Violation[
   for (const name of config.drivers.workspaces) {
     if (!shorts.has(name))
       violations.push({ file: "scripts/ci/boundaries.json", message: `drivers names unknown workspace ${name}` });
+  }
+  for (const { module, workspace } of config.dbClients.clients) {
+    if (!shorts.has(workspace))
+      violations.push({
+        file: "scripts/ci/boundaries.json",
+        message: `dbClients ${module} names unknown workspace ${workspace}`,
+      });
   }
   for (const [key, rule] of Object.entries(config.graph)) {
     for (const name of [...rule.may, ...(rule.types ?? [])]) {

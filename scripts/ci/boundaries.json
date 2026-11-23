@@ -52,6 +52,13 @@
       "tools/bench/src/drivers.ts"
     ]
   },
+  "dbClients": {
+    "$comment": "docs/codebase.md 3.2: a database client is opened only inside its own driver, in any file of any workspace. A client without names is a whole module; one with names is those exports of the module, reached by import, require or Bun's global.",
+    "clients": [
+      { "module": "bun:sqlite", "workspace": "driver-sqlite" },
+      { "module": "bun", "names": ["SQL", "sql", "postgres"], "workspace": "driver-postgres" }
+    ]
+  },
   "denyTerms": ["armada", "slack", "linear", "notion", "discord", "granite"],
   "tests": { "external": ["bun:test", "@openboard/ports/testkit"] }
 }
