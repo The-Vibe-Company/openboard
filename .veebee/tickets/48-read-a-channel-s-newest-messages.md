@@ -15,7 +15,7 @@ modes: [local]
 depends_on: [47]
 status: draft
 claimed_by: null
-issue: null
+issue: 48
 ---
 
 ## What the user does
