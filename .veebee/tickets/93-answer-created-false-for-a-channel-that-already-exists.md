@@ -10,8 +10,8 @@ writes:
 conformance: ["core/creates a channel only once: one a post made is there already"]
 modes: [local]
 depends_on: [51, 92]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 93
 ---
 
@@ -19,8 +19,8 @@ issue: 93
 As an agent, creating a channel that exists is harmless and tells me so.
 
 ## Done when
-- [ ] `ob channels create dev` after a post in `dev` reports `created: false`
-- [ ] `ob channels create 'Not A Channel'` prints `error: invalid_request` and exits 1
+- [x] `ob channels create dev` after a post in `dev` reports `created: false`
+- [x] `ob channels create 'Not A Channel'` prints `error: invalid_request` and exits 1
 
 ## Out of scope
 - Deleting channels: not in the protocol.
