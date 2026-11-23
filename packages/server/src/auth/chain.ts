@@ -18,17 +18,20 @@ export function verifiers(config: ServerConfig): readonly CredentialVerifier[] {
   return chain;
 }
 
+/** The answer to a request no verifier matches: no bearer, or one of no kind this board accepts. */
+function noCredential(): BoardError {
+  return new BoardError("unauthorized", "this board needs a credential", {
+    hint: "Set BOARD_TOKEN to a token for this board, or run ob as the user who started `ob serve`.",
+  });
+}
+
 /**
  * Who a request writes as: the first verifier that matches decides, and a credential it refuses is 401
- * `unauthorized`. A request no verifier matches still writes as the local owner until anonymous requests are refused.
+ * `unauthorized`. A request no verifier matches carries no credential and is 401 `unauthorized` too.
  */
-export async function authenticate(
-  request: Request,
-  chain: readonly CredentialVerifier[],
-  config: ServerConfig,
-): Promise<Principal> {
+export async function authenticate(request: Request, chain: readonly CredentialVerifier[]): Promise<Principal> {
   const verifier = chain.find((candidate) => candidate.match(request));
-  if (!verifier) return { actor: config.localOwner, principal: config.localOwner, profile: null };
+  if (!verifier) throw noCredential();
   const principal = await verifier.verify(request);
   if (!principal) throw new BoardError("unauthorized", "the credential is not valid on this board");
   return principal;

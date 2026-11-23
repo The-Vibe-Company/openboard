@@ -7,11 +7,14 @@ writes:
   - packages/server/src/http/pipeline.ts
   - packages/server/src/auth/chain.ts
   - packages/server/test/auth/anonymous.test.ts
+  - packages/server/test/support/app.ts
+  - packages/cli/src/output.ts
+  - packages/cli/test/cli.test.ts
 conformance: []
 modes: [local]
 depends_on: [37]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-ticket-38
 issue: 38
 ---
 
@@ -19,8 +22,8 @@ issue: 38
 As a board owner, I know nobody writes to my board without a credential.
 
 ## Done when
-- [ ] `HOME=/tmp/empty BOARD_URL=http://127.0.0.1:8787/api/local/main ob post dev hi` prints `error: unauthorized` with a hint naming `BOARD_TOKEN`, and exits 1
-- [ ] `curl -i -X POST http://127.0.0.1:8787/api/local/main/messages -d '{"channel":"dev","text":"x"}'` answers 401 JSON `unauthorized`, never HTML
+- [x] `HOME=/tmp/empty BOARD_URL=http://127.0.0.1:8787/api/local/main ob post dev hi` prints `error: unauthorized` with a hint naming `BOARD_TOKEN`, and exits 1
+- [x] `curl -i -X POST http://127.0.0.1:8787/api/local/main/messages -d '{"channel":"dev","text":"x"}'` answers 401 JSON `unauthorized`, never HTML
 
 ## Out of scope
 - Discovery staying public (40).

@@ -11,9 +11,9 @@ export const consoleOutput: Output = Object.freeze({
   err: (line: string) => console.error(line),
 });
 
-/** A board error as `code: message`, then its hint. */
+/** A board error as `error: code: message`, then its hint. */
 export function printError(output: Output, error: BoardError): void {
-  output.err(`${error.code}: ${error.message}`);
+  output.err(`error: ${error.code}: ${error.message}`);
   if (error.hint) output.err(error.hint);
 }
 

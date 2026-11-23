@@ -37,7 +37,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   const { operation } = matched;
   logged.op = operation.name;
   const board = await pipeline.tenants.board(path);
-  const by = await authenticate(request, verifiers(pipeline.config), pipeline.config);
+  const by = await authenticate(request, verifiers(pipeline.config));
   logged.actor = by.actor;
   const input = decodeInput(operation, {
     params: matched.params,
