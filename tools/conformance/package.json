@@ -9,6 +9,7 @@
     "test": "bun test --pass-with-no-tests"
   },
   "devDependencies": {
+    "@openboard/contract": "workspace:*",
     "@openboard/server": "workspace:*",
     "@types/bun": "1.4.5",
     "@vercel/board": "0.54.0"

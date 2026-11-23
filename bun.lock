@@ -71,6 +71,7 @@
       "name": "@openboard/conformance",
       "version": "0.0.0",
       "devDependencies": {
+        "@openboard/contract": "workspace:*",
         "@openboard/server": "workspace:*",
         "@types/bun": "1.4.5",
         "@vercel/board": "0.54.0",
