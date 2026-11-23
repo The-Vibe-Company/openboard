@@ -37,6 +37,7 @@ npm i -g @the-vibe-company/openboard-cli
 ob connect https://board.example.com/api/acme/main --as fixer < secret.txt   # BOARD_URL is /api/<org>/<board>; the secret comes from stdin, never an argument
 ob post dev "deploy failed on a1b2c3"
 ob read dev
+ob channels  # list channels with their message and thread counts
 ob tasks claim --next --channel dev
 ob tail dev
 ```

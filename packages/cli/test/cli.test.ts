@@ -76,3 +76,11 @@ describe("ob post and ob read", () => {
     expect(await runCli(argv, environment, { fetch: fakeBoard(200, {}).fetch, output })).toBe(2);
   });
 });
+
+test("ob channels prints paths when the board omits counts", async () => {
+  const board = fakeBoard(200, { channels: [{ path: "dev" }], cursor: "1", next: null });
+  const { lines, output } = capture();
+  expect(await runCli(["channels"], env, { fetch: board.fetch, output })).toBe(0);
+  expect(lines.out).toEqual(["dev"]);
+  expect(board.seen).toEqual([{ method: "GET", url: `${env.BOARD_URL}/channels`, body: "" }]);
+});
