@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { decideDelete, decideEdit, messages } from "@openboard/core";
+import { decideDelete, decideEdit, decideReaction, messages } from "@openboard/core";
 import type { BoardView, Store } from "../../src/index.ts";
 import { type OpenStore, testScope } from "../index.ts";
 
@@ -125,9 +125,15 @@ function clientIdsSuite(driver: string, open: OpenStore): void {
   });
 }
 
-export function messagesSuite(driver: string, open: OpenStore): void {
+/** The writes that change a stored message: edits, deletes and reactions. */
+function changeSuites(open: OpenStore): void {
   editMessageSuite(open);
   deleteMessageSuite(open);
+  reactionSuite(open);
+}
+
+export function messagesSuite(driver: string, open: OpenStore): void {
+  changeSuites(open);
   repliesSuite(driver, open);
   clientIdsSuite(driver, open);
   describe(`${driver}: messages`, () => {
@@ -257,6 +263,32 @@ function deleteMessageSuite(open: OpenStore) {
           { id: "3", deleted: true, text: "" },
         ],
       });
+    });
+  });
+}
+
+function reactionSuite(open: OpenStore) {
+  describe("reacting to a stored message", () => {
+    const fixture = eachStore(open);
+    test("serializes reactions racing on one message and keeps every actor in the stored view", async () => {
+      const board = await fixture.board();
+      await post(board, "dev", "hello");
+      const react = (actor: string) =>
+        board.write(async (writer) => {
+          const target = await writer.message(1);
+          const writerBy = { actor, principal: actor, profile: null };
+          const events = decideReaction(
+            { head: writer.head, target },
+            { id: "1", emoji: "eyes" },
+            { by: writerBy, now: at },
+          );
+          await writer.append(events);
+        });
+      await Promise.all([react("ob:user:a"), react("ob:user:b")]);
+      const [stored] = (await board.channelMessages({ channel: "dev", limit: 50 })) ?? [];
+      expect(stored?.reactions.eyes?.toSorted()).toEqual(["ob:user:a", "ob:user:b"]);
+      expect(stored).toMatchObject({ version: 3, revision: 0 });
+      expect((await board.thread(1))?.message).toEqual(stored);
     });
   });
 }

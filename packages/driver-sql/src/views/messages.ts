@@ -32,6 +32,8 @@ export const messageStatements = {
   deleteMessage: sql`UPDATE messages SET deleted = 1, text = '', text_lower = '', labels = ${"labels"},
     revision = ${"revision"}, version = ${"version"}, view = ${"view"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  reactToMessage: sql`UPDATE messages SET version = ${"version"}, view = ${"view"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   dropRootReply: sql`UPDATE messages SET replies = replies - 1,
     (last_reply, active) = (
       SELECT MAX(reply.id), COALESCE(MAX(reply.id), ${"root"}) FROM messages AS reply
@@ -138,7 +140,15 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
       view: JSON.stringify(view),
     });
   } else if (event.type === "message.deleted") await foldMessageDeleted(tx, dialect, keys, event);
-  else await foldMessagePosted(tx, dialect, keys, event);
+  else if (event.type === "reaction.added") {
+    const { view } = event.payload;
+    await query(tx, dialect, messageStatements.reactToMessage, {
+      ...keys,
+      id: event.message,
+      version: view.version,
+      view: JSON.stringify(view),
+    });
+  } else await foldMessagePosted(tx, dialect, keys, event);
 }
 
 function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor: Actor | null): BoardWriter {

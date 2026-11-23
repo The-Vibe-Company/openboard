@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { BoardError, type Can, type Operation, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
-import { agents, connections, parseId } from "@openboard/core";
+import { agents, connections, grants, parseId } from "@openboard/core";
 import type { AgentRecord, BoardView } from "@openboard/ports";
 import { agentOf, connectionOf, credentialKind, type Principal, pinnedCan, profileName, tokenHashOf } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
@@ -140,7 +140,7 @@ export async function keepInsidePin(
   const { permission } = access;
   if (access.channel === "any") {
     const everywhere = agents.allowedAt(can, "*").includes(permission);
-    if (everywhere && Object.values(can).every((given) => given.includes(permission))) return;
+    if (everywhere && Object.values(can).every((given) => grants.withImplied(given).includes(permission))) return;
     throw outsidePin(permission, "on every channel");
   }
   const named = input as { channel?: unknown; path?: unknown; re?: unknown; id?: unknown };

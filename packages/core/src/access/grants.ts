@@ -3,6 +3,13 @@ import { BoardError, type Can, type CanInput, isChannelPath, type Permission } f
 /** Upstream's permissions, in the order a compiled grant lists them; `all` is every one of them. */
 export const PERMISSIONS: readonly Permission[] = Object.freeze(["read", "post", "react", "label", "sync", "manage"]);
 
+/** `given` with what it implies (upstream `03-http.md` "Access"): `react`, `label` and `sync` imply `read`, `manage` all. */
+export function withImplied(given: readonly Permission[]): readonly Permission[] {
+  if (given.includes("manage")) return PERMISSIONS;
+  const reads = given.includes("read") || given.some((p) => p === "react" || p === "label" || p === "sync");
+  return PERMISSIONS.filter((permission) => given.includes(permission) || (permission === "read" && reads));
+}
+
 /** Who a grant names. Only the OpenBoard kind `connection` is compiled so far (docs/auth.md "Connections"). */
 export type GrantPrincipal = { readonly kind: "connection"; readonly connection: string };
 

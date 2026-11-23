@@ -8,7 +8,7 @@ import {
 } from "@openboard/contract";
 import { isoTime } from "../ids.ts";
 import { connectionPrincipal, profileAllowed } from "./connections.ts";
-import { compileCan } from "./grants.ts";
+import { compileCan, withImplied } from "./grants.ts";
 
 /** The connection whose secret claims, as stored: its patterns, its grant, and its token lifetimes in seconds. */
 export interface ClaimingConnection {
@@ -90,12 +90,12 @@ function specificity(pattern: string): number {
   return pattern.endsWith("/") ? pattern.length : Number.MAX_SAFE_INTEGER;
 }
 
-/** What `can` lets in at `spot`, by its most specific pattern covering it; nothing when none does. */
+/** What `can` lets in at `spot`, implications included, by its most specific pattern covering it; nothing when none does. */
 export function allowedAt(can: Can, spot: string): readonly Permission[] {
   const deciding = Object.keys(can)
     .filter((pattern) => covers(pattern, spot))
     .sort((a, b) => specificity(b) - specificity(a))[0];
-  return deciding === undefined ? [] : (can[deciding] ?? []);
+  return deciding === undefined ? [] : withImplied(can[deciding] ?? []);
 }
 
 /**

@@ -4,9 +4,10 @@ import {
   type editMessage,
   type listMessages,
   type postMessage,
+  type reactToMessage,
   type readPost,
 } from "@openboard/contract";
-import { decideDelete, decideEdit, formatId, messages, parseId } from "@openboard/core";
+import { decideDelete, decideEdit, decideReaction, formatId, messages, parseId } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
 import { authorOf } from "../auth/author.ts";
 import type { Handler } from "./index.ts";
@@ -51,6 +52,18 @@ export const deleteMessageHandler: Handler<typeof deleteMessage> = async (ctx, i
     const event = decideDelete({ head: writer.head, target }, input, { by: ctx.by, now: ctx.now() });
     if (event) await writer.append([event]);
   });
+  return { ok: true };
+};
+
+/** The reaction is decided with the message and the board's record of the writer read under the board's lock. */
+export const reactToMessageHandler: Handler<typeof reactToMessage> = async (ctx, input) => {
+  const position = parseId(input.id);
+  await ctx.board.write(async (writer) => {
+    const target = position === null ? null : await writer.message(position);
+    const state = { head: writer.head, target, actor: writer.actor };
+    const events = decideReaction(state, input, { by: ctx.by, author: authorOf(ctx.by), now: ctx.now() });
+    if (events.length > 0) await writer.append(events);
+  }, ctx.by.actor);
   return { ok: true };
 };
 

@@ -75,7 +75,7 @@ export type Operation<
   readonly status?: 200 | 201 | { readonly createdWhen: string };
   readonly errors: readonly ErrorCode[];
   readonly access: {
-    readonly permission: "read" | "post" | "manage";
+    readonly permission: "read" | "post" | "react" | "manage";
     readonly channel: "fromInput" | "fromMessage" | "any";
   } | null;
   readonly effects: {

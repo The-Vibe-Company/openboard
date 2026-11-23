@@ -6,7 +6,7 @@ import { claimConnection, createConnection, refreshAgentToken } from "./connecti
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { createInvitation, previewInvitation } from "./invitations.ts";
-import { deleteMessage, editMessage, listMessages, postMessage, readPost } from "./messages.ts";
+import { deleteMessage, editMessage, listMessages, postMessage, reactToMessage, readPost } from "./messages.ts";
 import { createOrg } from "./orgs.ts";
 import { listThreads, readThread } from "./threads.ts";
 
@@ -32,6 +32,7 @@ export const operations = [
   listThreads,
   postMessage,
   previewInvitation,
+  reactToMessage,
   readEvents,
   readPost,
   readThread,
@@ -60,6 +61,7 @@ export {
   listThreads,
   postMessage,
   previewInvitation,
+  reactToMessage,
   readEvents,
   readPost,
   readThread,
