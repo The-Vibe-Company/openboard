@@ -28,10 +28,63 @@ export interface BoardKeys {
   readonly boardId: number;
 }
 
-/** Reads that belong to no tenant yet: resolving the organization and board a path names. */
+/** A person (docs/auth.md "Organizations, boards, people"): one `users` row, independent of providers and orgs. */
+export interface PersonRecord {
+  /** `u_<base32>`; the principal is `ob:user:<id>`. */
+  readonly id: string;
+  /** The provider login at the last sign-in. */
+  readonly handle: string;
+  readonly name: string;
+  /** The verified email the provider gave, if any. */
+  readonly email: string | null;
+  readonly avatar: string | null;
+  /** The providers the person signs in with, sorted: `["github"]`. */
+  readonly providers: readonly string[];
+}
+
+/** A provider's word on who signed in; only `subject` identifies them (docs/auth.md "Sign-in providers"). */
+export interface IdentityRecord {
+  readonly provider: string;
+  readonly subject: string;
+  readonly login: string;
+  readonly name: string;
+  /** Only a verified email; null otherwise. */
+  readonly email: string | null;
+  readonly avatar: string | null;
+}
+
+/** One sign-in: the identity, and the session it opens, kept by the SHA-256 (hex) of its cookie value. */
+export interface SignInRecord {
+  readonly identity: IdentityRecord;
+  /** Whether an identity no person holds yet makes a new person (sign-up), with the ID `newPersonId`. */
+  readonly admitNew: boolean;
+  readonly newPersonId: string;
+  readonly session: { readonly idHash: string; readonly csrf: string; readonly expiresAt: number };
+  readonly now: number;
+}
+
+/** A session that is not revoked, of a person who is not disabled; its times are checked by the caller. */
+export interface SessionRecord {
+  readonly person: PersonRecord;
+  readonly csrf: string;
+  readonly seenAt: number;
+  readonly expiresAt: number;
+}
+
+/** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
 export interface PlatformView {
   /** The board `orgSlug/boardSlug` names, or null when either is unknown or deleted. */
   findBoard(orgSlug: string, boardSlug: string): Promise<BoardKeys | null>;
+  /**
+   * In one transaction: the person holding the identity, their details refreshed from it, or a new person when
+   * `admitNew`; then the session. Null, and no session, when the identity is new and not admitted, or the person is
+   * disabled.
+   */
+  signIn(record: SignInRecord): Promise<PersonRecord | null>;
+  /** The session whose cookie value hashes to `idHash`, or null when none, revoked, or its person is disabled. */
+  session(idHash: string): Promise<SessionRecord | null>;
+  /** Records that the session was used at `now`, for its idle lifetime. */
+  touchSession(idHash: string, now: number): Promise<void>;
 }
 
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */

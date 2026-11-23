@@ -95,8 +95,8 @@ Verified against `docs/01-board/03-identity.md`, `docs/01-board/09-access.md`,
 ```ts
 interface LoginProvider {
   id: 'github' | 'google' | 'email' | string
-  start(ctx: { state: string; redirectUri: string; loginHint?: string }): Promise<Response>   // redirect, or "check your inbox"
-  finish(req: Request, ctx: { state: string; redirectUri: string }): Promise<ExternalIdentity>
+  start(ctx: { state: string; verifier: string; redirectUri: string; loginHint?: string }): Promise<Response>   // redirect, or "check your inbox"
+  finish(req: Request, ctx: { state: string; verifier: string; redirectUri: string }): Promise<ExternalIdentity>   // verifier: PKCE (D48)
 }
 type ExternalIdentity = { provider: string; subject: string; login: string; name: string; email?: string; emailVerified: boolean; avatar?: string }
 ```

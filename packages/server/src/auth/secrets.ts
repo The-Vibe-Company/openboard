@@ -10,7 +10,7 @@ export function hashToken(token: string): string {
 }
 
 /** RFC 4648 base32, lower case, of bytes whose bit length is a multiple of 5 (10 bytes give 16 characters). */
-function base32(bytes: Uint8Array): string {
+export function base32(bytes: Uint8Array): string {
   let bits = "";
   for (const byte of bytes) bits += byte.toString(2).padStart(8, "0");
   return (bits.match(/.{5}/g) ?? []).map((chunk) => BASE32[Number.parseInt(chunk, 2)]).join("");

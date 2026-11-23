@@ -27,7 +27,10 @@ const BOARD_ROUTE_SEGMENTS = Object.freeze([
   "watchers",
   "webhooks",
   "x",
-  ...operations.map(({ route }) => route.path.split("/")[1] ?? "").filter(Boolean),
+  // Account routes live under `/api/x`, so they reserve no organization slug.
+  ...operations
+    .flatMap(({ route, scope }) => (scope === "account" ? [] : route.path.split("/").slice(1, 2)))
+    .filter(Boolean),
 ]);
 
 export interface BoardPath {

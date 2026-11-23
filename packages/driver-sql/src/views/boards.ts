@@ -13,7 +13,7 @@ export const boardStatements = {
 /** Statements that run outside any tenant: resolving the organization a path names. */
 export const boardPlatformStatements: readonly (keyof typeof boardStatements)[] = ["orgBySlug"];
 
-export function platformView(db: Db, dialect: Dialect): PlatformView {
+export function platformView(db: Db, dialect: Dialect): Pick<PlatformView, "findBoard"> {
   return {
     async findBoard(orgSlug, boardSlug): Promise<BoardKeys | null> {
       const [org] = await query(db, dialect, boardStatements.orgBySlug, { slug: orgSlug });

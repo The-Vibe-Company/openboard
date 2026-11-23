@@ -1,4 +1,5 @@
 import type { BoardKeys, BoardScope, Store } from "../src/index.ts";
+import { accountsSuite } from "./store/accounts.test-suite.ts";
 import { actorsSuite } from "./store/actors.test-suite.ts";
 import { channelsSuite } from "./store/channels.test-suite.ts";
 import { connectionsSuite } from "./store/connections.test-suite.ts";
@@ -16,6 +17,7 @@ export function testScope(keys: BoardKeys): BoardScope {
 
 /** Every behaviour a `Store` driver must have, run against `open` (docs/codebase.md 6.1). */
 export function runStoreSuite(driver: string, open: OpenStore): void {
+  accountsSuite(driver, open);
   actorsSuite(driver, open);
   channelsSuite(driver, open);
   connectionsSuite(driver, open);

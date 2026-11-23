@@ -1,21 +1,30 @@
 import { BoardError, decodeInput, type operations, type RawInput } from "@openboard/contract";
+import type { PlatformView } from "@openboard/ports";
 import { authenticate, verifiers } from "../auth/chain.ts";
+import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
+import { sessionOf } from "../auth/sessions.ts";
 import { keepInsidePin } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
-import { handlerOf, type PublicOperation } from "../operations/index.ts";
+import { type AccountOperation, handlerOf, type PublicOperation } from "../operations/index.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
 import { type BoardPath, boardPath, notFound, type Tenants } from "./scope.ts";
 
 type Contracted = (typeof operations)[number];
+type Params = Readonly<Record<string, string>>;
 
 export interface Pipeline {
   readonly config: ServerConfig;
   readonly deps: Deps;
+  /** Board and public operations, relative to `BOARD_URL`. */
   readonly routes: readonly Route<Contracted>[];
+  /** Account operations, relative to `/api/x`. */
+  readonly accountRoutes: readonly Route<Contracted>[];
   readonly tenants: Tenants;
+  readonly platform: PlatformView;
+  readonly providers: readonly LoginProvider[];
 }
 
 async function readBody(request: Request): Promise<unknown> {
@@ -51,7 +60,35 @@ async function runPublic(
   return operationResponse(operation, output);
 }
 
+/** An `account` operation: no tenant; the browser's session, if live, is the person (docs/auth.md step 6). */
+async function runAccount(request: Request, url: URL, operation: AccountOperation, params: Params, pipeline: Pipeline) {
+  const { config, deps, platform } = pipeline;
+  const session = await sessionOf(request, platform, deps.now(), config.publicUrl);
+  const input = validate(operation, {
+    params,
+    query: Object.fromEntries(url.searchParams),
+    body: request.method === "GET" ? undefined : await readBody(request),
+  });
+  const providers = providerLinks(pipeline.providers, config.publicUrl);
+  const output = await handlerOf(operation)({ platform, session, now: deps.now, providers }, input);
+  const response = operationResponse(operation, output);
+  response.headers.set("cache-control", "no-store");
+  return response;
+}
+
 async function run(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields): Promise<Response> {
+  if (url.pathname.startsWith("/auth/")) {
+    const answer = signInRoute(request, url, pipeline);
+    if (!answer) throw notFound();
+    return answer;
+  }
+  if (url.pathname.startsWith("/api/x/")) {
+    const account = matchRoute(pipeline.accountRoutes, request.method, url.pathname.slice("/api/x".length));
+    if (account?.operation.scope === "account") {
+      logged.op = account.operation.name;
+      return runAccount(request, url, account.operation, account.params, pipeline);
+    }
+  }
   const path = boardPath(url.pathname, pipeline.config.mode);
   if (!path) throw notFound();
   logged.org = path.org;
@@ -60,6 +97,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   const { operation } = matched;
   logged.op = operation.name;
   if (operation.scope === "public") return runPublic(url, path, operation, matched.params, pipeline);
+  if (operation.scope === "account") throw notFound();
   const board = await pipeline.tenants.board(path);
   const by = await authenticate(request, verifiers(pipeline.config), board, operation.name);
   logged.actor = by.actor;

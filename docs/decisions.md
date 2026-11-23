@@ -622,6 +622,30 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   1, and later writes that record who writes (edits, reactions, tasks) use
   the same rule and the same lock read.
 
+### D48. Browser sign-in: `/auth` routes, a pending-sign-in cookie, account routes under `/api/x`
+
+- **Context.** GitHub sign-in (ticket 133) redirects, which nothing under
+  `/api` may do (D8), and must hold its `state` and PKCE verifier between two
+  requests that may reach different instances. Local mode has "no sign-up",
+  yet M4's account tickets are checked on `ob serve`.
+- **Decision.** `GET /auth/<provider>/start|callback` are browser routes
+  outside the contract, run by `server/src/auth/providers/index.ts` before
+  the `/api` router. The pending sign-in (provider, `state`, PKCE verifier)
+  lives in the browser, in the cookie `__Host-ob_signin` (10 minutes), never
+  in server memory; `LoginProvider.start`/`finish` take the verifier in
+  their context. A signed-in person lands on `/new` until memberships exist.
+  `account` operations declare paths relative to `/api/x`, are matched
+  before the local `/api` alias, and see `ctx.platform` and `ctx.session`
+  (the live `__Host-ob_session`, read only without `authorization`); their
+  answers are `no-store`. In local mode `OPENBOARD_SIGNUP` defaults to
+  `closed`, so it keeps "no sign-up" unless it is set, as tickets 133-161
+  assume (`.veebee/cut.md` "Could not place", question 1, still awaits the
+  owner); the hosted default (docs/auth.md, Q6) is decided with hosted mode.
+- **Consequence.** Any instance finishes any sign-in. Ticket 134 and later
+  account routes reuse the session and its CSRF check. The SDK still maps
+  every operation onto `BOARD_URL`, so account operations are not callable
+  through it until it learns `/api/x` (a later ticket).
+
 ## Hard blockers found
 
 None. Limits worth knowing:
