@@ -553,7 +553,7 @@
       },
       "post": {
         "operationId": "post",
-        "summary": "Post a message: a new thread in a channel, or a reply in the thread of the root `re` names.",
+        "summary": "Post a message: a new thread in a channel, or a reply in the thread of any message `re` names.",
         "requestBody": {
           "required": true,
           "content": {
@@ -730,7 +730,7 @@
                               },
                               "text": { "type": "string" },
                               "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                              "replyTo": { "type": "null" },
+                              "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                               "thread": { "type": "string" },
                               "labels": {
                                 "type": "object",

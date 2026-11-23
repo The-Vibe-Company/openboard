@@ -12,11 +12,13 @@ writes:
   - packages/ports/src/store.ts
   - packages/core/src/messages/post.ts
   - packages/core/test/messages/post.test.ts
+  - packages/contract/src/entities/events.ts
+  - packages/server/openapi.json
 conformance: ["core/puts a reply in its root's thread"]
 modes: [local]
 depends_on: [45]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t46
 issue: 46
 ---
 

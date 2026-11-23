@@ -93,15 +93,15 @@ describe("replying in a thread", () => {
     expect(body.messages.map((message) => message.id)).toEqual(["1"]);
   });
 
-  test("answers 400 invalid_request for a reply to a reply, and posts nothing", async () => {
+  test("puts a reply to a reply in the root's thread, with the reply it answered as replyTo", async () => {
     app = makeApp();
-    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
-    await call(app, "POST", "/messages", { re: "1", text: "on it" });
-    const refused = await answer(call(app, "POST", "/messages", { re: "2", text: "deeper" }));
-    expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
-    expect(refused.body.error.message).toStartWith("re");
-    const { body } = await answer(call(app, "GET", "/messages?channel=dev"));
-    expect(body.messages.map((message) => message.id)).toEqual(["1", "2"]);
+    const root = (await answer(call(app, "POST", "/messages", { channel: "dev", text: "hello" }))).body.message;
+    const first = (await answer(call(app, "POST", "/messages", { re: "1", text: "on it" }))).body.message;
+    const deeper = await answer(call(app, "POST", "/messages", { re: "2", text: "deeper" }));
+    expect(deeper.status).toBe(201);
+    expect(deeper.body.message).toMatchObject({ id: "3", channel: "dev", re: "1", replyTo: "2", thread: "1" });
+    const thread = await (await call(app, "GET", "/messages/1")).json();
+    expect(thread).toEqual({ message: root, replies: [first, deeper.body.message] });
   });
 
   test("names the field a reply gets wrong, not the channel it leaves out", async () => {
