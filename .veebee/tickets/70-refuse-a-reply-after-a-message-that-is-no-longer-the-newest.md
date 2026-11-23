@@ -12,11 +12,16 @@ writes:
   - packages/ports/src/store.ts
   - packages/core/src/messages/post.ts
   - packages/core/test/messages/post.test.ts
+  - packages/cli/src/commands/reply.ts
+  - packages/cli/src/output.ts
+  - packages/cli/test/cli.test.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
 conformance: ["core/replies after a message only while it's the thread's newest, one of any that race"]
 modes: [local]
 depends_on: [69]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-t70
 issue: 70
 ---
 

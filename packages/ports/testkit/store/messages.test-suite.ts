@@ -68,6 +68,25 @@ function repliesSuite(driver: string, open: OpenStore): void {
       expect(targets).toEqual([{ id: 1, channel: "dev", thread: 1 }, { id: 2, channel: "dev", thread: 1 }, null]);
     });
 
+    test("finds the first reply of a thread after a position, under the lock", async () => {
+      const board = await localBoard();
+      await post(board, "dev", "hello");
+      await post(board, "dev", "elsewhere");
+      await reply(board, 1, "first");
+      await reply(board, 2, "other thread");
+      await reply(board, 1, "second");
+      const newer = await board.write(async (writer) =>
+        Promise.all([
+          writer.newerReply(1, 1),
+          writer.newerReply(1, 3),
+          writer.newerReply(1, 5),
+          writer.newerReply(2, 2),
+          writer.newerReply(2, 4),
+        ]),
+      );
+      expect(newer).toEqual([3, 5, null, 4, null]);
+    });
+
     test("keeps a reply to a reply in its root's thread, with the reply it answered as replyTo", async () => {
       const board = await localBoard();
       const root = await post(board, "dev", "hello");

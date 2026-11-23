@@ -957,6 +957,13 @@
                     "type": "string"
                   },
                   "re": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" },
+                  "after": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "description": "A reply's precondition: a message in its thread that must still be the newest.",
+                    "x-ref": "message",
+                    "type": "string"
+                  },
                   "text": { "maxLength": 10000, "type": "string" },
                   "labels": {
                     "type": "object",
@@ -1079,7 +1086,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, reserved_label, invalid_profile",
+            "description": "invalid_request, invalid_after, reserved_label, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
@@ -1095,7 +1102,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "409": {
-            "description": "duplicate_id",
+            "description": "duplicate_id, newer_message",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {

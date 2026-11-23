@@ -45,6 +45,35 @@ test("ob post rejects a missing idempotency key before --no-sync", async () => {
   expect(board.seen).toEqual([]);
 });
 
+describe("ob reply --after", () => {
+  test("sends after with the reply", async () => {
+    const board = fakeBoard(201, { message: message("3", "a") });
+    const { lines, output } = capture();
+    expect(await runCli(["reply", "1", "a", "--after", "2"], env, { fetch: board.fetch, output })).toBe(0);
+    expect(lines.out).toEqual(["3"]);
+    expect(board.seen.map(({ body }) => JSON.parse(body))).toEqual([{ re: "1", text: "a", after: "2" }]);
+  });
+
+  test("prints newer_message with the command that reads what came after, and exits 1", async () => {
+    const next = [{ kind: "run", argv: ["ob", "read", "1", "--after", "2"] }];
+    const board = fakeBoard(409, { error: { code: "newer_message", message: "#3 came after #2", next } });
+    const { lines, output } = capture();
+    expect(await runCli(["reply", "1", "b", "--after", "2"], env, { fetch: board.fetch, output })).toBe(1);
+    expect(lines.err).toEqual(["error: newer_message: #3 came after #2", "next: ob read 1 --after 2"]);
+  });
+
+  test.each([
+    ["without its value", ["reply", "1", "a", "--after"]],
+    ["followed by another option", ["reply", "1", "a", "--after", "--no-sync"]],
+    ["spelled as an unknown option", ["reply", "1", "a", "--before", "2"]],
+  ])("exits 2 for --after %s", async (_, argv) => {
+    const board = fakeBoard(201, {});
+    const { output } = capture();
+    expect(await runCli(argv, env, { fetch: board.fetch, output })).toBe(2);
+    expect(board.seen).toEqual([]);
+  });
+});
+
 describe("ob post and ob messages", () => {
   test("ob post prints the new message's ID", async () => {
     const board = fakeBoard(201, { message: message("1", "hello") });

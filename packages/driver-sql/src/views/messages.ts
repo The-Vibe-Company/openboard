@@ -26,6 +26,8 @@ export const messageStatements = {
     threads = channels.threads + excluded.threads`,
   replyTarget: sql`SELECT id, channel, COALESCE(re, id) AS thread FROM messages
     WHERE board_id = ${"boardId"} AND id = ${"id"}`,
+  newerReply: sql`SELECT id FROM messages WHERE board_id = ${"boardId"} AND re = ${"thread"} AND id > ${"after"}
+    ORDER BY id LIMIT 1`,
   clientPost: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND client_id = ${"clientId"}`,
   ownClientPost: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND org_id = ${"orgId"}
     AND client_id = ${"clientId"} AND principal = ${"principal"} AND actor = ${"actor"}`,
@@ -111,6 +113,10 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor:
       const [row] = await query(tx, dialect, messageStatements.replyTarget, { boardId: keys.boardId, id });
       if (!row) return null;
       return { id: Number(row.id), channel: String(row.channel), thread: Number(row.thread) };
+    },
+    async newerReply(thread, after) {
+      const [row] = await query(tx, dialect, messageStatements.newerReply, { boardId: keys.boardId, thread, after });
+      return row ? Number(row.id) : null;
     },
     async clientPost(clientId) {
       const [row] = await query(tx, dialect, messageStatements.clientPost, { boardId: keys.boardId, clientId });

@@ -1,19 +1,22 @@
 import { BoardError, type listMessages, type postMessage, type readPost } from "@openboard/contract";
 import { formatId, messages, parseId } from "@openboard/core";
+import type { BoardWriter } from "@openboard/ports";
 import { authorOf } from "../auth/author.ts";
 import type { Handler } from "./index.ts";
 
 /**
- * A new thread, or a reply: the message `re` names, the post its client ID already landed, and the board's record of
- * the writer are read under the board's lock; a non-ID names no message. A retry appends nothing.
+ * A new thread, or a reply: the message `re` names, the one its `after` names with the first reply after it, the post
+ * its client ID already landed, and the board's record of the writer are read under the board's lock, so of replies
+ * racing after one message one lands (D33); a non-ID names no message. A retry appends nothing.
  */
 export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input) => {
   const message = await ctx.board.write(async (writer) => {
     messages.checkPost(input, ctx.by);
     const re = input.re === undefined ? null : parseId(input.re);
     const target = re === null ? null : await writer.replyTarget(re);
+    const after = input.after === undefined ? null : await afterState(writer, input.after);
     const landed = input.id === undefined ? null : await writer.clientPost(input.id);
-    const state = { head: writer.head, target, actor: writer.actor, landed };
+    const state = { head: writer.head, target, actor: writer.actor, landed, after };
     const context = { by: ctx.by, author: authorOf(ctx.by), now: ctx.now() };
     const replayed = messages.replayPost(state, input, context);
     if (replayed) return replayed;
@@ -23,6 +26,14 @@ export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input
   }, ctx.by.actor);
   return { message };
 };
+
+/** What a reply's `after` names, with the first reply of its thread after it; null when it names no message. */
+async function afterState(writer: BoardWriter, after: string): Promise<messages.AfterState | null> {
+  const id = parseId(after);
+  const message = id === null ? null : await writer.replyTarget(id);
+  if (!message) return null;
+  return { id: message.id, thread: message.thread, newer: await writer.newerReply(message.thread, message.id) };
+}
 
 /**
  * A channel's messages after `after`, or its latest; the cursor is the last one's ID, so reading on from it repeats

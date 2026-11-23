@@ -171,6 +171,57 @@ describe("replying in a thread", () => {
   });
 });
 
+describe("replying after the thread's newest message", () => {
+  test("posts after the newest, then answers 409 newer_message with the read of what came after, posting nothing", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const first = await answer(call(app, "POST", "/messages", { re: "2", text: "a", after: "2" }));
+    expect([first.status, first.body.message.id]).toEqual([201, "3"]);
+    const late = await answer(call(app, "POST", "/messages", { re: "2", text: "b", after: "2" }));
+    expect([late.status, late.body.error]).toEqual([
+      409,
+      expect.objectContaining({
+        code: "newer_message",
+        message: "#3 came after #2",
+        next: [{ kind: "run", argv: ["ob", "read", "2", "--after", "2"] }],
+      }),
+    ]);
+    const thread = (await (await call(app, "GET", "/messages/2")).json()) as { replies: unknown[] };
+    expect(thread.replies).toHaveLength(1);
+  });
+
+  test("lands one of three replies that race after the same message, and refuses the rest", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const racing = await Promise.all(
+      ["1", "2", "3"].map((n) => answer(call(app, "POST", "/messages", { re: "2", text: n, after: "2" }))),
+    );
+    expect(racing.map(({ status }) => status).sort()).toEqual([201, 409, 409]);
+    const thread = (await (await call(app, "GET", "/messages/2")).json()) as { replies: unknown[] };
+    expect(thread.replies).toHaveLength(1);
+  });
+
+  test("answers a retry with the reply that landed, whatever its after says now", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const first = await answer(call(app, "POST", "/messages", { re: "2", text: "a", after: "2", id: "r-1" }));
+    const again = await answer(call(app, "POST", "/messages", { re: "2", text: "a", after: "2", id: "r-1" }));
+    expect([again.status, again.body.message]).toEqual([201, first.body.message]);
+  });
+
+  test.each([
+    ["a message of another thread", { re: "2", after: "3" }],
+    ["no message", { re: "2", after: "9" }],
+    ["anything on a new thread", { channel: "dev", after: "2" }],
+  ])("answers 400 invalid_after for an after that names %s", async (_, place) => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    await call(app, "POST", "/messages", { channel: "ops", text: "elsewhere" });
+    const refused = await answer(call(app, "POST", "/messages", { ...place, text: "x" }));
+    expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_after"]);
+  });
+});
+
 describe("refusing what the contract does not take", () => {
   test.each([
     ["a channel that is not a path", { channel: "Dev Ops", text: "x" }, "channel"],
