@@ -685,6 +685,225 @@
         }
       }
     },
+    "/threads": {
+      "get": {
+        "operationId": "threads",
+        "summary": "List a channel's latest threads by activity, oldest first, with reply counts and latest replies.",
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "maxLength": 2048,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+              "type": "string"
+            }
+          }
+        ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": ["channel"],
+          "properties": {
+            "channel": {
+              "maxLength": 2048,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+              "type": "string"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["threads", "cursor"],
+                  "properties": {
+                    "threads": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["message", "replies", "last"],
+                        "properties": {
+                          "message": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "channel",
+                              "text",
+                              "re",
+                              "replyTo",
+                              "thread",
+                              "labels",
+                              "reactions",
+                              "by",
+                              "noSync",
+                              "origin",
+                              "from",
+                              "createdAt",
+                              "editedAt",
+                              "deleted",
+                              "undelivered",
+                              "attachments",
+                              "links",
+                              "version",
+                              "revision",
+                              "author",
+                              "blocks"
+                            ],
+                            "properties": {
+                              "id": { "type": "string" },
+                              "channel": { "type": "string" },
+                              "text": { "type": "string" },
+                              "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                              "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                              "thread": { "type": "string" },
+                              "labels": {
+                                "type": "object",
+                                "patternProperties": {
+                                  "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                                }
+                              },
+                              "reactions": {
+                                "type": "object",
+                                "patternProperties": { "^(.*)$": { "type": "array", "items": { "type": "string" } } }
+                              },
+                              "by": {
+                                "type": "object",
+                                "required": ["actor", "principal", "profile"],
+                                "properties": {
+                                  "actor": { "type": "string" },
+                                  "principal": { "type": "string" },
+                                  "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                }
+                              },
+                              "noSync": { "type": "boolean" },
+                              "origin": { "type": "null" },
+                              "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                              "createdAt": { "type": "string" },
+                              "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                              "deleted": { "type": "boolean" },
+                              "undelivered": {
+                                "type": "object",
+                                "patternProperties": { "^(.*)$": { "type": "string" } }
+                              },
+                              "attachments": { "type": "array", "items": {} },
+                              "links": { "type": "array", "items": {} },
+                              "version": { "type": "integer" },
+                              "revision": { "type": "integer" },
+                              "author": { "type": "null" },
+                              "blocks": { "type": "array", "items": {} }
+                            }
+                          },
+                          "replies": { "minimum": 0, "type": "integer" },
+                          "last": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "channel",
+                                  "text",
+                                  "re",
+                                  "replyTo",
+                                  "thread",
+                                  "labels",
+                                  "reactions",
+                                  "by",
+                                  "noSync",
+                                  "origin",
+                                  "from",
+                                  "createdAt",
+                                  "editedAt",
+                                  "deleted",
+                                  "undelivered",
+                                  "attachments",
+                                  "links",
+                                  "version",
+                                  "revision",
+                                  "author",
+                                  "blocks"
+                                ],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "channel": { "type": "string" },
+                                  "text": { "type": "string" },
+                                  "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "thread": { "type": "string" },
+                                  "labels": {
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                                    }
+                                  },
+                                  "reactions": {
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^(.*)$": { "type": "array", "items": { "type": "string" } }
+                                    }
+                                  },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "noSync": { "type": "boolean" },
+                                  "origin": { "type": "null" },
+                                  "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "createdAt": { "type": "string" },
+                                  "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "deleted": { "type": "boolean" },
+                                  "undelivered": {
+                                    "type": "object",
+                                    "patternProperties": { "^(.*)$": { "type": "string" } }
+                                  },
+                                  "attachments": { "type": "array", "items": {} },
+                                  "links": { "type": "array", "items": {} },
+                                  "version": { "type": "integer" },
+                                  "revision": { "type": "integer" },
+                                  "author": { "type": "null" },
+                                  "blocks": { "type": "array", "items": {} }
+                                }
+                              },
+                              { "type": "null" }
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/events": {
       "get": {
         "operationId": "events",

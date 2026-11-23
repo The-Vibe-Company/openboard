@@ -53,6 +53,6 @@ export const listMessages = defineOperation({
   effects: { readOnly: true, idempotent: true, emits: [] },
   cli: false,
   mcp: { tool: "list_messages" },
-  why: "`ob read <channel>` is hand-written: it prints one line per message rather than the raw page.",
+  why: "`ob messages <channel>` is hand-written: it prints one line per message rather than the raw page.",
   upstream: true,
 });

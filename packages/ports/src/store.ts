@@ -1,4 +1,4 @@
-import type { Channel, Message, Thread } from "@openboard/contract";
+import type { Channel, Message, Thread, ThreadSummary } from "@openboard/contract";
 import type { BoardEvent, MessagePosted, messages } from "@openboard/core";
 
 declare const minted: unique symbol;
@@ -62,6 +62,8 @@ export interface BoardView {
   readEvents(after?: number): Promise<{ head: number; cursor: number; events: MessagePosted[] }>;
   /** The message at log position `id` with its replies, oldest first, or null when no message has that ID. */
   thread(id: number): Promise<Thread | null>;
+  /** The channel's latest 50 threads in ascending activity order, with the same snapshot's board head. */
+  listThreads(channel: string): Promise<{ threads: ThreadSummary[]; head: number }>;
 }
 
 export interface Store {

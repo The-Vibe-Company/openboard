@@ -1,5 +1,13 @@
 import { BoardError, createClient } from "@the-vibe-company/openboard";
-import { type Command, derivedCommands, Misuse, readCommand, replyCommand, whoamiCommand } from "./commands/index.ts";
+import {
+  type Command,
+  derivedCommands,
+  messagesCommand,
+  Misuse,
+  readCommand,
+  replyCommand,
+  whoamiCommand,
+} from "./commands/index.ts";
 import { clientConfig } from "./config.ts";
 import { consoleOutput, type Output, printError } from "./output.ts";
 
@@ -8,7 +16,7 @@ export interface CliOptions {
   readonly fetch?: (request: Request) => Promise<Response>;
 }
 
-const commands: readonly Command[] = [readCommand, replyCommand, whoamiCommand, ...derivedCommands];
+const commands: readonly Command[] = [readCommand, messagesCommand, replyCommand, whoamiCommand, ...derivedCommands];
 
 function find(words: readonly string[]): Command | undefined {
   return commands

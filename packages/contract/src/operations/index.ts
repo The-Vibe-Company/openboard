@@ -3,7 +3,7 @@ import { createChannel, listChannels } from "./channels.ts";
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { listMessages, postMessage } from "./messages.ts";
-import { readThread } from "./threads.ts";
+import { listThreads, readThread } from "./threads.ts";
 
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
 export const operations = [
@@ -13,6 +13,7 @@ export const operations = [
   getOpenApi,
   listChannels,
   listMessages,
+  listThreads,
   postMessage,
   readEvents,
   readThread,
@@ -25,6 +26,7 @@ export {
   getOpenApi,
   listChannels,
   listMessages,
+  listThreads,
   postMessage,
   readEvents,
   readThread,
