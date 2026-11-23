@@ -7,11 +7,12 @@ writes:
   - tools/conformance/src/run.ts
   - tools/conformance/src/score.ts
   - tools/conformance/test/score.test.ts
+  - tools/conformance/score.json
 conformance: []
 modes: [local]
 depends_on: [04, 37, 40]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t54
 issue: 54
 ---
 
@@ -19,8 +20,8 @@ issue: 54
 As a contributor, I record the checks my change made pass, so nobody can lose them later.
 
 ## Done when
-- [ ] `bun run conformance --update` adds `core/says in its discovery where it is` under `local` in `tools/conformance/score.json` and prints it as new
-- [ ] a second run prints nothing new and leaves the file unchanged
+- [x] `bun run conformance --update` adds `core/says in its discovery where it is` under `local` in `tools/conformance/score.json` and prints it as new
+- [x] a second run prints nothing new and leaves the file unchanged
 
 ## Out of scope
 - Removing an entry: owner only.

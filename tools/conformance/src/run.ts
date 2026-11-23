@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import type { CheckGroup, CheckResult } from "@vercel/board/conformance";
 import { boot } from "./drivers";
-import { lostChecks, type Score } from "./score";
+import { lostChecks, newChecks, recordChecks, type Score } from "./score";
 
 const groups: readonly CheckGroup[] = [
   "core",
@@ -28,6 +28,19 @@ function printTable(checks: readonly CheckResult[]) {
     const counts = [totals.passed, totals.failed, totals.skipped].map((count) => String(count).padStart(7));
     console.log(group.padEnd(13) + counts.join(" "));
   }
+}
+
+/** The file is written as `bun run format` would leave it, so `verify` accepts it whatever the lists hold. */
+async function writeScore(file: URL, score: Score) {
+  const child = Bun.spawn([execPath, "x", "biome", "format", `--stdin-file-path=${fileURLToPath(file)}`], {
+    cwd: fileURLToPath(new URL("../../..", import.meta.url)),
+    stdin: new Blob([JSON.stringify(score)]),
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+  const [formatted, exitCode] = await Promise.all([child.stdout.text(), child.exited]);
+  if (exitCode !== 0 || !formatted) throw new Error(`biome could not format ${fileURLToPath(file)}`);
+  await Bun.write(file, formatted);
 }
 
 async function runKit(url: URL, token: string): Promise<CheckResult[]> {
@@ -62,6 +75,7 @@ const { values } = parseArgs({
   options: {
     driver: { type: "string", default: "sqlite" },
     instances: { type: "string" },
+    update: { type: "boolean", default: false },
   },
 });
 const { driver } = values;
@@ -72,7 +86,8 @@ if (instances !== "1" && (instances !== "2" || driver === "sqlite")) {
 }
 
 const mode = driver === "sqlite" ? "local" : "hosted";
-const score = (await Bun.file(new URL("../score.json", import.meta.url)).json()) as Score;
+const scoreFile = new URL("../score.json", import.meta.url);
+const score = (await Bun.file(scoreFile).json()) as Score;
 const server = await boot(driver, Number(instances));
 try {
   const checks = await runKit(server.url, server.token);
@@ -80,6 +95,12 @@ try {
   const lost = lostChecks(score[mode], checks);
   for (const name of lost) console.error(`Lost conformance check (${mode}): ${name}`);
   if (lost.length > 0) process.exitCode = 1;
+  const added = newChecks(score[mode], checks);
+  const hint = values.update ? "" : " (not recorded: run with --update)";
+  for (const name of added) console.log(`New conformance check (${mode}): ${name}${hint}`);
+  if (values.update && added.length > 0) {
+    await writeScore(scoreFile, recordChecks(score, mode, added));
+  }
 } finally {
   await server.close();
 }
