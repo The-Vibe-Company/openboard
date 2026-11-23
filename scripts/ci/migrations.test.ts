@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { checkAppliedMigrations, checkMigrationNumbers } from "./migrations";
+import { checkAppliedMigrations, checkMigrationNumbers, parseMigrationTree } from "./migrations";
 
 const editedFixtures = join(import.meta.dir, "fixtures", "migrations", "edited");
 
@@ -67,4 +67,23 @@ test("accepts unchanged applied migrations, new migrations and non-migration fil
       ]),
     ),
   ).toEqual([]);
+});
+
+test("reads regular migration files from ls-tree output and skips everything else", () => {
+  const directory = "packages/driver-sql/migrations";
+  const output = [
+    `100644 blob aaa\t${directory}/0001-first.sql`,
+    `100755 blob bbb\t${directory}/0002-second.sql`,
+    `120000 blob ccc\t${directory}/0003-link.sql`,
+    `160000 commit ddd\t${directory}/vendor`,
+    `100644 blob eee\t${directory}/nested/0004-deep.sql`,
+    `100644 blob fff\tpackages/driver-sql/migrations-old/0005-other.sql`,
+    "",
+  ].join("\0");
+  expect(parseMigrationTree(output)).toEqual(
+    new Map([
+      ["0001-first.sql", "aaa"],
+      ["0002-second.sql", "bbb"],
+    ]),
+  );
 });
