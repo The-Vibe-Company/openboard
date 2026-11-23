@@ -44,6 +44,10 @@
     {
       "files": ["packages/server/src/log.ts", "packages/cli/src/output.ts"],
       "rules": { "no-console": "off" }
+    },
+    {
+      "files": ["packages/**", "apps/**", "tools/**", "examples/**"],
+      "rules": { "max-lines-per-function": ["error", { "max": 80 }] }
     }
   ]
 }

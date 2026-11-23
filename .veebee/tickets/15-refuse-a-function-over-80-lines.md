@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [14]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-code
 issue: 15
 ---
 
@@ -18,7 +18,7 @@ issue: 15
 As a contributor, I split a function before it passes 80 lines.
 
 ## Done when
-- [ ] an 81-line function in any workspace makes `bun run lint` exit 1 naming it
+- [x] an 81-line function in any workspace makes `bun run lint` exit 1 naming it
 
 ## Out of scope
 - File and directory sizes (16, 17).
