@@ -88,6 +88,17 @@ test("a signed-in person creates an organization, owns it, and gets its board ma
   });
 });
 
+test("a second person creating acme receives 409 slug_taken", async () => {
+  const { app, at } = await start(["ada", "bob"]);
+  const [ada, bob] = [at(0), at(1)];
+  expect((await createOrg(app, { name: "Acme", slug: "acme" }, ada)).status).toBe(201);
+
+  const refused = await createOrg(app, { name: "Other Acme", slug: "acme" }, bob);
+  expect(refused.status).toBe(409);
+  expect(await errorCode(refused)).toBe("slug_taken");
+  expect(await (await get(app, "/api/x/me", bob)).json()).toMatchObject({ memberships: [] });
+});
+
 test("creating an organization or reading the account without a session is 401", async () => {
   const { app } = await start([]);
   const created = await createOrg(app, { name: "Acme", slug: "acme" });
