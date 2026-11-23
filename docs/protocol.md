@@ -180,6 +180,10 @@ tail, pull with a lease, ack or retry.
 
 ### Board extensions
 
+Use `--no-sync` on `ob post` or `ob reply` to mark that message as board-only. A thread read with
+`ob read <id> --json` shows `noSync: true` on each message marked this way. To send the literal text
+`--no-sync`, put it after `--`, as in `ob reply <id> -- --no-sync`.
+
 OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads through `GET /messages`.
 
 | Method | Path | | Notes |
