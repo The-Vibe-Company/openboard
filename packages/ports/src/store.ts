@@ -199,6 +199,8 @@ export interface BoardWriter {
   connection(id: string): Promise<ConnectionRecord | null>;
   /** The agent of this board with the ID, read under the lock, or null when the board has none with it. */
   agent(id: string): Promise<AgentRecord | null>;
+  /** The agent associated with this connection's claim key, including expired and revoked agents. */
+  agentByClaimKey(connection: string, key: string): Promise<{ record: AgentRecord; revoked: boolean } | null>;
   /**
    * The unrevoked agent of the connection pinned to the profile (any case) whose token expires last, with that expiry
    * in epoch milliseconds, read under the lock; null when the connection has none.

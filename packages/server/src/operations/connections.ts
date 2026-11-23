@@ -1,5 +1,6 @@
 import { BoardError, type claimConnection, type createConnection, type refreshAgentToken } from "@openboard/contract";
 import { agents, connections, grants } from "@openboard/core";
+import type { BoardWriter } from "@openboard/ports";
 import { mintSecret, SECRET_BYTES } from "../auth/secrets.ts";
 import { reissueToken, TOKEN_SECRET_BYTES } from "../auth/tokens.ts";
 import { agentOf, credentialKind, memberOf, profileName, tokenHashOf } from "../deps.ts";
@@ -44,12 +45,52 @@ export const createConnectionHandler: Handler<typeof createConnection> = async (
 
 const CONNECTION = "ob:conn:";
 
+type ClaimContext = Parameters<Handler<typeof claimConnection>>[0];
+type ClaimInput = Parameters<Handler<typeof claimConnection>>[1];
+
+async function replayClaim(ctx: ClaimContext, writer: BoardWriter, connection: string, input: ClaimInput) {
+  if (input.idempotencyKey === undefined) return null;
+  const saved = await writer.agentByClaimKey(connection, input.idempotencyKey);
+  if (!saved) return null;
+  const { record, revoked } = saved;
+  if (record.profile.toLowerCase() !== input.profile.toLowerCase()) {
+    throw new BoardError("invalid_request", "this claim key belongs to another profile");
+  }
+  if (input.can !== undefined) {
+    const requested = Object.entries(grants.compileCan(input.can));
+    const pinned = record.agent.can;
+    const matches =
+      requested.length === Object.keys(pinned).length &&
+      requested.every(([pattern, permissions]) => {
+        const original = pinned[pattern];
+        return (
+          original?.length === permissions.length && permissions.every((permission) => original.includes(permission))
+        );
+      });
+    if (!matches) throw new BoardError("invalid_request", "this claim key belongs to different pinned permissions");
+  }
+  if (revoked) throw new BoardError("unauthorized", "the agent for this claim key was revoked");
+  const id = record.agent.id;
+  const minted = reissueToken(id, ctx.randomBytes(TOKEN_SECRET_BYTES));
+  const state = { head: writer.head, agent: { ...record, tokenTtl: record.connection.tokenTtl } };
+  const { agent, events } = agents.decideRefresh(state, {
+    by: ctx.by,
+    now: ctx.now(),
+    presented: record.tokenHash,
+    token: { id, hash: minted.hash },
+    preserveExpiry: true,
+  });
+  await writer.append(events);
+  return { agent, token: minted.token, profile: record.profile };
+}
+
 /**
  * Trades a connection's secret for an agent token pinned to one profile, answered here once with the env an
  * orchestrator injects (docs/auth.md "Three ways to connect", mode 2). Only a connection's secret claims. Its claims
  * are counted under the board lock and spent in the claim's transaction, so of two racing claims of a single-use
  * secret exactly one wins and the other answers 410 `secret_spent`; likewise, of two claims of one profile while
- * the first agent lives, the second answers 409 `profile_taken`.
+ * the first agent lives, the second answers 409 `profile_taken`. A matching key reissues the existing agent's
+ * credential under the same lock, without spending a claim or extending either expiry.
  */
 export const claimConnectionHandler: Handler<typeof claimConnection> = async (ctx, input) => {
   if (ctx.by[credentialKind] !== "connection") {
@@ -58,21 +99,23 @@ export const claimConnectionHandler: Handler<typeof claimConnection> = async (ct
     });
   }
   const connectionId = ctx.by.principal.slice(CONNECTION.length);
-  const minted = mintSecret("obt_", ctx.randomBytes(SECRET_BYTES));
-  const token = { id: `ag_${minted.name}`, hash: minted.hash };
-  const agent = await ctx.board.write(async (writer) => {
+  const { agent, token, profile } = await ctx.board.write(async (writer) => {
     const record = await writer.connection(connectionId);
     if (!record) throw new BoardError("unauthorized", "the credential is not valid on this board");
+    const replay = await replayClaim(ctx, writer, connectionId, input);
+    if (replay) return replay;
+    const minted = mintSecret("obt_", ctx.randomBytes(SECRET_BYTES));
+    const token = { id: `ag_${minted.name}`, hash: minted.hash };
     const { id, profiles, can } = record.connection;
     const { tokenTtl, tokenMax, claims } = record;
     const connection = { id, profiles, can, tokenTtl, tokenMax, claims };
     const state = { head: writer.head, holder: await writer.profileHolder(id, input.profile) };
     const decided = agents.decideClaim(state, input, { by: ctx.by, now: ctx.now(), connection, token });
     await writer.append(decided.events);
-    return decided.agent;
+    return { agent: decided.agent, token: minted.token, profile: input.profile };
   });
-  const env = { BOARD_URL: ctx.boardUrl, BOARD_TOKEN: minted.token, BOARD_PROFILE: input.profile };
-  return { agent, token: minted.token, env };
+  const env = { BOARD_URL: ctx.boardUrl, BOARD_TOKEN: token, BOARD_PROFILE: profile };
+  return { agent, token, env };
 };
 
 /**
