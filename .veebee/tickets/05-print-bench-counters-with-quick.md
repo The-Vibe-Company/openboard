@@ -12,7 +12,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [02]
-status: claimed
+status: done
 claimed_by: claude-opus-t05
 issue: 5
 ---
@@ -21,8 +21,8 @@ issue: 5
 As a contributor, I run the quick benchmark and see the counters it will hold every change to, per mode.
 
 ## Done when
-- [ ] `bun run bench --quick` prints a `local` and a `hosted` counters table (statements per operation, round trips per operation for hosted, timers armed when idle), with no operations yet, and exits 0 in under 60 seconds
-- [ ] `bun run bench --quick --mode local` prints only the `local` table
+- [x] `bun run bench --quick` prints a `local` and a `hosted` counters table (statements per operation, round trips per operation for hosted, timers armed when idle), with no operations yet, and exits 0 in under 60 seconds
+- [x] `bun run bench --quick --mode local` prints only the `local` table
 
 ## Out of scope
 - Workloads and the local baseline in `budgets.json` (55); the hosted baseline (M5, 173).

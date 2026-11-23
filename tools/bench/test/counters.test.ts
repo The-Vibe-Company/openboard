@@ -13,10 +13,23 @@ test("a timer left armed after the work is counted, and a fired or cleared one i
   expect(armed).toBe(1);
 });
 
-test("the timer functions are restored after counting", async () => {
-  const original = globalThis.setTimeout;
+test("the timer functions are restored after counting, even when the work throws", async () => {
+  const { setTimeout, setInterval, clearTimeout, clearInterval } = globalThis;
+  const originals = [setTimeout, setInterval, clearTimeout, clearInterval];
+  const current = () => [
+    globalThis.setTimeout,
+    globalThis.setInterval,
+    globalThis.clearTimeout,
+    globalThis.clearInterval,
+  ];
   await countArmedTimers(async () => {});
-  expect(globalThis.setTimeout).toBe(original);
+  expect(current()).toEqual(originals);
+  await expect(
+    countArmedTimers(async () => {
+      throw new Error("boot failed");
+    }),
+  ).rejects.toThrow("boot failed");
+  expect(current()).toEqual(originals);
 });
 
 test("each mode prints its counters, with round trips only for hosted", async () => {

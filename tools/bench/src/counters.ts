@@ -20,11 +20,11 @@ export interface ModeCounters {
 /** Boots `mode`, lets it settle, and reads the deterministic counters it would be held to. */
 export async function measure(mode: Mode): Promise<ModeCounters> {
   let server: ReturnType<typeof boot> | undefined;
-  const idleTimers = await countArmedTimers(async () => {
-    server = boot(mode);
-    await Promise.all(server.apps.map((app) => app.drain()));
-  });
   try {
+    const idleTimers = await countArmedTimers(async () => {
+      server = boot(mode);
+      await Promise.all(server.apps.map((app) => app.drain()));
+    });
     return {
       mode,
       operations: operations.map(({ name }) => ({ operation: name, statements: undefined, roundTrips: undefined })),
