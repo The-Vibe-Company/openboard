@@ -115,8 +115,16 @@ describe("refreshing an agent token", () => {
   });
 
   test("never moves past the hard expiry, and refuses past it", () => {
-    expect(refresh(NOW + 86_000_000).agent.expiresAt).toBe(claimed.hardExpiresAt);
-    expect(() => refresh(NOW + 86_400_000)).toThrow("hard expiry");
+    const late = { ...stored, agent: claimed, tokenExpires: NOW + 86_400_000 };
+    expect(refresh(NOW + 86_000_000, token.hash, late).agent.expiresAt).toBe(claimed.hardExpiresAt);
+    expect(() => refresh(NOW + 86_400_000, token.hash, { ...late, tokenExpires: NOW + 86_400_001 })).toThrow(
+      "hard expiry",
+    );
+  });
+
+  test("refuses a token from its expiry on, read under the lock, so a claim of its profile meanwhile stands", () => {
+    expect(refresh(NOW + 300_000 - 1).agent.id).toBe(token.id);
+    expect(() => refresh(NOW + 300_000)).toThrow(expect.objectContaining({ code: "unauthorized", status: 401 }));
   });
 
   test("never shortens a token claimed for longer than the connection's token lifetime", () => {

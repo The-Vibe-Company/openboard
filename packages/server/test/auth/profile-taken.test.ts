@@ -49,6 +49,7 @@ test("a profile whose agent's token expired is claimed again", async () => {
   expect(await codeOf(await claim(app, booted.secret, { profile: "fixer-2" }))).toEqual([409, "profile_taken"]);
   booted.clock.now = NOW + 300_000;
   expect((await claim(app, booted.secret, { profile: "fixer-2" })).status).toBe(200);
+  expect(await codeOf(await claim(app, booted.secret, { profile: "fixer-2" }))).toEqual([409, "profile_taken"]);
 });
 
 test("a profile another connection's agent holds is still free on this one", async () => {

@@ -232,7 +232,8 @@ export interface AgentRefreshed {
  * A new token for `state.agent`, with the same pins, living the connection's token lifetime from `now`, never less
  * than the token it replaces (a claim may ask for a longer one) and never past the agent's hard expiry; the token it replaces keeps working `PREVIOUS_TOKEN_MS`. Only the current token refreshes
  * (`presented` is its hash): its predecessor, or a token another refresh already replaced, is 401 `unauthorized`. Past
- * the hard expiry nothing refreshes: the connection's secret claims a new agent.
+ * the token's expiry, decided here under the lock so a claim that took the profile meanwhile stands (D49), or the hard
+ * expiry, nothing refreshes: the connection's secret claims a new agent.
  */
 export function decideRefresh(
   state: { readonly head: number; readonly agent: RefreshingAgent },
@@ -243,6 +244,11 @@ export function decideRefresh(
   if (presented !== tokenHash) {
     throw new BoardError("unauthorized", "this token was already refreshed", {
       hint: "Use the token the refresh answered.",
+    });
+  }
+  if (now >= currentExpires) {
+    throw new BoardError("unauthorized", "this token expired", {
+      hint: "Claim a new token with the connection's secret: `ob connect <BOARD_URL> --as <profile>`.",
     });
   }
   if (now >= hardExpires) {

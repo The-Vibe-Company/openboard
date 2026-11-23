@@ -679,7 +679,10 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   (`now < token_expires`, which never passes `hard_expires`). The claim reads
   the connection's unrevoked agent on that profile (any case) whose token
   expires last, inside its board-locked write, and core refuses it while that
-  token lives. No unique index: the board lock serializes claims (D33).
+  token lives. No unique index: the board lock serializes claims (D33);
+  the comment in migration 0004 announcing one no longer holds. A refresh
+  likewise checks its token's expiry under the lock, so it cannot revive an
+  agent whose profile a claim took meanwhile.
 - **Consequence.** Two racing claims of one profile: one 200, one 409. A
   sandbox relaunched after its agent expired claims the same profile again.
   A profile is per connection: another connection's agent never holds it.
