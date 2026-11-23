@@ -223,7 +223,9 @@ POST {BOARD_URL}/x/connections
   `{ "kind": "connection", "connection": "cn_…" }` (OpenBoard kind; group
   `all-connections`), visible in `GET /grants`, explainable, patchable.
 - **Revoke** (`POST {BOARD_URL}/x/connections/:id/revoke`): connection, grant,
-  claimed tokens, descendants, in one write; effective from the next request.
+  and claimed tokens in one write, effective from the next request.
+  Use `ob connections revoke <id>` as the local owner. Revocation of child
+  connections arrives with the M10 grant-change rules.
 - **Rotate** (`…/rotate { overlap }`): new secret; the old one works for
   `overlap` (≤ 24 h).
 - Handles: the connection's name (`armada-fixers`); its profiles

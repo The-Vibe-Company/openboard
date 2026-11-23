@@ -13,7 +13,7 @@ export const agentStatements = {
   agentById: sql`SELECT a.id, a.connection, a.profile, a.profile_key, a.can, a.token_hash, a.prev_hash,
     a.prev_until, a.token_expires, a.hard_expires, c.name, c.profiles, c.token_ttl_s
     FROM connection_agents a JOIN connections c ON c.board_id = a.board_id AND c.id = a.connection
-    WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"} AND a.id = ${"id"}`,
+    WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"} AND a.id = ${"id"} AND a.revoked_at IS NULL`,
   agentByClaimKey: sql`SELECT a.id, a.connection, a.profile, a.profile_key, a.can, a.token_hash, a.prev_hash,
     a.prev_until, a.token_expires, a.hard_expires, a.revoked_at, c.name, c.profiles, c.token_ttl_s
     FROM connection_agents a JOIN connections c ON c.board_id = a.board_id AND c.id = a.connection

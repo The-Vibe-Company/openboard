@@ -196,7 +196,8 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | --- | --- | --- | --- |
 | POST, GET | `/x/connections` | X | create; list those the caller manages |
 | GET | `/x/connections/:id` | X | with agents |
-| POST | `/x/connections/:id/rotate`, `/revoke` | X | |
+| POST | `/x/connections/:id/rotate` | X | |
+| POST | `/x/connections/:id/revoke` | X | Board owner or organization admin. Returns `{ id, revokedAt }`. Unknown or already revoked connections answer 404 `not_found`. |
 | GET | `/x/connections/:id/policy` | X | `{ env, headers, routes }` for mode 3 |
 | POST | `/x/connections/claim` | X | bearer: connection secret |
 | POST | `/x/connections/refresh` | X | bearer: agent token |

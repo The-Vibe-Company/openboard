@@ -6,7 +6,12 @@ import { getAccountHandler, getSessionHandler, revokeAllSessionsHandler } from "
 import { getMeHandler, listActorsHandler } from "./actors.ts";
 import { createBoardHandler, listBoardsHandler } from "./boards.ts";
 import { createChannelHandler, listChannelsHandler } from "./channels.ts";
-import { claimConnectionHandler, createConnectionHandler, refreshAgentTokenHandler } from "./connections.ts";
+import {
+  claimConnectionHandler,
+  createConnectionHandler,
+  refreshAgentTokenHandler,
+  revokeConnectionHandler,
+} from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
 import {
@@ -121,6 +126,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   readPost: readPostHandler,
   readThread: readThreadHandler,
   refreshAgentToken: refreshAgentTokenHandler,
+  revokeConnection: revokeConnectionHandler,
   revokeAllSessions: revokeAllSessionsHandler,
   revokeInvitation: revokeInvitationHandler,
 };

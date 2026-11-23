@@ -7,7 +7,14 @@ import { foldActorSeen, lockBoardAs } from "./actors.ts";
 import { findAgent, findAgentByClaimKey, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
 import { lockBoard, setHead } from "./boards.ts";
 import { findChannel, foldChannelCreated } from "./channels.ts";
-import { connectionNamed, findConnection, foldConnectionCreated, nextGrant, profileHolder } from "./connections.ts";
+import {
+  connectionNamed,
+  findConnection,
+  foldConnectionCreated,
+  foldConnectionRevoked,
+  nextGrant,
+  profileHolder,
+} from "./connections.ts";
 
 export const messageStatements = {
   insertEvent: sql`INSERT INTO events (org_id, board_id, id, type, at, thread, message, channel, actor, principal,
@@ -125,6 +132,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   });
   if (event.type === "channel.created") await foldChannelCreated(tx, dialect, keys, event);
   else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
+  else if (event.type === "ob.connection.revoked") await foldConnectionRevoked(tx, dialect, keys, event);
   else if (event.type === "actor.seen") await foldActorSeen(tx, dialect, keys, event);
   else if (event.type === "ob.agent.claimed") await foldAgentClaimed(tx, dialect, keys, event);
   else if (event.type === "ob.agent.refreshed") await foldAgentRefreshed(tx, dialect, keys, event);

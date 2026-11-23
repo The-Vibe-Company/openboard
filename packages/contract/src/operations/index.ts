@@ -2,7 +2,7 @@ import { getAccount, getSession, revokeAllSessions } from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
 import { createBoard, listBoards } from "./boards.ts";
 import { createChannel, listChannels } from "./channels.ts";
-import { claimConnection, createConnection, refreshAgentToken } from "./connections.ts";
+import { claimConnection, createConnection, refreshAgentToken, revokeConnection } from "./connections.ts";
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
@@ -42,6 +42,7 @@ export const operations = [
   readThread,
   refreshAgentToken,
   revokeAllSessions,
+  revokeConnection,
   revokeInvitation,
 ] as const;
 
@@ -75,5 +76,6 @@ export {
   readThread,
   refreshAgentToken,
   revokeAllSessions,
+  revokeConnection,
   revokeInvitation,
 };

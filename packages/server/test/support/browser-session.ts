@@ -44,13 +44,14 @@ export async function browserSession(send: (request: Request) => Promise<Respons
   return { headers: { cookie, "x-ob-csrf": session.csrf, origin: PUBLIC_URL }, principal: session.person.principal };
 }
 
-export function makeBrowserApp() {
+export function makeBrowserApp(localOwnerTokenHash?: string) {
   let drawn = 0;
   return createApp(
     {
       mode: "local",
       publicUrl: PUBLIC_URL,
       localOwner: LOCAL_OWNER,
+      ...(localOwnerTokenHash === undefined ? {} : { localOwnerTokenHash }),
       signup: "open",
       signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } },
     },

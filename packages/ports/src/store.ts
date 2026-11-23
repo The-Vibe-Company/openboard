@@ -203,9 +203,9 @@ export interface BoardWriter {
   nextGrant(): Promise<number>;
   /** Whether a connection of this board, revoked or not, has the name. */
   connectionNamed(name: string): Promise<boolean>;
-  /** The connection of this board with the ID, read under the lock, or null when the board has none with it. */
+  /** The unrevoked connection of this board with the ID, read under the lock, or null when the board has none with it. */
   connection(id: string): Promise<ConnectionRecord | null>;
-  /** The agent of this board with the ID, read under the lock, or null when the board has none with it. */
+  /** The unrevoked agent of this board with the ID, read under the lock, or null when the board has none with it. */
   agent(id: string): Promise<AgentRecord | null>;
   /** The agent associated with this connection's claim key, including expired and revoked agents. */
   agentByClaimKey(connection: string, key: string): Promise<{ record: AgentRecord; revoked: boolean } | null>;
@@ -279,9 +279,9 @@ export interface BoardView {
   channelMessages(query: ChannelMessagesQuery): Promise<Message[] | null>;
   /** The author's post by client ID, as it landed, or null if it is missing or belongs to another author. */
   ownClientPost(clientId: string, by: Author): Promise<Message | null>;
-  /** The agent of this board with the ID, or null when the board has none with it. */
+  /** The unrevoked agent of this board with the ID, or null when the board has none with it. */
   agent(id: string): Promise<AgentRecord | null>;
-  /** The connection of this board with the ID, or null when the board has none with it. */
+  /** The unrevoked connection of this board with the ID, or null when the board has none with it. */
   connection(id: string): Promise<ConnectionRecord | null>;
   /** The first `limit` channels the query selects, by path, with their counts and the board head at the time of the read. */
   listChannels(query: ChannelsQuery): Promise<{ channels: Channel[]; head: number }>;
