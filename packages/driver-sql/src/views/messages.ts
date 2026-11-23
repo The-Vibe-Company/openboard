@@ -140,7 +140,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
       view: JSON.stringify(view),
     });
   } else if (event.type === "message.deleted") await foldMessageDeleted(tx, dialect, keys, event);
-  else if (event.type === "reaction.added") {
+  else if (event.type === "reaction.added" || event.type === "reaction.removed") {
     const { view } = event.payload;
     await query(tx, dialect, messageStatements.reactToMessage, {
       ...keys,

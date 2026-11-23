@@ -27,6 +27,26 @@ test("a reaction the actor already holds appends nothing", () => {
   expect(decideReaction({ head: 2, target: reacted }, { id: "1", emoji: "eyes" }, { by, now })).toEqual([]);
 });
 
+test("a removal clears the last reaction under its canonical emoji name", () => {
+  const reacted = { ...target, reactions: { thumbs_up: [by.actor], eyes: [by.actor] } };
+  const [event] = decideReaction({ head: 4, target: reacted }, { id: "1", emoji: "+1", remove: true }, { by, now });
+  expect(event).toMatchObject({
+    id: 5,
+    type: "reaction.removed",
+    actor: by.actor,
+    payload: { emoji: "thumbs_up" },
+  });
+  expect(event?.type === "reaction.removed" && event.payload.view.reactions).toEqual({ eyes: [by.actor] });
+  expect(reacted.reactions.thumbs_up).toEqual([by.actor]);
+});
+
+test("removing a reaction the actor does not hold appends no reaction event", () => {
+  const reacted = { ...target, reactions: { eyes: [other.actor] } };
+  expect(decideReaction({ head: 2, target: reacted }, { id: "1", emoji: "eyes", remove: true }, { by, now })).toEqual(
+    [],
+  );
+});
+
 test("an unseen writer is recorded with actor.seen before its reaction", () => {
   const author = { kind: "person" as const, handle: "local-dev", name: "Local Dev", avatar: null };
   const events = decideReaction({ head: 3, target, actor: null }, { id: "1", emoji: "eyes" }, { by, author, now });

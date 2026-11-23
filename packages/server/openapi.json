@@ -1993,7 +1993,7 @@
     "/messages/{id}/reactions": {
       "post": {
         "operationId": "react",
-        "summary": "React to a message with an emoji.",
+        "summary": "Add or remove your emoji reaction to a message.",
         "parameters": [
           {
             "name": "id",
@@ -2016,7 +2016,8 @@
                     "maxLength": 64,
                     "description": "A short name as Chat SDK names it: `eyes`, `thumbs_up`.",
                     "type": "string"
-                  }
+                  },
+                  "remove": { "type": "boolean" }
                 }
               }
             }

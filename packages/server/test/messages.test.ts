@@ -522,6 +522,21 @@ describe("reacting to a message", () => {
     });
   });
 
+  test("removes only the authenticated actor's reaction and leaves the version alone on retry", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "ship it?" });
+    await call(app, "POST", "/messages/2/reactions", { emoji: "eyes" });
+    await reactAs("bot", "eyes");
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await call(app, "POST", "/messages/2/reactions", { emoji: "eyes", remove: true });
+      expect([response.status, await response.json()]).toEqual([200, { ok: true }]);
+      expect(await (await call(app, "GET", "/messages/2")).json()).toMatchObject({
+        message: { reactions: { eyes: [`${LOCAL_OWNER}+bot`] }, revision: 0, version: 6 },
+      });
+    }
+  });
+
   test.each(["Eyes", ":eyes:", "constructor"])("refuses the emoji %j", async (emoji) => {
     app = makeApp();
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
