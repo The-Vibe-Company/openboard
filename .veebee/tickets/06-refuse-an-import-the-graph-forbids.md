@@ -12,8 +12,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [05]
-status: ready
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t06
 issue: 6
 ---
 
