@@ -1,4 +1,4 @@
-import { createApp, mintLocalOwnerToken } from "../../src/index.ts";
+import { createApp, type Logger, mintLocalOwnerToken } from "../../src/index.ts";
 import { openStore } from "./drivers.ts";
 
 export const BOARD_URL = "http://127.0.0.1:8787/api/local/main";
@@ -8,14 +8,21 @@ export const NOW = 1_700_000_000_000;
 /** The local owner token every test app accepts, from fixed bytes so no token-shaped string is written here. */
 export const OWNER = mintLocalOwnerToken(new Uint8Array(42).fill(7));
 
-/** One app on in-memory SQLite, with a fixed clock and a logger that keeps what it is told. */
-export function makeApp() {
+/**
+ * One app on in-memory SQLite, with a fixed clock unless one is given, and a logger that keeps the errors it is told
+ * unless one is given.
+ */
+export function makeApp(options: { readonly now?: () => number; readonly log?: Logger } = {}) {
   const logged: Readonly<Record<string, unknown>>[] = [];
-  const now = () => NOW;
+  const now = options.now ?? (() => NOW);
+  const log: Logger = options.log ?? {
+    info: () => {},
+    error: (message, fields) => logged.push({ message, ...fields }),
+  };
   const app = createApp(
     { mode: "local", localOwner: LOCAL_OWNER, localOwnerTokenHash: OWNER.hash },
     { store: openStore(now) },
-    { now, log: { error: (message, fields) => logged.push({ message, ...fields }) } },
+    { now, log },
   );
   return { ...app, logged };
 }

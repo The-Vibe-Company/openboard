@@ -1,6 +1,7 @@
 import { BoardError, decodeInput, type operations } from "@openboard/contract";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
+import { logRequest, type RequestFields } from "../log.ts";
 import { handlerOf } from "../operations/index.ts";
 import { errorResponse } from "./errors.ts";
 import { json } from "./respond.ts";
@@ -27,15 +28,17 @@ async function readBody(request: Request): Promise<unknown> {
   }
 }
 
-async function run(request: Request, pipeline: Pipeline): Promise<Response> {
-  const url = new URL(request.url);
+async function run(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields): Promise<Response> {
   const path = boardPath(url.pathname);
   if (!path) throw notFound();
+  logged.org = path.org;
   const matched = matchRoute(pipeline.routes, request.method, path.rest);
   if (!matched) throw notFound();
+  const { operation } = matched;
+  logged.op = operation.name;
   const board = await pipeline.tenants.board(path);
   const by = await authenticate(request, verifiers(pipeline.config));
-  const { operation } = matched;
+  logged.actor = by.actor;
   const input = decodeInput(operation, {
     params: matched.params,
     query: Object.fromEntries(url.searchParams),
@@ -47,9 +50,16 @@ async function run(request: Request, pipeline: Pipeline): Promise<Response> {
 
 /** Every request goes through here, once: tenant from the path, auth, scope, validation, handler (4.4). */
 export async function handle(request: Request, pipeline: Pipeline): Promise<Response> {
+  const { log, now } = pipeline.deps;
+  const started = now();
+  const url = new URL(request.url);
+  const logged: RequestFields = { req: `${request.method} ${url.pathname}`, op: null, org: null, actor: null };
+  let response: Response;
   try {
-    return await run(request, pipeline);
+    response = await run(request, url, pipeline, logged);
   } catch (error) {
-    return errorResponse(error, pipeline.deps.log);
+    response = errorResponse(error, log);
   }
+  logRequest(log, logged, response.status, now() - started);
+  return response;
 }

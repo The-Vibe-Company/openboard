@@ -9,6 +9,8 @@ import { createApp } from "@openboard/server";
 function bootApp(mode: "local" | "hosted") {
   const now = () => Date.now();
   const log = {
+    /** Request lines stay quiet here: the bench measures requests and conformance prints its own report. */
+    info: () => {},
     error: (message: string, fields: object) => process.stderr.write(`${JSON.stringify({ message, ...fields })}\n`),
   };
   return createApp(
