@@ -65,7 +65,8 @@ function checkCsrf(request: Request, csrf: string, publicUrl: string): void {
 
 /**
  * The session a request's cookie names, when it is live: not revoked, used within 7 days, younger than 30. Only a
- * request without an `authorization` header is read by its cookie (docs/auth.md "The verifier chain", step 6).
+ * request without an `authorization` header is read by its cookie (docs/auth.md "The verifier chain", step 6). A write
+ * without the CSRF proof is refused before the session is touched, so a refused write never renews it.
  */
 export async function sessionOf(
   request: Request,
@@ -79,8 +80,8 @@ export async function sessionOf(
   const idHash = hashToken(value);
   const record = await platform.session(idHash);
   if (!record || now >= record.expiresAt || now - record.seenAt >= IDLE) return null;
-  if (now - record.seenAt >= TOUCH_AFTER) await platform.touchSession(idHash, now);
   checkCsrf(request, record.csrf, publicUrl);
+  if (now - record.seenAt >= TOUCH_AFTER) await platform.touchSession(idHash, now);
   return { person: record.person, csrf: record.csrf };
 }
 
