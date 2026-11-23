@@ -86,6 +86,19 @@ export async function sessionOf(
 }
 
 /**
+ * `POST /auth/logout`, a browser route outside the contract like sign-in (D48): revokes the live session the cookie
+ * names, after the same Origin and CSRF proof as any cookie write, and deletes the cookie. With no live session there
+ * is nothing to revoke, and the answer is the same, so signing out twice is harmless.
+ */
+export async function signOut(request: Request, platform: PlatformView, now: number, publicUrl: string) {
+  const session = await sessionOf(request, platform, now, publicUrl);
+  const value = cookieOf(request, SESSION_COOKIE);
+  if (session && value !== null) await platform.revokeSession(hashToken(value), now);
+  const headers = { "set-cookie": hostCookie(SESSION_COOKIE, "", 0), "cache-control": "no-store" };
+  return new Response(null, { status: 204, headers });
+}
+
+/**
  * Step 6 of the verifier chain: a session cookie, on a request without an `authorization` header, is its person when
  * they are a member of the organization of the board the path names. Anyone else is told the board does not exist,
  * so a session reveals no other organization (docs/codebase.md 5.3).

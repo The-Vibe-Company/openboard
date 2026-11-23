@@ -87,4 +87,15 @@ export function accountsSuite(driver: string, open: OpenStore): void {
     expect((await accounts.session(hash("a")))?.seenAt).toBe(at + DAY);
     expect(await accounts.session(hash("c"))).toBeNull();
   });
+
+  test(`${driver}: a revoked session signs in no one, and revoking it again changes nothing`, async () => {
+    const accounts = await platform();
+    await accounts.signIn(signIn(ada, hash("a")));
+    await accounts.signIn(signIn(ada, hash("b")));
+    await accounts.revokeSession(hash("a"), at + DAY);
+    await accounts.revokeSession(hash("a"), at + 2 * DAY);
+    await accounts.revokeSession(hash("c"), at + DAY);
+    expect(await accounts.session(hash("a"))).toBeNull();
+    expect((await accounts.session(hash("b")))?.person.handle).toBe("ada");
+  });
 }

@@ -176,3 +176,20 @@ test("a cookie-authenticated write needs this server's Origin and the session's 
   }
   expect((await write({ "x-ob-csrf": csrf, origin }))?.person.handle).toBe("ada");
 });
+
+test("signing out revokes the session and deletes its cookie, once the CSRF proof is shown", async () => {
+  const { app } = start();
+  const { session } = await signIn(app);
+  const { csrf } = await sessionAt(app, session);
+  const logout = (headers: Record<string, string>) =>
+    app.fetch(new Request(`${PUBLIC_URL}/auth/logout`, { method: "POST", headers: { cookie: session, ...headers } }));
+  const forged = await logout({ origin: "https://elsewhere.example", "x-ob-csrf": csrf ?? "" });
+  expect(forged.status).toBe(403);
+  expect(await errorCode(forged)).toBe("forbidden");
+  expect((await sessionAt(app, session)).signedIn).toBe(true);
+  const out = await logout({ origin: PUBLIC_URL, "x-ob-csrf": csrf ?? "" });
+  expect(out.status).toBe(204);
+  expect(out.headers.getSetCookie()).toEqual(["__Host-ob_session=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0"]);
+  expect(await sessionAt(app, session)).toMatchObject({ signedIn: false, person: null, csrf: null });
+  expect((await logout({ origin: PUBLIC_URL, "x-ob-csrf": csrf ?? "" })).status).toBe(204);
+});

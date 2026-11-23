@@ -11,11 +11,12 @@ writes:
   - packages/ports/testkit/store/accounts.test-suite.ts
   - packages/server/test/accounts.test.ts
   - packages/ports/src/store.ts
+  - packages/server/src/http/pipeline.ts
 conformance: []
 modes: [local]
 depends_on: [139]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-5-5
 issue: 141
 ---
 
