@@ -962,7 +962,13 @@
                     "type": "object",
                     "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
                   },
-                  "noSync": { "type": "boolean" }
+                  "noSync": { "type": "boolean" },
+                  "id": {
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "An idempotency key: a retry under it gets back the post that landed instead of posting again.",
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -1086,6 +1092,10 @@
           },
           "404": {
             "description": "message_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "duplicate_id",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {

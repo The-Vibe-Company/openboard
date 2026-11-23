@@ -32,6 +32,8 @@ export interface BoardWriter {
   channel(path: string): Promise<Channel | null>;
   /** The message at log position `id`, read under the lock, or null when no message has that ID. */
   replyTarget(id: number): Promise<messages.ReplyTarget | null>;
+  /** The message posted under the client ID, as the board holds it, read under the lock; null when none was. */
+  clientPost(clientId: string): Promise<Message | null>;
   /** The ID the board's next grant takes, read under this write lock. */
   nextGrant(): Promise<number>;
   /** Whether a connection of this board, revoked or not, has the name. */

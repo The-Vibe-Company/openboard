@@ -16,16 +16,24 @@ export const postMessage = defineOperation({
         text: Type.String({ maxLength: MESSAGE_TEXT_MAX }),
         labels: Type.Optional(Labels),
         noSync: Type.Optional(Type.Boolean()),
+        id: Type.Optional(
+          Type.String({
+            minLength: 1,
+            maxLength: 200,
+            description:
+              "An idempotency key: a retry under it gets back the post that landed instead of posting again.",
+          }),
+        ),
       },
       { additionalProperties: false },
     ),
   },
   output: Type.Object({ message: Message }),
   status: 201,
-  errors: ["invalid_request", "reserved_label", "message_not_found"],
+  errors: ["invalid_request", "reserved_label", "message_not_found", "duplicate_id"],
   access: { permission: "post", channel: "fromInput" },
   effects: { readOnly: false, idempotent: false, emits: ["message.posted"], meter: "messages" },
-  cli: { command: ["post"], args: ["channel", "text"] },
+  cli: { command: ["post"], args: ["channel", "text"], options: { id: "idempotency-key" } },
   mcp: { tool: "post_message" },
   upstream: true,
 });

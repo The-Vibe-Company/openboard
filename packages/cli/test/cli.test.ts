@@ -33,6 +33,18 @@ describe("ob post and ob messages", () => {
     ]);
   });
 
+  test("ob post --idempotency-key sends it as the post's id", async () => {
+    const board = fakeBoard(201, { message: message("1", "deploy") });
+    const { lines, output } = capture();
+    const argv = ["post", "dev", "deploy", "--idempotency-key", "deploy-1"];
+    expect(await runCli(argv, env, { fetch: board.fetch, output })).toBe(0);
+    expect(lines.out).toEqual(["1"]);
+    expect(board.seen.map(({ body }) => JSON.parse(body))).toEqual([
+      { channel: "dev", text: "deploy", id: "deploy-1" },
+    ]);
+    expect(await runCli(["post", "dev", "deploy", "--id", "deploy-1"], env, { fetch: board.fetch, output })).toBe(2);
+  });
+
   test("ob messages prints one line per message, oldest first, then the command that reads on", async () => {
     const board = fakeBoard(200, { messages: [message("1", "hello"), message("2", "two\nlines")], cursor: "2" });
     const { lines, output } = capture();

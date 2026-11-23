@@ -1,4 +1,4 @@
-import { operations } from "@openboard/contract";
+import { type CliSpec, operations } from "@openboard/contract";
 import { formats } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 
@@ -35,8 +35,13 @@ function requiredPositionals(args: readonly string[], fields: ReturnType<typeof 
   return args.findLastIndex((name) => fields.get(name)?.required) + 1;
 }
 
-/** Positional arguments in order, and `--name value` for any other input field (only before `--`). */
-function inputOf(ctx: CommandContext, args: readonly string[], fields: ReturnType<typeof fieldsOf>) {
+/** Positional arguments in order, and `--flag value` for any other input field (only before `--`). */
+function inputOf(
+  ctx: CommandContext,
+  args: readonly string[],
+  fields: ReturnType<typeof fieldsOf>,
+  flags: ReadonlyMap<string, string>,
+) {
   const input: Record<string, unknown> = {};
   const positional: string[] = [];
   for (let at = 0; at < ctx.args.length; at++) {
@@ -45,7 +50,7 @@ function inputOf(ctx: CommandContext, args: readonly string[], fields: ReturnTyp
       positional.push(word);
       continue;
     }
-    const name = word.slice(2);
+    const name = flags.get(word.slice(2)) ?? "";
     const field = fields.get(name);
     const value = ctx.args[at + 1];
     if (!field || !isOption(name, field.schema, args)) throw new Misuse(`unknown option ${word}`);
@@ -64,19 +69,21 @@ function inputOf(ctx: CommandContext, args: readonly string[], fields: ReturnTyp
 }
 
 /** `ob <command…> <args…> [--option value]`, one per operation with a `cli` block. */
-function derive(operation: Contracted & { cli: { command: readonly string[]; args: readonly string[] } }): Command {
-  const { command, args } = operation.cli;
+function derive(operation: Contracted & { cli: CliSpec }): Command {
+  const { command, args, options: renamed = {} } = operation.cli;
   const fields = fieldsOf(operation);
-  const options = [...fields]
-    .filter(([name, field]) => isOption(name, field.schema, args))
-    .map(([name]) => `[--${name} <${name}>]`);
+  // A field's flag is its own name unless the contract gives it upstream's: `--idempotency-key` for `id`.
+  const flags = new Map([...fields.keys()].map((name) => [renamed[name] ?? name, name]));
+  const options = [...flags]
+    .filter(([, name]) => isOption(name, fields.get(name)?.schema ?? {}, args))
+    .map(([flag]) => `[--${flag} <${flag}>]`);
   const needed = requiredPositionals(args, fields);
   const shown = args.map((arg, at) => (at < needed ? `<${arg}>` : `[${arg}]`));
   return {
     words: command,
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
     async run(ctx) {
-      const input = inputOf(ctx, args, fields);
+      const input = inputOf(ctx, args, fields, flags);
       const answer = await (ctx.client[operation.name] as Invoke)(input);
       const format = formats[operation.name];
       ctx.output.out(ctx.json || !format ? JSON.stringify(answer, null, 2) : format(answer, input));

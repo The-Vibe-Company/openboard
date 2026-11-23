@@ -13,8 +13,8 @@ export const readEventsHandler: Handler<typeof readEvents> = async ({ board }, {
   return {
     cursor: formatId(cursor),
     events: events.map((event) => {
-      // `author` is OpenBoard's record of who wrote it, shown on `message`; upstream's payload has no such field.
-      const { author: _author, ...payload } = event.payload;
+      // `author` (shown on `message`) and `clientId` are OpenBoard's records; upstream's payload has neither.
+      const { author: _author, clientId: _clientId, ...payload } = event.payload;
       return {
         cursor: formatId(event.id),
         type: event.type,
