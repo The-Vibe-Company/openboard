@@ -230,3 +230,41 @@ test("refuses an @types package for a module the workspace may not import", asyn
     "packages/core/package.json: core declares @types/react (devDependencies), which is not in its allow-list; it may import workspaces contract; no external module",
   ]);
 });
+
+test("maps a scoped @types package to its module", async () => {
+  const manifest = JSON.stringify({
+    name: "@openboard/core",
+    devDependencies: { "@types/sinclair__typebox": "0.0.1" },
+  });
+  const found = await manifestMessages({ "packages/core/package.json": manifest });
+  expect(found).toHaveLength(1);
+  expect(found[0]).toContain(
+    "core declares @types/sinclair__typebox (devDependencies), which is not in its allow-list",
+  );
+  const contract = JSON.stringify({
+    name: "@openboard/contract",
+    peerDependencies: { "@sinclair/typebox": "0.34.0" },
+    optionalDependencies: { "@types/sinclair__typebox": "0.0.1" },
+  });
+  const source = 'export { Type } from "@sinclair/typebox";\n';
+  const files = { "packages/contract/package.json": contract, "packages/contract/src/typebox.ts": source };
+  expect(await manifestMessages(files)).toEqual([]);
+});
+
+test("does not call a dependency unused when a file of its workspace cannot be scanned", async () => {
+  const found = await manifestMessages({
+    "packages/server/src/broken.ts": "import { from ;\n",
+    "packages/server/package.json": JSON.stringify({
+      name: "@openboard/server",
+      dependencies: { "@openboard/core": "*" },
+    }),
+  });
+  expect(found).toEqual([]);
+});
+
+test("reads every dependency field, including optionalDependencies", async () => {
+  const manifest = JSON.stringify({ name: "@openboard/sdk", optionalDependencies: { "@openboard/contract": "*" } });
+  expect(await manifestMessages({ "packages/sdk/package.json": manifest })).toEqual([
+    "packages/sdk/package.json: sdk declares @openboard/contract (optionalDependencies), which no file imports",
+  ]);
+});

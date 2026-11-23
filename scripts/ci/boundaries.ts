@@ -231,19 +231,29 @@ async function declaredDependencies(root: string, dir: string): Promise<Map<stri
   return declared;
 }
 
-/** The package each bare, non-builtin import of a workspace names, with the first file importing it. */
-async function importedPackages(root: string, workspace: Workspace): Promise<Map<string, string>> {
+/**
+ * The package each bare, non-builtin import of a workspace names, with the first file importing it.
+ * `complete` is false when a file could not be scanned (the graph check reports it).
+ */
+async function importedPackages(
+  root: string,
+  workspace: Workspace,
+): Promise<{ used: Map<string, string>; complete: boolean }> {
   const used = new Map<string, string>();
+  let complete = true;
   for (const file of await sourceFiles(root, workspace.dir)) {
     const imports = await readImports(root, file);
-    if ("message" in imports) continue;
+    if ("message" in imports) {
+      complete = false;
+      continue;
+    }
     for (const specifier of [...imports.all].sort()) {
       if (!isBare(specifier) || isBuiltin(specifier)) continue;
       const pkg = packageOf(specifier);
       if (pkg !== workspace.name && !used.has(pkg)) used.set(pkg, file);
     }
   }
-  return used;
+  return { used, complete };
 }
 
 /** The graph entries of a workspace: its own key and every key inside it (`packages/ports/testkit`). */
@@ -287,7 +297,7 @@ export async function checkManifests(root: string, config: Config): Promise<Viol
     if (rules.length === 0) continue;
     const manifest = `${workspace.dir}/package.json`;
     const declared = await declaredDependencies(root, workspace.dir);
-    const used = await importedPackages(root, workspace);
+    const { used, complete } = await importedPackages(root, workspace);
     for (const [pkg, file] of [...used].sort(([a], [b]) => a.localeCompare(b))) {
       if (!declared.has(pkg))
         violations.push({ file, message: `${workspace.short} imports ${pkg}, which ${manifest} does not declare` });
@@ -300,7 +310,7 @@ export async function checkManifests(root: string, config: Config): Promise<Viol
           file: manifest,
           message: `${declaration}, which is not in its allow-list; it may import ${allowed}`,
         });
-      } else if (!used.has(name) && typedModule(name) === null) {
+      } else if (complete && !used.has(name) && typedModule(name) === null) {
         violations.push({ file: manifest, message: `${declaration}, which no file imports` });
       }
     }
