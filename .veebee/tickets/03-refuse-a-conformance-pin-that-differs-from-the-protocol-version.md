@@ -5,11 +5,15 @@ milestone: M0-foundations
 package: tools
 writes:
   - tools/conformance/test/pin.test.ts
+  - tools/conformance/package.json
+  - tools/conformance/tsconfig.json
+  - packages/contract/src/index.ts
+  - bun.lock
 conformance: []
 modes: []
 depends_on: [02]
-status: ready
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t03
 issue: 3
 ---
 
