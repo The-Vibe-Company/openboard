@@ -91,7 +91,9 @@ test("the replaced token keeps working for 60 seconds, then answers 401, and nev
 test("a refresh never moves the expiry past hardExpiresAt, and past it answers 401", async () => {
   const booted = await boot();
   app = booted.app;
-  const claimed = await issued(as(app, booted.secret, "POST", "/x/connections/claim", { profile: "fixer-2" }));
+  const claimed = await issued(
+    as(app, booted.secret, "POST", "/x/connections/claim", { profile: "fixer-2", ttl: "1435m" }),
+  );
   booted.clock.now = NOW + 86_000_000;
   const late = await issued(refresh(app, claimed.token));
   expect(late.agent.expiresAt).toBe(claimed.agent.hardExpiresAt);
