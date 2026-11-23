@@ -80,7 +80,7 @@ Legend.
 
 ## M2 Messages and threads (27)
 
-67  Fetch one message without its thread   ← 53
+67  Read back your own post by its client ID   ← 53
 68  Post once for a client ID [c]   ← 67
 69  Keep noSync on a message [c]   ← 68
 70  Refuse a reply after a message that is no longer the newest [c]   ← 69

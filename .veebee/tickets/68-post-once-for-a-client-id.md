@@ -14,7 +14,7 @@ writes:
   - packages/core/test/messages/post.test.ts
 conformance: ["core/posts once for a client ID, however many times it is sent"]
 modes: [local]
-depends_on: [67]
+depends_on: [53]
 status: draft
 claimed_by: null
 issue: 68
@@ -28,6 +28,7 @@ As an agent that retries, my message lands once however many times I send it.
 
 ## Out of scope
 - Task client IDs (M9, 241).
+- Reading your post back by its client ID, `GET /posts/:id` (67).
 
 ## Notes
 `03-http.md` "Posting" (`id`).
