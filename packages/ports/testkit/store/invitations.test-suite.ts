@@ -4,7 +4,7 @@ import type { OrgScope } from "../../src/index.ts";
 import type { OpenStore } from "../index.ts";
 
 export function invitationsSuite(driver: string, open: OpenStore): void {
-  test(`${driver}: only an administrator of the scoped organization can store an invitation`, async () => {
+  test(`${driver}: an administrator issues an invitation and the recipient joins its organization`, async () => {
     const store = await open();
     try {
       const platform = store.platform();
@@ -39,6 +39,25 @@ export function invitationsSuite(driver: string, open: OpenStore): void {
         expiresAt: record.expiresAt,
         used: false,
       });
+      const recipient = `u_${"b".repeat(16)}`;
+      await platform.signIn({
+        identity: { provider: "github", subject: "lin", login: "lin", name: "Lin", email: null, avatar: null },
+        admitNew: true,
+        newPersonId: recipient,
+        session: { idHash: "b".repeat(64), csrf: "fixture", expiresAt: at + 86_400_000 },
+        now: at,
+      });
+      expect(await platform.acceptInvitation(tokenHash, recipient, at + 1)).toEqual({
+        org: { slug: "acme", name: "Acme" },
+        role: "member",
+      });
+      const org = store.org({ orgId: membership.orgId } as OrgScope);
+      expect(await org.listMembers()).toEqual([
+        { principal: by, role: "owner" },
+        { principal: `ob:user:${recipient}`, role: "member" },
+      ]);
+      expect(await platform.orgMembership("local", recipient)).toBeNull();
+      expect(await platform.invitationPreview(tokenHash)).toMatchObject({ used: true });
     } finally {
       await store.close();
     }

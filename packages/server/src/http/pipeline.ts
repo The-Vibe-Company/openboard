@@ -194,7 +194,12 @@ export async function handle(request: Request, pipeline: Pipeline): Promise<Resp
   } catch (error) {
     response = errorResponse(error, log);
   }
-  if (logged.op === "createInvitation" || logged.op === "previewInvitation") {
+  if (
+    logged.op === "createInvitation" ||
+    logged.op === "previewInvitation" ||
+    logged.op === "acceptInvitation" ||
+    logged.op === "listMembers"
+  ) {
     response.headers.set("cache-control", "no-store");
   }
   response.headers.set(REQUEST_ID, requestId);

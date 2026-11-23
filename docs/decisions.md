@@ -638,13 +638,14 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   before the local `/api` alias, and see `ctx.platform` and `ctx.session`
   (the live `__Host-ob_session`, read only without `authorization`); their
   answers are `no-store`. In local mode `OPENBOARD_SIGNUP` defaults to
-  `closed`, so it keeps "no sign-up" unless it is set, as tickets 133-161
-  assume (`.veebee/cut.md` "Could not place", question 1, still awaits the
-  owner); the hosted default (docs/auth.md, Q6) is decided with hosted mode.
+  `closed`, so it keeps "no sign-up" unless it is set. Verify M4 account
+  tickets on local SQLite with `OPENBOARD_SIGNUP=open` and GitHub configured,
+  using a fake provider in tests (issue #145). The hosted default (docs/auth.md,
+  Q6) is decided with hosted mode.
 - **Consequence.** Any instance finishes any sign-in. Ticket 134 and later
-  account routes reuse the session and its CSRF check. The SDK still maps
-  every operation onto `BOARD_URL`, so account operations are not callable
-  through it until it learns `/api/x` (a later ticket).
+  account routes reuse the session and its CSRF check. In the SDK, an account
+  operation with an explicit `/api/x` mount uses that mount and sends the
+  configured CSRF value for writes. Invitation acceptance declares this mount.
 
 ### D49. `org` operations: members read, admins write, under the organization's lock
 

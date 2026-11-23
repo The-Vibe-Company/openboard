@@ -5,13 +5,14 @@ import { createChannel, listChannels } from "./channels.ts";
 import { claimConnection, createConnection, refreshAgentToken } from "./connections.ts";
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
-import { createInvitation, previewInvitation } from "./invitations.ts";
+import { acceptInvitation, createInvitation, listMembers, previewInvitation } from "./invitations.ts";
 import { deleteMessage, editMessage, listMessages, postMessage, reactToMessage, readPost } from "./messages.ts";
 import { createOrg } from "./orgs.ts";
 import { listThreads, readThread } from "./threads.ts";
 
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
 export const operations = [
+  acceptInvitation,
   claimConnection,
   createBoard,
   createChannel,
@@ -28,6 +29,7 @@ export const operations = [
   listActors,
   listBoards,
   listChannels,
+  listMembers,
   listMessages,
   listThreads,
   postMessage,
@@ -41,6 +43,7 @@ export const operations = [
 ] as const;
 
 export {
+  acceptInvitation,
   claimConnection,
   createBoard,
   createChannel,
@@ -57,6 +60,7 @@ export {
   listActors,
   listBoards,
   listChannels,
+  listMembers,
   listMessages,
   listThreads,
   postMessage,
