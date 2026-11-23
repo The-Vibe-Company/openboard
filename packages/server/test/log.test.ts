@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { jsonLogger } from "../src/index.ts";
-import { call, LOCAL_OWNER, makeApp, NOW } from "./support/app.ts";
+import { createApp, jsonLogger, mintLocalOwnerToken } from "../src/index.ts";
+import { BOARD_URL, call, LOCAL_OWNER, makeApp, NOW } from "./support/app.ts";
+import { openStore } from "./support/drivers.ts";
 
-let app: ReturnType<typeof makeApp>;
+let app: ReturnType<typeof createApp>;
 afterEach(() => app.close());
 
 /** An app whose clock moves 7 ms per reading and whose logger keeps every line it prints, parsed. */
@@ -66,5 +67,33 @@ describe("one JSON log line per request", () => {
     const lines = loggedApp();
     await call(app, "POST", "/messages", { channel: "dev", text: "a private plan" });
     expect(JSON.stringify(lines)).not.toContain("a private plan");
+  });
+
+  test("prints a refused credential's request without the credential", async () => {
+    /** Fixed bytes, so no token-shaped string is written in this file (docs/codebase.md 6.1). */
+    const owner = mintLocalOwnerToken(new Uint8Array(42).fill(7));
+    const stranger = mintLocalOwnerToken(new Uint8Array(42).fill(9));
+    const lines: Record<string, unknown>[] = [];
+    const now = () => NOW;
+    app = createApp(
+      { mode: "local", localOwner: LOCAL_OWNER, localOwnerTokenHash: owner.hash },
+      { store: openStore(now) },
+      { now, log: jsonLogger({ now, write: (line) => lines.push(JSON.parse(line)) }) },
+    );
+    for (const token of [stranger.token, owner.token]) {
+      await app.fetch(
+        new Request(`${BOARD_URL}/messages`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          body: JSON.stringify({ channel: "dev", text: "hi" }),
+        }),
+      );
+    }
+    expect(lines.map(({ op, org, actor, status }) => ({ op, org, actor, status }))).toEqual([
+      { op: "postMessage", org: "local", actor: null, status: 401 },
+      { op: "postMessage", org: "local", actor: LOCAL_OWNER, status: 201 },
+    ]);
+    const printed = JSON.stringify(lines);
+    for (const secret of [stranger.token, owner.token, "Bearer"]) expect(printed).not.toContain(secret);
   });
 });
