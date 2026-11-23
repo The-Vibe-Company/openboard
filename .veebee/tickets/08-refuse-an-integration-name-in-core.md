@@ -10,8 +10,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [07]
-status: ready
-claimed_by: null
+status: done
+claimed_by: codex-t08
 issue: 8
 ---
 
@@ -19,8 +19,8 @@ issue: 8
 As a contributor, I cannot put a vendor we integrate with into packages or apps, comments included.
 
 ## Done when
-- [ ] a comment mentioning `Slack` in `packages/core/src/x.ts` makes `bun run lint` exit 1 naming the file, the line and the term
-- [ ] the same word under `examples/` passes
+- [x] a comment mentioning `Slack` in `packages/core/src/x.ts` makes `bun run lint` exit 1 naming the file, the line and the term
+- [x] the same word under `examples/` passes
 
 ## Out of scope
 - The GitHub exception for sign-in (10).
