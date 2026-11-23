@@ -196,7 +196,7 @@ Universal rules:
 | SQL only in the `packages/driver-*` workspaces (`driver-sql`, `driver-sqlite`, `driver-postgres`): no `.sql` file elsewhere, and no string or template literal elsewhere containing an SQL statement head (`SELECT … FROM`, `INSERT INTO`, `UPDATE … SET`, `DELETE FROM`, `CREATE `, `ALTER `, `DROP `, `BEGIN`, `LISTEN`, `NOTIFY`, `PRAGMA`) | all workspaces except `driver-*` and `scripts/ci` fixtures |
 | `bun:sqlite` only in `driver-sqlite`; `SQL` from `bun` only in `driver-postgres`; `driver-sql` imports neither | everywhere |
 | Every registered statement filters on `board_id` or `org_id`, except those listed as platform statements (accounts, sign-in) | `driver-sql` (statement registry test) |
-| `process.env` / `Bun.env` only in `apps/openboard/src/config.ts` and `packages/cli/src/config.ts` | everywhere |
+| `process.env` / `Bun.env` only in `apps/openboard/src/config.ts` and `packages/cli/src/config.ts` | `packages/` and `apps/` (CI scripts and tools read their own environment) |
 | No `setTimeout`, `setInterval`, `queueMicrotask`, `Date`, `Math.random`, `crypto.randomUUID` (time, timers and IDs come from `deps`) | `contract`, `core`, `ports`, `server` |
 | No module-level `let`/`var`, no module-level mutable object (`new Map()`, `new Set()`, `[]`, `{}` assigned and later mutated), no `static` mutable class fields | all `packages/*/src`, `apps/openboard/src` |
 | `server/src/auth/providers/<name>/**` imported only by `server/src/auth/providers/index.ts` | server |
