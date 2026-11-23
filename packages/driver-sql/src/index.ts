@@ -4,6 +4,7 @@ import connectionsDdl from "../migrations/0002-connections.sql" with { type: "te
 import actors from "../migrations/0003-actors.sql" with { type: "text" };
 import agentsDdl from "../migrations/0004-agents.sql" with { type: "text" };
 import accountsDdl from "../migrations/0005-accounts.sql" with { type: "text" };
+import orgsDdl from "../migrations/0006-orgs.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
@@ -13,6 +14,7 @@ import { channelReads } from "./views/channels.ts";
 import { connectionReads } from "./views/connections.ts";
 import { eventReads } from "./views/events.ts";
 import { boardView } from "./views/messages.ts";
+import { orgReads, orgView } from "./views/orgs.ts";
 import { threadReads } from "./views/threads.ts";
 
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
@@ -32,6 +34,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 3, name: "0003-actors", sql: actors },
   { version: 4, name: "0004-agents", sql: agentsDdl },
   { version: 5, name: "0005-accounts", sql: accountsDdl },
+  { version: 6, name: "0006-orgs", sql: orgsDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -40,7 +43,7 @@ export function createViews(
   dialect: Dialect,
 ): { platform(): PlatformView; board(scope: BoardScope): BoardView } {
   return {
-    platform: () => ({ ...platformView(db, dialect), ...accountView(db, dialect) }),
+    platform: () => ({ ...platformView(db, dialect), ...accountView(db, dialect), ...orgView(db, dialect) }),
     board: (scope) => ({
       ...boardView(db, dialect, scope),
       ...agentReads(db, dialect, scope),
@@ -49,6 +52,7 @@ export function createViews(
       ...connectionReads(db, dialect, scope),
       ...eventReads(db, dialect, scope),
       ...actorReads(db, dialect, scope),
+      ...orgReads(db, dialect, scope),
     }),
   };
 }

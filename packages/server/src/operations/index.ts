@@ -2,13 +2,14 @@ import type { InputOf, Operation, OutputOf, operations, SignInProvider } from "@
 import type { BoardView, PlatformView } from "@openboard/ports";
 import type { Session } from "../auth/sessions.ts";
 import type { Principal } from "../deps.ts";
-import { getSessionHandler } from "./accounts.ts";
+import { getAccountHandler, getSessionHandler } from "./accounts.ts";
 import { getMeHandler, listActorsHandler } from "./actors.ts";
 import { createChannelHandler, listChannelsHandler } from "./channels.ts";
 import { claimConnectionHandler, createConnectionHandler, refreshAgentTokenHandler } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
 import { editMessageHandler, listMessagesHandler, postMessageHandler, readPostHandler } from "./messages.ts";
+import { createOrgHandler } from "./orgs.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
@@ -59,8 +60,10 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   claimConnection: claimConnectionHandler,
   createChannel: createChannelHandler,
   createConnection: createConnectionHandler,
+  createOrg: createOrgHandler,
   discoverBoard: discoverBoardHandler,
   editMessage: editMessageHandler,
+  getAccount: getAccountHandler,
   getMe: getMeHandler,
   getOpenApi: getOpenApiHandler,
   getSession: getSessionHandler,

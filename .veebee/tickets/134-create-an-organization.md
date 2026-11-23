@@ -14,11 +14,30 @@ writes:
   - packages/core/src/orgs/create.ts
   - packages/core/test/orgs/create.test.ts
   - packages/driver-sql/migrations/*-orgs.sql
+  - packages/contract/src/operations/accounts.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/entities/actors.ts
+  - packages/core/src/index.ts
+  - packages/ports/testkit/index.ts
+  - packages/ports/src/index.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/src/views/accounts.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/server/src/operations/accounts.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/actors.ts
+  - packages/server/src/auth/chain.ts
+  - packages/server/src/auth/sessions.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/auth/author.ts
+  - packages/server/src/http/pipeline.ts
 conformance: []
 modes: [local]
 depends_on: [133]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-5-5
 issue: 135
 ---
 

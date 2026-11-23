@@ -1,5 +1,6 @@
 import { type Static, Type } from "@sinclair/typebox";
 import { ActorKind, Author, MessageAuthor } from "./messages.ts";
+import { Role } from "./orgs.ts";
 
 const tenant = Type.Object({ slug: Type.String(), name: Type.String() });
 
@@ -28,8 +29,13 @@ export const Me = Type.Object({
     org: tenant,
     board: tenant,
     /** The person's role in the organization; null for a credential that is not a person's. */
-    role: Type.Union([Type.Literal("owner"), Type.Null()]),
-    credential: Type.Union([Type.Literal("local"), Type.Literal("connection"), Type.Literal("agent")]),
+    role: Type.Union([Role, Type.Null()]),
+    credential: Type.Union([
+      Type.Literal("local"),
+      Type.Literal("connection"),
+      Type.Literal("agent"),
+      Type.Literal("session"),
+    ]),
   }),
 });
 

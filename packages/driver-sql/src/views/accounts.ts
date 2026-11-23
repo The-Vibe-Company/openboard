@@ -66,7 +66,7 @@ async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<n
 }
 
 /** The platform's account methods, written once for both engines. */
-export function accountView(db: Db, dialect: Dialect): Omit<PlatformView, "findBoard"> {
+export function accountView(db: Db, dialect: Dialect): Pick<PlatformView, "signIn" | "session" | "touchSession"> {
   return {
     signIn: (record) =>
       db.transaction(async (tx) => {

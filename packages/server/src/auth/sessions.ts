@@ -1,6 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { BoardError } from "@openboard/contract";
 import type { PersonRecord, PlatformView } from "@openboard/ports";
+import { credentialKind, memberOf, type Principal } from "../deps.ts";
+import type { CredentialVerifier } from "./chain.ts";
 import { hashToken } from "./secrets.ts";
 
 /** A person's signed-in browser (docs/auth.md "Sessions and CSRF"). */
@@ -80,4 +82,26 @@ export async function sessionOf(
   if (now - record.seenAt >= TOUCH_AFTER) await platform.touchSession(idHash, now);
   checkCsrf(request, record.csrf, publicUrl);
   return { person: record.person, csrf: record.csrf };
+}
+
+/**
+ * Step 6 of the verifier chain: a session cookie, on a request without an `authorization` header, is its person when
+ * they are a member of the organization of the board the path names. Anyone else is told the board does not exist,
+ * so a session reveals no other organization (docs/codebase.md 5.3).
+ */
+export function sessionVerifier(platform: PlatformView, now: () => number, publicUrl: string): CredentialVerifier {
+  return {
+    name: "session",
+    match: (request) => !request.headers.has("authorization") && cookieOf(request, SESSION_COOKIE) !== null,
+    async verify(request, board) {
+      const session = await sessionOf(request, platform, now(), publicUrl);
+      if (!session) return null;
+      const { id, handle, name, avatar } = session.person;
+      const member = await board.member(id);
+      if (!member) throw new BoardError("not_found", "no such board or route");
+      const principal = `ob:user:${id}`;
+      const person: Principal = { actor: principal, principal, profile: null, [credentialKind]: "session" };
+      return { ...person, [memberOf]: { handle, name, avatar, ...member } };
+    },
+  };
 }

@@ -1,9 +1,10 @@
 import { BoardError, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
 import { connections } from "@openboard/core";
-import type { BoardView } from "@openboard/ports";
+import type { BoardView, PlatformView } from "@openboard/ports";
 import { connectionOf, type Principal, profileAvatar, profileName, type ServerConfig } from "../deps.ts";
 import { connectionVerifier } from "./connections.ts";
 import { localOwnerVerifier } from "./local-owner.ts";
+import { sessionVerifier } from "./sessions.ts";
 import { agentTokenVerifier } from "./tokens.ts";
 
 /**
@@ -18,14 +19,20 @@ export interface CredentialVerifier {
 }
 
 /**
- * The chain this server runs, in docs/auth.md order: agent tokens (step 1), connection secrets (step 2), then the
- * local owner token (step 4). `now` is the clock credentials with a lifetime are checked against.
+ * The chain this server runs, in docs/auth.md order: agent tokens (step 1), connection secrets (step 2), the local
+ * owner token (step 4), then a browser's session (step 6). `now` is the clock credentials with a lifetime are checked
+ * against.
  */
-export function verifiers(config: ServerConfig, now: () => number): readonly CredentialVerifier[] {
+export function verifiers(
+  config: ServerConfig,
+  platform: PlatformView,
+  now: () => number,
+): readonly CredentialVerifier[] {
   const chain: CredentialVerifier[] = [agentTokenVerifier(now), connectionVerifier()];
   if (config.mode === "local" && config.localOwnerTokenHash) {
     chain.push(localOwnerVerifier(config.localOwner, config.localOwnerTokenHash));
   }
+  chain.push(sessionVerifier(platform, now, config.publicUrl));
   return chain;
 }
 

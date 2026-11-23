@@ -678,12 +678,24 @@
                           "required": ["slug", "name"],
                           "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }
                         },
-                        "role": { "anyOf": [{ "const": "owner", "type": "string" }, { "type": "null" }] },
+                        "role": {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                { "const": "owner", "type": "string" },
+                                { "const": "admin", "type": "string" },
+                                { "const": "member", "type": "string" }
+                              ]
+                            },
+                            { "type": "null" }
+                          ]
+                        },
                         "credential": {
                           "anyOf": [
                             { "const": "local", "type": "string" },
                             { "const": "connection", "type": "string" },
-                            { "const": "agent", "type": "string" }
+                            { "const": "agent", "type": "string" },
+                            { "const": "session", "type": "string" }
                           ]
                         }
                       }
