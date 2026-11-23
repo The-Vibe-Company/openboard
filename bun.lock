@@ -62,6 +62,9 @@
     "packages/driver-postgres": {
       "name": "@openboard/driver-postgres",
       "version": "0.0.0",
+      "dependencies": {
+        "@openboard/driver-sql": "workspace:*",
+      },
     },
     "packages/driver-sql": {
       "name": "@openboard/driver-sql",

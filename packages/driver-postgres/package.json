@@ -7,6 +7,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "dependencies": {
+    "@openboard/driver-sql": "workspace:*"
+  },
   "scripts": {
     "typecheck": "tsc -b",
     "test": "bun test --pass-with-no-tests"
