@@ -41,11 +41,12 @@ describe("ob post and ob read", () => {
     expect(board.seen[0]?.url).toBe(`${env.BOARD_URL}/messages?channel=dev`);
   });
 
-  test("exits 1 with the board's code and message when it refuses", async () => {
-    const board = fakeBoard(400, { error: { code: "invalid_request", message: "channel: bad" } });
+  test("exits 1 with error: and the board's message, its hint two spaces in, when it refuses", async () => {
+    const refusal = { code: "message_not_found", message: "Couldn't find message #9999.", hint: "Read the channel." };
+    const board = fakeBoard(404, { error: refusal });
     const { lines, output } = capture();
-    expect(await runCli(["post", "Dev", "x"], env, { fetch: board.fetch, output })).toBe(1);
-    expect(lines.err).toEqual(["invalid_request: channel: bad"]);
+    expect(await runCli(["read", "9999"], env, { fetch: board.fetch, output })).toBe(1);
+    expect(lines.err).toEqual(["error: Couldn't find message #9999.", "  Read the channel."]);
   });
 
   test("takes the words after -- as arguments, flags included", async () => {
@@ -62,7 +63,7 @@ describe("ob post and ob read", () => {
       throw new TypeError("Unable to connect");
     };
     expect(await runCli(["read", "dev"], env, { fetch: down, output })).toBe(1);
-    expect(lines.err[0]).toStartWith("unreachable: the board at http://127.0.0.1:8787 did not answer");
+    expect(lines.err[0]).toStartWith("error: the board at http://127.0.0.1:8787 did not answer");
   });
 
   test.each([

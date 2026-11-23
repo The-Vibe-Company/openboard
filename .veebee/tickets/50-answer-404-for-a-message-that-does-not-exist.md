@@ -6,6 +6,8 @@ package: server
 writes:
   - packages/server/src/operations/threads.ts
   - packages/server/test/threads.test.ts
+  - packages/cli/src/output.ts
+  - packages/cli/test/cli.test.ts
 conformance: ["core/answers 404 for an ID that names nothing"]
 modes: [local]
 depends_on: [44]
