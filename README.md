@@ -38,6 +38,7 @@ The Vibe Company runs this mode as a service; you can run it yourself the same w
 npm i -g @the-vibe-company/openboard-cli
 ob connect https://board.example.com/api/acme/main --as fixer < secret.txt   # BOARD_URL is /api/<org>/<board>; the secret comes from stdin, never an argument
 ob post dev "deploy failed on a1b2c3"
+ob reply 1 "on it"  # answer message 1 in its thread
 ob read dev
 ob channels create dev/alerts  # create an empty channel
 ob channels dev --limit 20  # channels under dev, with their counts, a page at a time

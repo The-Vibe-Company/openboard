@@ -14,20 +14,81 @@ function post(board: BoardView, channel: string, text: string) {
   });
 }
 
-export function messagesSuite(driver: string, open: OpenStore): void {
-  describe(`${driver}: messages`, () => {
-    let store: Store | undefined;
-    afterEach(() => store?.close());
+function reply(board: BoardView, re: number, text: string) {
+  return board.write(async (writer) => {
+    const target = await writer.replyTarget(re);
+    const command = { re: String(re), text };
+    const { events, message } = messages.decidePost({ head: writer.head, target }, command, { by, now: at });
+    await writer.append(events);
+    return message;
+  });
+}
 
-    async function localBoard(): Promise<BoardView> {
+/** Opens a store per test and closes it after: `board()` is its implicit local/main board. */
+function eachStore(open: OpenStore) {
+  let store: Store | undefined;
+  afterEach(() => store?.close());
+  return {
+    async store(): Promise<Store> {
+      store = await open();
+      return store;
+    },
+    async board(): Promise<BoardView> {
       store = await open();
       const keys = await store.platform().findBoard("local", "main");
       if (!keys) throw new Error("the implicit board local/main is missing");
       return store.board(testScope(keys));
-    }
+    },
+  };
+}
+
+function repliesSuite(driver: string, open: OpenStore): void {
+  describe(`${driver}: replies`, () => {
+    const opened = eachStore(open);
+    const localBoard = () => opened.board();
+
+    test("keeps a reply in its root's thread and channel, and counts it in the channel", async () => {
+      const board = await localBoard();
+      const root = await post(board, "dev", "hello");
+      const answer = await reply(board, 1, "on it");
+      expect(answer).toMatchObject({ id: "2", channel: "dev", re: "1", thread: "1" });
+      expect(await board.thread(1)).toEqual({ message: root, replies: [answer] });
+      expect(await board.channelMessages({ channel: "dev", limit: 50 })).toEqual([root, answer]);
+      const { channels } = await board.listChannels({ limit: 10 });
+      expect(channels).toEqual([{ path: "dev", lastIndex: 2, messages: 2, threads: 1 }]);
+    });
+
+    test("finds the message a reply names under the lock, and none for an unknown ID", async () => {
+      const board = await localBoard();
+      await post(board, "dev", "hello");
+      await reply(board, 1, "on it");
+      const targets = await board.write(async (writer) =>
+        Promise.all([writer.replyTarget(1), writer.replyTarget(2), writer.replyTarget(3)]),
+      );
+      expect(targets).toEqual([{ id: 1, channel: "dev", thread: 1 }, { id: 2, channel: "dev", thread: 1 }, null]);
+    });
+
+    test("keeps a reply to a reply in its root's thread, with the reply it answered as replyTo", async () => {
+      const board = await localBoard();
+      const root = await post(board, "dev", "hello");
+      const first = await reply(board, 1, "on it");
+      const deeper = await reply(board, 2, "deeper");
+      expect(deeper).toMatchObject({ id: "3", channel: "dev", re: "1", replyTo: "2", thread: "1" });
+      expect(await board.thread(1)).toEqual({ message: root, replies: [first, deeper] });
+      const { channels } = await board.listChannels({ limit: 10 });
+      expect(channels).toEqual([{ path: "dev", lastIndex: 3, messages: 3, threads: 1 }]);
+    });
+  });
+}
+
+export function messagesSuite(driver: string, open: OpenStore): void {
+  repliesSuite(driver, open);
+  describe(`${driver}: messages`, () => {
+    const opened = eachStore(open);
+    const localBoard = () => opened.board();
 
     test("finds the implicit board local/main and no other", async () => {
-      store = await open();
+      const store = await opened.store();
       expect(await store.platform().findBoard("local", "main")).not.toBeNull();
       expect(await store.platform().findBoard("local", "other")).toBeNull();
       expect(await store.platform().findBoard("acme", "main")).toBeNull();

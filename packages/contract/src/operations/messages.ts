@@ -1,17 +1,18 @@
 import { Type } from "@sinclair/typebox";
 import { ChannelPath, Labels, MESSAGE_TEXT_MAX, Message } from "../entities/messages.ts";
-import { defineOperation } from "../operation.ts";
+import { defineOperation, Ref } from "../operation.ts";
 
 export const postMessage = defineOperation({
   name: "postMessage",
   operationId: "post",
-  summary: "Post a message that starts a thread in a channel.",
+  summary: "Post a message: a new thread in a channel, or a reply in the thread of any message `re` names.",
   route: { method: "POST", path: "/messages" },
   scope: "board",
   input: {
     body: Type.Object(
       {
-        channel: ChannelPath,
+        channel: Type.Optional(ChannelPath),
+        re: Type.Optional(Ref("message")),
         text: Type.String({ maxLength: MESSAGE_TEXT_MAX }),
         labels: Type.Optional(Labels),
         noSync: Type.Optional(Type.Boolean()),
@@ -21,7 +22,7 @@ export const postMessage = defineOperation({
   },
   output: Type.Object({ message: Message }),
   status: 201,
-  errors: ["invalid_request", "reserved_label"],
+  errors: ["invalid_request", "reserved_label", "message_not_found"],
   access: { permission: "post", channel: "fromInput" },
   effects: { readOnly: false, idempotent: false, emits: ["message.posted"], meter: "messages" },
   cli: { command: ["post"], args: ["channel", "text"] },
