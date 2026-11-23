@@ -48,3 +48,18 @@ test("GET /threads answers an empty channel with the board cursor", async () => 
   expect(read.status).toBe(200);
   expect(await read.json()).toEqual({ threads: [], cursor: "2" });
 });
+
+test("GET /threads combines repeated label filters with labels from the root and a reply", async () => {
+  app = makeApp();
+  const posted = await call(app, "POST", "/messages", { channel: "dev", text: "root", labels: { area: "api" } });
+  const { message } = (await posted.json()) as Thread;
+  await call(app, "POST", "/messages", { re: message.id, text: "matching reply", labels: { status: "open" } });
+  const latest = await call(app, "POST", "/messages", { re: message.id, text: "latest reply" });
+  await call(app, "POST", "/messages", { channel: "dev", text: "different area", labels: { status: "open" } });
+
+  const read = await call(app, "GET", "/threads?channel=dev&label=area&label=status%3Ddraft%7Copen%7C%00");
+  expect(read.status).toBe(200);
+  expect(await read.json()).toMatchObject({
+    threads: [{ message, replies: 2, last: ((await latest.json()) as Thread).message }],
+  });
+});

@@ -315,7 +315,10 @@ export interface BoardView {
   /** The message at log position `id` with its replies, oldest first, or null when no message has that ID. */
   thread(id: number): Promise<Thread | null>;
   /** The channel's latest 50 threads in ascending activity order, with the same snapshot's board head. */
-  listThreads(channel: string): Promise<{ threads: ThreadSummary[]; head: number }>;
+  listThreads(
+    channel: string,
+    labels?: readonly (readonly [key: string, values?: readonly string[]])[],
+  ): Promise<{ threads: ThreadSummary[]; head: number }>;
   /** The person's membership of this board's organization, or null when they are not a member or are disabled. */
   member(personId: string): Promise<BoardMemberRecord | null>;
 }

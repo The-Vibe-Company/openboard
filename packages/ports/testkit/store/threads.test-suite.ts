@@ -6,9 +6,13 @@ import { type OpenStore, testScope } from "../index.ts";
 const by = { actor: "ob:user:local-dev", principal: "ob:user:local-dev", profile: null };
 const at = 1_700_000_000_000;
 
-function post(board: BoardView, channel: string, text: string) {
+function post(board: BoardView, channel: string, text: string, labels?: Record<string, string>) {
   return board.write(async (writer) => {
-    const { events, message } = messages.decidePost({ head: writer.head }, { channel, text }, { by, now: at });
+    const { events, message } = messages.decidePost(
+      { head: writer.head },
+      { channel, text, ...(labels && { labels }) },
+      { by, now: at },
+    );
     await writer.append(events);
     return message;
   });
@@ -71,6 +75,17 @@ export function threadsSuite(driver: string, open: OpenStore): void {
       expect(threads.map(({ message }) => message.text)).toEqual(
         Array.from({ length: 50 }, (_, index) => String(index + 2)),
       );
+    });
+
+    test("filters the channel before limiting the page", async () => {
+      const board = await localBoard();
+      const match = await post(board, "dev", "old match", { status: "open" });
+      for (let index = 0; index < 50; index++) await post(board, "dev", String(index), { status: "closed" });
+      const foreign = await post(board, "ops", "different channel", { status: "open" });
+      expect(await board.listThreads("dev", [["status", ["open"]]])).toEqual({
+        threads: [{ message: match, replies: 0, last: null }],
+        head: Number(foreign.id),
+      });
     });
 
     test("reads no thread for a position no message holds", async () => {
