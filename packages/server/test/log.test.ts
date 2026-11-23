@@ -4,7 +4,6 @@ import { BOARD_URL, call, LOCAL_OWNER, makeApp, NOW } from "./support/app.ts";
 import { openStore } from "./support/drivers.ts";
 
 let app: ReturnType<typeof createApp>;
-afterEach(() => app.close());
 
 /** An app whose clock moves 7 ms per reading and whose logger keeps every line it prints, parsed. */
 function loggedApp() {
@@ -21,6 +20,8 @@ function loggedApp() {
 const requestLines = (lines: readonly Record<string, unknown>[]) => lines.filter((line) => line.msg === "request");
 
 describe("one JSON log line per request", () => {
+  afterEach(() => app.close());
+
   test("prints the operation, organization, actor, status and duration of a post", async () => {
     const lines = loggedApp();
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
@@ -96,4 +97,35 @@ describe("one JSON log line per request", () => {
     const printed = JSON.stringify(lines);
     for (const secret of [stranger.token, owner.token, "Bearer"]) expect(printed).not.toContain(secret);
   });
+});
+
+test("drops sensitive keys at every depth and preserves operational fields", () => {
+  const lines: string[] = [];
+  const log = jsonLogger({ now: () => NOW, write: (line) => lines.push(line) });
+  const fields = {
+    ownerToken: "credential",
+    client_secret: "credential",
+    requestBody: { text: "private message" },
+    context: "retrying",
+    attempts: [
+      {
+        Authorization: "credential",
+        "Set-Cookie": "credential",
+        PASSWORD: "credential",
+        webhookSignature: "credential",
+        signing_key: "credential",
+        messageText: "private message",
+        text: "private message",
+        status: 403,
+      },
+    ],
+  };
+
+  log.info("attempt", fields);
+  log.error("failed", fields);
+
+  expect(lines.map((line) => JSON.parse(line))).toEqual([
+    { t: NOW, level: "info", msg: "attempt", context: "retrying", attempts: [{ status: 403 }] },
+    { t: NOW, level: "error", msg: "failed", context: "retrying", attempts: [{ status: 403 }] },
+  ]);
 });
