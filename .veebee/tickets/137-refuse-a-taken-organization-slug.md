@@ -13,8 +13,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [136]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 138
 ---
 
@@ -22,7 +22,7 @@ issue: 138
 As a person creating an organization, I am told the name is already used.
 
 ## Done when
-- [ ] a second person creating `acme` answers 409 `slug_taken`
+- [x] a second person creating `acme` answers 409 `slug_taken`
 
 ## Out of scope
 - Renaming: slugs are immutable in v1 (Q7).

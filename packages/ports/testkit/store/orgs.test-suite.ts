@@ -66,7 +66,7 @@ export function orgsSuite(driver: string, open: OpenStore): void {
     const ada = await person(store, "ada", "a");
     const bob = await person(store, "bob", "b");
     await store.platform().createOrg(acme(ada));
-    await expect(store.platform().createOrg(acme(bob))).rejects.toThrow();
+    await expect(store.platform().createOrg(acme(bob))).rejects.toMatchObject({ code: "slug_taken" });
     expect(await store.platform().memberships(bob)).toEqual([]);
   });
 }

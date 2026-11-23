@@ -1,4 +1,4 @@
-import type { Role } from "@openboard/contract";
+import { BoardError, type Role } from "@openboard/contract";
 import type { BoardMemberRecord, BoardScope, BoardView, CreateOrgRecord, PlatformView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
 import { query, sql } from "../sql.ts";
@@ -7,7 +7,7 @@ import { query, sql } from "../sql.ts";
 export const orgStatements = {
   userIdOf: sql`SELECT id FROM users WHERE public_id = ${"personId"}`,
   insertOrg: sql`INSERT INTO orgs (slug, name, created_by, created_at)
-    VALUES (${"slug"}, ${"name"}, ${"userId"}, ${"at"}) RETURNING id`,
+    VALUES (${"slug"}, ${"name"}, ${"userId"}, ${"at"}) ON CONFLICT (slug) DO NOTHING RETURNING id`,
   insertMembership: sql`INSERT INTO memberships (org_id, user_id, role, created_at)
     VALUES (${"orgId"}, ${"userId"}, ${"role"}, ${"at"})`,
   insertBoard: sql`INSERT INTO boards (org_id, slug, name, created_at) VALUES (${"orgId"}, ${"slug"}, ${"name"}, ${"at"})`,
@@ -45,7 +45,12 @@ export function orgView(db: Db, dialect: Dialect): Pick<PlatformView, "createOrg
         const at = record.now;
         const userId = await userIdOf(tx, dialect, record.personId);
         const [org] = await query(tx, dialect, orgStatements.insertOrg, { ...record.org, userId, at });
-        const orgId = Number(org?.id);
+        if (!org) {
+          throw new BoardError("slug_taken", "this organization slug is already in use", {
+            hint: "Choose a different organization slug.",
+          });
+        }
+        const orgId = Number(org.id);
         await query(tx, dialect, orgStatements.insertMembership, { orgId, userId, role: record.role, at });
         await query(tx, dialect, orgStatements.insertBoard, { orgId, ...record.board, at });
         for (const event of record.events) {
