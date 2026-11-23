@@ -4,13 +4,16 @@ title: Refuse module-level mutable state
 milestone: M0-foundations
 package: tools
 writes:
-  - .oxlintrc.json
-  - scripts/ci/fixtures/oxlint/mutable/**
+  - scripts/ci/module-state.ts
+  - scripts/ci/module-state.test.ts
+  - scripts/ci/fixtures/module-state/**
+  - package.json
+  - docs/codebase.md
 conformance: []
 modes: []
 depends_on: [13]
-status: ready
-claimed_by: null
+status: claimed
+claimed_by: claude-code-t14
 issue: 14
 ---
 
