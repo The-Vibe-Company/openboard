@@ -3,6 +3,8 @@ import type { Author } from "@openboard/contract";
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
   readonly mode: "local" | "hosted";
+  /** `OPENBOARD_PUBLIC_URL`: the canonical origin, no trailing slash; board URLs are built on it, never on `Host`. */
+  readonly publicUrl: string;
   /** Local mode: who writes until credentials arrive: the local owner person, `ob:user:local-<os user>`. */
   readonly localOwner: string;
   /** Local mode: the SHA-256 (hex) of the owner token `ob serve` wrote to its 0600 file; absent, none is accepted. */
