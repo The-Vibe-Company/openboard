@@ -1,0 +1,11 @@
+# Guarded files (docs/codebase.md 3.3): changes here widen the rules or
+# weaken isolation, so the owner reviews every PR that touches them.
+/scripts/ci/boundaries.json                     @StanGirard
+/.oxlintrc.json                                 @StanGirard
+/biome.json                                     @StanGirard
+/tools/conformance/score.json                   @StanGirard
+/tools/bench/budgets.json                       @StanGirard
+/packages/driver-sql/migrations/                @StanGirard
+/packages/ports/testkit/isolation.test-suite.ts @StanGirard
+/packages/server/test/isolation/                @StanGirard
+/.github/                                       @StanGirard
