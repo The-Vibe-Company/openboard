@@ -59,6 +59,67 @@ describe("posting a first message on the local board", () => {
   });
 });
 
+describe("replying in a thread", () => {
+  test("answers 201 with the reply in the root's thread, which reads it under the root", async () => {
+    app = makeApp();
+    const root = (await answer(call(app, "POST", "/messages", { channel: "dev", text: "hello" }))).body.message;
+    const posted = await answer(call(app, "POST", "/messages", { re: "1", text: "on it" }));
+    expect(posted.status).toBe(201);
+    expect(posted.body.message).toMatchObject({ id: "2", channel: "dev", text: "on it", re: "1", thread: "1" });
+    const thread = await (await call(app, "GET", "/messages/1")).json();
+    expect(thread).toEqual({ message: root, replies: [posted.body.message] });
+  });
+
+  test("lists the reply in its root's channel, after the root", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    await call(app, "POST", "/messages", { re: "1", text: "on it" });
+    const { body } = await answer(call(app, "GET", "/messages?channel=dev"));
+    expect(body.messages.map((message) => [message.id, message.text])).toEqual([
+      ["1", "hello"],
+      ["2", "on it"],
+    ]);
+  });
+
+  test.each([
+    ["an ID past the last message", "9"],
+    ["an ID that is not a number", "no-such-message"],
+  ])("answers 404 message_not_found for a reply to %s, and posts nothing", async (_, re) => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const missing = await answer(call(app, "POST", "/messages", { re, text: "x" }));
+    expect([missing.status, missing.body.error.code]).toEqual([404, "message_not_found"]);
+    const { body } = await answer(call(app, "GET", "/messages?channel=dev"));
+    expect(body.messages.map((message) => message.id)).toEqual(["1"]);
+  });
+
+  test("answers 400 invalid_request for a reply to a reply, and posts nothing", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    await call(app, "POST", "/messages", { re: "1", text: "on it" });
+    const refused = await answer(call(app, "POST", "/messages", { re: "2", text: "deeper" }));
+    expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
+    expect(refused.body.error.message).toStartWith("re");
+    const { body } = await answer(call(app, "GET", "/messages?channel=dev"));
+    expect(body.messages.map((message) => message.id)).toEqual(["1", "2"]);
+  });
+
+  test("names the field a reply gets wrong, not the channel it leaves out", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const refused = await answer(call(app, "POST", "/messages", { re: "1", text: "x", sync: ["somewhere"] }));
+    expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
+    expect(refused.body.error.message).toStartWith("sync");
+  });
+
+  test("answers 400 invalid_request for a post that names both a channel and re", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const refused = await answer(call(app, "POST", "/messages", { channel: "dev", re: "1", text: "x" }));
+    expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
+  });
+});
+
 describe("refusing what the contract does not take", () => {
   test.each([
     ["a channel that is not a path", { channel: "Dev Ops", text: "x" }, "channel"],

@@ -553,7 +553,7 @@
       },
       "post": {
         "operationId": "post",
-        "summary": "Post a message that starts a thread in a channel.",
+        "summary": "Post a message: a new thread in a channel, or a reply in the thread of the root `re` names.",
         "requestBody": {
           "required": true,
           "content": {
@@ -561,13 +561,14 @@
               "schema": {
                 "additionalProperties": false,
                 "type": "object",
-                "required": ["channel", "text"],
+                "required": ["text"],
                 "properties": {
                   "channel": {
                     "maxLength": 2048,
                     "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
                     "type": "string"
                   },
+                  "re": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" },
                   "text": { "maxLength": 10000, "type": "string" },
                   "labels": {
                     "type": "object",
@@ -667,7 +668,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
-            "description": "not_found",
+            "description": "message_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -728,7 +729,7 @@
                                 "type": "string"
                               },
                               "text": { "type": "string" },
-                              "re": { "type": "null" },
+                              "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                               "replyTo": { "type": "null" },
                               "thread": { "type": "string" },
                               "labels": {

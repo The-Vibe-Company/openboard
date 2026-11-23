@@ -2,12 +2,12 @@ import { BoardError, CHANNEL_PATH_MAX, type ErrorBody, isChannelPath, MESSAGE_TE
 import type { Logger } from "../deps.ts";
 import { json } from "./respond.ts";
 
-/** Adds post-specific recovery to a rejected body with an invalid channel. */
+/** Adds post-specific recovery to a rejected body with an invalid channel; a reply, with no channel, keeps its error. */
 export function invalidPostChannel(error: unknown, body: unknown): unknown {
   if (!(error instanceof BoardError) || error.code !== "invalid_request") return error;
   if (typeof body !== "object" || body === null || Array.isArray(body)) return error;
   const { channel, text } = body as Record<string, unknown>;
-  if (isChannelPath(channel)) return error;
+  if (channel === undefined || isChannelPath(channel)) return error;
 
   const corrected = typeof channel === "string" ? channel.trim().toLowerCase().replace(/\s+/g, "-") : undefined;
   const canRetry =

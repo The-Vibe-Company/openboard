@@ -1,5 +1,5 @@
 import type { Channel, Message, Thread } from "@openboard/contract";
-import type { BoardEvent, MessagePosted } from "@openboard/core";
+import type { BoardEvent, MessagePosted, messages } from "@openboard/core";
 
 declare const minted: unique symbol;
 
@@ -30,6 +30,8 @@ export interface BoardWriter {
   readonly head: number;
   /** The exact channel path and counts as seen under this write lock. */
   channel(path: string): Promise<Channel | null>;
+  /** The message at log position `id`, read under the lock, or null when no message has that ID. */
+  replyTarget(id: number): Promise<messages.ReplyTarget | null>;
   append(events: readonly BoardEvent[]): Promise<void>;
 }
 

@@ -14,6 +14,16 @@ function post(board: BoardView, channel: string, text: string) {
   });
 }
 
+function reply(board: BoardView, re: number, text: string) {
+  return board.write(async (writer) => {
+    const target = await writer.replyTarget(re);
+    const command = { re: String(re), text };
+    const { events, message } = messages.decidePost({ head: writer.head, target }, command, { by, now: at });
+    await writer.append(events);
+    return message;
+  });
+}
+
 export function messagesSuite(driver: string, open: OpenStore): void {
   describe(`${driver}: messages`, () => {
     let store: Store | undefined;
@@ -48,6 +58,27 @@ export function messagesSuite(driver: string, open: OpenStore): void {
       const page = await board.channelMessages({ channel: "dev", limit: 2 });
       expect(page.map(({ text }) => text)).toEqual(["b", "c"]);
       expect(await board.channelMessages({ channel: "empty", limit: 50 })).toEqual([]);
+    });
+
+    test("keeps a reply in its root's thread and channel, and counts it in the channel", async () => {
+      const board = await localBoard();
+      const root = await post(board, "dev", "hello");
+      const answer = await reply(board, 1, "on it");
+      expect(answer).toMatchObject({ id: "2", channel: "dev", re: "1", thread: "1" });
+      expect(await board.thread(1)).toEqual({ message: root, replies: [answer] });
+      expect(await board.channelMessages({ channel: "dev", limit: 50 })).toEqual([root, answer]);
+      const { channels } = await board.listChannels({ limit: 10 });
+      expect(channels).toEqual([{ path: "dev", lastIndex: 2, messages: 2, threads: 1 }]);
+    });
+
+    test("finds the message a reply names under the lock, and none for an unknown ID", async () => {
+      const board = await localBoard();
+      await post(board, "dev", "hello");
+      await reply(board, 1, "on it");
+      const targets = await board.write(async (writer) =>
+        Promise.all([writer.replyTarget(1), writer.replyTarget(2), writer.replyTarget(3)]),
+      );
+      expect(targets).toEqual([{ id: 1, channel: "dev", re: null }, { id: 2, channel: "dev", re: "1" }, null]);
     });
 
     test("serializes concurrent writes into consecutive positions", async () => {
