@@ -30,6 +30,9 @@ writes:
   - packages/server/src/http/pipeline.ts
   - packages/server/src/operations/index.ts
   - packages/server/src/auth/secrets.ts
+  - packages/server/src/http/scope.ts
+  - packages/server/test/scope.test.ts
+  - docs/auth.md
   - apps/openboard/src/compose.ts
   - apps/openboard/test/config.test.ts
   - docs/decisions.md
@@ -37,7 +40,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [62, 117]
-status: claimed
+status: done
 claimed_by: claude-opus-t133
 issue: 134
 ---

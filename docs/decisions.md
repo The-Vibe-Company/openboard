@@ -637,8 +637,10 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   `account` operations declare paths relative to `/api/x`, are matched
   before the local `/api` alias, and see `ctx.platform` and `ctx.session`
   (the live `__Host-ob_session`, read only without `authorization`); their
-  answers are `no-store`. `OPENBOARD_SIGNUP` applies in both modes and
-  defaults to `closed`, so local mode keeps "no sign-up" unless it is set.
+  answers are `no-store`. In local mode `OPENBOARD_SIGNUP` defaults to
+  `closed`, so it keeps "no sign-up" unless it is set, as tickets 133-161
+  assume (`.veebee/cut.md` "Could not place", question 1, still awaits the
+  owner); the hosted default (docs/auth.md, Q6) is decided with hosted mode.
 - **Consequence.** Any instance finishes any sign-in. Ticket 134 and later
   account routes reuse the session and its CSRF check. The SDK still maps
   every operation onto `BOARD_URL`, so account operations are not callable

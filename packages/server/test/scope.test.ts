@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { createApp } from "../src/index.ts";
+import { boardPath } from "../src/http/scope.ts";
 import { call, LOCAL_OWNER, makeApp, NOW, OWNER, PUBLIC_URL } from "./support/app.ts";
 import { openStore } from "./support/drivers.ts";
 
@@ -60,3 +61,7 @@ test.each(["/api", "/api/messages/10", "/api/tasks/main", "/api/x/main"])(
     expect(response.status).toBe(404);
   },
 );
+
+test("an account route reserves no organization slug: /api/session/main is a board path", () => {
+  expect(boardPath("/api/session/main/messages", "hosted")).toMatchObject({ org: "session", board: "main" });
+});

@@ -48,8 +48,8 @@ export function mintSession(randomBytes: (length: number) => Uint8Array, now: nu
 
 /** Whether `given` equals `expected`, compared in constant time. */
 export function sameText(given: string | null, expected: string): boolean {
-  if (given === null || given.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+  const [left, right] = [Buffer.from(given ?? ""), Buffer.from(expected)];
+  return given !== null && left.length === right.length && timingSafeEqual(left, right);
 }
 
 /** A cookie-authenticated write needs `Origin` equal to the public origin and `x-ob-csrf` equal to the session's. */

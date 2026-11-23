@@ -54,8 +54,10 @@ async function start(provider: LoginProvider, ctx: SignInContext, redirectUri: s
   const state = base64url(ctx.deps.randomBytes(32));
   const verifier = base64url(ctx.deps.randomBytes(32));
   const response = await provider.start({ state, verifier, redirectUri });
-  const pending = `${provider.id}.${state}.${verifier}`;
-  response.headers.append("set-cookie", hostCookie(SIGN_IN_COOKIE, pending, SIGN_IN_SECONDS));
+  response.headers.append(
+    "set-cookie",
+    hostCookie(SIGN_IN_COOKIE, `${provider.id}.${state}.${verifier}`, SIGN_IN_SECONDS),
+  );
   return response;
 }
 
@@ -67,18 +69,13 @@ async function callback(provider: LoginProvider, ctx: SignInContext, request: Re
       hint: `Start again from /auth/${provider.id}/start.`,
     });
   }
-  const identity = await provider.finish(request, { state, verifier, redirectUri });
+  const found = await provider.finish(request, { state, verifier, redirectUri });
+  const { subject, login, name, email, emailVerified, avatar } = found;
   const now = ctx.deps.now();
   const session = mintSession(ctx.deps.randomBytes, now);
+  const verified = emailVerified ? (email ?? null) : null;
   const person = await ctx.platform.signIn({
-    identity: {
-      provider: provider.id,
-      subject: identity.subject,
-      login: identity.login,
-      name: identity.name,
-      email: identity.emailVerified ? (identity.email ?? null) : null,
-      avatar: identity.avatar ?? null,
-    },
+    identity: { provider: provider.id, subject, login, name, email: verified, avatar: avatar ?? null },
     admitNew: (ctx.config.signup ?? "closed") === "open",
     newPersonId: `u_${base32(ctx.deps.randomBytes(10))}`,
     session: session.record,
@@ -86,7 +83,7 @@ async function callback(provider: LoginProvider, ctx: SignInContext, request: Re
   });
   if (!person) {
     throw new BoardError("forbidden", "sign-up is closed on this server", {
-      hint: "Ask an administrator of this server for an invitation.",
+      hint: "Ask an administrator to invite you.",
     });
   }
   const headers = new Headers({ location: LANDING });

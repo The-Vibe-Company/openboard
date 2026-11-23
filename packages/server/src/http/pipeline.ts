@@ -13,6 +13,7 @@ import { matchRoute, type Route } from "./router.ts";
 import { type BoardPath, boardPath, notFound, type Tenants } from "./scope.ts";
 
 type Contracted = (typeof operations)[number];
+type Params = Readonly<Record<string, string>>;
 
 export interface Pipeline {
   readonly config: ServerConfig;
@@ -60,13 +61,7 @@ async function runPublic(
 }
 
 /** An `account` operation: no tenant; the browser's session, if live, is the person (docs/auth.md step 6). */
-async function runAccount(
-  request: Request,
-  url: URL,
-  operation: AccountOperation,
-  params: Readonly<Record<string, string>>,
-  pipeline: Pipeline,
-): Promise<Response> {
+async function runAccount(request: Request, url: URL, operation: AccountOperation, params: Params, pipeline: Pipeline) {
   const { config, deps, platform } = pipeline;
   const session = await sessionOf(request, platform, deps.now(), config.publicUrl);
   const input = validate(operation, {

@@ -161,20 +161,18 @@ test("a cookie-authenticated write needs this server's Origin and the session's 
   store = openStore(() => NOW);
   const platform = store.platform();
   const identity = { provider: "github", subject: "1", login: "ada", name: "Ada", email: null, avatar: null };
-  const idHash = createHash("sha256").update("a".repeat(43)).digest("hex");
-  const session = { idHash, csrf: "c".repeat(43), expiresAt: NOW + DAY };
+  const [value, csrf] = ["a".repeat(43), "c".repeat(43)];
+  const session = { idHash: createHash("sha256").update(value).digest("hex"), csrf, expiresAt: NOW + DAY };
   await platform.signIn({ identity, admitNew: true, newPersonId: "u_aaaaaaaaaaaaaaaa", session, now: NOW });
-  const write = (headers: Record<string, string>) =>
-    sessionOf(
-      new Request(`${PUBLIC_URL}/api/x/orgs`, {
-        method: "POST",
-        headers: { cookie: `__Host-ob_session=${"a".repeat(43)}`, ...headers },
-      }),
-      platform,
-      NOW,
-      PUBLIC_URL,
-    );
-  await expect(write({ origin: PUBLIC_URL })).rejects.toBeInstanceOf(BoardError);
-  await expect(write({ "x-ob-csrf": session.csrf, origin: "https://evil.test" })).rejects.toBeInstanceOf(BoardError);
-  expect((await write({ "x-ob-csrf": session.csrf, origin: PUBLIC_URL }))?.person.handle).toBe("ada");
+  const post = (headers: object) =>
+    new Request(`${PUBLIC_URL}/api/x/orgs`, {
+      method: "POST",
+      headers: { cookie: `__Host-ob_session=${value}`, ...headers },
+    });
+  const write = (headers: object) => sessionOf(post(headers), platform, NOW, PUBLIC_URL);
+  const origin = PUBLIC_URL;
+  for (const refused of [{ origin }, { "x-ob-csrf": csrf }, { "x-ob-csrf": "é".repeat(43), origin }]) {
+    await expect(write(refused)).rejects.toBeInstanceOf(BoardError);
+  }
+  expect((await write({ "x-ob-csrf": csrf, origin }))?.person.handle).toBe("ada");
 });

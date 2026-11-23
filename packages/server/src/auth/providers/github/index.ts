@@ -6,6 +6,7 @@ import type { ExternalIdentity, LoginProvider } from "../index.ts";
 const AUTHORIZE = "https://github.com/login/oauth/authorize";
 const TOKEN = "https://github.com/login/oauth/access_token";
 const API = "https://api.github.com";
+const AGENT = "openboard";
 /** Enough to read the person and their verified primary email (docs/auth.md "Sign-in providers"). */
 const SCOPES = "read:user user:email";
 
@@ -27,12 +28,8 @@ async function call(fetch: Fetch, request: Request): Promise<unknown> {
     throw new BoardError("unreachable", "GitHub could not be reached", { hint: "Try signing in again in a moment." });
   }
   if (!response.ok) throw remoteError(`answered ${response.status}`);
-  try {
-    return await response.json();
-  } catch (error) {
-    if (error instanceof SyntaxError) throw remoteError("answered something other than JSON");
-    throw error;
-  }
+  // Not JSON is answered as null, which every caller then refuses as `remote_error`.
+  return response.json().catch((error) => (error instanceof SyntaxError ? null : Promise.reject(error)));
 }
 
 function isUser(value: unknown): value is GitHubUser {
@@ -87,11 +84,7 @@ export function githubProvider(client: OAuthClient, fetch: Fetch): LoginProvider
         });
       }
       const token = await exchange(fetch, client, code, verifier, redirectUri);
-      const headers = {
-        accept: "application/vnd.github+json",
-        authorization: `Bearer ${token}`,
-        "user-agent": "openboard",
-      };
+      const headers = { accept: "application/vnd.github+json", authorization: `Bearer ${token}`, "user-agent": AGENT };
       const [user, emails] = await Promise.all([
         call(fetch, new Request(`${API}/user`, { headers })),
         call(fetch, new Request(`${API}/user/emails`, { headers })),
