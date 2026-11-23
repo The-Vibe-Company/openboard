@@ -48,13 +48,33 @@ describe("posting a first message on the local board", () => {
     ]);
     expect(body.cursor).toBe("2");
   });
+});
 
-  test("reads the latest `limit` messages, and an empty page for a quiet channel", async () => {
+describe("reading a channel's newest messages", () => {
+  test("lists the newest `limit` of five, oldest first, and their cursor reads on to what is posted next", async () => {
     app = makeApp();
     for (const text of ["a", "b", "c"]) await call(app, "POST", "/messages", { channel: "dev", text });
-    const latest = await answer(call(app, "GET", "/messages?channel=dev&limit=2"));
-    expect(latest.body.messages.map((message) => message.text)).toEqual(["b", "c"]);
-    const quiet = (await answer(call(app, "GET", "/messages?channel=quiet"))).body;
+    await call(app, "POST", "/messages", { channel: "ops", text: "elsewhere" });
+    for (const text of ["d", "e"]) await call(app, "POST", "/messages", { channel: "dev", text });
+    const newest = await answer(call(app, "GET", "/messages?channel=dev&limit=2"));
+    expect(newest.status).toBe(200);
+    expect([newest.body.messages.map((message) => [message.id, message.text]), newest.body.cursor]).toEqual([
+      [
+        ["5", "d"],
+        ["6", "e"],
+      ],
+      "6",
+    ]);
+    const caughtUp = (await answer(call(app, "GET", `/messages?channel=dev&after=${newest.body.cursor}&limit=2`))).body;
+    expect([caughtUp.messages, caughtUp.cursor]).toEqual([[], "6"]);
+    await call(app, "POST", "/messages", { channel: "dev", text: "f" });
+    const next = (await answer(call(app, "GET", `/messages?channel=dev&after=${newest.body.cursor}&limit=2`))).body;
+    expect([next.messages.map((message) => message.text), next.cursor]).toEqual([["f"], "7"]);
+  });
+
+  test("answers an empty page with cursor 0 for a channel nobody has posted in", async () => {
+    app = makeApp();
+    const quiet = (await answer(call(app, "GET", "/messages?channel=quiet&limit=2"))).body;
     expect([quiet.messages, quiet.cursor]).toEqual([[], "0"]);
   });
 });

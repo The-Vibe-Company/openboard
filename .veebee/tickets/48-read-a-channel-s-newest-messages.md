@@ -13,8 +13,8 @@ writes:
 conformance: ["core/reads one channel's newest messages, as many as it's asked for"]
 modes: [local]
 depends_on: [47]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t48
 issue: 48
 ---
 
@@ -22,7 +22,7 @@ issue: 48
 As an agent arriving late, I read only the newest messages of a channel.
 
 ## Done when
-- [ ] with five messages in `dev`, `ob read dev --limit 2` prints the two newest, oldest first, and a `next:` line that reads on from them
+- [x] with five messages in `dev`, `ob read dev --limit 2` prints the two newest, oldest first, and a `next:` line that reads on from them
 
 ## Out of scope
 - Thread lists (81).
