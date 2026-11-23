@@ -12,7 +12,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [109, 144]
-status: claimed
+status: done
 claimed_by: claude-opus-5-5
 issue: 153
 ---
@@ -21,8 +21,8 @@ issue: 153
 As an admin, members can read, post, react and label, but not manage the board, unless a grant says more.
 
 ## Done when
-- [ ] a member's `GET http://127.0.0.1:8787/api/acme/main/me` shows `can * read post react label`, and creating a connection there answers 403 `forbidden`
-- [ ] an admin's shows `manage`
+- [x] a member's `GET http://127.0.0.1:8787/api/acme/main/me` shows `can * read post react label`, and creating a connection there answers 403 `forbidden`
+- [x] an admin's shows `manage`
 
 ## Out of scope
 - Grants that give more (M10, 276).
