@@ -1,6 +1,9 @@
 import { statSync } from "node:fs";
 import process from "node:process";
 
+/** The log levels `OPENBOARD_LOG_LEVEL` accepts (docs/codebase.md 5.4). */
+const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
+
 /** The server's configuration, parsed once at startup (docs/codebase.md 5.5). */
 export interface Config {
   readonly port: number;
@@ -48,6 +51,9 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>> = p
   if (!validDataDir(dataDir)) problems.push("OPENBOARD_DATA_DIR: expected a directory path");
   const sync = env.OPENBOARD_SYNC ?? "NORMAL";
   if (sync !== "NORMAL" && sync !== "FULL") problems.push("OPENBOARD_SYNC: expected NORMAL or FULL");
+  const logLevel = env.OPENBOARD_LOG_LEVEL ?? "info";
+  if (!(LOG_LEVELS as readonly string[]).includes(logLevel))
+    problems.push(`OPENBOARD_LOG_LEVEL: expected ${LOG_LEVELS.join(", ")}, got ${logLevel}`);
   const user = (env.USER ?? env.USERNAME ?? "owner").toLowerCase().replace(/[^a-z0-9-]/g, "-");
   if (problems.length > 0 || !publicUrl) throw new ConfigError(problems.join("\n"));
   return Object.freeze({

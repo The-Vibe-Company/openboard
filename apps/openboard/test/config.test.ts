@@ -23,3 +23,18 @@ describe("the public URL board URLs are built on", () => {
     expect(() => load({ PORT: "70000" })).toThrow(/^PORT: expected 1 to 65535, got 70000$/);
   });
 });
+
+describe("the log level", () => {
+  test("accepts debug, info, warn or error, and nothing else is required", () => {
+    for (const level of ["debug", "info", "warn", "error"])
+      expect(() => load({ OPENBOARD_LOG_LEVEL: level })).not.toThrow();
+    expect(() => load({})).not.toThrow();
+  });
+
+  test("refuses an unknown level, naming the variable and the values it accepts", () => {
+    expect(() => load({ OPENBOARD_LOG_LEVEL: "loud" })).toThrow(ConfigError);
+    expect(() => load({ OPENBOARD_LOG_LEVEL: "loud" })).toThrow(
+      /^OPENBOARD_LOG_LEVEL: expected debug, info, warn, error, got loud$/,
+    );
+  });
+});
