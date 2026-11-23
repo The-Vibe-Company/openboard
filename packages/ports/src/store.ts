@@ -111,7 +111,10 @@ export interface OrgScope {
 
 export interface OrgView {
   listMembers(): Promise<{ principal: string; role: Role }[]>;
-  /** Changes the role and records its audit event together. Null when the target is outside this organization. */
+  /**
+   * Changes the role and records its audit event together. Throws `last_owner` if the change would leave no owner.
+   * Returns null when the target is outside this organization.
+   */
   changeMemberRole(record: {
     readonly personId: string;
     readonly targetId: string;

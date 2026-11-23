@@ -5,9 +5,17 @@ export function decideMemberRole(actor: Role, current: Role, requested: Role): b
   if (actor === "member" || (requested === "owner" && actor !== "owner")) {
     throw new BoardError("forbidden", "you cannot assign this organization role");
   }
-  // Owner demotion needs the last-owner rule.
-  if (current === "owner" && requested !== "owner") {
-    throw new BoardError("forbidden", "an owner cannot be demoted");
+  if (current === "owner" && requested !== "owner" && actor !== "owner") {
+    throw new BoardError("forbidden", "only owners can demote an owner");
   }
   return current !== requested;
+}
+
+/** Check before demoting or removing an owner within the organization write transaction. */
+export function requireAnotherOwner(hasAnotherOwner: boolean): void {
+  if (!hasAnotherOwner) {
+    throw new BoardError("last_owner", "an organization keeps at least one owner", {
+      hint: "promote another member to owner first",
+    });
+  }
 }

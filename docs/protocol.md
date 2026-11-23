@@ -106,6 +106,7 @@ answers. OpenBoard adds:
 | 403 | `forbidden` | (upstream code) also: claimed token on a configuration route; a profile other than the pinned one; cookie write without CSRF proof; role too low for an organization route |
 | 404 | `not_found` | (upstream code) also: an organization or board the caller cannot reach |
 | 409 | `profile_taken`, `already_in_org`, `slug_taken` | claim name in use; v1 one-org rule; slug in use |
+| 409 | `last_owner` | demoting or removing the last owner; message: “an organization keeps at least one owner”; hint: “promote another member to owner first” |
 | 410 | `secret_spent`, `invitation_used` | single-use secret claimed; invitation accepted, revoked, or expired |
 | 400 | `invalid_url`, `invalid_signing`, `invalid_rule`, `reserved_slug` | webhook URL refused; bad scheme; bad inbound rule; reserved slug |
 | 401 | `bad_signature` | inbound endpoint signature |
@@ -232,8 +233,8 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/api/x/orgs/:org/delete` | owner | soft delete; hard delete after 30 days |
 | POST | `/api/x/orgs/:org/export` | owner | export job; `GET /api/x/orgs/:org/exports/:id` |
 | GET | `/api/x/orgs/:org/members` | member | `{ members: [{ principal, role }] }` |
-| POST | `/api/x/orgs/:org/members/:user/role` | admin (owner to grant `owner`) | `{ role }` → `{ principal, role }`; existing owners cannot be demoted until the last-owner rule ships |
-| POST | `/api/x/orgs/:org/members/:user/remove` | admin, or the person themself | |
+| POST | `/api/x/orgs/:org/members/:user/role` | admin (owner to grant `owner`) | `{ role }` → `{ principal, role }`; only an owner can demote another owner or themself; 409 `last_owner` if no other owner remains |
+| POST | `/api/x/orgs/:org/members/:user/remove` | admin, or the person themself | Planned in ticket 151 (issue #152); 409 `last_owner` if no other owner remains |
 | GET, POST | `/api/x/orgs/:org/invitations` | admin | `{ role, email?, send? }` → `{ invitation, url }` |
 | POST | `/api/x/orgs/:org/invitations/:id/revoke` | admin | |
 | GET | `/api/x/invitations/:token` | anyone | organization name, role, expiry (for the accept page) |

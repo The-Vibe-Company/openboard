@@ -50,6 +50,17 @@ export function membershipsSuite(driver: string, open: OpenStore): void {
       await expect(acme.changeMemberRole({ ...change, personId: member })).rejects.toMatchObject({ code: "forbidden" });
       expect(await acme.changeMemberRole(change)).toEqual({ principal: `ob:user:${member}`, role: "admin" });
       expect(await platform.orgMembership("acme", member)).toMatchObject({ role: "admin" });
+
+      const demoteOwner = { ...change, targetId: owner };
+      await expect(acme.changeMemberRole(demoteOwner)).rejects.toMatchObject({ code: "last_owner" });
+      await acme.changeMemberRole({ ...change, role: "owner" });
+      const demotions = await Promise.allSettled([
+        acme.changeMemberRole(demoteOwner),
+        acme.changeMemberRole({ ...change, personId: member }),
+      ]);
+      expect(demotions.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(demotions).toContainEqual({ status: "rejected", reason: expect.objectContaining({ code: "last_owner" }) });
+      expect((await acme.listMembers()).filter(({ role }) => role === "owner")).toHaveLength(1);
     } finally {
       await store.close();
     }
