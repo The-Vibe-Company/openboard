@@ -4,6 +4,7 @@ title: Refuse a migration number that is taken or not newer than main's
 milestone: M0-foundations
 package: tools
 writes:
+  - .github/workflows/ci.yml
   - scripts/ci/migrations.ts
   - scripts/ci/migrations.test.ts
   - scripts/ci/fixtures/migrations/numbers/**
@@ -11,8 +12,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [19]
-status: ready
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 29
 ---
 
