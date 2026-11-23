@@ -116,6 +116,18 @@ test("a module subpath counts as its module", async () => {
   expect(await messages({ "packages/driver-sqlite/src/files.ts": source })).toEqual([]);
 });
 
+test("a quote before a type query does not hide it", async () => {
+  const jsx = "export const P = () => <p>Don't panic</p>;\n";
+  const query = 'export type App = import("@openboard/server").App;\n';
+  const found = await messages({
+    "apps/web/src/view.tsx": jsx + query,
+    "packages/core/src/re.ts": `/["]/;\n${query}`,
+  });
+  expect(found).toHaveLength(2);
+  expect(found[0]).toContain("web -> server (type-only import of @openboard/server)");
+  expect(found[1]).toContain("core -> server (type-only import of @openboard/server)");
+});
+
 test("refuses a workspace the graph does not list", async () => {
   const found = await messages({ "examples/recipe/package.json": '{ "name": "recipe" }' });
   expect(found).toEqual([
@@ -147,7 +159,9 @@ test("finds every form of type-only import", () => {
     'type H = import("h").H;',
     'import { value } from "v";',
     'import type from "t";',
-    '// unlike import("in-comment"), "import(\'in-string\')" is not an import',
+    '// a comment line naming import("in-comment") is skipped',
+    "/* a block comment naming",
+    ' * import("in-block-comment") is skipped too */',
   ].join("\n");
   const { values, all } = scanImports("x.ts", source);
   expect([...values].sort()).toEqual(["t", "v"]);

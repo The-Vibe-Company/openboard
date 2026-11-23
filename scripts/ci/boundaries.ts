@@ -62,8 +62,10 @@ export function stripTypeModifiers(source: string): string {
     .replace(/([{,]\s*)type\s+(?=[\w$]+\s*(?:[,}]|as\b))/g, "$1");
 }
 
-// Strings and comments are matched first so that an `import("…")` inside them is skipped.
-const TYPE_QUERY = /(["'`])(?:\\.|(?!\1)[^\\])*\1|\/\/[^\n]*|\/\*[\s\S]*?\*\/|\bimport\s*\(\s*(["'])([^"'\n]+)\2\s*\)/g;
+// A type query, `import("…")` in a type position, which the transpiler drops too. Lines that
+// start a comment are skipped; text elsewhere counts even inside a string, so the scan fails closed.
+const TYPE_QUERY = /\bimport\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
+const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 
 /** Returns every module a file imports, and which of them it imports as values. */
 export function scanImports(file: string, source: string): Imports {
@@ -71,7 +73,10 @@ export function scanImports(file: string, source: string): Imports {
   const transpiler = new Bun.Transpiler({ loader });
   const values = new Set(transpiler.scanImports(source).map((entry) => entry.path));
   const all = new Set([...values, ...transpiler.scanImports(stripTypeModifiers(source)).map((entry) => entry.path)]);
-  for (const match of source.matchAll(TYPE_QUERY)) if (match[3]) all.add(match[3]);
+  for (const line of source.split("\n")) {
+    if (COMMENT_LINE.test(line)) continue;
+    for (const match of line.matchAll(TYPE_QUERY)) if (match[2]) all.add(match[2]);
+  }
   return { values, all };
 }
 
