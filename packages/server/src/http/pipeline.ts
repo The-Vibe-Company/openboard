@@ -1,7 +1,7 @@
 import { BoardError, decodeInput, type operations, type RawInput } from "@openboard/contract";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
-import { logRequest, type RequestFields } from "../log.ts";
+import { logRequest, type RequestFields, withFields } from "../log.ts";
 import { handlerOf, type PublicOperation } from "../operations/index.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
 import { json } from "./respond.ts";
@@ -71,10 +71,21 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   return json(output, operation.status ?? 200);
 }
 
+const REQUEST_ID = "x-request-id";
+/** A client's request ID is echoed when it is 1 to 128 printable ASCII characters without spaces; else one is minted. */
+const echoable = /^[\x21-\x7e]{1,128}$/;
+
+function requestIdOf(request: Request, deps: Deps): string {
+  const given = request.headers.get(REQUEST_ID);
+  return given !== null && echoable.test(given) ? given : deps.requestId();
+}
+
 /** Every request goes through here, once: tenant from the path, auth, scope, validation, handler (4.4). */
 export async function handle(request: Request, pipeline: Pipeline): Promise<Response> {
-  const { log, now } = pipeline.deps;
+  const { now } = pipeline.deps;
   const started = now();
+  const requestId = requestIdOf(request, pipeline.deps);
+  const log = withFields(pipeline.deps.log, { request_id: requestId });
   const url = new URL(request.url);
   const logged: RequestFields = { req: `${request.method} ${url.pathname}`, op: null, org: null, actor: null };
   let response: Response;
@@ -83,6 +94,7 @@ export async function handle(request: Request, pipeline: Pipeline): Promise<Resp
   } catch (error) {
     response = errorResponse(error, log);
   }
+  response.headers.set(REQUEST_ID, requestId);
   logRequest(log, logged, response.status, now() - started);
   return response;
 }

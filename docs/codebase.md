@@ -355,7 +355,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 
 ### 5.4 Logging
 
-- One logger from `deps`, passed as `ctx.log`. JSON lines on stdout: `{ "t", "level", "msg", "req", "op", "org", "actor", "instance", "ms" }`.
+- One logger from `deps`, passed as `ctx.log`. JSON lines on stdout: `{ "t", "level", "msg", "request_id", "req", "op", "org", "actor", "instance", "ms" }`.
 - `OPENBOARD_LOG_LEVEL` (`debug|info|warn|error`, default `info`). One `info` line per request and per job run.
 - Never log bodies, message text, tokens, secrets, cookies or signing keys; the logger drops keys matching `token|secret|authorization|cookie|password|signature`, and a test pins it.
 - `core` and `ports` never log; drivers log only slow statements and connection state, through the logger they are given.
