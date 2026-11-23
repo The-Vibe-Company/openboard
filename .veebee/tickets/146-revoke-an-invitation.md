@@ -10,11 +10,16 @@ writes:
   - packages/ports/testkit/store/invitations.test-suite.ts
   - packages/server/test/invitations.test.ts
   - packages/ports/src/store.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [145]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t146
 issue: 147
 ---
 
@@ -22,7 +27,7 @@ issue: 147
 As an admin, I withdraw a link I shared by mistake.
 
 ## Done when
-- [ ] `POST http://127.0.0.1:8787/api/x/orgs/acme/invitations/<id>/revoke` makes accepting it answer 410 `invitation_used`
+- [x] `POST http://127.0.0.1:8787/api/x/orgs/acme/invitations/<id>/revoke` makes accepting it answer 410 `invitation_used`
 
 ## Out of scope
 - Used and expired links (147).

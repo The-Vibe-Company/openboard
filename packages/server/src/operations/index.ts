@@ -14,6 +14,7 @@ import {
   createInvitationHandler,
   listMembersHandler,
   previewInvitationHandler,
+  revokeInvitationHandler,
 } from "./invitations.ts";
 import { changeMemberRoleHandler } from "./memberships.ts";
 import {
@@ -121,6 +122,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   readThread: readThreadHandler,
   refreshAgentToken: refreshAgentTokenHandler,
   revokeAllSessions: revokeAllSessionsHandler,
+  revokeInvitation: revokeInvitationHandler,
 };
 
 /** The handler of an operation the router matched, its input already validated against the same contract. */

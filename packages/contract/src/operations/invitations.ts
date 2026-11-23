@@ -53,12 +53,28 @@ export const acceptInvitation = defineOperation({
   scope: "account",
   input: { body: Type.Object({ token: Ref("invitation") }, { additionalProperties: false }) },
   output: Membership,
-  errors: ["invalid_request", "unauthorized", "forbidden", "not_found", "already_in_org"],
+  errors: ["invalid_request", "unauthorized", "forbidden", "not_found", "already_in_org", "invitation_used"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: ["ob.member.added"] },
   cli: false,
   mcp: false,
   why: "An invited person joins with a browser session.",
+  upstream: false,
+});
+
+export const revokeInvitation = defineOperation({
+  name: "revokeInvitation",
+  summary: "Revoke an invitation link so it can no longer be accepted.",
+  route: { method: "POST", path: "/orgs/:org/invitations/:id/revoke" },
+  scope: "org",
+  input: { params: Type.Object({ org: Slug, id: Ref("invitation") }) },
+  output: Type.Object({ id: Type.String(), revokedAt: Type.String() }),
+  errors: ["not_found", "unauthorized", "forbidden", "invitation_used"],
+  access: null,
+  effects: { readOnly: false, idempotent: false, emits: ["ob.invitation.revoked"] },
+  cli: false,
+  mcp: false,
+  why: "An organization administrator withdraws links with a browser session.",
   upstream: false,
 });
 
