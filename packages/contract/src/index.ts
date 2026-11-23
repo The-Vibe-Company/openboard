@@ -68,6 +68,7 @@ export {
   readThread,
   refreshAgentToken,
   revokeAllSessions,
+  revokeConnection,
   revokeInvitation,
   startDeviceSignIn,
 } from "./operations/index.ts";

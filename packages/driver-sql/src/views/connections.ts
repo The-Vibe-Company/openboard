@@ -1,5 +1,12 @@
 import type { Can, Connection } from "@openboard/contract";
-import { type ConnectionCreated, connections, type GrantPrincipal, grants, isoTime } from "@openboard/core";
+import {
+  type ConnectionCreated,
+  type ConnectionRevoked,
+  connections,
+  type GrantPrincipal,
+  grants,
+  isoTime,
+} from "@openboard/core";
 import type { BoardKeys, BoardScope, BoardView, ConnectionRecord } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
 import { query, sql } from "../sql.ts";
@@ -28,12 +35,18 @@ export const connectionStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND connection = ${"connection"}
       AND profile_key = ${"profileKey"} AND revoked_at IS NULL
     ORDER BY token_expires DESC LIMIT 1`,
-  /** The connection with the first grant naming it: the one created with it. */
+  revokeConnection: sql`UPDATE connections SET revoked_at = ${"at"}, revoked_by = ${"by"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  revokeConnectionGrant: sql`UPDATE grants SET revoked = 1
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"grant"}`,
+  revokeConnectionAgents: sql`UPDATE connection_agents SET revoked_at = ${"at"}, revoked_by = ${"by"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND connection = ${"id"} AND revoked_at IS NULL`,
+  /** The active connection with the first grant naming it: the one created with it. */
   connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.direct, c.claims_max, c.claims_used,
     c.profiles, c.token_ttl_s, c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can
     FROM connections c JOIN grant_principals p ON p.board_id = c.board_id AND p.kind = 'connection' AND p.key = c.id
       JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
-    WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.id = ${"id"} ORDER BY g.id LIMIT 1`,
+    WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.id = ${"id"} AND c.revoked_at IS NULL ORDER BY g.id LIMIT 1`,
 };
 
 /** Reads the next grant ID under the caller's board lock. */
@@ -132,4 +145,13 @@ export function connectionReads(db: Db, dialect: Dialect, scope: BoardScope): Pi
   return {
     connection: (id) => findConnection(db, dialect, scope, id),
   };
+}
+
+/** Folds revocation of the connection, its grant and all its agents in the event's transaction. */
+export async function foldConnectionRevoked(tx: Db, dialect: Dialect, keys: BoardKeys, event: ConnectionRevoked) {
+  const { connection: id, grant } = event.payload;
+  const params = { ...keys, id, at: event.at, by: event.actor };
+  await query(tx, dialect, connectionStatements.revokeConnection, params);
+  await query(tx, dialect, connectionStatements.revokeConnectionGrant, { ...keys, grant });
+  await query(tx, dialect, connectionStatements.revokeConnectionAgents, params);
 }

@@ -120,3 +120,28 @@ export function profileAllowed(patterns: readonly string[], name: string): boole
     return lower.endsWith("*") ? wanted.startsWith(lower.slice(0, -1)) : wanted === lower;
   });
 }
+
+export interface ConnectionRevoked extends Omit<ConnectionCreated, "type" | "payload"> {
+  readonly type: "ob.connection.revoked";
+  readonly payload: { readonly connection: string; readonly grant: number };
+}
+
+/** Records revocation of the connection and the grant it holds as one internal board event. */
+export function decideRevoke(
+  head: number,
+  target: { readonly connection: string; readonly grant: number },
+  { by, now }: { readonly by: Author; readonly now: number },
+): ConnectionRevoked {
+  return {
+    id: head + 1,
+    type: "ob.connection.revoked",
+    at: now,
+    thread: null,
+    message: null,
+    channel: null,
+    actor: by.actor,
+    principal: by.principal,
+    visibility: 2,
+    payload: target,
+  };
+}

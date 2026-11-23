@@ -1,5 +1,11 @@
-import { BoardError, type claimConnection, type createConnection, type refreshAgentToken } from "@openboard/contract";
-import { agents, connections, grants } from "@openboard/core";
+import {
+  BoardError,
+  type claimConnection,
+  type createConnection,
+  type refreshAgentToken,
+  type revokeConnection,
+} from "@openboard/contract";
+import { agents, connections, grants, isoTime } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
 import { mintSecret, SECRET_BYTES } from "../auth/secrets.ts";
 import { reissueToken, TOKEN_SECRET_BYTES } from "../auth/tokens.ts";
@@ -145,4 +151,27 @@ export const refreshAgentTokenHandler: Handler<typeof refreshAgentToken> = async
   });
   const env = { BOARD_URL: ctx.boardUrl, BOARD_TOKEN: minted.token, BOARD_PROFILE: profile };
   return { agent, token: minted.token, env };
+};
+
+export const revokeConnectionHandler: Handler<typeof revokeConnection> = async (ctx, { id }) => {
+  const role = ctx.by[memberOf]?.role;
+  if (ctx.by[credentialKind] === "local") {
+    if (new URL(ctx.boardUrl).pathname !== "/api/local/main") {
+      throw new BoardError("unauthorized", "the credential is not valid on this board");
+    }
+  } else if (role !== "owner" && role !== "admin") {
+    throw new BoardError("forbidden", "only a board owner or organization admin may revoke a connection");
+  }
+  return ctx.board.write(async (writer) => {
+    const record = await writer.connection(id);
+    if (!record) throw new BoardError("not_found", "no such active connection on this board");
+    const now = ctx.now();
+    const event = connections.decideRevoke(
+      writer.head,
+      { connection: id, grant: record.grant.id },
+      { by: ctx.by, now },
+    );
+    await writer.append([event]);
+    return { id, revokedAt: isoTime(now) };
+  });
 };

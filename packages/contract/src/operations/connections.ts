@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import { CanInput, ClaimResult, ConnectionName, CreatedConnection } from "../entities/connections.ts";
-import { defineOperation } from "../operation.ts";
+import { defineOperation, Ref } from "../operation.ts";
 
 /** A profile pattern: a profile name, optionally ending in `*` (`fixer-*`), or `*` for any. */
 const ProfilePattern = Type.String({ pattern: "^(?:\\*|[A-Za-z][A-Za-z0-9-]{0,30}\\*?)$" });
@@ -88,5 +88,21 @@ export const refreshAgentToken = defineOperation({
   cli: false,
   mcp: false,
   why: "`ob connect` stores the token and refreshes it itself; the token it answers should be stored, never printed.",
+  upstream: false,
+});
+
+export const revokeConnection = defineOperation({
+  name: "revokeConnection",
+  summary: "Revoke a connection, its grant and all its claimed agent tokens.",
+  route: { method: "POST", path: "/x/connections/:id/revoke" },
+  scope: "board",
+  input: { params: Type.Object({ id: Ref("connection") }) },
+  output: Type.Object({ id: Type.String(), revokedAt: Type.String() }),
+  errors: ["unauthorized", "forbidden", "not_found"],
+  access: { permission: "manage", channel: "any" },
+  effects: { readOnly: false, idempotent: true, emits: ["ob.connection.revoked"] },
+  cli: { command: ["connections", "revoke"], args: ["id"] },
+  mcp: false,
+  why: "Connection revocation is a board administration command.",
   upstream: false,
 });

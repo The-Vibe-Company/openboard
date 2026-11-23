@@ -55,7 +55,13 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
     }
   });
 
-  test(`${driver}: stores a claimed agent with its connection and token hash, off the feed`, async () => {
+  agentRevocationSuite(driver, open);
+  agentRefreshSuite(driver, open);
+  claimsSuite(driver, open);
+}
+
+function agentRevocationSuite(driver: string, open: OpenStore): void {
+  test(`${driver}: stores and revokes a claimed agent and its connection, off the feed`, async () => {
     const store = await open();
     try {
       const keys = await store.platform().findBoard("local", "main");
@@ -88,12 +94,23 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
       expect(await board.agent(`ag_${"c".repeat(16)}`)).toBeNull();
       const otherOrg = store.board(testScope({ ...keys, orgId: keys.orgId + 1 }));
       expect(await otherOrg.agent(token.id)).toBeNull();
+      await board.write(async (writer) => {
+        const record = await writer.connection(fixers.id);
+        if (!record) throw new Error("connection missing before revocation");
+        await writer.append([
+          connections.decideRevoke(writer.head, { connection: fixers.id, grant: record.grant.id }, { by, now: 2 }),
+        ]);
+        expect(await writer.connection(fixers.id)).toBeNull();
+        expect(await writer.agent(token.id)).toBeNull();
+        expect(await writer.connectionNamed(fixers.name)).toBe(true);
+      });
+      expect(await board.connection(fixers.id)).toBeNull();
+      expect(await board.agent(token.id)).toBeNull();
+      expect(await board.readEvents(0)).toEqual({ head: 3, cursor: 3, events: [] });
     } finally {
       await store.close();
     }
   });
-  agentRefreshSuite(driver, open);
-  claimsSuite(driver, open);
 }
 
 /** A connection keeps how many claims its secret makes, and counts each claim in the claim's write. */
