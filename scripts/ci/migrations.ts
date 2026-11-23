@@ -36,6 +36,27 @@ export function checkMigrationNumbers(files: readonly string[], mainFiles: reado
   return problems;
 }
 
+/**
+ * Applied migrations are immutable: every file on `main` must still exist with the same content.
+ * Values are content fingerprints (git blob ids in CI, raw contents in tests); only equality matters.
+ */
+export function checkAppliedMigrations(
+  working: ReadonlyMap<string, string>,
+  main: ReadonlyMap<string, string>,
+): string[] {
+  const problems: string[] = [];
+  for (const [file, applied] of [...main].sort(([a], [b]) => a.localeCompare(b))) {
+    if (!numberedMigration.test(file)) continue;
+    const current = working.get(file);
+    if (current === undefined) {
+      problems.push(`${file}: migration is applied on main and must not be removed; add a new migration instead`);
+    } else if (current !== applied) {
+      problems.push(`${file}: migration is applied on main and must not be edited; add a new migration instead`);
+    }
+  }
+  return problems;
+}
+
 function workingMigrations(): string[] {
   try {
     return readdirSync(directory, { withFileTypes: true })
@@ -47,23 +68,50 @@ function workingMigrations(): string[] {
   }
 }
 
-function mainMigrations(): string[] {
-  const result = Bun.spawnSync(["git", "ls-tree", "-r", "-z", "--name-only", baseRef, "--", directory]);
+function git(args: string[]): string {
+  const result = Bun.spawnSync(["git", ...args]);
+  if (result.exitCode !== 0) throw new Error(`git ${args[0]} failed: ${result.stderr.toString().trim()}`);
+  return result.stdout.toString();
+}
+
+/** Git blob ids of the working files, hashed with the same filters `git add` would apply. */
+function workingBlobIds(files: readonly string[]): Map<string, string> {
+  if (files.length === 0) return new Map();
+  const ids = git(["hash-object", "--", ...files.map((file) => `${directory}/${file}`)])
+    .trim()
+    .split("\n");
+  return new Map(files.map((file, index) => [file, ids[index] ?? ""]));
+}
+
+/** `main`'s migrations, by file name, with their git blob ids. */
+function mainMigrations(): Map<string, string> {
+  const result = Bun.spawnSync(["git", "ls-tree", "-r", "-z", baseRef, "--", directory]);
   if (result.exitCode !== 0) {
     throw new Error(
       `cannot read ${baseRef}; fetch origin/main before running the migration check: ${result.stderr.toString().trim()}`,
     );
   }
-  return result.stdout
-    .toString()
-    .split("\0")
-    .filter((path) => path.startsWith(`${directory}/`) && !path.slice(directory.length + 1).includes("/"))
-    .map((path) => basename(path));
+  const entries = new Map<string, string>();
+  for (const line of result.stdout.toString().split("\0")) {
+    // "<mode> <type> <object>\t<path>"
+    const tab = line.indexOf("\t");
+    const [, type, object] = line.slice(0, tab).split(" ");
+    const path = line.slice(tab + 1);
+    if (type !== "blob" || object === undefined) continue;
+    if (!path.startsWith(`${directory}/`) || path.slice(directory.length + 1).includes("/")) continue;
+    entries.set(basename(path), object);
+  }
+  return entries;
 }
 
 if (import.meta.main) {
   try {
-    const problems = checkMigrationNumbers(workingMigrations(), mainMigrations());
+    const files = workingMigrations();
+    const main = mainMigrations();
+    const problems = [
+      ...checkMigrationNumbers(files, [...main.keys()]),
+      ...checkAppliedMigrations(workingBlobIds(files), main),
+    ];
     for (const problem of problems) process.stderr.write(`${directory}: ${problem}\n`);
     process.exitCode = problems.length > 0 ? 1 : 0;
   } catch (error) {
