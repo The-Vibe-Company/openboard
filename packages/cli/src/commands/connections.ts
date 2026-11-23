@@ -61,7 +61,8 @@ function createSecretFile(path: string): number {
 
 /**
  * `ob connections create`: the board answers the secret once; it goes to `--secret-file` (mode 0600), never to the
- * terminal. The file is made before the request, so a connection is never created with nowhere to keep its secret.
+ * terminal. The file is made before the request, so a connection is never created with nowhere to keep its secret,
+ * and it is removed only when the board refused, never once the connection exists.
  */
 export const createConnectionCommand: Command = {
   words: ["connections", "create"],
@@ -72,13 +73,16 @@ export const createConnectionCommand: Command = {
     let created: Awaited<ReturnType<typeof ctx.client.createConnection>>;
     try {
       created = await ctx.client.createConnection({ name: options.name, can: options.can, direct: options.direct });
-      writeSync(fd, `${created.secret}\n`);
     } catch (error) {
       closeSync(fd);
       unlinkSync(options.secretFile);
       throw error;
     }
-    closeSync(fd);
+    try {
+      writeSync(fd, `${created.secret}\n`);
+    } finally {
+      closeSync(fd);
+    }
     const { connection, env } = created;
     if (ctx.json) {
       const shown = { connection, env: { BOARD_URL: env.BOARD_URL }, secretFile: options.secretFile };

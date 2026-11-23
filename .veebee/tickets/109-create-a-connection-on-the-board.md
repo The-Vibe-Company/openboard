@@ -47,7 +47,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [38, 43]
-status: claimed
+status: done
 claimed_by: claude-opus-ticket-109
 issue: 109
 ---
@@ -56,7 +56,7 @@ issue: 109
 As a board owner, I create a connection an agent will use, with what it may do on the board.
 
 ## Done when
-- [ ] `ob connections create laptop --direct --can '*=all' --secret-file ./laptop.secret` writes an `obc_…` secret to `./laptop.secret` with mode `0600`, prints the connection's ID and `BOARD_URL`, and never prints the secret
+- [x] `ob connections create laptop --direct --can '*=all' --secret-file ./laptop.secret` writes an `obc_…` secret to `./laptop.secret` with mode `0600`, prints the connection's ID and `BOARD_URL`, and never prints the secret
 
 ## Out of scope
 - Using the secret (110); claims (117); revoke, rotate, list (128, 130, 131).
