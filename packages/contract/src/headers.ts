@@ -8,7 +8,9 @@ const NAME = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
 /** RFC 8941 tokens, parameter keys, and the numbers, byte sequences and booleans a parameter may hold. */
 const TOKEN = /^[A-Za-z*][!#$%&'*+\-.^_`|~0-9A-Za-z:/]*/;
 const KEY = /^[a-z*][a-z0-9_\-.*]*/;
-const NUMBER = /^-?\d{1,15}(?:\.\d{1,3})?/;
+/** RFC 8941 numbers: an integer of up to 15 digits, a decimal of up to 12 before the point and 3 after it. */
+const DECIMAL = /^-?\d{1,12}\.\d{1,3}(?![0-9.])/;
+const INTEGER = /^-?\d{1,15}(?![0-9.])/;
 const BYTES = /^:[A-Za-z0-9+/=]*:/;
 const BOOLEAN = /^\?[01]/;
 /** Longer than any name with an avatar URL needs; refused before parsing so a long header costs nothing. */
@@ -50,7 +52,7 @@ function bareItem(rest: string): [string | boolean, string] {
   if (rest.startsWith('"')) return sfString(rest);
   const bool = BOOLEAN.exec(rest)?.[0];
   if (bool) return [bool === "?1", rest.slice(2)];
-  const match = (TOKEN.exec(rest) ?? NUMBER.exec(rest) ?? BYTES.exec(rest))?.[0];
+  const match = (TOKEN.exec(rest) ?? DECIMAL.exec(rest) ?? INTEGER.exec(rest) ?? BYTES.exec(rest))?.[0];
   if (!match) throw invalid("expected a name, a string, a number, a byte sequence or a boolean");
   return [match, rest.slice(match.length)];
 }
@@ -87,7 +89,11 @@ function avatarParameter(rest: string): string | null {
   return avatar === null ? null : avatarUrl(avatar);
 }
 
-/** Reads `x-board-profile` as an RFC 8941 Item whose value is a profile name; anything else is 400 `invalid_profile`. */
+/**
+ * Reads `x-board-profile` as an RFC 8941 Item whose value is a profile name; anything else is 400 `invalid_profile`
+ * (docs/protocol.md "Request headers"). A header that names nothing — empty or only spaces — is refused rather than
+ * taken as "no profile": a caller that sends the header means to be a profile, and the board does not guess which.
+ */
 export function parseProfileHeader(value: string): ProfileHeader {
   if (value.length > HEADER_MAX) throw invalid(`longer than ${HEADER_MAX} characters`);
   let start = 0;
