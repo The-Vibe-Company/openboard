@@ -61,6 +61,28 @@ export function orgsSuite(driver: string, open: OpenStore): void {
     expect(await store.platform().memberships(`u_${"c".repeat(16)}`)).toEqual([]);
   });
 
+  test(`${driver}: concurrent organization creation gives a person only one membership`, async () => {
+    store = await open();
+    const ada = await person(store, "ada", "a");
+    const platform = store.platform();
+    const results = await Promise.all(
+      ["acme", "beta"].map(async (slug) => {
+        try {
+          await platform.createOrg(acme(ada, slug));
+          return { slug, code: "created" };
+        } catch (error) {
+          expect(error).toMatchObject({ code: "already_in_org" });
+          return { slug, code: "already_in_org" };
+        }
+      }),
+    );
+    expect(results.map(({ code }) => code).sort()).toEqual(["already_in_org", "created"]);
+    const [membership] = await platform.memberships(ada);
+    expect(membership?.org.slug).toBe(results.find(({ code }) => code === "created")?.slug);
+    const refused = results.find(({ code }) => code === "already_in_org");
+    expect(await platform.findBoard(refused?.slug ?? "", "main")).toBeNull();
+  });
+
   test(`${driver}: an organization whose slug is taken is not created, and nothing of it is kept`, async () => {
     store = await open();
     const ada = await person(store, "ada", "a");

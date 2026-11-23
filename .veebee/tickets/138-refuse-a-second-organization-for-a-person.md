@@ -4,6 +4,7 @@ title: Refuse a second organization for a person
 milestone: M4-accounts-organizations-and-auth
 package: server
 writes:
+  - docs/auth.md
   - packages/contract/src/operations/orgs.ts
   - packages/server/src/operations/orgs.ts
   - packages/driver-sql/src/views/orgs.ts
@@ -13,8 +14,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [137]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 139
 ---
 
@@ -22,7 +23,7 @@ issue: 139
 As a person who already belongs to an organization, I cannot create another one in v1.
 
 ## Done when
-- [ ] the owner of `acme` creating `beta` answers 409 `already_in_org`
+- [x] the owner of `acme` creating `beta` answers 409 `already_in_org`
 
 ## Out of scope
 - Accepting an invitation elsewhere (145).
