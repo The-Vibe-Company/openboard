@@ -1,5 +1,6 @@
 import { postgresText } from "./db.ts";
 import { render } from "./sql.ts";
+import { actorStatements } from "./views/actors.ts";
 import { boardPlatformStatements, boardStatements } from "./views/boards.ts";
 import { channelStatements } from "./views/channels.ts";
 import { connectionStatements } from "./views/connections.ts";
@@ -15,6 +16,7 @@ import { threadStatements } from "./views/threads.ts";
 export const statements: Readonly<Record<string, string>> = Object.freeze(
   Object.fromEntries(
     Object.entries({
+      ...actorStatements,
       ...boardStatements,
       ...channelStatements,
       ...connectionStatements,

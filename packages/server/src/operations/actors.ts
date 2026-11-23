@@ -1,4 +1,5 @@
-import { BoardError, type getMe, type OutputOf } from "@openboard/contract";
+import { BoardError, type getMe, type listActors, type OutputOf } from "@openboard/contract";
+import { formatId } from "@openboard/core";
 import { authorOf } from "../auth/author.ts";
 import { credentialKind, type Principal } from "../deps.ts";
 import type { BoardContext, Handler } from "./index.ts";
@@ -46,4 +47,10 @@ export const getMeHandler: Handler<typeof getMe> = async ({ board, by }) => {
     can: { "*": ["read", "post", "react", "label", "sync", "manage"] },
     openboard: { ...BOARD, role: "owner", credential },
   };
+};
+
+/** Every actor the board has seen write, by handle; the cursor is the board head the list was read at. */
+export const listActorsHandler: Handler<typeof listActors> = async (ctx) => {
+  const { actors, head } = await ctx.board.listActors();
+  return { actors, cursor: formatId(head) };
 };

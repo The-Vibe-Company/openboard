@@ -63,6 +63,7 @@ test("keeps a posted message and the migration records on reopen", async () => {
       expect(database.query("SELECT version, applied_at FROM schema_migrations").all()).toEqual([
         { version: 1, applied_at: 100 },
         { version: 2, applied_at: 100 },
+        { version: 3, applied_at: 100 },
       ]);
     } finally {
       database.close();
