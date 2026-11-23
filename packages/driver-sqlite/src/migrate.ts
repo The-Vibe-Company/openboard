@@ -7,17 +7,16 @@ export function migrate(database: Database, migrations: readonly Migration[], no
   database.run(
     "CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL) STRICT",
   );
-  const applied = new Set(
-    database
-      .query<{ version: number }, []>("SELECT version FROM schema_migrations")
-      .all()
-      .map((row) => row.version),
+  const applied = database.query<{ version: number }, [number]>(
+    "SELECT version FROM schema_migrations WHERE version = ?",
   );
   for (const migration of migrations) {
-    if (applied.has(migration.version)) continue;
-    database.transaction(() => {
-      database.run(renderDdl(migration.sql));
-      database.run("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)", [migration.version, now]);
-    })();
+    database
+      .transaction(() => {
+        if (applied.get(migration.version)) return;
+        database.run(renderDdl(migration.sql));
+        database.run("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)", [migration.version, now]);
+      })
+      .immediate();
   }
 }
