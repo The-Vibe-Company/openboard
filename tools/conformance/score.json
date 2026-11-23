@@ -2,7 +2,9 @@
   "local": [
     "core/answers 400 for a request that does not validate",
     "core/answers 404 for an ID that names nothing",
+    "core/creates a channel only once: one a post made is there already",
     "core/ignores x-board-session: who writes is the principal and its profile",
+    "core/lists channels a page at a time, and the ones under a prefix",
     "core/posts a message, and reads it back by its ID",
     "core/puts a reply in its root's thread",
     "core/reads one channel's messages after a cursor of its own, oldest first, and on from where it stopped",

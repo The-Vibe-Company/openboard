@@ -123,7 +123,27 @@ test("creates and lists an empty channel, with one log position for concurrent c
   }
 });
 
-test.each([{ path: "Bad Path" }, { path: "dev/alerts", private: true }])(
+test("creating a channel opened by a post returns its counts without advancing the cursor", async () => {
+  const app = makeApp();
+  try {
+    const path = "dev";
+    await postTo(app, [path]);
+    const channel = { path, lastIndex: 1, messages: 1, threads: 1 };
+
+    const response = await call(app, "POST", "/channels", { path });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ channel, created: false });
+    expect(await (await call(app, "GET", "/channels")).json()).toEqual({
+      channels: [channel],
+      cursor: "1",
+      next: null,
+    });
+  } finally {
+    await app.close();
+  }
+});
+
+test.each([{ path: "Not A Channel" }, { path: "dev/alerts", private: true }])(
   "rejects an invalid channel creation body %j",
   async (body) => {
     const app = makeApp();
