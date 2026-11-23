@@ -5,8 +5,8 @@ const tenant = Type.Object({ slug: Type.String(), name: Type.String() });
 
 export const Me = Type.Object({
   ...Author.properties,
-  /** `person` for the local owner; `connection` for a connection's secret (docs/auth.md "Connections"). */
-  kind: Type.Union([Type.Literal("person"), Type.Literal("connection")]),
+  /** Upstream's actor kinds: `person` for the local owner; `workflow` for a connection's secret (D45). */
+  kind: Type.Union([Type.Literal("person"), Type.Literal("workflow")]),
   handle: Type.String(),
   name: Type.String(),
   avatar: Type.Null(),

@@ -16,7 +16,7 @@ async function connectionMe(board: BoardContext["board"], by: Principal): Promis
   return {
     actor,
     principal,
-    kind: "connection",
+    kind: "workflow",
     handle: name,
     name,
     avatar: null,

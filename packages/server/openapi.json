@@ -448,7 +448,7 @@
                     "principal": { "type": "string" },
                     "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                     "kind": {
-                      "anyOf": [{ "const": "person", "type": "string" }, { "const": "connection", "type": "string" }]
+                      "anyOf": [{ "const": "person", "type": "string" }, { "const": "workflow", "type": "string" }]
                     },
                     "handle": { "type": "string" },
                     "name": { "type": "string" },

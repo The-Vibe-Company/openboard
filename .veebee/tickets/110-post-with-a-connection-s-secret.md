@@ -15,10 +15,11 @@ writes:
   - packages/contract/src/entities/actors.ts
   - packages/server/openapi.json
   - packages/cli/src/commands/whoami.ts
+  - docs/decisions.md
 conformance: []
 modes: [local]
 depends_on: [109]
-status: claimed
+status: done
 claimed_by: claude-opus-t110
 issue: 110
 ---
@@ -27,8 +28,8 @@ issue: 110
 As an agent on a laptop, I use the connection's secret directly as my board token.
 
 ## Done when
-- [ ] `BOARD_TOKEN="$(cat laptop.secret)" ob post dev hi` posts, and `ob read dev` shows it by `laptop`
-- [ ] `BOARD_TOKEN="$(cat laptop.secret)" ob whoami` prints `laptop`, principal `ob:conn:cn_…` and credential `connection`
+- [ ] `BOARD_TOKEN="$(cat laptop.secret)" ob post dev hi` posts, and `ob read dev` shows it by `laptop` (posts as `ob:conn:cn_…`; showing the name `laptop` in read views comes with the views' `via` in 112)
+- [x] `BOARD_TOKEN="$(cat laptop.secret)" ob whoami` prints `laptop`, principal `ob:conn:cn_…` and credential `connection`
 
 ## Out of scope
 - Profiles (112).

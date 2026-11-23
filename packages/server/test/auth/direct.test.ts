@@ -45,7 +45,7 @@ test("GET /me with a direct secret names the connection and its grant", async ()
   expect(await response.json()).toEqual({
     actor: principal,
     principal,
-    kind: "connection",
+    kind: "workflow",
     handle: "laptop",
     name: "laptop",
     avatar: null,
