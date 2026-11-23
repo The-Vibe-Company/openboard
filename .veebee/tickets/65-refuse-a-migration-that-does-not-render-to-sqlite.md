@@ -4,13 +4,23 @@ title: Refuse a migration that does not render to SQLite
 milestone: M1-walking-skeleton
 package: tools
 writes:
+  - bun.lock
+  - package.json
+  - docs/codebase.md
+  - packages/driver-sqlite/package.json
+  - scripts/ci/boundaries.json
+  - scripts/ci/boundaries.ts
+  - scripts/ci/boundaries/graph.ts
+  - scripts/ci/boundaries/types.ts
+  - scripts/ci/fixtures/boundaries/driver/driver.test.ts
+  - scripts/ci/migrations-sql.ts
   - scripts/ci/migrations.ts
   - scripts/ci/fixtures/migrations/render/**
 conformance: []
 modes: [local]
 depends_on: [31, 39]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t65
 issue: 65
 ---
 

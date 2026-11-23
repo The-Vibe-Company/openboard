@@ -65,8 +65,8 @@ export interface ConnectionRecord {
 export interface BoardView {
   /** Locks the board, runs `fn`, and commits what it appended, or rolls everything back if it throws. */
   write<T>(fn: (writer: BoardWriter) => Promise<T>): Promise<T>;
-  /** The channel's first `limit` messages after `after`, or without it its latest `limit`, oldest first. */
-  channelMessages(query: ChannelMessagesQuery): Promise<Message[]>;
+  /** The channel's first `limit` messages after `after`, or its latest `limit`, oldest first. Null if `after` exceeds the board head. */
+  channelMessages(query: ChannelMessagesQuery): Promise<Message[] | null>;
   /** The connection of this board with the ID, or null when the board has none with it. */
   connection(id: string): Promise<ConnectionRecord | null>;
   /** The first `limit` channels the query selects, by path, with their counts and the board head at the time of the read. */

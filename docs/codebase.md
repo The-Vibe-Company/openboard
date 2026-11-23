@@ -183,6 +183,7 @@ An entry means "may import". Anything not listed is forbidden. The table lists d
 Universal rules:
 - **`driver-sql` is imported only by `driver-sqlite` and `driver-postgres`.**
 - **Drivers are imported only by composition roots**: `apps/openboard/src/compose.ts`, `packages/server/test/support/drivers.ts`, `tools/conformance/src/drivers.ts`, `tools/bench/src/drivers.ts`, and each driver's own tests. Any other file importing `@openboard/driver-*` fails CI.
+- **CI renderer exception:** `scripts/ci/migrations.ts` can import the pure `@openboard/driver-sqlite/ddl` subpath.
 - **No SQL outside a driver** (section 3.2).
 - Nothing imports `examples/*`. Only `tools/conformance` imports `@vercel/board`, never at runtime.
 - No workspace imports another workspace's files by relative path; only package names and declared entry points.

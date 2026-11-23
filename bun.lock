@@ -6,6 +6,7 @@
       "name": "openboard",
       "devDependencies": {
         "@biomejs/biome": "2.5.15",
+        "@openboard/driver-sqlite": "workspace:*",
         "@openboard/server": "workspace:*",
         "oxlint": "1.94.0",
         "typescript": "7.0.2",
@@ -124,7 +125,6 @@
       "name": "@openboard/bench",
       "version": "0.0.0",
       "devDependencies": {
-        "@openboard/contract": "workspace:*",
         "@openboard/driver-sqlite": "workspace:*",
         "@openboard/server": "workspace:*",
         "@types/bun": "1.4.5",

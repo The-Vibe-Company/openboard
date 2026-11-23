@@ -9,7 +9,6 @@
     "test": "bun test --pass-with-no-tests"
   },
   "devDependencies": {
-    "@openboard/contract": "workspace:*",
     "@openboard/driver-sqlite": "workspace:*",
     "@openboard/server": "workspace:*",
     "@types/bun": "1.4.5"

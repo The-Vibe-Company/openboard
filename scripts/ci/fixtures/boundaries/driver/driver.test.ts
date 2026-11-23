@@ -2,7 +2,8 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { checkBoundaries, loadConfig } from "../../../boundaries.ts";
+import { checkCiDriverImports } from "../../../boundaries/graph.ts";
+import { checkBoundaries, findWorkspaces, loadConfig } from "../../../boundaries.ts";
 
 const config = await loadConfig(join(import.meta.dir, "../../../boundaries.json"));
 const roots: string[] = [];
@@ -89,5 +90,24 @@ test("refuses a subpath import of the Postgres driver outside a composition root
   const found = await messages(await fixtures("refused", ["apps/openboard/src/postgres-subpath.ts"]));
   expect(found).toEqual([
     `apps/openboard/src/postgres-subpath.ts: openboard -> driver-postgres (@openboard/driver-postgres/src/open) is a driver import outside a composition root; only ${ROOTS} and the driver's own workspace may import a driver`,
+  ]);
+});
+
+test("allows only the exact SQLite renderer import from the migration lint file", async () => {
+  const root = await sandbox({
+    "scripts/ci/migrations.ts": `
+      import { renderDdl } from "@openboard/driver-sqlite/ddl";
+      import { sqliteDriver } from "@openboard/driver-sqlite";
+      import { Database } from "bun:sqlite";
+    `,
+    "scripts/ci/other.ts": 'import { renderDdl } from "@openboard/driver-sqlite/ddl";',
+    "scripts/ci/relative.ts": 'import { renderDdl } from "../../packages/driver-sqlite/src/ddl.ts";',
+  });
+  const violations = await checkCiDriverImports(root, config, await findWorkspaces(root));
+  expect(violations.map(({ file, message }) => [file, message.match(/\(([^)]+)\)/u)?.[1]])).toEqual([
+    ["scripts/ci/migrations.ts", "@openboard/driver-sqlite"],
+    ["scripts/ci/migrations.ts", "bun:sqlite"],
+    ["scripts/ci/other.ts", "@openboard/driver-sqlite/ddl"],
+    ["scripts/ci/relative.ts", "../../packages/driver-sqlite/src/ddl.ts"],
   ]);
 });

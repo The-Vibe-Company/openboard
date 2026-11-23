@@ -25,8 +25,13 @@ export const messageStatements = {
     WHERE board_id = ${"boardId"} AND id = ${"id"}`,
   channelMessages: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND channel = ${"channel"}
     ORDER BY id DESC LIMIT ${"limit"}`,
-  channelMessagesAfter: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND channel = ${"channel"}
-    AND id > ${"after"} ORDER BY id LIMIT ${"limit"}`,
+  // Bound the page with the channel index before joining it to the board head from the same snapshot.
+  channelMessagesAfter: sql`WITH page AS (
+    SELECT id, view FROM messages WHERE board_id = ${"boardId"} AND org_id = ${"orgId"} AND channel = ${"channel"}
+      AND id > ${"after"} ORDER BY id LIMIT ${"limit"}
+  )
+    SELECT b.head, p.view FROM boards b LEFT JOIN page p ON p.id <= b.head
+    WHERE b.id = ${"boardId"} AND b.org_id = ${"orgId"} ORDER BY p.id`,
 };
 
 /**
@@ -122,8 +127,15 @@ export function boardView(db: Db, dialect: Dialect, scope: BoardScope): Pick<Boa
     async channelMessages({ channel, after, limit }) {
       const params = { boardId: keys.boardId, channel, limit };
       if (after !== undefined) {
-        const rows = await query(db, dialect, messageStatements.channelMessagesAfter, { ...params, after });
-        return rows.map((row) => JSON.parse(String(row.view)) as Message);
+        const rows = await query(db, dialect, messageStatements.channelMessagesAfter, {
+          ...params,
+          orgId: keys.orgId,
+          after,
+        });
+        const first = rows[0];
+        if (!first) throw new Error("the scoped board is missing");
+        if (after > Number(first.head)) return null;
+        return rows.filter((row) => row.view !== null).map((row) => JSON.parse(String(row.view)) as Message);
       }
       const rows = await query(db, dialect, messageStatements.channelMessages, params);
       return rows.map((row) => JSON.parse(String(row.view)) as Message).reverse();

@@ -7,7 +7,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { checkDenyTerms } from "./boundaries/deny.ts";
-import { checkBoundaries, checkConfig } from "./boundaries/graph.ts";
+import { checkBoundaries, checkCiDriverImports, checkConfig } from "./boundaries/graph.ts";
 import { checkManifests } from "./boundaries/manifest.ts";
 import { checkSql } from "./boundaries/sql.ts";
 import { checkStore } from "./boundaries/store.ts";
@@ -33,6 +33,7 @@ async function main(): Promise<number> {
   const violations = [
     ...checkConfig(config, workspaces),
     ...(await checkBoundaries(root, config)),
+    ...(await checkCiDriverImports(root, config, workspaces)),
     ...(await checkManifests(root, config)),
     ...(await checkDenyTerms(root, config)),
     ...(await checkSql(root, workspaces)),
