@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [117]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-127
 issue: 128
 ---
 

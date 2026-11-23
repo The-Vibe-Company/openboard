@@ -46,6 +46,7 @@ export {
   operations,
   postMessage,
   readEvents,
+  readPost,
   readThread,
 } from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

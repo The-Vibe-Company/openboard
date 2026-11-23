@@ -1,6 +1,8 @@
 import { BoardError, createClient } from "@the-vibe-company/openboard";
 import {
   type Command,
+  type ConnectContext,
+  connectCommand,
   createConnectionCommand,
   derivedCommands,
   messagesCommand,
@@ -15,9 +17,11 @@ import { consoleOutput, type Output, printError } from "./output.ts";
 export interface CliOptions {
   readonly output?: Output;
   readonly fetch?: (request: Request) => Promise<Response>;
+  readonly readStdin?: () => string;
 }
 
-const commands: readonly Command[] = [
+const commands: readonly (Command | typeof connectCommand)[] = [
+  connectCommand,
   createConnectionCommand,
   readCommand,
   messagesCommand,
@@ -26,14 +30,14 @@ const commands: readonly Command[] = [
   ...derivedCommands,
 ];
 
-function find(words: readonly string[]): Command | undefined {
+function find(words: readonly string[]): Command | typeof connectCommand | undefined {
   return commands
     .filter((command) => command.words.every((word, at) => words[at] === word))
     .sort((a, b) => b.words.length - a.words.length)[0];
 }
 
 function usage(output: Output, problem: string): number {
-  output.err(problem);
+  output.err(`error: invalid_request: ${problem}`);
   for (const command of commands) output.err(`  ${command.usage}`);
   return 2;
 }
@@ -67,22 +71,27 @@ export async function runCli(
     output.out(command.usage);
     return 0;
   }
-  const config = clientConfig(env);
-  const profile = picked.profile ?? config.profile;
-  if (!config.boardUrl) return usage(output, "BOARD_URL is not set: point it at a board, as `ob serve` prints it");
-  if (!/^https?:$/.test(URL.parse(config.boardUrl)?.protocol ?? "")) {
-    return usage(output, `BOARD_URL is not an http(s) URL: ${config.boardUrl}`);
-  }
-  const client = createClient({
-    url: config.boardUrl,
-    ...(config.token === undefined ? {} : { token: config.token }),
-    ...(profile === undefined ? {} : { profile }),
-    ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
-  });
   try {
     const optionsEnd = Math.max(0, commandWords.length - command.words.length);
     const args = words.slice(command.words.length);
-    return await command.run({ client, boardUrl: config.boardUrl, args, optionsEnd, json, output });
+    const context = { args, optionsEnd, json, output };
+    if ("standalone" in command) {
+      const connectContext: ConnectContext = { ...context, env, profile: picked.profile, options };
+      return await command.run(connectContext);
+    }
+    const config = clientConfig(env);
+    const profile = picked.profile ?? config.profile;
+    if (!config.boardUrl) return usage(output, "BOARD_URL is not set: point it at a board, as `ob serve` prints it");
+    if (!/^https?:$/.test(URL.parse(config.boardUrl)?.protocol ?? "")) {
+      return usage(output, "BOARD_URL is not an http(s) URL");
+    }
+    const client = createClient({
+      url: config.boardUrl,
+      ...(config.token === undefined ? {} : { token: config.token }),
+      ...(profile === undefined ? {} : { profile }),
+      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+    });
+    return await command.run({ ...context, client, boardUrl: config.boardUrl });
   } catch (error) {
     if (error instanceof Misuse) return usage(output, `${error.message}: ${command.usage}`);
     if (!(error instanceof BoardError)) throw error;

@@ -1,4 +1,13 @@
-import type { Actor, Channel, ClaimedAgent, Connection, Message, Thread, ThreadSummary } from "@openboard/contract";
+import type {
+  Actor,
+  Author,
+  Channel,
+  ClaimedAgent,
+  Connection,
+  Message,
+  Thread,
+  ThreadSummary,
+} from "@openboard/contract";
 import type { BoardEvent, Grant, MessagePosted, messages } from "@openboard/core";
 
 declare const minted: unique symbol;
@@ -88,6 +97,8 @@ export interface BoardView {
   listActors(): Promise<{ actors: Actor[]; head: number }>;
   /** The channel's first `limit` messages after `after`, or its latest `limit`, oldest first. Null if `after` exceeds the board head. */
   channelMessages(query: ChannelMessagesQuery): Promise<Message[] | null>;
+  /** The author's post by client ID, as it landed, or null if it is missing or belongs to another author. */
+  ownClientPost(clientId: string, by: Author): Promise<Message | null>;
   /** The agent of this board with the ID, or null when the board has none with it. */
   agent(id: string): Promise<AgentRecord | null>;
   /** The connection of this board with the ID, or null when the board has none with it. */

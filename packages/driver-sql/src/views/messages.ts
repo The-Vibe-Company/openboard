@@ -27,6 +27,8 @@ export const messageStatements = {
   replyTarget: sql`SELECT id, channel, COALESCE(re, id) AS thread FROM messages
     WHERE board_id = ${"boardId"} AND id = ${"id"}`,
   clientPost: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND client_id = ${"clientId"}`,
+  ownClientPost: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND org_id = ${"orgId"}
+    AND client_id = ${"clientId"} AND principal = ${"principal"} AND actor = ${"actor"}`,
   channelMessages: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND channel = ${"channel"}
     ORDER BY id DESC LIMIT ${"limit"}`,
   // Bound the page with the channel index before joining it to the board head from the same snapshot.
@@ -128,7 +130,11 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor:
 }
 
 /** One board's view: every statement binds the scope's keys, and a view cannot name another tenant. */
-export function boardView(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "write" | "channelMessages"> {
+export function boardView(
+  db: Db,
+  dialect: Dialect,
+  scope: BoardScope,
+): Pick<BoardView, "write" | "channelMessages" | "ownClientPost"> {
   const keys: BoardKeys = { orgId: scope.orgId, boardId: scope.boardId };
   return {
     write: (fn, as) =>
@@ -137,6 +143,11 @@ export function boardView(db: Db, dialect: Dialect, scope: BoardScope): Pick<Boa
         const { head, actor } = await lockBoardAs(tx, dialect, keys, as);
         return fn(writer(tx, dialect, keys, head, actor));
       }),
+    async ownClientPost(clientId, { actor, principal }) {
+      if (clientId.includes("\0")) return null;
+      const [row] = await query(db, dialect, messageStatements.ownClientPost, { ...keys, clientId, actor, principal });
+      return row ? (JSON.parse(String(row.view)) as Message) : null;
+    },
     async channelMessages({ channel, after, limit }) {
       const params = { boardId: keys.boardId, channel, limit };
       if (after !== undefined) {

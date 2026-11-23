@@ -10,7 +10,12 @@ export const whoamiCommand: Command = {
       ctx.output.out(JSON.stringify(me, null, 2));
     } else {
       const { org, board, role, credential } = me.openboard;
-      ctx.output.out(`${me.name} (${me.actor}) via ${credential}`);
+      if (credential === "agent") {
+        const connection = me.handle.split("/")[0];
+        ctx.output.out(`${me.name} via ${connection} (credential: agent)`);
+      } else {
+        ctx.output.out(`${me.name} (${me.actor}) via ${credential}`);
+      }
       ctx.output.out(`org     ${org.slug}${role === null ? "" : ` (${role})`}`);
       ctx.output.out(`board   ${board.slug}  ${ctx.boardUrl}`);
       for (const [pattern, permissions] of Object.entries(me.can)) {

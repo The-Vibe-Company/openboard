@@ -99,6 +99,9 @@ function clientIdsSuite(driver: string, open: OpenStore): void {
         Promise.all([writer.clientPost("deploy-1"), writer.clientPost("deploy-2")]),
       );
       expect(found).toEqual([landed, null]);
+      expect(await board.ownClientPost("deploy-1", by)).toEqual(landed);
+      expect(await board.ownClientPost("deploy-2", by)).toBeNull();
+      expect(await board.ownClientPost("deploy-1", { ...by, actor: `${by.actor}+bot`, profile: "bot" })).toBeNull();
     });
   });
 }
