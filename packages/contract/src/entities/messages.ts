@@ -25,6 +25,23 @@ export const Author = Type.Object({
   profile: Type.Union([Type.String(), Type.Null()]),
 });
 
+/** Upstream's actor kinds an OpenBoard credential writes as: a person, a connection (D45), or a profile of either. */
+export const ActorKind = Type.Union([Type.Literal("person"), Type.Literal("workflow"), Type.Literal("agent")]);
+
+/**
+ * Who wrote a message, for people to read (upstream's `author`): a profile shows through its principal, `via`, as
+ * "fixer-2 via laptop".
+ */
+export const MessageAuthor = Type.Object({
+  id: Type.String(),
+  kind: ActorKind,
+  handle: Type.String(),
+  name: Type.String(),
+  avatar: Type.Union([Type.String(), Type.Null()]),
+  via: Type.Optional(Type.Object({ name: Type.String(), environment: Type.Null() })),
+});
+export type MessageAuthor = Static<typeof MessageAuthor>;
+
 /** A message as the board answers it (upstream `MessageView`); IDs are decimal strings. */
 export const Message = Type.Object({
   id: Type.String(),
@@ -47,7 +64,7 @@ export const Message = Type.Object({
   links: Type.Array(Type.Unknown()),
   version: Type.Integer(),
   revision: Type.Integer(),
-  author: Type.Null(),
+  author: Type.Union([MessageAuthor, Type.Null()]),
   blocks: Type.Array(Type.Unknown()),
 });
 export type Message = Static<typeof Message>;

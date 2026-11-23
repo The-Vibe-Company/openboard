@@ -141,11 +141,15 @@
             }
           },
           "400": {
-            "description": "invalid_request",
+            "description": "invalid_request, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
             "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
@@ -224,11 +228,15 @@
             }
           },
           "400": {
-            "description": "invalid_request",
+            "description": "invalid_request, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
             "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
@@ -358,7 +366,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, invalid_grant, grant_empty",
+            "description": "invalid_request, invalid_grant, grant_empty, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
@@ -448,7 +456,11 @@
                     "principal": { "type": "string" },
                     "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                     "kind": {
-                      "anyOf": [{ "const": "person", "type": "string" }, { "const": "workflow", "type": "string" }]
+                      "anyOf": [
+                        { "const": "person", "type": "string" },
+                        { "const": "workflow", "type": "string" },
+                        { "const": "agent", "type": "string" }
+                      ]
                     },
                     "handle": { "type": "string" },
                     "name": { "type": "string" },
@@ -498,11 +510,15 @@
             }
           },
           "400": {
-            "description": "invalid_request",
+            "description": "invalid_request, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
             "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
@@ -675,7 +691,33 @@
                           "links": { "type": "array", "items": {} },
                           "version": { "type": "integer" },
                           "revision": { "type": "integer" },
-                          "author": { "type": "null" },
+                          "author": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": ["id", "kind", "handle", "name", "avatar"],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "kind": {
+                                    "anyOf": [
+                                      { "const": "person", "type": "string" },
+                                      { "const": "workflow", "type": "string" },
+                                      { "const": "agent", "type": "string" }
+                                    ]
+                                  },
+                                  "handle": { "type": "string" },
+                                  "name": { "type": "string" },
+                                  "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "via": {
+                                    "type": "object",
+                                    "required": ["name", "environment"],
+                                    "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                                  }
+                                }
+                              },
+                              { "type": "null" }
+                            ]
+                          },
                           "blocks": { "type": "array", "items": {} }
                         }
                       }
@@ -687,11 +729,15 @@
             }
           },
           "400": {
-            "description": "invalid_request, invalid_cursor",
+            "description": "invalid_request, invalid_cursor, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
             "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
@@ -803,7 +849,33 @@
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "revision": { "type": "integer" },
-                        "author": { "type": "null" },
+                        "author": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": ["id", "kind", "handle", "name", "avatar"],
+                              "properties": {
+                                "id": { "type": "string" },
+                                "kind": {
+                                  "anyOf": [
+                                    { "const": "person", "type": "string" },
+                                    { "const": "workflow", "type": "string" },
+                                    { "const": "agent", "type": "string" }
+                                  ]
+                                },
+                                "handle": { "type": "string" },
+                                "name": { "type": "string" },
+                                "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                "via": {
+                                  "type": "object",
+                                  "required": ["name", "environment"],
+                                  "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                                }
+                              }
+                            },
+                            { "type": "null" }
+                          ]
+                        },
                         "blocks": { "type": "array", "items": {} }
                       }
                     }
@@ -813,11 +885,15 @@
             }
           },
           "400": {
-            "description": "invalid_request, reserved_label",
+            "description": "invalid_request, reserved_label, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
             "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
@@ -940,7 +1016,36 @@
                               "links": { "type": "array", "items": {} },
                               "version": { "type": "integer" },
                               "revision": { "type": "integer" },
-                              "author": { "type": "null" },
+                              "author": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": ["id", "kind", "handle", "name", "avatar"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "kind": {
+                                        "anyOf": [
+                                          { "const": "person", "type": "string" },
+                                          { "const": "workflow", "type": "string" },
+                                          { "const": "agent", "type": "string" }
+                                        ]
+                                      },
+                                      "handle": { "type": "string" },
+                                      "name": { "type": "string" },
+                                      "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "via": {
+                                        "type": "object",
+                                        "required": ["name", "environment"],
+                                        "properties": {
+                                          "name": { "type": "string" },
+                                          "environment": { "type": "null" }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  { "type": "null" }
+                                ]
+                              },
                               "blocks": { "type": "array", "items": {} }
                             }
                           },
@@ -1015,7 +1120,36 @@
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "revision": { "type": "integer" },
-                                  "author": { "type": "null" },
+                                  "author": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": ["id", "kind", "handle", "name", "avatar"],
+                                        "properties": {
+                                          "id": { "type": "string" },
+                                          "kind": {
+                                            "anyOf": [
+                                              { "const": "person", "type": "string" },
+                                              { "const": "workflow", "type": "string" },
+                                              { "const": "agent", "type": "string" }
+                                            ]
+                                          },
+                                          "handle": { "type": "string" },
+                                          "name": { "type": "string" },
+                                          "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                          "via": {
+                                            "type": "object",
+                                            "required": ["name", "environment"],
+                                            "properties": {
+                                              "name": { "type": "string" },
+                                              "environment": { "type": "null" }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      { "type": "null" }
+                                    ]
+                                  },
                                   "blocks": { "type": "array", "items": {} }
                                 }
                               },
@@ -1032,11 +1166,15 @@
             }
           },
           "400": {
-            "description": "invalid_request",
+            "description": "invalid_request, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
             "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
@@ -1192,7 +1330,36 @@
                               "links": { "type": "array", "items": {} },
                               "version": { "type": "integer" },
                               "revision": { "type": "integer" },
-                              "author": { "type": "null" },
+                              "author": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": ["id", "kind", "handle", "name", "avatar"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "kind": {
+                                        "anyOf": [
+                                          { "const": "person", "type": "string" },
+                                          { "const": "workflow", "type": "string" },
+                                          { "const": "agent", "type": "string" }
+                                        ]
+                                      },
+                                      "handle": { "type": "string" },
+                                      "name": { "type": "string" },
+                                      "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "via": {
+                                        "type": "object",
+                                        "required": ["name", "environment"],
+                                        "properties": {
+                                          "name": { "type": "string" },
+                                          "environment": { "type": "null" }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  { "type": "null" }
+                                ]
+                              },
                               "blocks": { "type": "array", "items": {} }
                             }
                           }
@@ -1206,11 +1373,15 @@
             }
           },
           "400": {
-            "description": "invalid_request, invalid_cursor",
+            "description": "invalid_request, invalid_cursor, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
             "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
@@ -1306,7 +1477,33 @@
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "revision": { "type": "integer" },
-                        "author": { "type": "null" },
+                        "author": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": ["id", "kind", "handle", "name", "avatar"],
+                              "properties": {
+                                "id": { "type": "string" },
+                                "kind": {
+                                  "anyOf": [
+                                    { "const": "person", "type": "string" },
+                                    { "const": "workflow", "type": "string" },
+                                    { "const": "agent", "type": "string" }
+                                  ]
+                                },
+                                "handle": { "type": "string" },
+                                "name": { "type": "string" },
+                                "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                "via": {
+                                  "type": "object",
+                                  "required": ["name", "environment"],
+                                  "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                                }
+                              }
+                            },
+                            { "type": "null" }
+                          ]
+                        },
                         "blocks": { "type": "array", "items": {} }
                       }
                     },
@@ -1375,7 +1572,33 @@
                           "links": { "type": "array", "items": {} },
                           "version": { "type": "integer" },
                           "revision": { "type": "integer" },
-                          "author": { "type": "null" },
+                          "author": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": ["id", "kind", "handle", "name", "avatar"],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "kind": {
+                                    "anyOf": [
+                                      { "const": "person", "type": "string" },
+                                      { "const": "workflow", "type": "string" },
+                                      { "const": "agent", "type": "string" }
+                                    ]
+                                  },
+                                  "handle": { "type": "string" },
+                                  "name": { "type": "string" },
+                                  "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "via": {
+                                    "type": "object",
+                                    "required": ["name", "environment"],
+                                    "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                                  }
+                                }
+                              },
+                              { "type": "null" }
+                            ]
+                          },
                           "blocks": { "type": "array", "items": {} }
                         }
                       }
@@ -1386,11 +1609,15 @@
             }
           },
           "400": {
-            "description": "invalid_request",
+            "description": "invalid_request, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
             "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {

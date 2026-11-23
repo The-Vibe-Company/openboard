@@ -30,7 +30,17 @@ export interface Deps {
 }
 
 /** Who a request writes as, once the pipeline has authenticated it. */
-export type Principal = Author & { readonly [credentialKind]?: "local" | "connection" };
+export type Principal = Author & {
+  readonly [credentialKind]?: "local" | "connection";
+  readonly [connectionOf]?: ConnectionIdentity;
+};
+
+/** A connection's secret: the connection's name, which its profiles show through, and the profiles it may use. */
+export interface ConnectionIdentity {
+  readonly name: string;
+  readonly profiles: readonly string[];
+}
 
 /** Request-only metadata. Symbol keys stay out of serialized message authors. */
 export const credentialKind = Symbol("credential kind");
+export const connectionOf = Symbol("connection");

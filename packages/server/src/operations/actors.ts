@@ -1,4 +1,5 @@
 import { BoardError, type getMe, type OutputOf } from "@openboard/contract";
+import { authorOf } from "../auth/author.ts";
 import { credentialKind, type Principal } from "../deps.ts";
 import type { BoardContext, Handler } from "./index.ts";
 
@@ -12,17 +13,17 @@ async function connectionMe(board: BoardContext["board"], by: Principal): Promis
   const record = await board.connection(by.principal.slice(CONNECTION.length));
   if (!record) throw new BoardError("unauthorized", "the credential is not valid on this board");
   const { actor, principal, profile } = by;
-  const { name, can } = record.connection;
+  const { kind, handle, name } = authorOf(by);
   return {
     actor,
     principal,
-    kind: "workflow",
-    handle: name,
+    kind,
+    handle,
     name,
     avatar: null,
     profile,
     expiresAt: null,
-    can,
+    can: record.connection.can,
     openboard: { ...BOARD, role: null, credential: "connection" },
   };
 }
@@ -32,13 +33,13 @@ export const getMeHandler: Handler<typeof getMe> = async ({ board, by }) => {
   if (credential === "connection") return connectionMe(board, by);
   if (!credential) throw new BoardError("unauthorized", "a local owner credential is required");
   const { actor, principal, profile } = by;
-  const handle = actor.replace(/^ob:user:/, "");
+  const { kind, handle, name } = authorOf(by);
   return {
     actor,
     principal,
-    kind: "person",
+    kind,
     handle,
-    name: handle,
+    name,
     avatar: null,
     profile,
     expiresAt: null,

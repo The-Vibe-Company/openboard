@@ -8,6 +8,7 @@ import {
   type Operation,
   type OutputOf,
   operations,
+  PROFILE_HEADER,
 } from "@openboard/contract";
 
 type Contracted = (typeof operations)[number];
@@ -21,19 +22,21 @@ export interface ClientOptions {
   /** `BOARD_URL`: `http://127.0.0.1:8787/api/local/main`. */
   readonly url: string;
   readonly token?: string;
+  /** `BOARD_PROFILE`: write as this profile of the token's principal, sent as `x-board-profile`. */
+  readonly profile?: string;
   readonly fetch?: (request: Request) => Promise<Response>;
 }
 
 const fieldsOf = (schema: { properties: object } | undefined) => new Set(Object.keys(schema?.properties ?? {}));
 
 /** The request an operation's flat input makes: path params in the path, query fields in the query, the rest in the body. */
-function requestOf(base: string, operation: Operation, input: Readonly<Record<string, unknown>>, token?: string) {
+function requestOf(operation: Operation, input: Readonly<Record<string, unknown>>, options: ClientOptions) {
   const params = fieldsOf(operation.input.params);
   const query = fieldsOf(operation.input.query);
   const path = operation.route.path.replace(/:([A-Za-z]+)/g, (_, name: string) =>
     encodeURIComponent(String(input[name] ?? "")),
   );
-  const url = new URL(`${base.replace(/\/+$/, "")}${path}`);
+  const url = new URL(`${options.url.replace(/\/+$/, "")}${path}`);
   const body: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(input)) {
     if (value === undefined || params.has(name)) continue;
@@ -41,7 +44,8 @@ function requestOf(base: string, operation: Operation, input: Readonly<Record<st
     else body[name] = value;
   }
   const headers: Record<string, string> = { accept: "application/json" };
-  if (token) headers.authorization = `Bearer ${token}`;
+  if (options.token) headers.authorization = `Bearer ${options.token}`;
+  if (options.profile) headers[PROFILE_HEADER] = options.profile;
   if (!operation.input.body) return new Request(url, { method: operation.route.method, headers });
   headers["content-type"] = "application/json";
   return new Request(url, { method: operation.route.method, headers, body: JSON.stringify(body) });
@@ -107,7 +111,7 @@ export function createClient(options: ClientOptions): Client {
   const methods = operations.map((operation) => [
     operation.name,
     async (input: Readonly<Record<string, unknown>>) =>
-      answerOf(await reach(send, requestOf(options.url, operation, input, options.token))),
+      answerOf(await reach(send, requestOf(operation, input, options))),
   ]);
   return Object.freeze(Object.fromEntries(methods)) as Client;
 }

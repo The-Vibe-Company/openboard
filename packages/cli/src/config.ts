@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-/** What `ob`'s client commands read from the environment: upstream's `BOARD_URL` and `BOARD_TOKEN`. */
+/** What `ob`'s client commands read from the environment: upstream's `BOARD_URL`, `BOARD_TOKEN` and `BOARD_PROFILE`. */
 export interface ClientConfig {
   readonly boardUrl: string | undefined;
   readonly token: string | undefined;
+  readonly profile: string | undefined;
 }
 
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -39,5 +40,5 @@ function localOwnerToken(boardUrl: string | undefined, home: string | undefined)
 export function clientConfig(env: Readonly<Record<string, string | undefined>>): ClientConfig {
   const boardUrl = env.BOARD_URL || undefined;
   const token = env.BOARD_TOKEN || localOwnerToken(boardUrl, env.HOME || undefined);
-  return { boardUrl, token };
+  return { boardUrl, token, profile: env.BOARD_PROFILE || undefined };
 }

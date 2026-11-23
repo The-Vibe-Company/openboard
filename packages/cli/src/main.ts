@@ -38,6 +38,15 @@ function usage(output: Output, problem: string): number {
   return 2;
 }
 
+/** `--as <name>` before `--`, upstream's way to pick a profile on every command; the flags without it. */
+function profileFlag(flags: readonly string[]): { profile?: string; rest: readonly string[] } | null {
+  const at = flags.indexOf("--as");
+  if (at < 0) return { rest: flags };
+  const profile = flags[at + 1];
+  if (profile === undefined || profile.startsWith("--") || flags.indexOf("--as", at + 1) >= 0) return null;
+  return { profile, rest: [...flags.slice(0, at), ...flags.slice(at + 2)] };
+}
+
 /** `ob`'s client commands. Exit codes: 0 success, 1 error, 2 misuse (docs/codebase.md 5.3). */
 export async function runCli(
   argv: readonly string[],
@@ -46,7 +55,9 @@ export async function runCli(
 ): Promise<number> {
   const output = options.output ?? consoleOutput;
   const end = argv.indexOf("--");
-  const flags = end < 0 ? argv : argv.slice(0, end);
+  const picked = profileFlag(end < 0 ? argv : argv.slice(0, end));
+  if (!picked) return usage(output, "--as takes one profile name: --as fixer-2");
+  const flags = picked.rest;
   const json = flags.includes("--json");
   const commandWords = flags.filter((arg) => arg !== "--json");
   const words = [...commandWords, ...(end < 0 ? [] : argv.slice(end + 1))];
@@ -57,6 +68,7 @@ export async function runCli(
     return 0;
   }
   const config = clientConfig(env);
+  const profile = picked.profile ?? config.profile;
   if (!config.boardUrl) return usage(output, "BOARD_URL is not set: point it at a board, as `ob serve` prints it");
   if (!/^https?:$/.test(URL.parse(config.boardUrl)?.protocol ?? "")) {
     return usage(output, `BOARD_URL is not an http(s) URL: ${config.boardUrl}`);
@@ -64,6 +76,7 @@ export async function runCli(
   const client = createClient({
     url: config.boardUrl,
     ...(config.token === undefined ? {} : { token: config.token }),
+    ...(profile === undefined ? {} : { profile }),
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
   try {

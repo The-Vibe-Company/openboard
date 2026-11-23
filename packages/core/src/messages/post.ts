@@ -1,4 +1,4 @@
-import { type Author, BoardError, type Message } from "@openboard/contract";
+import { type Author, BoardError, type Message, type MessageAuthor } from "@openboard/contract";
 import { formatId, isoTime } from "../ids.ts";
 
 /** A new thread (`channel`) or a reply (`re`), as `POST /messages` asks for it once the contract has validated it. */
@@ -23,6 +23,8 @@ export interface MessagePostedPayload {
   readonly labels: Readonly<Record<string, string>>;
   readonly noSync: boolean;
   readonly by: Author;
+  /** Who wrote it, for people to read; the server resolves it from the credential. Not part of upstream's payload. */
+  readonly author?: MessageAuthor;
   readonly origin: null;
   readonly from: null;
   readonly attachments: readonly never[];
@@ -63,6 +65,7 @@ export interface PostState {
 
 export interface PostContext {
   readonly by: Author;
+  readonly author?: MessageAuthor;
   readonly now: number;
 }
 
@@ -112,7 +115,7 @@ export function messageView(event: MessagePosted): Message {
     links: [],
     version: event.id,
     revision: 0,
-    author: null,
+    author: payload.author ?? null,
     blocks: [],
   };
 }
@@ -156,6 +159,7 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
       labels: { ...command.labels },
       noSync: command.noSync ?? false,
       by: context.by,
+      ...(context.author === undefined ? {} : { author: context.author }),
       origin: null,
       from: null,
       attachments: [],

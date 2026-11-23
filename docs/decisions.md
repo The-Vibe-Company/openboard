@@ -588,6 +588,23 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
 - **Consequence.** No OpenBoard-only value enters upstream's `kind`; clients
   that need to tell a connection apart read `openboard.credential`.
 
+### D46. A message's `author` is resolved when it is written
+
+- **Context.** Upstream shows a profile through its principal, "fixer-2 via
+  laptop", as the message's `author` (`{ id, kind, handle, name, avatar,
+  via? }`). A connection's name lives in its record, which the verifier
+  already reads; the message view is precomputed at write time.
+- **Decision.** The server builds `author` from the verified credential
+  (`kind` `person`, `workflow`, or `agent` for a profile, with `via: { name,
+  environment: null }`) and core stores it in the precomputed message view;
+  it is kept out of upstream's `message.posted` payload on `/events`. Profile
+  names are lowercased in `actor`, `profile` and `author.name`; a
+  connection's profile must match its `profiles` patterns (403 `forbidden`).
+- **Consequence.** Reads need no join to show who wrote what. A renamed
+  connection would keep its old name on old messages (names are immutable in
+  v1). Avatars (113) add to the same `author`; the spelling a profile sent is
+  not kept yet.
+
 ## Hard blockers found
 
 None. Limits worth knowing:

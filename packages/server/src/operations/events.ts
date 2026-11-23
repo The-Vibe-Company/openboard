@@ -12,12 +12,16 @@ export const readEventsHandler: Handler<typeof readEvents> = async ({ board }, {
   }
   return {
     cursor: formatId(cursor),
-    events: events.map((event) => ({
-      cursor: formatId(event.id),
-      type: event.type,
-      createdAt: isoTime(event.at),
-      payload: { ...event.payload, attachments: [...event.payload.attachments], links: [...event.payload.links] },
-      message: messages.messageView(event),
-    })),
+    events: events.map((event) => {
+      // `author` is OpenBoard's record of who wrote it, shown on `message`; upstream's payload has no such field.
+      const { author: _author, ...payload } = event.payload;
+      return {
+        cursor: formatId(event.id),
+        type: event.type,
+        createdAt: isoTime(event.at),
+        payload: { ...payload, attachments: [...payload.attachments], links: [...payload.links] },
+        message: messages.messageView(event),
+      };
+    }),
   };
 };
