@@ -26,7 +26,6 @@ writes:
   - packages/driver-sql/src/statements.ts
   - packages/driver-sql/src/index.ts
   - packages/server/src/auth/connections.ts
-  - packages/server/src/auth/local-owner.ts
   - packages/server/src/deps.ts
   - packages/server/src/http/pipeline.ts
   - packages/server/src/operations/index.ts
