@@ -19,7 +19,7 @@ writes:
 conformance: ["core/reads one channel's messages after a cursor of its own, oldest first, and on from where it stopped"]
 modes: [local]
 depends_on: [46]
-status: claimed
+status: done
 claimed_by: claude-opus-t47
 issue: 47
 ---
@@ -28,8 +28,8 @@ issue: 47
 As an agent, I read a channel's messages a page at a time without repeating or skipping any.
 
 ## Done when
-- [ ] `ob read dev --after 1 --limit 1` prints only #2 and a `next:` line with the command that reads on
-- [ ] running that `next` command prints #3 and nothing already printed
+- [x] `ob read dev --after 1 --limit 1` prints only #2 and a `next:` line with the command that reads on
+- [x] running that `next` command prints #3 and nothing already printed
 
 ## Out of scope
 - The newest messages without a cursor (48).
