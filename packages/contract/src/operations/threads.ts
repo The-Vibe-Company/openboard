@@ -12,7 +12,7 @@ export const readThread = defineOperation({
   },
   output: Thread,
   errors: ["message_not_found"],
-  access: { permission: "read", channel: "any" },
+  access: { permission: "read", channel: "fromMessage" },
   effects: { readOnly: true, idempotent: true, emits: [] },
   cli: false,
   mcp: { tool: "read_thread" },
