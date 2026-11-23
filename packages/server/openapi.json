@@ -133,6 +133,10 @@
             "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
+          "409": {
+            "description": "already_in_org",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
           "500": {
             "description": "internal",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }

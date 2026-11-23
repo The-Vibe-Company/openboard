@@ -10,11 +10,12 @@ writes:
   - packages/ports/testkit/store/invitations.test-suite.ts
   - packages/server/test/invitations.test.ts
   - packages/ports/src/store.ts
+  - packages/server/openapi.json
 conformance: []
 modes: [local]
 depends_on: [138, 144]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-code-t145
 issue: 146
 ---
 
@@ -22,7 +23,7 @@ issue: 146
 As a person in one organization, I am told v1 lets me belong to only one.
 
 ## Done when
-- [ ] the owner of `beta` accepting an `acme` invitation answers 409 `already_in_org`, and stays out of `acme`
+- [x] the owner of `beta` accepting an `acme` invitation answers 409 `already_in_org`, and stays out of `acme`
 
 ## Out of scope
 - An organization switcher (after v1).

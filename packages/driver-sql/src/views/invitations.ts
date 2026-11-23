@@ -1,4 +1,4 @@
-import type { InvitationRole, Role } from "@openboard/contract";
+import { BoardError, type InvitationRole, type Role } from "@openboard/contract";
 import type { OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { forUpdate, query, sql } from "../sql.ts";
@@ -50,6 +50,9 @@ export function invitationPlatform(
         const scope = { orgId, tokenHash, at };
         const [invitation] = await query(tx, dialect, invitationStatements.lockRedeemableInvitation, scope);
         if (!invitation) return null;
+        await query(tx, dialect, orgStatements.lockPerson, { personId });
+        const [joined] = await query(tx, dialect, orgStatements.personMemberships, { personId });
+        if (joined) throw new BoardError("already_in_org", "you already belong to an organization");
         const [member] = await query(tx, dialect, invitationStatements.insertInvitedMember, { ...scope, personId });
         if (!member) return null;
         const userId = Number(member.user_id);

@@ -114,6 +114,27 @@ test("creation requires the organization's administrator and CSRF proof, and can
   }
 });
 
+test("the owner of another organization is refused an invitation and stays out of it", async () => {
+  const { app, acme, other, preview } = await setup();
+  const post = (path: string, headers: Record<string, string>, data: unknown) =>
+    app.fetch(new Request(`${PUBLIC_URL}/api/x${path}`, { method: "POST", headers, body: JSON.stringify(data) }));
+  try {
+    const link = await post("/orgs/acme/invitations", acme, { role: "member" });
+    const { url } = (await link.json()) as OutputOf<typeof createInvitation>;
+    const token = new URL(url).pathname.slice("/invite/".length);
+    const accept = await post("/invitations/accept", other, { token });
+    expect(accept.status).toBe(409);
+    expect(await accept.json()).toMatchObject({ error: { code: "already_in_org" } });
+    expect((await preview(token)).status).toBe(200);
+    const members = (headers: Record<string, string>) =>
+      app.fetch(new Request(`${PUBLIC_URL}/api/x/orgs/acme/members`, { headers }));
+    expect((await members(other)).status).toBe(404);
+    expect(await (await members(acme)).json()).toEqual({ members: [{ principal: "ob:user:u_acme", role: "owner" }] });
+  } finally {
+    await app.close();
+  }
+});
+
 /** Fake the provider's HTTP endpoints while running the browser sign-in and session flow. */
 async function fakeProvider(request: Request): Promise<Response> {
   const { origin, pathname } = new URL(request.url);
