@@ -11,11 +11,18 @@ writes:
   - packages/server/test/connections.test.ts
   - packages/ports/src/store.ts
   - packages/server/test/auth/profile-taken.test.ts
+  - packages/core/src/access/agents.ts
+  - packages/core/test/access/agents.test.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/server/openapi.json
+  - docs/auth.md
+  - docs/data-model.md
+  - docs/decisions.md
 conformance: []
 modes: [local]
 depends_on: [124]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t125
 issue: 126
 ---
 
@@ -23,7 +30,7 @@ issue: 126
 As an orchestrator, two sandboxes cannot end up writing under the same name.
 
 ## Done when
-- [ ] claiming `fixer-2` twice without an `idempotencyKey` answers 409 `profile_taken` the second time
+- [x] claiming `fixer-2` twice without an `idempotencyKey` answers 409 `profile_taken` the second time
 
 ## Out of scope
 - Retries with the same key (126).

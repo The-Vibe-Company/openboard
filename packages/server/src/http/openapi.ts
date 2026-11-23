@@ -41,7 +41,8 @@ function errorResponses(operation: Operation) {
 
 function describeOperation(operation: Operation) {
   const { params, query, body } = operation.input;
-  const needsCsrf = operation.scope === "org" && operation.route.method !== "GET";
+  const sessionAuth = operation.scope === "org" || operation.scope === "account";
+  const needsCsrf = sessionAuth && operation.route.method !== "GET";
   const fields = [
     ...parameters(params, "path"),
     ...parameters(query, "query"),
@@ -75,7 +76,7 @@ function describeOperation(operation: Operation) {
     operationId: operation.operationId ?? operation.name,
     summary: operation.summary,
     ...(operation.scope === "public" && { security: [] }),
-    ...(operation.scope === "org" && {
+    ...(sessionAuth && {
       servers: [{ url: "/" }],
       security: [{ sessionAuth: [] }],
     }),
@@ -91,7 +92,7 @@ function describeOperation(operation: Operation) {
 export function createOpenApi() {
   const paths: Record<string, Record<string, ReturnType<typeof describeOperation>>> = {};
   for (const operation of operations) {
-    if (operation.scope === "account") continue;
+    if (operation.scope === "account" && !operation.route.mount) continue;
     const mount = operation.scope === "org" ? "/api/x" : (operation.route.mount ?? "");
     const path = (mount + operation.route.path).replace(/:([^/]+)/g, "{$1}");
     paths[path] ??= {};

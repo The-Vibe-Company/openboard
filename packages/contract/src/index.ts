@@ -36,6 +36,7 @@ export {
   type Scope,
 } from "./operation.ts";
 export {
+  acceptInvitation,
   claimConnection,
   createBoard,
   createChannel,
@@ -52,6 +53,7 @@ export {
   listActors,
   listBoards,
   listChannels,
+  listMembers,
   listMessages,
   listThreads,
   operations,

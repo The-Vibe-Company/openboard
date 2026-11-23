@@ -9,7 +9,12 @@ import { createChannelHandler, listChannelsHandler } from "./channels.ts";
 import { claimConnectionHandler, createConnectionHandler, refreshAgentTokenHandler } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
-import { createInvitationHandler, previewInvitationHandler } from "./invitations.ts";
+import {
+  acceptInvitationHandler,
+  createInvitationHandler,
+  listMembersHandler,
+  previewInvitationHandler,
+} from "./invitations.ts";
 import {
   deleteMessageHandler,
   editMessageHandler,
@@ -86,6 +91,7 @@ export type OrgOperation = Extract<Contracted, { readonly scope: "org" }>;
 
 /** One handler per contract operation: a missing or mistyped one is a compile error. */
 export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> } = {
+  acceptInvitation: acceptInvitationHandler,
   claimConnection: claimConnectionHandler,
   createBoard: createBoardHandler,
   createChannel: createChannelHandler,
@@ -102,6 +108,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listActors: listActorsHandler,
   listBoards: listBoardsHandler,
   listChannels: listChannelsHandler,
+  listMembers: listMembersHandler,
   listMessages: listMessagesHandler,
   listThreads: listThreadsHandler,
   postMessage: postMessageHandler,

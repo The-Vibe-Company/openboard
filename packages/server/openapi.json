@@ -63,6 +63,83 @@
     }
   },
   "paths": {
+    "/api/x/invitations/accept": {
+      "post": {
+        "operationId": "acceptInvitation",
+        "summary": "Join the organization with the role granted by an invitation link.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "x-ob-csrf",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["token"],
+                "properties": { "token": { "minLength": 1, "maxLength": 128, "x-ref": "invitation", "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["org", "role"],
+                  "properties": {
+                    "org": {
+                      "type": "object",
+                      "required": ["slug", "name"],
+                      "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }
+                    },
+                    "role": {
+                      "anyOf": [
+                        { "const": "owner", "type": "string" },
+                        { "const": "admin", "type": "string" },
+                        { "const": "member", "type": "string" }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/x/connections/claim": {
       "post": {
         "operationId": "claimConnection",
@@ -173,6 +250,10 @@
           },
           "404": {
             "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "profile_taken",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "410": {
@@ -1131,6 +1212,74 @@
                       }
                     },
                     "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/api/x/orgs/{org}/members": {
+      "get": {
+        "operationId": "listMembers",
+        "summary": "List the members of the organization.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["members"],
+                  "properties": {
+                    "members": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["principal", "role"],
+                        "properties": {
+                          "principal": { "type": "string" },
+                          "role": {
+                            "anyOf": [
+                              { "const": "owner", "type": "string" },
+                              { "const": "admin", "type": "string" },
+                              { "const": "member", "type": "string" }
+                            ]
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }

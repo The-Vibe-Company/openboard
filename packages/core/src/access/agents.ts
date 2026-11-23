@@ -23,6 +23,13 @@ export interface ClaimingConnection {
   readonly claims: { readonly max: number | null; readonly used: number };
 }
 
+/** The unrevoked agent of the connection holding the claimed profile, whose token expires last, read under the lock. */
+export interface ProfileHolder {
+  readonly id: string;
+  /** Epoch milliseconds of its `expiresAt`: it holds the profile until then. */
+  readonly tokenExpires: number;
+}
+
 /** The claim as asked for, once the contract has validated it. */
 export interface ClaimCommand {
   readonly profile: string;
@@ -121,10 +128,11 @@ function narrowed(grant: Can, written: CanInput): Can {
  * An agent of `connection` pinned to `command.profile`, which the connection's `profiles` patterns must let in (else
  * 403 `forbidden`). Its `can` is the claim's, inside the connection's grant, or that grant; its token lives `ttl` (default the
  * connection's token lifetime), never past the connection's cap, which is also its hard expiry. A secret that made its
- * last claim is spent: 410 `secret_spent` (docs/auth.md mode 2, "Single-use secrets").
+ * last claim is spent: 410 `secret_spent` (docs/auth.md mode 2, "Single-use secrets"). A profile a live agent of the
+ * connection holds, one whose token has not expired, is 409 `profile_taken` ("Profile collisions").
  */
 export function decideClaim(
-  state: { readonly head: number },
+  state: { readonly head: number; readonly holder: ProfileHolder | null },
   command: ClaimCommand,
   context: {
     readonly by: Author;
@@ -143,6 +151,11 @@ export function decideClaim(
   if (!profileAllowed(connection.profiles, command.profile)) {
     throw new BoardError("forbidden", `this connection may not claim ${command.profile}`, {
       hint: `Pick a profile its patterns let in: ${connection.profiles.join(", ")}.`,
+    });
+  }
+  if (state.holder !== null && now < state.holder.tokenExpires) {
+    throw new BoardError("profile_taken", `a live agent of this connection holds ${command.profile}`, {
+      hint: "Claim another profile, or wait until the agent holding it expires.",
     });
   }
   const ttl = Math.min(command.ttl === undefined ? connection.tokenTtl : ttlSeconds(command.ttl), connection.tokenMax);
@@ -219,7 +232,8 @@ export interface AgentRefreshed {
  * A new token for `state.agent`, with the same pins, living the connection's token lifetime from `now`, never less
  * than the token it replaces (a claim may ask for a longer one) and never past the agent's hard expiry; the token it replaces keeps working `PREVIOUS_TOKEN_MS`. Only the current token refreshes
  * (`presented` is its hash): its predecessor, or a token another refresh already replaced, is 401 `unauthorized`. Past
- * the hard expiry nothing refreshes: the connection's secret claims a new agent.
+ * the token's expiry, decided here under the lock so a claim that took the profile meanwhile stands (D50), or the hard
+ * expiry, nothing refreshes: the connection's secret claims a new agent.
  */
 export function decideRefresh(
   state: { readonly head: number; readonly agent: RefreshingAgent },
@@ -234,6 +248,11 @@ export function decideRefresh(
   }
   if (now >= hardExpires) {
     throw new BoardError("unauthorized", "this agent's tokens reached their hard expiry", {
+      hint: "Claim a new token with the connection's secret: `ob connect <BOARD_URL> --as <profile>`.",
+    });
+  }
+  if (now >= currentExpires) {
+    throw new BoardError("unauthorized", "this token expired", {
       hint: "Claim a new token with the connection's secret: `ob connect <BOARD_URL> --as <profile>`.",
     });
   }

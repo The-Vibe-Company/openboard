@@ -638,13 +638,14 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   before the local `/api` alias, and see `ctx.platform` and `ctx.session`
   (the live `__Host-ob_session`, read only without `authorization`); their
   answers are `no-store`. In local mode `OPENBOARD_SIGNUP` defaults to
-  `closed`, so it keeps "no sign-up" unless it is set, as tickets 133-161
-  assume (`.veebee/cut.md` "Could not place", question 1, still awaits the
-  owner); the hosted default (docs/auth.md, Q6) is decided with hosted mode.
+  `closed`, so it keeps "no sign-up" unless it is set. Verify M4 account
+  tickets on local SQLite with `OPENBOARD_SIGNUP=open` and GitHub configured,
+  using a fake provider in tests (issue #145). The hosted default (docs/auth.md,
+  Q6) is decided with hosted mode.
 - **Consequence.** Any instance finishes any sign-in. Ticket 134 and later
-  account routes reuse the session and its CSRF check. The SDK still maps
-  every operation onto `BOARD_URL`, so account operations are not callable
-  through it until it learns `/api/x` (a later ticket).
+  account routes reuse the session and its CSRF check. In the SDK, an account
+  operation with an explicit `/api/x` mount uses that mount and sends the
+  configured CSRF value for writes. Invitation acceptance declares this mount.
 
 ### D49. `org` operations: members read, admins write, under the organization's lock
 
@@ -665,6 +666,28 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   take the same lock before numbering an organization event, and read
   operations declare `access: { permission: "read", … }` to be open to
   members.
+
+### D50. A profile is held while its agent lives, checked under the board lock
+
+- **Context.** docs/auth.md mode 2 answers 409 `profile_taken` for a profile
+  a live agent holds. The data model sketched a unique index on
+  `(connection, profile_key) WHERE revoked_at IS NULL`, which would keep a
+  profile held after its agent's tokens expired, until someone revoked it;
+  no partial index can say "not expired", since that depends on the clock.
+- **Decision.** Ticket 125: an agent holds its profile on its connection
+  while it is not revoked and its current token has not expired
+  (`now < token_expires`, which never passes `hard_expires`). The claim reads
+  the connection's unrevoked agent on that profile (any case) whose token
+  expires last, inside its board-locked write, and core refuses it while that
+  token lives. No unique index: the board lock serializes claims (D33);
+  the comment in migration 0004 announcing one no longer holds. A refresh
+  likewise checks its token's expiry under the lock, so it cannot revive an
+  agent whose profile a claim took meanwhile.
+- **Consequence.** Two racing claims of one profile: one 200, one 409. A
+  sandbox relaunched after its agent expired claims the same profile again.
+  A profile is per connection: another connection's agent never holds it.
+  Ticket 126 lets a claim with the holder's `idempotencyKey` through; ticket
+  129's revoke frees the profile by setting `revoked_at`.
 
 ## Hard blockers found
 

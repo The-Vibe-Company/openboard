@@ -52,7 +52,7 @@ export const claimConnection = defineOperation({
   },
   output: ClaimResult,
   status: 200,
-  errors: ["invalid_request", "invalid_grant", "grant_empty", "forbidden", "secret_spent"],
+  errors: ["invalid_request", "invalid_grant", "grant_empty", "forbidden", "secret_spent", "profile_taken"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: ["ob.agent.claimed"] },
   cli: false,

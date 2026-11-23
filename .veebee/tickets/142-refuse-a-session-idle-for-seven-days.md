@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [141]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude
 issue: 143
 ---
 
@@ -18,7 +18,7 @@ issue: 143
 As a person, a browser I stopped using does not stay signed in forever.
 
 ## Done when
-- [ ] a session unused for seven days answers 401 on its next request, and one older than 30 days does the same however recently it was used
+- [x] a session unused for seven days answers 401 on its next request, and one older than 30 days does the same however recently it was used
 
 ## Out of scope
 - Personal token expiry (156).

@@ -280,8 +280,9 @@ Authorization: Bearer obc_…
   in the claim's transaction (410 `secret_spent` after). A direct connection
   takes no `claims` (400 `invalid_request`): its secret is a bearer that
   counting claims could never spend.
-- **Profile collisions:** 409 `profile_taken` unless the same
-  `idempotencyKey`.
+- **Profile collisions:** 409 `profile_taken` while an agent of the same
+  connection holds the profile, unrevoked and its token unexpired, unless
+  the same `idempotencyKey` (D50).
 - **Per-agent revoke:** `POST {BOARD_URL}/x/connections/:id/agents/:agent/revoke`,
   also an inbound-rule action.
 
