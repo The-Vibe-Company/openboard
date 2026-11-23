@@ -22,7 +22,9 @@ function validDataDir(path: string): boolean {
   try {
     return statSync(path, { throwIfNoEntry: false })?.isDirectory() ?? true;
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOTDIR") return false;
+    if (error instanceof Error && "code" in error) {
+      if (error.code === "ENOTDIR" || error.code === "EACCES" || error.code === "EPERM") return false;
+    }
     throw error;
   }
 }
@@ -38,6 +40,9 @@ function publicOrigin(text: string): string | null {
 /** The one place the server reads its environment; every bad variable is named, and the caller exits 2. */
 export function loadConfig(env: Readonly<Record<string, string | undefined>> = process.env): Config {
   const problems: string[] = [];
+  if (env.OPENBOARD_SECRET_KEY !== undefined && env.OPENBOARD_SECRET_KEY_FILE !== undefined) {
+    problems.push("OPENBOARD_SECRET_KEY and OPENBOARD_SECRET_KEY_FILE cannot both be set");
+  }
   const port = Number(env.PORT ?? "8787");
   if (!Number.isInteger(port) || port < 1 || port > 65_535) problems.push(`PORT: expected 1 to 65535, got ${env.PORT}`);
   if (env.OPENBOARD_DATABASE_URL) {

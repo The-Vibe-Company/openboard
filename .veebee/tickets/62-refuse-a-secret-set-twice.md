@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [61]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 62
 ---
 
@@ -18,7 +18,7 @@ issue: 62
 As an operator, I am stopped when a secret is given twice and I would not know which one wins.
 
 ## Done when
-- [ ] setting both `OPENBOARD_SECRET_KEY` and `OPENBOARD_SECRET_KEY_FILE` makes `ob serve` exit 2 naming both
+- [x] setting both `OPENBOARD_SECRET_KEY` and `OPENBOARD_SECRET_KEY_FILE` makes `ob serve` exit 2 naming both
 
 ## Out of scope
 - Secrets on the command line: no option takes one (D42).

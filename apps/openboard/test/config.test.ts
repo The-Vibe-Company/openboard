@@ -3,6 +3,18 @@ import { ConfigError, loadConfig } from "../src/config.ts";
 
 const load = (env: Record<string, string>) => loadConfig({ OPENBOARD_DATA_DIR: "./.openboard-test", ...env });
 
+test("refuses a secret key set through both environment variables, even when one is empty", () => {
+  const message = /^OPENBOARD_SECRET_KEY and OPENBOARD_SECRET_KEY_FILE cannot both be set$/;
+  for (const env of [
+    { OPENBOARD_SECRET_KEY: "example", OPENBOARD_SECRET_KEY_FILE: "./secret-key" },
+    { OPENBOARD_SECRET_KEY: "", OPENBOARD_SECRET_KEY_FILE: "./secret-key" },
+    { OPENBOARD_SECRET_KEY: "example", OPENBOARD_SECRET_KEY_FILE: "" },
+  ]) {
+    expect(() => load(env)).toThrow(ConfigError);
+    expect(() => load(env)).toThrow(message);
+  }
+});
+
 describe("the public URL board URLs are built on", () => {
   test("defaults to the loopback origin on the configured port", () => {
     expect(load({ PORT: "9000" }).publicUrl).toBe("http://127.0.0.1:9000");
