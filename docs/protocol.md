@@ -131,7 +131,7 @@ answers. OpenBoard adds:
 | GET | `/messages` | U | |
 | GET | `/threads` | U | all filters, `before`/`older` |
 | GET | `/messages/:id` | U | |
-| GET | `/posts/:id` | U | |
+| GET | `/posts/:id` | U | the caller's own post by its client ID; 404 `post_not_found` |
 | POST | `/messages` | U | `sync` targets: 400 `invalid_request` "this board syncs nowhere" |
 | POST | `/messages/:id/edit`, `/delete`, `/reactions`, `/labels` | U | |
 | GET | `/events` | U | JSON feed with `after`; SSE and long-poll planned |
