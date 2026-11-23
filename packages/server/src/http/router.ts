@@ -21,7 +21,15 @@ function decode(segment: string): string | null {
   }
 }
 
-const split = (path: string) => path.split("/").filter(Boolean);
+/**
+ * A path's segments. Trailing slashes are dropped, as upstream does (`pathname.replace(/\/+$/, "")`); an empty
+ * segment anywhere else is kept, so `//messages` names no route instead of quietly becoming `/messages`.
+ */
+function split(path: string): string[] {
+  const trimmed = path.replace(/\/+$/, "");
+  if (trimmed === "") return [];
+  return (trimmed.startsWith("/") ? trimmed.slice(1) : trimmed).split("/");
+}
 
 /** The static route table, built once per app from the contract (docs/codebase.md 4.2). */
 export function routeTable<Op extends Operation>(operations: readonly Op[]): readonly Route<Op>[] {
@@ -45,6 +53,8 @@ export function matchRoute<Op extends Operation>(
     const fits = route.segments.every((segment, at) => {
       const actual = segments[at] ?? "";
       if (!segment.startsWith(":")) return segment === actual;
+      // Upstream's `([^/]+)` takes at least one character: an empty segment names no route.
+      if (actual === "") return false;
       const decoded = decode(actual);
       if (decoded === null) return false;
       params[segment.slice(1)] = decoded;

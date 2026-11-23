@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [36]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-c83c799a
 issue: 42
 ---
 
@@ -18,7 +18,7 @@ issue: 42
 As an upstream client, I get a JSON error for a path that does not exist, never an HTML page.
 
 ## Done when
-- [ ] `curl -i http://127.0.0.1:8787/api/local/main/nope` and `curl -i http://127.0.0.1:8787/api/x/nope` answer 404 `application/json` with `error.code` `not_found`, never HTML and never a redirect
+- [x] `curl -i http://127.0.0.1:8787/api/local/main/nope` and `curl -i http://127.0.0.1:8787/api/x/nope` answer 404 `application/json` with `error.code` `not_found`, never HTML and never a redirect
 
 ## Out of scope
 - A message that does not exist (50).
