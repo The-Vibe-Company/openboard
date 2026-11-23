@@ -37,6 +37,9 @@
     "packages/driver-sql": {
       "name": "@openboard/driver-sql",
       "version": "0.0.0",
+      "devDependencies": {
+        "@types/bun": "1.4.5",
+      },
     },
     "packages/driver-sqlite": {
       "name": "@openboard/driver-sqlite",
