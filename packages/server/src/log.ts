@@ -1,5 +1,8 @@
 import type { Logger } from "./deps.ts";
 
+const sensitiveKey =
+  /token|secret|authorization|cookie|password|signature|signing[-_]?key|body|^text$|message[-_]?text/i;
+
 export interface JsonLoggerOptions {
   /** The clock each line's `t` is read from, in epoch milliseconds. */
   readonly now: () => number;
@@ -11,7 +14,11 @@ export interface JsonLoggerOptions {
 export function jsonLogger(options: JsonLoggerOptions): Logger {
   const write = options.write ?? ((line: string) => console.log(line));
   const emit = (level: string) => (msg: string, fields: Readonly<Record<string, unknown>>) =>
-    write(JSON.stringify({ t: options.now(), level, msg, ...fields }));
+    write(
+      JSON.stringify({ t: options.now(), level, msg, ...fields }, (key, value) =>
+        sensitiveKey.test(key) ? undefined : value,
+      ),
+    );
   return { info: emit("info"), error: emit("error") };
 }
 

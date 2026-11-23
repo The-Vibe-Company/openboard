@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [37, 58]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-ticket-59
 issue: 59
 ---
 
@@ -18,7 +18,7 @@ issue: 59
 As an operator, I can share server logs without leaking what people wrote or their credentials.
 
 ## Done when
-- [ ] after `ob post dev "secret plan"`, the server output contains neither `secret plan` nor any part of the owner token
+- [x] after `ob post dev "secret plan"`, the server output contains neither `secret plan` nor any part of the owner token
 
 ## Out of scope
 - Request IDs (60).
