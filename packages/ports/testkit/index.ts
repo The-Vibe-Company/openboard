@@ -1,5 +1,6 @@
 import type { BoardKeys, BoardScope, Store } from "../src/index.ts";
 import { messagesSuite } from "./store/messages.test-suite.ts";
+import { threadsSuite } from "./store/threads.test-suite.ts";
 
 /** Opens a fresh, migrated store; each test gets its own. */
 export type OpenStore = () => Promise<Store>;
@@ -12,4 +13,5 @@ export function testScope(keys: BoardKeys): BoardScope {
 /** Every behaviour a `Store` driver must have, run against `open` (docs/codebase.md 6.1). */
 export function runStoreSuite(driver: string, open: OpenStore): void {
   messagesSuite(driver, open);
+  threadsSuite(driver, open);
 }

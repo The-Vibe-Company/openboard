@@ -2,6 +2,7 @@ import { postgresText } from "./db.ts";
 import { render } from "./sql.ts";
 import { boardPlatformStatements, boardStatements } from "./views/boards.ts";
 import { messageStatements } from "./views/messages.ts";
+import { threadStatements } from "./views/threads.ts";
 
 /**
  * The registry of every SQL statement the shared views run (docs/codebase.md 3.2 and 4.4).
@@ -10,7 +11,7 @@ import { messageStatements } from "./views/messages.ts";
  */
 export const statements: Readonly<Record<string, string>> = Object.freeze(
   Object.fromEntries(
-    Object.entries({ ...boardStatements, ...messageStatements }).map(([name, statement]) => [
+    Object.entries({ ...boardStatements, ...messageStatements, ...threadStatements }).map(([name, statement]) => [
       name,
       render(statement, postgresText).text,
     ]),

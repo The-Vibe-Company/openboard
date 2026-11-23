@@ -10,6 +10,7 @@ writes:
   - packages/server/src/http/pipeline.ts
   - packages/server/src/index.ts
   - packages/server/test/support/app.ts
+  - packages/server/test/auth/local-owner.test.ts
   - apps/openboard/src/compose.ts
   - tools/bench/src/drivers.ts
   - tools/conformance/src/drivers.ts

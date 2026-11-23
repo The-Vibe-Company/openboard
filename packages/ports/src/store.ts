@@ -1,4 +1,4 @@
-import type { Message } from "@openboard/contract";
+import type { Message, Thread } from "@openboard/contract";
 import type { BoardEvent } from "@openboard/core";
 
 declare const minted: unique symbol;
@@ -42,6 +42,8 @@ export interface BoardView {
   write<T>(fn: (writer: BoardWriter) => Promise<T>): Promise<T>;
   /** The channel's latest `limit` messages, oldest first. */
   channelMessages(query: ChannelMessagesQuery): Promise<Message[]>;
+  /** The message at log position `id` with its replies, oldest first, or null when no message has that ID. */
+  thread(id: number): Promise<Thread | null>;
 }
 
 export interface Store {
