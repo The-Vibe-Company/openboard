@@ -117,7 +117,9 @@ export interface ErrorSpec {
 }
 
 /** Finer causes per code; a code absent here takes no `reason`. */
-const REASONS: Partial<Record<ErrorCode, readonly string[]>> = {};
+const REASONS: Partial<Record<ErrorCode, readonly string[]>> = {
+  invalid_request: ["invalid_channel"],
+};
 
 function catalog(): Readonly<Record<ErrorCode, ErrorSpec>> {
   const statuses = new Map<ErrorCode, number[]>();

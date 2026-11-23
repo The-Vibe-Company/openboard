@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 
 export const CHANNEL_PATH_MAX = 2048;
 export const MESSAGE_TEXT_MAX = 10_000;
@@ -6,6 +7,10 @@ const segment = "[a-z0-9][a-z0-9_-]*";
 
 /** `errors-www`, `www/production`: lowercase segments joined by `/` (upstream `ChannelPath`). */
 export const ChannelPath = Type.String({ maxLength: CHANNEL_PATH_MAX, pattern: `^${segment}(?:/${segment})*$` });
+
+export function isChannelPath(value: unknown): value is string {
+  return Value.Check(ChannelPath, value);
+}
 
 /** Label keys as upstream takes them: 1 to 64 lowercase letters, digits, `.`, `_` and `-`. */
 export const Labels = Type.Record(

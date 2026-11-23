@@ -1,9 +1,9 @@
-import { BoardError, decodeInput, type operations } from "@openboard/contract";
+import { BoardError, decodeInput, type operations, type RawInput } from "@openboard/contract";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields } from "../log.ts";
 import { handlerOf } from "../operations/index.ts";
-import { errorResponse } from "./errors.ts";
+import { errorResponse, invalidPostChannel } from "./errors.ts";
 import { json } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
 import { boardPath, notFound, type Tenants } from "./scope.ts";
@@ -28,6 +28,14 @@ async function readBody(request: Request): Promise<unknown> {
   }
 }
 
+function validate(operation: Contracted, raw: RawInput) {
+  try {
+    return decodeInput(operation, raw);
+  } catch (error) {
+    throw operation.name === "postMessage" ? invalidPostChannel(error, raw.body) : error;
+  }
+}
+
 async function run(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields): Promise<Response> {
   const path = boardPath(url.pathname);
   if (!path) throw notFound();
@@ -39,7 +47,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   const board = await pipeline.tenants.board(path);
   const by = await authenticate(request, verifiers(pipeline.config));
   logged.actor = by.actor;
-  const input = decodeInput(operation, {
+  const input = validate(operation, {
     params: matched.params,
     query: Object.fromEntries(url.searchParams),
     body: request.method === "GET" ? undefined : await readBody(request),

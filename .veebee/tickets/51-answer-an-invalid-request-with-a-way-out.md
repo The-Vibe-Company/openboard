@@ -5,14 +5,19 @@ milestone: M1-walking-skeleton
 package: server
 writes:
   - packages/server/src/http/errors.ts
+  - packages/server/src/http/pipeline.ts
   - packages/server/src/http/respond.ts
+  - packages/contract/src/errors.ts
+  - packages/contract/src/entities/messages.ts
+  - packages/cli/src/main.ts
   - packages/cli/src/output.ts
+  - packages/sdk/src/client.ts
   - packages/server/test/errors.test.ts
 conformance: ["core/answers 400 for a request that does not validate"]
 modes: [local]
 depends_on: [36]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 51
 ---
 
