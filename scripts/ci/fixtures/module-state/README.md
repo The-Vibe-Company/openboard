@@ -7,5 +7,5 @@ Inputs for `scripts/ci/module-state.ts` (docs/codebase.md 3.2, 3.3 point 6, 5.6)
 
 ```sh
 cp -r scripts/ci/fixtures/module-state/refused/. . && bun run lint   # exits 1
-rm packages/core/src/let.ts packages/core/src/map.ts packages/server/src/{registry,use,forms}.ts apps/openboard/src/static.ts
+rm packages/core/src/let.ts packages/core/src/map.ts packages/server/src/registry.ts packages/server/src/use.ts packages/server/src/forms.ts apps/openboard/src/static.ts
 ```
