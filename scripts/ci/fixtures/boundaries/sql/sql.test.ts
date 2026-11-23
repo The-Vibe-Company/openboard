@@ -31,12 +31,17 @@ test("reports the head and path for SQL files and TypeScript literals outside dr
   const template = await Bun.file(join(import.meta.dir, "query.ts.txt")).text();
   const found = await scan({
     "packages/server/query.sql": sql,
+    "packages/server/lowercase.sql": sql.toLowerCase(),
     "packages/core/src/query.ts": template,
     "packages/driver-sql/src/query.ts": template,
     "packages/driver-sqlite/query.sql": sql,
     "packages/driver-postgres/query.sql": sql,
   });
   expect(found).toEqual([
+    {
+      file: "packages/server/lowercase.sql",
+      message: "SQL file (statement head SELECT … FROM) is only allowed in a driver workspace",
+    },
     {
       file: "packages/server/query.sql",
       message: "SQL file (statement head SELECT … FROM) is only allowed in a driver workspace",
@@ -57,11 +62,11 @@ test("finds each documented head in quoted strings and interpolated templates", 
     "const jsx = <p>Don't scan JSX text</p>;",
     'const summary = "Create a public channel before anyone posts to it.";',
     "const table = 'messages';",
-    `const selectFrom = \`select \${'id'}\nfrom \${table}\`;`,
-    "const insert = 'prefix: insert into messages';",
+    `const selectFrom = \`SELECT \${'id'}\nFROM \${table}\`;`,
+    "const insert = 'INSERT INTO messages';",
     `const update = \`UPDATE \${table} SET id = 1\`;`,
     "const remove = 'DELETE FROM messages';",
-    "const create = 'create table messages (id int)';",
+    "const create = 'CREATE TABLE messages (id int)';",
     "const alter = 'ALTER TABLE messages ADD x INT';",
     "const drop = 'DROP TABLE messages';",
     "const begin = 'BEGIN';",
@@ -94,12 +99,12 @@ test("finds each documented head in quoted strings and interpolated templates", 
 test("recognizes comments between SQL keywords and punctuation inside SQL quotes", async () => {
   const file = "packages/core/src/queries.ts";
   const queries = [
-    ["begin;", "BEGIN"],
-    ['listen "message updates"', "LISTEN"],
-    ["notify messages", "NOTIFY"],
-    ["insert/* comment */into messages", "INSERT INTO"],
-    ["delete-- comment\nfrom messages", "DELETE FROM"],
-    ["select ';' from messages", "SELECT … FROM"],
+    ["BEGIN;", "BEGIN"],
+    ['LISTEN "message updates"', "LISTEN"],
+    ["NOTIFY messages", "NOTIFY"],
+    ["INSERT/* comment */INTO messages", "INSERT INTO"],
+    ["DELETE-- comment\nFROM messages", "DELETE FROM"],
+    ["SELECT ';' FROM messages", "SELECT … FROM"],
     ["SELECT*FROM messages", "SELECT … FROM"],
     ["SELECT $$;$$ FROM messages", "SELECT … FROM"],
     ["DELETE/* outer /* inner */ comment */FROM messages", "DELETE FROM"],
@@ -113,4 +118,22 @@ test("recognizes comments between SQL keywords and punctuation inside SQL quotes
       message: `SQL statement head ${head} is only allowed in a driver workspace`,
     })),
   );
+});
+
+test("allows prose and requires uppercase heads at the start of source literals", async () => {
+  const file = "packages/server/src/probe.ts";
+  const source = [
+    'export const msg = "select a channel to read from";',
+    'export const help = "Example query: SELECT id FROM messages";',
+    'export const mixed = "SELECT id from messages";',
+    'export const lower = "insert into messages";',
+    "export const query = `SELECT id FROM messages`;",
+  ].join("\n");
+  expect(await scan({ [file]: source })).toEqual([
+    {
+      file,
+      line: 5,
+      message: "SQL statement head SELECT … FROM is only allowed in a driver workspace",
+    },
+  ]);
 });

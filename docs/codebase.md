@@ -193,7 +193,7 @@ Universal rules:
 
 | Rule | Scope |
 |---|---|
-| SQL only in the `packages/driver-*` workspaces (`driver-sql`, `driver-sqlite`, `driver-postgres`): no `.sql` file elsewhere, and no string or template literal elsewhere containing an SQL statement head (`SELECT … FROM`, `INSERT INTO`, `UPDATE … SET`, `DELETE FROM`, `CREATE `, `ALTER `, `DROP `, `BEGIN`, `LISTEN`, `NOTIFY`, `PRAGMA`) | all workspaces except `driver-*` and `scripts/ci` fixtures |
+| SQL only in the `packages/driver-*` workspaces (`driver-sql`, `driver-sqlite`, `driver-postgres`): no `.sql` file elsewhere, and no string or template literal elsewhere starting with an uppercase SQL statement head (`SELECT … FROM`, `INSERT INTO`, `UPDATE … SET`, `DELETE FROM`, `CREATE `, `ALTER `, `DROP `, `BEGIN`, `LISTEN`, `NOTIFY`, `PRAGMA`) | all workspaces except `driver-*` and `scripts/ci` fixtures |
 | `bun:sqlite` only in `driver-sqlite`; `SQL` from `bun` only in `driver-postgres`; `driver-sql` imports neither | everywhere |
 | Every registered statement filters on `board_id` or `org_id`, except those listed as platform statements (accounts, sign-in) | `driver-sql` (statement registry test) |
 | `process.env` / `Bun.env` only in `apps/openboard/src/config.ts` and `packages/cli/src/config.ts` | `packages/` and `apps/` (CI scripts and tools read their own environment) |

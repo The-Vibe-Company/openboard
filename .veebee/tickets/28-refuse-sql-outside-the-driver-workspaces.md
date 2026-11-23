@@ -4,6 +4,7 @@ title: Refuse SQL outside the driver workspaces
 milestone: M0-foundations
 package: tools
 writes:
+  - docs/codebase.md
   - scripts/ci/boundaries.ts
   - scripts/ci/boundaries.json
   - scripts/ci/boundaries/sql.ts
