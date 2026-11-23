@@ -7,6 +7,7 @@ export function invitationsSuite(driver: string, open: OpenStore): void {
   issueAndJoin(driver, open);
   refuseSecondOrganization(driver, open);
   revokeLink(driver, open);
+  refuseUsedOrExpired(driver, open);
 }
 
 function issueAndJoin(driver: string, open: OpenStore): void {
@@ -153,6 +154,68 @@ function revokeLink(driver: string, open: OpenStore): void {
       const refused = platform.acceptInvitation(tokenHash, recipient, at + 3);
       await expect(refused).rejects.toMatchObject({ code: "invitation_used" });
       expect(await org.listMembers()).toEqual([{ principal: by, role: "owner" }]);
+    } finally {
+      await store.close();
+    }
+  });
+}
+
+/** docs/auth.md "Invitations": a link admits one person, for seven days. */
+function refuseUsedOrExpired(driver: string, open: OpenStore): void {
+  test(`${driver}: an accepted or seven-day-old link admits no one`, async () => {
+    const store = await open();
+    try {
+      const platform = store.platform();
+      const at = 1_700_000_000_000;
+      const join = async (letter: string) => {
+        const personId = `u_${letter.repeat(16)}`;
+        await platform.signIn({
+          identity: { provider: "github", subject: letter, login: letter, name: letter, email: null, avatar: null },
+          admitNew: true,
+          newPersonId: personId,
+          session: { idHash: letter.repeat(64), csrf: "fixture", expiresAt: at + 86_400_000 },
+          now: at,
+        });
+        return personId;
+      };
+      const owner = await join("a");
+      const by = `ob:user:${owner}`;
+      await platform.createOrg({
+        ...orgs.decideCreate({ name: "Acme", slug: "acme" }, { by, now: at }),
+        now: at,
+        personId: owner,
+      });
+      const membership = await platform.orgMembership("acme", owner);
+      if (!membership) throw new Error("expected the organization's owner");
+      const org = store.org({ orgId: membership.orgId } as OrgScope);
+      const link = async (letter: string, fill: number) => {
+        const record = decideInvitation({ role: "member" }, { by, id: `inv_${letter.repeat(16)}`, now: at });
+        const tokenHash = new Uint8Array(32).fill(fill);
+        expect(await org.createInvitation({ ...record, personId: owner, at, tokenHash })).toBe(true);
+        return { tokenHash, expiresAt: record.expiresAt };
+      };
+      const used = await link("c", 13);
+      const first = await join("b");
+      expect(await platform.acceptInvitation(used.tokenHash, first, at + 1)).toMatchObject({ role: "member" });
+      const second = await join("d");
+      await expect(platform.acceptInvitation(used.tokenHash, second, at + 2)).rejects.toMatchObject({
+        code: "invitation_used",
+      });
+      await expect(platform.acceptInvitation(used.tokenHash, first, at + 2)).rejects.toMatchObject({
+        code: "invitation_used",
+      });
+      const stale = await link("e", 15);
+      await expect(platform.acceptInvitation(stale.tokenHash, second, stale.expiresAt)).rejects.toMatchObject({
+        code: "invitation_used",
+      });
+      expect(await platform.acceptInvitation(stale.tokenHash, second, stale.expiresAt - 1)).toMatchObject({
+        role: "member",
+      });
+      expect(await org.listMembers()).toEqual([
+        { principal: by, role: "owner" },
+        { principal: `ob:user:${first}`, role: "member" },
+        { principal: `ob:user:${second}`, role: "member" },
+      ]);
     } finally {
       await store.close();
     }

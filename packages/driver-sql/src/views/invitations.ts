@@ -53,10 +53,10 @@ export function invitationPlatform(
         const scope = { orgId, tokenHash, at };
         const [invitation] = await query(tx, dialect, invitationStatements.lockRedeemableInvitation, scope);
         if (!invitation) {
-          // Read again after the lock wait, so a revoke that committed meanwhile is seen.
+          // Read again after the lock wait, so an accept or revoke that committed meanwhile is seen.
           const [latest] = await query(tx, dialect, invitationStatements.invitationByHash, { tokenHash });
-          if (latest && latest.revoked_at !== null)
-            throw new BoardError("invitation_used", "this invitation was revoked");
+          if (latest && (latest.accepted_at !== null || latest.revoked_at !== null || Number(latest.expires_at) <= at))
+            throw new BoardError("invitation_used", "this invitation was already used, revoked or expired");
           return null;
         }
         await query(tx, dialect, orgStatements.lockPerson, { personId });

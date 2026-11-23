@@ -174,7 +174,7 @@ export interface PlatformView {
   /**
    * Redeems the exact token hash and records the membership and audit event in one transaction.
    * Throws `already_in_org` when the person already belongs to an organization (v1 allows one, D34), and
-   * `invitation_used` when the invitation was revoked.
+   * `invitation_used` when the invitation was already accepted, revoked, or expired at `at` (single use, 7 days).
    */
   acceptInvitation(tokenHash: Uint8Array, personId: string, at: number): Promise<MembershipRecord | null>;
   /** A capability lookup: only the exact token hash selects an invitation, returning preview fields. */
