@@ -7,6 +7,14 @@ writes:
   - packages/server/src/auth/connections.ts
   - packages/server/src/auth/chain.ts
   - packages/server/test/auth/direct.test.ts
+  - packages/server/src/auth/secrets.ts
+  - packages/server/src/auth/local-owner.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/actors.ts
+  - packages/contract/src/entities/actors.ts
+  - packages/server/openapi.json
+  - packages/cli/src/commands/whoami.ts
 conformance: []
 modes: [local]
 depends_on: [109]

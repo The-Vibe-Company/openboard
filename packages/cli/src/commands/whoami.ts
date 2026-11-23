@@ -11,7 +11,7 @@ export const whoamiCommand: Command = {
     } else {
       const { org, board, role, credential } = me.openboard;
       ctx.output.out(`${me.name} (${me.actor}) via ${credential}`);
-      ctx.output.out(`org     ${org.slug} (${role})`);
+      ctx.output.out(`org     ${org.slug}${role === null ? "" : ` (${role})`}`);
       ctx.output.out(`board   ${board.slug}  ${ctx.boardUrl}`);
     }
     return 0;
