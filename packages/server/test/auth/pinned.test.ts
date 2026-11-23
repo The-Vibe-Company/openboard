@@ -145,3 +145,19 @@ test("a token without a permission at * cannot use what spans every channel, whi
   const everywhere = await readerToken(app, { "*": ["read"] }, "watchers");
   expect((await as(app, everywhere, null, "GET", "/channels")).status).toBe(200);
 });
+
+test("a token missing a permission under any one pattern cannot use what spans every channel", async () => {
+  app = makeApp();
+  const token = await readerToken(app, { "*": ["read", "post"], "secrets/": ["post"] });
+  expect(await codeOf(await as(app, token, null, "GET", "/events"))).toEqual([403, "forbidden"]);
+  expect((await as(app, token, null, "POST", "/messages", { channel: "secrets/a", text: "x" })).status).toBe(201);
+});
+
+test("a pinned token asking for a message not yet posted gets 404 before the handler, even with a bad body", async () => {
+  app = makeApp();
+  const token = await readerToken(app, { ops: ["read", "post"] });
+  expect(await codeOf(await as(app, token, null, "POST", "/messages", { re: "999", text: "" }))).toEqual([
+    404,
+    "message_not_found",
+  ]);
+});
