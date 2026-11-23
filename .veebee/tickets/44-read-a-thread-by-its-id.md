@@ -12,11 +12,20 @@ writes:
   - packages/ports/src/store.ts
   - packages/contract/src/entities/threads.ts
   - packages/cli/src/commands/read.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/ports/testkit/index.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/cli/test/read-thread.test.ts
+  - tools/bench/test/counters.test.ts
 conformance: []
 modes: [local]
 depends_on: [36]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-5-5
 issue: 44
 ---
 
