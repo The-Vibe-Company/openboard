@@ -21,7 +21,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [124]
-status: claimed
+status: done
 claimed_by: claude-opus-t125
 issue: 126
 ---
@@ -30,7 +30,7 @@ issue: 126
 As an orchestrator, two sandboxes cannot end up writing under the same name.
 
 ## Done when
-- [ ] claiming `fixer-2` twice without an `idempotencyKey` answers 409 `profile_taken` the second time
+- [x] claiming `fixer-2` twice without an `idempotencyKey` answers 409 `profile_taken` the second time
 
 ## Out of scope
 - Retries with the same key (126).

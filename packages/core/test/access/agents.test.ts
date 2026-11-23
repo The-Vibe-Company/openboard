@@ -117,9 +117,7 @@ describe("refreshing an agent token", () => {
   test("never moves past the hard expiry, and refuses past it", () => {
     const late = { ...stored, agent: claimed, tokenExpires: NOW + 86_400_000 };
     expect(refresh(NOW + 86_000_000, token.hash, late).agent.expiresAt).toBe(claimed.hardExpiresAt);
-    expect(() => refresh(NOW + 86_400_000, token.hash, { ...late, tokenExpires: NOW + 86_400_001 })).toThrow(
-      "hard expiry",
-    );
+    expect(() => refresh(NOW + 86_400_000, token.hash, late)).toThrow("hard expiry");
   });
 
   test("refuses a token from its expiry on, read under the lock, so a claim of its profile meanwhile stands", () => {

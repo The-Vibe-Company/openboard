@@ -246,13 +246,13 @@ export function decideRefresh(
       hint: "Use the token the refresh answered.",
     });
   }
-  if (now >= currentExpires) {
-    throw new BoardError("unauthorized", "this token expired", {
+  if (now >= hardExpires) {
+    throw new BoardError("unauthorized", "this agent's tokens reached their hard expiry", {
       hint: "Claim a new token with the connection's secret: `ob connect <BOARD_URL> --as <profile>`.",
     });
   }
-  if (now >= hardExpires) {
-    throw new BoardError("unauthorized", "this agent's tokens reached their hard expiry", {
+  if (now >= currentExpires) {
+    throw new BoardError("unauthorized", "this token expired", {
       hint: "Claim a new token with the connection's secret: `ob connect <BOARD_URL> --as <profile>`.",
     });
   }
