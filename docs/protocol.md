@@ -131,10 +131,12 @@ answers. OpenBoard adds:
 | GET | `/messages` | U | |
 | GET | `/threads` | U | all filters, `before`/`older` |
 | GET | `/messages/:id` | U | |
-| GET | `/posts/:id` | U | the caller's own post by its client ID; 404 `post_not_found` |
+| GET | `/posts/:id` | U | `{ message }` as it landed, by the caller's client ID; 404 `post_not_found` for missing or foreign IDs |
 | POST | `/messages` | U | `sync` targets: 400 `invalid_request` "this board syncs nowhere" |
 | POST | `/messages/:id/edit`, `/delete`, `/reactions`, `/labels` | U | |
 | GET | `/events` | U | JSON feed with `after`; SSE and long-poll planned |
+
+Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --idempotency-key`.
 
 ### Attachments, schedules, tasks, grants, schemas
 

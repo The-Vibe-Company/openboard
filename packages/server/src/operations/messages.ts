@@ -1,4 +1,4 @@
-import { BoardError, type listMessages, type postMessage } from "@openboard/contract";
+import { BoardError, type listMessages, type postMessage, type readPost } from "@openboard/contract";
 import { formatId, messages, parseId } from "@openboard/core";
 import { authorOf } from "../auth/author.ts";
 import type { Handler } from "./index.ts";
@@ -35,4 +35,10 @@ export const listMessagesHandler: Handler<typeof listMessages> = async (ctx, inp
   const page = await ctx.board.channelMessages(after === undefined ? query : { ...query, after });
   if (page === null) throw new BoardError("invalid_cursor", "after: cursor is ahead of the board");
   return { messages: page, cursor: page.at(-1)?.id ?? formatId(after ?? 0) };
+};
+
+export const readPostHandler: Handler<typeof readPost> = async (ctx, { id }) => {
+  const message = await ctx.board.ownClientPost(id, ctx.by);
+  if (!message) throw new BoardError("post_not_found", "no post of yours has that client ID");
+  return { message };
 };

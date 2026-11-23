@@ -64,3 +64,20 @@ export const listMessages = defineOperation({
   why: "`ob messages <channel>` is hand-written: it prints one line per message rather than the raw page.",
   upstream: true,
 });
+
+export const readPost = defineOperation({
+  name: "readPost",
+  operationId: "posted",
+  summary: "Read the caller's own post by its client ID, as it landed.",
+  route: { method: "GET", path: "/posts/:id" },
+  scope: "board",
+  // Lookup accepts any path ID so one that could never land still answers post_not_found.
+  input: { params: Type.Object({ id: Ref("message", { maxLength: undefined }) }, { additionalProperties: false }) },
+  output: Type.Object({ message: Message }),
+  errors: ["invalid_request", "post_not_found"],
+  access: null,
+  effects: { readOnly: true, idempotent: true, emits: [] },
+  cli: { command: ["posted"], args: ["id"] },
+  mcp: { tool: "read_post" },
+  upstream: true,
+});
