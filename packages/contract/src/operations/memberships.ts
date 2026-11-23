@@ -12,7 +12,7 @@ export const changeMemberRole = defineOperation({
     body: Type.Object({ role: Role }, { additionalProperties: false }),
   },
   output: Type.Object({ principal: Type.String(), role: Role }),
-  errors: ["invalid_request", "not_found", "unauthorized", "forbidden"],
+  errors: ["invalid_request", "not_found", "unauthorized", "forbidden", "last_owner"],
   access: null,
   effects: { readOnly: false, idempotent: true, emits: ["ob.member.role_changed"] },
   cli: false,

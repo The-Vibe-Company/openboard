@@ -12,6 +12,11 @@ describe("organization role changes", () => {
     expect(decideMemberRole("owner", "member", "owner")).toBe(true);
   });
 
+  test("only an owner can change an owner's role", () => {
+    expect(() => decideMemberRole("admin", "owner", "admin")).toThrow(expect.objectContaining({ code: "forbidden" }));
+    expect(decideMemberRole("owner", "owner", "admin")).toBe(true);
+  });
+
   test("a member cannot assign any role", () => {
     expect(() => decideMemberRole("member", "member", "admin")).toThrow("you cannot assign");
   });

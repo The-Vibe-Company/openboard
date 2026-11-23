@@ -1,5 +1,5 @@
 import { BoardError, type Role } from "@openboard/contract";
-import { decideMemberRole } from "@openboard/core";
+import { decideMemberRole, requireAnotherOwner } from "@openboard/core";
 import type { OrgScope, OrgView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { query, sql } from "../sql.ts";
@@ -9,6 +9,8 @@ import { orgStatements } from "./orgs.ts";
 export const membershipStatements = {
   targetMember: sql`SELECT m.user_id, m.role FROM memberships m
     JOIN users u ON u.id = m.user_id WHERE m.org_id = ${"orgId"} AND u.public_id = ${"targetId"}`,
+  anotherOwner: sql`SELECT 1 FROM memberships m JOIN users u ON u.id = m.user_id
+    WHERE m.org_id = ${"orgId"} AND m.user_id <> ${"userId"} AND m.role = 'owner' AND u.disabled_at IS NULL LIMIT 1`,
   updateMemberRole: sql`UPDATE memberships SET role = ${"role"}
     WHERE org_id = ${"orgId"} AND user_id = ${"userId"}`,
 };
@@ -26,9 +28,14 @@ export function membershipView(db: Db, dialect: Dialect, { orgId }: OrgScope): P
         const principal = `ob:user:${targetId}`;
         const previousRole = String(target.role) as Role;
         if (decideMemberRole(String(actor.role) as Role, previousRole, role)) {
+          const userId = Number(target.user_id);
+          if (previousRole === "owner") {
+            const [other] = await query(tx, dialect, membershipStatements.anotherOwner, { orgId, userId });
+            requireAnotherOwner(other !== undefined);
+          }
           await query(tx, dialect, membershipStatements.updateMemberRole, {
             orgId,
-            userId: Number(target.user_id),
+            userId,
             role,
           });
           const [next] = await query(tx, dialect, invitationStatements.nextInvitationEvent, { orgId });

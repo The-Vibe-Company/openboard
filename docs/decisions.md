@@ -433,6 +433,10 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
 - **Consequence.** Supersedes D14; amends D12. An org switcher later needs
   only UI and lifting the one-membership rule (URLs, sessions, and tokens are
   already shaped for it).
+- **Last owner (ticket 150, issue #151).** Demoting or removing the last owner
+  returns 409 `last_owner` with message “an organization keeps at least one
+  owner” and hint “promote another member to owner first”. Check for another
+  owner inside the same organization write transaction as the membership change.
 
 ### D35. Board URLs are paths: `/api/<org>/<board>` (N5)
 

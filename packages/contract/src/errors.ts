@@ -88,6 +88,7 @@ const CODES = {
     "profile_taken",
     "already_in_org",
     "slug_taken",
+    "last_owner",
   ],
   410: ["secret_spent", "invitation_used"],
   413: ["too_large"],
