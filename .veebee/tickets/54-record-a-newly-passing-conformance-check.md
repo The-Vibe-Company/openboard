@@ -7,11 +7,12 @@ writes:
   - tools/conformance/src/run.ts
   - tools/conformance/src/score.ts
   - tools/conformance/test/score.test.ts
+  - tools/conformance/score.json
 conformance: []
 modes: [local]
 depends_on: [04, 37, 40]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t54
 issue: 54
 ---
 

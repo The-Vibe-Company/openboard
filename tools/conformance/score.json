@@ -1,4 +1,9 @@
 {
-  "local": [],
+  "local": [
+    "core/answers 400 for a request that does not validate",
+    "core/answers 404 for an ID that names nothing",
+    "core/ignores x-board-session: who writes is the principal and its profile",
+    "core/says in its discovery where it is"
+  ],
   "hosted": []
 }

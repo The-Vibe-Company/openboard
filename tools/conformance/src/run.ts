@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import type { CheckGroup, CheckResult } from "@vercel/board/conformance";
 import { boot } from "./drivers";
-import { lostChecks, type Score } from "./score";
+import { lostChecks, newChecks, recordChecks, type Score } from "./score";
 
 const groups: readonly CheckGroup[] = [
   "core",
@@ -62,6 +62,7 @@ const { values } = parseArgs({
   options: {
     driver: { type: "string", default: "sqlite" },
     instances: { type: "string" },
+    update: { type: "boolean", default: false },
   },
 });
 const { driver } = values;
@@ -72,7 +73,8 @@ if (instances !== "1" && (instances !== "2" || driver === "sqlite")) {
 }
 
 const mode = driver === "sqlite" ? "local" : "hosted";
-const score = (await Bun.file(new URL("../score.json", import.meta.url)).json()) as Score;
+const scoreFile = Bun.file(new URL("../score.json", import.meta.url));
+const score = (await scoreFile.json()) as Score;
 const server = await boot(driver, Number(instances));
 try {
   const checks = await runKit(server.url, server.token);
@@ -80,6 +82,12 @@ try {
   const lost = lostChecks(score[mode], checks);
   for (const name of lost) console.error(`Lost conformance check (${mode}): ${name}`);
   if (lost.length > 0) process.exitCode = 1;
+  const added = newChecks(score[mode], checks);
+  const hint = values.update ? "" : " (not recorded: run with --update)";
+  for (const name of added) console.log(`New conformance check (${mode}): ${name}${hint}`);
+  if (values.update && added.length > 0) {
+    await Bun.write(scoreFile, `${JSON.stringify(recordChecks(score, mode, added), null, 2)}\n`);
+  }
 } finally {
   await server.close();
 }
