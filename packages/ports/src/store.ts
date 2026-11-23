@@ -5,10 +5,12 @@ import type {
   ClaimedAgent,
   Connection,
   Message,
+  Named,
+  Role,
   Thread,
   ThreadSummary,
 } from "@openboard/contract";
-import type { BoardEvent, Grant, MessageEdited, MessagePosted, messages } from "@openboard/core";
+import type { BoardEvent, Grant, MessageEdited, MessagePosted, messages, OrgCreation } from "@openboard/core";
 
 declare const minted: unique symbol;
 
@@ -71,6 +73,25 @@ export interface SessionRecord {
   readonly expiresAt: number;
 }
 
+/** A new organization, as core decided it, created by the person `personId` (`u_…`) at `now`. */
+export interface CreateOrgRecord extends OrgCreation {
+  readonly personId: string;
+  readonly now: number;
+}
+
+/** A person's membership of an organization that is not deleted. */
+export interface MembershipRecord {
+  readonly org: Named;
+  readonly role: Role;
+}
+
+/** A person's membership of the board's organization, with the organization and the board they reach. */
+export interface BoardMemberRecord {
+  readonly role: Role;
+  readonly org: Named;
+  readonly board: Named;
+}
+
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
 export interface PlatformView {
   /** The board `orgSlug/boardSlug` names, or null when either is unknown or deleted. */
@@ -85,6 +106,10 @@ export interface PlatformView {
   session(idHash: string): Promise<SessionRecord | null>;
   /** Records that the session was used at `now`, for its idle lifetime. */
   touchSession(idHash: string, now: number): Promise<void>;
+  /** In one transaction: the organization, the person's membership, the board and the organization's events. */
+  createOrg(record: CreateOrgRecord): Promise<void>;
+  /** The person's memberships of organizations that are not deleted, by organization slug. */
+  memberships(personId: string): Promise<MembershipRecord[]>;
 }
 
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */
@@ -181,6 +206,8 @@ export interface BoardView {
   thread(id: number): Promise<Thread | null>;
   /** The channel's latest 50 threads in ascending activity order, with the same snapshot's board head. */
   listThreads(channel: string): Promise<{ threads: ThreadSummary[]; head: number }>;
+  /** The person's membership of this board's organization, or null when they are not a member or are disabled. */
+  member(personId: string): Promise<BoardMemberRecord | null>;
 }
 
 export interface Store {

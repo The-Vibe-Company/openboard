@@ -5,6 +5,7 @@ import { channelsSuite } from "./store/channels.test-suite.ts";
 import { connectionsSuite } from "./store/connections.test-suite.ts";
 import { eventsSuite } from "./store/events.test-suite.ts";
 import { messagesSuite } from "./store/messages.test-suite.ts";
+import { orgsSuite } from "./store/orgs.test-suite.ts";
 import { threadsSuite } from "./store/threads.test-suite.ts";
 
 /** Opens a fresh, migrated store; each test gets its own. */
@@ -23,5 +24,6 @@ export function runStoreSuite(driver: string, open: OpenStore): void {
   connectionsSuite(driver, open);
   eventsSuite(driver, open);
   messagesSuite(driver, open);
+  orgsSuite(driver, open);
   threadsSuite(driver, open);
 }

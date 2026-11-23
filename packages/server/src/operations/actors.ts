@@ -1,7 +1,7 @@
 import { BoardError, type getMe, type listActors, type OutputOf } from "@openboard/contract";
 import { formatId } from "@openboard/core";
 import { authorOf } from "../auth/author.ts";
-import { agentOf, credentialKind, type Principal } from "../deps.ts";
+import { agentOf, credentialKind, memberOf, type Principal, type SessionMember } from "../deps.ts";
 import type { BoardContext, Handler } from "./index.ts";
 
 type Me = OutputOf<typeof getMe>;
@@ -39,9 +39,38 @@ async function connectionMe(
   };
 }
 
+/** What a role lets its member do on the organization's boards (docs/auth.md "Organizations, boards, people"). */
+const ROLE_CAN = {
+  owner: ["read", "post", "react", "label", "sync", "manage"],
+  admin: ["read", "post", "react", "label", "sync", "manage"],
+  member: ["read", "post", "react", "label"],
+} as const;
+
+/** A signed-in person: as their sign-in shows them, with their role in the board's organization. */
+function sessionMe(by: Principal, member: SessionMember): Me {
+  const { actor, principal, profile } = by;
+  const { kind, handle, name, avatar } = profile === null ? { kind: "person" as const, ...member } : authorOf(by);
+  const { role, org, board } = member;
+  const can = { "*": [...ROLE_CAN[role]] };
+  return {
+    actor,
+    principal,
+    kind,
+    handle,
+    name,
+    avatar,
+    profile,
+    expiresAt: null,
+    can,
+    openboard: { org, board, role, credential: "session" },
+  };
+}
+
 export const getMeHandler: Handler<typeof getMe> = async ({ board, by }) => {
   const credential = by[credentialKind];
   if (credential === "connection" || credential === "agent") return connectionMe(board, by, credential);
+  const member = by[memberOf];
+  if (credential === "session" && member) return sessionMe(by, member);
   if (!credential) throw new BoardError("unauthorized", "a local owner credential is required");
   const { actor, principal, profile } = by;
   const { kind, handle, name, avatar } = authorOf(by);

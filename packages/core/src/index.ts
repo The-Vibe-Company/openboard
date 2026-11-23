@@ -31,3 +31,5 @@ export { formatId, isoTime, parseId } from "./ids.ts";
 export { decideEdit, type MessageEdited } from "./messages/edit.ts";
 export type { ActorSeen, MessagePosted, MessagePostedPayload, PostCommand } from "./messages/post.ts";
 export * as messages from "./messages/post.ts";
+export type { CreateOrgCommand, OrgCreation, OrgEvent } from "./orgs/create.ts";
+export * as orgs from "./orgs/create.ts";

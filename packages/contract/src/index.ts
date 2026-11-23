@@ -5,6 +5,7 @@ export * from "./entities/connections.ts";
 export * from "./entities/discovery.ts";
 export * from "./entities/events.ts";
 export * from "./entities/messages.ts";
+export * from "./entities/orgs.ts";
 export * from "./entities/threads.ts";
 export {
   BoardError,
@@ -37,8 +38,10 @@ export {
   claimConnection,
   createChannel,
   createConnection,
+  createOrg,
   discoverBoard,
   editMessage,
+  getAccount,
   getMe,
   getOpenApi,
   getSession,

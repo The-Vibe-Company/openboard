@@ -20,8 +20,11 @@ writes:
   - packages/contract/src/entities/actors.ts
   - packages/core/src/index.ts
   - packages/ports/testkit/index.ts
+  - packages/ports/src/index.ts
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/src/views/accounts.ts
+  - packages/driver-sqlite/test/open.test.ts
   - packages/server/src/operations/accounts.ts
   - packages/server/src/operations/index.ts
   - packages/server/src/operations/actors.ts

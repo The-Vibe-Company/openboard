@@ -1,4 +1,4 @@
-import type { Author, Can } from "@openboard/contract";
+import type { Author, Can, Named, Role } from "@openboard/contract";
 
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
@@ -43,7 +43,7 @@ export interface Deps {
 
 /** Who a request writes as, once the pipeline has authenticated it. */
 export type Principal = Author & {
-  readonly [credentialKind]?: "local" | "connection" | "agent";
+  readonly [credentialKind]?: "local" | "connection" | "agent" | "session";
   readonly [connectionOf]?: ConnectionIdentity;
   /** The agent an `obt_` token was claimed as, `ag_…`. */
   readonly [agentOf]?: string;
@@ -54,7 +54,19 @@ export type Principal = Author & {
   readonly [profileAvatar]?: string | null;
   /** The SHA-256 (hex) of the `obt_` token presented, which a refresh checks is still the agent's current one. */
   readonly [tokenHashOf]?: string;
+  /** A signed-in person: who they are, and their membership of the organization the request's board belongs to. */
+  readonly [memberOf]?: SessionMember;
 };
+
+/** A session's person as the board sees them, with their role and the organization and board they reach. */
+export interface SessionMember {
+  readonly handle: string;
+  readonly name: string;
+  readonly avatar: string | null;
+  readonly role: Role;
+  readonly org: Named;
+  readonly board: Named;
+}
 
 /** A connection's secret: the connection's name, which its profiles show through, and the profiles it may use. */
 export interface ConnectionIdentity {
@@ -70,3 +82,4 @@ export const pinnedCan = Symbol("pinned can");
 export const profileName = Symbol("profile name");
 export const profileAvatar = Symbol("profile avatar");
 export const tokenHashOf = Symbol("token hash");
+export const memberOf = Symbol("member");

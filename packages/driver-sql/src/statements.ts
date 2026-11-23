@@ -8,6 +8,7 @@ import { channelStatements } from "./views/channels.ts";
 import { connectionStatements } from "./views/connections.ts";
 import { eventStatements } from "./views/events.ts";
 import { messageStatements } from "./views/messages.ts";
+import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
 import { threadStatements } from "./views/threads.ts";
 
 /**
@@ -26,6 +27,7 @@ export const statements: Readonly<Record<string, string>> = Object.freeze(
       ...connectionStatements,
       ...eventStatements,
       ...messageStatements,
+      ...orgStatements,
       ...threadStatements,
     }).map(([name, statement]) => [name, render(statement, postgresText).text]),
   ),
@@ -35,6 +37,7 @@ export const statements: Readonly<Record<string, string>> = Object.freeze(
 export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...accountPlatformStatements,
   ...boardPlatformStatements,
+  ...orgPlatformStatements,
 ]);
 
 const PARAM = String.raw`(?:\?|\$\d+)(?:::[a-z_][a-z0-9_]*)?`;
