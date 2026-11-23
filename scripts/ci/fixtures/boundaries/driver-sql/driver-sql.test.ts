@@ -61,6 +61,18 @@ test("refuses a driver-sql import in the composition root's workspace", async ()
   ]);
 });
 
+test("refuses a driver-sql subpath and a type query, naming the file", async () => {
+  const found = await messages({
+    "packages/server/src/http/sql.ts":
+      'import type { Statement } from "@openboard/driver-sql/src/statements";\nexport type S = Statement;\n',
+    "packages/server/src/http/query.ts": 'export type Db = import("@openboard/driver-sql").Db;\n',
+  });
+  expect(found).toEqual([
+    "packages/server/src/http/query.ts: server -> driver-sql (type-only import of @openboard/driver-sql) is a driver-sql import outside the two drivers; only driver-sqlite and driver-postgres may import it",
+    "packages/server/src/http/sql.ts: server -> driver-sql (type-only import of @openboard/driver-sql/src/statements) is a driver-sql import outside the two drivers; only driver-sqlite and driver-postgres may import it",
+  ]);
+});
+
 test("accepts a driver-sql import in each driver and in driver-sql's own workspace", async () => {
   const files = await fixtures("allowed", [
     "packages/driver-postgres/src/dialect.ts",
