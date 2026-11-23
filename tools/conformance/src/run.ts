@@ -30,6 +30,19 @@ function printTable(checks: readonly CheckResult[]) {
   }
 }
 
+/** The file is written as `bun run format` would leave it, so `verify` accepts it whatever the lists hold. */
+async function writeScore(file: URL, score: Score) {
+  const child = Bun.spawn([execPath, "x", "biome", "format", `--stdin-file-path=${fileURLToPath(file)}`], {
+    cwd: fileURLToPath(new URL("../../..", import.meta.url)),
+    stdin: new Blob([JSON.stringify(score)]),
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+  const [formatted, exitCode] = await Promise.all([child.stdout.text(), child.exited]);
+  if (exitCode !== 0 || !formatted) throw new Error(`biome could not format ${fileURLToPath(file)}`);
+  await Bun.write(file, formatted);
+}
+
 async function runKit(url: URL, token: string): Promise<CheckResult[]> {
   const manifest = import.meta.resolve("@vercel/board/package.json");
   const { bin } = (await Bun.file(fileURLToPath(manifest)).json()) as { bin: { vb: string } };
@@ -73,8 +86,8 @@ if (instances !== "1" && (instances !== "2" || driver === "sqlite")) {
 }
 
 const mode = driver === "sqlite" ? "local" : "hosted";
-const scoreFile = Bun.file(new URL("../score.json", import.meta.url));
-const score = (await scoreFile.json()) as Score;
+const scoreFile = new URL("../score.json", import.meta.url);
+const score = (await Bun.file(scoreFile).json()) as Score;
 const server = await boot(driver, Number(instances));
 try {
   const checks = await runKit(server.url, server.token);
@@ -86,7 +99,7 @@ try {
   const hint = values.update ? "" : " (not recorded: run with --update)";
   for (const name of added) console.log(`New conformance check (${mode}): ${name}${hint}`);
   if (values.update && added.length > 0) {
-    await Bun.write(scoreFile, `${JSON.stringify(recordChecks(score, mode, added), null, 2)}\n`);
+    await writeScore(scoreFile, recordChecks(score, mode, added));
   }
 } finally {
   await server.close();
