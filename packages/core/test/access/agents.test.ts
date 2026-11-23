@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { Can, CanInput } from "@openboard/contract";
 import { decideClaim, ttlSeconds } from "../../src/access/agents.ts";
 
 const NOW = 1_700_000_000_000;
@@ -29,11 +30,35 @@ describe("claiming an agent token", () => {
   });
 
   test("takes the claim's can, compiled, and its ttl, capped at the connection's maximum", () => {
-    expect(claim({ profile: "fixer-2", can: { dev: "all" }, ttl: "5m" }).agent).toMatchObject({
-      can: { dev: ["read", "post", "react", "label", "sync", "manage"] },
+    expect(claim({ profile: "fixer-2", can: { "dev/a": ["post", "read"] }, ttl: "5m" }).agent).toMatchObject({
+      can: { "dev/a": ["read", "post"] },
       expiresAt: "2023-11-14T22:18:20.000Z",
     });
     expect(claim({ profile: "fixer-2", ttl: "30d" }).agent.expiresAt).toBe("2023-11-15T22:13:20.000Z");
+  });
+
+  test("keeps a can inside the grant: `dev/` covers `dev` and what is under it", () => {
+    const inside: Can[] = [{ dev: ["read"] }, { "dev/x/": ["post"] }, { "dev/": ["read"] }];
+    for (const can of inside) {
+      expect(claim({ profile: "fixer-2", can }).agent.can).toEqual(can);
+    }
+  });
+
+  test("refuses a can past the connection's grant with 403 forbidden", () => {
+    const past: CanInput[] = [{ "*": "all" }, { "dev/": ["label"] }, { ops: ["read"] }];
+    for (const can of past) {
+      expect(() => claim({ profile: "fixer-2", can })).toThrow(expect.objectContaining({ code: "forbidden" }));
+    }
+  });
+
+  test("checks the grant's most specific pattern, under the claim's broader one too", () => {
+    const grant = { "*": ["read" as const, "post" as const], "ops/": ["read" as const] };
+    const at = { by, now: NOW, connection: { ...connection, profiles: ["*"], can: grant }, token };
+    const decide = (can: Record<string, ("read" | "post")[]>) => () =>
+      decideClaim({ head: 7 }, { profile: "a", can }, at);
+    expect(decide({ "*": ["post"] })).toThrow(expect.objectContaining({ code: "forbidden" }));
+    expect(decide({ ops: ["post"] })).toThrow(expect.objectContaining({ code: "forbidden" }));
+    expect(decide({ "*": ["post"], "ops/": ["read"] })).not.toThrow();
   });
 
   test("refuses a profile the connection's patterns do not let in with 403 forbidden", () => {

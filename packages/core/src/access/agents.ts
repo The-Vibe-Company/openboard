@@ -1,4 +1,11 @@
-import { type Author, BoardError, type Can, type CanInput, type ClaimedAgent } from "@openboard/contract";
+import {
+  type Author,
+  BoardError,
+  type Can,
+  type CanInput,
+  type ClaimedAgent,
+  type Permission,
+} from "@openboard/contract";
 import { isoTime } from "../ids.ts";
 import { connectionPrincipal, profileAllowed } from "./connections.ts";
 import { compileCan } from "./grants.ts";
@@ -68,9 +75,49 @@ export function ttlSeconds(ttl: string): number {
   return Number(match[1]) * unit;
 }
 
+/** Whether `outer` lets in all `inner` names: `*` everything, `dev/` `dev` and what is under it, `dev` only `dev`. */
+function covers(outer: string, inner: string): boolean {
+  if (outer === "*") return true;
+  if (!outer.endsWith("/")) return inner === outer;
+  return inner === outer.slice(0, -1) || inner.startsWith(outer);
+}
+
+/** Upstream's order of specificity: an exact channel, then the longest prefix, then `*`. */
+function specificity(pattern: string): number {
+  if (pattern === "*") return 0;
+  return pattern.endsWith("/") ? pattern.length : Number.MAX_SAFE_INTEGER;
+}
+
+/** What `can` lets in at `spot`, by its most specific pattern covering it; nothing when none does. */
+function allowedAt(can: Can, spot: string): readonly Permission[] {
+  const deciding = Object.keys(can)
+    .filter((pattern) => covers(pattern, spot))
+    .sort((a, b) => specificity(b) - specificity(a))[0];
+  return deciding === undefined ? [] : (can[deciding] ?? []);
+}
+
+/**
+ * The claim's `can`, compiled, when the connection's grant lets in all of it; a claim narrows, never widens, so a
+ * permission past the grant is 403 `forbidden`. Every pattern either side names is checked: between them, which
+ * pattern decides a channel cannot change.
+ */
+function narrowed(grant: Can, written: CanInput): Can {
+  const can = compileCan(written);
+  for (const spot of new Set([...Object.keys(grant), ...Object.keys(can)])) {
+    const allowed = allowedAt(grant, spot);
+    const missing = allowedAt(can, spot).find((permission) => !allowed.includes(permission));
+    if (missing !== undefined) {
+      throw new BoardError("forbidden", `the connection's grant does not let ${missing} in at ${spot}`, {
+        hint: "Claim a can inside the connection's grant, or leave can out to take the whole grant.",
+      });
+    }
+  }
+  return can;
+}
+
 /**
  * An agent of `connection` pinned to `command.profile`, which the connection's `profiles` patterns must let in (else
- * 403 `forbidden`). Its `can` is the claim's, compiled, or the connection's grant; its token lives `ttl` (default the
+ * 403 `forbidden`). Its `can` is the claim's, inside the connection's grant, or that grant; its token lives `ttl` (default the
  * connection's token lifetime), never past the connection's cap, which is also its hard expiry.
  */
 export function decideClaim(
@@ -95,7 +142,7 @@ export function decideClaim(
   const agent: ClaimedAgent = {
     id: token.id,
     actor: `${connectionPrincipal(connection.id)}+${command.profile.toLowerCase()}`,
-    can: command.can === undefined ? connection.can : compileCan(command.can),
+    can: command.can === undefined ? connection.can : narrowed(connection.can, command.can),
     expiresAt: isoTime(tokenExpires),
     hardExpiresAt: isoTime(hardExpires),
   };

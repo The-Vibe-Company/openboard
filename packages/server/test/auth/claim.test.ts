@@ -149,6 +149,15 @@ test.each([
   expect(await codeOf(await as(app, secret, "POST", "/x/connections/claim", body))).toEqual([400, code]);
 });
 
+test("a claim whose can goes past the connection's grant answers 403 forbidden and stores no agent", async () => {
+  app = makeApp();
+  const secret = await connect(app);
+  const response = await as(app, secret, "POST", "/x/connections/claim", { profile: "fixer-2", can: { "*": "all" } });
+  expect(await codeOf(response)).toEqual([403, "forbidden"]);
+  const events = await call(app, "GET", "/events?after=0");
+  expect(await events.json()).toMatchObject({ cursor: "1" });
+});
+
 test("an obt_ token that is forged or names no agent of the board answers 401 unauthorized", async () => {
   app = makeApp();
   const { token } = await claim(app, await connect(app));

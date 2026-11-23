@@ -40,7 +40,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [112]
-status: claimed
+status: done
 claimed_by: claude-opus-t117
 issue: 117
 ---
@@ -49,8 +49,8 @@ issue: 117
 As an orchestrator, I trade the connection secret for a short-lived token pinned to one profile.
 
 ## Done when
-- [ ] for `fixers` created with `--profiles 'fixer-*'` and without `--direct`, `curl -X POST http://127.0.0.1:8787/api/local/main/x/connections/claim -H "authorization: Bearer $(cat fixers.secret)" -d '{"profile":"fixer-2"}'` answers an `agent`, an `obt_` token and `env`
-- [ ] `BOARD_TOKEN=<that obt_> ob post dev hi` shows `fixer-2 via fixers`
+- [x] for `fixers` created with `--profiles 'fixer-*'` and without `--direct`, `curl -X POST http://127.0.0.1:8787/api/local/main/x/connections/claim -H "authorization: Bearer $(cat fixers.secret)" -d '{"profile":"fixer-2"}'` answers an `agent`, an `obt_` token and `env`
+- [x] `BOARD_TOKEN=<that obt_> ob post dev hi` shows `fixer-2 via fixers`
 
 ## Out of scope
 - The CLI (118); pins (119, 120); refresh (122); single use (124).

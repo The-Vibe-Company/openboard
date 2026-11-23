@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { connections } from "@openboard/core";
 import type { BoardView } from "@openboard/ports";
 import { agentOf, connectionOf, credentialKind, type Principal, profileName } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
@@ -28,7 +29,7 @@ export function agentTokenVerifier(): CredentialVerifier {
       const { agent, connection, profile } = record;
       return {
         actor: agent.actor,
-        principal: `ob:conn:${connection.id}`,
+        principal: connections.connectionPrincipal(connection.id),
         profile: profile.toLowerCase(),
         [credentialKind]: "agent",
         [connectionOf]: { name: connection.name, profiles: connection.profiles },
