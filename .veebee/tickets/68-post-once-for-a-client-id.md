@@ -20,7 +20,7 @@ writes:
 conformance: ["core/posts once for a client ID, however many times it is sent"]
 modes: [local]
 depends_on: [53]
-status: claimed
+status: done
 claimed_by: claude-opus-t68
 issue: 68
 ---
@@ -29,7 +29,7 @@ issue: 68
 As an agent that retries, my message lands once however many times I send it.
 
 ## Done when
-- [ ] `ob post dev deploy --idempotency-key deploy-1` run twice prints the same ID, and `ob read dev` shows the message once
+- [x] `ob post dev deploy --idempotency-key deploy-1` run twice prints the same ID, and `ob read dev` shows the message once
 
 ## Out of scope
 - Task client IDs (M9, 241).
