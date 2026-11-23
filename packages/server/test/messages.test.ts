@@ -93,6 +93,25 @@ describe("replying in a thread", () => {
     expect(body.messages.map((message) => message.id)).toEqual(["1"]);
   });
 
+  test("answers 400 invalid_request for a reply to a reply, and posts nothing", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    await call(app, "POST", "/messages", { re: "1", text: "on it" });
+    const refused = await answer(call(app, "POST", "/messages", { re: "2", text: "deeper" }));
+    expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
+    expect(refused.body.error.message).toStartWith("re");
+    const { body } = await answer(call(app, "GET", "/messages?channel=dev"));
+    expect(body.messages.map((message) => message.id)).toEqual(["1", "2"]);
+  });
+
+  test("names the field a reply gets wrong, not the channel it leaves out", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const refused = await answer(call(app, "POST", "/messages", { re: "1", text: "x", sync: ["somewhere"] }));
+    expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
+    expect(refused.body.error.message).toStartWith("sync");
+  });
+
   test("answers 400 invalid_request for a post that names both a channel and re", async () => {
     app = makeApp();
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });

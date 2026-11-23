@@ -19,10 +19,11 @@ writes:
   - packages/cli/test/read-thread.test.ts
   - tools/conformance/score.json
   - README.md
+  - packages/server/src/http/errors.ts
 conformance: ["core/posts a message, and reads it back by its ID"]
 modes: [local]
 depends_on: [40, 43, 44]
-status: claimed
+status: done
 claimed_by: claude-opus-t45
 issue: 45
 ---
@@ -31,8 +32,8 @@ issue: 45
 As a person or agent, I answer a message in its thread.
 
 ## Done when
-- [ ] `ob reply 1 "on it"` prints `2`, and `ob read 1` shows #2 under #1
-- [ ] `ob read dev` lists #1 then #2
+- [x] `ob reply 1 "on it"` prints `2`, and `ob read 1` shows #2 under #1
+- [x] `ob read dev` lists #1 then #2
 
 ## Out of scope
 - Replying to a reply (46).

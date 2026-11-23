@@ -73,6 +73,13 @@ describe("replying in a thread", () => {
     expect(refused).toEqual({ code: "message_not_found", message: "Couldn't find message #9." });
   });
 
+  test("refuses a reply to a reply, which belongs in its root's thread", () => {
+    const target = { id: 2, channel: "dev", re: "1" };
+    const refused = refusal(() => decidePost({ head: 2, target }, { re: "2", text: "x" }, { by, now: at }));
+    expect(refused.code).toBe("invalid_request");
+    expect(refused.message).toStartWith("re");
+  });
+
   test.each([
     ["both channel and re", { channel: "dev", re: "1" }, "channel"],
     ["neither channel nor re", {}, "channel"],
