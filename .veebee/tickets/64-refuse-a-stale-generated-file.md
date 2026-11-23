@@ -7,11 +7,12 @@ writes:
   - scripts/ci/gen.ts
   - scripts/ci/gen.test.ts
   - package.json
+  - .github/workflows/ci.yml
 conformance: []
 modes: [local]
 depends_on: [63]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude
 issue: 64
 ---
 

@@ -11,12 +11,13 @@
     "examples/*"
   ],
   "scripts": {
-    "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test",
+    "verify": "bun run format:check && bun run lint && bun run typecheck && bun run gen:check && bun run test",
     "verify:pg": "bun scripts/ci/verify-pg.ts",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint . && oxlint --format default && bun scripts/ci/boundaries.ts && bun scripts/ci/agents-guard.ts && bun scripts/ci/sizes.ts && bun scripts/ci/migrations.ts",
     "gen": "bun scripts/ci/gen.ts",
+    "gen:check": "bun scripts/ci/gen.ts --check",
     "pr-size": "bun scripts/ci/pr-size.ts",
     "typecheck": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' typecheck",
     "test": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' test && bun test ./scripts/ci",
