@@ -6,7 +6,10 @@ Run these commands in a disposable checkout containing the lint configuration an
 
 | Command | Expected lint exit |
 | --- | --- |
-| `cat scripts/ci/fixtures/oxlint/env/refused/packages/server/src/app.ts >> packages/server/src/app.ts && bun run lint` | 1 with diagnostics in `packages/server/src/app.ts` |
-| `cat scripts/ci/fixtures/oxlint/env/refused/packages/sdk/src/env.ts >> packages/sdk/src/env.ts && bun run lint` | 1 with diagnostics in `packages/sdk/src/env.ts` |
-| `mkdir -p apps/openboard/src && cat scripts/ci/fixtures/oxlint/env/allowed/apps/openboard/src/config.ts >> apps/openboard/src/config.ts && bun run lint` | 0 |
-| `mkdir -p packages/cli/src && cat scripts/ci/fixtures/oxlint/env/allowed/packages/cli/src/config.ts >> packages/cli/src/config.ts && bun run lint` | 0 |
+| `cat scripts/ci/fixtures/oxlint/env/refused/packages/server/src/app.ts >> packages/server/src/app.ts && bun run lint` | 1 with 7 diagnostics in `packages/server/src/app.ts` |
+| `cp scripts/ci/fixtures/oxlint/env/refused/packages/sdk/src/env.ts packages/sdk/src/env.ts && bun run lint` | 1 with 4 diagnostics in `packages/sdk/src/env.ts` |
+| `mkdir -p apps/openboard/src && cp scripts/ci/fixtures/oxlint/env/refused/apps/openboard/src/env.ts apps/openboard/src/env.ts && bun run lint` | 1 with 7 diagnostics in `apps/openboard/src/env.ts` |
+| `mkdir -p apps/openboard/src && cp scripts/ci/fixtures/oxlint/env/allowed/apps/openboard/src/config.ts apps/openboard/src/config.ts && bun run lint` | 0 |
+| `cp scripts/ci/fixtures/oxlint/env/allowed/packages/cli/src/config.ts packages/cli/src/config.ts && bun run lint` | 0 |
+
+The refused `packages/sdk` fixture carries only the four property forms: `packages/sdk` may not import `bun` (docs/codebase.md 3.1), so the import forms would fail the boundary check rather than the env rule. The allowed `packages/cli` fixture likewise imports only `node:process`, the one module `packages/cli` may reach.
