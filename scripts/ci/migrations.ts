@@ -1,5 +1,15 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { basename } from "node:path";
+import { renderDdl } from "@openboard/driver-sqlite/ddl";
+import {
+  alterActions,
+  identifierEnd,
+  identifierName,
+  parenthesizedList,
+  relation,
+  type SqlToken,
+  scanSql,
+} from "./migrations-sql.ts";
 
 const directory = "packages/driver-sql/migrations";
 const baseRef = "refs/remotes/origin/main";
@@ -55,127 +65,6 @@ export function checkAppliedMigrations(
     }
   }
   return problems;
-}
-
-type SqlToken = { text: string; offset: number };
-
-function endOfBlockComment(sql: string, start: number): number {
-  const delimiters = /\/\*|\*\//g;
-  delimiters.lastIndex = start + 2;
-  let depth = 1;
-  for (let match = delimiters.exec(sql); match; match = delimiters.exec(sql)) {
-    depth += match[0] === "/*" ? 1 : -1;
-    if (depth === 0) return delimiters.lastIndex;
-  }
-  return sql.length;
-}
-
-function scanSql(sql: string): { statements: SqlToken[][]; contractPhase: boolean } {
-  const tokens =
-    /[ \t\r\n\f\v]+|--[^\r\n]*|\/\*|[Ee]'(?:\\[\s\S]|''|[^'\\])*'|'(?:''|[^'])*'|(?:[Uu]&)?"(?:""|[^"])*"|\$(?:[A-Za-z_\u0080-\u{10FFFF}][A-Za-z_0-9\u0080-\u{10FFFF}]*)?\$|[A-Za-z_\u0080-\u{10FFFF}][A-Za-z_0-9$\u0080-\u{10FFFF}]*|[\s\S]/uy;
-  const escapeContinuation = /'(?:\\[\s\S]|''|[^'\\])*'/uy;
-  const statements: SqlToken[][] = [];
-  let statement: SqlToken[] = [];
-  let contractPhase = false;
-  let escapedStringEnd: number | undefined;
-  for (let match = tokens.exec(sql); match; match = tokens.exec(sql)) {
-    escapeContinuation.lastIndex = match.index;
-    const continued =
-      match[0].startsWith("'") &&
-      escapedStringEnd !== undefined &&
-      /[\r\n]/u.test(sql.slice(escapedStringEnd, match.index))
-        ? escapeContinuation.exec(sql)
-        : null;
-    const word = continued?.[0] ?? match[0];
-    if (continued) tokens.lastIndex = escapeContinuation.lastIndex;
-    if (word === "/*") {
-      tokens.lastIndex = endOfBlockComment(sql, match.index);
-      escapedStringEnd = undefined;
-    } else if (word.startsWith("--")) {
-      const lineStart = Math.max(sql.lastIndexOf("\n", match.index - 1), sql.lastIndexOf("\r", match.index - 1));
-      if (word.trimEnd() === "-- contract-phase" && sql.slice(lineStart + 1, match.index).trim() === "") {
-        contractPhase = true;
-      }
-    } else if (word === ";") {
-      if (statement.length > 0) statements.push(statement);
-      statement = [];
-      escapedStringEnd = undefined;
-    } else if (!/^[ \t\r\n\f\v]/u.test(word)) {
-      escapedStringEnd = continued || /^[Ee]'/u.test(word) ? tokens.lastIndex : undefined;
-      if (word.startsWith("$") && word.endsWith("$") && word.length > 1) {
-        const end = sql.indexOf(word, match.index + word.length);
-        tokens.lastIndex = end === -1 ? sql.length : end + word.length;
-      }
-      statement.push({ text: sql.slice(match.index, tokens.lastIndex), offset: match.index });
-    }
-  }
-  if (statement.length > 0) statements.push(statement);
-  return { statements, contractPhase };
-}
-
-function alterActions(words: string[]): string[][] {
-  const actions: string[][] = [[]];
-  let depth = 0;
-  for (const word of words) {
-    if (word === "(" || word === "[") depth++;
-    if (word === ")" || word === "]") depth--;
-    if (word === "," && depth === 0) actions.push([]);
-    else actions[actions.length - 1]?.push(word);
-  }
-  return actions;
-}
-
-function identifierName(words: string[], start: number, end: number): string {
-  const token = words[start] ?? "";
-  if (token.startsWith('"')) return token.slice(1, -1).replaceAll('""', '"');
-  if (!/^[Uu]&"/u.test(token)) return token.replace(/[A-Z]/gu, (character) => character.toLowerCase());
-
-  const name = token.slice(3, -1).replaceAll('""', '"');
-  const escapeCharacter = end - start === 3 ? words[start + 2]?.slice(1, -1) : "\\";
-  if (!escapeCharacter) return token;
-  const decoded: string[] = [];
-  for (let index = 0; index < name.length; index++) {
-    const character = name[index];
-    if (character !== escapeCharacter) {
-      decoded.push(character ?? "");
-      continue;
-    }
-    if (name[index + 1] === escapeCharacter) {
-      decoded.push(escapeCharacter);
-      index++;
-      continue;
-    }
-    const long = name[index + 1] === "+";
-    const digits = name.slice(index + (long ? 2 : 1), index + (long ? 8 : 5));
-    const value = Number.parseInt(digits, 16);
-    if (digits.length !== (long ? 6 : 4) || !/^[0-9a-f]+$/iu.test(digits) || value > 0x10ffff) return token;
-    decoded.push(String.fromCodePoint(value));
-    index += long ? 7 : 4;
-  }
-  return decoded.join("");
-}
-
-function identifierEnd(words: string[], start: number): number {
-  return words[start + 1] === "UESCAPE" ? start + 3 : start + 1;
-}
-
-function relation(words: string[], index: number): { name: string; only: boolean; actions: string[] } {
-  if (words[index] === "IF" && words[index + 1] === "EXISTS") index += 2;
-  const only = words[index] === "ONLY";
-  if (only) index++;
-  const parenthesized = words[index] === "(";
-  if (parenthesized) index++;
-  const names: string[] = [];
-  while (words[index] !== undefined) {
-    const end = identifierEnd(words, index);
-    names.push(identifierName(words, index, end));
-    index = end;
-    if (words[index] !== ".") break;
-    index++;
-  }
-  if (parenthesized && words[index] === ")") index++;
-  if (words[index] === "*") index++;
-  return { name: JSON.stringify(names), only, actions: words.slice(index) };
 }
 
 function alterColumn(action: string[]): { column: string; clause: string[] } | undefined {
@@ -325,6 +214,83 @@ export function checkDestructiveMigration(file: string, sql: string): string[] {
   });
 }
 
+const tableConstraints = new Set(["CHECK", "CONSTRAINT", "FOREIGN", "PRIMARY", "UNIQUE"]);
+const columnConstraints = new Set([
+  ...tableConstraints,
+  "COLLATE",
+  "DEFAULT",
+  "GENERATED",
+  "NOT",
+  "NULL",
+  "REFERENCES",
+  "USING",
+]);
+const sqliteTypes = new Set(["ANY", "BLOB", "INT", "INTEGER", "REAL", "TEXT"]);
+
+function isTableConstraint(words: string[]): boolean {
+  const [name, next] = words.map((word) => word.toUpperCase());
+  return (
+    (name !== undefined && tableConstraints.has(name)) || (name === "EXCLUDE" && (next === "USING" || next === "("))
+  );
+}
+
+function alterColumnDeclaration(action: string[]): string[][] {
+  const keywords = action.map((word) => word.toUpperCase());
+  const column = keywords[1] === "COLUMN" ? 2 : 1;
+  if (keywords[0] === "ADD") {
+    const conditional = keywords.slice(column, column + 3).join(" ") === "IF NOT EXISTS";
+    const declaration = action.slice(column + (conditional ? 3 : 0));
+    return keywords[1] !== "COLUMN" && isTableConstraint(declaration) ? [] : [declaration];
+  }
+  if (keywords[0] !== "ALTER") return [];
+  const end = identifierEnd(keywords, column);
+  if (keywords[end] === "TYPE") return [[...action.slice(column, end), ...action.slice(end + 1)]];
+  if (keywords.slice(end, end + 3).join(" ") === "SET DATA TYPE") {
+    return [[...action.slice(column, end), ...action.slice(end + 3)]];
+  }
+  return [];
+}
+
+function columnDeclarations(words: string[]): string[][] {
+  const upper = words.map((word) => word.toUpperCase());
+  const head = upper.slice(0, 4).join(" ");
+  if (/^CREATE (?:(?:GLOBAL |LOCAL )?(?:TEMP |TEMPORARY )|UNLOGGED |FOREIGN )?TABLE(?: |$)/u.test(head)) {
+    const afterTable = upper.indexOf("TABLE") + 1;
+    const conditional = upper.slice(afterTable, afterTable + 3).join(" ") === "IF NOT EXISTS";
+    const { actions } = relation(upper, afterTable + (conditional ? 3 : 0));
+    if (actions[0] !== "(") return [];
+    return alterActions(parenthesizedList(words.slice(words.length - actions.length))).filter(
+      (column) => !isTableConstraint(column),
+    );
+  }
+  if (!/^ALTER (?:FOREIGN )?TABLE(?: |$)/u.test(head)) return [];
+  const { actions } = relation(upper, upper.indexOf("TABLE") + 1);
+  return alterActions(words.slice(words.length - actions.length)).flatMap(alterColumnDeclaration);
+}
+
+export function checkSqliteRendering(file: string, sql: string): string[] {
+  const { statements } = scanSql(sql);
+  return statements.flatMap((statement) =>
+    columnDeclarations(statement.map(({ text }) => text)).flatMap((column) => {
+      if (!column[0]) return [];
+      const type = column.slice(
+        identifierEnd(
+          column.map((word) => word.toUpperCase()),
+          0,
+        ),
+      );
+      const constraint = type.findIndex((word) => columnConstraints.has(word.toUpperCase()));
+      const sourceType = type.slice(0, constraint === -1 ? type.length : constraint).join(" ");
+      // Render only the type so comments, defaults and omitted indexes cannot hide a declaration.
+      const renderedType = renderDdl(sourceType)
+        .replace(/;$/u, "")
+        .replace(/^"([^"]+)"$/u, "$1");
+      if (sqliteTypes.has(renderedType.toUpperCase())) return [];
+      return [`${file}: column type ${sourceType || "(missing)"} has no SQLite rendering`];
+    }),
+  );
+}
+
 function workingMigrations(): string[] {
   try {
     return readdirSync(directory, { withFileTypes: true })
@@ -387,7 +353,10 @@ if (import.meta.main) {
       ...files
         .filter((file) => numberedMigration.test(file))
         .sort()
-        .flatMap((file) => checkDestructiveMigration(file, readFileSync(`${directory}/${file}`, "utf8"))),
+        .flatMap((file) => {
+          const sql = readFileSync(`${directory}/${file}`, "utf8");
+          return [...checkDestructiveMigration(file, sql), ...checkSqliteRendering(file, sql)];
+        }),
     ];
     for (const problem of problems) process.stderr.write(`${directory}: ${problem}\n`);
     process.exitCode = problems.length > 0 ? 1 : 0;

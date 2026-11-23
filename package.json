@@ -26,8 +26,9 @@
     "ob": "bun apps/openboard/src/main.ts"
   },
   "devDependencies": {
-    "@openboard/server": "workspace:*",
     "@biomejs/biome": "2.5.15",
+    "@openboard/driver-sqlite": "workspace:*",
+    "@openboard/server": "workspace:*",
     "oxlint": "1.94.0",
     "typescript": "7.0.2"
   }
