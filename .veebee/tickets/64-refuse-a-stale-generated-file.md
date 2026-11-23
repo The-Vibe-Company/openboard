@@ -11,7 +11,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [63]
-status: claimed
+status: done
 claimed_by: claude
 issue: 64
 ---
@@ -20,7 +20,7 @@ issue: 64
 As a contributor, I cannot merge a contract change without regenerating what derives from it.
 
 ## Done when
-- [ ] changing an operation's `summary` without running `bun run gen` makes `bun run verify` fail naming `openapi.json`
+- [x] changing an operation's `summary` without running `bun run gen` makes `bun run verify` fail naming `openapi.json`
 
 ## Out of scope
 - Generating anything new.

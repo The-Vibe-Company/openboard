@@ -1,26 +1,37 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { checkGenerated } from "./gen.ts";
 
-test("names a stale or missing generated file and accepts an up-to-date one", async () => {
+const path = "packages/server/openapi.json";
+
+async function inTempRoot(run: (root: string) => Promise<void>): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), "openboard-gen-"));
   try {
-    await mkdir(join(root, "packages/server"), { recursive: true });
-    await Bun.write(join(root, "packages/server/openapi.json"), '{ "summary": "Old." }\n');
-    await Bun.write(join(root, "fresh.md"), "# Fresh\n");
-    expect(
-      await checkGenerated(root, [
-        { path: "packages/server/openapi.json", content: '{ "summary": "New." }\n' },
-        { path: "fresh.md", content: "# Fresh\n" },
-        { path: "missing.md", content: "# Missing\n" },
-      ]),
-    ).toEqual([
-      "packages/server/openapi.json: stale, differs from what `bun run gen` writes; run it and commit the result",
-      "missing.md: missing; run `bun run gen` and commit the result",
-    ]);
+    await run(root);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
-});
+}
+
+test("names a generated file that differs from what gen writes", () =>
+  inTempRoot(async (root) => {
+    await Bun.write(join(root, path), '{ "summary": "Old." }\n');
+    expect(await checkGenerated(root, [{ path, content: '{ "summary": "New." }\n' }])).toEqual([
+      `${path}: stale, differs from what \`bun run gen\` writes; run it and commit the result`,
+    ]);
+  }));
+
+test("names a generated file that is missing", () =>
+  inTempRoot(async (root) => {
+    expect(await checkGenerated(root, [{ path, content: "{}\n" }])).toEqual([
+      `${path}: missing; run \`bun run gen\` and commit the result`,
+    ]);
+  }));
+
+test("accepts a generated file that matches what gen writes", () =>
+  inTempRoot(async (root) => {
+    await Bun.write(join(root, path), "{}\n");
+    expect(await checkGenerated(root, [{ path, content: "{}\n" }])).toEqual([]);
+  }));
