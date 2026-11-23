@@ -157,7 +157,10 @@ export interface PlatformView {
   memberships(personId: string): Promise<MembershipRecord[]>;
   /** The tenant resolver checks the signed-in person's membership before minting an organization scope. */
   orgMembership(slug: string, personId: string): Promise<{ orgId: number; role: Role } | null>;
-  /** Redeems the exact token hash and records the membership and audit event in one transaction. */
+  /**
+   * Redeems the exact token hash and records the membership and audit event in one transaction.
+   * Throws `already_in_org` when the person already belongs to an organization (v1 allows one, D34).
+   */
   acceptInvitation(tokenHash: Uint8Array, personId: string, at: number): Promise<MembershipRecord | null>;
   /** A capability lookup: only the exact token hash selects an invitation, returning preview fields. */
   invitationPreview(tokenHash: Uint8Array): Promise<{

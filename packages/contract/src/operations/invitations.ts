@@ -53,7 +53,7 @@ export const acceptInvitation = defineOperation({
   scope: "account",
   input: { body: Type.Object({ token: Ref("invitation") }, { additionalProperties: false }) },
   output: Membership,
-  errors: ["invalid_request", "unauthorized", "forbidden", "not_found"],
+  errors: ["invalid_request", "unauthorized", "forbidden", "not_found", "already_in_org"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: ["ob.member.added"] },
   cli: false,

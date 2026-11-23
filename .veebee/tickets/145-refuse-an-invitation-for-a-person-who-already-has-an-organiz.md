@@ -10,11 +10,12 @@ writes:
   - packages/ports/testkit/store/invitations.test-suite.ts
   - packages/server/test/invitations.test.ts
   - packages/ports/src/store.ts
+  - packages/server/openapi.json
 conformance: []
 modes: [local]
 depends_on: [138, 144]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-code-t145
 issue: 146
 ---
 
