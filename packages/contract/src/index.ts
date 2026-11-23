@@ -1,5 +1,6 @@
 export * from "./entities/actors.ts";
 export * from "./entities/channels.ts";
+export * from "./entities/connections.ts";
 export * from "./entities/discovery.ts";
 export * from "./entities/events.ts";
 export * from "./entities/messages.ts";
@@ -32,6 +33,7 @@ export {
 } from "./operation.ts";
 export {
   createChannel,
+  createConnection,
   discoverBoard,
   getMe,
   getOpenApi,

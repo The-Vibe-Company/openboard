@@ -3,6 +3,7 @@ import type { BoardView } from "@openboard/ports";
 import type { Principal } from "../deps.ts";
 import { getMeHandler } from "./actors.ts";
 import { createChannelHandler, listChannelsHandler } from "./channels.ts";
+import { createConnectionHandler } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
 import { listMessagesHandler, postMessageHandler } from "./messages.ts";
@@ -13,6 +14,9 @@ export interface BoardContext {
   readonly board: BoardView;
   readonly by: Principal;
   readonly now: () => number;
+  /** The canonical `BOARD_URL` of the board: `OPENBOARD_PUBLIC_URL` + `/api/<org>/<board>`. */
+  readonly boardUrl: string;
+  readonly randomBytes: (length: number) => Uint8Array;
 }
 
 /** What a `public` operation's handler sees: no store and no credential, only the board URL the request named. */
@@ -38,6 +42,7 @@ export type PublicOperation = Extract<Contracted, { readonly scope: "public" }>;
 /** One handler per contract operation: a missing or mistyped one is a compile error. */
 export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> } = {
   createChannel: createChannelHandler,
+  createConnection: createConnectionHandler,
   discoverBoard: discoverBoardHandler,
   getMe: getMeHandler,
   getOpenApi: getOpenApiHandler,

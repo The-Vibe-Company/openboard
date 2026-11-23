@@ -25,6 +25,8 @@ export interface Deps {
   readonly log: Logger;
   /** A fresh ID for a request whose client sent none (docs/protocol.md "Request headers"). */
   readonly requestId: () => string;
+  /** `length` fresh random bytes from a cryptographic source, for secrets and their IDs. */
+  readonly randomBytes: (length: number) => Uint8Array;
 }
 
 /** Who a request writes as, once the pipeline has authenticated it. */

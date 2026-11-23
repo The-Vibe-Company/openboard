@@ -24,7 +24,12 @@ function bootInstance(mode: "local" | "hosted", tokenHash: string): Instance {
     // The bench serves no port: discovery's URL is never read here.
     { mode, publicUrl: "http://127.0.0.1", localOwner: "ob:user:local-tools", localOwnerTokenHash: tokenHash },
     { store: sqliteDriver({ memory: true }, now, statements) },
-    { now, log, requestId: () => crypto.randomUUID() },
+    {
+      now,
+      log,
+      requestId: () => crypto.randomUUID(),
+      randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+    },
   );
   return { app, statements };
 }

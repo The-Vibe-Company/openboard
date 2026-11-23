@@ -242,6 +242,148 @@
         }
       }
     },
+    "/x/connections": {
+      "post": {
+        "operationId": "createConnection",
+        "summary": "Create a connection on the board: a principal holding one grant and one secret, shown once.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["name", "can"],
+                "properties": {
+                  "name": { "pattern": "^[a-z0-9][a-z0-9-]{0,62}$", "type": "string" },
+                  "can": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "anyOf": [
+                          { "const": "all", "type": "string" },
+                          {
+                            "maxItems": 6,
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                { "const": "read", "type": "string" },
+                                { "const": "post", "type": "string" },
+                                { "const": "react", "type": "string" },
+                                { "const": "label", "type": "string" },
+                                { "const": "sync", "type": "string" },
+                                { "const": "manage", "type": "string" }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "direct": { "default": false, "type": "boolean" },
+                  "profiles": {
+                    "minItems": 1,
+                    "maxItems": 32,
+                    "default": ["*"],
+                    "type": "array",
+                    "items": { "pattern": "^(?:\\*|[A-Za-z][A-Za-z0-9-]{0,30}\\*?)$", "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["connection", "secret", "env"],
+                  "properties": {
+                    "connection": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "principal",
+                        "name",
+                        "grant",
+                        "can",
+                        "direct",
+                        "profiles",
+                        "secretHint",
+                        "createdBy",
+                        "createdAt"
+                      ],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "principal": { "type": "string" },
+                        "name": { "pattern": "^[a-z0-9][a-z0-9-]{0,62}$", "type": "string" },
+                        "grant": { "type": "string" },
+                        "can": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^(.*)$": {
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  { "const": "read", "type": "string" },
+                                  { "const": "post", "type": "string" },
+                                  { "const": "react", "type": "string" },
+                                  { "const": "label", "type": "string" },
+                                  { "const": "sync", "type": "string" },
+                                  { "const": "manage", "type": "string" }
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        "direct": { "type": "boolean" },
+                        "profiles": { "type": "array", "items": { "type": "string" } },
+                        "secretHint": { "type": "string" },
+                        "createdBy": { "type": "string" },
+                        "createdAt": { "type": "string" }
+                      }
+                    },
+                    "secret": { "type": "string" },
+                    "env": {
+                      "type": "object",
+                      "required": ["BOARD_URL", "BOARD_TOKEN"],
+                      "properties": { "BOARD_URL": { "type": "string" }, "BOARD_TOKEN": { "type": "string" } }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_grant, grant_empty",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "slug_taken",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "operationId": "discovery",
