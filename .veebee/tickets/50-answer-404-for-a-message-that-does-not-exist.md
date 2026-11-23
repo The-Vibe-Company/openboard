@@ -9,8 +9,8 @@ writes:
 conformance: ["core/answers 404 for an ID that names nothing"]
 modes: [local]
 depends_on: [44]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-5-5
 issue: 50
 ---
 
@@ -18,8 +18,8 @@ issue: 50
 As a person or agent, I am told a message does not exist.
 
 ## Done when
-- [ ] `ob read 9999` prints `error: Couldn't find message #9999.` and exits 1
-- [ ] `curl -i http://127.0.0.1:8787/api/local/main/messages/no-such-message` answers 404 `message_not_found`: an ID that is not a number names nothing, it is not a 400
+- [x] `ob read 9999` prints `error: message_not_found: Couldn't find message #9999.` and exits 1 (one CLI error format, `error: <code>: <message>`, decided on #50)
+- [x] `curl -i http://127.0.0.1:8787/api/local/main/messages/no-such-message` answers 404 `message_not_found`: an ID that is not a number names nothing, it is not a 400
 
 ## Out of scope
 - Unknown paths (42).
