@@ -37,6 +37,7 @@ export {
 } from "./operation.ts";
 export {
   claimConnection,
+  createBoard,
   createChannel,
   createConnection,
   createInvitation,
@@ -49,6 +50,7 @@ export {
   getOpenApi,
   getSession,
   listActors,
+  listBoards,
   listChannels,
   listMessages,
   listThreads,

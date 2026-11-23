@@ -43,7 +43,7 @@ export function invitationPlatform(
   };
 }
 
-export function invitationView(db: Db, dialect: Dialect, { orgId }: OrgScope): OrgView {
+export function invitationView(db: Db, dialect: Dialect, { orgId }: OrgScope): Pick<OrgView, "createInvitation"> {
   return {
     createInvitation: (record) =>
       db.transaction(async (tx) => {

@@ -1,11 +1,4 @@
-import {
-  BoardError,
-  decodeInput,
-  type createInvitation,
-  type operations,
-  type previewInvitation,
-  type RawInput,
-} from "@openboard/contract";
+import { BoardError, decodeInput, type operations, type previewInvitation, type RawInput } from "@openboard/contract";
 import type { PlatformView } from "@openboard/ports";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
@@ -13,7 +6,7 @@ import { sessionOf, signOut } from "../auth/sessions.ts";
 import { keepInsidePin, refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
-import { type AccountOperation, handlerOf, type PublicOperation } from "../operations/index.ts";
+import { type AccountOperation, handlerOf, type OrgOperation, type PublicOperation } from "../operations/index.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
@@ -83,28 +76,29 @@ async function runAccount(request: Request, url: URL, operation: AccountOperatio
   return response;
 }
 
-async function runOrg(
-  request: Request,
-  url: URL,
-  operation: typeof createInvitation,
-  params: Params,
-  pipeline: Pipeline,
-) {
+/**
+ * An `org` operation: the browser's session is the person, who must belong to the organization the path names (404
+ * otherwise, as for an unknown one). Reading (`access.permission` `read`) takes any member; anything else an admin.
+ */
+async function runOrg(request: Request, url: URL, operation: OrgOperation, params: Params, pipeline: Pipeline) {
   const { config, deps, platform } = pipeline;
   const session = await sessionOf(request, platform, deps.now(), config.publicUrl);
   if (!session) throw new BoardError("unauthorized", "sign in first");
-  const org = await pipeline.tenants.adminOrg(params.org ?? "", session.person.id);
+  const resolve = operation.access?.permission === "read" ? pipeline.tenants.memberOrg : pipeline.tenants.adminOrg;
+  const org = await resolve(params.org ?? "", session.person.id);
   const input = validate(operation, {
     params,
     query: Object.fromEntries(url.searchParams),
-    body: await readBody(request),
+    body: request.method === "GET" ? undefined : await readBody(request),
   });
   const { now, randomBytes } = deps;
   const output = await handlerOf(operation)(
     { org, person: session.person, now, randomBytes, publicUrl: config.publicUrl },
     input,
   );
-  return operationResponse(operation, output);
+  const response = operationResponse(operation, output);
+  response.headers.set("cache-control", "no-store");
+  return response;
 }
 
 async function runPreview(url: URL, operation: typeof previewInvitation, params: Params, pipeline: Pipeline) {

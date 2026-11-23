@@ -646,6 +646,26 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   every operation onto `BOARD_URL`, so account operations are not callable
   through it until it learns `/api/x` (a later ticket).
 
+### D49. `org` operations: members read, admins write, under the organization's lock
+
+- **Context.** Ticket 143 added the first `org` operation (creating an
+  invitation, admins only). Ticket 153 adds `listBoards`, which any member
+  may call, and `createBoard`. Organization events need gap-free IDs per
+  organization (docs/data-model.md `org_events`).
+- **Decision.** An `org` operation whose `access.permission` is `read` is
+  answered for any member (`tenants.memberOrg`); every other one needs an
+  owner or an admin (`tenants.adminOrg`, 403 `forbidden` for a member). A
+  non-member, like an unknown organization, gets 404, and claimed `obt_`
+  tokens get 403. Each organization write starts with the same locking
+  statement as invitations: the `orgs` row joined to the writer's admin
+  membership, `FOR UPDATE`. It is scoped by `m.org_id`, so no statement is
+  exempted from the scope check. The write then numbers its event
+  `MAX(id) + 1`, and it writes nothing if the writer is no longer an admin.
+- **Consequence.** Later organization writes (members, roles, deletion)
+  take the same lock before numbering an organization event, and read
+  operations declare `access: { permission: "read", … }` to be open to
+  members.
+
 ## Hard blockers found
 
 None. Limits worth knowing:
