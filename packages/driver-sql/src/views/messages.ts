@@ -4,7 +4,7 @@ import type { BoardKeys, BoardScope, BoardView, BoardWriter } from "@openboard/p
 import type { Db, Dialect } from "../db.ts";
 import { query, sql } from "../sql.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
-import { findAgent, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
+import { findAgent, findAgentByClaimKey, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
 import { lockBoard, setHead } from "./boards.ts";
 import { findChannel, foldChannelCreated } from "./channels.ts";
 import { connectionNamed, findConnection, foldConnectionCreated, nextGrant, profileHolder } from "./connections.ts";
@@ -180,6 +180,7 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor:
     connectionNamed: (name) => connectionNamed(tx, dialect, keys, name),
     connection: (id) => findConnection(tx, dialect, keys, id),
     agent: (id) => findAgent(tx, dialect, keys, id),
+    agentByClaimKey: (connection, key) => findAgentByClaimKey(tx, dialect, keys, connection, key),
     profileHolder: (connection, profile) => profileHolder(tx, dialect, keys, connection, profile),
     async append(events) {
       for (const event of events) {

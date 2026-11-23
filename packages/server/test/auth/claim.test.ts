@@ -140,7 +140,7 @@ test.each([
   [{}, "invalid_request"],
   [{ profile: "fixer 2" }, "invalid_request"],
   [{ profile: "fixer-2", ttl: "1w" }, "invalid_request"],
-  [{ profile: "fixer-2", idempotencyKey: "sbx-1" }, "invalid_request"],
+  [{ profile: "fixer-2", idempotencyKey: "" }, "invalid_request"],
   [{ profile: "fixer-2", can: { "Dev/": "all" } }, "invalid_grant"],
   [{ profile: "fixer-2", can: {} }, "grant_empty"],
 ])("POST /x/connections/claim refuses %j with 400 %s", async (body, code) => {

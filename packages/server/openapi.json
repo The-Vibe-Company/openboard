@@ -275,7 +275,8 @@
                       }
                     }
                   },
-                  "ttl": { "pattern": "^[1-9][0-9]{0,6}[smhd]$", "type": "string" }
+                  "ttl": { "pattern": "^[1-9][0-9]{0,6}[smhd]$", "type": "string" },
+                  "idempotencyKey": { "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000]+$", "type": "string" }
                 }
               }
             }
