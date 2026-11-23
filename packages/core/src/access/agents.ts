@@ -89,7 +89,7 @@ function specificity(pattern: string): number {
 }
 
 /** What `can` lets in at `spot`, by its most specific pattern covering it; nothing when none does. */
-function allowedAt(can: Can, spot: string): readonly Permission[] {
+export function allowedAt(can: Can, spot: string): readonly Permission[] {
   const deciding = Object.keys(can)
     .filter((pattern) => covers(pattern, spot))
     .sort((a, b) => specificity(b) - specificity(a))[0];

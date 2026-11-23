@@ -13,6 +13,9 @@ export const whoamiCommand: Command = {
       ctx.output.out(`${me.name} (${me.actor}) via ${credential}`);
       ctx.output.out(`org     ${org.slug}${role === null ? "" : ` (${role})`}`);
       ctx.output.out(`board   ${board.slug}  ${ctx.boardUrl}`);
+      for (const [pattern, permissions] of Object.entries(me.can)) {
+        ctx.output.out(`can     ${pattern}  ${permissions.join(" ")}`);
+      }
     }
     return 0;
   },

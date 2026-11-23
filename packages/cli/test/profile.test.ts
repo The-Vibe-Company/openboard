@@ -68,3 +68,16 @@ test("a message line shows its author, through whom a profile writes", async () 
   expect(await runCli(["messages", "dev"], env, { fetch: board.fetch, output })).toBe(0);
   expect(lines.out).toEqual(["#1  fixer-2 via laptop: hi", "#2  laptop: me", "next: ob messages dev --after 2"]);
 });
+
+test("whoami ends with what the credential can do, one line per pattern", async () => {
+  const me = {
+    name: "fixer-2",
+    actor: "ob:conn:cn_x+fixer-2",
+    can: { dev: ["read"], "ops/": ["read", "post"] },
+    openboard: { org: { slug: "local" }, board: { slug: "main" }, role: null, credential: "agent" },
+  };
+  const board = fakeBoard(200, me);
+  const { lines, output } = capture();
+  expect(await runCli(["whoami"], env, { fetch: board.fetch, output })).toBe(0);
+  expect(lines.out.slice(3)).toEqual(["can     dev  read", "can     ops/  read post"]);
+});

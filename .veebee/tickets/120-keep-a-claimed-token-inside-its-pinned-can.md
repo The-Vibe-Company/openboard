@@ -6,11 +6,16 @@ package: server
 writes:
   - packages/server/src/auth/tokens.ts
   - packages/server/test/auth/pinned.test.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/deps.ts
+  - packages/core/src/access/agents.ts
+  - packages/cli/src/commands/whoami.ts
+  - packages/cli/test/profile.test.ts
 conformance: []
 modes: [local]
 depends_on: [119]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t120
 issue: 120
 ---
 

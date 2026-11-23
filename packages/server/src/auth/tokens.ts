@@ -1,8 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
-import { BoardError, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
-import { connections } from "@openboard/core";
+import { BoardError, type Can, type Operation, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
+import { agents, connections, parseId } from "@openboard/core";
 import type { BoardView } from "@openboard/ports";
-import { agentOf, connectionOf, credentialKind, type Principal, profileName } from "../deps.ts";
+import { agentOf, connectionOf, credentialKind, type Principal, pinnedCan, profileName } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { bearer, hashToken } from "./secrets.ts";
 
@@ -14,6 +14,7 @@ const TOKEN = /^obt_([a-z2-7]{16})_[A-Za-z0-9_-]{43}$/;
  * Step 1 of the verifier chain (docs/auth.md "Three ways to connect", mode 2): an `obt_` bearer writes as the profile
  * its agent was claimed for, through the agent's connection, when the request's board holds that agent and the
  * token's SHA-256 is the one kept. The profile is pinned (D30): an `x-board-profile` naming another one is refused.
+ * The `can` it was claimed with is pinned too: `keepInsidePin` checks it on every request.
  */
 export function agentTokenVerifier(): CredentialVerifier {
   return {
@@ -36,6 +37,7 @@ export function agentTokenVerifier(): CredentialVerifier {
         [credentialKind]: "agent",
         [connectionOf]: { name: connection.name, profiles: connection.profiles },
         [agentOf]: agent.id,
+        [pinnedCan]: agent.can,
         [profileName]: profile,
       };
     },
@@ -55,4 +57,49 @@ function refuseOtherProfile(request: Request, pinned: string): void {
   throw new BoardError("forbidden", `this token is pinned to the profile ${pinned} and may not write as ${name}`, {
     hint: `Drop --as and BOARD_PROFILE, or set them to ${pinned}; claim another token to write as ${name}.`,
   });
+}
+
+type Permission = NonNullable<Operation["access"]>["permission"];
+
+/** The channel an operation's input names: `channel`, or `path` when it creates one. */
+function channelOf(input: unknown): string | undefined {
+  const { channel, path } = input as { channel?: unknown; path?: unknown };
+  const named = channel ?? path;
+  return typeof named === "string" ? named : undefined;
+}
+
+/** The channel of the message a `fromMessage` operation names; a message the board lacks is left to the handler. */
+async function messageChannel(board: BoardView, input: unknown): Promise<string | undefined> {
+  const id = parseId(String((input as { id?: unknown }).id));
+  return id === null ? undefined : (await board.thread(id))?.message.channel;
+}
+
+function outsidePin(permission: Permission, where: string): BoardError {
+  return new BoardError("forbidden", `this token was claimed without ${permission} ${where}`, {
+    hint: "Run `ob whoami` to see what it can do; claim another token with that permission in its can.",
+  });
+}
+
+/**
+ * A claimed token is always a narrowed caller (docs/auth.md mode 2, "Pinned narrowing"): an operation needing a
+ * permission its pinned `can` does not give at the channel it names, or at the message's channel, is 403 `forbidden`.
+ * One that reaches any channel needs the permission at some pattern. Other credentials pass untouched.
+ */
+export async function keepInsidePin(
+  operation: Pick<Operation, "access">,
+  input: unknown,
+  by: Principal,
+  board: BoardView,
+): Promise<void> {
+  const can: Can | undefined = by[pinnedCan];
+  const { access } = operation;
+  if (can === undefined || access === null) return;
+  const { permission } = access;
+  if (access.channel === "any") {
+    if (Object.values(can).some((given) => given.includes(permission))) return;
+    throw outsidePin(permission, "on any channel");
+  }
+  const channel = access.channel === "fromInput" ? channelOf(input) : await messageChannel(board, input);
+  if (channel === undefined) return;
+  if (!agents.allowedAt(can, channel).includes(permission)) throw outsidePin(permission, `in ${channel}`);
 }
