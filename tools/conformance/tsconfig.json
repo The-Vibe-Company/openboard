@@ -3,7 +3,13 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": ".",
-    "outDir": "../../.tsbuild/tools/conformance"
+    "outDir": "../../.tsbuild/tools/conformance",
+    "types": ["bun"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"],
+  "references": [
+    {
+      "path": "../../packages/server"
+    }
+  ]
 }

@@ -7,5 +7,10 @@
   "scripts": {
     "typecheck": "tsc -b",
     "test": "bun test --pass-with-no-tests"
+  },
+  "devDependencies": {
+    "@openboard/server": "workspace:*",
+    "@types/bun": "1.4.5",
+    "@vercel/board": "0.54.0"
   }
 }
