@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test";
 import { formatTable, measure } from "../src/counters";
 import { countArmedTimers } from "../src/timers";
+import { percentile } from "../src/workloads/request";
+
+const sizes = { posts: 3, replies: 2, reads: 2 };
 
 test("a timer left armed after the work is counted, and a fired or cleared one is not", async () => {
   let interval: ReturnType<typeof setInterval> | undefined;
@@ -32,46 +35,38 @@ test("the timer functions are restored after counting, even when the work throws
   expect(current()).toEqual(originals);
 });
 
-test("each mode prints its counters, with round trips only for hosted", async () => {
-  expect(formatTable(await measure("local"))).toBe(
-    [
-      "local",
-      "Operation                 Statements",
-      "createChannel                      -",
-      "discoverBoard                      -",
-      "getMe                              -",
-      "getOpenApi                         -",
-      "listChannels                       -",
-      "listMessages                       -",
-      "postMessage                        -",
-      "readEvents                         -",
-      "readThread                         -",
-      "Timers armed when idle             0",
-    ].join("\n"),
+test("local runs the post, reply and channel-read workloads, each with its statements and latency", async () => {
+  const report = await measure("local", sizes);
+  expect(
+    report.workloads.map(({ workload, operation, runs, statements }) => [workload, operation, runs, statements]),
+  ).toEqual([
+    ["post", "postMessage", 3, 9],
+    ["reply", "postMessage", 2, 11],
+    ["channelRead", "listMessages", 2, 3],
+  ]);
+  for (const { p50, p99 } of report.workloads) expect(0 < p50 && p50 <= p99).toBe(true);
+  const lines = formatTable(report).split("\n");
+  expect(lines[0]).toBe("local");
+  expect(lines[1]).toBe(
+    `${"Workload".padEnd(16)}${"Operation".padEnd(16)}${"        Runs  Statements      p50 ms      p99 ms"}`,
   );
-  expect(formatTable(await measure("hosted"))).toBe(
+  expect(lines[2]).toMatch(/^post {12}postMessage {16}3 {11}9 +\d+\.\d{3} +\d+\.\d{3}$/);
+  expect(lines[5]).toBe(`${"Timers armed when idle".padEnd(32)}${"0".padStart(12)}`);
+});
+
+test("hosted runs no workload until its baseline, and still counts idle timers", async () => {
+  expect(formatTable(await measure("hosted", sizes))).toBe(
     [
       "hosted",
-      "Operation                 Statements Round trips",
-      "createChannel                      -           -",
-      "discoverBoard                      -           -",
-      "getMe                              -           -",
-      "getOpenApi                         -           -",
-      "listChannels                       -           -",
-      "listMessages                       -           -",
-      "postMessage                        -           -",
-      "readEvents                         -           -",
-      "readThread                         -           -",
-      "Timers armed when idle             0",
+      `${"Workload".padEnd(16)}${"Operation".padEnd(16)}        Runs  Statements      p50 ms      p99 ms`,
+      "(no workloads yet: the hosted baseline arrives with the Postgres driver)",
+      `${"Timers armed when idle".padEnd(32)}${"0".padStart(12)}`,
     ].join("\n"),
   );
 });
 
-test("an operation not measured yet shows a dash, not a number", () => {
-  const table = formatTable({
-    mode: "hosted",
-    operations: [{ operation: "postMessage", statements: undefined, roundTrips: 3 }],
-    idleTimers: 0,
-  });
-  expect(table.split("\n")[2]).toBe(`${"postMessage".padEnd(24)}${"-".padStart(12)}${"3".padStart(12)}`);
+test("percentiles take the nearest rank", () => {
+  const values = [5, 1, 4, 2, 3, 6, 7, 8, 9, 10];
+  expect([percentile(values, 50), percentile(values, 99), percentile([7], 50)]).toEqual([5, 10, 7]);
+  expect(() => percentile([], 50)).toThrow(RangeError);
 });

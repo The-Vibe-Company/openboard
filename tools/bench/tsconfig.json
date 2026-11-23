@@ -9,9 +9,6 @@
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"],
   "references": [
     {
-      "path": "../../packages/contract"
-    },
-    {
       "path": "../../packages/server"
     },
     {
