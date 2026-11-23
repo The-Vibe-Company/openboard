@@ -11,6 +11,7 @@ writes:
   - packages/core/src/access/agents.ts
   - packages/cli/src/commands/whoami.ts
   - packages/cli/test/profile.test.ts
+  - packages/cli/test/connect.test.ts
 conformance: []
 modes: [local]
 depends_on: [119]

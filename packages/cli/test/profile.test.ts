@@ -72,6 +72,7 @@ test("a message line shows its author, through whom a profile writes", async () 
 test("whoami ends with what the credential can do, one line per pattern", async () => {
   const me = {
     name: "fixer-2",
+    handle: "fixers/fixer-2",
     actor: "ob:conn:cn_x+fixer-2",
     can: { dev: ["read"], "ops/": ["read", "post"] },
     openboard: { org: { slug: "local" }, board: { slug: "main" }, role: null, credential: "agent" },
