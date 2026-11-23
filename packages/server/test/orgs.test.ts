@@ -15,7 +15,7 @@ afterEach(async () => {
 });
 
 /** A server with sign-up open, and `people` signed in: each one's session cookie and CSRF value. */
-async function start(...people: string[]) {
+async function start(people: string[], mode: "local" | "hosted" = "local") {
   store = openStore(() => NOW);
   const sessions: Person[] = [];
   for (const [index, login] of people.entries()) {
@@ -27,7 +27,7 @@ async function start(...people: string[]) {
     await store.platform().signIn({ identity, admitNew: true, newPersonId, session, now: NOW });
     sessions.push({ cookie: `__Host-ob_session=${value}`, csrf, principal: `ob:user:${newPersonId}` });
   }
-  const config = { mode: "local" as const, publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, signup: "open" as const };
+  const config = { mode, publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, signup: "open" as const };
   const randomBytes = (length: number) => new Uint8Array(length).fill(9);
   const deps = { now: () => NOW, requestId: () => "req-1", randomBytes, log: { info() {}, error() {} } };
   app = createApp(config, { store }, deps);
@@ -54,7 +54,7 @@ function createOrg(target: App, body: unknown, as?: Signed, headers: Record<stri
 const errorCode = async (response: Response) => ((await response.json()) as { error: ErrorBody }).error.code;
 
 test("a signed-in person creates an organization, owns it, and gets its board main", async () => {
-  const { app, at } = await start("ada");
+  const { app, at } = await start(["ada"]);
   const ada = at(0);
   const created = await createOrg(app, { name: "Acme", slug: "acme" }, ada);
   expect(created.status).toBe(201);
@@ -89,7 +89,7 @@ test("a signed-in person creates an organization, owns it, and gets its board ma
 });
 
 test("creating an organization or reading the account without a session is 401", async () => {
-  const { app } = await start();
+  const { app } = await start([]);
   const created = await createOrg(app, { name: "Acme", slug: "acme" });
   expect(created.status).toBe(401);
   expect(await errorCode(created)).toBe("unauthorized");
@@ -98,7 +98,7 @@ test("creating an organization or reading the account without a session is 401",
 });
 
 test("creating an organization without the session's CSRF value is 403, and creates nothing", async () => {
-  const { app, at } = await start("ada");
+  const { app, at } = await start(["ada"]);
   const ada = at(0);
   const created = await createOrg(app, { name: "Acme", slug: "acme" }, ada, { "x-ob-csrf": "forged" });
   expect(created.status).toBe(403);
@@ -107,7 +107,7 @@ test("creating an organization without the session's CSRF value is 403, and crea
 });
 
 test("an organization needs a name and a slug of the documented shape", async () => {
-  const { app, at } = await start("ada");
+  const { app, at } = await start(["ada"]);
   const ada = at(0);
   for (const body of [{ name: "  ", slug: "acme" }, { name: "Acme", slug: "Acme!" }, { name: "Acme" }]) {
     const refused = await createOrg(app, body, ada);
@@ -117,8 +117,27 @@ test("an organization needs a name and a slug of the documented shape", async ()
   expect(await (await get(app, "/api/x/me", ada)).json()).toMatchObject({ memberships: [] });
 });
 
+test.each(["api", "settings", "x", "messages", "watchers"])(
+  "creating an organization with %s is 400 reserved_slug",
+  async (slug) => {
+    const { app, at } = await start(["ada"]);
+    const ada = at(0);
+    const refused = await createOrg(app, { name: "Acme", slug }, ada);
+    expect(refused.status).toBe(400);
+    expect(await errorCode(refused)).toBe("reserved_slug");
+    expect(await (await get(app, "/api/x/me", ada)).json()).toMatchObject({ memberships: [] });
+  },
+);
+
+test("creating an organization with local in hosted mode is 400 reserved_slug", async () => {
+  const { app, at } = await start(["ada"], "hosted");
+  const refused = await createOrg(app, { name: "Acme", slug: "local" }, at(0));
+  expect(refused.status).toBe(400);
+  expect(await errorCode(refused)).toBe("reserved_slug");
+});
+
 test("a session at a board of an organization the person is not in answers not found", async () => {
-  const { app, at } = await start("ada", "bob");
+  const { app, at } = await start(["ada", "bob"]);
   const [ada, bob] = [at(0), at(1)];
   expect((await createOrg(app, { name: "Acme", slug: "acme" }, ada)).status).toBe(201);
   const refused = await get(app, "/api/acme/main/me", bob);
@@ -128,7 +147,7 @@ test("a session at a board of an organization the person is not in answers not f
 });
 
 test("a session writes on its organization's board as the person, and only with the CSRF proof", async () => {
-  const { app, at } = await start("ada");
+  const { app, at } = await start(["ada"]);
   const ada = at(0);
   expect((await createOrg(app, { name: "Acme", slug: "acme" }, ada)).status).toBe(201);
   const post = (headers: Record<string, string>) =>
