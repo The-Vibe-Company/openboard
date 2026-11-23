@@ -9,7 +9,7 @@ writes:
 conformance: []
 modes: []
 depends_on: [08]
-status: claimed
+status: done
 claimed_by: claude-code-t09
 issue: 9
 ---
