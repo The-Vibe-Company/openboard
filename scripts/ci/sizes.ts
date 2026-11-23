@@ -3,12 +3,19 @@ import { basename, join } from "node:path";
 
 const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const testExtension = /\.test(?:-suite)?\.(?:[cm]?[jt]s|[jt]sx)$/;
+const packageSource = /^packages\/[^/]+\/src(?:\/|$)/;
+const directoryLimit = 15;
+
+/** Generated files are exempt from every size rule (docs/codebase.md 5.1). */
+export function isSourceFile(path: string): boolean {
+  const name = basename(path);
+  if (name.endsWith(".gen.ts") || name === "openapi.json" || name === "commands.md") return false;
+  return sourceExtension.test(name);
+}
 
 export function lineLimit(path: string): number | undefined {
-  const name = basename(path);
-  if (name.endsWith(".gen.ts") || name === "openapi.json" || name === "commands.md") return undefined;
-  if (!sourceExtension.test(name)) return undefined;
-  return testExtension.test(name) ? 600 : 400;
+  if (!isSourceFile(path)) return undefined;
+  return testExtension.test(basename(path)) ? 600 : 400;
 }
 
 export function countLines(source: string): number {
@@ -32,6 +39,28 @@ export async function checkSizes(cwd: string, paths: string[]): Promise<string[]
   return problems;
 }
 
+/** Counts the source files each directory under a package's `src` holds, generated files excluded. */
+export function directoryCounts(cwd: string, paths: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const path of paths) {
+    if (!isSourceFile(path) || !packageSource.test(path)) continue;
+    if (!lstatSync(join(cwd, path), { throwIfNoEntry: false })?.isFile()) continue;
+    const dir = path.slice(0, path.lastIndexOf("/"));
+    counts.set(dir, (counts.get(dir) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function checkDirectories(cwd: string, paths: string[]): string[] {
+  return [...directoryCounts(cwd, paths)]
+    .filter(([, files]) => files > directoryLimit)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(
+      ([dir, files]) =>
+        `${dir}: ${files} source files, over the ${directoryLimit}-file limit; split it into subdirectories`,
+    );
+}
+
 if (import.meta.main) {
   const cwd = process.cwd();
   const files = Bun.spawnSync(
@@ -43,7 +72,8 @@ if (import.meta.main) {
   );
   if (files.exitCode !== 0) process.exit(1);
 
-  const problems = await checkSizes(cwd, files.stdout.toString().split("\0").sort());
+  const paths = files.stdout.toString().split("\0").sort();
+  const problems = [...(await checkSizes(cwd, paths)), ...checkDirectories(cwd, paths)];
   for (const problem of problems) process.stderr.write(`${problem}\n`);
   process.exitCode = problems.length > 0 ? 1 : 0;
 }
