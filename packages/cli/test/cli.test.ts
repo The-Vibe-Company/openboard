@@ -203,3 +203,28 @@ describe("ob channels pages", () => {
     expect(board.seen).toEqual([]);
   });
 });
+
+describe("ob post --label", () => {
+  test("sends each k=v as a label, the value after the first =, the last for a repeated key", async () => {
+    const board = fakeBoard(201, { message: message("3", "x") });
+    const { output } = capture();
+    const argv = ["post", "dev", "x", "--label", "status=new", "--label", "url=a=b", "--label", "status=open"];
+    expect(await runCli(argv, env, { fetch: board.fetch, output })).toBe(0);
+    expect(board.seen.map(({ body }) => JSON.parse(body))).toEqual([
+      { channel: "dev", text: "x", labels: { status: "open", url: "a=b" } },
+    ]);
+  });
+
+  test.each([
+    ["without =", ["--label", "status"], "--label takes k=v, a key and a value"],
+    ["without a key", ["--label", "=open"], "--label takes k=v, a key and a value"],
+    ["without a value", ["--label", "status="], "--label takes k=v, a key and a value"],
+    ["without its value", ["--label"], "--label takes a value"],
+  ])("exits 2 for --label %s, posting nothing", async (_, extra, error) => {
+    const board = fakeBoard(201, {});
+    const { lines, output } = capture();
+    expect(await runCli(["post", "dev", "x", ...extra], env, { fetch: board.fetch, output })).toBe(2);
+    expect(lines.err[0]).toStartWith(`error: invalid_request: ${error}`);
+    expect(board.seen).toEqual([]);
+  });
+});

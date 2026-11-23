@@ -25,6 +25,17 @@ function optionValue(field: Field, text: string): unknown {
   return field.type === "integer" && /^(?:0|[1-9]\d{0,15})$/.test(text) ? Number(text) : text;
 }
 
+/** Adds `k=v`, the value of a repeatable map option such as `--label`, to what `flag` has collected. */
+function addEntry(input: Record<string, unknown>, name: string, flag: string, text: string) {
+  const split = text.indexOf("=");
+  if (split < 1 || split === text.length - 1) throw new Misuse(`--${flag} takes k=v, a key and a value`);
+  // No prototype, so `__proto__=x` stays a key the board refuses instead of vanishing here.
+  input[name] ??= Object.create(null);
+  const entries = input[name] as Record<string, string>;
+  // A key holds one value: a later `--label k=…` replaces an earlier one, as upstream's CLI does.
+  entries[text.slice(0, split)] = text.slice(split + 1);
+}
+
 /** Positionals fill `args` in order, so every one up to the last required argument must be given. */
 function requiredPositionals(args: readonly string[], fields: ReturnType<typeof fieldsOf>): number {
   return args.findLastIndex((name) => fields.get(name)?.required) + 1;
@@ -62,7 +73,8 @@ function inputOf(
     if (value === undefined || at + 1 >= ctx.optionsEnd || isSwitch(value, flags, fields)) {
       throw new Misuse(`${word} takes a value`);
     }
-    input[name] = optionValue(field, value);
+    if (field.type === "object") addEntry(input, name, word.slice(2), value);
+    else input[name] = optionValue(field, value);
     at += 1;
   }
   const needed = requiredPositionals(args, fields);
@@ -91,6 +103,9 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     } else if (schema.type === "string" || schema.type === "integer") {
       flags.set(flag, name);
       options.push(`[--${flag} <${flag}>]`);
+    } else if (schema.type === "object") {
+      flags.set(flag, name);
+      options.push(`[--${flag} <k=v>]...`);
     }
   }
   const needed = requiredPositionals(args, fields);

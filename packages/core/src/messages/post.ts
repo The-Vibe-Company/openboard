@@ -1,5 +1,6 @@
 import { type Actor, type Author, BoardError, type Message, type MessageAuthor } from "@openboard/contract";
 import { formatId, isoTime } from "../ids.ts";
+import { checkLabels } from "./labels.ts";
 
 /** A new thread (`channel`) or a reply (`re`), as `POST /messages` asks for it once the contract has validated it. */
 export interface PostCommand {
@@ -111,7 +112,6 @@ export interface PostContext {
 
 /** No board string holds a NUL, which Postgres cannot store, or a lone surrogate (upstream `storable`). */
 const storable = (value: string) => !value.includes("\0") && value.isWellFormed();
-const RESERVED_LABEL_PREFIX = "board.";
 /** The shape of the IDs a board derives for its own writes, a UUIDv8 (upstream `DERIVED_ID`): never a client's. */
 const DERIVED_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -143,14 +143,7 @@ export function checkPost(command: PostCommand, by: Author) {
     throw new BoardError("invalid_after", "after: `after` is for replies");
   }
   checkMessageText(command.text);
-  for (const [key, value] of Object.entries(command.labels ?? {})) {
-    if (key.startsWith(RESERVED_LABEL_PREFIX)) {
-      throw new BoardError("reserved_label", `labels.${key}: the board writes labels under ${RESERVED_LABEL_PREFIX}`);
-    }
-    if (!storable(value) || /\p{Cc}/u.test(value)) {
-      throw new BoardError("invalid_request", `labels.${key}: label value has a control character`);
-    }
-  }
+  checkLabels(command.labels ?? {});
 }
 
 /** The message a `message.posted` event shows: what its fold stores as the message's view. */

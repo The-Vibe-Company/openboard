@@ -127,6 +127,16 @@ function fromText(schema: TObject, value: object): object {
   return Object.fromEntries(entries);
 }
 
+/** Refuses an own `__proto__` key at any depth: cloning drops it, so it would vanish instead of being refused. */
+function refuseProtoKeys(value: unknown, path: string) {
+  if (typeof value !== "object" || value === null) return;
+  for (const [key, inner] of Object.entries(value)) {
+    const at = path ? `${path}.${key}` : key;
+    if (key === "__proto__") throw new BoardError("invalid_request", `${at}: __proto__ is no key a board takes`);
+    refuseProtoKeys(inner, at);
+  }
+}
+
 function decodePart(schema: TObject | undefined, value: unknown, where: string, convert: boolean): object {
   if (!schema) {
     const empty =
@@ -137,6 +147,7 @@ function decodePart(schema: TObject | undefined, value: unknown, where: string, 
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     if (value !== undefined) throw new BoardError("invalid_request", `the ${where} must be a JSON object`);
   }
+  refuseProtoKeys(value, "");
   const copy = Value.Default(schema, Value.Clone(value ?? {}));
   const decoded = convert ? fromText(schema, copy as object) : copy;
   const [first] = Value.Errors(schema, decoded);

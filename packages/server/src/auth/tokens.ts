@@ -100,7 +100,14 @@ function refuseOtherProfile(request: Request, pinned: string): void {
   });
 }
 
-type Permission = NonNullable<Operation["access"]>["permission"];
+type Permission = NonNullable<Operation["access"]>["permission"] | "label";
+
+/** A write that sets labels, a post or a task with `labels`, also needs `label` where it lands (upstream `03-http.md` "Access"). */
+function permissionsFor(permission: Permission, input: unknown): Permission[] {
+  const labels = (input as { labels?: unknown }).labels;
+  const labelled = typeof labels === "object" && labels !== null && Object.keys(labels).length > 0;
+  return labelled && permission !== "label" ? [permission, "label"] : [permission];
+}
 
 function outsidePin(permission: Permission, where: string): BoardError {
   return new BoardError("forbidden", `this token was claimed without ${permission} ${where}`, {
@@ -137,6 +144,17 @@ export async function keepInsidePin(
   const can: Can | undefined = by[pinnedCan];
   const { access } = operation;
   if (can === undefined || access === null) return;
+  for (const permission of permissionsFor(access.permission, input)) {
+    await checkPermission(can, { ...access, permission }, input, board);
+  }
+}
+
+async function checkPermission(
+  can: Can,
+  access: { readonly permission: Permission; readonly channel: NonNullable<Operation["access"]>["channel"] },
+  input: unknown,
+  board: BoardView,
+): Promise<void> {
   const { permission } = access;
   if (access.channel === "any") {
     const everywhere = agents.allowedAt(can, "*").includes(permission);
