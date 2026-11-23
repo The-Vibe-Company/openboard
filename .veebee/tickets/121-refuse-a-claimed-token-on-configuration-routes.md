@@ -18,10 +18,12 @@ issue: 121
 As an owner, a leaked sandbox token cannot change my board's configuration.
 
 ## Done when
-- [ ] with an `obt_` bearer, `curl http://127.0.0.1:8787/api/local/main/x/connections` and `curl http://127.0.0.1:8787/api/x/me` answer 403 `forbidden`, while `ob read dev` still works
+- [ ] with an `obt_` bearer, `curl -X POST http://127.0.0.1:8787/api/local/main/x/connections -d '{"name":"x","can":{"*":["all"]}}'` answers 403 `forbidden` and creates nothing, while `ob read dev` still works
+- [ ] the refusal is one rule for every `/x/` operation (board or platform scope), checked before the handler, so `GET /x/connections` (131) and `GET /api/x/me` (134) refuse an `obt_` bearer with no change of theirs
 
 ## Out of scope
-- Routes added later (webhooks, grants, watchers) refuse it in their own tickets.
+- Building `GET /x/connections` (131) and `GET /api/x/me` (134); they inherit the rule.
+- Routes outside `/x/` added later (webhooks, grants, watchers) refuse it in their own tickets.
 
 ## Notes
-`docs/auth.md` "Routes a claimed token can never reach".
+`docs/auth.md` "Routes a claimed token can never reach". Orchestrator decision on #121: do not wait for 131 and 134; put the rule where every `/x/` operation passes (the pipeline, or the operation's contract, e.g. an `xRoute`/`configuration` flag derived from the path) and test it on `POST /x/connections`. Add the files you need to `writes`.
