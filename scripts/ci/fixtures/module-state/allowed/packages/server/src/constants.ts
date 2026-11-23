@@ -1,5 +1,5 @@
 // Frozen data, readonly static values, and state created per call are allowed.
-const codes = new Map([["a", 1]]);
+export const codes = new Map([["a", 1]]);
 const names = ["a", "b"] as const;
 const limits = { max: 10 };
 

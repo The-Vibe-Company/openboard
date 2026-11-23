@@ -6,13 +6,14 @@ package: tools
 writes:
   - scripts/ci/module-state.ts
   - scripts/ci/module-state.test.ts
+  - scripts/ci/module-state/**
   - scripts/ci/fixtures/module-state/**
   - package.json
   - docs/codebase.md
 conformance: []
 modes: []
 depends_on: [13]
-status: claimed
+status: done
 claimed_by: claude-code-t14
 issue: 14
 ---
@@ -21,7 +22,7 @@ issue: 14
 As a contributor, I cannot keep state at module level, so two apps in one process share nothing.
 
 ## Done when
-- [ ] a top-level `let`, a module-scope `new Map()` that is later mutated, or a `static` mutable class field in `packages/*/src` or `apps/openboard/src` makes `bun run lint` exit 1 naming the file and line
+- [x] a top-level `let`, a module-scope `new Map()` that is later mutated, or a `static` mutable class field in `packages/*/src` or `apps/openboard/src` makes `bun run lint` exit 1 naming the file and line
 
 ## Out of scope
 - Function length (15).
