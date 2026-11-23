@@ -282,7 +282,7 @@ Authorization: Bearer obc_…
   counting claims could never spend.
 - **Profile collisions:** 409 `profile_taken` while an agent of the same
   connection holds the profile, unrevoked and its token unexpired, unless
-  the same `idempotencyKey` (D49).
+  the same `idempotencyKey` (D50).
 - **Per-agent revoke:** `POST {BOARD_URL}/x/connections/:id/agents/:agent/revoke`,
   also an inbound-rule action.
 

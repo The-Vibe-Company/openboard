@@ -516,7 +516,7 @@ CREATE TABLE connection_agents (
   token_expires BIGINT NOT NULL, hard_expires BIGINT NOT NULL, claim_key TEXT,
   created_at BIGINT NOT NULL, last_used_at BIGINT, revoked_at BIGINT, revoked_by TEXT
 );
--- A profile is held while its agent is unrevoked and its token unexpired: checked under the board lock (D49).
+-- A profile is held while its agent is unrevoked and its token unexpired: checked under the board lock (D50).
 CREATE UNIQUE INDEX agents_claim_key    ON connection_agents (connection, claim_key) WHERE claim_key IS NOT NULL;
 
 CREATE TABLE webhooks (

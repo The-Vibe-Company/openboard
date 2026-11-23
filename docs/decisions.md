@@ -667,7 +667,7 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   operations declare `access: { permission: "read", … }` to be open to
   members.
 
-### D49. A profile is held while its agent lives, checked under the board lock
+### D50. A profile is held while its agent lives, checked under the board lock
 
 - **Context.** docs/auth.md mode 2 answers 409 `profile_taken` for a profile
   a live agent holds. The data model sketched a unique index on

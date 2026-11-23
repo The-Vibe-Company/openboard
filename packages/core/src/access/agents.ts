@@ -232,7 +232,7 @@ export interface AgentRefreshed {
  * A new token for `state.agent`, with the same pins, living the connection's token lifetime from `now`, never less
  * than the token it replaces (a claim may ask for a longer one) and never past the agent's hard expiry; the token it replaces keeps working `PREVIOUS_TOKEN_MS`. Only the current token refreshes
  * (`presented` is its hash): its predecessor, or a token another refresh already replaced, is 401 `unauthorized`. Past
- * the token's expiry, decided here under the lock so a claim that took the profile meanwhile stands (D49), or the hard
+ * the token's expiry, decided here under the lock so a claim that took the profile meanwhile stands (D50), or the hard
  * expiry, nothing refreshes: the connection's secret claims a new agent.
  */
 export function decideRefresh(
