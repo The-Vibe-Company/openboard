@@ -1,12 +1,13 @@
 // Refuses an import the allow-list graph forbids, and a package.json that disagrees with its
 // workspace's imports (docs/codebase.md 3.1, 3.3 point 1).
 // Data: scripts/ci/boundaries.json. Run by `bun run lint`.
+import { isUtf8 } from "node:buffer";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
 export type Rule = { may: string[]; types?: string[]; external: string[] };
-export type Config = { graph: Record<string, Rule>; tests: { external: string[] } };
-export type Violation = { file: string; message: string };
+export type Config = { graph: Record<string, Rule>; tests: { external: string[] }; denyTerms: string[] };
+export type Violation = { file: string; line?: number; message: string };
 
 type Workspace = { dir: string; name: string; short: string };
 type Imports = { values: Set<string>; all: Set<string> };
@@ -41,15 +42,44 @@ async function packageName(dir: string): Promise<string | null> {
   return typeof name === "string" ? name : null;
 }
 
-/** Lists the source files under a workspace directory, skipping dependencies and build output. */
-async function sourceFiles(root: string, dir: string): Promise<string[]> {
+/** Lists regular files under a workspace directory, skipping dependencies and build output. */
+async function workspaceFiles(root: string, dir: string): Promise<string[]> {
   const files: string[] = [];
   for (const entry of await readdir(join(root, dir), { withFileTypes: true })) {
     const path = `${dir}/${entry.name}`;
-    if (entry.isDirectory() && !SKIPPED_DIRS.has(entry.name)) files.push(...(await sourceFiles(root, path)));
-    else if (entry.isFile() && SOURCE.test(entry.name)) files.push(path);
+    if (entry.isDirectory() && !SKIPPED_DIRS.has(entry.name)) files.push(...(await workspaceFiles(root, path)));
+    else if (entry.isFile()) files.push(path);
   }
   return files.sort();
+}
+
+async function sourceFiles(root: string, dir: string): Promise<string[]> {
+  return (await workspaceFiles(root, dir)).filter((file) => SOURCE.test(file));
+}
+
+/** Checks raw text so integration names in comments are included (docs/codebase.md 3.2). */
+export async function checkDenyTerms(root: string, config: Config): Promise<Violation[]> {
+  if (config.denyTerms.length === 0) return [];
+  const terms = config.denyTerms.map((term) => RegExp.escape(term)).join("|");
+  const pattern = new RegExp(`\\b(?:${terms})\\b`, "gi");
+  const violations: Violation[] = [];
+  for (const parent of ["packages", "apps"]) {
+    for (const dir of (await childDirs(root, parent)).sort()) {
+      for (const file of await workspaceFiles(root, dir)) {
+        const contents = await readFile(join(root, file));
+        if (contents.includes(0) || !isUtf8(contents)) continue;
+        contents
+          .toString("utf8")
+          .split(/\r\n|[\n\r\u2028\u2029]/)
+          .forEach((text, index) => {
+            for (const [term] of text.matchAll(pattern)) {
+              violations.push({ file, line: index + 1, message: `denied integration name "${term}"` });
+            }
+          });
+      }
+    }
+  }
+  return violations;
 }
 
 /**
@@ -329,13 +359,16 @@ async function main(): Promise<number> {
     ...checkConfig(config, await findWorkspaces(root)),
     ...(await checkBoundaries(root, config)),
     ...(await checkManifests(root, config)),
+    ...(await checkDenyTerms(root, config)),
   ];
-  for (const violation of violations) console.error(`${violation.file}: ${violation.message}`);
+  for (const { file, line, message } of violations) {
+    console.error(`${line === undefined ? file : `${file}:${line}`}: ${message}`);
+  }
   if (violations.length > 0) {
-    console.error(`boundaries: ${violations.length} violation(s) (docs/codebase.md 3.1, 3.3)`);
+    console.error(`boundaries: ${violations.length} violation(s) (docs/codebase.md 3.1–3.3)`);
     return 1;
   }
-  console.log("boundaries: every import is in the allow-list and every manifest agrees with its imports");
+  console.log("boundaries: imports, manifests, and integration names passed");
   return 0;
 }
 

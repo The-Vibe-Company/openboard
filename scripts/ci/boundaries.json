@@ -38,5 +38,6 @@
       "external": ["node:*"]
     }
   },
+  "denyTerms": ["armada", "slack", "linear", "notion", "discord", "granite"],
   "tests": { "external": ["bun:test", "@openboard/ports/testkit"] }
 }
