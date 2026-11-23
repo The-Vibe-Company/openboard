@@ -1,7 +1,7 @@
 import { BoardError, type getMe, type listActors, type OutputOf } from "@openboard/contract";
 import { formatId, grants } from "@openboard/core";
 import { authorOf } from "../auth/author.ts";
-import { agentOf, credentialKind, memberOf, type Principal, type SessionMember } from "../deps.ts";
+import { agentOf, credentialExpiry, credentialKind, memberOf, type Principal, type SessionMember } from "../deps.ts";
 import type { BoardContext, Handler } from "./index.ts";
 
 type Me = OutputOf<typeof getMe>;
@@ -40,7 +40,7 @@ async function connectionMe(
 }
 
 /** A signed-in person: as their sign-in shows them, with their role in the board's organization. */
-function sessionMe(by: Principal, member: SessionMember): Me {
+function personMe(by: Principal, member: SessionMember, credential: "session" | "personal"): Me {
   const { actor, principal, profile } = by;
   const { kind, handle, name, avatar } = authorOf(by);
   const { role, org, board } = member;
@@ -53,9 +53,9 @@ function sessionMe(by: Principal, member: SessionMember): Me {
     name,
     avatar,
     profile,
-    expiresAt: null,
+    expiresAt: by[credentialExpiry] ?? null,
     can,
-    openboard: { org, board, role, credential: "session" },
+    openboard: { org, board, role, credential },
   };
 }
 
@@ -63,7 +63,7 @@ export const getMeHandler: Handler<typeof getMe> = async ({ board, by }) => {
   const credential = by[credentialKind];
   if (credential === "connection" || credential === "agent") return connectionMe(board, by, credential);
   const member = by[memberOf];
-  if (credential === "session" && member) return sessionMe(by, member);
+  if ((credential === "session" || credential === "personal") && member) return personMe(by, member, credential);
   if (!credential) throw new BoardError("unauthorized", "a local owner credential is required");
   const { actor, principal, profile } = by;
   const { kind, handle, name, avatar } = authorOf(by);

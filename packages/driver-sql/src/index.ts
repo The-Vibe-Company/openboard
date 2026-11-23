@@ -6,6 +6,7 @@ import agentsDdl from "../migrations/0004-agents.sql" with { type: "text" };
 import accountsDdl from "../migrations/0005-accounts.sql" with { type: "text" };
 import orgsDdl from "../migrations/0006-orgs.sql" with { type: "text" };
 import invitationsDdl from "../migrations/0007-invitations.sql" with { type: "text" };
+import deviceDdl from "../migrations/0008-device.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
@@ -13,6 +14,7 @@ import { agentReads } from "./views/agents.ts";
 import { orgBoardsView, platformView } from "./views/boards.ts";
 import { channelReads } from "./views/channels.ts";
 import { connectionReads } from "./views/connections.ts";
+import { deviceView, personalTokenView } from "./views/device.ts";
 import { eventReads } from "./views/events.ts";
 import { invitationPlatform, invitationView } from "./views/invitations.ts";
 import { membershipView } from "./views/memberships.ts";
@@ -39,6 +41,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 5, name: "0005-accounts", sql: accountsDdl },
   { version: 6, name: "0006-orgs", sql: orgsDdl },
   { version: 7, name: "0007-invitations", sql: invitationsDdl },
+  { version: 8, name: "0008-device", sql: deviceDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -50,6 +53,7 @@ export function createViews(
     platform: () => ({
       ...platformView(db, dialect),
       ...accountView(db, dialect),
+      ...deviceView(db, dialect),
       ...orgView(db, dialect),
       ...invitationPlatform(db, dialect),
     }),
@@ -60,6 +64,7 @@ export function createViews(
     }),
     board: (scope) => ({
       ...boardView(db, dialect, scope),
+      ...personalTokenView(db, dialect, scope),
       ...agentReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),
       ...channelReads(db, dialect, scope),

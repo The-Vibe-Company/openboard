@@ -1,22 +1,8 @@
 import { BoardError, createClient } from "@the-vibe-company/openboard";
-import {
-  agentConfigPath,
-  boardAddress,
-  type CliEnvironment,
-  connectionSecret,
-  isAgentToken,
-  storeAgentClaim,
-} from "../config.ts";
-import type { CliOptions } from "../main.ts";
-import { type CommandContext, Misuse } from "./index.ts";
+import { agentConfigPath, boardAddress, connectionSecret, isAgentToken, storeAgentClaim } from "../config.ts";
+import { Misuse, type StandaloneContext } from "./index.ts";
 
-export interface ConnectContext extends Omit<CommandContext, "client" | "boardUrl"> {
-  readonly env: CliEnvironment;
-  readonly profile: string | undefined;
-  readonly options: CliOptions;
-}
-
-function parse(ctx: ConnectContext) {
+function parse(ctx: StandaloneContext) {
   let address: string | undefined;
   let secretFile: string | undefined;
   for (let index = 0; index < ctx.args.length; index++) {
@@ -45,7 +31,7 @@ export const connectCommand = {
   standalone: true,
   words: ["connect"],
   usage: "ob connect <url> --as <name> [--secret-file <path>]",
-  async run(ctx: ConnectContext): Promise<number> {
+  async run(ctx: StandaloneContext): Promise<number> {
     const { url, profile, secretFile } = parse(ctx);
     const path = agentConfigPath(ctx.env);
     if (!path) throw new Misuse("HOME is required to store the agent credential");

@@ -148,6 +148,78 @@
         }
       }
     },
+    "/api/x/auth/device/approve": {
+      "post": {
+        "operationId": "approveDeviceSignIn",
+        "summary": "Approve a CLI sign-in for a member of the chosen organization.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "x-ob-csrf",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["userCode", "org"],
+                "properties": {
+                  "userCode": { "pattern": "^[A-Z2-7]{4}(?:-[A-Z2-7]{4}){3}$", "type": "string" },
+                  "org": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,38}$",
+                    "x-ref": "org",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ok"],
+                  "properties": { "ok": { "const": true, "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/api/x/orgs/{org}/members/{user}/role": {
       "post": {
         "operationId": "changeMemberRole",
@@ -232,6 +304,10 @@
           },
           "404": {
             "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "last_owner",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -1149,7 +1225,7 @@
                     "handle": { "type": "string" },
                     "name": { "type": "string" },
                     "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                    "expiresAt": { "type": "null" },
+                    "expiresAt": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
                     "can": {
                       "type": "object",
                       "patternProperties": {
@@ -1199,7 +1275,8 @@
                             { "const": "local", "type": "string" },
                             { "const": "connection", "type": "string" },
                             { "const": "agent", "type": "string" },
-                            { "const": "session", "type": "string" }
+                            { "const": "session", "type": "string" },
+                            { "const": "personal", "type": "string" }
                           ]
                         }
                       }
@@ -2032,6 +2109,87 @@
           },
           "404": {
             "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/api/x/auth/device/token": {
+      "post": {
+        "operationId": "pollDeviceSignIn",
+        "summary": "Wait for approval or exchange an approved device code once for an organization-bound personal token.",
+        "security": [],
+        "servers": [{ "url": "/" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["deviceCode"],
+                "properties": { "deviceCode": { "pattern": "^[A-Za-z0-9_-]{43}$", "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": ["pending"],
+                      "properties": { "pending": { "const": true, "type": "boolean" } }
+                    },
+                    {
+                      "type": "object",
+                      "required": ["token", "org", "boards"],
+                      "properties": {
+                        "token": { "pattern": "^obp_[a-z2-7]{16}_[A-Za-z0-9_-]{43}$", "type": "string" },
+                        "org": {
+                          "type": "object",
+                          "required": ["slug", "name"],
+                          "properties": {
+                            "slug": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" },
+                            "name": { "type": "string" }
+                          }
+                        },
+                        "boards": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["slug", "name", "url"],
+                            "properties": {
+                              "slug": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" },
+                              "name": { "type": "string" },
+                              "url": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -3149,6 +3307,56 @@
           },
           "410": {
             "description": "invitation_used",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/api/x/auth/device": {
+      "post": {
+        "operationId": "startDeviceSignIn",
+        "summary": "Request a short-lived browser approval code for CLI sign-in.",
+        "security": [],
+        "servers": [{ "url": "/" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["clientName"],
+                "properties": {
+                  "clientName": { "minLength": 1, "maxLength": 100, "pattern": "^[^\\u0000]+$", "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["deviceCode", "userCode", "verificationUri", "interval", "expiresIn"],
+                  "properties": {
+                    "deviceCode": { "pattern": "^[A-Za-z0-9_-]{43}$", "type": "string" },
+                    "userCode": { "pattern": "^[A-Z2-7]{4}(?:-[A-Z2-7]{4}){3}$", "type": "string" },
+                    "verificationUri": { "type": "string" },
+                    "interval": { "minimum": 1, "maximum": 60, "type": "integer" },
+                    "expiresIn": { "const": 600, "type": "number" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {

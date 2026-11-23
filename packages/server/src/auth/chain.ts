@@ -4,6 +4,7 @@ import type { BoardView, PlatformView } from "@openboard/ports";
 import { connectionOf, type Principal, profileAvatar, profileName, type ServerConfig } from "../deps.ts";
 import { connectionVerifier } from "./connections.ts";
 import { localOwnerVerifier } from "./local-owner.ts";
+import { personalTokenVerifier } from "./personal-tokens.ts";
 import { sessionVerifier } from "./sessions.ts";
 import { agentTokenVerifier } from "./tokens.ts";
 
@@ -19,16 +20,15 @@ export interface CredentialVerifier {
 }
 
 /**
- * The chain this server runs, in docs/auth.md order: agent tokens (step 1), connection secrets (step 2), the local
- * owner token (step 4), then a browser's session (step 6). `now` is the clock credentials with a lifetime are checked
- * against.
+ * The chain this server runs, in docs/auth.md order: agent tokens (step 1), connection secrets (step 2), personal tokens
+ * (step 3), the local owner token (step 4), then a browser's session (step 6). The clock checks credential lifetimes.
  */
 export function verifiers(
   config: ServerConfig,
   platform: PlatformView,
   now: () => number,
 ): readonly CredentialVerifier[] {
-  const chain: CredentialVerifier[] = [agentTokenVerifier(now), connectionVerifier()];
+  const chain: CredentialVerifier[] = [agentTokenVerifier(now), connectionVerifier(), personalTokenVerifier(now)];
   if (config.mode === "local" && config.localOwnerTokenHash) {
     chain.push(localOwnerVerifier(config.localOwner, config.localOwnerTokenHash));
   }

@@ -52,3 +52,40 @@ test("an owner promotes a member, a member receives forbidden, and an admin can 
     await app.close();
   }
 });
+
+test("a signed-in owner cannot demote the only owner", async () => {
+  const app = makeBrowserApp();
+  const request = async (path: string, headers: Record<string, string>, data?: unknown) => {
+    const init = data === undefined ? { headers } : { headers, method: "POST", body: JSON.stringify(data) };
+    return app.fetch(new Request(`${PUBLIC_URL}/api/x${path}`, init));
+  };
+  try {
+    const ada = await browserSession(app.fetch, "ada");
+    expect((await request("/orgs", ada.headers, { name: "Acme", slug: "acme" })).status).toBe(201);
+
+    const rolePath = `/orgs/acme/members/${ada.principal}/role`;
+    const demotion = { role: "admin" };
+    const refused = await request(rolePath, ada.headers, demotion);
+    const error = await refused.json();
+    expect(refused.status).toBe(409);
+    expect(error).toEqual({
+      error: {
+        code: "last_owner",
+        message: "an organization keeps at least one owner",
+        hint: "promote another member to owner first",
+      },
+    });
+    process.stdout.write(
+      `POST /api/x${rolePath} ${JSON.stringify(demotion)} -> ${refused.status} ${JSON.stringify(error)}\n`,
+    );
+
+    const rosterPath = "/orgs/acme/members";
+    const roster = await request(rosterPath, ada.headers);
+    const body = await roster.json();
+    expect(roster.status).toBe(200);
+    expect(body).toEqual({ members: [{ principal: ada.principal, role: "owner" }] });
+    process.stdout.write(`GET /api/x${rosterPath} -> ${roster.status} ${JSON.stringify(body)}\n`);
+  } finally {
+    await app.close();
+  }
+});

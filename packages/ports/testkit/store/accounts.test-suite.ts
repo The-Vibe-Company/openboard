@@ -36,6 +36,8 @@ export function accountsSuite(driver: string, open: OpenStore): void {
     return store.platform();
   }
 
+  deviceExpiryCase(driver, platform);
+
   test(`${driver}: a new identity admitted becomes a person with a session`, async () => {
     const accounts = await platform();
     const person = await accounts.signIn(signIn(ada, hash("a")));
@@ -116,5 +118,18 @@ function revokeAllSessionsCase(driver: string, platform: () => Promise<PlatformV
     expect((await accounts.session(hash("c")))?.person).toEqual(other ?? undefined);
     await accounts.signIn({ ...signIn(ada, hash("d")), now: at + 2 * DAY });
     expect((await accounts.session(hash("d")))?.person.id).toBe(personId);
+  });
+}
+
+function deviceExpiryCase(driver: string, platform: () => Promise<PlatformView>): void {
+  test(`${driver}: starting a device prunes expired requests but preserves live codes`, async () => {
+    const accounts = await platform();
+    await accounts.startDevice(hash("a"), "expired-code", "ob", at, at + 1000);
+    await accounts.startDevice(hash("b"), "live-code", "ob", at, at + 2000);
+    // The old short code is unique until the expired row is removed.
+    await accounts.startDevice(hash("c"), "expired-code", "ob", at + 1000, at + 3000);
+    const issue = { id: "pt_fixture", tokenHash: hash("d"), now: at + 1500, expiresAt: at + DAY };
+    expect(await accounts.pollDevice(hash("a"), 1000, issue)).toEqual({ status: "missing" });
+    expect(await accounts.pollDevice(hash("b"), 1000, issue)).toEqual({ status: "pending" });
   });
 }

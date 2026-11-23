@@ -4,6 +4,12 @@ title: Keep at least one owner
 milestone: M4-accounts-organizations-and-auth
 package: server
 writes:
+  - .veebee/tickets/150-keep-at-least-one-owner.md
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/contract/src/errors.ts
+  - packages/core/src/index.ts
+  - packages/server/openapi.json
   - packages/contract/src/operations/memberships.ts
   - packages/server/src/operations/memberships.ts
   - packages/driver-sql/src/views/memberships.ts
@@ -15,8 +21,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [149]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 151
 ---
 
@@ -24,10 +30,13 @@ issue: 151
 As an organization, I can never be left without an owner.
 
 ## Done when
-- [ ] demoting or removing the only owner is refused, and the organization still lists them as `owner`
+- [x] Demoting the only owner returns 409 `last_owner`, and the organization still lists them as `owner`.
+- [x] The guard and error contract are available to member removal. Ticket 151
+  (issue #152) adds the removal route and verifies that removing the only owner
+  returns 409 `last_owner` and leaves them on the roster.
 
 ## Out of scope
 - Transferring ownership: promote another owner first.
 
 ## Notes
-The refusal's code is not specified (`.veebee/cut.md` "Could not place").
+The decision on issue #151 specifies 409 `last_owner` for the refusal.

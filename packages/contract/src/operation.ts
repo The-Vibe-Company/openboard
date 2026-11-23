@@ -18,6 +18,7 @@ export type RefKind =
   | "webhook"
   | "connection"
   | "member"
+  | "org"
   | "invitation"
   | "board";
 
