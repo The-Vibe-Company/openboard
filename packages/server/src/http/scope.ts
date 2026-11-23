@@ -1,5 +1,5 @@
 import { BoardError, operations } from "@openboard/contract";
-import type { BoardKeys, BoardScope, BoardView, Store } from "@openboard/ports";
+import type { BoardKeys, BoardScope, BoardView, OrgScope, OrgView, Store } from "@openboard/ports";
 
 /** Organization and board slugs (docs/protocol.md "Slugs"). */
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}$/;
@@ -29,7 +29,9 @@ export const BOARD_ROUTE_SEGMENTS = Object.freeze([
   "x",
   // Account routes live under `/api/x`, so they reserve no organization slug.
   ...operations
-    .flatMap(({ route, scope }) => (scope === "account" ? [] : route.path.split("/").slice(1, 2)))
+    .flatMap(({ route, scope }) =>
+      scope === "account" || scope === "org" || route.mount ? [] : route.path.split("/").slice(1, 2),
+    )
     .filter(Boolean),
 ]);
 
@@ -79,10 +81,19 @@ function mintBoardScope(keys: BoardKeys): BoardScope {
 export interface Tenants {
   /** The view of the board a path names, or 404 `not_found`. */
   board(path: BoardPath): Promise<BoardView>;
+  adminOrg(slug: string, personId: string): Promise<OrgView>;
 }
 
 export function tenants(store: Store): Tenants {
   return {
+    async adminOrg(slug, personId) {
+      if (!SLUG.test(slug)) throw notFound();
+      const member = await store.platform().orgMembership(slug, personId);
+      if (!member) throw notFound();
+      if (member.role === "member") throw new BoardError("forbidden", "this organization needs an administrator");
+      const scope = { orgId: member.orgId } as OrgScope;
+      return store.org(scope);
+    },
     async board(path) {
       return store.board(mintBoardScope(await resolveBoard(store, path)));
     },

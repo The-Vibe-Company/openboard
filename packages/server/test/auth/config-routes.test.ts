@@ -44,4 +44,10 @@ test("a claimed token cannot use a platform operation", async () => {
   expect(refused.status).toBe(403);
   expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
   expect((await app.fetch(new Request(url))).status).toBe(200);
+
+  const preview = `${PUBLIC_URL}/api/x/invitations/unknown`;
+  const blocked = await app.fetch(new Request(preview, { headers: { authorization: `Bearer ${token}` } }));
+  expect(blocked.status).toBe(403);
+  expect(await blocked.json()).toMatchObject({ error: { code: "forbidden" } });
+  expect((await app.fetch(new Request(preview))).status).toBe(404);
 });

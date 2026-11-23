@@ -4,6 +4,8 @@ import type {
   Channel,
   ClaimedAgent,
   Connection,
+  Invitation,
+  InvitationRole,
   Message,
   Named,
   Role,
@@ -100,6 +102,23 @@ export interface BoardMemberRecord {
   readonly board: Named;
 }
 
+/** The organization a request may touch, minted only by the tenant resolver. */
+export interface OrgScope {
+  readonly orgId: number;
+  readonly [minted]: "org";
+}
+
+export interface OrgView {
+  /** Stores the invitation and audit event together. False if the creator no longer has admin rights here. */
+  createInvitation(record: {
+    readonly invitation: Invitation;
+    readonly tokenHash: Uint8Array;
+    readonly personId: string;
+    readonly at: number;
+    readonly expiresAt: number;
+  }): Promise<boolean>;
+}
+
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
 export interface PlatformView {
   /** The board `orgSlug/boardSlug` names, or null when either is unknown or deleted. */
@@ -118,6 +137,15 @@ export interface PlatformView {
   createOrg(record: CreateOrgRecord): Promise<void>;
   /** The person's memberships of organizations that are not deleted, by organization slug. */
   memberships(personId: string): Promise<MembershipRecord[]>;
+  /** The tenant resolver checks the signed-in person's membership before minting an organization scope. */
+  orgMembership(slug: string, personId: string): Promise<{ orgId: number; role: Role } | null>;
+  /** A capability lookup: only the exact token hash selects an invitation, returning preview fields. */
+  invitationPreview(tokenHash: Uint8Array): Promise<{
+    orgName: string;
+    role: InvitationRole;
+    expiresAt: number;
+    used: boolean;
+  } | null>;
 }
 
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */
@@ -223,5 +251,6 @@ export interface BoardView {
 export interface Store {
   platform(): PlatformView;
   board(scope: BoardScope): BoardView;
+  org(scope: OrgScope): OrgView;
   close(): Promise<void>;
 }

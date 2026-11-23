@@ -16,7 +16,8 @@ export function refuseClaimedConfiguration(
   operation: Pick<Operation, "name" | "scope" | "route">,
 ): void {
   if (operation.name === REFRESH) return;
-  if (operation.scope !== "account" && !operation.route.path.startsWith("/x/")) return;
+  const { scope, route } = operation;
+  if (scope !== "account" && scope !== "org" && !route.mount && !route.path.startsWith("/x/")) return;
   if (bearer(request)?.startsWith(PREFIX)) {
     throw new BoardError("forbidden", "claimed tokens cannot access configuration routes");
   }

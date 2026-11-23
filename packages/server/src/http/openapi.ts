@@ -7,6 +7,7 @@ import {
   operations,
 } from "@openboard/contract";
 import manifest from "../../package.json" with { type: "json" };
+import { CSRF_HEADER } from "../auth/sessions.ts";
 
 function parameters(schema: OperationInput["params"], location: "path" | "query") {
   return Object.entries(schema?.properties ?? {}).map(([name, field]) => ({
@@ -40,7 +41,22 @@ function errorResponses(operation: Operation) {
 
 function describeOperation(operation: Operation) {
   const { params, query, body } = operation.input;
-  const fields = [...parameters(params, "path"), ...parameters(query, "query")];
+  const needsCsrf = operation.scope === "org" && operation.route.method !== "GET";
+  const fields = [
+    ...parameters(params, "path"),
+    ...parameters(query, "query"),
+    ...(needsCsrf
+      ? [
+          {
+            name: CSRF_HEADER,
+            in: "header",
+            required: true,
+            schema: { type: "string" },
+            description: "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin.",
+          },
+        ]
+      : []),
+  ];
   const responses = errorResponses(operation);
   const success = {
     description: "Success",
@@ -59,6 +75,11 @@ function describeOperation(operation: Operation) {
     operationId: operation.operationId ?? operation.name,
     summary: operation.summary,
     ...(operation.scope === "public" && { security: [] }),
+    ...(operation.scope === "org" && {
+      servers: [{ url: "/" }],
+      security: [{ sessionAuth: [] }],
+    }),
+    ...(operation.route.mount && { servers: [{ url: "/" }] }),
     ...(fields.length > 0 && { parameters: fields }),
     ...(query && { "x-query-schema": query }),
     ...(body && { requestBody: { required: true, content: { "application/json": { schema: body } } } }),
@@ -70,8 +91,9 @@ function describeOperation(operation: Operation) {
 export function createOpenApi() {
   const paths: Record<string, Record<string, ReturnType<typeof describeOperation>>> = {};
   for (const operation of operations) {
-    if (operation.scope !== "board" && operation.scope !== "public") continue;
-    const path = operation.route.path.replace(/:([^/]+)/g, "{$1}");
+    if (operation.scope === "account") continue;
+    const mount = operation.scope === "org" ? "/api/x" : (operation.route.mount ?? "");
+    const path = (mount + operation.route.path).replace(/:([^/]+)/g, "{$1}");
     paths[path] ??= {};
     paths[path][operation.route.method.toLowerCase()] = describeOperation(operation);
   }
@@ -82,7 +104,10 @@ export function createOpenApi() {
     security: [{ bearerAuth: [] }],
     components: {
       schemas: { ErrorEnvelope },
-      securitySchemes: { bearerAuth: { type: "http", scheme: "bearer" } },
+      securitySchemes: {
+        bearerAuth: { type: "http", scheme: "bearer" },
+        sessionAuth: { type: "apiKey", in: "cookie", name: "__Host-ob_session" },
+      },
     },
     paths,
   };

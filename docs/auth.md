@@ -126,6 +126,9 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
 - `POST /api/x/orgs/:org/invitations { role, email? , send? }` (admin+) →
   `{ invitation, url: "<origin>/invite/<token>" }`. Token: 256 bits, stored
   hashed, single use, 7 days, revocable.
+- `GET /api/x/invitations/:token` needs no credential. It returns only
+  `{ orgName, role, expiresAt }`; unknown links return 404 and expired,
+  revoked or used links return 410 `invitation_used`.
 - **Link invitation:** the admin shares the URL. If `email` is set, only a
   person whose verified email (from the provider) matches may accept.
 - **Email invitation:** `send: true` sends the URL through the mail port

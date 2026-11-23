@@ -22,6 +22,8 @@ export interface ClientOptions {
   /** `BOARD_URL`: `http://127.0.0.1:8787/api/local/main`. */
   readonly url: string;
   readonly token?: string;
+  /** CSRF value from the browser's session for organization writes. */
+  readonly csrf?: string;
   /** `BOARD_PROFILE`: write as this profile of the token's principal, sent as `x-board-profile`. */
   readonly profile?: string;
   readonly fetch?: (request: Request) => Promise<Response>;
@@ -36,7 +38,10 @@ function requestOf(operation: Operation, input: Readonly<Record<string, unknown>
   const path = operation.route.path.replace(/:([A-Za-z]+)/g, (_, name: string) =>
     encodeURIComponent(String(input[name] ?? "")),
   );
-  const url = new URL(`${options.url.replace(/\/+$/, "")}${path}`);
+  const platformMount = operation.scope === "org" ? "/api/x" : operation.route.mount;
+  const url = platformMount
+    ? new URL(platformMount + path, options.url)
+    : new URL(`${options.url.replace(/\/+$/, "")}${path}`);
   const body: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(input)) {
     if (value === undefined || params.has(name)) continue;
@@ -44,9 +49,10 @@ function requestOf(operation: Operation, input: Readonly<Record<string, unknown>
     else body[name] = value;
   }
   const headers: Record<string, string> = { accept: "application/json" };
-  if (options.token) headers.authorization = `Bearer ${options.token}`;
-  if (options.profile) headers[PROFILE_HEADER] = options.profile;
+  if (!platformMount && options.token) headers.authorization = `Bearer ${options.token}`;
+  if (!platformMount && options.profile) headers[PROFILE_HEADER] = options.profile;
   if (!operation.input.body) return new Request(url, { method: operation.route.method, headers });
+  if (operation.scope === "org" && options.csrf) headers["x-ob-csrf"] = options.csrf;
   headers["content-type"] = "application/json";
   return new Request(url, { method: operation.route.method, headers, body: JSON.stringify(body) });
 }
