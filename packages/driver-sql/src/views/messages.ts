@@ -1,8 +1,9 @@
-import type { Message } from "@openboard/contract";
+import type { Actor, Message } from "@openboard/contract";
 import { type BoardEvent, type MessagePosted, messages, parseId } from "@openboard/core";
 import type { BoardKeys, BoardScope, BoardView, BoardWriter } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { query, sql } from "../sql.ts";
+import { foldActorSeen, lockBoardAs } from "./actors.ts";
 import { lockBoard, setHead } from "./boards.ts";
 import { findChannel, foldChannelCreated } from "./channels.ts";
 import { connectionNamed, foldConnectionCreated, nextGrant } from "./connections.ts";
@@ -87,16 +88,18 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   });
   if (event.type === "channel.created") await foldChannelCreated(tx, dialect, keys, event);
   else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
+  else if (event.type === "actor.seen") await foldActorSeen(tx, dialect, keys, event);
   else await foldMessagePosted(tx, dialect, keys, event);
 }
 
-function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number): BoardWriter {
+function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor: Actor | null): BoardWriter {
   let head = start;
   return {
     get head() {
       return head;
     },
     channel: (path) => findChannel(tx, dialect, keys, path),
+    actor,
     async replyTarget(id) {
       const [row] = await query(tx, dialect, messageStatements.replyTarget, { boardId: keys.boardId, id });
       if (!row) return null;
@@ -119,10 +122,11 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number): Board
 export function boardView(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "write" | "channelMessages"> {
   const keys: BoardKeys = { orgId: scope.orgId, boardId: scope.boardId };
   return {
-    write: (fn) =>
+    write: (fn, as) =>
       db.transaction(async (tx) => {
-        const head = await lockBoard(tx, dialect, keys);
-        return fn(writer(tx, dialect, keys, head));
+        if (as === undefined) return fn(writer(tx, dialect, keys, await lockBoard(tx, dialect, keys), null));
+        const { head, actor } = await lockBoardAs(tx, dialect, keys, as);
+        return fn(writer(tx, dialect, keys, head, actor));
       }),
     async channelMessages({ channel, after, limit }) {
       const params = { boardId: keys.boardId, channel, limit };

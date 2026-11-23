@@ -5,7 +5,7 @@ import type { Db, Dialect, Row } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
 
 /** Paths compare and sort by code point on both engines (Postgres's built-in `ucs_basic`), as SQLite and upstream do. */
-const codePointOrder: Fragment = Object.freeze({
+export const codePointOrder: Fragment = Object.freeze({
   fragment: (dialect: Dialect) => (dialect.name === "postgres" ? " COLLATE ucs_basic" : ""),
 });
 

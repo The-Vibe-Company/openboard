@@ -1,5 +1,5 @@
-import { Type } from "@sinclair/typebox";
-import { ActorKind, Author } from "./messages.ts";
+import { type Static, Type } from "@sinclair/typebox";
+import { ActorKind, Author, MessageAuthor } from "./messages.ts";
 
 const tenant = Type.Object({ slug: Type.String(), name: Type.String() });
 
@@ -32,3 +32,10 @@ export const Me = Type.Object({
     credential: Type.Union([Type.Literal("local"), Type.Literal("connection")]),
   }),
 });
+
+/**
+ * An actor the board has seen write, as `GET /actors` lists it (upstream `{ id, kind, handle, name, avatar, via? }`):
+ * its ID and how its writes show, as their `author`.
+ */
+export const Actor = Type.Object({ id: Type.String(), ...MessageAuthor.properties });
+export type Actor = Static<typeof Actor>;

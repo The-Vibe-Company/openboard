@@ -1,4 +1,4 @@
-import { type Author, BoardError, type Message, type MessageAuthor } from "@openboard/contract";
+import { type Actor, type Author, BoardError, type Message, type MessageAuthor } from "@openboard/contract";
 import { formatId, isoTime } from "../ids.ts";
 
 /** A new thread (`channel`) or a reply (`re`), as `POST /messages` asks for it once the contract has validated it. */
@@ -55,16 +55,37 @@ export interface ReplyTarget {
 }
 
 /**
- * What the board holds when a post is decided, read under the board's lock: its log head and, for a reply, the
- * message `re` names, or null when no message has that ID.
+ * Upstream's `actor.seen` (upstream `03-http.md` "Event types"): who an actor is, written on its first write or
+ * when it shows otherwise. Bookkeeping: served only with `all`.
+ */
+export interface ActorSeen {
+  readonly id: number;
+  readonly type: "actor.seen";
+  readonly at: number;
+  readonly thread: null;
+  readonly message: null;
+  readonly channel: null;
+  readonly actor: string;
+  readonly principal: string;
+  /** 1: bookkeeping (docs/data-model.md "Boards and the log"). */
+  readonly visibility: 1;
+  readonly payload: { readonly actor: string } & Omit<Actor, "id">;
+}
+
+/**
+ * What the board holds when a post is decided, read under the board's lock: its log head, for a reply the message
+ * `re` names (null when no message has that ID), and the board's record of the writer (null when it has none; left
+ * out, the post records no `actor.seen`).
  */
 export interface PostState {
   readonly head: number;
   readonly target?: ReplyTarget | null;
+  readonly actor?: Actor | null;
 }
 
 export interface PostContext {
   readonly by: Author;
+  /** How the writer shows; with `state.actor` read, the post records it with `actor.seen` unless that matches it. */
   readonly author?: MessageAuthor;
   readonly now: number;
 }
@@ -133,12 +154,13 @@ function placePost(state: PostState, command: PostCommand, id: number) {
 }
 
 /**
- * Decides a post: the next log position names the message. A new thread is named by it too; a reply joins the
- * thread of its root, in the root's channel.
+ * Decides a post: the next log position names the message, after the writer's `actor.seen` when it has one. A new
+ * thread is named by it too; a reply joins the thread of its root, in the root's channel.
  */
 export function decidePost(state: PostState, command: PostCommand, context: PostContext) {
   checkCommand(command);
-  const id = state.head + 1;
+  const seen = actorSeen(state.actor, context, state.head + 1);
+  const id = state.head + (seen ? 2 : 1);
   const { channel, root, re, replyTo } = placePost(state, command, id);
   const event: MessagePosted = {
     id,
@@ -166,5 +188,35 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
       links: [],
     },
   };
-  return { events: [event] as const, message: messageView(event) };
+  return { events: seen ? ([seen, event] as const) : ([event] as const), message: messageView(event) };
+}
+
+/**
+ * The `actor.seen` a write by `context.author` carries at log position `id`, or null when the board's record shows
+ * that actor as it is. As upstream, it precedes the write's own event, so the feed knows an actor before its post.
+ */
+export function actorSeen(known: Actor | null | undefined, context: PostContext, id: number): ActorSeen | null {
+  const author = context.author;
+  if (!author || known === undefined) return null;
+  const same =
+    known?.id === context.by.actor &&
+    known.kind === author.kind &&
+    known.handle === author.handle &&
+    known.name === author.name &&
+    known.avatar === author.avatar &&
+    known.via?.name === author.via?.name &&
+    known.via?.environment === author.via?.environment;
+  if (same) return null;
+  return {
+    id,
+    type: "actor.seen",
+    at: context.now,
+    thread: null,
+    message: null,
+    channel: null,
+    actor: context.by.actor,
+    principal: context.by.principal,
+    visibility: 1,
+    payload: { actor: context.by.actor, ...author },
+  };
 }

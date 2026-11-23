@@ -1,4 +1,4 @@
-import type { Channel, Connection, Message, Thread, ThreadSummary } from "@openboard/contract";
+import type { Actor, Channel, Connection, Message, Thread, ThreadSummary } from "@openboard/contract";
 import type { BoardEvent, Grant, MessagePosted, messages } from "@openboard/core";
 
 declare const minted: unique symbol;
@@ -36,6 +36,8 @@ export interface BoardWriter {
   nextGrant(): Promise<number>;
   /** Whether a connection of this board, revoked or not, has the name. */
   connectionNamed(name: string): Promise<boolean>;
+  /** The board's record of the actor `write` named, read with the lock; null when it has none or none was named. */
+  readonly actor: Actor | null;
   append(events: readonly BoardEvent[]): Promise<void>;
 }
 
@@ -63,8 +65,13 @@ export interface ConnectionRecord {
 
 /** One board's storage; every statement it runs is bound to its scope. */
 export interface BoardView {
-  /** Locks the board, runs `fn`, and commits what it appended, or rolls everything back if it throws. */
-  write<T>(fn: (writer: BoardWriter) => Promise<T>): Promise<T>;
+  /**
+   * Locks the board, runs `fn`, and commits what it appended, or rolls everything back if it throws. With `actor`,
+   * the board's record of that actor is read at the start of the write, after the lock.
+   */
+  write<T>(fn: (writer: BoardWriter) => Promise<T>, actor?: string): Promise<T>;
+  /** Every actor the board has seen write, by handle then ID, and the board head at the time of the read. */
+  listActors(): Promise<{ actors: Actor[]; head: number }>;
   /** The channel's first `limit` messages after `after`, or its latest `limit`, oldest first. Null if `after` exceeds the board head. */
   channelMessages(query: ChannelMessagesQuery): Promise<Message[] | null>;
   /** The connection of this board with the ID, or null when the board has none with it. */
