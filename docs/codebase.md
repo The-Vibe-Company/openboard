@@ -33,7 +33,6 @@ openboard/
     workflows/web.yml        Playwright, not required
     workflows/nightly.yml    full bench both modes, Playwright, conformance against staging
     workflows/release.yml    release-please, binaries, image, npm, Railway
-    CODEOWNERS
     pull_request_template.md
   .veebee/
     cut.md                   every ticket of every milestone, one line each
@@ -217,7 +216,7 @@ All of it runs in `bun run lint`, inside the required check.
 5. **Drift between engines** (D32, data-model.md "The store port"): the shared store suite on both drivers, an `EXPLAIN` of every registered statement on both engines, and a schema-parity test comparing both catalogs. These run in the `unit-sqlite` and `postgres` jobs.
 4. **`scripts/ci/migrations.ts`** over the single migration source `packages/driver-sql/migrations/`: numbers are unique and newer than `main`'s, applied files are never edited, every file renders to SQLite through `driver-sqlite/src/ddl.ts` (the mechanical differences of `docs/data-model.md` "DDL"), and no migration contains a destructive statement (`DROP`, `RENAME`, `ALTER … TYPE`, `SET NOT NULL` without default) unless marked `-- contract-phase` and preceded by a release that stopped using the object (section 7.6).
 
-`scripts/ci/boundaries.json`, `.oxlintrc.json`, `biome.json`, `tools/conformance/score.json`, `tools/bench/budgets.json`, `packages/driver-sql/migrations/`, `packages/ports/testkit/isolation.test-suite.ts`, `packages/server/test/isolation/**` and `.github/` are in `.github/CODEOWNERS` for `@StanGirard`. An agent cannot widen the graph, add a dependency, lower a score, raise a budget or weaken isolation without owner review.
+There is no CODEOWNERS file (D44): agents open pull requests under the owner's GitHub account, so GitHub could not route their review to the owner. The orchestrator reviews and merges every pull request. A change to `scripts/ci/boundaries.json`, `.oxlintrc.json`, `biome.json`, `tools/conformance/score.json`, `tools/bench/budgets.json`, `packages/driver-sql/migrations/`, `packages/ports/testkit/isolation.test-suite.ts`, `packages/server/test/isolation/**` or `.github/` says so in its PR body, and one that widens the graph, adds a dependency, lowers a score, raises a budget or weakens isolation says why.
 
 ## 4. One operation, defined once
 
@@ -457,7 +456,7 @@ Because the SQLite driver's broadcaster and jobs are in-process, a server featur
 5. Before and after the whole run it takes B's digest (a digest of B's events and rows taken through the platform view: hash of B's events and derived rows); they must be equal.
 6. The suite fails if an operation has a `Ref` kind `seed.ts` cannot create, or if `scope` is missing; adding an operation therefore adds its isolation cases automatically.
 
-The storage-level twin, `packages/ports/testkit/isolation.test-suite.ts`, checks every scoped store method with two organizations, so a driver is isolated before any handler uses it. Both suites run on SQLite and on Postgres in the required check, from the first multi-tenant ticket. They are owner-reviewed (CODEOWNERS); an expected-failure list does not exist and must not be added.
+The storage-level twin, `packages/ports/testkit/isolation.test-suite.ts`, checks every scoped store method with two organizations, so a driver is isolated before any handler uses it. Both suites run on SQLite and on Postgres in the required check, from the first multi-tenant ticket. A PR that changes them says so in its body; an expected-failure list does not exist and must not be added.
 
 ### 6.6 Benchmark and budgets per mode
 

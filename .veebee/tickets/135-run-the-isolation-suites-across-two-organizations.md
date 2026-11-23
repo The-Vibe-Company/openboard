@@ -28,4 +28,4 @@ As the owner of the code base, I know no operation lets one organization read or
 - Expected-failure lists: forbidden (AGENTS.md non-negotiable 15).
 
 ## Notes
-`docs/codebase.md` 6.5 and 4.4; storage twin in `packages/ports/testkit/isolation.test-suite.ts`. Owner-reviewed (CODEOWNERS), label `isolation`. This ticket closes M4's "tenant isolation suite green on SQLite".
+`docs/codebase.md` 6.5 and 4.4; storage twin in `packages/ports/testkit/isolation.test-suite.ts`. Label `isolation`. This ticket closes M4's "tenant isolation suite green on SQLite".

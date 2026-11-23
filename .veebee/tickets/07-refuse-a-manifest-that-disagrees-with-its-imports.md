@@ -23,7 +23,7 @@ As a contributor, I cannot declare a dependency a package does not use, or use o
 
 ## Out of scope
 - The import-edge rule (06).
-- Approving a new dependency: owner review of `boundaries.json` (22).
+- Approving a new dependency: the orchestrator's review of the PR that changes `boundaries.json`.
 
 ## Notes
 `docs/codebase.md` 3.3 point 1.

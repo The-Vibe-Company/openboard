@@ -27,4 +27,4 @@ As a contributor, I find out at once when my change breaks a conformance check t
 - `scripts/ci/score.ts` refusing a hosted list shorter than the local one: it applies from M5 (171).
 
 ## Notes
-`docs/codebase.md` 6.3 step 4: entries are only ever added by `--update`; removing one needs the owner (CODEOWNERS).
+`docs/codebase.md` 6.3 step 4: entries are only ever added by `--update`; removing one needs the owner's decision.
