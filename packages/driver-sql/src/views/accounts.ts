@@ -21,6 +21,7 @@ export const accountStatements = {
     u.avatar FROM sessions s JOIN users u ON u.id = s.user_id
     WHERE s.id_hash = ${"idHash"} AND s.revoked_at IS NULL AND u.disabled_at IS NULL`,
   touchSession: sql`UPDATE sessions SET seen_at = ${"at"} WHERE id_hash = ${"idHash"}`,
+  revokeSession: sql`UPDATE sessions SET revoked_at = ${"at"} WHERE id_hash = ${"idHash"} AND revoked_at IS NULL`,
 };
 
 export const accountPlatformStatements: readonly (keyof typeof accountStatements)[] = Object.freeze(
@@ -66,7 +67,10 @@ async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<n
 }
 
 /** The platform's account methods, written once for both engines. */
-export function accountView(db: Db, dialect: Dialect): Pick<PlatformView, "signIn" | "session" | "touchSession"> {
+export function accountView(
+  db: Db,
+  dialect: Dialect,
+): Pick<PlatformView, "signIn" | "session" | "touchSession" | "revokeSession"> {
   return {
     signIn: (record) =>
       db.transaction(async (tx) => {
@@ -93,6 +97,9 @@ export function accountView(db: Db, dialect: Dialect): Pick<PlatformView, "signI
     },
     async touchSession(idHash, now) {
       await query(db, dialect, accountStatements.touchSession, { idHash: bytes(idHash), at: now });
+    },
+    async revokeSession(idHash, now) {
+      await query(db, dialect, accountStatements.revokeSession, { idHash: bytes(idHash), at: now });
     },
   };
 }

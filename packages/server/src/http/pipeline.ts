@@ -9,7 +9,7 @@ import {
 import type { PlatformView } from "@openboard/ports";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
-import { sessionOf } from "../auth/sessions.ts";
+import { sessionOf, signOut } from "../auth/sessions.ts";
 import { keepInsidePin, refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
@@ -126,6 +126,9 @@ async function runPlatform(request: Request, url: URL, pipeline: Pipeline, logge
 }
 
 async function run(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields): Promise<Response> {
+  if (url.pathname === "/auth/logout" && request.method === "POST") {
+    return signOut(request, pipeline.platform, pipeline.deps.now(), pipeline.config.publicUrl);
+  }
   if (url.pathname.startsWith("/auth/")) {
     const answer = signInRoute(request, url, pipeline);
     if (!answer) throw notFound();

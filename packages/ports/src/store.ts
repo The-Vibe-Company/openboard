@@ -133,6 +133,8 @@ export interface PlatformView {
   session(idHash: string): Promise<SessionRecord | null>;
   /** Records that the session was used at `now`, for its idle lifetime. */
   touchSession(idHash: string, now: number): Promise<void>;
+  /** Revokes the session at `now` (sign-out), so it signs in no one again; a session already revoked keeps its time. */
+  revokeSession(idHash: string, now: number): Promise<void>;
   /** In one transaction: the organization, the person's membership, the board and the organization's events. */
   createOrg(record: CreateOrgRecord): Promise<void>;
   /** The person's memberships of organizations that are not deleted, by organization slug. */
