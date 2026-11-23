@@ -6,11 +6,15 @@ package: server
 writes:
   - packages/server/test/isolation/**
   - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/server/package.json
+  - packages/server/tsconfig.json
+  - bun.lock
 conformance: []
 modes: [local]
 depends_on: [01]
-status: ready
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 33
 ---
 
@@ -18,7 +22,7 @@ issue: 33
 As a contributor, I have an isolation suite that will grow one cross-tenant case for every operation I add.
 
 ## Done when
-- [ ] `bun test packages/server/test/isolation` runs as part of `bun run verify`, walks `operations` from `@openboard/contract` (empty for now) and prints `0 operations checked`, passing
+- [x] `bun test packages/server/test/isolation` runs as part of `bun run verify`, walks `operations` from `@openboard/contract` (empty for now) and prints `0 operations checked`, passing
 
 ## Out of scope
 - Seeding two organizations and the path and ID cases: 135, the first multi-tenant ticket.
