@@ -17,12 +17,15 @@ export const connectionStatements = {
   insertGrantPrincipal: sql`INSERT INTO grant_principals (board_id, grant_id, kind, key, detail)
     VALUES (${"boardId"}, ${"grantId"}, ${"kind"}, ${"key"}, ${"detail"})`,
   insertConnection: sql`INSERT INTO connections (id, org_id, board_id, name, secret_hash, secret_hint, direct,
-    profiles, token_ttl_s, token_max_s, created_by, created_at) VALUES (${"id"}, ${"orgId"}, ${"boardId"},
-    ${"name"}, ${"secretHash"}, ${"secretHint"}, ${"direct"}, ${"profiles"}, ${"tokenTtl"}, ${"tokenMax"},
-    ${"createdBy"}, ${"at"})`,
+    claims_max, profiles, token_ttl_s, token_max_s, created_by, created_at) VALUES (${"id"}, ${"orgId"},
+    ${"boardId"}, ${"name"}, ${"secretHash"}, ${"secretHint"}, ${"direct"}, ${"claimsMax"}, ${"profiles"},
+    ${"tokenTtl"}, ${"tokenMax"}, ${"createdBy"}, ${"at"})`,
+  /** One more claim made with the connection's secret, in the claim's transaction. */
+  spendClaim: sql`UPDATE connections SET claims_used = claims_used + 1
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   /** The connection with the first grant naming it: the one created with it. */
-  connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.direct, c.profiles, c.token_ttl_s,
-    c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can
+  connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.direct, c.claims_max, c.claims_used,
+    c.profiles, c.token_ttl_s, c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can
     FROM connections c JOIN grant_principals p ON p.board_id = c.board_id AND p.kind = 'connection' AND p.key = c.id
       JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
     WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.id = ${"id"} ORDER BY g.id LIMIT 1`,
@@ -42,7 +45,7 @@ export async function connectionNamed(tx: Db, dialect: Dialect, keys: BoardKeys,
 
 /** The fold of `ob.connection.created`: the connection's row, its grant and the grant's principals. */
 export async function foldConnectionCreated(tx: Db, dialect: Dialect, keys: BoardKeys, event: ConnectionCreated) {
-  const { connection, grant, secretHash } = event.payload;
+  const { connection, grant, secretHash, claims } = event.payload;
   await query(tx, dialect, connectionStatements.insertGrant, {
     ...keys,
     id: grant.id,
@@ -68,6 +71,7 @@ export async function foldConnectionCreated(tx: Db, dialect: Dialect, keys: Boar
     secretHash: Uint8Array.from(Buffer.from(secretHash, "hex")),
     secretHint: connection.secretHint,
     direct: connection.direct ? 1 : 0,
+    claimsMax: claims,
     profiles: JSON.stringify(connection.profiles),
     tokenTtl: TOKEN_TTL_S,
     tokenMax: TOKEN_MAX_S,
@@ -96,15 +100,24 @@ function recordOf(row: Row): ConnectionRecord {
   const secretHash = Buffer.from(row.secret_hash as Uint8Array).toString("hex");
   const tokenTtl = Number(row.token_ttl_s);
   const tokenMax = Number(row.token_max_s);
-  return { connection, grant: { id: grantId, principals, can }, secretHash, tokenTtl, tokenMax };
+  const claims = { max: row.claims_max == null ? null : Number(row.claims_max), used: Number(row.claims_used) };
+  return { connection, grant: { id: grantId, principals, can }, secretHash, tokenTtl, tokenMax, claims };
+}
+
+/** The connection with the ID on the board `keys` names, read with the caller's connection or transaction. */
+export async function findConnection(db: Db, dialect: Dialect, keys: BoardKeys, id: string) {
+  const params = { orgId: keys.orgId, boardId: keys.boardId, id };
+  const [row] = await query(db, dialect, connectionStatements.connectionById, params);
+  return row ? recordOf(row) : null;
+}
+
+/** Counts a claim made with the connection's secret; the fold of `ob.agent.claimed` runs it in the claim's write. */
+export async function spendClaim(tx: Db, dialect: Dialect, keys: BoardKeys, id: string): Promise<void> {
+  await query(tx, dialect, connectionStatements.spendClaim, { ...keys, id });
 }
 
 export function connectionReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "connection"> {
   return {
-    async connection(id) {
-      const params = { orgId: scope.orgId, boardId: scope.boardId, id };
-      const [row] = await query(db, dialect, connectionStatements.connectionById, params);
-      return row ? recordOf(row) : null;
-    },
+    connection: (id) => findConnection(db, dialect, scope, id),
   };
 }

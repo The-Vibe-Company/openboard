@@ -167,6 +167,8 @@ export interface BoardWriter {
   nextGrant(): Promise<number>;
   /** Whether a connection of this board, revoked or not, has the name. */
   connectionNamed(name: string): Promise<boolean>;
+  /** The connection of this board with the ID, read under the lock, or null when the board has none with it. */
+  connection(id: string): Promise<ConnectionRecord | null>;
   /** The agent of this board with the ID, read under the lock, or null when the board has none with it. */
   agent(id: string): Promise<AgentRecord | null>;
   /** The board's record of the actor `write` named, read with the lock; null when it has none or none was named. */
@@ -197,6 +199,8 @@ export interface ConnectionRecord {
   /** A claimed token's lifetime and hard cap, in seconds. */
   readonly tokenTtl: number;
   readonly tokenMax: number;
+  /** How many claims its secret makes before it is spent (null: no limit), and how many it made. */
+  readonly claims: { readonly max: number | null; readonly used: number };
 }
 
 /** An agent claimed with a connection's secret, with its connection and the SHA-256 (hex) of its token. */

@@ -19,6 +19,8 @@ export interface ClaimingConnection {
   readonly tokenTtl: number;
   /** How long after the claim every token of the agent stops working, refreshed or not. */
   readonly tokenMax: number;
+  /** How many claims its secret makes before it is spent (null: no limit), and how many it made, read under the lock. */
+  readonly claims: { readonly max: number | null; readonly used: number };
 }
 
 /** The claim as asked for, once the contract has validated it. */
@@ -118,7 +120,8 @@ function narrowed(grant: Can, written: CanInput): Can {
 /**
  * An agent of `connection` pinned to `command.profile`, which the connection's `profiles` patterns must let in (else
  * 403 `forbidden`). Its `can` is the claim's, inside the connection's grant, or that grant; its token lives `ttl` (default the
- * connection's token lifetime), never past the connection's cap, which is also its hard expiry.
+ * connection's token lifetime), never past the connection's cap, which is also its hard expiry. A secret that made its
+ * last claim is spent: 410 `secret_spent` (docs/auth.md mode 2, "Single-use secrets").
  */
 export function decideClaim(
   state: { readonly head: number },
@@ -131,6 +134,12 @@ export function decideClaim(
   },
 ): { agent: ClaimedAgent; events: [AgentClaimed] } {
   const { by, now, connection, token } = context;
+  const { max, used } = connection.claims;
+  if (max !== null && used >= max) {
+    throw new BoardError("secret_spent", "this connection's secret has made all its claims", {
+      hint: "Ask the board's owner for a new connection; a claimed agent token keeps working until it expires.",
+    });
+  }
   if (!profileAllowed(connection.profiles, command.profile)) {
     throw new BoardError("forbidden", `this connection may not claim ${command.profile}`, {
       hint: `Pick a profile its patterns let in: ${connection.profiles.join(", ")}.`,

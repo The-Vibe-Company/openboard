@@ -17,6 +17,8 @@ export interface CreateConnectionCommand {
   readonly can: CanInput;
   readonly direct?: boolean;
   readonly profiles?: readonly string[];
+  /** How many claims the secret makes before it is spent; null or absent, no limit. */
+  readonly claims?: number | null;
 }
 
 /** The minted credential: the server draws it, core never sees the secret itself. */
@@ -43,6 +45,8 @@ export interface ConnectionCreated {
   readonly payload: {
     readonly connection: Connection;
     readonly secretHash: string;
+    /** How many claims the secret makes before it is spent, or null for no limit. */
+    readonly claims: number | null;
     readonly grant: Grant;
     readonly by: Author;
   };
@@ -55,7 +59,8 @@ export function connectionPrincipal(id: string): string {
 
 /**
  * A new connection holding one grant whose only principal is the connection itself. A name already used on the
- * board is 409 `slug_taken`; the grant's `can` is compiled (`grants.compileCan`).
+ * board is 409 `slug_taken`; the grant's `can` is compiled (`grants.compileCan`). A direct connection takes no
+ * `claims`: its secret is a bearer on every route, which counting claims could never spend (400 `invalid_request`).
  */
 export function decideCreate(
   state: ConnectionState,
@@ -65,6 +70,11 @@ export function decideCreate(
   if (state.nameTaken) {
     throw new BoardError("slug_taken", `a connection named ${command.name} already exists on this board`, {
       hint: "Pick another name, or use the connection that has it.",
+    });
+  }
+  if (command.direct && command.claims != null) {
+    throw new BoardError("invalid_request", "a direct connection's secret is a bearer, so its claims cannot spend it", {
+      hint: "Leave out direct to make a single-use secret: it then only claims agent tokens.",
     });
   }
   const grant: Grant = {
@@ -94,7 +104,7 @@ export function decideCreate(
     actor: by.actor,
     principal: by.principal,
     visibility: 2,
-    payload: { connection, secretHash: secret.hash, grant, by },
+    payload: { connection, secretHash: secret.hash, claims: command.claims ?? null, grant, by },
   };
   return { connection, events: [event] };
 }

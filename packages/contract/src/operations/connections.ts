@@ -17,6 +17,8 @@ export const createConnection = defineOperation({
         can: CanInput,
         direct: Type.Optional(Type.Boolean({ default: false })),
         profiles: Type.Optional(Type.Array(ProfilePattern, { minItems: 1, maxItems: 32, default: ["*"] })),
+        /** How many claims the secret makes before it is spent (`1`: single-use); null or absent, no limit. */
+        claims: Type.Optional(Type.Union([Type.Integer({ minimum: 1, maximum: 1_000_000 }), Type.Null()])),
       },
       { additionalProperties: false },
     ),
@@ -50,7 +52,7 @@ export const claimConnection = defineOperation({
   },
   output: ClaimResult,
   status: 200,
-  errors: ["invalid_request", "invalid_grant", "grant_empty", "forbidden"],
+  errors: ["invalid_request", "invalid_grant", "grant_empty", "forbidden", "secret_spent"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: ["ob.agent.claimed"] },
   cli: false,

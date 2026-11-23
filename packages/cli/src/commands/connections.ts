@@ -3,7 +3,8 @@ import type { CanInput, Permission } from "@openboard/contract";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 
 const USAGE =
-  "ob connections create <name> --can <pattern=permissions>… [--direct] [--profiles <pattern,…>] --secret-file <path>";
+  "ob connections create <name> --can <pattern=permissions>… [--direct] [--profiles <pattern,…>] [--claims <n>] " +
+  "--secret-file <path>";
 
 interface CreateOptions {
   readonly name: string;
@@ -11,6 +12,8 @@ interface CreateOptions {
   readonly direct: boolean;
   /** The profile patterns its secret writes or claims as (`fixer-*`); absent, the board lets any in. */
   readonly profiles?: string[];
+  /** How many claims the secret makes before it is spent (`1`: single-use); absent, no limit. */
+  readonly claims?: number;
   readonly secretFile: string;
 }
 
@@ -22,12 +25,19 @@ function addCan(can: Record<string, CanInput[string]>, text: string): void {
   can[text.slice(0, at)] = permissions === "all" ? "all" : (permissions.split(",") as Permission[]);
 }
 
+/** `--claims 1`: a positive whole number of claims. */
+function claimsOf(text: string): number {
+  if (!/^[1-9][0-9]*$/.test(text)) throw new Misuse(`--claims takes a positive whole number, not ${text}`);
+  return Number(text);
+}
+
 /** The name and options; options come only before `--`, and a secret is never one of them. */
 function parse(ctx: CommandContext): CreateOptions {
   const positional: string[] = [];
   const can: Record<string, CanInput[string]> = {};
   let direct = false;
   let profiles: string[] | undefined;
+  let claims: number | undefined;
   let secretFile: string | undefined;
   for (let at = 0; at < ctx.args.length; at++) {
     const word = ctx.args[at] ?? "";
@@ -35,11 +45,12 @@ function parse(ctx: CommandContext): CreateOptions {
       positional.push(word);
     } else if (word === "--direct") {
       direct = true;
-    } else if (word === "--can" || word === "--profiles" || word === "--secret-file") {
+    } else if (word === "--can" || word === "--profiles" || word === "--claims" || word === "--secret-file") {
       const value = ctx.args[at + 1];
       if (value === undefined || at + 1 >= ctx.optionsEnd) throw new Misuse(`${word} takes a value`);
       if (word === "--can") addCan(can, value);
       else if (word === "--profiles") profiles = [...(profiles ?? []), ...value.split(",")];
+      else if (word === "--claims") claims = claimsOf(value);
       else secretFile = value;
       at += 1;
     } else {
@@ -50,7 +61,14 @@ function parse(ctx: CommandContext): CreateOptions {
   if (name === undefined || extra.length > 0) throw new Misuse("expected 1 argument");
   if (Object.keys(can).length === 0) throw new Misuse("--can is required");
   if (secretFile === undefined) throw new Misuse("--secret-file is required: the secret is never printed");
-  return { name, can, direct, secretFile, ...(profiles === undefined ? {} : { profiles }) };
+  return {
+    name,
+    can,
+    direct,
+    secretFile,
+    ...(profiles === undefined ? {} : { profiles }),
+    ...(claims === undefined ? {} : { claims }),
+  };
 }
 
 /** Creates the secret file empty, readable by this user only, and refuses one that already exists. */
@@ -77,12 +95,13 @@ export const createConnectionCommand: Command = {
     const fd = createSecretFile(options.secretFile);
     let created: Awaited<ReturnType<typeof ctx.client.createConnection>>;
     try {
-      const { name, can, direct, profiles } = options;
+      const { name, can, direct, profiles, claims } = options;
       created = await ctx.client.createConnection({
         name,
         can,
         direct,
         ...(profiles === undefined ? {} : { profiles }),
+        ...(claims === undefined ? {} : { claims }),
       });
     } catch (error) {
       closeSync(fd);

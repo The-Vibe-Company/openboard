@@ -39,7 +39,9 @@ const CONNECTION = "ob:conn:";
 
 /**
  * Trades a connection's secret for an agent token pinned to one profile, answered here once with the env an
- * orchestrator injects (docs/auth.md "Three ways to connect", mode 2). Only a connection's secret claims.
+ * orchestrator injects (docs/auth.md "Three ways to connect", mode 2). Only a connection's secret claims. Its claims
+ * are counted under the board lock and spent in the claim's transaction, so of two racing claims of a single-use
+ * secret exactly one wins and the other answers 410 `secret_spent`.
  */
 export const claimConnectionHandler: Handler<typeof claimConnection> = async (ctx, input) => {
   if (ctx.by[credentialKind] !== "connection") {
@@ -47,13 +49,15 @@ export const claimConnectionHandler: Handler<typeof claimConnection> = async (ct
       hint: "Send the connection's secret as the bearer: `ob connect <BOARD_URL> --as <profile>` reads it from stdin.",
     });
   }
-  const record = await ctx.board.connection(ctx.by.principal.slice(CONNECTION.length));
-  if (!record) throw new BoardError("unauthorized", "the credential is not valid on this board");
+  const connectionId = ctx.by.principal.slice(CONNECTION.length);
   const minted = mintSecret("obt_", ctx.randomBytes(SECRET_BYTES));
   const token = { id: `ag_${minted.name}`, hash: minted.hash };
-  const { id, profiles, can } = record.connection;
-  const connection = { id, profiles, can, tokenTtl: record.tokenTtl, tokenMax: record.tokenMax };
   const agent = await ctx.board.write(async (writer) => {
+    const record = await writer.connection(connectionId);
+    if (!record) throw new BoardError("unauthorized", "the credential is not valid on this board");
+    const { id, profiles, can } = record.connection;
+    const { tokenTtl, tokenMax, claims } = record;
+    const connection = { id, profiles, can, tokenTtl, tokenMax, claims };
     const decided = agents.decideClaim({ head: writer.head }, input, { by: ctx.by, now: ctx.now(), connection, token });
     await writer.append(decided.events);
     return decided.agent;
