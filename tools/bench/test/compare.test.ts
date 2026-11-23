@@ -38,12 +38,19 @@ test("a measured write exactly 20% over budget passes", () => {
   expect(compareBudgets({ ...localReport, workloads })).toEqual([]);
 });
 
-test("measured writes more than 20% over budget name their percentile, value and budget", () => {
+test("a sub-millisecond write more than 20% but at most 0.5 ms over budget passes", () => {
   const workloads = localReport.workloads.map((row) =>
-    row.workload === "post" ? { ...row, p50: 0.157, p99: 0.337 } : row,
+    row.workload === "post" ? { ...row, p50: 0.63, p99: 0.78 } : row,
+  );
+  expect(compareBudgets({ ...localReport, workloads })).toEqual([]);
+});
+
+test("measured writes more than 20% and 0.5 ms over budget name their percentile, value and budget", () => {
+  const workloads = localReport.workloads.map((row) =>
+    row.workload === "post" ? { ...row, p50: 0.631, p99: 0.781 } : row,
   );
   expect(compareBudgets({ ...localReport, workloads })).toEqual([
-    "local postMessage (post) p50: 0.157 ms exceeds budget 0.13 ms by more than 20%",
-    "local postMessage (post) p99: 0.337 ms exceeds budget 0.28 ms by more than 20%",
+    "local postMessage (post) p50: 0.631 ms exceeds budget 0.13 ms by more than 20% and 0.5 ms",
+    "local postMessage (post) p99: 0.781 ms exceeds budget 0.28 ms by more than 20% and 0.5 ms",
   ]);
 });
