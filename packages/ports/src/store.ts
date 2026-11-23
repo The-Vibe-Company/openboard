@@ -44,6 +44,8 @@ export interface BoardView {
   channelMessages(query: ChannelMessagesQuery): Promise<Message[]>;
   /** The channels ordered by path, with their counts and the board head at the time of the read. */
   listChannels(): Promise<{ channels: Channel[]; head: number }>;
+  /** Scans up to 200 log entries after the position, or starts at the current head when omitted. */
+  readEvents(after?: number): Promise<{ head: number; cursor: number; events: BoardEvent[] }>;
   /** The message at log position `id` with its replies, oldest first, or null when no message has that ID. */
   thread(id: number): Promise<Thread | null>;
 }
