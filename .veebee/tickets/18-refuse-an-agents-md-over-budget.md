@@ -19,8 +19,8 @@ issue: 18
 As a contributor, I keep AGENTS.md short and free of issue numbers and dates.
 
 ## Done when
-- [ ] growing `AGENTS.md` past 9,216 bytes makes `bun run lint` exit 1 with the size
-- [ ] an issue reference like `#12` or a date in `AGENTS.md` makes `bun run lint` exit 1 naming the line
+- [x] growing `AGENTS.md` past 9,216 bytes makes `bun run lint` exit 1 with the size
+- [x] an issue reference like `#12` or a date in `AGENTS.md` makes `bun run lint` exit 1 naming the line
 
 ## Out of scope
 - Rewriting AGENTS.md content (docs PRs).
