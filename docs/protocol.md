@@ -43,6 +43,7 @@ slugs: `x`, `api`, `mcp`, `auth`, `assets`, `healthz`, `readyz`, `signin`,
 `signup`, `invite`, `new`, `device`, `account`, `settings`, `admin`, `www`,
 `help`, `docs`, `status`, `local` (hosted only). Reserved board slug: `x`,
 `settings`.
+Organization slugs also reserve every top-level board protocol route segment, including future segments registered by the contract. In local mode those segments under `/api` resolve through the short board mount.
 
 **An agent still needs only `BOARD_URL` and one secret**: the URL names the
 organization and board, and the secret is bound to that board.
