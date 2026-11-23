@@ -10,8 +10,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [18]
-status: ready
-claimed_by: null
+status: done
+claimed_by: codex-t19
 issue: 19
 ---
 
@@ -27,3 +27,5 @@ As a contributor, I split work before one workspace's diff passes 600 lines, unl
 
 ## Notes
 `docs/codebase.md` 5.1 and 6.7; `docs/project.md` section 3 "Size".
+
+The label criterion is verified locally with a simulated pull-request event. No temporary pull request is needed.

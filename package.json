@@ -15,6 +15,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint . && oxlint --format default && bun scripts/ci/boundaries.ts && bun scripts/ci/agents-guard.ts && bun scripts/ci/sizes.ts",
+    "pr-size": "bun scripts/ci/pr-size.ts",
     "typecheck": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' typecheck",
     "test": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' test && bun test ./scripts/ci",
     "conformance": "bun tools/conformance/src/run.ts",
