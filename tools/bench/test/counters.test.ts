@@ -37,7 +37,8 @@ test("each mode prints its counters, with round trips only for hosted", async ()
     [
       "local",
       "Operation                 Statements",
-      "(no operations yet)",
+      "listMessages                       -",
+      "postMessage                        -",
       "Timers armed when idle             0",
     ].join("\n"),
   );
@@ -45,7 +46,8 @@ test("each mode prints its counters, with round trips only for hosted", async ()
     [
       "hosted",
       "Operation                 Statements Round trips",
-      "(no operations yet)",
+      "listMessages                       -           -",
+      "postMessage                        -           -",
       "Timers armed when idle             0",
     ].join("\n"),
   );

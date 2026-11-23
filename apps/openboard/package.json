@@ -4,8 +4,20 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
+  "bin": {
+    "openboard": "./src/main.ts",
+    "ob": "./src/main.ts"
+  },
+  "dependencies": {
+    "@openboard/driver-sqlite": "workspace:*",
+    "@openboard/server": "workspace:*",
+    "@the-vibe-company/openboard-cli": "workspace:*"
+  },
   "scripts": {
     "typecheck": "tsc -b",
     "test": "bun test --pass-with-no-tests"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.5"
   }
 }

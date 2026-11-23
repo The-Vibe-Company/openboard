@@ -3,7 +3,19 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": ".",
-    "outDir": "../../.tsbuild/apps/openboard"
+    "outDir": "../../.tsbuild/apps/openboard",
+    "types": ["bun"]
   },
+  "references": [
+    {
+      "path": "../../packages/server"
+    },
+    {
+      "path": "../../packages/cli"
+    },
+    {
+      "path": "../../packages/driver-sqlite"
+    }
+  ],
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
 }

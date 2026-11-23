@@ -10,5 +10,8 @@
   "scripts": {
     "typecheck": "tsc -b",
     "test": "bun test --pass-with-no-tests"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.52"
   }
 }

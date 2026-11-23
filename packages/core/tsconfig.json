@@ -3,7 +3,13 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": ".",
-    "outDir": "../../.tsbuild/packages/core"
+    "outDir": "../../.tsbuild/packages/core",
+    "types": ["bun"]
   },
+  "references": [
+    {
+      "path": "../contract"
+    }
+  ],
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
 }

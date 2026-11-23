@@ -1,4 +1,22 @@
+import process from "node:process";
+import { sqliteDriver } from "@openboard/driver-sqlite";
 import { createApp } from "@openboard/server";
+
+/**
+ * One app on its own store. Hosted mode runs on SQLite too until the Postgres driver exists (M5): its counters and
+ * conformance score are the local ones until then.
+ */
+function bootApp(mode: "local" | "hosted") {
+  const now = () => Date.now();
+  const log = {
+    error: (message: string, fields: object) => process.stderr.write(`${JSON.stringify({ message, ...fields })}\n`),
+  };
+  return createApp(
+    { mode, localOwner: "ob:user:local-tools" },
+    { store: sqliteDriver({ memory: true }, now) },
+    { now, log },
+  );
+}
 
 export type Mode = "local" | "hosted";
 
@@ -9,7 +27,7 @@ const instancesPerMode: Record<Mode, number> = { local: 1, hosted: 2 };
 
 /** Boots every instance of `mode` in this process and returns them with one `close` for all. */
 export function boot(mode: Mode) {
-  const apps = Array.from({ length: instancesPerMode[mode] }, () => createApp({ mode }, {}, {}));
+  const apps = Array.from({ length: instancesPerMode[mode] }, () => bootApp(mode));
   return {
     apps,
     async close() {

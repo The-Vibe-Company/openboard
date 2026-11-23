@@ -3,7 +3,13 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": ".",
-    "outDir": "../../.tsbuild/packages/sdk"
+    "outDir": "../../.tsbuild/packages/sdk",
+    "lib": ["ESNext", "DOM"]
   },
+  "references": [
+    {
+      "path": "../contract"
+    }
+  ],
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
 }

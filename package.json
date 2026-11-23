@@ -20,7 +20,8 @@
     "typecheck": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' typecheck",
     "test": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' test && bun test ./scripts/ci",
     "conformance": "bun tools/conformance/src/run.ts",
-    "bench": "bun tools/bench/src/run.ts"
+    "bench": "bun tools/bench/src/run.ts",
+    "ob": "bun apps/openboard/src/main.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

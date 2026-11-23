@@ -6,6 +6,19 @@
     "rootDir": ".",
     "outDir": "../../.tsbuild/packages/server"
   },
-  "references": [{ "path": "../contract" }],
+  "references": [
+    {
+      "path": "../contract"
+    },
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../ports"
+    },
+    {
+      "path": "../driver-sqlite"
+    }
+  ],
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
 }

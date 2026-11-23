@@ -1,0 +1,81 @@
+import { describe, expect, test } from "bun:test";
+import { BoardError } from "@openboard/contract";
+import { isoTime, parseId } from "../../src/ids.ts";
+import { decidePost } from "../../src/messages/post.ts";
+
+const by = { actor: "ob:user:local-dev", principal: "ob:user:local-dev", profile: null };
+const at = 1_700_000_000_123;
+
+function refusal(run: () => unknown): { code: string; message: string } {
+  try {
+    run();
+  } catch (error) {
+    if (error instanceof BoardError) return { code: error.code, message: error.message };
+    throw error;
+  }
+  throw new Error("expected a BoardError");
+}
+
+describe("posting a message", () => {
+  test("names the message and its thread by the next log position", () => {
+    const { events, message } = decidePost({ head: 0 }, { channel: "dev", text: "hello" }, { by, now: at });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ id: 1, type: "message.posted", at, thread: 1, message: 1, channel: "dev" });
+    expect(events[0].payload).toMatchObject({
+      channel: "dev",
+      text: "hello",
+      re: null,
+      thread: "1",
+      noSync: false,
+      by,
+    });
+    expect(message).toMatchObject({ id: "1", channel: "dev", text: "hello", re: null, thread: "1", version: 1 });
+    expect(message.createdAt).toBe("2023-11-14T22:13:20.123Z");
+  });
+
+  test("follows the board's head", () => {
+    const { message } = decidePost({ head: 41 }, { channel: "dev", text: "hi", noSync: true }, { by, now: at });
+    expect(message).toMatchObject({ id: "42", thread: "42", noSync: true });
+  });
+
+  test("keeps the labels it is given", () => {
+    const { message } = decidePost(
+      { head: 0 },
+      { channel: "dev", text: "x", labels: { status: "open" } },
+      { by, now: at },
+    );
+    expect(message.labels).toEqual({ status: "open" });
+  });
+
+  test.each([
+    ["blank text", { text: "  \n" }, "invalid_request"],
+    ["a NUL character", { text: "a\0b" }, "invalid_request"],
+    ["a lone surrogate", { text: "a\uD800" }, "invalid_request"],
+    ["a label under board.", { text: "x", labels: { "board.task": "open" } }, "reserved_label"],
+    ["a control character in a label", { text: "x", labels: { status: "a\nb" } }, "invalid_request"],
+  ])("refuses %s", (_, command, code) => {
+    expect(refusal(() => decidePost({ head: 0 }, { channel: "dev", ...command }, { by, now: at })).code).toBe(code);
+  });
+});
+
+describe("wire IDs and times", () => {
+  test.each([
+    ["1", 1],
+    ["812", 812],
+    ["0", 0],
+    ["01", null],
+    ["-1", null],
+    ["1.5", null],
+    ["abc", null],
+  ])("reads %p as %p", (text, position) => {
+    expect(parseId(text)).toBe(position);
+  });
+
+  test.each([
+    [0, "1970-01-01T00:00:00.000Z"],
+    [951_782_400_000, "2000-02-29T00:00:00.000Z"],
+    [1_798_761_599_999, "2026-12-31T23:59:59.999Z"],
+  ])("formats %p as %p", (ms, iso) => {
+    expect(isoTime(ms)).toBe(iso);
+  });
+});

@@ -54,11 +54,44 @@ writes:
   - packages/cli/src/commands/index.ts
   - packages/cli/src/commands/read.ts
   - package.json
+  - packages/contract/package.json
+  - packages/core/src/index.ts
+  - packages/core/package.json
+  - packages/core/tsconfig.json
+  - packages/ports/package.json
+  - packages/ports/tsconfig.json
+  - packages/driver-sql/package.json
+  - packages/driver-sql/tsconfig.json
+  - packages/driver-sql/src/views/boards.ts
+  - packages/driver-sql/src/sql-files.d.ts
+  - packages/driver-sqlite/package.json
+  - packages/driver-sqlite/tsconfig.json
+  - packages/server/package.json
+  - packages/server/tsconfig.json
+  - packages/sdk/package.json
+  - packages/sdk/tsconfig.json
+  - packages/cli/package.json
+  - packages/cli/tsconfig.json
+  - packages/cli/src/index.ts
+  - packages/cli/test/cli.test.ts
+  - apps/openboard/package.json
+  - apps/openboard/tsconfig.json
+  - tools/bench/src/drivers.ts
+  - tools/bench/test/counters.test.ts
+  - tools/bench/package.json
+  - tools/bench/tsconfig.json
+  - tools/conformance/src/drivers.ts
+  - tools/conformance/package.json
+  - tools/conformance/tsconfig.json
+  - bun.lock
+  - scripts/ci/boundaries.json
+  - scripts/ci/boundaries.test.ts
+  - scripts/ci/fixtures/boundaries/manifest/refused/packages/core/package.json
 conformance: []
 modes: [local]
 depends_on: [32, 33, 34]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-opus-5-5
 issue: 36
 ---
 

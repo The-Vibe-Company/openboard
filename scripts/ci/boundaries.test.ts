@@ -185,7 +185,9 @@ async function manifestMessages(files: Record<string, string>): Promise<string[]
 }
 
 test("refuses an import the workspace's package.json does not declare, naming the package", async () => {
-  const found = await manifestMessages(await manifestFixture("refused", ["packages/core/src/contract.ts"]));
+  const found = await manifestMessages(
+    await manifestFixture("refused", ["packages/core/package.json", "packages/core/src/contract.ts"]),
+  );
   expect(found).toEqual([
     "packages/core/src/contract.ts: core imports @openboard/contract, which packages/core/package.json does not declare",
   ]);
