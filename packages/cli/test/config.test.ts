@@ -42,4 +42,14 @@ describe("ob finds the local owner token", () => {
     const HOME = homeWithTokenFile("8787", "not json");
     expect(clientConfig({ BOARD_URL: "http://127.0.0.1:8787/api/local/main", HOME }).token).toBeUndefined();
   });
+
+  test("not from a path that cannot be read as a file", () => {
+    const HOME = homeWithTokenFile("8787", file);
+    mkdirSync(join(HOME, ".config", "openboard", "local", "8788.json"));
+    expect(clientConfig({ BOARD_URL: "http://127.0.0.1:8788/api/local/main", HOME }).token).toBeUndefined();
+  });
+
+  test("not without HOME", () => {
+    expect(clientConfig({ BOARD_URL: "http://127.0.0.1:8787/api/local/main" }).token).toBeUndefined();
+  });
 });

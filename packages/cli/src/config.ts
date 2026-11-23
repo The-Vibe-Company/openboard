@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 
 /** What `ob`'s client commands read from the environment: upstream's `BOARD_URL` and `BOARD_TOKEN`. */
@@ -9,17 +8,19 @@ export interface ClientConfig {
 }
 
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
+/** A token file that is missing or that this user cannot read is no token: the request goes without one. */
+const UNREADABLE = new Set(["ENOENT", "ENOTDIR", "EISDIR", "EACCES", "EPERM"]);
 
 /** The token `ob serve` wrote for a loopback `BOARD_URL`'s port, from `~/.config/openboard/local/<port>.json`. */
-function localOwnerToken(boardUrl: string | undefined, home: string): string | undefined {
+function localOwnerToken(boardUrl: string | undefined, home: string | undefined): string | undefined {
   const url = URL.parse(boardUrl ?? "");
-  if (!url || !LOOPBACK.has(url.hostname)) return undefined;
+  if (!home || !url || !LOOPBACK.has(url.hostname)) return undefined;
   const port = url.port || (url.protocol === "https:" ? "443" : "80");
   let text: string;
   try {
     text = readFileSync(join(home, ".config", "openboard", "local", `${port}.json`), "utf8");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    if (UNREADABLE.has((error as NodeJS.ErrnoException).code ?? "")) return undefined;
     throw error;
   }
   try {
@@ -37,6 +38,6 @@ function localOwnerToken(boardUrl: string | undefined, home: string): string | u
  */
 export function clientConfig(env: Readonly<Record<string, string | undefined>>): ClientConfig {
   const boardUrl = env.BOARD_URL || undefined;
-  const token = env.BOARD_TOKEN || localOwnerToken(boardUrl, env.HOME || homedir());
+  const token = env.BOARD_TOKEN || localOwnerToken(boardUrl, env.HOME || undefined);
   return { boardUrl, token };
 }

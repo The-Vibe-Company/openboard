@@ -19,7 +19,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [36]
-status: claimed
+status: done
 claimed_by: claude-opus-ticket-37
 issue: 37
 ---
@@ -28,8 +28,8 @@ issue: 37
 As a developer, I start `ob serve` and `ob` finds the owner credential by itself, without it ever being printed.
 
 ## Done when
-- [ ] after `ob serve`, `~/.config/openboard/local/8787.json` exists with mode `0600`, and nothing the server printed contains the token
-- [ ] with no `BOARD_TOKEN` set, `ob post dev hi` succeeds and `ob read dev --json` shows it written by `ob:user:local-<your OS user>`
+- [x] after `ob serve`, `~/.config/openboard/local/8787.json` exists with mode `0600`, and nothing the server printed contains the token
+- [x] with no `BOARD_TOKEN` set, `ob post dev hi` succeeds and `ob read dev --json` shows it written by `ob:user:local-<your OS user>`
 
 ## Out of scope
 - Refusing a request with no credential (38).
