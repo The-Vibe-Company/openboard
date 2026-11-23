@@ -1,4 +1,4 @@
-import { getAccount, getSession } from "./accounts.ts";
+import { getAccount, getSession, revokeAllSessions } from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
 import { createBoard, listBoards } from "./boards.ts";
 import { createChannel, listChannels } from "./channels.ts";
@@ -36,6 +36,7 @@ export const operations = [
   readPost,
   readThread,
   refreshAgentToken,
+  revokeAllSessions,
 ] as const;
 
 export {
@@ -63,4 +64,5 @@ export {
   readPost,
   readThread,
   refreshAgentToken,
+  revokeAllSessions,
 };

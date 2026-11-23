@@ -11,11 +11,15 @@ writes:
   - packages/ports/testkit/store/accounts.test-suite.ts
   - packages/server/test/accounts.test.ts
   - packages/ports/src/store.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/server/src/operations/index.ts
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [140]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 142
 ---
 

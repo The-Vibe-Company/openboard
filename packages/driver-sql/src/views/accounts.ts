@@ -22,6 +22,8 @@ export const accountStatements = {
     WHERE s.id_hash = ${"idHash"} AND s.revoked_at IS NULL AND u.disabled_at IS NULL`,
   touchSession: sql`UPDATE sessions SET seen_at = ${"at"} WHERE id_hash = ${"idHash"}`,
   revokeSession: sql`UPDATE sessions SET revoked_at = ${"at"} WHERE id_hash = ${"idHash"} AND revoked_at IS NULL`,
+  revokeAllSessions: sql`UPDATE sessions SET revoked_at = ${"at"} WHERE revoked_at IS NULL
+    AND user_id = (SELECT id FROM users WHERE public_id = ${"personId"})`,
 };
 
 export const accountPlatformStatements: readonly (keyof typeof accountStatements)[] = Object.freeze(
@@ -70,7 +72,7 @@ async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<n
 export function accountView(
   db: Db,
   dialect: Dialect,
-): Pick<PlatformView, "signIn" | "session" | "touchSession" | "revokeSession"> {
+): Pick<PlatformView, "signIn" | "session" | "touchSession" | "revokeSession" | "revokeAllSessions"> {
   return {
     signIn: (record) =>
       db.transaction(async (tx) => {
@@ -100,6 +102,9 @@ export function accountView(
     },
     async revokeSession(idHash, now) {
       await query(db, dialect, accountStatements.revokeSession, { idHash: bytes(idHash), at: now });
+    },
+    async revokeAllSessions(personId, now) {
+      await query(db, dialect, accountStatements.revokeAllSessions, { personId, at: now });
     },
   };
 }

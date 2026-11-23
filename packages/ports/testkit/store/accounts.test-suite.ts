@@ -98,4 +98,23 @@ export function accountsSuite(driver: string, open: OpenStore): void {
     expect(await accounts.session(hash("a"))).toBeNull();
     expect((await accounts.session(hash("b")))?.person.handle).toBe("ada");
   });
+
+  revokeAllSessionsCase(driver, platform);
+}
+
+function revokeAllSessionsCase(driver: string, platform: () => Promise<PlatformView>): void {
+  test(`${driver}: revoking all sessions affects only the named person's existing sessions`, async () => {
+    const accounts = await platform();
+    const personId = "u_aaaaaaaaaaaaaaaa";
+    await accounts.signIn(signIn(ada, hash("a")));
+    await accounts.signIn(signIn(ada, hash("b")));
+    const other = await accounts.signIn(signIn({ ...ada, subject: "9", login: "bob" }, hash("c")));
+    await accounts.revokeAllSessions(personId, at + DAY);
+    await accounts.revokeAllSessions(personId, at + 2 * DAY);
+    expect(await accounts.session(hash("a"))).toBeNull();
+    expect(await accounts.session(hash("b"))).toBeNull();
+    expect((await accounts.session(hash("c")))?.person).toEqual(other ?? undefined);
+    await accounts.signIn({ ...signIn(ada, hash("d")), now: at + 2 * DAY });
+    expect((await accounts.session(hash("d")))?.person.id).toBe(personId);
+  });
 }
