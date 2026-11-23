@@ -62,7 +62,8 @@ export function stripTypeModifiers(source: string): string {
     .replace(/([{,]\s*)type\s+(?=[\w$]+\s*(?:[,}]|as\b))/g, "$1");
 }
 
-const TYPE_QUERY = /\bimport\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
+// Strings and comments are matched first so that an `import("…")` inside them is skipped.
+const TYPE_QUERY = /(["'`])(?:\\.|(?!\1)[^\\])*\1|\/\/[^\n]*|\/\*[\s\S]*?\*\/|\bimport\s*\(\s*(["'])([^"'\n]+)\2\s*\)/g;
 
 /** Returns every module a file imports, and which of them it imports as values. */
 export function scanImports(file: string, source: string): Imports {
@@ -70,13 +71,12 @@ export function scanImports(file: string, source: string): Imports {
   const transpiler = new Bun.Transpiler({ loader });
   const values = new Set(transpiler.scanImports(source).map((entry) => entry.path));
   const all = new Set([...values, ...transpiler.scanImports(stripTypeModifiers(source)).map((entry) => entry.path)]);
-  for (const match of source.matchAll(TYPE_QUERY)) if (match[2]) all.add(match[2]);
+  for (const match of source.matchAll(TYPE_QUERY)) if (match[3]) all.add(match[3]);
   return { values, all };
 }
 
-/** The package part of a bare specifier: `@scope/name/sub` -> `@scope/name`, `node:fs` stays whole. */
+/** The package part of a bare specifier: `@scope/name/sub` -> `@scope/name`, `node:fs/promises` -> `node:fs`. */
 export function packageOf(specifier: string): string {
-  if (specifier.includes(":")) return specifier;
   const parts = specifier.split("/");
   return specifier.startsWith("@") ? parts.slice(0, 2).join("/") : (parts[0] ?? specifier);
 }
@@ -126,6 +126,9 @@ function checkImport(ctx: FileContext, specifier: string, typeOnly: boolean): st
   if (ctx.test && matchesExternal(specifier, ctx.testExternal)) return null;
   const target = ctx.byName.get(packageOf(specifier));
   const kind = typeOnly ? "type-only import of " : "";
+  if (target && ctx.testExternal.includes(specifier)) {
+    return `${workspace.short} -> ${target.short} (${kind}${specifier}) is allowed in test files only`;
+  }
   if (target) {
     if (target.dir === workspace.dir || rule.may.includes(target.short)) return null;
     if (typeOnly && rule.types?.includes(target.short)) return null;

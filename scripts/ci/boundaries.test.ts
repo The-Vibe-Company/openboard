@@ -101,6 +101,21 @@ test("bun:test is allowed in test files only", async () => {
   expect(found[0]).toContain("core -> bun:test (bun:test)");
 });
 
+test("the ports test kit is allowed in test files only", async () => {
+  const source = 'export * from "@openboard/ports/testkit";\n';
+  expect(await messages({ "packages/server/test/support/kit.ts": source })).toEqual([]);
+  const found = await messages({ "packages/server/src/kit.ts": source, "packages/ports/src/kit.ts": source });
+  expect(found).toEqual([
+    "packages/ports/src/kit.ts: ports -> ports (@openboard/ports/testkit) is allowed in test files only",
+    "packages/server/src/kit.ts: server -> ports (@openboard/ports/testkit) is allowed in test files only",
+  ]);
+});
+
+test("a module subpath counts as its module", async () => {
+  const source = 'export { readFile } from "node:fs/promises";\n';
+  expect(await messages({ "packages/driver-sqlite/src/files.ts": source })).toEqual([]);
+});
+
 test("refuses a workspace the graph does not list", async () => {
   const found = await messages({ "examples/recipe/package.json": '{ "name": "recipe" }' });
   expect(found).toEqual([
@@ -132,6 +147,7 @@ test("finds every form of type-only import", () => {
     'type H = import("h").H;',
     'import { value } from "v";',
     'import type from "t";',
+    '// unlike import("in-comment"), "import(\'in-string\')" is not an import',
   ].join("\n");
   const { values, all } = scanImports("x.ts", source);
   expect([...values].sort()).toEqual(["t", "v"]);
