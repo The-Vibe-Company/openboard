@@ -7,11 +7,14 @@ writes:
   - scripts/ci/boundaries.ts
   - scripts/ci/boundaries.json
   - scripts/ci/fixtures/boundaries/db-client/**
+  - scripts/ci/boundaries/db-client.ts
+  - scripts/ci/boundaries/graph.ts
+  - scripts/ci/boundaries/types.ts
 conformance: []
 modes: []
 depends_on: [26]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-opus-ticket-27
 issue: 27
 ---
 
@@ -19,7 +22,7 @@ issue: 27
 As a contributor, I can only open SQLite inside `driver-sqlite` and Postgres inside `driver-postgres`.
 
 ## Done when
-- [ ] `import { Database } from "bun:sqlite"` outside `packages/driver-sqlite`, or `import { SQL } from "bun"` outside `packages/driver-postgres` (including in `driver-sql`), makes `bun run lint` exit 1 naming the file and the module
+- [x] `import { Database } from "bun:sqlite"` outside `packages/driver-sqlite`, or `import { SQL } from "bun"` outside `packages/driver-postgres` (including in `driver-sql`), makes `bun run lint` exit 1 naming the file and the module
 
 ## Out of scope
 - SQL text (28).
