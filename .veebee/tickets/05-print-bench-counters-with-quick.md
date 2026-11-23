@@ -6,11 +6,14 @@ package: tools
 writes:
   - tools/bench/**
   - package.json
+  - tools/bench/package.json
+  - tools/bench/tsconfig.json
+  - bun.lock
 conformance: []
 modes: [local, hosted]
 depends_on: [02]
-status: ready
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t05
 issue: 5
 ---
 

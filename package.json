@@ -17,7 +17,8 @@
     "lint": "biome lint . && oxlint --format default",
     "typecheck": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' typecheck",
     "test": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' test",
-    "conformance": "bun tools/conformance/src/run.ts"
+    "conformance": "bun tools/conformance/src/run.ts",
+    "bench": "bun tools/bench/src/run.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
