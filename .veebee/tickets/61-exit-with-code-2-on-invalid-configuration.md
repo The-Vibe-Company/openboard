@@ -9,7 +9,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [40]
-status: claimed
+status: done
 claimed_by: claude-code-t61
 issue: 61
 ---
@@ -18,7 +18,7 @@ issue: 61
 As an operator, a typo in my configuration stops the server with a clear message instead of a half-working board.
 
 ## Done when
-- [ ] `PORT=abc ob serve` and `OPENBOARD_LOG_LEVEL=loud ob serve` each exit 2 naming the bad variable
+- [x] `PORT=abc ob serve` and `OPENBOARD_LOG_LEVEL=loud ob serve` each exit 2 naming the bad variable
 
 ## Out of scope
 - Secrets set twice (62).
