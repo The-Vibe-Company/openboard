@@ -498,3 +498,44 @@ describe("deleting a message", () => {
     expect([invalid.status, invalid.body.error.code]).toEqual([400, "invalid_request"]);
   });
 });
+
+describe("reacting to a message", () => {
+  const reactAs = (profile: string, emoji: string) =>
+    app.fetch(
+      new Request(`${BOARD_URL}/messages/2/reactions`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${OWNER.token}`, "x-board-profile": profile },
+        body: JSON.stringify({ emoji }),
+      }),
+    );
+
+  test("lists each reacting actor under the emoji once and raises the version, not the revision", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "ship it?" });
+    const reacted = await Promise.all([1, 2].map(() => call(app, "POST", "/messages/2/reactions", { emoji: "eyes" })));
+    for (const response of reacted) expect(await response.json()).toEqual({ ok: true });
+    expect((await reactAs("bot", "+1")).status).toBe(200);
+    expect((await reactAs("bot", "eyes")).status).toBe(200);
+    const bot = `${LOCAL_OWNER}+bot`;
+    expect(await (await call(app, "GET", "/messages/2")).json()).toMatchObject({
+      message: { reactions: { eyes: [LOCAL_OWNER, bot], thumbs_up: [bot] }, revision: 0, version: 6 },
+    });
+  });
+
+  test.each(["Eyes", ":eyes:", "constructor"])("refuses the emoji %j", async (emoji) => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const { status, body } = await answer(call(app, "POST", "/messages/2/reactions", { emoji }));
+    expect([status, body.error.code]).toEqual([400, "invalid_request"]);
+  });
+
+  test("refuses a missing or deleted message", async () => {
+    app = makeApp();
+    const missing = await answer(call(app, "POST", "/messages/2/reactions", { emoji: "eyes" }));
+    expect([missing.status, missing.body.error.code]).toEqual([404, "message_not_found"]);
+    await call(app, "POST", "/messages", { channel: "dev", text: "gone soon" });
+    await call(app, "POST", "/messages/2/delete");
+    const deleted = await answer(call(app, "POST", "/messages/2/reactions", { emoji: "eyes" }));
+    expect([deleted.status, deleted.body.error.code]).toEqual([400, "message_deleted"]);
+  });
+});

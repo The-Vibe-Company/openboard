@@ -12,11 +12,18 @@ writes:
   - packages/ports/src/store.ts
   - packages/core/src/messages/reactions.ts
   - packages/core/test/messages/reactions.test.ts
+  - .veebee/tickets/74-react-to-a-message.md
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/core/src/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/openapi.json
 conformance: []
 modes: [local]
 depends_on: [73]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude
 issue: 74
 ---
 

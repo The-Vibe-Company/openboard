@@ -4,6 +4,7 @@ import type { ChannelCreated } from "./channels/create.ts";
 import type { MessageDeleted } from "./messages/delete.ts";
 import type { MessageEdited } from "./messages/edit.ts";
 import type { ActorSeen, MessagePosted } from "./messages/post.ts";
+import type { ReactionAdded } from "./messages/reactions.ts";
 
 export type {
   AgentClaimed,
@@ -28,12 +29,14 @@ export type BoardEvent =
   | ConnectionCreated
   | MessagePosted
   | MessageEdited
-  | MessageDeleted;
+  | MessageDeleted
+  | ReactionAdded;
 export { formatId, isoTime, parseId } from "./ids.ts";
 export { decideDelete, type MessageDeleted } from "./messages/delete.ts";
 export { decideEdit, type MessageEdited } from "./messages/edit.ts";
 export type { ActorSeen, MessagePosted, MessagePostedPayload, PostCommand } from "./messages/post.ts";
 export * as messages from "./messages/post.ts";
+export { canonicalEmoji, decideReaction, type ReactionAdded, type ReactionState } from "./messages/reactions.ts";
 export type { CreateOrgCommand, OrgCreation, OrgEvent } from "./orgs/create.ts";
 export { decideInvitation, previewInvite } from "./orgs/invite.ts";
 export type { BoardCreation, CreateBoardCommand } from "./orgs/boards.ts";

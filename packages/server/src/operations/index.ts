@@ -15,6 +15,7 @@ import {
   editMessageHandler,
   listMessagesHandler,
   postMessageHandler,
+  reactToMessageHandler,
   readPostHandler,
 } from "./messages.ts";
 import { createOrgHandler } from "./orgs.ts";
@@ -105,6 +106,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listThreads: listThreadsHandler,
   postMessage: postMessageHandler,
   previewInvitation: previewInvitationHandler,
+  reactToMessage: reactToMessageHandler,
   readEvents: readEventsHandler,
   readPost: readPostHandler,
   readThread: readThreadHandler,

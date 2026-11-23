@@ -57,6 +57,7 @@ export {
   operations,
   postMessage,
   previewInvitation,
+  reactToMessage,
   readEvents,
   readPost,
   readThread,

@@ -86,6 +86,31 @@ export const deleteMessage = defineOperation({
   upstream: true,
 });
 
+const Emoji = Type.String({
+  pattern: "^[a-z0-9_+-]+$",
+  maxLength: 64,
+  description: "A short name as Chat SDK names it: `eyes`, `thumbs_up`.",
+});
+
+export const reactToMessage = defineOperation({
+  name: "reactToMessage",
+  operationId: "react",
+  summary: "React to a message with an emoji.",
+  route: { method: "POST", path: "/messages/:id/reactions" },
+  scope: "board",
+  input: {
+    params: Type.Object({ id: Ref("message") }, { additionalProperties: false }),
+    body: Type.Object({ emoji: Emoji }, { additionalProperties: false }),
+  },
+  output: Type.Object({ ok: Type.Literal(true) }),
+  errors: ["invalid_request", "message_not_found", "message_deleted"],
+  access: { permission: "react", channel: "fromMessage" },
+  effects: { readOnly: false, idempotent: true, emits: ["reaction.added"] },
+  cli: { command: ["react"], args: ["id", "emoji"] },
+  mcp: { tool: "react_to_message" },
+  upstream: true,
+});
+
 export const listMessages = defineOperation({
   name: "listMessages",
   operationId: "channelMessages",
