@@ -5,6 +5,7 @@ milestone: M0-foundations
 package: tools
 writes:
   - .oxlintrc.json
+  - docs/codebase.md
   - scripts/ci/fixtures/oxlint/env/**
 conformance: []
 modes: []
