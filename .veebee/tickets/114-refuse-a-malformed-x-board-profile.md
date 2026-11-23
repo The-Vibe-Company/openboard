@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [113]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-code-t114
 issue: 114
 ---
 

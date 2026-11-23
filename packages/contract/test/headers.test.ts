@@ -12,6 +12,22 @@ function codeOf(value: string): string {
   throw new Error("expected a BoardError");
 }
 
+/** Headers that name no profile: empty, a name the rules refuse, or a parameter RFC 8941 cannot read. */
+const NOT_A_PROFILE = [
+  "",
+  " ",
+  "\t",
+  "9 bad",
+  "fixer 2",
+  "fixer_2",
+  "a:b",
+  ":Zm9v:",
+  "?1",
+  '"open',
+  "fixer;Avatar=1",
+  "fixer, 2",
+];
+
 describe("x-board-profile", () => {
   test("names a profile as a token, keeping the spelling sent", () => {
     expect(parseProfileHeader("fixer-2")).toEqual({ name: "fixer-2", avatar: null });
@@ -49,6 +65,22 @@ describe("x-board-profile", () => {
     }
   });
 
+  test("keeps the last avatar, so a later one it cannot read is refused rather than dropped", () => {
+    expect(codeOf('fixer; avatar="https://example.com/f.png"; avatar="http://example.com/g.png"')).toBe(
+      "invalid_profile",
+    );
+    expect(codeOf('fixer; avatar="https://example.com/f.png"; avatar')).toBe("invalid_profile");
+  });
+
+  test("refuses a parameter number RFC 8941 cannot hold", () => {
+    for (const value of ["1234567890123.5", "-1234567890123.5", "1234567890123456", "1.2345", "1."]) {
+      expect(codeOf(`fixer; count=${value}`)).toBe("invalid_profile");
+    }
+    for (const value of ["123456789012.5", "-123456789012.5", "123456789012345", "1.234", "-1", "0"]) {
+      expect(parseProfileHeader(`fixer; count=${value}`)).toEqual({ name: "fixer", avatar: null });
+    }
+  });
+
   test("takes a name of up to 32 characters", () => {
     expect(parseProfileHeader(`a${"b".repeat(31)}`).name).toHaveLength(32);
     expect(codeOf(`a${"b".repeat(32)}`)).toBe("invalid_profile");
@@ -59,10 +91,10 @@ describe("x-board-profile", () => {
     expect(codeOf(`fixer${" ".repeat(2044)}`)).toBe("invalid_profile");
     expect(codeOf(`a${" ".repeat(100_000)}b`)).toBe("invalid_profile");
   });
+});
 
-  test("refuses what is not a profile name as 400 invalid_profile", () => {
-    for (const value of ["", "9 bad", "fixer 2", "fixer_2", "a:b", ":Zm9v:", "?1", '"open', "fixer;Avatar=1"]) {
-      expect(codeOf(value)).toBe("invalid_profile");
-    }
-  });
+test("refuses what is not a profile name as 400 invalid_profile", () => {
+  for (const value of NOT_A_PROFILE) {
+    expect(codeOf(value)).toBe("invalid_profile");
+  }
 });
