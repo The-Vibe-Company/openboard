@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { BoardError } from "@openboard/contract";
 import { isoTime, parseId } from "../../src/ids.ts";
-import { decidePost, replayPost } from "../../src/messages/post.ts";
+import { type AfterState, decidePost, replayPost } from "../../src/messages/post.ts";
 
 const by = { actor: "ob:user:local-dev", principal: "ob:user:local-dev", profile: null };
 const at = 1_700_000_000_123;
@@ -88,6 +88,47 @@ describe("replying in a thread", () => {
     const refused = refusal(() => decidePost({ head: 1, target: root }, { ...place, text: "x" }, { by, now: at }));
     expect(refused.code).toBe("invalid_request");
     expect(refused.message).toStartWith(field);
+  });
+});
+
+describe("replying after the thread's newest message", () => {
+  const root = { id: 1, channel: "dev", thread: 1 };
+  const reply = (after: AfterState | null) =>
+    decidePost({ head: 3, target: root, after }, { re: "1", text: "x", after: "2" }, { by, now: at });
+
+  test("posts while the message it names is still the newest", () => {
+    expect(reply({ id: 2, thread: 1, newer: null }).message).toMatchObject({ id: "4", re: "1" });
+  });
+
+  test("refuses one a message came after, with the read of what came after as the way out", () => {
+    let error: unknown;
+    try {
+      reply({ id: 2, thread: 1, newer: 3 });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(BoardError);
+    expect((error as BoardError).body()).toMatchObject({
+      code: "newer_message",
+      message: "#3 came after #2",
+      next: [{ kind: "run", argv: ["ob", "read", "1", "--after", "2"] }],
+    });
+    expect((error as BoardError).status).toBe(409);
+  });
+
+  test.each([
+    ["no message", null],
+    ["a message of another thread", { id: 2, thread: 5, newer: null }],
+  ])("refuses an after that names %s", (_, after) => {
+    expect(refusal(() => reply(after))).toEqual({
+      code: "invalid_after",
+      message: "after: #2 is no message in #1's thread",
+    });
+  });
+
+  test("refuses after on a new thread", () => {
+    const refused = refusal(() => decidePost({ head: 0 }, { channel: "dev", text: "x", after: "1" }, { by, now: at }));
+    expect(refused.code).toBe("invalid_after");
   });
 });
 

@@ -5,6 +5,8 @@ import { formatId, isoTime } from "../ids.ts";
 export interface PostCommand {
   readonly channel?: string;
   readonly re?: string;
+  /** A reply's precondition: a message in its thread that must still be the thread's newest. */
+  readonly after?: string;
   readonly text: string;
   readonly labels?: Readonly<Record<string, string>>;
   readonly noSync?: boolean;
@@ -58,6 +60,15 @@ export interface ReplyTarget {
   readonly thread: number;
 }
 
+/** The message a reply's `after` names, as the board holds it, and the first message of its thread after it. */
+export interface AfterState {
+  readonly id: number;
+  /** The log position of the thread's root the message is in: its own for a root. */
+  readonly thread: number;
+  /** The first message of that thread after it, deleted or not; null when it is still the newest. */
+  readonly newer: number | null;
+}
+
 /**
  * Upstream's `actor.seen` (upstream `03-http.md` "Event types"): who an actor is, written on its first write or
  * when it shows otherwise. Bookkeeping: served only with `all`.
@@ -87,6 +98,8 @@ export interface PostState {
   readonly actor?: Actor | null;
   /** The message the command's `id` already landed with, as the board holds it; null or left out when none did. */
   readonly landed?: Message | null;
+  /** For a reply with `after`, what it names; null when no message has that ID. */
+  readonly after?: AfterState | null;
 }
 
 export interface PostContext {
@@ -118,6 +131,9 @@ export function checkPost(command: PostCommand, by: Author) {
   if (command.id !== undefined) checkClientId(command.id, by.principal);
   if ((command.channel === undefined) === (command.re === undefined)) {
     throw new BoardError("invalid_request", "channel: a post needs channel and a reply needs re, never both");
+  }
+  if (command.after !== undefined && command.re === undefined) {
+    throw new BoardError("invalid_after", "after: `after` is for replies");
   }
   if (command.text.trim().length === 0) throw new BoardError("invalid_request", "text: message text is empty");
   if (!storable(command.text)) {
@@ -175,6 +191,24 @@ function placePost(state: PostState, command: PostCommand, id: number) {
 }
 
 /**
+ * Refuses a reply whose `after` is not its thread's newest message any more (upstream `03-http.md` "Posting"): a
+ * message that came after it, deleted or not, is `newer_message`, with the read of what came after as the way out.
+ */
+function checkAfter(state: PostState, command: PostCommand, root: number) {
+  if (command.after === undefined) return;
+  const after = state.after;
+  if (!after || after.thread !== root) {
+    throw new BoardError("invalid_after", `after: #${command.after} is no message in #${formatId(root)}'s thread`);
+  }
+  if (after.newer === null) return;
+  const id = formatId(after.id);
+  throw new BoardError("newer_message", `#${formatId(after.newer)} came after #${id}`, {
+    hint: `Read what came after #${id}, then reply after the newest message.`,
+    next: [{ kind: "run", argv: ["ob", "read", formatId(root), "--after", id] }],
+  });
+}
+
+/**
  * Decides a post: the next log position names the message, after the writer's `actor.seen` when it has one. A new
  * thread is named by it too; a reply joins the thread of its root, in the root's channel.
  */
@@ -183,6 +217,7 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
   const seen = actorSeen(state.actor, context, state.head + 1);
   const id = state.head + (seen ? 2 : 1);
   const { channel, root, re, replyTo } = placePost(state, command, id);
+  checkAfter(state, command, root);
   const event: MessagePosted = {
     id,
     type: "message.posted",

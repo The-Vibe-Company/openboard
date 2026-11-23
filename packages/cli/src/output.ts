@@ -16,9 +16,12 @@ function shellArg(arg: string): string {
   return /^[\w./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", "'\"'\"'")}'`;
 }
 
+/** The codes whose `next` the CLI prints: the board's way out of a bad input, or of a reply someone answered first. */
+const GUIDED = new Set(["invalid_request", "newer_message"]);
+
 /** A board error followed by the board's recovery guidance when supplied. */
 export function printError(output: Output, error: BoardError): void {
-  const next = error.code === "invalid_request" ? error.next : undefined;
+  const next = GUIDED.has(error.code) ? error.next : undefined;
   output.err(`error: ${error.code}: ${error.message}`);
   if (error.reason) output.err(`reason: ${error.reason}`);
   if (error.hint) output.err(error.hint);

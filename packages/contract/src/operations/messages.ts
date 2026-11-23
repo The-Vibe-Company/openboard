@@ -13,6 +13,11 @@ export const postMessage = defineOperation({
       {
         channel: Type.Optional(ChannelPath),
         re: Type.Optional(Ref("message")),
+        after: Type.Optional(
+          Ref("message", {
+            description: "A reply's precondition: a message in its thread that must still be the newest.",
+          }),
+        ),
         text: Type.String({ maxLength: MESSAGE_TEXT_MAX }),
         labels: Type.Optional(Labels),
         noSync: Type.Optional(Type.Boolean()),
@@ -30,7 +35,7 @@ export const postMessage = defineOperation({
   },
   output: Type.Object({ message: Message }),
   status: 201,
-  errors: ["invalid_request", "reserved_label", "message_not_found", "duplicate_id"],
+  errors: ["invalid_request", "invalid_after", "reserved_label", "message_not_found", "duplicate_id", "newer_message"],
   access: { permission: "post", channel: "fromInput" },
   effects: { readOnly: false, idempotent: false, emits: ["message.posted"], meter: "messages" },
   cli: { command: ["post"], args: ["channel", "text"], options: { id: "idempotency-key", noSync: "no-sync" } },

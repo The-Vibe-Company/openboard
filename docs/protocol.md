@@ -184,6 +184,10 @@ Use `--no-sync` on `ob post` or `ob reply` to mark that message as board-only. A
 `ob read <id> --json` shows `noSync: true` on each message marked this way. To send the literal text
 `--no-sync`, put it after `--`, as in `ob reply <id> -- --no-sync`.
 
+`ob reply <id> <text> --after <message>` sends upstream's `after`: the reply lands only while that message is still
+its thread's newest. Otherwise it prints `error: newer_message`, the `next:` command that reads what came after, and
+exits 1 without posting.
+
 OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads through `GET /messages`.
 
 | Method | Path | | Notes |
