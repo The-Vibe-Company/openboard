@@ -34,10 +34,15 @@ export function reissueToken(agentId: string, random: Uint8Array): { readonly to
   return { token, hash: hashToken(token) };
 }
 
-/** Whether `hash` (hex) is the agent's token, or the one its last refresh replaced while that still works. */
+/**
+ * Whether `hash` (hex) is the agent's token before its `expiresAt`, or the one its last refresh replaced while that
+ * still works; neither works from the agent's `hardExpiresAt` on. A token past its life answers 401 on every route,
+ * refresh included: an agent renews before it expires, then claims anew.
+ */
 function holdsToken(record: AgentRecord, hash: string, now: number): boolean {
+  if (now >= record.hardExpires) return false;
   const presented = Buffer.from(hash, "hex");
-  if (timingSafeEqual(presented, Buffer.from(record.tokenHash, "hex"))) return true;
+  if (timingSafeEqual(presented, Buffer.from(record.tokenHash, "hex"))) return now < record.tokenExpires;
   const { previous } = record;
   return (
     previous !== null && now < previous.until && timingSafeEqual(presented, Buffer.from(previous.tokenHash, "hex"))
