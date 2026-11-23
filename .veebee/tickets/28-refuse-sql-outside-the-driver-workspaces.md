@@ -6,12 +6,14 @@ package: tools
 writes:
   - scripts/ci/boundaries.ts
   - scripts/ci/boundaries.json
+  - scripts/ci/boundaries/sql.ts
+  - scripts/ci/boundaries/workspaces.ts
   - scripts/ci/fixtures/boundaries/sql/**
 conformance: []
 modes: []
 depends_on: [27]
-status: ready
-claimed_by: null
+status: done
+claimed_by: codex-ticket-28
 issue: 28
 ---
 

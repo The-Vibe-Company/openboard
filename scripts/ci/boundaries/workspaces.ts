@@ -43,6 +43,10 @@ export async function workspaceFiles(root: string, dir: string): Promise<string[
   return files.sort();
 }
 
+export function isSourceFile(file: string): boolean {
+  return SOURCE.test(file);
+}
+
 export async function sourceFiles(root: string, dir: string): Promise<string[]> {
-  return (await workspaceFiles(root, dir)).filter((file) => SOURCE.test(file));
+  return (await workspaceFiles(root, dir)).filter(isSourceFile);
 }
