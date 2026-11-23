@@ -1,5 +1,5 @@
-import type { listMessages, postMessage } from "@openboard/contract";
-import { messages, parseId } from "@openboard/core";
+import { BoardError, type listMessages, type postMessage } from "@openboard/contract";
+import { formatId, messages, parseId } from "@openboard/core";
 import type { Handler } from "./index.ts";
 
 /** A new thread, or a reply: the message `re` names is read under the board's lock; a non-ID names no message. */
@@ -14,8 +14,15 @@ export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input
   return { message };
 };
 
-/** A channel's latest messages; the cursor is the last one's ID, or "0" for a channel nobody has posted in. */
+/**
+ * A channel's messages after `after`, or its latest; the cursor is the last one's ID, so reading on from it repeats
+ * and skips nothing. An empty page keeps the cursor it was read from, or "0" for a channel nobody has posted in.
+ */
 export const listMessagesHandler: Handler<typeof listMessages> = async (ctx, input) => {
-  const page = await ctx.board.channelMessages({ channel: input.channel, limit: input.limit ?? 50 });
-  return { messages: page, cursor: page.at(-1)?.id ?? "0" };
+  const after = input.after === undefined ? undefined : parseId(input.after);
+  if (after === null)
+    throw new BoardError("invalid_request", "after: expected a cursor a read of this channel answered");
+  const query = { channel: input.channel, limit: input.limit ?? 50 };
+  const page = await ctx.board.channelMessages(after === undefined ? query : { ...query, after });
+  return { messages: page, cursor: page.at(-1)?.id ?? formatId(after ?? 0) };
 };

@@ -59,6 +59,30 @@ describe("posting a first message on the local board", () => {
   });
 });
 
+describe("reading a channel on from a cursor", () => {
+  test("lists the first `limit` messages after the cursor, and reading on from its cursor repeats and skips none", async () => {
+    app = makeApp();
+    for (const text of ["a", "b"]) await call(app, "POST", "/messages", { channel: "dev", text });
+    await call(app, "POST", "/messages", { channel: "ops", text: "elsewhere" });
+    await call(app, "POST", "/messages", { re: "1", text: "c" });
+    const first = await answer(call(app, "GET", "/messages?channel=dev&after=1&limit=1"));
+    expect(first.status).toBe(200);
+    expect([first.body.messages.map((message) => message.id), first.body.cursor]).toEqual([["2"], "2"]);
+    const rest = (await answer(call(app, "GET", `/messages?channel=dev&after=${first.body.cursor}&limit=1`))).body;
+    expect([rest.messages.map((message) => [message.id, message.text]), rest.cursor]).toEqual([[["4", "c"]], "4"]);
+    const end = (await answer(call(app, "GET", `/messages?channel=dev&after=${rest.cursor}`))).body;
+    expect([end.messages, end.cursor]).toEqual([[], "4"]);
+  });
+
+  test("reads a quiet channel from its first message once it has one, after the cursor its empty page answered", async () => {
+    app = makeApp();
+    const { cursor } = (await answer(call(app, "GET", "/messages?channel=dev"))).body;
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const { body } = await answer(call(app, "GET", `/messages?channel=dev&after=${cursor}`));
+    expect([body.messages.map((message) => message.id), body.cursor]).toEqual([["1"], "1"]);
+  });
+});
+
 describe("replying in a thread", () => {
   test("answers 201 with the reply in the root's thread, which reads it under the root", async () => {
     app = makeApp();
@@ -154,7 +178,7 @@ describe("refusing what the contract does not take", () => {
       "",
       "?channel=dev&limit=0",
       "?channel=dev&limit=501",
-      "?channel=dev&after=1",
+      "?channel=dev&after=",
       "?channel=dev&limit=1e2",
       "?channel=dev&limit=2.9",
       "?channel=dev&limit=true",

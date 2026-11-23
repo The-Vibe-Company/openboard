@@ -416,7 +416,7 @@
     "/messages": {
       "get": {
         "operationId": "channelMessages",
-        "summary": "Read one channel's latest messages, oldest first.",
+        "summary": "Read one channel's messages, oldest first: the first `limit` after the cursor `after`, or the latest `limit`.",
         "parameters": [
           {
             "name": "channel",
@@ -427,6 +427,12 @@
               "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
               "type": "string"
             }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 128, "type": "string" }
           },
           {
             "name": "limit",
@@ -445,6 +451,7 @@
               "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
               "type": "string"
             },
+            "after": { "minLength": 1, "maxLength": 128, "type": "string" },
             "limit": { "minimum": 1, "maximum": 500, "default": 50, "type": "integer" }
           }
         },

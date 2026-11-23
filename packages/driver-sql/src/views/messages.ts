@@ -24,6 +24,8 @@ export const messageStatements = {
     WHERE board_id = ${"boardId"} AND id = ${"id"}`,
   channelMessages: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND channel = ${"channel"}
     ORDER BY id DESC LIMIT ${"limit"}`,
+  channelMessagesAfter: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND channel = ${"channel"}
+    AND id > ${"after"} ORDER BY id LIMIT ${"limit"}`,
 };
 
 /**
@@ -113,12 +115,13 @@ export function boardView(db: Db, dialect: Dialect, scope: BoardScope): Pick<Boa
         const head = await lockBoard(tx, dialect, keys);
         return fn(writer(tx, dialect, keys, head));
       }),
-    async channelMessages({ channel, limit }) {
-      const rows = await query(db, dialect, messageStatements.channelMessages, {
-        boardId: keys.boardId,
-        channel,
-        limit,
-      });
+    async channelMessages({ channel, after, limit }) {
+      const params = { boardId: keys.boardId, channel, limit };
+      if (after !== undefined) {
+        const rows = await query(db, dialect, messageStatements.channelMessagesAfter, { ...params, after });
+        return rows.map((row) => JSON.parse(String(row.view)) as Message);
+      }
+      const rows = await query(db, dialect, messageStatements.channelMessages, params);
       return rows.map((row) => JSON.parse(String(row.view)) as Message).reverse();
     },
   };

@@ -33,12 +33,17 @@ export const postMessage = defineOperation({
 export const listMessages = defineOperation({
   name: "listMessages",
   operationId: "channelMessages",
-  summary: "Read one channel's latest messages, oldest first.",
+  summary:
+    "Read one channel's messages, oldest first: the first `limit` after the cursor `after`, or the latest `limit`.",
   route: { method: "GET", path: "/messages" },
   scope: "board",
   input: {
     query: Type.Object(
-      { channel: ChannelPath, limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 500, default: 50 })) },
+      {
+        channel: ChannelPath,
+        after: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 500, default: 50 })),
+      },
       { additionalProperties: false },
     ),
   },
