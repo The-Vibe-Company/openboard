@@ -432,7 +432,7 @@
             "name": "after",
             "in": "query",
             "required": false,
-            "schema": { "minLength": 1, "maxLength": 128, "type": "string" }
+            "schema": { "description": "A decimal cursor from 0 through the current board head.", "type": "string" }
           },
           {
             "name": "limit",
@@ -451,7 +451,7 @@
               "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
               "type": "string"
             },
-            "after": { "minLength": 1, "maxLength": 128, "type": "string" },
+            "after": { "description": "A decimal cursor from 0 through the current board head.", "type": "string" },
             "limit": { "minimum": 1, "maximum": 500, "default": 50, "type": "integer" }
           }
         },
@@ -541,7 +541,7 @@
             }
           },
           "400": {
-            "description": "invalid_request",
+            "description": "invalid_request, invalid_cursor",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {

@@ -41,14 +41,14 @@ export const listMessages = defineOperation({
     query: Type.Object(
       {
         channel: ChannelPath,
-        after: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+        after: Type.Optional(Type.String({ description: "A decimal cursor from 0 through the current board head." })),
         limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 500, default: 50 })),
       },
       { additionalProperties: false },
     ),
   },
   output: Type.Object({ messages: Type.Array(Message), cursor: Type.String() }),
-  errors: ["invalid_request"],
+  errors: ["invalid_request", "invalid_cursor"],
   access: { permission: "read", channel: "fromInput" },
   effects: { readOnly: true, idempotent: true, emits: [] },
   cli: false,

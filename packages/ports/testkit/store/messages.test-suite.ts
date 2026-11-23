@@ -107,9 +107,9 @@ export function messagesSuite(driver: string, open: OpenStore): void {
       for (const text of ["a", "b", "c"]) await post(board, "dev", text);
       await post(board, "ops", "elsewhere");
       const page = await board.channelMessages({ channel: "dev", limit: 2 });
-      expect(page.map(({ text }) => text)).toEqual(["b", "c"]);
-      expect((await board.channelMessages({ channel: "dev", limit: 1 })).map(({ text }) => text)).toEqual(["c"]);
-      expect((await board.channelMessages({ channel: "dev", limit: 50 })).map(({ text }) => text)).toEqual([
+      expect(page?.map(({ text }) => text)).toEqual(["b", "c"]);
+      expect((await board.channelMessages({ channel: "dev", limit: 1 }))?.map(({ text }) => text)).toEqual(["c"]);
+      expect((await board.channelMessages({ channel: "dev", limit: 50 }))?.map(({ text }) => text)).toEqual([
         "a",
         "b",
         "c",
@@ -123,14 +123,16 @@ export function messagesSuite(driver: string, open: OpenStore): void {
       await post(board, "ops", "elsewhere");
       await post(board, "dev", "d");
       const page = await board.channelMessages({ channel: "dev", after: 1, limit: 2 });
-      expect(page.map(({ id, text }) => [id, text])).toEqual([
+      expect(page?.map(({ id, text }) => [id, text])).toEqual([
         ["2", "b"],
         ["3", "c"],
       ]);
       const rest = await board.channelMessages({ channel: "dev", after: 3, limit: 2 });
-      expect(rest.map(({ id, text }) => [id, text])).toEqual([["5", "d"]]);
+      expect(rest?.map(({ id, text }) => [id, text])).toEqual([["5", "d"]]);
       expect(await board.channelMessages({ channel: "dev", after: 5, limit: 2 })).toEqual([]);
-      expect((await board.channelMessages({ channel: "dev", after: 0, limit: 1 })).map(({ id }) => id)).toEqual(["1"]);
+      expect(await board.channelMessages({ channel: "dev", after: 6, limit: 2 })).toBeNull();
+      expect(await board.channelMessages({ channel: "quiet", after: 5, limit: 2 })).toEqual([]);
+      expect((await board.channelMessages({ channel: "dev", after: 0, limit: 1 }))?.map(({ id }) => id)).toEqual(["1"]);
     });
 
     test("serializes concurrent writes into consecutive positions", async () => {
