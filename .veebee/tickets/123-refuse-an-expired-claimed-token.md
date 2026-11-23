@@ -7,10 +7,11 @@ writes:
   - packages/server/src/auth/tokens.ts
   - packages/server/test/auth/expired.test.ts
   - packages/server/test/auth/refresh.test.ts
+  - docs/auth.md
 conformance: []
 modes: [local]
 depends_on: [122]
-status: claimed
+status: done
 claimed_by: claude-opus-t123
 issue: 124
 ---
@@ -19,7 +20,7 @@ issue: 124
 As an owner, a token past its life stops working on its own.
 
 ## Done when
-- [ ] a token claimed with `"ttl": "5m"` makes `ob whoami` print `error: unauthorized` once five minutes have passed
+- [x] a token claimed with `"ttl": "5m"` makes `ob whoami` print `error: unauthorized` once five minutes have passed
 
 ## Out of scope
 - Revocation (128).

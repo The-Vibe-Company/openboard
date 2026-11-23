@@ -50,7 +50,20 @@ test("a token claimed for 5m works until its expiresAt, then answers 401 unautho
   expect(await codeOf(as(app, token, "POST", "/x/connections/refresh"))).toEqual([401, "unauthorized"]);
 });
 
-test("a refreshed token lives to its new expiresAt, and its predecessor never past the hard expiry", async () => {
+test("a refreshed token lives past its predecessor's expiresAt, to its own, then answers 401", async () => {
+  const booted = await boot();
+  app = booted.app;
+  const first = await claim(booted, "5m");
+  booted.clock.now = NOW + 120_000;
+  const renewed = await tokenOf(as(app, first, "POST", "/x/connections/refresh"));
+  booted.clock.now = NOW + 120_000 + 3_600_000 - 1;
+  expect((await as(app, renewed, "GET", "/me")).status).toBe(200);
+  expect(await codeOf(as(app, first, "GET", "/me"))).toEqual([401, "unauthorized"]);
+  booted.clock.now = NOW + 120_000 + 3_600_000;
+  expect(await codeOf(as(app, renewed, "GET", "/me"))).toEqual([401, "unauthorized"]);
+});
+
+test("the token a refresh replaced never works past the hard expiry, even inside its 60 seconds", async () => {
   const booted = await boot();
   app = booted.app;
   const first = await claim(booted, "1d");

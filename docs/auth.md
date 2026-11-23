@@ -268,6 +268,10 @@ Authorization: Bearer obc_…
 - **Refresh:** `POST {BOARD_URL}/x/connections/refresh` with the `obt_` token
   returns a new token with the same pins, never past `hardExpiresAt`; the
   previous token stays valid 60 s.
+- **Expiry:** a claimed token answers 401 `unauthorized` on every route,
+  refresh included, from its `expiresAt` on, and every token of the agent
+  from `hardExpiresAt` on (the previous token's 60 s too); renew before
+  `expiresAt`, or claim a new token with the connection's secret.
 - **Single-use secrets:** `"claims": 1` spends the secret on the first claim,
   in the claim's transaction (410 `secret_spent` after).
 - **Profile collisions:** 409 `profile_taken` unless the same
