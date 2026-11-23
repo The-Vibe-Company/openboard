@@ -33,6 +33,8 @@ export interface Deps {
 export type Principal = Author & {
   readonly [credentialKind]?: "local" | "connection";
   readonly [connectionOf]?: ConnectionIdentity;
+  /** A profile's name as the caller spelled it, which is how it is shown; `profile` is its lowercase. */
+  readonly [profileName]?: string;
 };
 
 /** A connection's secret: the connection's name, which its profiles show through, and the profiles it may use. */
@@ -44,3 +46,4 @@ export interface ConnectionIdentity {
 /** Request-only metadata. Symbol keys stay out of serialized message authors. */
 export const credentialKind = Symbol("credential kind");
 export const connectionOf = Symbol("connection");
+export const profileName = Symbol("profile name");

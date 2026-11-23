@@ -33,7 +33,6 @@ export const ActorKind = Type.Union([Type.Literal("person"), Type.Literal("workf
  * "fixer-2 via laptop".
  */
 export const MessageAuthor = Type.Object({
-  id: Type.String(),
   kind: ActorKind,
   handle: Type.String(),
   name: Type.String(),

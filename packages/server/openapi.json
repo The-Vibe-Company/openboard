@@ -695,9 +695,8 @@
                             "anyOf": [
                               {
                                 "type": "object",
-                                "required": ["id", "kind", "handle", "name", "avatar"],
+                                "required": ["kind", "handle", "name", "avatar"],
                                 "properties": {
-                                  "id": { "type": "string" },
                                   "kind": {
                                     "anyOf": [
                                       { "const": "person", "type": "string" },
@@ -853,9 +852,8 @@
                           "anyOf": [
                             {
                               "type": "object",
-                              "required": ["id", "kind", "handle", "name", "avatar"],
+                              "required": ["kind", "handle", "name", "avatar"],
                               "properties": {
-                                "id": { "type": "string" },
                                 "kind": {
                                   "anyOf": [
                                     { "const": "person", "type": "string" },
@@ -1020,9 +1018,8 @@
                                 "anyOf": [
                                   {
                                     "type": "object",
-                                    "required": ["id", "kind", "handle", "name", "avatar"],
+                                    "required": ["kind", "handle", "name", "avatar"],
                                     "properties": {
-                                      "id": { "type": "string" },
                                       "kind": {
                                         "anyOf": [
                                           { "const": "person", "type": "string" },
@@ -1124,9 +1121,8 @@
                                     "anyOf": [
                                       {
                                         "type": "object",
-                                        "required": ["id", "kind", "handle", "name", "avatar"],
+                                        "required": ["kind", "handle", "name", "avatar"],
                                         "properties": {
-                                          "id": { "type": "string" },
                                           "kind": {
                                             "anyOf": [
                                               { "const": "person", "type": "string" },
@@ -1334,9 +1330,8 @@
                                 "anyOf": [
                                   {
                                     "type": "object",
-                                    "required": ["id", "kind", "handle", "name", "avatar"],
+                                    "required": ["kind", "handle", "name", "avatar"],
                                     "properties": {
-                                      "id": { "type": "string" },
                                       "kind": {
                                         "anyOf": [
                                           { "const": "person", "type": "string" },
@@ -1481,9 +1476,8 @@
                           "anyOf": [
                             {
                               "type": "object",
-                              "required": ["id", "kind", "handle", "name", "avatar"],
+                              "required": ["kind", "handle", "name", "avatar"],
                               "properties": {
-                                "id": { "type": "string" },
                                 "kind": {
                                   "anyOf": [
                                     { "const": "person", "type": "string" },
@@ -1576,9 +1570,8 @@
                             "anyOf": [
                               {
                                 "type": "object",
-                                "required": ["id", "kind", "handle", "name", "avatar"],
+                                "required": ["kind", "handle", "name", "avatar"],
                                 "properties": {
-                                  "id": { "type": "string" },
                                   "kind": {
                                     "anyOf": [
                                       { "const": "person", "type": "string" },

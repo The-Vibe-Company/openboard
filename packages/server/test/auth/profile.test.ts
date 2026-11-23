@@ -36,7 +36,6 @@ test("a connection's profile writes as principal+profile, shown as the profile v
   const response = await as(app, secret, "fixer-2", "POST", "/messages", post);
   expect(response.status).toBe(201);
   const author = {
-    id: actor,
     kind: "agent",
     handle: "laptop/fixer-2",
     name: "fixer-2",
@@ -65,11 +64,16 @@ test("GET /me as a profile answers the profile's actor, as an agent of the conne
   });
 });
 
-test("profile names match case-insensitively: one actor whatever the spelling", async () => {
+test("profile names match case-insensitively: one actor whatever the spelling, shown as sent", async () => {
   app = makeApp();
   const secret = await connect(app, ["fixer-*"]);
-  const response = await as(app, secret, "Fixer-2", "GET", "/me");
-  expect(await response.json()).toMatchObject({ actor: `${principalOf(secret)}+fixer-2`, profile: "fixer-2" });
+  const response = await as(app, secret, "Fixer-2", "POST", "/messages", post);
+  expect(await response.json()).toMatchObject({
+    message: {
+      by: { actor: `${principalOf(secret)}+fixer-2`, profile: "fixer-2" },
+      author: { handle: "laptop/fixer-2", name: "Fixer-2" },
+    },
+  });
 });
 
 test("a profile outside the connection's patterns answers 403 forbidden and writes nothing", async () => {
@@ -92,7 +96,7 @@ test("the connection as itself is shown by its name, as a workflow", async () =>
   const response = await as(app, secret, null, "POST", "/messages", post);
   const actor = principalOf(secret);
   expect(await response.json()).toMatchObject({
-    message: { author: { id: actor, kind: "workflow", handle: "laptop", name: "laptop", avatar: null } },
+    message: { by: { actor }, author: { kind: "workflow", handle: "laptop", name: "laptop", avatar: null } },
   });
 });
 

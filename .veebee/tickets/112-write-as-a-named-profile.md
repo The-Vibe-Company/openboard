@@ -34,7 +34,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [110]
-status: claimed
+status: done
 claimed_by: claude-opus-t112
 issue: 112
 ---
@@ -43,8 +43,8 @@ issue: 112
 As one of several agents sharing a connection, I write under my own name.
 
 ## Done when
-- [ ] `BOARD_TOKEN=… ob post dev hi --as fixer-2` shows `fixer-2 via laptop` in `ob read dev`
-- [ ] `ob whoami --as fixer-2` prints actor `ob:conn:cn_…+fixer-2`
+- [x] `BOARD_TOKEN=… ob post dev hi --as fixer-2` shows `fixer-2 via laptop` in `ob read dev`
+- [x] `ob whoami --as fixer-2` prints actor `ob:conn:cn_…+fixer-2`
 
 ## Out of scope
 - Avatars (113).

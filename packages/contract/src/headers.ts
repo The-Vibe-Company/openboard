@@ -11,6 +11,8 @@ const KEY = /^[a-z*][a-z0-9_\-.*]*/;
 const NUMBER = /^-?\d{1,15}(?:\.\d{1,3})?/;
 const BYTES = /^:[A-Za-z0-9+/=]*:/;
 const BOOLEAN = /^\?[01]/;
+/** Longer than any name with an avatar URL needs; refused before parsing so a long header costs nothing. */
+const HEADER_MAX = 2048;
 
 /** What `x-board-profile` names: the name as sent, and its parameters, which later tickets read (avatar). */
 export interface ProfileHeader {
@@ -71,7 +73,12 @@ function parameters(rest: string): Record<string, string | boolean> {
 
 /** Reads `x-board-profile` as an RFC 8941 Item whose value is a profile name; anything else is 400 `invalid_profile`. */
 export function parseProfileHeader(value: string): ProfileHeader {
-  const item = value.replace(/^ +| +$/g, "");
+  if (value.length > HEADER_MAX) throw invalid(`longer than ${HEADER_MAX} characters`);
+  let start = 0;
+  let end = value.length;
+  while (value[start] === " ") start++;
+  while (end > start && value[end - 1] === " ") end--;
+  const item = value.slice(start, end);
   const [name, rest] = bareItem(item);
   if (typeof name !== "string" || !NAME.test(name)) {
     throw invalid("a profile name starts with a letter and has up to 32 letters, digits and hyphens");

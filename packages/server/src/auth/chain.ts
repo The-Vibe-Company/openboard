@@ -1,7 +1,7 @@
 import { BoardError, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
 import { connections } from "@openboard/core";
 import type { BoardView } from "@openboard/ports";
-import { connectionOf, type Principal, type ServerConfig } from "../deps.ts";
+import { connectionOf, type Principal, profileName, type ServerConfig } from "../deps.ts";
 import { connectionVerifier } from "./connections.ts";
 import { localOwnerVerifier } from "./local-owner.ts";
 
@@ -34,7 +34,7 @@ function noCredential(): BoardError {
 /**
  * The profile `x-board-profile` picks, written as `principal+profile` (docs/auth.md "Upstream's model", points 2-3).
  * A connection writes only as a profile its `profiles` patterns let in, else 403 `forbidden`; names compare
- * case-insensitively, so the actor and profile are lowercase.
+ * case-insensitively, so the actor and profile are lowercase; the spelling sent is the one shown.
  */
 function withProfile(request: Request, principal: Principal): Principal {
   const header = request.headers.get(PROFILE_HEADER);
@@ -47,7 +47,7 @@ function withProfile(request: Request, principal: Principal): Principal {
     });
   }
   const profile = name.toLowerCase();
-  return { ...principal, actor: `${principal.principal}+${profile}`, profile };
+  return { ...principal, actor: `${principal.principal}+${profile}`, profile, [profileName]: name };
 }
 
 /**

@@ -34,6 +34,12 @@ describe("x-board-profile", () => {
     expect(codeOf(`a${"b".repeat(32)}`)).toBe("invalid_profile");
   });
 
+  test("refuses a header longer than 2048 characters before reading it", () => {
+    expect(parseProfileHeader(`fixer${" ".repeat(2043)}`).name).toBe("fixer");
+    expect(codeOf(`fixer${" ".repeat(2044)}`)).toBe("invalid_profile");
+    expect(codeOf(`a${" ".repeat(100_000)}b`)).toBe("invalid_profile");
+  });
+
   test("refuses what is not a profile name as 400 invalid_profile", () => {
     for (const value of ["", "9 bad", "fixer 2", "fixer_2", "a:b", ":Zm9v:", "?1", '"open', "fixer;Avatar=1"]) {
       expect(codeOf(value)).toBe("invalid_profile");
