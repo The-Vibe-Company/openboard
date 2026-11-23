@@ -5,6 +5,7 @@
     "core/ignores x-board-session: who writes is the principal and its profile",
     "core/posts a message, and reads it back by its ID",
     "core/puts a reply in its root's thread",
+    "core/reads one channel's messages after a cursor of its own, oldest first, and on from where it stopped",
     "core/says in its discovery where it is",
     "sync/keeps noSync on a post and a reply, so sync sends neither"
   ],

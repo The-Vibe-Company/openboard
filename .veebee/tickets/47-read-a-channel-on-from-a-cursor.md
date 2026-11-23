@@ -11,11 +11,16 @@ writes:
   - packages/server/test/messages.test.ts
   - packages/ports/src/store.ts
   - packages/cli/src/commands/read.ts
+  - packages/cli/src/output.ts
+  - packages/cli/test/cli.test.ts
+  - packages/cli/test/read-channel.test.ts
+  - packages/server/openapi.json
+  - tools/conformance/score.json
 conformance: ["core/reads one channel's messages after a cursor of its own, oldest first, and on from where it stopped"]
 modes: [local]
 depends_on: [46]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t47
 issue: 47
 ---
 

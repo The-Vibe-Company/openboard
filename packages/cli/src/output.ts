@@ -36,7 +36,8 @@ export function messageLine(message: { readonly id: string; readonly text: strin
 }
 
 /** A word as a shell reads it back: quoted unless it is plain. */
-const shellWord = (word: string) => (/^[\w@%+=:,./-]+$/.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`);
+export const shellWord = (word: string) =>
+  /^[\w@%+=:,./-]+$/.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
 
 type ChannelsInput = { readonly prefix?: string; readonly limit?: number };
 

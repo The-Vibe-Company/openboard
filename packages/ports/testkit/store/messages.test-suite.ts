@@ -111,6 +111,22 @@ export function messagesSuite(driver: string, open: OpenStore): void {
       expect(await board.channelMessages({ channel: "empty", limit: 50 })).toEqual([]);
     });
 
+    test("reads one channel's first messages after a position, oldest first, and on from the last", async () => {
+      const board = await localBoard();
+      for (const text of ["a", "b", "c"]) await post(board, "dev", text);
+      await post(board, "ops", "elsewhere");
+      await post(board, "dev", "d");
+      const page = await board.channelMessages({ channel: "dev", after: 1, limit: 2 });
+      expect(page.map(({ id, text }) => [id, text])).toEqual([
+        ["2", "b"],
+        ["3", "c"],
+      ]);
+      const rest = await board.channelMessages({ channel: "dev", after: 3, limit: 2 });
+      expect(rest.map(({ id, text }) => [id, text])).toEqual([["5", "d"]]);
+      expect(await board.channelMessages({ channel: "dev", after: 5, limit: 2 })).toEqual([]);
+      expect((await board.channelMessages({ channel: "dev", after: 0, limit: 1 })).map(({ id }) => id)).toEqual(["1"]);
+    });
+
     test("serializes concurrent writes into consecutive positions", async () => {
       const board = await localBoard();
       const posted = await Promise.all(["a", "b", "c"].map((text) => post(board, "dev", text)));
