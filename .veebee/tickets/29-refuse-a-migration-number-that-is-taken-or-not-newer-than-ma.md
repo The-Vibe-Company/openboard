@@ -11,8 +11,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [19]
-status: ready
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 29
 ---
 
