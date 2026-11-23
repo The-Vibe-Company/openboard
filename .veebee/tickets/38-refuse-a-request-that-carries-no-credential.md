@@ -7,11 +7,14 @@ writes:
   - packages/server/src/http/pipeline.ts
   - packages/server/src/auth/chain.ts
   - packages/server/test/auth/anonymous.test.ts
+  - packages/server/test/support/app.ts
+  - packages/cli/src/output.ts
+  - packages/cli/test/cli.test.ts
 conformance: []
 modes: [local]
 depends_on: [37]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-ticket-38
 issue: 38
 ---
 

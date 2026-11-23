@@ -34,7 +34,7 @@ async function run(request: Request, pipeline: Pipeline): Promise<Response> {
   const matched = matchRoute(pipeline.routes, request.method, path.rest);
   if (!matched) throw notFound();
   const board = await pipeline.tenants.board(path);
-  const by = await authenticate(request, verifiers(pipeline.config), pipeline.config);
+  const by = await authenticate(request, verifiers(pipeline.config));
   const { operation } = matched;
   const input = decodeInput(operation, {
     params: matched.params,
