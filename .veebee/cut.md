@@ -2,7 +2,7 @@
 
 Legend.
 - One line per ticket: `NN  title   ← deps`. Numbers run across the whole project in construction order; a ticket depends only on lower numbers.
-- Ticket files exist for M0-M4 (`.veebee/tickets/NN-slug.md`); from M5 on, these lines are the plan and files are written when the milestone before is nearly done.
+- Ticket files exist for M0-M6 (`.veebee/tickets/NN-slug.md`); from M7 on, these lines are the plan and files are written when the milestone before is nearly done.
 - `[c]` marks a line that claims upstream conformance checks, `[s]` one that records `expectedSkips`; every one of the 91 checks is placed exactly once.
 - `writes` exclude generated files and the shared append points of `docs/project.md` section 5; tickets touching `contract`, `ports` or migrations are also serialized at claim time.
 
@@ -190,30 +190,30 @@ Legend.
 165  EXPLAIN every registered statement on both engines   ← 163
 166  Compare both engines' schemas   ← 163
 167  Migrate once under an advisory lock with openboard migrate   ← 162
-168  Pass the isolation suites on Postgres   ← 163
-169  Create an organization on a hosted instance   ← 162
+168  Pass the HTTP and isolation suites on Postgres   ← 163, 165, 166
+169  Create an organization on a hosted instance   ← 167, 168
 170  Reach the local conformance score on Postgres   ← 164, 168, 169
 171  Refuse a hosted score shorter than the local one   ← 170
-172  Answer 503 unavailable while the database is unreachable   ← 162
-173  Record the hosted bench baseline   ← 170
+172  Answer 503 unavailable while the database is unreachable   ← 164
+173  Record the hosted bench baseline   ← 170, 172
 174  Count database round trips per write   ← 173
 175  Measure what row-level security costs   ← 173
 
 ## M6 High availability (17)
 
-176  Run the HTTP suites on two instances   ← 170
-177  Wake a tail on one instance from a write on another   ← 176
-178  Deliver within the safety poll when a notification is lost   ← 177
-179  Catch up by cursor after the database restarts   ← 177
-180  Survive the kill-the-database drill without losing a write   ← 172, 179
-181  Run each due job on exactly one instance   ← 176
+176  Wake a tail on one instance from a write on another   ← 166, 170, 174
+177  Run the HTTP suites on two instances   ← 176
+178  Deliver within the safety poll when a notification is lost   ← 176
+179  Catch up by cursor after the database restarts   ← 176, 178
+180  Survive the kill-the-database drill without losing a write   ← 172, 177, 179
+181  Run each due job on exactly one instance   ← 177, 180
 182  Drop a revoked credential on every instance at once   ← 177
-183  Drain an instance on SIGTERM with a resumable cursor   ← 177
-184  Answer the health or readiness probes   ← 176
-185  Advance a board's head after a database timeline change   ← 164
-186  Run conformance on two instances behind a round-robin proxy   ← 177
+183  Drain an instance on SIGTERM with a resumable cursor   ← 177, 181
+184  Answer the health or readiness probes   ← 177, 183
+185  Advance a board's head after a database timeline change   ← 164, 176
+186  Run conformance on two instances behind a round-robin proxy   ← 177, 181
 187  Build one openboard binary for both modes   ← 186
-188  Build the image from the binary   ← 187
+188  Build the image from the binary   ← 183, 187
 189  Deploy staging on Railway with two replicas   ← 167, 184, 188
 190  Deploy every merge to staging   ← 189
 191  Prove a rolling deploy loses nothing with rolling-check   ← 183, 190
@@ -241,7 +241,7 @@ Legend.
 210  Ship each organization's log to the bucket every 10 seconds   ← 181
 211  Take a daily pg_dump   ← 181
 212  Snapshot a local board with VACUUM INTO on schedule   ← 39
-213  Pass the local score from a self-host container on one volume   ← 188, 212
+213  Pass the local score from a self-host container on one volume   ← 188, 192, 212
 214  Record operator access in the tenant's audit   ← 161
 215  Serve a board on production   ← 193, 195, 196, 199, 208
 
@@ -280,7 +280,7 @@ Legend.
 243  Complete a claimed task [c]   ← 242
 244  Renew a claim's lease [c]   ← 243
 245  Return an unrenewed task to the queue   ← 244
-246  Claim on one instance a task whose lease ran out on another   ← 176, 245
+246  Claim on one instance a task whose lease ran out on another   ← 177, 245
 247  Release a claim   ← 244
 248  Fail a task   ← 247
 249  Refuse a write by a lost claim [c]   ← 248
