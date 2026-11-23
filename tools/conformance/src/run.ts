@@ -1,6 +1,7 @@
 import process, { argv, execPath } from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { createConnection } from "@openboard/contract";
 import type { CheckGroup, CheckResult } from "@vercel/board/conformance";
 import { boot } from "./drivers";
 import { lostChecks, newChecks, recordChecks, type Score } from "./score";
@@ -41,6 +42,24 @@ async function writeScore(file: URL, score: Score) {
   const [formatted, exitCode] = await Promise.all([child.stdout.text(), child.exited]);
   if (exitCode !== 0 || !formatted) throw new Error(`biome could not format ${fileURLToPath(file)}`);
   await Bun.write(file, formatted);
+}
+
+async function createLocalConnection(url: URL, ownerToken: string): Promise<string> {
+  const response = await fetch(new URL(url.href + createConnection.route.path), {
+    method: createConnection.route.method,
+    headers: { authorization: `Bearer ${ownerToken}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      name: "conformance",
+      direct: true,
+      can: { "*": "all" },
+    } satisfies (typeof createConnection.input.body)["static"]),
+  });
+  if (response.status !== createConnection.status) {
+    throw new Error(`Creating the conformance connection failed with HTTP ${response.status}`);
+  }
+  const { secret } = (await response.json()) as (typeof createConnection.output)["static"];
+  if (typeof secret !== "string" || !secret) throw new Error("The conformance connection did not return a secret");
+  return secret;
 }
 
 async function runKit(url: URL, token: string): Promise<CheckResult[]> {
@@ -90,7 +109,8 @@ const scoreFile = new URL("../score.json", import.meta.url);
 const score = (await Bun.file(scoreFile).json()) as Score;
 const server = await boot(driver, Number(instances));
 try {
-  const checks = await runKit(server.url, server.token);
+  const token = mode === "local" ? await createLocalConnection(server.url, server.token) : server.token;
+  const checks = await runKit(server.url, token);
   printTable(checks);
   const lost = lostChecks(score[mode], checks);
   for (const name of lost) console.error(`Lost conformance check (${mode}): ${name}`);

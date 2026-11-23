@@ -5,11 +5,12 @@ milestone: M4-accounts-organizations-and-auth
 package: tools
 writes:
   - tools/conformance/src/run.ts
+  - tools/conformance/src/drivers.ts
 conformance: []
 modes: [local]
 depends_on: [54, 110]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 111
 ---
 
@@ -17,7 +18,7 @@ issue: 111
 As a contributor, conformance runs as an ordinary connection, not as the owner, so the lockout check can run.
 
 ## Done when
-- [ ] `bun run conformance` creates a direct connection with `*=all` on `local/main` with the local owner token and runs the kit with its secret; the score does not drop
+- [x] `bun run conformance` creates a direct connection with `*=all` on `local/main` with the local owner token and runs the kit with its secret; the score does not drop
 
 ## Out of scope
 - The hosted conformance organization (M5, 170).
