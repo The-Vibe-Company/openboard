@@ -1,3 +1,4 @@
+export * from "./entities/accounts.ts";
 export * from "./entities/actors.ts";
 export * from "./entities/channels.ts";
 export * from "./entities/connections.ts";
@@ -39,6 +40,7 @@ export {
   discoverBoard,
   getMe,
   getOpenApi,
+  getSession,
   listActors,
   listChannels,
   listMessages,

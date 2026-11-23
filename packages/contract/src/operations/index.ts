@@ -1,3 +1,4 @@
+import { getSession } from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
 import { createChannel, listChannels } from "./channels.ts";
 import { claimConnection, createConnection } from "./connections.ts";
@@ -14,6 +15,7 @@ export const operations = [
   discoverBoard,
   getMe,
   getOpenApi,
+  getSession,
   listActors,
   listChannels,
   listMessages,
@@ -31,6 +33,7 @@ export {
   discoverBoard,
   getMe,
   getOpenApi,
+  getSession,
   listActors,
   listChannels,
   listMessages,

@@ -17,11 +17,28 @@ writes:
   - packages/server/src/auth/chain.ts
   - apps/openboard/src/config.ts
   - packages/driver-sql/migrations/*-accounts.sql
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/ports/src/index.ts
+  - packages/ports/testkit/index.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/src/views/boards.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/server/src/app.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/auth/secrets.ts
+  - apps/openboard/src/compose.ts
+  - apps/openboard/test/config.test.ts
+  - docs/decisions.md
+  - docs/codebase.md
 conformance: []
 modes: [local]
 depends_on: [62, 117]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t133
 issue: 134
 ---
 

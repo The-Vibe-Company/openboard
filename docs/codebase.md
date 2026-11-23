@@ -370,7 +370,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 |---|---|
 | `OPENBOARD_DATABASE_URL` | set: hosted mode on Postgres (`postgres://…`), with organizations and sign-up; unset: local mode on SQLite, with the implicit organization `local` and board `main` |
 | `OPENBOARD_DATA_DIR` | SQLite mode: database, blobs, backups (default `./.openboard`) |
-| `OPENBOARD_SIGNUP` | hosted mode: `open`, `invite` or `closed` (docs/auth.md) |
+| `OPENBOARD_SIGNUP` | `open`, `invite` or `closed` (docs/auth.md); default `closed`, so local mode has no sign-up unless set (D48) |
 | `OPENBOARD_PUBLIC_URL` | canonical origin, never derived from `Host` |
 | `OPENBOARD_SECRET_KEY` | encrypts recoverable secrets (D29) |
 | `OPENBOARD_INSTANCE_ID` | optional; defaults to a random ID per process, used for job leases and logs |

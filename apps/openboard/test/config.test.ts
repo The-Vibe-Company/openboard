@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { ConfigError, loadConfig } from "../src/config.ts";
 
 const load = (env: Record<string, string>) => loadConfig({ OPENBOARD_DATA_DIR: "./.openboard-test", ...env });
@@ -47,6 +50,40 @@ describe("the log level", () => {
     expect(() => load({ OPENBOARD_LOG_LEVEL: "loud" })).toThrow(ConfigError);
     expect(() => load({ OPENBOARD_LOG_LEVEL: "loud" })).toThrow(
       /^OPENBOARD_LOG_LEVEL: expected debug, info, warn, error, got loud$/,
+    );
+  });
+});
+
+describe("sign-in and sign-up", () => {
+  test("offer no sign-up and no GitHub sign-in by default", () => {
+    const config = load({});
+    expect(config.signup).toBe("closed");
+    expect(config.github).toBeUndefined();
+  });
+
+  test("take OPENBOARD_SIGNUP and the GitHub client, its secret also from a file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "openboard-config-"));
+    try {
+      writeFileSync(join(dir, "client-secret"), "example-client-secret\n");
+      const env = { OPENBOARD_SIGNUP: "open", OPENBOARD_GITHUB_CLIENT_ID: "example-client" };
+      expect(load({ ...env, OPENBOARD_GITHUB_CLIENT_SECRET: "example-client-secret" })).toMatchObject({
+        signup: "open",
+        github: { clientId: "example-client", clientSecret: "example-client-secret" },
+      });
+      const fromFile = load({ ...env, OPENBOARD_GITHUB_CLIENT_SECRET_FILE: join(dir, "client-secret") });
+      expect(fromFile.github?.clientSecret).toBe("example-client-secret");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("refuse a bad sign-up mode and half a GitHub client, naming the variables", () => {
+    expect(() => load({ OPENBOARD_SIGNUP: "maybe" })).toThrow(/^OPENBOARD_SIGNUP: expected open, invite, closed/);
+    expect(() => load({ OPENBOARD_GITHUB_CLIENT_ID: "example-client" })).toThrow(
+      /^OPENBOARD_GITHUB_CLIENT_ID and OPENBOARD_GITHUB_CLIENT_SECRET: set both, or neither$/,
+    );
+    expect(() => load({ OPENBOARD_GITHUB_CLIENT_SECRET_FILE: "./missing-secret" })).toThrow(
+      /OPENBOARD_GITHUB_CLIENT_SECRET_FILE: cannot read the file it names/,
     );
   });
 });

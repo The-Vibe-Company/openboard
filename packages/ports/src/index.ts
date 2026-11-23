@@ -7,6 +7,10 @@ export type {
   ChannelMessagesQuery,
   ChannelsQuery,
   ConnectionRecord,
+  IdentityRecord,
+  PersonRecord,
   PlatformView,
+  SessionRecord,
+  SignInRecord,
   Store,
 } from "./store.ts";

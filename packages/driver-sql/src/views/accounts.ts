@@ -1,0 +1,98 @@
+import type { PersonRecord, PlatformView, SessionRecord, SignInRecord } from "@openboard/ports";
+import type { Db, Dialect, Row, SqlValue } from "../db.ts";
+import { query, sql } from "../sql.ts";
+
+/** People, identities and sessions: global rows, so every statement here is a platform statement. */
+export const accountStatements = {
+  identityUser: sql`SELECT u.id, u.disabled_at FROM identities i JOIN users u ON u.id = i.user_id
+    WHERE i.provider = ${"provider"} AND i.subject = ${"subject"}`,
+  refreshUser: sql`UPDATE users SET handle = ${"handle"}, name = ${"name"}, email = ${"email"}, avatar = ${"avatar"}
+    WHERE id = ${"userId"}`,
+  refreshIdentity: sql`UPDATE identities SET email = ${"email"} WHERE provider = ${"provider"} AND subject = ${"subject"}`,
+  insertUser: sql`INSERT INTO users (public_id, handle, name, email, avatar, created_at)
+    VALUES (${"publicId"}, ${"handle"}, ${"name"}, ${"email"}, ${"avatar"}, ${"at"}) RETURNING id`,
+  insertIdentity: sql`INSERT INTO identities (provider, subject, user_id, email, created_at)
+    VALUES (${"provider"}, ${"subject"}, ${"userId"}, ${"email"}, ${"at"})`,
+  insertSession: sql`INSERT INTO sessions (id_hash, user_id, csrf, created_at, seen_at, expires_at)
+    VALUES (${"idHash"}, ${"userId"}, ${"csrf"}, ${"at"}, ${"at"}, ${"expiresAt"})`,
+  userById: sql`SELECT public_id, handle, name, email, avatar FROM users WHERE id = ${"userId"}`,
+  userProviders: sql`SELECT provider FROM identities WHERE user_id = ${"userId"} ORDER BY provider`,
+  sessionByHash: sql`SELECT s.user_id, s.csrf, s.seen_at, s.expires_at, u.public_id, u.handle, u.name, u.email,
+    u.avatar FROM sessions s JOIN users u ON u.id = s.user_id
+    WHERE s.id_hash = ${"idHash"} AND s.revoked_at IS NULL AND u.disabled_at IS NULL`,
+  touchSession: sql`UPDATE sessions SET seen_at = ${"at"} WHERE id_hash = ${"idHash"}`,
+};
+
+export const accountPlatformStatements: readonly (keyof typeof accountStatements)[] = Object.freeze(
+  Object.keys(accountStatements) as (keyof typeof accountStatements)[],
+);
+
+const bytes = (hex: string) => Uint8Array.from(Buffer.from(hex, "hex"));
+const text = (value: SqlValue | undefined) => (value === null || value === undefined ? null : String(value));
+
+async function personOf(db: Db, dialect: Dialect, userId: number, row: Row): Promise<PersonRecord> {
+  const providers = await query(db, dialect, accountStatements.userProviders, { userId });
+  return {
+    id: String(row.public_id),
+    handle: String(row.handle),
+    name: String(row.name),
+    email: text(row.email),
+    avatar: text(row.avatar),
+    providers: providers.map((provider) => String(provider.provider)),
+  };
+}
+
+/** The person holding the identity, refreshed from it, or a new one if admitted; null if refused or disabled. */
+async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<number | null> {
+  const { identity, now } = record;
+  const details = { handle: identity.login, name: identity.name, email: identity.email, avatar: identity.avatar };
+  const [known] = await query(tx, dialect, accountStatements.identityUser, identity);
+  if (known) {
+    if (known.disabled_at !== null) return null;
+    const userId = Number(known.id);
+    await query(tx, dialect, accountStatements.refreshUser, { ...details, userId });
+    await query(tx, dialect, accountStatements.refreshIdentity, identity);
+    return userId;
+  }
+  if (!record.admitNew) return null;
+  const [created] = await query(tx, dialect, accountStatements.insertUser, {
+    ...details,
+    publicId: record.newPersonId,
+    at: now,
+  });
+  const userId = Number(created?.id);
+  await query(tx, dialect, accountStatements.insertIdentity, { ...identity, userId, at: now });
+  return userId;
+}
+
+/** The platform's account methods, written once for both engines. */
+export function accountView(db: Db, dialect: Dialect): Omit<PlatformView, "findBoard"> {
+  return {
+    signIn: (record) =>
+      db.transaction(async (tx) => {
+        const userId = await holder(tx, dialect, record);
+        if (userId === null) return null;
+        const { idHash, csrf, expiresAt } = record.session;
+        const at = record.now;
+        await query(tx, dialect, accountStatements.insertSession, {
+          idHash: bytes(idHash),
+          userId,
+          csrf,
+          at,
+          expiresAt,
+        });
+        const [row] = await query(tx, dialect, accountStatements.userById, { userId });
+        if (!row) throw new Error(`user ${userId} vanished during its sign-in`);
+        return personOf(tx, dialect, userId, row);
+      }),
+    async session(idHash): Promise<SessionRecord | null> {
+      const [row] = await query(db, dialect, accountStatements.sessionByHash, { idHash: bytes(idHash) });
+      if (!row) return null;
+      const person = await personOf(db, dialect, Number(row.user_id), row);
+      return { person, csrf: String(row.csrf), seenAt: Number(row.seen_at), expiresAt: Number(row.expires_at) };
+    },
+    async touchSession(idHash, now) {
+      await query(db, dialect, accountStatements.touchSession, { idHash: bytes(idHash), at: now });
+    },
+  };
+}

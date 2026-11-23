@@ -1,5 +1,6 @@
 import { postgresText } from "./db.ts";
 import { render } from "./sql.ts";
+import { accountPlatformStatements, accountStatements } from "./views/accounts.ts";
 import { actorStatements } from "./views/actors.ts";
 import { agentStatements } from "./views/agents.ts";
 import { boardPlatformStatements, boardStatements } from "./views/boards.ts";
@@ -17,6 +18,7 @@ import { threadStatements } from "./views/threads.ts";
 export const statements: Readonly<Record<string, string>> = Object.freeze(
   Object.fromEntries(
     Object.entries({
+      ...accountStatements,
       ...actorStatements,
       ...agentStatements,
       ...boardStatements,
@@ -30,7 +32,10 @@ export const statements: Readonly<Record<string, string>> = Object.freeze(
 );
 
 /** Statements that run outside any tenant (accounts, sign-in); exempt from the tenant filter rule. */
-export const platformStatements: ReadonlySet<string> = new Set<string>(boardPlatformStatements);
+export const platformStatements: ReadonlySet<string> = new Set<string>([
+  ...accountPlatformStatements,
+  ...boardPlatformStatements,
+]);
 
 const PARAM = String.raw`(?:\?|\$\d+)(?:::[a-z_][a-z0-9_]*)?`;
 const TENANT = String.raw`(?:[a-z_][a-z0-9_]*\.)?(?:board_id|org_id)`;

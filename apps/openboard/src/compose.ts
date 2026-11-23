@@ -10,9 +10,11 @@ export function compose(config: Config, localOwnerTokenHash: string) {
     log: jsonLogger({ now }),
     requestId: () => crypto.randomUUID(),
     randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+    fetch: (request) => fetch(request, { redirect: "error" }),
   };
+  const { publicUrl, localOwner, signup, github } = config;
   return createApp(
-    { mode: "local", publicUrl: config.publicUrl, localOwner: config.localOwner, localOwnerTokenHash },
+    { mode: "local", publicUrl, localOwner, localOwnerTokenHash, signup, ...(github && { signIn: { github } }) },
     { store: sqliteDriver({ dir: config.dataDir, sync: config.sync }, deps.now) },
     deps,
   );
