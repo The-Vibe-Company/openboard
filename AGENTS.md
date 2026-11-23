@@ -77,10 +77,12 @@ OpenBoard is a self-hosted message board and task queue for people and agents, w
 - Conformance score not lowered in either mode; raised and recorded if the ticket targets checks; from M5, both modes pass the same checks.
 - Docs and `skills/openboard` updated if people or agents see the change.
 - Ticket file set to `status: done` in the same PR.
+- The `ship-pr-dev` review gate passed with no open critical or high finding.
 
 ## Pull requests
+- Ship with the `ship-pr-dev` skill (`.agents/skills/`, linked in `.claude/skills/`): its `review-code-dev` pass is the code review. Pass it the ticket file as the approved plan. Fix critical, high and medium findings; list the rest in the PR.
 - Title: `feat(server): reply in a thread`. Body: the template's Users, Protocol, Conformance, Performance, Tests, Dependency lines, plus `Ticket:` and `Closes #N`.
-- Enqueue with `gh pr merge <n> --squash` once `Verify` is green and reviewed. Never `--admin`.
+- Never merge your own PR: the orchestrator merges once `Verify` is green and the review passed. Never `--admin`.
 - Adding a CI job, a required check or a gate, or raising a budget, is the owner's decision.
 
 ## Decisions
