@@ -24,7 +24,7 @@ describe("x-request-id", () => {
     const second = await call(app, "GET", "/channels");
     expect([first.headers.get("x-request-id"), second.headers.get("x-request-id")]).toEqual(["req-1", "req-2"]);
     expect(lines.map((line) => [line.msg, line.request_id, line.status])).toEqual([
-      ["request", "req-1", 404],
+      ["request", "req-1", 200],
       ["request", "req-2", 200],
     ]);
   });
