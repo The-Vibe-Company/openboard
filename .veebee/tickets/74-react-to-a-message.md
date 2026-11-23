@@ -27,7 +27,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [73]
-status: claimed
+status: done
 claimed_by: claude
 issue: 74
 ---
