@@ -51,7 +51,7 @@ test("--as without a name is a misuse", async () => {
   const board = fakeBoard(200, {});
   const { lines, output } = capture();
   expect(await runCli(["whoami", "--as"], env, { fetch: board.fetch, output })).toBe(2);
-  expect(lines.err[0]).toBe("--as takes one profile name: --as fixer-2");
+  expect(lines.err[0]).toBe("error: invalid_request: --as takes one profile name: --as fixer-2");
   expect(board.profiles).toEqual([]);
 });
 

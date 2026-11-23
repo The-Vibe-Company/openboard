@@ -21,6 +21,7 @@ export interface Command {
 
 export class Misuse extends Error {}
 
+export { connectCommand, type ConnectContext } from "./connect.ts";
 export { createConnectionCommand } from "./connections.ts";
 export { derivedCommands } from "./derived.ts";
 export { messagesCommand } from "./messages.ts";
