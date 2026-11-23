@@ -1,4 +1,5 @@
 export * from "./entities/messages.ts";
+export * from "./entities/threads.ts";
 export {
   BoardError,
   type BoardErrorOptions,
@@ -24,5 +25,5 @@ export {
   refKind,
   type Scope,
 } from "./operation.ts";
-export { listMessages, operations, postMessage } from "./operations/index.ts";
+export { listMessages, operations, postMessage, readThread } from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

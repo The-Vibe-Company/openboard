@@ -69,7 +69,10 @@ export type Operation<
   /** The success status: 200 unless the operation creates something. */
   readonly status?: 200 | 201;
   readonly errors: readonly ErrorCode[];
-  readonly access: { readonly permission: "read" | "post" | "manage"; readonly channel: "fromInput" | "any" } | null;
+  readonly access: {
+    readonly permission: "read" | "post" | "manage";
+    readonly channel: "fromInput" | "fromMessage" | "any";
+  } | null;
   readonly effects: {
     readonly readOnly: boolean;
     readonly idempotent: boolean;
