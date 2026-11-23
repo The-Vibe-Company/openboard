@@ -3,6 +3,7 @@ import { type AgentClaimed, type AgentRefreshed, isoTime } from "@openboard/core
 import type { AgentRecord, BoardKeys, BoardScope, BoardView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
 import { query, sql } from "../sql.ts";
+import { spendClaim } from "./connections.ts";
 
 export const agentStatements = {
   insertAgent: sql`INSERT INTO connection_agents (id, org_id, board_id, connection, profile, profile_key, can,
@@ -21,7 +22,7 @@ export const agentStatements = {
 const bytesOf = (hex: string) => Uint8Array.from(Buffer.from(hex, "hex"));
 const hexOf = (bytes: unknown) => Buffer.from(bytes as Uint8Array).toString("hex");
 
-/** The fold of `ob.agent.claimed`: the agent's row, holding its token's hash, never the token. */
+/** The fold of `ob.agent.claimed`: the agent's row, holding its token's hash, never the token; one more claim counted. */
 export async function foldAgentClaimed(tx: Db, dialect: Dialect, keys: BoardKeys, event: AgentClaimed) {
   const { agent, connection, profile, tokenHash, tokenExpires, hardExpires } = event.payload;
   await query(tx, dialect, agentStatements.insertAgent, {
@@ -36,6 +37,7 @@ export async function foldAgentClaimed(tx: Db, dialect: Dialect, keys: BoardKeys
     hardExpires,
     at: event.at,
   });
+  await spendClaim(tx, dialect, keys, connection);
 }
 
 /** The fold of `ob.agent.refreshed`: the new token's hash, and its predecessor's until it stops working. */

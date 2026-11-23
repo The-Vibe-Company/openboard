@@ -172,6 +172,10 @@
             "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
+          "410": {
+            "description": "secret_spent",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
           "500": {
             "description": "internal",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
@@ -414,7 +418,8 @@
                     "default": ["*"],
                     "type": "array",
                     "items": { "pattern": "^(?:\\*|[A-Za-z][A-Za-z0-9-]{0,30}\\*?)$", "type": "string" }
-                  }
+                  },
+                  "claims": { "anyOf": [{ "minimum": 1, "maximum": 1000000, "type": "integer" }, { "type": "null" }] }
                 }
               }
             }

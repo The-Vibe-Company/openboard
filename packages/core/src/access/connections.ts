@@ -17,6 +17,8 @@ export interface CreateConnectionCommand {
   readonly can: CanInput;
   readonly direct?: boolean;
   readonly profiles?: readonly string[];
+  /** How many claims the secret makes before it is spent; null or absent, no limit. */
+  readonly claims?: number | null;
 }
 
 /** The minted credential: the server draws it, core never sees the secret itself. */
@@ -43,6 +45,8 @@ export interface ConnectionCreated {
   readonly payload: {
     readonly connection: Connection;
     readonly secretHash: string;
+    /** How many claims the secret makes before it is spent, or null for no limit. */
+    readonly claims: number | null;
     readonly grant: Grant;
     readonly by: Author;
   };
@@ -94,7 +98,7 @@ export function decideCreate(
     actor: by.actor,
     principal: by.principal,
     visibility: 2,
-    payload: { connection, secretHash: secret.hash, grant, by },
+    payload: { connection, secretHash: secret.hash, claims: command.claims ?? null, grant, by },
   };
   return { connection, events: [event] };
 }

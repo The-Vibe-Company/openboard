@@ -69,6 +69,7 @@ describe("connections.decideCreate", () => {
       can: connection.can,
     });
     expect(event.payload.secretHash).toBe(secret.hash);
+    expect(event.payload.claims).toBeNull();
   });
 
   test("refuses a name the board already uses as slug_taken", () => {

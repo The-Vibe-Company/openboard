@@ -113,3 +113,17 @@ describe("ob connections create", () => {
     expect(lines.err[0]).toContain(problem);
   });
 });
+
+describe("ob connections create --claims", () => {
+  test("sends --claims as a number, and refuses one that is not a positive whole number before asking", async () => {
+    const fake = board(201, created);
+    const { lines, output } = capture();
+    const argv = ["connections", "create", "sandbox", "--can", "dev/=post", "--claims"];
+    const file = ["--secret-file", join(dir, "sandbox.secret")];
+    expect(await runCli([...argv, "1", ...file], env, { fetch: fake.fetch, output })).toBe(0);
+    expect(fake.seen[0]?.body).toEqual({ name: "sandbox", can: { "dev/": ["post"] }, direct: false, claims: 1 });
+    expect(await runCli([...argv, "0", ...file], env, { fetch: fake.fetch, output })).toBe(2);
+    expect(fake.seen).toHaveLength(1);
+    expect(lines.err.join("\n")).toContain("--claims takes a positive whole number");
+  });
+});

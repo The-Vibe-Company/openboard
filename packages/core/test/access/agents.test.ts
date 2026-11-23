@@ -10,6 +10,7 @@ const connection = {
   can: { "dev/": ["read" as const, "post" as const] },
   tokenTtl: 3600,
   tokenMax: 86_400,
+  claims: { max: null, used: 0 },
 };
 const token = { id: "ag_bbbbbbbbbbbbbbbb", hash: "ef".repeat(32) };
 const claim = (command: Parameters<typeof decideClaim>[1]) =>
@@ -63,6 +64,13 @@ describe("claiming an agent token", () => {
 
   test("refuses a profile the connection's patterns do not let in with 403 forbidden", () => {
     expect(() => claim({ profile: "reviewer" })).toThrow(expect.objectContaining({ code: "forbidden" }));
+  });
+
+  test("spends a single-use secret on its first claim: the next answers 410 secret_spent", () => {
+    const at = (used: number) => ({ by, now: NOW, connection: { ...connection, claims: { max: 1, used } }, token });
+    expect(decideClaim({ head: 7 }, { profile: "fixer-2" }, at(0)).agent.id).toBe(token.id);
+    const spent = () => decideClaim({ head: 7 }, { profile: "fixer-2" }, at(1));
+    expect(spent).toThrow(expect.objectContaining({ code: "secret_spent", status: 410 }));
   });
 
   test("reads lifetimes in seconds, minutes, hours and days, and refuses anything else", () => {

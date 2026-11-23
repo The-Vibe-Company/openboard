@@ -4,17 +4,18 @@ import type { BoardView } from "../../src/index.ts";
 import { type OpenStore, testScope } from "../index.ts";
 
 const by = { actor: "ob:user:local-test", principal: "ob:user:local-test", profile: null };
+const claims = { max: null, used: 0 };
 const secret = (letter: string) => ({ id: `cn_${letter.repeat(16)}`, hash: "cd".repeat(32), hint: "obc_…" });
 
 /** Creates a connection named `name` the way the server does: decided under the lock from what the writer reads. */
-function create(board: BoardView, name: string, letter: string) {
+function create(board: BoardView, name: string, letter: string, claims: number | null = null) {
   return board.write(async (writer) => {
     const state = {
       head: writer.head,
       nextGrant: await writer.nextGrant(),
       nameTaken: await writer.connectionNamed(name),
     };
-    const command = { name, can: { "*": "all" as const }, direct: true };
+    const command = { name, can: { "*": "all" as const }, direct: true, claims };
     const decided = connections.decideCreate(state, command, { by, now: 1_700_000_000_000, secret: secret(letter) });
     await writer.append(decided.events);
     return decided.connection;
@@ -36,6 +37,7 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
         secretHash: "cd".repeat(32),
         tokenTtl: 3600,
         tokenMax: 86_400,
+        claims: { max: null, used: 0 },
       });
       const ci = await create(board, "ci", "b");
       expect(ci.grant).toBe("g5");
@@ -60,7 +62,7 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
       if (!keys) throw new Error("the implicit board local/main is missing");
       const board = store.board(testScope(keys));
       const fixers = await create(board, "fixers", "a");
-      const connection = { ...fixers, profiles: ["fixer-*"], tokenTtl: 3600, tokenMax: 86_400 };
+      const connection = { ...fixers, profiles: ["fixer-*"], tokenTtl: 3600, tokenMax: 86_400, claims };
       const token = { id: `ag_${"b".repeat(16)}`, hash: "ef".repeat(32) };
       const agent = await board.write(async (writer) => {
         const context = {
@@ -91,6 +93,37 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
     }
   });
   agentRefreshSuite(driver, open);
+  claimsSuite(driver, open);
+}
+
+/** A connection keeps how many claims its secret makes, and counts each claim in the claim's write. */
+function claimsSuite(driver: string, open: OpenStore): void {
+  test(`${driver}: a single-use connection counts its claim under the lock, in the claim's write`, async () => {
+    const store = await open();
+    try {
+      const keys = await store.platform().findBoard("local", "main");
+      if (!keys) throw new Error("the implicit board local/main is missing");
+      const board = store.board(testScope(keys));
+      const sandbox = await create(board, "sandbox", "a", 1);
+      expect((await board.connection(sandbox.id))?.claims).toEqual({ max: 1, used: 0 });
+      const actor = { ...by, actor: sandbox.principal, principal: sandbox.principal };
+      const used = await board.write(async (writer) => {
+        const record = await writer.connection(sandbox.id);
+        if (!record) throw new Error("the connection is missing under the lock");
+        const connection = { ...sandbox, tokenTtl: 3600, tokenMax: 86_400, claims: record.claims };
+        const context = { by: actor, now: 0, connection, token: { id: `ag_${"b".repeat(16)}`, hash: "ef".repeat(32) } };
+        await writer.append(agents.decideClaim({ head: writer.head }, { profile: "fixer-2" }, context).events);
+        return (await writer.connection(sandbox.id))?.claims;
+      });
+      expect(used).toEqual({ max: 1, used: 1 });
+      expect((await board.connection(sandbox.id))?.claims).toEqual({ max: 1, used: 1 });
+      await board.write(async (writer) => {
+        expect(await writer.connection(`cn_${"c".repeat(16)}`)).toBeNull();
+      });
+    } finally {
+      await store.close();
+    }
+  });
 }
 
 /** A refresh rotates the agent's token hash, keeping its predecessor's for 60 s. */
@@ -102,7 +135,7 @@ function agentRefreshSuite(driver: string, open: OpenStore): void {
       if (!keys) throw new Error("the implicit board local/main is missing");
       const board = store.board(testScope(keys));
       const fixers = await create(board, "fixers", "a");
-      const connection = { ...fixers, profiles: ["*"], tokenTtl: 3600, tokenMax: 86_400 };
+      const connection = { ...fixers, profiles: ["*"], tokenTtl: 3600, tokenMax: 86_400, claims };
       const id = `ag_${"b".repeat(16)}`;
       const actor = { ...by, actor: fixers.principal, principal: fixers.principal };
       await board.write(async (writer) => {

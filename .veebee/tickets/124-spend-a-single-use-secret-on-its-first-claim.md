@@ -11,11 +11,20 @@ writes:
   - packages/server/test/connections.test.ts
   - packages/ports/src/store.ts
   - packages/server/test/auth/single-use.test.ts
+  - packages/core/src/access/agents.ts
+  - packages/core/src/access/connections.ts
+  - packages/core/test/access/agents.test.ts
+  - packages/core/test/access/grants.test.ts
+  - packages/driver-sql/src/views/agents.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/cli/src/commands/connections.ts
+  - packages/cli/test/connections.test.ts
+  - packages/server/openapi.json
 conformance: []
 modes: [local]
 depends_on: [123]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t124
 issue: 125
 ---
 
