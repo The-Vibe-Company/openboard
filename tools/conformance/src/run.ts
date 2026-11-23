@@ -1,8 +1,9 @@
-import { argv, execPath } from "node:process";
+import process, { argv, execPath } from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import type { CheckGroup, CheckResult } from "@vercel/board/conformance";
 import { boot } from "./drivers";
+import { lostChecks, type Score } from "./score";
 
 const groups: readonly CheckGroup[] = [
   "core",
@@ -69,9 +70,15 @@ if (instances !== "1" && (instances !== "2" || driver === "sqlite")) {
   throw new Error("--instances must be 1, or 2 with --driver postgres");
 }
 
+const mode = driver === "sqlite" ? "local" : "hosted";
+const score = (await Bun.file(new URL("../score.json", import.meta.url)).json()) as Score;
 const server = await boot(driver, Number(instances));
 try {
-  printTable(await runKit(server.url));
+  const checks = await runKit(server.url);
+  printTable(checks);
+  const lost = lostChecks(score[mode], checks);
+  for (const name of lost) console.error(`Lost conformance check (${mode}): ${name}`);
+  if (lost.length > 0) process.exitCode = 1;
 } finally {
   await server.close();
 }
