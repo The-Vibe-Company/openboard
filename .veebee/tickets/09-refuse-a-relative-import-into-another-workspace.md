@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [08]
-status: ready
-claimed_by: null
+status: claimed
+claimed_by: claude-code-t09
 issue: 9
 ---
 
@@ -18,7 +18,7 @@ issue: 9
 As a contributor, I can only reach another workspace through its package name.
 
 ## Done when
-- [ ] `import "../../contract/src/errors"` in `packages/core/src` makes `bun run lint` exit 1 naming the path
+- [x] `import "../../contract/src/errors"` in `packages/core/src` makes `bun run lint` exit 1 naming the path
 
 ## Out of scope
 - The workspace edge rule (06).

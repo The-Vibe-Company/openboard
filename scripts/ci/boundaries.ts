@@ -1,9 +1,9 @@
-// Refuses an import the allow-list graph forbids, and a package.json that disagrees with its
-// workspace's imports (docs/codebase.md 3.1, 3.3 point 1).
+// Refuses an import the allow-list graph forbids, a relative import that leaves its workspace, and
+// a package.json that disagrees with its workspace's imports (docs/codebase.md 3.1, 3.3 point 1).
 // Data: scripts/ci/boundaries.json. Run by `bun run lint`.
 import { isUtf8 } from "node:buffer";
 import { readdir, readFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, join, posix } from "node:path";
 
 export type Rule = { may: string[]; types?: string[]; external: string[] };
 export type Config = { graph: Record<string, Rule>; tests: { external: string[] }; denyTerms: string[] };
@@ -128,6 +128,12 @@ function isBare(specifier: string): boolean {
   return !specifier.startsWith(".") && !specifier.startsWith("/");
 }
 
+/** Resolves a path specifier against the importing file, as a repo-relative POSIX path. */
+export function resolveImport(file: string, specifier: string): string {
+  const base = specifier.startsWith("/") ? specifier.slice(1) : posix.join(posix.dirname(file), specifier);
+  return posix.normalize(base);
+}
+
 /** The rule for a file: the longest graph key that contains it. */
 function ruleFor(config: Config, file: string): Rule | undefined {
   const keys = Object.keys(config.graph).filter((key) => file.startsWith(`${key}/`));
@@ -149,15 +155,33 @@ function describeAllowed(rule: Rule): string {
 }
 
 type FileContext = {
+  file: string;
   workspace: Workspace;
+  workspaces: Workspace[];
   byName: Map<string, Workspace>;
   rule: Rule;
   test: boolean;
   testExternal: string[];
 };
 
+/**
+ * Checks a path import: a workspace reaches another only by package name, never by a relative or
+ * absolute path (docs/codebase.md 3.1 universal rules). Returns the reason it is refused, or null.
+ */
+function checkPathImport(ctx: FileContext, specifier: string): string | null {
+  const resolved = resolveImport(ctx.file, specifier);
+  const target = ctx.workspaces
+    .filter((workspace) => resolved === workspace.dir || resolved.startsWith(`${workspace.dir}/`))
+    .sort((a, b) => b.dir.length - a.dir.length)[0];
+  if (target?.dir === ctx.workspace.dir) return null;
+  const edge = `${ctx.workspace.short} -> ${target?.short ?? resolved} (${specifier})`;
+  if (target) return `${edge} is a relative import into another workspace; import ${target.name} by its package name`;
+  return `${edge} is a relative import outside its workspace; import another workspace by its package name`;
+}
+
 /** Checks one import of one file; returns the reason it is refused, or null. */
 function checkImport(ctx: FileContext, specifier: string, typeOnly: boolean): string | null {
+  if (!isBare(specifier)) return checkPathImport(ctx, specifier);
   const { workspace, rule } = ctx;
   if (ctx.test && matchesExternal(specifier, ctx.testExternal)) return null;
   const target = ctx.byName.get(packageOf(specifier));
@@ -191,7 +215,6 @@ async function checkFile(root: string, file: string, ctx: FileContext): Promise<
   if ("message" in imports) return [imports];
   const violations: Violation[] = [];
   for (const specifier of [...imports.all].sort()) {
-    if (!isBare(specifier)) continue;
     const message = checkImport(ctx, specifier, !imports.values.has(specifier));
     if (message) violations.push({ file, message });
   }
@@ -213,7 +236,9 @@ export async function checkBoundaries(root: string, config: Config): Promise<Vio
       const rule = ruleFor(config, file);
       if (!rule) continue;
       const ctx = {
+        file,
         workspace,
+        workspaces,
         byName,
         rule,
         test: isTestFile(workspace, file),
