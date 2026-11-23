@@ -20,8 +20,8 @@ writes:
 conformance: []
 modes: []
 depends_on: []
-status: ready
-claimed_by: null
+status: claimed
+claimed_by: claude-0ad7d5d1
 issue: 1
 ---
 
