@@ -31,11 +31,12 @@ writes:
   - packages/server/src/auth/chain.ts
   - packages/server/src/auth/sessions.ts
   - packages/server/src/deps.ts
+  - packages/server/src/auth/author.ts
   - packages/server/src/http/pipeline.ts
 conformance: []
 modes: [local]
 depends_on: [133]
-status: claimed
+status: done
 claimed_by: claude-opus-5-5
 issue: 135
 ---

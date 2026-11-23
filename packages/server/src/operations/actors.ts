@@ -49,7 +49,7 @@ const ROLE_CAN = {
 /** A signed-in person: as their sign-in shows them, with their role in the board's organization. */
 function sessionMe(by: Principal, member: SessionMember): Me {
   const { actor, principal, profile } = by;
-  const { kind, handle, name, avatar } = profile === null ? { kind: "person" as const, ...member } : authorOf(by);
+  const { kind, handle, name, avatar } = authorOf(by);
   const { role, org, board } = member;
   const can = { "*": [...ROLE_CAN[role]] };
   return {

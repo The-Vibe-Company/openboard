@@ -126,3 +126,25 @@ test("a session at a board of an organization the person is not in answers not f
   expect(await errorCode(refused)).toBe("not_found");
   expect((await get(app, "/api/local/main/me", ada)).status).toBe(404);
 });
+
+test("a session writes on its organization's board as the person, and only with the CSRF proof", async () => {
+  const { app, at } = await start("ada");
+  const ada = at(0);
+  expect((await createOrg(app, { name: "Acme", slug: "acme" }, ada)).status).toBe(201);
+  const post = (headers: Record<string, string>) =>
+    app.fetch(
+      new Request(`${PUBLIC_URL}/api/acme/main/messages`, {
+        method: "POST",
+        headers: { cookie: ada.cookie, "content-type": "application/json", ...headers },
+        body: JSON.stringify({ channel: "dev", text: "hello" }),
+      }),
+    );
+  const refused = await post({ origin: PUBLIC_URL });
+  expect(refused.status).toBe(403);
+  expect(await errorCode(refused)).toBe("forbidden");
+  const posted = await post({ origin: PUBLIC_URL, "x-ob-csrf": ada.csrf });
+  expect(posted.status).toBe(201);
+  expect(await posted.json()).toMatchObject({
+    message: { author: { kind: "person", handle: "ada", name: "ada", avatar: null } },
+  });
+});
