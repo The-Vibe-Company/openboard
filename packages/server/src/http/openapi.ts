@@ -22,6 +22,8 @@ function errorResponses(operation: Operation) {
   if (operation.scope !== "public") {
     codes.add("unauthorized");
     codes.add("not_found");
+    codes.add("invalid_profile");
+    codes.add("forbidden");
   }
   const responses: Record<number, { description: string; content: object }> = {};
   for (const code of codes) {

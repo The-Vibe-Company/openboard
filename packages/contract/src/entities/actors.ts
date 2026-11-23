@@ -1,12 +1,12 @@
 import { Type } from "@sinclair/typebox";
-import { Author } from "./messages.ts";
+import { ActorKind, Author } from "./messages.ts";
 
 const tenant = Type.Object({ slug: Type.String(), name: Type.String() });
 
 export const Me = Type.Object({
   ...Author.properties,
-  /** Upstream's actor kinds: `person` for the local owner; `workflow` for a connection's secret (D45). */
-  kind: Type.Union([Type.Literal("person"), Type.Literal("workflow")]),
+  /** `person` for the local owner, `workflow` for a connection's secret (D45), `agent` for a profile of either. */
+  kind: ActorKind,
   handle: Type.String(),
   name: Type.String(),
   avatar: Type.Null(),

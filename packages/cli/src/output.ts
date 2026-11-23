@@ -29,10 +29,22 @@ export function printError(output: Output, error: BoardError): void {
   }
 }
 
-/** A message on one line: its ID, then the first line of its text. */
-export function messageLine(message: { readonly id: string; readonly text: string }): string {
+type Written = {
+  readonly id: string;
+  readonly text: string;
+  readonly author?: { readonly name: string; readonly via?: { readonly name: string } } | null;
+};
+
+/** Who wrote a message as upstream shows it: `fixer-2 via laptop`, or the author's name alone. */
+function authorText(author: NonNullable<Written["author"]>): string {
+  return author.via ? `${author.name} via ${author.via.name}` : author.name;
+}
+
+/** A message on one line: its ID, who wrote it when the board says, then the first line of its text. */
+export function messageLine(message: Written): string {
   const [first = "", ...rest] = message.text.trim().split(/\r?\n/);
-  return `#${message.id}  ${first.trimEnd()}${rest.length > 0 ? " …" : ""}`;
+  const by = message.author ? `${authorText(message.author)}: ` : "";
+  return `#${message.id}  ${by}${first.trimEnd()}${rest.length > 0 ? " …" : ""}`;
 }
 
 /** A word as a shell reads it back: quoted unless it is plain. */

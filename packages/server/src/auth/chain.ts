@@ -1,6 +1,7 @@
-import { BoardError } from "@openboard/contract";
+import { BoardError, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
+import { connections } from "@openboard/core";
 import type { BoardView } from "@openboard/ports";
-import type { Principal, ServerConfig } from "../deps.ts";
+import { connectionOf, type Principal, profileName, type ServerConfig } from "../deps.ts";
 import { connectionVerifier } from "./connections.ts";
 import { localOwnerVerifier } from "./local-owner.ts";
 
@@ -31,8 +32,28 @@ function noCredential(): BoardError {
 }
 
 /**
+ * The profile `x-board-profile` picks, written as `principal+profile` (docs/auth.md "Upstream's model", points 2-3).
+ * A connection writes only as a profile its `profiles` patterns let in, else 403 `forbidden`; names compare
+ * case-insensitively, so the actor and profile are lowercase; the spelling sent is the one shown.
+ */
+function withProfile(request: Request, principal: Principal): Principal {
+  const header = request.headers.get(PROFILE_HEADER);
+  if (header === null) return principal;
+  const { name } = parseProfileHeader(header);
+  const connection = principal[connectionOf];
+  if (connection && !connections.profileAllowed(connection.profiles, name)) {
+    throw new BoardError("forbidden", `this connection may not write as ${name}`, {
+      hint: `Pick a profile its patterns let in: ${connection.profiles.join(", ")}.`,
+    });
+  }
+  const profile = name.toLowerCase();
+  return { ...principal, actor: `${principal.principal}+${profile}`, profile, [profileName]: name };
+}
+
+/**
  * Who a request writes as on `board`: the first verifier that matches decides, and a credential it refuses is 401
- * `unauthorized`. A request no verifier matches carries no credential and is 401 `unauthorized` too.
+ * `unauthorized`. A request no verifier matches carries no credential and is 401 `unauthorized` too. A verified
+ * caller then writes as the profile `x-board-profile` names, if any.
  */
 export async function authenticate(
   request: Request,
@@ -43,5 +64,5 @@ export async function authenticate(
   if (!verifier) throw noCredential();
   const principal = await verifier.verify(request, board);
   if (!principal) throw new BoardError("unauthorized", "the credential is not valid on this board");
-  return principal;
+  return withProfile(request, principal);
 }

@@ -98,3 +98,15 @@ export function decideCreate(
   };
   return { connection, events: [event] };
 }
+
+/**
+ * Whether a connection whose `profiles` are `patterns` may write as `name`: `*` lets any in, `fixer-*` any name that
+ * starts with `fixer-`, and a plain pattern only that name; names compare case-insensitively.
+ */
+export function profileAllowed(patterns: readonly string[], name: string): boolean {
+  const wanted = name.toLowerCase();
+  return patterns.some((pattern) => {
+    const lower = pattern.toLowerCase();
+    return lower.endsWith("*") ? wanted.startsWith(lower.slice(0, -1)) : wanted === lower;
+  });
+}

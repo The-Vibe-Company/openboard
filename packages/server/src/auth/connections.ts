@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import type { BoardView } from "@openboard/ports";
-import { credentialKind, type Principal } from "../deps.ts";
+import { connectionOf, credentialKind, type Principal } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { bearer, hashToken } from "./secrets.ts";
 
@@ -18,14 +18,20 @@ export function connectionVerifier(): CredentialVerifier {
     match: (request) => bearer(request)?.startsWith(PREFIX) ?? false,
     async verify(request: Request, board: BoardView): Promise<Principal | null> {
       const secret = bearer(request) ?? "";
-      const name = SECRET.exec(secret)?.[1];
-      if (name === undefined) return null;
-      const record = await board.connection(`cn_${name}`);
+      const id = SECRET.exec(secret)?.[1];
+      if (id === undefined) return null;
+      const record = await board.connection(`cn_${id}`);
       if (!record?.connection.direct) return null;
       const presented = Buffer.from(hashToken(secret), "hex");
       if (!timingSafeEqual(presented, Buffer.from(record.secretHash, "hex"))) return null;
-      const { principal } = record.connection;
-      return { actor: principal, principal, profile: null, [credentialKind]: "connection" };
+      const { principal, name, profiles } = record.connection;
+      return {
+        actor: principal,
+        principal,
+        profile: null,
+        [credentialKind]: "connection",
+        [connectionOf]: { name, profiles },
+      };
     },
   };
 }
