@@ -10,8 +10,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [16]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-t18
 issue: 18
 ---
 
