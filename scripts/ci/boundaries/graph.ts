@@ -14,6 +14,7 @@ const TEST_FILE = /\.test\.[cm]?[jt]sx?$/;
 const SERVER = "packages/server";
 const PROVIDERS = `${SERVER}/src/auth/providers`;
 const REGISTRY = `${PROVIDERS}/index.ts`;
+const TEST_STORE_ROOT = `${SERVER}/test/support/drivers`;
 
 /** The rule for a file: the longest graph key that contains it. */
 function ruleFor(config: Config, file: string): Rule | undefined {
@@ -72,6 +73,10 @@ function checkProviderImport(ctx: FileContext, specifier: string): string | null
  */
 function checkPathImport(ctx: FileContext, specifier: string): string | null {
   const resolved = resolveImport(ctx.file, specifier);
+  const modulePath = resolved.replace(/\.[cm]?[jt]sx?$/, "");
+  if (ctx.file.startsWith(`${SERVER}/src/`) && modulePath === TEST_STORE_ROOT) {
+    return `the unscoped Store factory in ${TEST_STORE_ROOT}.ts is only available to server tests`;
+  }
   const target = ctx.workspaces
     .filter((workspace) => resolved === workspace.dir || resolved.startsWith(`${workspace.dir}/`))
     .sort((a, b) => b.dir.length - a.dir.length)[0];

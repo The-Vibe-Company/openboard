@@ -1,0 +1,7 @@
+{
+  "name": "store-boundary-fixture",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ]
+}
