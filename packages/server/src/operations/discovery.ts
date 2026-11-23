@@ -1,5 +1,6 @@
-import { type discoverBoard, UPSTREAM_VERSION } from "@openboard/contract";
+import { type discoverBoard, type getOpenApi, UPSTREAM_VERSION } from "@openboard/contract";
 import manifest from "../../package.json" with { type: "json" };
+import { createOpenApi } from "../http/openapi.ts";
 import type { Handler } from "./index.ts";
 
 /** `openboard/<version> (board-protocol <upstream version>)`; every manifest carries the one shared version. */
@@ -14,3 +15,5 @@ export const discoverBoardHandler: Handler<typeof discoverBoard> = async (ctx) =
   project_id: null,
   sync: [],
 });
+
+export const getOpenApiHandler: Handler<typeof getOpenApi> = async () => createOpenApi();

@@ -1,3 +1,5 @@
+import { type Static, Type } from "@sinclair/typebox";
+
 /**
  * Every error code the board answers, with its HTTP status (docs/codebase.md 5.3). Upstream's codes are kept verbatim:
  * every code of `docs/04-reference/03-http.md` (its "Errors" table and the codes its sections name); OpenBoard's own are
@@ -135,20 +137,24 @@ function catalog(): Readonly<Record<ErrorCode, ErrorSpec>> {
 
 export const ERRORS = catalog();
 
-/** A way out of an error: at most two per error (docs/codebase.md 5.3). */
-export type NextStep =
-  | { readonly kind: "run"; readonly argv: readonly string[] }
-  | { readonly kind: "call"; readonly operation: string; readonly input: unknown }
-  | { readonly kind: "wait"; readonly seconds: number }
-  | { readonly kind: "read"; readonly url: string };
+/** A way out of an error (docs/codebase.md 5.3). */
+const NextStep = Type.Union([
+  Type.Object({ kind: Type.Literal("run"), argv: Type.Unsafe<readonly string[]>(Type.Array(Type.String())) }),
+  Type.Object({ kind: Type.Literal("call"), operation: Type.String(), input: Type.Unknown() }),
+  Type.Object({ kind: Type.Literal("wait"), seconds: Type.Number() }),
+  Type.Object({ kind: Type.Literal("read"), url: Type.String() }),
+]);
+export type NextStep = Readonly<Static<typeof NextStep>>;
 
-export interface ErrorBody {
-  readonly code: string;
-  readonly message: string;
-  readonly reason?: string;
-  readonly hint?: string;
-  readonly next?: readonly NextStep[];
-}
+const ErrorBody = Type.Object({
+  code: Type.String(),
+  message: Type.String(),
+  reason: Type.Optional(Type.String()),
+  hint: Type.Optional(Type.String()),
+  next: Type.Optional(Type.Unsafe<readonly NextStep[]>(Type.Array(NextStep, { maxItems: 2 }))),
+});
+export type ErrorBody = Readonly<Static<typeof ErrorBody>>;
+export const ErrorEnvelope = Type.Object({ error: ErrorBody });
 
 export interface BoardErrorOptions {
   readonly reason?: string;

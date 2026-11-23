@@ -10,6 +10,7 @@ export {
   ERRORS,
   type ErrorBody,
   type ErrorCode,
+  ErrorEnvelope,
   isErrorCode,
   type NextStep,
 } from "./errors.ts";
@@ -32,6 +33,7 @@ export {
 export {
   discoverBoard,
   getMe,
+  getOpenApi,
   listChannels,
   listMessages,
   operations,
