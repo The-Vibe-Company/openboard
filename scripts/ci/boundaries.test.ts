@@ -2,10 +2,11 @@ import { afterEach, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { checkBoundaries, checkConfig, findWorkspaces, loadConfig, scanImports } from "./boundaries.ts";
+import { checkBoundaries, checkConfig, checkManifests, findWorkspaces, loadConfig, scanImports } from "./boundaries.ts";
 
 const repo = join(import.meta.dir, "..", "..");
 const fixtures = join(import.meta.dir, "fixtures", "boundaries", "graph");
+const manifestFixtures = join(import.meta.dir, "fixtures", "boundaries", "manifest");
 const config = await loadConfig(join(import.meta.dir, "boundaries.json"));
 const workspaces = await findWorkspaces(repo);
 const roots: string[] = [];
@@ -42,6 +43,7 @@ async function messages(files: Record<string, string>): Promise<string[]> {
 test("the repository itself passes", async () => {
   expect(checkConfig(config, workspaces)).toEqual([]);
   expect(await checkBoundaries(repo, config)).toEqual([]);
+  expect(await checkManifests(repo, config)).toEqual([]);
 });
 
 test("refuses core importing server, naming the edge", async () => {
@@ -166,4 +168,65 @@ test("finds every form of type-only import", () => {
   const { values, all } = scanImports("x.ts", source);
   expect([...values].sort()).toEqual(["t", "v"]);
   expect([...all].sort()).toEqual(["a", "b", "c", "f", "g", "h", "t", "v"]);
+});
+
+async function manifestFixture(kind: "refused" | "allowed", files: string[]): Promise<Record<string, string>> {
+  const read = (file: string) => readFile(join(manifestFixtures, kind, file), "utf8");
+  return Object.fromEntries(await Promise.all(files.map(async (file) => [file, await read(file)])));
+}
+
+/** Manifest violations of the workspaces the given files belong to; the sandbox holds no other source. */
+async function manifestMessages(files: Record<string, string>): Promise<string[]> {
+  const dirs = Object.keys(files).map((file) => file.split("/").slice(0, 2).join("/"));
+  const violations = await checkManifests(await sandbox(files), config);
+  return violations
+    .filter((violation) => dirs.some((dir) => violation.file.startsWith(`${dir}/`)))
+    .map((violation) => `${violation.file}: ${violation.message}`);
+}
+
+test("refuses an import the workspace's package.json does not declare, naming the package", async () => {
+  const found = await manifestMessages(await manifestFixture("refused", ["packages/core/src/contract.ts"]));
+  expect(found).toEqual([
+    "packages/core/src/contract.ts: core imports @openboard/contract, which packages/core/package.json does not declare",
+  ]);
+});
+
+test("refuses a declared dependency outside the workspace's allow-list, naming it", async () => {
+  const found = await manifestMessages(await manifestFixture("refused", ["packages/contract/package.json"]));
+  expect(found).toEqual([
+    "packages/contract/package.json: contract declares zod (dependencies), which is not in its allow-list; it may import no workspace; external @sinclair/typebox",
+  ]);
+});
+
+test("refuses a declared dependency no file imports", async () => {
+  const found = await manifestMessages(await manifestFixture("refused", ["packages/sdk/package.json"]));
+  expect(found).toEqual([
+    "packages/sdk/package.json: sdk declares @openboard/contract (dependencies), which no file imports",
+  ]);
+});
+
+test("accepts declared imports, test-only dev dependencies and @types packages", async () => {
+  const files = [
+    "packages/core/package.json",
+    "packages/core/src/contract.ts",
+    "packages/ports/package.json",
+    "packages/ports/test/support/contract.ts",
+  ];
+  expect(await manifestMessages(await manifestFixture("allowed", files))).toEqual([]);
+});
+
+test("a workspace allowed only for type imports may still be declared", async () => {
+  const manifest = JSON.stringify({ name: "@openboard/ports", dependencies: { "@openboard/core": "workspace:*" } });
+  const source = 'export type * from "@openboard/core";\n';
+  expect(
+    await manifestMessages({ "packages/ports/package.json": manifest, "packages/ports/src/core.ts": source }),
+  ).toEqual([]);
+});
+
+test("refuses an @types package for a module the workspace may not import", async () => {
+  const manifest = JSON.stringify({ name: "@openboard/core", devDependencies: { "@types/react": "19.0.0" } });
+  const found = await manifestMessages({ "packages/core/package.json": manifest });
+  expect(found).toEqual([
+    "packages/core/package.json: core declares @types/react (devDependencies), which is not in its allow-list; it may import workspaces contract; no external module",
+  ]);
 });

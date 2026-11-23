@@ -5,12 +5,14 @@ milestone: M0-foundations
 package: tools
 writes:
   - scripts/ci/boundaries.ts
+  - scripts/ci/boundaries.test.ts
   - scripts/ci/fixtures/boundaries/manifest/**
+  - scripts/ci/fixtures/boundaries/graph/README.md
 conformance: []
 modes: []
 depends_on: [06]
-status: ready
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t07
 issue: 7
 ---
 
