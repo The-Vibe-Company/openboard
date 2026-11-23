@@ -15,6 +15,7 @@ import { channelReads } from "./views/channels.ts";
 import { connectionReads } from "./views/connections.ts";
 import { eventReads } from "./views/events.ts";
 import { invitationPlatform, invitationView } from "./views/invitations.ts";
+import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
 import { threadReads } from "./views/threads.ts";
@@ -52,7 +53,11 @@ export function createViews(
       ...orgView(db, dialect),
       ...invitationPlatform(db, dialect),
     }),
-    org: (scope) => ({ ...invitationView(db, dialect, scope), ...orgBoardsView(db, dialect, scope) }),
+    org: (scope) => ({
+      ...invitationView(db, dialect, scope),
+      ...orgBoardsView(db, dialect, scope),
+      ...membershipView(db, dialect, scope),
+    }),
     board: (scope) => ({
       ...boardView(db, dialect, scope),
       ...agentReads(db, dialect, scope),

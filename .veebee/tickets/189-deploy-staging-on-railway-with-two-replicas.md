@@ -9,7 +9,7 @@ writes:
   - scripts/release/railway-deploy.test.ts
 conformance: []
 modes: [hosted]
-depends_on: [120, 123, 167, 184, 188]
+depends_on: [120, 123, 167, 184, 188, 402]
 status: draft
 claimed_by: null
 issue: 269

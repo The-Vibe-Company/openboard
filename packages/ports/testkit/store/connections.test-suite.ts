@@ -113,13 +113,22 @@ function claimsSuite(driver: string, open: OpenStore): void {
         const connection = { ...sandbox, tokenTtl: 3600, tokenMax: 86_400, claims: record.claims };
         const context = { by: actor, now: 0, connection, token: { id: `ag_${"b".repeat(16)}`, hash: "ef".repeat(32) } };
         await writer.append(
-          agents.decideClaim({ head: writer.head, holder: null }, { profile: "fixer-2" }, context).events,
+          agents.decideClaim(
+            { head: writer.head, holder: null },
+            { profile: "fixer-2", idempotencyKey: "sbx-1" },
+            context,
+          ).events,
         );
         return (await writer.connection(sandbox.id))?.claims;
       });
       expect(used).toEqual({ max: 1, used: 1 });
       await board.write(async (writer) => {
         const holder = { id: `ag_${"b".repeat(16)}`, tokenExpires: 3_600_000 };
+        const keyed = await writer.agentByClaimKey(sandbox.id, "sbx-1");
+        expect(keyed?.record).toEqual((await writer.agent(holder.id)) ?? undefined);
+        expect(keyed?.revoked).toBe(false);
+        expect(await writer.agentByClaimKey(sandbox.id, "unknown")).toBeNull();
+        expect(await writer.agentByClaimKey(`cn_${"c".repeat(16)}`, "sbx-1")).toBeNull();
         expect(await writer.profileHolder(sandbox.id, "Fixer-2")).toEqual(holder);
         expect(await writer.profileHolder(sandbox.id, "fixer-3")).toBeNull();
         expect(await writer.profileHolder(`cn_${"c".repeat(16)}`, "fixer-2")).toBeNull();

@@ -282,7 +282,13 @@ Authorization: Bearer obc_…
   counting claims could never spend.
 - **Profile collisions:** 409 `profile_taken` while an agent of the same
   connection holds the profile, unrevoked and its token unexpired, unless
-  the same `idempotencyKey` (D50).
+  the same `idempotencyKey` (D50). Retrying a live claim with the same key
+  and profile returns the original agent and a fresh token with the original
+  permissions and expiries, without spending another claim. The previous
+  token works for up to 60 seconds, bounded by its expiry. Keys are scoped to
+  the connection. Reusing a key with another profile or different explicit
+  permissions returns 400 `invalid_request`. Once the agent expires or is
+  revoked, a retry returns 401 `unauthorized`. Use a new key for a new launch.
 - **Per-agent revoke:** `POST {BOARD_URL}/x/connections/:id/agents/:agent/revoke`,
   also an inbound-rule action.
 

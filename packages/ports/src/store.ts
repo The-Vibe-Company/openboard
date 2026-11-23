@@ -111,6 +111,13 @@ export interface OrgScope {
 
 export interface OrgView {
   listMembers(): Promise<{ principal: string; role: Role }[]>;
+  /** Changes the role and records its audit event together. Null when the target is outside this organization. */
+  changeMemberRole(record: {
+    readonly personId: string;
+    readonly targetId: string;
+    readonly role: Role;
+    readonly at: number;
+  }): Promise<{ principal: string; role: Role } | null>;
   /** Stores the invitation and audit event together. False if the creator no longer has admin rights here. */
   createInvitation(record: {
     readonly invitation: Invitation;
@@ -119,6 +126,13 @@ export interface OrgView {
     readonly at: number;
     readonly expiresAt: number;
   }): Promise<boolean>;
+  /**
+   * In one transaction, under the person `personId`'s admin membership locked: marks the organization's invitation
+   * `id` revoked at `at` and records `ob.invitation.revoked`. Nothing is written when the person is no longer an owner
+   * or admin (`not_admin`), the organization has no such invitation (`not_found`), or it was already accepted or
+   * revoked (`used`).
+   */
+  revokeInvitation(id: string, personId: string, at: number): Promise<"revoked" | "not_admin" | "not_found" | "used">;
   /** The organization's boards that are not deleted, by slug. */
   listBoards(): Promise<Named[]>;
   /**
@@ -159,7 +173,8 @@ export interface PlatformView {
   orgMembership(slug: string, personId: string): Promise<{ orgId: number; role: Role } | null>;
   /**
    * Redeems the exact token hash and records the membership and audit event in one transaction.
-   * Throws `already_in_org` when the person already belongs to an organization (v1 allows one, D34).
+   * Throws `already_in_org` when the person already belongs to an organization (v1 allows one, D34), and
+   * `invitation_used` when the invitation was revoked.
    */
   acceptInvitation(tokenHash: Uint8Array, personId: string, at: number): Promise<MembershipRecord | null>;
   /** A capability lookup: only the exact token hash selects an invitation, returning preview fields. */
@@ -192,6 +207,8 @@ export interface BoardWriter {
   connection(id: string): Promise<ConnectionRecord | null>;
   /** The agent of this board with the ID, read under the lock, or null when the board has none with it. */
   agent(id: string): Promise<AgentRecord | null>;
+  /** The agent associated with this connection's claim key, including expired and revoked agents. */
+  agentByClaimKey(connection: string, key: string): Promise<{ record: AgentRecord; revoked: boolean } | null>;
   /**
    * The unrevoked agent of the connection pinned to the profile (any case) whose token expires last, with that expiry
    * in epoch milliseconds, read under the lock; null when the connection has none.

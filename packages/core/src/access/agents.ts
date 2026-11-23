@@ -35,6 +35,7 @@ export interface ClaimCommand {
   readonly profile: string;
   readonly can?: CanInput;
   readonly ttl?: string;
+  readonly idempotencyKey?: string;
 }
 
 /** The minted agent token: the server draws it, core never sees the token itself. */
@@ -62,6 +63,7 @@ export interface AgentClaimed {
     readonly connection: string;
     /** The profile as the claim spelled it, which is how it is shown; the actor holds its lowercase. */
     readonly profile: string;
+    readonly claimKey?: string;
     readonly tokenHash: string;
     /** Epoch milliseconds of `agent.expiresAt` and `agent.hardExpiresAt`. */
     readonly tokenExpires: number;
@@ -182,6 +184,7 @@ export function decideClaim(
       agent,
       connection: connection.id,
       profile: command.profile,
+      ...(command.idempotencyKey === undefined ? {} : { claimKey: command.idempotencyKey }),
       tokenHash: token.hash,
       tokenExpires,
       hardExpires,
@@ -237,7 +240,13 @@ export interface AgentRefreshed {
  */
 export function decideRefresh(
   state: { readonly head: number; readonly agent: RefreshingAgent },
-  context: { readonly by: Author; readonly now: number; readonly presented: string; readonly token: MintedToken },
+  context: {
+    readonly by: Author;
+    readonly now: number;
+    readonly presented: string;
+    readonly token: MintedToken;
+    readonly preserveExpiry?: boolean;
+  },
 ): { agent: ClaimedAgent; events: [AgentRefreshed] } {
   const { by, now, presented, token } = context;
   const { agent, tokenHash, tokenTtl, tokenExpires: currentExpires, hardExpires } = state.agent;
@@ -256,7 +265,9 @@ export function decideRefresh(
       hint: "Claim a new token with the connection's secret: `ob connect <BOARD_URL> --as <profile>`.",
     });
   }
-  const tokenExpires = Math.min(Math.max(now + tokenTtl * 1000, currentExpires), hardExpires);
+  const tokenExpires = context.preserveExpiry
+    ? currentExpires
+    : Math.min(Math.max(now + tokenTtl * 1000, currentExpires), hardExpires);
   const refreshed: ClaimedAgent = { ...agent, expiresAt: isoTime(tokenExpires) };
   const event: AgentRefreshed = {
     id: state.head + 1,
@@ -272,7 +283,9 @@ export function decideRefresh(
       agent: agent.id,
       tokenHash: token.hash,
       previousHash: tokenHash,
-      previousUntil: now + PREVIOUS_TOKEN_MS,
+      previousUntil: context.preserveExpiry
+        ? Math.min(now + PREVIOUS_TOKEN_MS, currentExpires)
+        : now + PREVIOUS_TOKEN_MS,
       tokenExpires,
       by: { actor: by.actor, principal: by.principal, profile: by.profile },
     },

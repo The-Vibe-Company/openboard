@@ -7,13 +7,18 @@ import { spendClaim } from "./connections.ts";
 
 export const agentStatements = {
   insertAgent: sql`INSERT INTO connection_agents (id, org_id, board_id, connection, profile, profile_key, can,
-    token_hash, token_expires, hard_expires, created_at) VALUES (${"id"}, ${"orgId"}, ${"boardId"}, ${"connection"},
-    ${"profile"}, ${"profileKey"}, ${"can"}, ${"tokenHash"}, ${"tokenExpires"}, ${"hardExpires"}, ${"at"})`,
+    token_hash, token_expires, hard_expires, created_at, claim_key) VALUES (${"id"}, ${"orgId"}, ${"boardId"}, ${"connection"},
+    ${"profile"}, ${"profileKey"}, ${"can"}, ${"tokenHash"}, ${"tokenExpires"}, ${"hardExpires"}, ${"at"}, ${"claimKey"})`,
   /** The agent with the connection it was claimed from, which lives on the same board. */
   agentById: sql`SELECT a.id, a.connection, a.profile, a.profile_key, a.can, a.token_hash, a.prev_hash,
     a.prev_until, a.token_expires, a.hard_expires, c.name, c.profiles, c.token_ttl_s
     FROM connection_agents a JOIN connections c ON c.board_id = a.board_id AND c.id = a.connection
     WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"} AND a.id = ${"id"}`,
+  agentByClaimKey: sql`SELECT a.id, a.connection, a.profile, a.profile_key, a.can, a.token_hash, a.prev_hash,
+    a.prev_until, a.token_expires, a.hard_expires, a.revoked_at, c.name, c.profiles, c.token_ttl_s
+    FROM connection_agents a JOIN connections c ON c.board_id = a.board_id AND c.id = a.connection
+    WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"} AND a.connection = ${"connection"}
+      AND a.claim_key = ${"claimKey"}`,
   refreshAgent: sql`UPDATE connection_agents SET token_hash = ${"tokenHash"}, prev_hash = ${"previousHash"},
     prev_until = ${"previousUntil"}, token_expires = ${"tokenExpires"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
@@ -36,6 +41,7 @@ export async function foldAgentClaimed(tx: Db, dialect: Dialect, keys: BoardKeys
     tokenExpires,
     hardExpires,
     at: event.at,
+    claimKey: event.payload.claimKey ?? null,
   });
   await spendClaim(tx, dialect, keys, connection);
 }
@@ -82,6 +88,18 @@ function recordOf(row: Row): AgentRecord {
 export async function findAgent(db: Db, dialect: Dialect, keys: BoardKeys, id: string): Promise<AgentRecord | null> {
   const [row] = await query(db, dialect, agentStatements.agentById, { orgId: keys.orgId, boardId: keys.boardId, id });
   return row ? recordOf(row) : null;
+}
+
+/** A claim key is reserved for its agent even after the agent expires or is revoked. */
+export async function findAgentByClaimKey(
+  db: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  connection: string,
+  claimKey: string,
+) {
+  const [row] = await query(db, dialect, agentStatements.agentByClaimKey, { ...keys, connection, claimKey });
+  return row ? { record: recordOf(row), revoked: row.revoked_at != null } : null;
 }
 
 export function agentReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "agent"> {

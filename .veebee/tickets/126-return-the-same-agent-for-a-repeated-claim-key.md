@@ -11,11 +11,17 @@ writes:
   - packages/server/test/connections.test.ts
   - packages/ports/src/store.ts
   - packages/server/test/auth/claim-key.test.ts
+  - packages/core/src/access/agents.ts
+  - packages/driver-sql/src/views/agents.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/server/test/auth/claim.test.ts
+  - packages/server/openapi.json
+  - docs/auth.md
 conformance: []
 modes: [local]
 depends_on: [125]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 127
 ---
 
@@ -23,7 +29,7 @@ issue: 127
 As an orchestrator that retries a launch, my second claim does not create a second agent.
 
 ## Done when
-- [ ] two claims of `fixer-2` with `"idempotencyKey": "sbx-1"` both succeed and return the same agent ID
+- [x] two claims of `fixer-2` with `"idempotencyKey": "sbx-1"` both succeed and return the same agent ID
 
 ## Out of scope
 - Per-agent revoke (129).

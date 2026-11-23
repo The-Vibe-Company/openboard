@@ -37,6 +37,7 @@ export {
 } from "./operation.ts";
 export {
   acceptInvitation,
+  changeMemberRole,
   claimConnection,
   createBoard,
   createChannel,
@@ -65,5 +66,6 @@ export {
   readThread,
   refreshAgentToken,
   revokeAllSessions,
+  revokeInvitation,
 } from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

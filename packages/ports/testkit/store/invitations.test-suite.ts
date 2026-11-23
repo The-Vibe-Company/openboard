@@ -6,6 +6,7 @@ import type { OpenStore } from "../index.ts";
 export function invitationsSuite(driver: string, open: OpenStore): void {
   issueAndJoin(driver, open);
   refuseSecondOrganization(driver, open);
+  revokeLink(driver, open);
 }
 
 function issueAndJoin(driver: string, open: OpenStore): void {
@@ -102,6 +103,56 @@ function refuseSecondOrganization(driver: string, open: OpenStore): void {
       expect(await org.listMembers()).toEqual([{ principal: acme.by, role: "owner" }]);
       expect(await platform.orgMembership("acme", beta.personId)).toBeNull();
       expect(await platform.invitationPreview(tokenHash)).toMatchObject({ used: false });
+    } finally {
+      await store.close();
+    }
+  });
+}
+
+function revokeLink(driver: string, open: OpenStore): void {
+  test(`${driver}: an administrator revokes a link, which then admits no one`, async () => {
+    const store = await open();
+    try {
+      const platform = store.platform();
+      const at = 1_700_000_000_000;
+      const join = async (letter: string, login: string) => {
+        const personId = `u_${letter.repeat(16)}`;
+        await platform.signIn({
+          identity: { provider: "github", subject: login, login, name: login, email: null, avatar: null },
+          admitNew: true,
+          newPersonId: personId,
+          session: { idHash: letter.repeat(64), csrf: "fixture", expiresAt: at + 86_400_000 },
+          now: at,
+        });
+        return personId;
+      };
+      const owner = await join("a", "ada");
+      const by = `ob:user:${owner}`;
+      await platform.createOrg({
+        ...orgs.decideCreate({ name: "Acme", slug: "acme" }, { by, now: at }),
+        now: at,
+        personId: owner,
+      });
+      const membership = await platform.orgMembership("acme", owner);
+      if (!membership) throw new Error("expected the organization's owner");
+      const org = store.org({ orgId: membership.orgId } as OrgScope);
+      const id = `inv_${"a".repeat(16)}`;
+      const tokenHash = new Uint8Array(32).fill(11);
+      const record = decideInvitation({ role: "member" }, { by, id, now: at });
+      expect(await org.createInvitation({ ...record, personId: owner, at, tokenHash })).toBe(true);
+      const recipient = await join("b", "lin");
+      expect(await org.revokeInvitation(id, recipient, at + 1)).toBe("not_admin");
+      expect(await store.org({ orgId: membership.orgId + 1 } as OrgScope).revokeInvitation(id, owner, at + 1)).toBe(
+        "not_admin",
+      );
+      expect(await org.revokeInvitation(`inv_${"b".repeat(16)}`, owner, at + 1)).toBe("not_found");
+      expect(await platform.invitationPreview(tokenHash)).toMatchObject({ used: false });
+      expect(await org.revokeInvitation(id, owner, at + 1)).toBe("revoked");
+      expect(await org.revokeInvitation(id, owner, at + 2)).toBe("used");
+      expect(await platform.invitationPreview(tokenHash)).toMatchObject({ used: true });
+      const refused = platform.acceptInvitation(tokenHash, recipient, at + 3);
+      await expect(refused).rejects.toMatchObject({ code: "invitation_used" });
+      expect(await org.listMembers()).toEqual([{ principal: by, role: "owner" }]);
     } finally {
       await store.close();
     }
