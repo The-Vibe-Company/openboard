@@ -32,7 +32,7 @@ As an agent, I wait on the board without polling it in a loop.
 - [ ] `curl 'http://127.0.0.1:8787/api/local/main/events?channel=dev&after=<cursor>&wait=30'` stays open until `ob post dev hi` runs in another terminal, then answers with that post
 
 ## Out of scope
-- Wake-ups across instances (M6, 177).
+- Wake-ups across instances (M6, 176).
 
 ## Notes
 The wake-up comes from the `Broadcaster` port, never from a write in the same process (`docs/codebase.md` 5.6, AGENTS.md non-negotiable 8).
