@@ -28,6 +28,9 @@ export const invitationStatements = {
     ON CONFLICT (org_id, user_id) DO NOTHING RETURNING user_id`,
   markInvitationAccepted: sql`UPDATE invitations SET accepted_by = ${"userId"}, accepted_at = ${"at"}
     WHERE org_id = ${"orgId"} AND token_hash = ${"tokenHash"}`,
+  lockOrgInvitation: sql`SELECT accepted_at, revoked_at FROM invitations
+    WHERE org_id = ${"orgId"} AND id = ${"id"}${forUpdate}`,
+  markInvitationRevoked: sql`UPDATE invitations SET revoked_at = ${"at"} WHERE org_id = ${"orgId"} AND id = ${"id"}`,
   invitationByHash: sql`SELECT i.org_id, o.name AS org_name, i.role, i.expires_at, i.accepted_at, i.revoked_at FROM invitations i
     JOIN orgs o ON o.id = i.org_id WHERE i.token_hash = ${"tokenHash"} AND o.deleted_at IS NULL`,
 };
@@ -46,6 +49,7 @@ export function invitationPlatform(
       db.transaction(async (tx) => {
         const [found] = await query(tx, dialect, invitationStatements.invitationByHash, { tokenHash });
         if (!found) return null;
+        if (found.revoked_at !== null) throw new BoardError("invitation_used", "this invitation was revoked");
         const orgId = Number(found.org_id);
         const scope = { orgId, tokenHash, at };
         const [invitation] = await query(tx, dialect, invitationStatements.lockRedeemableInvitation, scope);
@@ -88,7 +92,7 @@ export function invitationView(
   db: Db,
   dialect: Dialect,
   { orgId }: OrgScope,
-): Pick<OrgView, "createInvitation" | "listMembers"> {
+): Pick<OrgView, "createInvitation" | "listMembers" | "revokeInvitation"> {
   return {
     async listMembers() {
       const rows = await query(db, dialect, invitationStatements.listOrgMembers, { orgId });
@@ -118,6 +122,25 @@ export function invitationView(
           payload: JSON.stringify({ id: invitation.id, role: invitation.role }),
         });
         return true;
+      }),
+    revokeInvitation: (id, personId, at) =>
+      db.transaction(async (tx) => {
+        const [admin] = await query(tx, dialect, invitationStatements.lockInvitationOrg, { orgId, personId });
+        if (!admin) return "not_admin";
+        const [invitation] = await query(tx, dialect, invitationStatements.lockOrgInvitation, { orgId, id });
+        if (!invitation) return "not_found";
+        if (invitation.accepted_at !== null || invitation.revoked_at !== null) return "used";
+        await query(tx, dialect, invitationStatements.markInvitationRevoked, { orgId, id, at });
+        const [next] = await query(tx, dialect, invitationStatements.nextInvitationEvent, { orgId });
+        await query(tx, dialect, orgStatements.insertOrgEvent, {
+          orgId,
+          id: Number(next?.id),
+          type: "ob.invitation.revoked",
+          at,
+          actor: `ob:user:${personId}`,
+          payload: JSON.stringify({ id }),
+        });
+        return "revoked";
       }),
   };
 }

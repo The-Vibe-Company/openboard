@@ -4,8 +4,9 @@ import {
   type createInvitation,
   type listMembers,
   type previewInvitation,
+  type revokeInvitation,
 } from "@openboard/contract";
-import { decideInvitation, previewInvite } from "@openboard/core";
+import { decideInvitation, isoTime, previewInvite } from "@openboard/core";
 import { base32, hashToken } from "../auth/secrets.ts";
 import { base64url } from "../auth/sessions.ts";
 import type { Handler } from "./index.ts";
@@ -38,6 +39,15 @@ export const acceptInvitationHandler: Handler<typeof acceptInvitation> = async (
     : null;
   if (!membership) throw new BoardError("not_found", "no such invitation");
   return membership;
+};
+
+export const revokeInvitationHandler: Handler<typeof revokeInvitation> = async (ctx, { id }) => {
+  const at = ctx.now();
+  const outcome = await ctx.org.revokeInvitation(id, ctx.person.id, at);
+  if (outcome === "not_admin") throw new BoardError("forbidden", "this organization needs an administrator");
+  if (outcome === "not_found") throw new BoardError("not_found", "no such invitation");
+  if (outcome === "used") throw new BoardError("invitation_used", "this invitation was already accepted or revoked");
+  return { id, revokedAt: isoTime(at) };
 };
 
 export const listMembersHandler: Handler<typeof listMembers> = async ({ org }) => ({

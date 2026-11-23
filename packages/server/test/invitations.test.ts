@@ -135,6 +135,36 @@ test("the owner of another organization is refused an invitation and stays out o
   }
 });
 
+test("an administrator revokes a link, after which accepting it answers 410 invitation_used", async () => {
+  const { app, acme, other, preview } = await setup();
+  const post = (path: string, headers: Record<string, string> = {}, data: unknown = {}) =>
+    app.fetch(new Request(`${PUBLIC_URL}/api/x${path}`, { method: "POST", headers, body: JSON.stringify(data) }));
+  try {
+    const link = await post("/orgs/acme/invitations", acme, { role: "member" });
+    const { invitation, url } = (await link.json()) as OutputOf<typeof createInvitation>;
+    const token = new URL(url).pathname.slice("/invite/".length);
+    const revoke = `/orgs/acme/invitations/${invitation.id}/revoke`;
+    expect((await post(revoke)).status).toBe(401);
+    expect((await post(revoke, { ...acme, "x-ob-csrf": "wrong" })).status).toBe(403);
+    expect((await post(revoke, other)).status).toBe(404);
+    expect((await post(`/orgs/acme/invitations/inv_${"b".repeat(16)}/revoke`, acme)).status).toBe(404);
+    expect((await preview(token)).status).toBe(200);
+    const revoked = await post(revoke, acme);
+    expect(revoked.status).toBe(200);
+    expect(revoked.headers.get("cache-control")).toBe("no-store");
+    expect(await revoked.json()).toEqual({ id: invitation.id, revokedAt: "2023-11-14T22:13:20.000Z" });
+    const again = await post(revoke, acme);
+    expect(again.status).toBe(410);
+    expect(await again.json()).toMatchObject({ error: { code: "invitation_used" } });
+    expect((await preview(token)).status).toBe(410);
+    const accept = await post("/invitations/accept", other, { token });
+    expect(accept.status).toBe(410);
+    expect(await accept.json()).toMatchObject({ error: { code: "invitation_used" } });
+  } finally {
+    await app.close();
+  }
+});
+
 /** Fake the provider's HTTP endpoints while running the browser sign-in and session flow. */
 async function fakeProvider(request: Request): Promise<Response> {
   const { origin, pathname } = new URL(request.url);
