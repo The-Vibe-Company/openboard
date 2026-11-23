@@ -35,6 +35,10 @@ export async function runCli(
   const words = [...flags.filter((arg) => arg !== "--json"), ...(end < 0 ? [] : argv.slice(end + 1))];
   const command = find(words);
   if (!command) return usage(output, words.length === 0 ? "usage:" : `unknown command: ${words.join(" ")}`);
+  if (end === -1 && words.length === command.words.length + 1 && words.at(-1) === "--help") {
+    output.out(command.usage);
+    return 0;
+  }
   const config = clientConfig(env);
   if (!config.boardUrl) return usage(output, "BOARD_URL is not set: point it at a board, as `ob serve` prints it");
   if (!/^https?:$/.test(URL.parse(config.boardUrl)?.protocol ?? "")) {

@@ -19,6 +19,7 @@ function shellArg(arg: string): string {
 export function printError(output: Output, error: BoardError): void {
   const next = error.code === "invalid_request" ? error.next : undefined;
   output.err(`${next?.length ? "error: " : ""}${error.code}: ${error.message}`);
+  if (error.reason) output.err(`reason: ${error.reason}`);
   if (error.hint) output.err(error.hint);
   for (const step of next ?? []) {
     if (step.kind === "run" && step.argv.every((arg) => !/[\p{Cc}\p{Cf}]/u.test(arg))) {

@@ -1,6 +1,36 @@
-import { BoardError, type ErrorBody } from "@openboard/contract";
+import { BoardError, CHANNEL_PATH_MAX, type ErrorBody, isChannelPath, MESSAGE_TEXT_MAX } from "@openboard/contract";
 import type { Logger } from "../deps.ts";
 import { json } from "./respond.ts";
+
+/** Adds post-specific recovery to a rejected body with an invalid channel. */
+export function invalidPostChannel(error: unknown, body: unknown): unknown {
+  if (!(error instanceof BoardError) || error.code !== "invalid_request") return error;
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return error;
+  const { channel, text } = body as Record<string, unknown>;
+  if (isChannelPath(channel)) return error;
+
+  const corrected = typeof channel === "string" ? channel.trim().toLowerCase().replace(/\s+/g, "-") : undefined;
+  const canRetry =
+    isChannelPath(corrected) &&
+    typeof text === "string" &&
+    text.trim().length > 0 &&
+    text.length <= MESSAGE_TEXT_MAX &&
+    text.isWellFormed() &&
+    !/[\p{Cc}\p{Cf}]/u.test(text) &&
+    Object.keys(body).every((key) => key === "channel" || key === "text");
+  const argv = canRetry
+    ? ["ob", "post", ...(text.startsWith("--") ? ["--"] : []), corrected, text]
+    : ["ob", "post", "--help"];
+  return new BoardError(
+    "invalid_request",
+    `channel: use lowercase letters, digits, hyphens and underscores, with / between levels. Start each level with a letter or digit and keep the path within ${CHANNEL_PATH_MAX} characters.`,
+    {
+      reason: "invalid_channel",
+      hint: canRetry ? "Retry with the corrected channel name." : "Run ob post --help for the command syntax.",
+      next: [{ kind: "run", argv }],
+    },
+  );
+}
 
 function errorBody(error: BoardError): ErrorBody {
   const body = error.body();

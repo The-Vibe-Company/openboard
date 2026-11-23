@@ -5,7 +5,11 @@ milestone: M1-walking-skeleton
 package: server
 writes:
   - packages/server/src/http/errors.ts
+  - packages/server/src/http/pipeline.ts
   - packages/server/src/http/respond.ts
+  - packages/contract/src/errors.ts
+  - packages/contract/src/entities/messages.ts
+  - packages/cli/src/main.ts
   - packages/cli/src/output.ts
   - packages/sdk/src/client.ts
   - packages/server/test/errors.test.ts

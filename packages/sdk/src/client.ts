@@ -1,5 +1,6 @@
 import {
   BoardError,
+  ERRORS,
   type ErrorBody,
   type InputOf,
   isErrorCode,
@@ -84,6 +85,7 @@ async function answerOf(response: Response): Promise<unknown> {
   const [first, second] = Array.isArray(body.next) ? body.next.slice(0, 2).filter(isNextStep) : [];
   throw new BoardError(code, message, {
     ...(body.hint === undefined ? {} : { hint: body.hint }),
+    ...(body.reason !== undefined && ERRORS[code].reasons.includes(body.reason) ? { reason: body.reason } : {}),
     ...(first === undefined ? {} : { next: second === undefined ? [first] : [first, second] }),
   });
 }
