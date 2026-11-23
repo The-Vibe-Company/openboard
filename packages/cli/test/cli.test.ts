@@ -48,7 +48,25 @@ describe("ob post and ob read", () => {
     expect(lines.err).toEqual(["invalid_request: channel: bad"]);
   });
 
+  test("takes the words after -- as arguments, flags included", async () => {
+    const board = fakeBoard(201, { message: message("3", "--json") });
+    const { lines, output } = capture();
+    expect(await runCli(["post", "--", "dev", "--json"], env, { fetch: board.fetch, output })).toBe(0);
+    expect(lines.out).toEqual(["3"]);
+    expect(board.seen[0]?.body).toBe(JSON.stringify({ channel: "dev", text: "--json" }));
+  });
+
+  test("exits 1 with unreachable when nothing answers at BOARD_URL", async () => {
+    const { lines, output } = capture();
+    const down = async (): Promise<Response> => {
+      throw new TypeError("Unable to connect");
+    };
+    expect(await runCli(["read", "dev"], env, { fetch: down, output })).toBe(1);
+    expect(lines.err[0]).toStartWith("unreachable: the board at http://127.0.0.1:8787 did not answer");
+  });
+
   test.each([
+    ["a BOARD_URL that is not a URL", ["read", "dev"], { BOARD_URL: "notaurl" }],
     ["an unknown command", ["nope"], env],
     ["a missing argument", ["post", "dev"], env],
     ["no BOARD_URL", ["read", "dev"], {}],

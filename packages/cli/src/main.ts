@@ -29,12 +29,15 @@ export async function runCli(
   options: CliOptions = {},
 ): Promise<number> {
   const output = options.output ?? consoleOutput;
-  const json = argv.includes("--json");
-  const words = argv.filter((arg) => arg !== "--json");
+  const end = argv.indexOf("--");
+  const flags = end < 0 ? argv : argv.slice(0, end);
+  const json = flags.includes("--json");
+  const words = [...flags.filter((arg) => arg !== "--json"), ...(end < 0 ? [] : argv.slice(end + 1))];
   const command = find(words);
   if (!command) return usage(output, words.length === 0 ? "usage:" : `unknown command: ${words.join(" ")}`);
   const config = clientConfig(env);
   if (!config.boardUrl) return usage(output, "BOARD_URL is not set: point it at a board, as `ob serve` prints it");
+  if (!URL.canParse(config.boardUrl)) return usage(output, `BOARD_URL is not a URL: ${config.boardUrl}`);
   const client = createClient({
     url: config.boardUrl,
     ...(config.token === undefined ? {} : { token: config.token }),

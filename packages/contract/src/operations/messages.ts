@@ -20,7 +20,7 @@ export const postMessage = defineOperation({
   },
   output: Type.Object({ message: Message }),
   status: 201,
-  errors: ["invalid_request"],
+  errors: ["invalid_request", "reserved_label"],
   access: { permission: "post", channel: "fromInput" },
   effects: { readOnly: false, idempotent: false, emits: ["message.posted"], meter: "messages" },
   cli: { command: ["post"], args: ["channel", "text"] },

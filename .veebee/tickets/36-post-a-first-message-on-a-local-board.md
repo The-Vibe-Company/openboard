@@ -90,7 +90,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [32, 33, 34]
-status: claimed
+status: done
 claimed_by: claude-opus-5-5
 issue: 36
 ---

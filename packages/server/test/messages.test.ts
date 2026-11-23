@@ -89,7 +89,15 @@ describe("refusing what the contract does not take", () => {
 
   test("answers 400 invalid_request for a read without a channel or with a limit out of range", async () => {
     app = makeApp();
-    for (const query of ["", "?channel=dev&limit=0", "?channel=dev&limit=501", "?channel=dev&after=1"]) {
+    for (const query of [
+      "",
+      "?channel=dev&limit=0",
+      "?channel=dev&limit=501",
+      "?channel=dev&after=1",
+      "?channel=dev&limit=1e2",
+      "?channel=dev&limit=2.9",
+      "?channel=dev&limit=true",
+    ]) {
       const refused = await answer(call(app, "GET", `/messages${query}`));
       expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
     }

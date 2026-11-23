@@ -62,13 +62,24 @@ async function answerOf(response: Response): Promise<unknown> {
   throw new BoardError(code, message, body.hint === undefined ? {} : { hint: body.hint });
 }
 
+/** Sends the request; a board that does not answer is upstream's `unreachable`, not a transport exception. */
+async function reach(send: (request: Request) => Promise<Response>, request: Request): Promise<Response> {
+  try {
+    return await send(request);
+  } catch (error) {
+    if (!(error instanceof TypeError || (error instanceof Error && "code" in error))) throw error;
+    throw new BoardError("unreachable", `the board at ${new URL(request.url).origin} did not answer: ${error.message}`);
+  }
+}
+
 /** A typed client of one board; it reads no environment and keeps no state between calls. */
 export function createClient(options: ClientOptions): Client {
+  if (!URL.canParse(options.url)) throw new TypeError(`not a board URL: ${options.url}`);
   const send = options.fetch ?? ((request: Request) => fetch(request));
   const methods = operations.map((operation) => [
     operation.name,
     async (input: Readonly<Record<string, unknown>>) =>
-      answerOf(await send(requestOf(options.url, operation, input, options.token))),
+      answerOf(await reach(send, requestOf(options.url, operation, input, options.token))),
   ]);
   return Object.freeze(Object.fromEntries(methods)) as Client;
 }

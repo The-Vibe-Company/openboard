@@ -1,12 +1,13 @@
 /**
- * Every error code the board answers, with its HTTP status (docs/codebase.md 5.3). Upstream's catalog is kept verbatim
- * (upstream: `docs/04-reference/03-http.md` "Errors" and the codes its route table names); OpenBoard's own codes are
+ * Every error code the board answers, with its HTTP status (docs/codebase.md 5.3). Upstream's codes are kept verbatim:
+ * every code of `docs/04-reference/03-http.md` (its "Errors" table and the codes its sections name); OpenBoard's own are
  * those of docs/protocol.md "Error envelope". A code listed under two statuses takes the first unless the thrower
  * names the other.
  */
 const CODES = {
   400: [
     "invalid_request",
+    "text_too_long",
     "invalid_cursor",
     "invalid_after",
     "invalid_profile",

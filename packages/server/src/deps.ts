@@ -1,16 +1,10 @@
 import type { Author } from "@openboard/contract";
-import type { Store } from "@openboard/ports";
 
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
   readonly mode: "local" | "hosted";
   /** Local mode: who writes until credentials arrive: the local owner person, `ob:user:local-<os user>`. */
   readonly localOwner: string;
-}
-
-/** The ports the server runs on; it never sees a driver. */
-export interface Ports {
-  readonly store: Store;
 }
 
 export interface Logger {

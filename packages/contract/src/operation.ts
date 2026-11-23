@@ -98,6 +98,24 @@ export interface RawInput {
   readonly body?: unknown;
 }
 
+const TEXT_FORMS: Readonly<Record<string, { pattern: RegExp; read: (text: string) => unknown }>> = {
+  integer: { pattern: /^-?(?:0|[1-9]\d{0,15})$/, read: Number },
+  number: { pattern: /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/, read: Number },
+  boolean: { pattern: /^(?:true|false)$/, read: (text) => text === "true" },
+};
+
+/**
+ * Path and query values arrive as text: a field typed integer, number or boolean takes only its plain decimal or
+ * `true`/`false` spelling. Anything else is left as text, so validation refuses it (`limit=1e2` is not 100).
+ */
+function fromText(schema: TObject, value: object): object {
+  const entries = Object.entries(value).map(([name, field]) => {
+    const form = TEXT_FORMS[String((schema.properties[name] as { type?: unknown } | undefined)?.type)];
+    return [name, form && typeof field === "string" && form.pattern.test(field) ? form.read(field) : field];
+  });
+  return Object.fromEntries(entries);
+}
+
 function decodePart(schema: TObject | undefined, value: unknown, where: string, convert: boolean): object {
   if (!schema) {
     const empty =
@@ -109,7 +127,7 @@ function decodePart(schema: TObject | undefined, value: unknown, where: string, 
     if (value !== undefined) throw new BoardError("invalid_request", `the ${where} must be a JSON object`);
   }
   const copy = Value.Default(schema, Value.Clone(value ?? {}));
-  const decoded = convert ? Value.Convert(schema, copy) : copy;
+  const decoded = convert ? fromText(schema, copy as object) : copy;
   const [first] = Value.Errors(schema, decoded);
   if (first) {
     const field = first.path.replace(/^\//, "").replaceAll("/", ".") || where;
