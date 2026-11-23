@@ -6,9 +6,10 @@ import { type OpenStore, testScope } from "../index.ts";
 const by = { actor: "ob:user:local-dev", principal: "ob:user:local-dev", profile: null };
 const at = 1_700_000_000_000;
 
-function post(board: BoardView, channel: string, text: string) {
+function post(board: BoardView, channel: string, text: string, labels?: Record<string, string>) {
   return board.write(async (writer) => {
-    const { events, message } = messages.decidePost({ head: writer.head }, { channel, text }, { by, now: at });
+    const command = { channel, text, ...(labels && { labels }) };
+    const { events, message } = messages.decidePost({ head: writer.head }, command, { by, now: at });
     await writer.append(events);
     return message;
   });
@@ -126,10 +127,26 @@ function clientIdsSuite(driver: string, open: OpenStore): void {
 }
 
 /** The writes that change a stored message: edits, deletes and reactions. */
+function labelsSuite(open: OpenStore) {
+  describe("posting a message with labels", () => {
+    const opened = eachStore(open);
+
+    test("keeps its labels, in the thread and in its channel", async () => {
+      const board = await opened.board();
+      const labels = { status: "open", "ci.run_2": "a=b" };
+      const posted = await post(board, "dev", "hello", labels);
+      expect(posted.labels).toEqual(labels);
+      expect((await board.thread(1))?.message.labels).toEqual(labels);
+      expect((await board.channelMessages({ channel: "dev", limit: 50 }))?.[0]?.labels).toEqual(labels);
+    });
+  });
+}
+
 function changeSuites(open: OpenStore): void {
   editMessageSuite(open);
   deleteMessageSuite(open);
   reactionSuite(open);
+  labelsSuite(open);
 }
 
 export function messagesSuite(driver: string, open: OpenStore): void {

@@ -250,6 +250,26 @@ describe("refusing what the contract does not take", () => {
     expect([refused.status, refused.body.error.code]).toEqual([400, "reserved_label"]);
   });
 
+  test("keeps a post's labels, and the thread read shows them", async () => {
+    app = makeApp();
+    const labels = { status: "open", "ci.run_2": "a=b" };
+    const posted = await answer(call(app, "POST", "/messages", { channel: "dev", text: "x", labels }));
+    expect([posted.status, posted.body.message.labels]).toEqual([201, labels]);
+    expect((await answer(call(app, "GET", "/messages/2"))).body.message.labels).toEqual(labels);
+  });
+
+  test.each([
+    ["constructor", '{"constructor":"x"}'],
+    ["an uppercase key", '{"Status":"x"}'],
+    ["__proto__", '{"__proto__":"x"}'],
+    ["a 257-character value", `{"status":"${"v".repeat(257)}"}`],
+  ])("answers 400 invalid_request for a label %s, posting nothing", async (_, labels) => {
+    app = makeApp();
+    const refused = await answer(call(app, "POST", "/messages", `{"channel":"dev","text":"x","labels":${labels}}`));
+    expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
+    expect((await answer(call(app, "GET", "/messages?channel=dev"))).body.messages).toEqual([]);
+  });
+
   test("answers 400 invalid_request for a read without a channel or with a limit out of range", async () => {
     app = makeApp();
     for (const query of [

@@ -38,7 +38,11 @@ export const postMessage = defineOperation({
   errors: ["invalid_request", "invalid_after", "reserved_label", "message_not_found", "duplicate_id", "newer_message"],
   access: { permission: "post", channel: "fromInput" },
   effects: { readOnly: false, idempotent: false, emits: ["message.posted"], meter: "messages" },
-  cli: { command: ["post"], args: ["channel", "text"], options: { id: "idempotency-key", noSync: "no-sync" } },
+  cli: {
+    command: ["post"],
+    args: ["channel", "text"],
+    options: { id: "idempotency-key", noSync: "no-sync", labels: "label" },
+  },
   mcp: { tool: "post_message" },
   upstream: true,
 });
