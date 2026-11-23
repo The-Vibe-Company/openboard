@@ -14,6 +14,10 @@ const LEADING_BLOCK_COMMENT = /^(?:\s*\/\*.*?\*\/)+/;
 const START = "(?<![\\w$])";
 /** The end of an object expression: not followed by an identifier character or a member access. */
 const END = "(?![\\w$])(?!\\s*(?:\\??\\.|\\[))";
+/** A destructuring pattern `{ … }` with at most one nested level, never spanning an enclosing block. */
+const PATTERN = "\\{([^{}=;]*(?:\\{[^{}]*\\}[^{}=;]*)*)\\}";
+/** `Bun` may be reached as `globalThis.Bun` too. */
+const GLOBAL_THIS = "(?:globalThis\\s*\\??\\.\\s*)?";
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -56,12 +60,21 @@ function moduleObjects(code: string, mod: string, global: string | undefined): s
   for (let size = 0; size !== objects.size; ) {
     size = objects.size;
     const any = [...objects].map(escapeRegExp).join("|");
-    const alias = new RegExp(`\\b(?:const|let|var)\\s+([\\w$]+)\\s*=\\s*${START}(?:${any})${END}`, "g");
-    const rest = new RegExp(`\\{([^=;]*?)\\}\\s*=\\s*${START}(?:${any})${END}`, "g");
+    const alias = new RegExp(`\\b(?:const|let|var)\\s+([\\w$]+)\\s*=\\s*${START}${GLOBAL_THIS}(?:${any})${END}`, "g");
+    const rest = new RegExp(`${PATTERN}\\s*=\\s*${START}${GLOBAL_THIS}(?:${any})${END}`, "g");
     for (const match of code.matchAll(alias)) if (match[1]) objects.add(match[1]);
     for (const match of code.matchAll(rest)) for (const name of entriesIn(match[1] ?? "").rests) objects.add(name);
   }
   return [...objects];
+}
+
+/**
+ * A type query such as `typeof import("bun")` or `import("bun").Server` loads nothing at run time;
+ * a capitalised member that is not a client name is read as a type.
+ */
+function isTypeQuery(typeOf: string | undefined, member: string | undefined, wanted: Set<string>): boolean {
+  if (typeOf) return true;
+  return member !== undefined && /^[A-Z]/.test(member) && !wanted.has(member);
 }
 
 /**
@@ -80,7 +93,12 @@ function findNames(code: string, module: string, names: string[]): Hit[] {
     for (const name of entriesIn(match[1] ?? "").names)
       if (wanted.has(name)) hits.push({ label: from(name), index: match.index });
   }
-  for (const match of code.matchAll(new RegExp(`\\b(?:import|require)\\s*\\(\\s*${mod}\\s*\\)`, "g"))) {
+  const load = new RegExp(
+    `(typeof\\s*)?\\b(?:import|require)\\s*\\(\\s*${mod}\\s*\\)(?:\\s*\\??\\.\\s*([\\w$]+))?`,
+    "g",
+  );
+  for (const match of code.matchAll(load)) {
+    if (isTypeQuery(match[1], match[2], wanted)) continue;
     hits.push({ label: `run-time load of ${module}, which can reach ${names.join(", ")}`, index: match.index });
   }
   for (const match of code.matchAll(new RegExp(`\\bexport\\s*\\*[^;]*?from\\s*${mod}`, "g"))) {
@@ -90,7 +108,7 @@ function findNames(code: string, module: string, names: string[]): Hit[] {
   const key = `(${names.map(escapeRegExp).join("|")})(?![\\w$])`;
   const member = new RegExp(`${START}(?:${objects})\\s*(?:\\??\\.\\s*|(?:\\?\\.)?\\[\\s*["'\`])${key}`, "g");
   for (const match of code.matchAll(member)) hits.push({ label: from(match[1] ?? ""), index: match.index });
-  const destructured = new RegExp(`\\{([^=;]*?)\\}\\s*=\\s*${START}(?:${objects})${END}`, "g");
+  const destructured = new RegExp(`${PATTERN}\\s*=\\s*${START}${GLOBAL_THIS}(?:${objects})${END}`, "g");
   for (const match of code.matchAll(destructured)) {
     for (const name of entriesIn(match[1] ?? "").names)
       if (wanted.has(name)) hits.push({ label: from(name), index: match.index });

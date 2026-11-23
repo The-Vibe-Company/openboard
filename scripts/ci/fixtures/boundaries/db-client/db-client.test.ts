@@ -95,6 +95,9 @@ test("finds every way of reaching Bun's SQL client", async () => {
     globalDestructured: "export const { env, SQL: Pg } = Bun;\n",
     aliased: "const B = Bun;\nconst { ...rest } = B;\nexport const a = rest.SQL;\n",
     nested: "export const {\n  env: { HOME },\n  sql,\n} = Bun;\n",
+    inBlock: "export function open() {\n  const { SQL } = Bun;\n  return SQL;\n}\n",
+    restInBlock: 'import * as B from "bun";\nexport const f = () => {\n  const { ...r } = B;\n  return r.sql;\n};\n',
+    globalThisAlias: "const G = globalThis.Bun;\nexport const { postgres } = G;\n",
     commented: '/* the client */ import { SQL } from "bun";\n',
     required: 'export const a = require("bun");\n',
     imported: 'export const a = import("bun").then((m) => m.sql);\n',
@@ -112,11 +115,14 @@ test("finds every way of reaching Bun's SQL client", async () => {
     "packages/server/src/exportAll.ts:1 export * from bun, which re-exports SQL, sql, postgres",
     "packages/server/src/global.ts:3 sql from bun",
     "packages/server/src/globalDestructured.ts:1 SQL from bun",
+    "packages/server/src/globalThisAlias.ts:2 postgres from bun",
     "packages/server/src/imported.ts:1 run-time load of bun, which can reach SQL, sql, postgres",
+    "packages/server/src/inBlock.ts:2 SQL from bun",
     "packages/server/src/namespace.ts:2 SQL from bun",
     "packages/server/src/nested.ts:1 sql from bun",
     "packages/server/src/reexport.ts:1 sql from bun",
     "packages/server/src/required.ts:1 run-time load of bun, which can reach SQL, sql, postgres",
+    "packages/server/src/restInBlock.ts:4 sql from bun",
     "packages/server/src/typeOnly.ts:1 SQL from bun",
   ]);
 });
@@ -129,6 +135,12 @@ test("leaves the rest of bun alone outside driver-postgres", async () => {
     "const B = Bun.env;",
     "export const a = [bun.file, serve, env, version, B.SQL, Bun.SQLite, mySql.sql];",
     "// Bun.SQL in a comment",
+    'export type S = import("bun").Server;',
+    'export type M = typeof import("bun");',
+    "export function f() {",
+    "  const { env: e } = Bun;",
+    "  return e;",
+    "}",
   ].join("\n");
   expect(await messages({ "packages/server/src/bun.ts": source })).toEqual([]);
 });
