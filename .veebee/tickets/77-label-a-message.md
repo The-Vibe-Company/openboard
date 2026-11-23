@@ -15,8 +15,8 @@ writes:
 conformance: ["core/raises the version with each edit, reaction, and label"]
 modes: [local]
 depends_on: [76]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t77
 issue: 77
 ---
 
