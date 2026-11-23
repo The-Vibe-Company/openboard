@@ -67,7 +67,7 @@ export function messagesSuite(driver: string, open: OpenStore): void {
       expect(answer).toMatchObject({ id: "2", channel: "dev", re: "1", thread: "1" });
       expect(await board.thread(1)).toEqual({ message: root, replies: [answer] });
       expect(await board.channelMessages({ channel: "dev", limit: 50 })).toEqual([root, answer]);
-      const { channels } = await board.listChannels();
+      const { channels } = await board.listChannels({ limit: 10 });
       expect(channels).toEqual([{ path: "dev", lastIndex: 2, messages: 2, threads: 1 }]);
     });
 

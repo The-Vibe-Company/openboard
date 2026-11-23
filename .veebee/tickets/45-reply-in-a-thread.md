@@ -20,6 +20,8 @@ writes:
   - tools/conformance/score.json
   - README.md
   - packages/server/src/http/errors.ts
+  - packages/cli/src/commands/derived.ts
+  - packages/server/openapi.json
 conformance: ["core/posts a message, and reads it back by its ID"]
 modes: [local]
 depends_on: [40, 43, 44]
