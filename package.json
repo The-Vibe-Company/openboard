@@ -1,0 +1,26 @@
+{
+  "name": "openboard",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "tools/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint . && oxlint --format default",
+    "typecheck": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' typecheck",
+    "test": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "oxlint": "1.94.0",
+    "typescript": "7.0.2"
+  }
+}
