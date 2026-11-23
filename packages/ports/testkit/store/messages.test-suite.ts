@@ -108,6 +108,12 @@ export function messagesSuite(driver: string, open: OpenStore): void {
       await post(board, "ops", "elsewhere");
       const page = await board.channelMessages({ channel: "dev", limit: 2 });
       expect(page.map(({ text }) => text)).toEqual(["b", "c"]);
+      expect((await board.channelMessages({ channel: "dev", limit: 1 })).map(({ text }) => text)).toEqual(["c"]);
+      expect((await board.channelMessages({ channel: "dev", limit: 50 })).map(({ text }) => text)).toEqual([
+        "a",
+        "b",
+        "c",
+      ]);
       expect(await board.channelMessages({ channel: "empty", limit: 50 })).toEqual([]);
     });
 
