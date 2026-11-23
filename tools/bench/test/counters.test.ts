@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { formatTable, measure } from "../src/counters";
-import { percentile } from "../src/workloads/request";
 import { countArmedTimers } from "../src/timers";
+import { percentile } from "../src/workloads/request";
 
 const sizes = { posts: 3, replies: 2, reads: 2 };
 
