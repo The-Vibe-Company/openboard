@@ -12,6 +12,10 @@
     },
     "packages/driver-postgres": { "may": ["driver-sql", "contract", "core", "ports"], "external": ["bun"] },
     "packages/server": { "may": ["contract", "core", "ports"], "external": ["bun", "node:crypto", "node:path"] },
+    "packages/server/test/support": {
+      "may": ["contract", "core", "ports", "driver-sqlite", "driver-postgres"],
+      "external": ["bun", "node:crypto", "node:path"]
+    },
     "packages/sdk": { "may": ["contract"], "external": [] },
     "packages/cli": { "may": ["sdk", "contract"], "external": ["node:*"] },
     "apps/openboard": {

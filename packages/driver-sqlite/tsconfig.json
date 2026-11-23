@@ -11,12 +11,6 @@
       "path": "../driver-sql"
     },
     {
-      "path": "../contract"
-    },
-    {
-      "path": "../core"
-    },
-    {
       "path": "../ports"
     }
   ],

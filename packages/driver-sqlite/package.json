@@ -8,8 +8,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@openboard/contract": "workspace:*",
-    "@openboard/core": "workspace:*",
     "@openboard/driver-sql": "workspace:*",
     "@openboard/ports": "workspace:*"
   },
