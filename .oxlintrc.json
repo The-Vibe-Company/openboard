@@ -2,5 +2,40 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "categories": { "correctness": "error" },
   "ignorePatterns": ["node_modules", ".tsbuild"],
-  "overrides": []
+  "overrides": [
+    {
+      "files": ["packages/contract/**", "packages/core/**", "packages/ports/**", "packages/server/**"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          { "name": "setTimeout", "message": "Timers come from deps (docs/codebase.md 3.2)." },
+          { "name": "setInterval", "message": "Timers come from deps (docs/codebase.md 3.2)." },
+          { "name": "queueMicrotask", "message": "Timers come from deps (docs/codebase.md 3.2)." },
+          { "name": "Date", "message": "Time comes from deps (docs/codebase.md 3.2)." }
+        ],
+        "no-restricted-properties": [
+          "error",
+          { "object": "Math", "property": "random", "message": "Randomness comes from deps (docs/codebase.md 3.2)." },
+          { "object": "crypto", "property": "randomUUID", "message": "IDs come from deps (docs/codebase.md 3.2)." },
+          {
+            "object": "globalThis",
+            "property": "setTimeout",
+            "message": "Timers come from deps (docs/codebase.md 3.2)."
+          },
+          {
+            "object": "globalThis",
+            "property": "setInterval",
+            "message": "Timers come from deps (docs/codebase.md 3.2)."
+          },
+          {
+            "object": "globalThis",
+            "property": "queueMicrotask",
+            "message": "Timers come from deps (docs/codebase.md 3.2)."
+          },
+          { "object": "globalThis", "property": "Date", "message": "Time comes from deps (docs/codebase.md 3.2)." },
+          { "object": "globalThis", "property": "crypto", "message": "IDs come from deps (docs/codebase.md 3.2)." }
+        ]
+      }
+    }
+  ]
 }
