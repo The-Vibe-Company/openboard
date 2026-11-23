@@ -7,11 +7,17 @@ writes:
   - packages/server/src/log.ts
   - packages/server/src/deps.ts
   - packages/server/test/log.test.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/index.ts
+  - packages/server/test/support/app.ts
+  - apps/openboard/src/compose.ts
+  - tools/bench/src/drivers.ts
+  - tools/conformance/src/drivers.ts
 conformance: []
 modes: [local]
 depends_on: [36]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-5-5
 issue: 58
 ---
 

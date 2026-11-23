@@ -1,4 +1,4 @@
-import { createApp } from "../../src/index.ts";
+import { createApp, type Logger } from "../../src/index.ts";
 import { openStore } from "./drivers.ts";
 
 export const BOARD_URL = "http://127.0.0.1:8787/api/local/main";
@@ -6,15 +6,18 @@ export const LOCAL_OWNER = "ob:user:local-test";
 /** The fake clock every test app reads: 2023-11-14T22:13:20.000Z. */
 export const NOW = 1_700_000_000_000;
 
-/** One app on in-memory SQLite, with a fixed clock and a logger that keeps what it is told. */
-export function makeApp() {
+/**
+ * One app on in-memory SQLite, with a fixed clock unless one is given, and a logger that keeps the errors it is told
+ * unless one is given.
+ */
+export function makeApp(options: { readonly now?: () => number; readonly log?: Logger } = {}) {
   const logged: Readonly<Record<string, unknown>>[] = [];
-  const now = () => NOW;
-  const app = createApp(
-    { mode: "local", localOwner: LOCAL_OWNER },
-    { store: openStore(now) },
-    { now, log: { error: (message, fields) => logged.push({ message, ...fields }) } },
-  );
+  const now = options.now ?? (() => NOW);
+  const log: Logger = options.log ?? {
+    info: () => {},
+    error: (message, fields) => logged.push({ message, ...fields }),
+  };
+  const app = createApp({ mode: "local", localOwner: LOCAL_OWNER }, { store: openStore(now) }, { now, log });
   return { ...app, logged };
 }
 
