@@ -40,3 +40,11 @@ describe("reading a message that does not exist", () => {
     expect(await read.json()).toMatchObject({ error: { code: "message_not_found" } });
   });
 });
+
+test("GET /threads answers an empty channel with the board cursor", async () => {
+  app = makeApp();
+  await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+  const read = await call(app, "GET", "/threads?channel=ops");
+  expect(read.status).toBe(200);
+  expect(await read.json()).toEqual({ threads: [], cursor: "1" });
+});

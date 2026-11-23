@@ -3,6 +3,7 @@ import {
   type Command,
   createConnectionCommand,
   derivedCommands,
+  messagesCommand,
   Misuse,
   readCommand,
   replyCommand,
@@ -19,6 +20,7 @@ export interface CliOptions {
 const commands: readonly Command[] = [
   createConnectionCommand,
   readCommand,
+  messagesCommand,
   replyCommand,
   whoamiCommand,
   ...derivedCommands,

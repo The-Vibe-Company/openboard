@@ -23,6 +23,7 @@ export class Misuse extends Error {}
 
 export { createConnectionCommand } from "./connections.ts";
 export { derivedCommands } from "./derived.ts";
+export { messagesCommand } from "./messages.ts";
 export { readCommand } from "./read.ts";
 export { replyCommand } from "./reply.ts";
 export { whoamiCommand } from "./whoami.ts";

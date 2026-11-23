@@ -22,7 +22,7 @@ function capture() {
 
 const message = (id: string, text: string) => ({ id, text });
 
-describe("ob post and ob read", () => {
+describe("ob post and ob messages", () => {
   test("ob post prints the new message's ID", async () => {
     const board = fakeBoard(201, { message: message("1", "hello") });
     const { lines, output } = capture();
@@ -33,11 +33,11 @@ describe("ob post and ob read", () => {
     ]);
   });
 
-  test("ob read prints one line per message, oldest first, then the command that reads on", async () => {
+  test("ob messages prints one line per message, oldest first, then the command that reads on", async () => {
     const board = fakeBoard(200, { messages: [message("1", "hello"), message("2", "two\nlines")], cursor: "2" });
     const { lines, output } = capture();
-    expect(await runCli(["read", "dev"], env, { fetch: board.fetch, output })).toBe(0);
-    expect(lines.out).toEqual(["#1  hello", "#2  two …", "next: ob read dev --after 2"]);
+    expect(await runCli(["messages", "dev"], env, { fetch: board.fetch, output })).toBe(0);
+    expect(lines.out).toEqual(["#1  hello", "#2  two …", "next: ob messages dev --after 2"]);
     expect(board.seen[0]?.url).toBe(`${env.BOARD_URL}/messages?channel=dev`);
   });
 
