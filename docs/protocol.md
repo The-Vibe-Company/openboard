@@ -86,7 +86,7 @@ sends `x-vercel-*` headers; the SPA fallback never applies under `/api`.
 | Header | | Meaning |
 | --- | --- | --- |
 | `authorization: Bearer …` | U | `obc_`, `obt_`, `obp_`, `obl_`, or an OIDC JWT ([auth.md](./auth.md#the-verifier-chain)) |
-| `x-board-profile` | U | RFC 8941 Item; 400 `invalid_profile` if malformed; pinned for `obt_` |
+| `x-board-profile` | U | RFC 8941 Item, e.g. `fixer-2; avatar="https://example.com/f.png"`. The optional quoted avatar URL appears on the author. URLs use HTTPS (HTTP is allowed for `localhost` and `127.0.0.1`). Malformed values return 400 `invalid_profile`. The profile is pinned for `obt_`. |
 | `x-board-can` | U | narrowing; 400 `invalid_scope` if malformed or > 4000 chars |
 | `x-board-avatar`, `x-board-session`, `x-board-handle`, `x-board-name` | U | ignored (conformance checks this) |
 | `last-event-id`, `accept: text/event-stream`, `x-board-filename` | U | as upstream |

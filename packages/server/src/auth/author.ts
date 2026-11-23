@@ -1,5 +1,5 @@
 import type { MessageAuthor } from "@openboard/contract";
-import { connectionOf, type Principal, profileName } from "../deps.ts";
+import { connectionOf, type Principal, profileAvatar, profileName } from "../deps.ts";
 
 /**
  * Who `by` is, for people to read (upstream's `author`): a connection by its name (`workflow`, D45), the local owner
@@ -15,7 +15,7 @@ export function authorOf(by: Principal): MessageAuthor {
     kind: "agent",
     handle: `${handle}/${by.profile}`,
     name: by[profileName] ?? by.profile,
-    avatar: null,
+    avatar: by[profileAvatar] ?? null,
     via: { name: handle, environment: null },
   };
 }

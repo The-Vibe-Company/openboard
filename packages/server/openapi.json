@@ -464,7 +464,7 @@
                     },
                     "handle": { "type": "string" },
                     "name": { "type": "string" },
-                    "avatar": { "type": "null" },
+                    "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                     "expiresAt": { "type": "null" },
                     "can": {
                       "type": "object",

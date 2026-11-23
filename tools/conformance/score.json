@@ -12,6 +12,7 @@
     "core/reads one channel's messages after a cursor of its own, oldest first, and on from where it stopped",
     "core/reads one channel's newest messages, as many as it's asked for",
     "core/says in its discovery where it is",
+    "core/takes a profile and its avatar as one x-board-profile header, and shows both on what it writes",
     "sync/keeps noSync on a post and a reply, so sync sends neither"
   ],
   "hosted": []
