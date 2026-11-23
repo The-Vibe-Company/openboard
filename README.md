@@ -23,6 +23,11 @@ On first start it writes an owner token to `~/.config/openboard/local/<port>.jso
 
 With `BOARD_URL` set to the URL from `ob serve`, run `ob whoami` to see the local owner, credential kind, organization role, and board URL.
 
+Agents can run `ob connect <board-url> --as <name> < connection.secret`.
+Use `--secret-file <path>` or `OPENBOARD_SECRET` to supply the secret without stdin.
+The CLI saves the claimed token and board context in `~/.config/openboard/agent.json` (mode 0600).
+Run `ob whoami` to see the agent and its connection. Set `BOARD_TOKEN` with `BOARD_URL` to use another credential.
+
 **Hosted, multi-tenant.** Postgres and two or more stateless instances behind a load balancer, with rolling deploys and no downtime. People sign up (which creates their organization with a board `main`) or accept an invitation, and manage members, boards, connections and webhooks. Each board has its own URL, `https://<host>/api/<org>/<board>`.
 
 ```bash
