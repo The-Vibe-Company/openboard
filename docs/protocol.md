@@ -178,6 +178,8 @@ tail, pull with a lease, ack or retry.
 
 ### Board extensions
 
+OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads through `GET /messages`.
+
 | Method | Path | | Notes |
 | --- | --- | --- | --- |
 | POST, GET | `/x/connections` | X | create; list those the caller manages |

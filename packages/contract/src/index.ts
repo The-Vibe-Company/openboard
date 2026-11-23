@@ -37,6 +37,7 @@ export {
   getOpenApi,
   listChannels,
   listMessages,
+  listThreads,
   operations,
   postMessage,
   readEvents,

@@ -50,3 +50,23 @@ test("ob post --help shows the channel as required, since a post without one rea
   expect(await runCli(["post", "--help"], env, { output })).toBe(0);
   expect(lines[0]).toStartWith("ob post <channel> <text>");
 });
+
+test("ob read <channel> prints a summary per thread and previews its latest reply", async () => {
+  const page = {
+    threads: [
+      { message: message("2", "quiet"), replies: 0, last: null },
+      { message: message("1", "busy"), replies: 1, last: message("3", "on it") },
+    ],
+    cursor: "3",
+  };
+  const { code, lines, urls } = run(["read", "dev"], page);
+  expect(await code).toBe(0);
+  expect(lines.out).toEqual(["#2  quiet  (0 replies)", "#1  busy  (1 reply)", "  Latest reply: #3  on it"]);
+  expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev`]);
+});
+
+test("ob read rejects flat-message cursor flags without calling the board", async () => {
+  const { code, urls } = run(["read", "1", "--after", "2"], {});
+  expect(await code).toBe(2);
+  expect(urls).toEqual([]);
+});
