@@ -50,13 +50,9 @@ export async function runCli(
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
   try {
-    return await command.run({
-      client,
-      boardUrl: config.boardUrl,
-      args: words.slice(command.words.length),
-      json,
-      output,
-    });
+    const optionsEnd = Math.max(0, flags.filter((arg) => arg !== "--json").length - command.words.length);
+    const args = words.slice(command.words.length);
+    return await command.run({ client, boardUrl: config.boardUrl, args, optionsEnd, json, output });
   } catch (error) {
     if (error instanceof Misuse) return usage(output, `${error.message}: ${command.usage}`);
     if (!(error instanceof BoardError)) throw error;

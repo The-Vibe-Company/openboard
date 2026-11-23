@@ -35,14 +35,33 @@ export function messageLine(message: { readonly id: string; readonly text: strin
   return `#${message.id}  ${first.trimEnd()}${rest.length > 0 ? " …" : ""}`;
 }
 
-/** How a derived command prints its operation's answer without `--json`; raw JSON for one not listed. */
-export const formats: Readonly<Record<string, (output: unknown) => string>> = Object.freeze({
-  listChannels: (output: unknown) =>
-    (output as OutputOf<typeof listChannels>).channels
-      .map(({ path, messages, threads }) => {
-        if (messages === undefined || threads === undefined) return path;
-        return `${path}  ${threads} ${threads === 1 ? "thread" : "threads"} · ${messages} ${messages === 1 ? "message" : "messages"}`;
-      })
-      .join("\n"),
-  postMessage: (output: unknown) => (output as { message: { id: string } }).message.id,
-});
+/** A word as a shell reads it back: quoted unless it is plain. */
+const shellWord = (word: string) => (/^[\w@%+=:,./-]+$/.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`);
+
+type ChannelsInput = { readonly prefix?: string; readonly limit?: number };
+
+/** One line per channel with its counts, then the command for the next page when there is one. */
+function channelsText(output: unknown, input: Readonly<Record<string, unknown>>): string {
+  const { channels, next } = output as OutputOf<typeof listChannels>;
+  const lines = channels.map(({ path, messages, threads }) => {
+    if (messages === undefined || threads === undefined) return path;
+    return `${path}  ${threads} ${threads === 1 ? "thread" : "threads"} · ${messages} ${messages === 1 ? "message" : "messages"}`;
+  });
+  if (next === null) return lines.join("\n");
+  const { prefix, limit } = input as ChannelsInput;
+  const options = [...(limit === undefined ? [] : ["--limit", String(limit)]), "--after", next];
+  const argv =
+    prefix === undefined
+      ? ["ob", "channels", ...options]
+      : prefix.startsWith("-")
+        ? ["ob", "channels", ...options, "--", prefix]
+        : ["ob", "channels", prefix, ...options];
+  return [...lines, "", `(more not shown: ${argv.map(shellWord).join(" ")})`].join("\n");
+}
+
+/** How a derived command prints its operation's answer and input without `--json`; raw JSON for one not listed. */
+export const formats: Readonly<Record<string, (output: unknown, input: Readonly<Record<string, unknown>>) => string>> =
+  Object.freeze({
+    listChannels: channelsText,
+    postMessage: (output: unknown) => (output as { message: { id: string } }).message.id,
+  });

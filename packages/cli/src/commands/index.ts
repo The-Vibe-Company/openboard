@@ -6,6 +6,8 @@ export interface CommandContext {
   readonly client: Client;
   readonly boardUrl: string;
   readonly args: readonly string[];
+  /** How many of `args` came before `--`: only those may be `--name value` options. */
+  readonly optionsEnd: number;
   readonly json: boolean;
   readonly output: Output;
 }

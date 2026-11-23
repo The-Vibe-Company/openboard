@@ -1,20 +1,34 @@
-import type { BoardScope, BoardView } from "@openboard/ports";
+import type { BoardScope, BoardView, ChannelsQuery } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
-import { query, sql } from "../sql.ts";
+import { type Fragment, query, sql } from "../sql.ts";
 
+/** Paths compare and sort by code point on both engines (Postgres's built-in `ucs_basic`), as SQLite and upstream do. */
+const codePointOrder: Fragment = Object.freeze({
+  fragment: (dialect: Dialect) => (dialect.name === "postgres" ? " COLLATE ucs_basic" : ""),
+});
+
+/**
+ * The page's filters sit in the join, so the board's row (and its head) comes back even when no channel matches.
+ * An absent prefix or `after` is bound as "": every path starts with it and sorts after it.
+ */
 export const channelStatements = {
   listChannels: sql`SELECT boards.head, channels.path, channels.last_index, channels.messages, channels.threads
-    FROM boards LEFT JOIN channels ON channels.board_id = boards.id
-    WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"} ORDER BY channels.path`,
+    FROM boards LEFT JOIN channels ON channels.board_id = boards.id AND channels.path${codePointOrder} > ${"after"}
+      AND substr(channels.path, 1, ${"prefixLength"}) = ${"prefix"}
+    WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"} ORDER BY channels.path${codePointOrder} LIMIT ${"limit"}`,
 };
 
 /** Read the counts and the board head from the same snapshot, including for an empty board. */
 export function channelReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "listChannels"> {
   return {
-    async listChannels() {
+    async listChannels({ prefix = "", after = "", limit }: ChannelsQuery) {
       const rows = await query(db, dialect, channelStatements.listChannels, {
+        after,
+        prefixLength: [...prefix].length,
+        prefix,
         boardId: scope.boardId,
         orgId: scope.orgId,
+        limit,
       });
       const channels = rows.flatMap((row) =>
         typeof row.path === "string"

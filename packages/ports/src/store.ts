@@ -31,6 +31,14 @@ export interface BoardWriter {
   append(events: readonly BoardEvent[]): Promise<void>;
 }
 
+export interface ChannelsQuery {
+  /** Only the channels whose path starts with it. */
+  readonly prefix?: string;
+  /** Only the channels whose path sorts after it. */
+  readonly after?: string;
+  readonly limit: number;
+}
+
 export interface ChannelMessagesQuery {
   readonly channel: string;
   readonly limit: number;
@@ -42,8 +50,8 @@ export interface BoardView {
   write<T>(fn: (writer: BoardWriter) => Promise<T>): Promise<T>;
   /** The channel's latest `limit` messages, oldest first. */
   channelMessages(query: ChannelMessagesQuery): Promise<Message[]>;
-  /** The channels ordered by path, with their counts and the board head at the time of the read. */
-  listChannels(): Promise<{ channels: Channel[]; head: number }>;
+  /** The first `limit` channels the query selects, by path, with their counts and the board head at the time of the read. */
+  listChannels(query: ChannelsQuery): Promise<{ channels: Channel[]; head: number }>;
   /** Scans up to 200 log entries after the position, or starts at the current head when omitted. */
   readEvents(after?: number): Promise<{ head: number; cursor: number; events: BoardEvent[] }>;
   /** The message at log position `id` with its replies, oldest first, or null when no message has that ID. */
