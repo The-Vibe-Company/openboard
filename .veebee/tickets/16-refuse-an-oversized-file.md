@@ -10,8 +10,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [06]
-status: ready
-claimed_by: null
+status: done
+claimed_by: codex-t16
 issue: 16
 ---
 
@@ -19,8 +19,8 @@ issue: 16
 As a contributor, I split a file before it grows past its limit; there is no allowlist.
 
 ## Done when
-- [ ] a 401-line source file makes `bun run lint` exit 1 naming it, while generated files (`*.gen.ts`, `openapi.json`, `commands.md`) pass at any length
-- [ ] a 601-line `*.test.ts` makes `bun run lint` exit 1 naming it
+- [x] a 401-line source file makes `bun run lint` exit 1 naming it, while generated files (`*.gen.ts`, `openapi.json`, `commands.md`) pass at any length
+- [x] a 601-line `*.test.ts` makes `bun run lint` exit 1 naming it
 
 ## Out of scope
 - Files per directory (17).
