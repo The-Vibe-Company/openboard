@@ -7,11 +7,19 @@ writes:
   - packages/server/src/http/pipeline.ts
   - packages/server/src/log.ts
   - packages/server/test/request-id.test.ts
+  - packages/server/src/deps.ts
+  - packages/server/test/support/app.ts
+  - packages/server/test/log.test.ts
+  - packages/server/test/auth/local-owner.test.ts
+  - apps/openboard/src/compose.ts
+  - tools/bench/src/drivers.ts
+  - tools/conformance/src/drivers.ts
+  - docs/codebase.md
 conformance: []
 modes: [local]
 depends_on: [38, 59]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-ticket-60
 issue: 60
 ---
 
