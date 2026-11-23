@@ -214,7 +214,7 @@ Legend.
 186  Run conformance on two instances behind a round-robin proxy   ← 177, 181
 187  Build one openboard binary for both modes   ← 186
 188  Build the image from the binary   ← 183, 187
-189  Deploy staging on Railway with two replicas   ← 167, 184, 188
+189  Deploy staging on Railway with two replicas   ← 120, 123, 167, 184, 188
 190  Deploy every merge to staging   ← 189
 191  Prove a rolling deploy loses nothing with rolling-check   ← 183, 190
 192  Run the nightly checks against staging   ← 190
