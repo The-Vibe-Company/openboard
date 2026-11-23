@@ -7,11 +7,18 @@ writes:
   - packages/server/src/log.ts
   - packages/server/src/deps.ts
   - packages/server/test/log.test.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/index.ts
+  - packages/server/test/support/app.ts
+  - packages/server/test/auth/local-owner.test.ts
+  - apps/openboard/src/compose.ts
+  - tools/bench/src/drivers.ts
+  - tools/conformance/src/drivers.ts
 conformance: []
 modes: [local]
 depends_on: [36]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-5-5
 issue: 58
 ---
 
@@ -19,7 +26,7 @@ issue: 58
 As an operator, I read one structured line per request in the server output.
 
 ## Done when
-- [ ] each request to `ob serve` prints one JSON line with `req`, `op`, `org`, `actor`, `ms` and the status
+- [x] each request to `ob serve` prints one JSON line with `req`, `op`, `org`, `actor`, `ms` and the status
 
 ## Out of scope
 - Redaction (59).
