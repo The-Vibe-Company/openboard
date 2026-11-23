@@ -18,20 +18,20 @@ async function answer(response: Promise<Response>) {
 }
 
 describe("posting a first message on the local board", () => {
-  test("answers 201 with the message at position 1", async () => {
+  test("answers 201 with the message at position 2, after the writer's actor.seen at 1", async () => {
     app = makeApp();
     const { status, type, body } = await answer(call(app, "POST", "/messages", { channel: "dev", text: "hello" }));
     expect(status).toBe(201);
     expect(type).toStartWith("application/json");
     expect(body.message).toMatchObject({
-      id: "1",
+      id: "2",
       channel: "dev",
       text: "hello",
       re: null,
-      thread: "1",
+      thread: "2",
       by: { actor: LOCAL_OWNER, principal: LOCAL_OWNER, profile: null },
       createdAt: "2023-11-14T22:13:20.000Z",
-      version: 1,
+      version: 2,
       revision: 0,
     });
   });
@@ -43,10 +43,10 @@ describe("posting a first message on the local board", () => {
     const { status, body } = await answer(call(app, "GET", "/messages?channel=dev"));
     expect(status).toBe(200);
     expect(body.messages.map((message) => [message.id, message.text])).toEqual([
-      ["1", "hello"],
-      ["2", "again"],
+      ["2", "hello"],
+      ["3", "again"],
     ]);
-    expect(body.cursor).toBe("2");
+    expect(body.cursor).toBe("3");
   });
 });
 
@@ -60,16 +60,16 @@ describe("reading a channel's newest messages", () => {
     expect(newest.status).toBe(200);
     expect([newest.body.messages.map((message) => [message.id, message.text]), newest.body.cursor]).toEqual([
       [
-        ["5", "d"],
-        ["6", "e"],
+        ["6", "d"],
+        ["7", "e"],
       ],
-      "6",
+      "7",
     ]);
     const caughtUp = (await answer(call(app, "GET", `/messages?channel=dev&after=${newest.body.cursor}&limit=2`))).body;
-    expect([caughtUp.messages, caughtUp.cursor]).toEqual([[], "6"]);
+    expect([caughtUp.messages, caughtUp.cursor]).toEqual([[], "7"]);
     await call(app, "POST", "/messages", { channel: "dev", text: "f" });
     const next = (await answer(call(app, "GET", `/messages?channel=dev&after=${newest.body.cursor}&limit=2`))).body;
-    expect([next.messages.map((message) => message.text), next.cursor]).toEqual([["f"], "7"]);
+    expect([next.messages.map((message) => message.text), next.cursor]).toEqual([["f"], "8"]);
   });
 
   test("answers an empty page with cursor 0 for a channel nobody has posted in", async () => {
@@ -91,14 +91,14 @@ describe("reading a channel on from a cursor", () => {
     app = makeApp();
     for (const text of ["a", "b"]) await call(app, "POST", "/messages", { channel: "dev", text });
     await call(app, "POST", "/messages", { channel: "ops", text: "elsewhere" });
-    await call(app, "POST", "/messages", { re: "1", text: "c" });
-    const first = await answer(call(app, "GET", "/messages?channel=dev&after=1&limit=1"));
+    await call(app, "POST", "/messages", { re: "2", text: "c" });
+    const first = await answer(call(app, "GET", "/messages?channel=dev&after=2&limit=1"));
     expect(first.status).toBe(200);
-    expect([first.body.messages.map((message) => message.id), first.body.cursor]).toEqual([["2"], "2"]);
+    expect([first.body.messages.map((message) => message.id), first.body.cursor]).toEqual([["3"], "3"]);
     const rest = (await answer(call(app, "GET", `/messages?channel=dev&after=${first.body.cursor}&limit=1`))).body;
-    expect([rest.messages.map((message) => [message.id, message.text]), rest.cursor]).toEqual([[["4", "c"]], "4"]);
+    expect([rest.messages.map((message) => [message.id, message.text]), rest.cursor]).toEqual([[["5", "c"]], "5"]);
     const end = (await answer(call(app, "GET", `/messages?channel=dev&after=${rest.cursor}`))).body;
-    expect([end.messages, end.cursor]).toEqual([[], "4"]);
+    expect([end.messages, end.cursor]).toEqual([[], "5"]);
   });
 
   test("reads a quiet channel from its first message once it has one, after the cursor its empty page answered", async () => {
@@ -106,7 +106,7 @@ describe("reading a channel on from a cursor", () => {
     const { cursor } = (await answer(call(app, "GET", "/messages?channel=dev"))).body;
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
     const { body } = await answer(call(app, "GET", `/messages?channel=dev&after=${cursor}`));
-    expect([body.messages.map((message) => message.id), body.cursor]).toEqual([["1"], "1"]);
+    expect([body.messages.map((message) => message.id), body.cursor]).toEqual([["2"], "2"]);
   });
 });
 
@@ -114,21 +114,21 @@ describe("replying in a thread", () => {
   test("answers 201 with the reply in the root's thread, which reads it under the root", async () => {
     app = makeApp();
     const root = (await answer(call(app, "POST", "/messages", { channel: "dev", text: "hello" }))).body.message;
-    const posted = await answer(call(app, "POST", "/messages", { re: "1", text: "on it" }));
+    const posted = await answer(call(app, "POST", "/messages", { re: "2", text: "on it" }));
     expect(posted.status).toBe(201);
-    expect(posted.body.message).toMatchObject({ id: "2", channel: "dev", text: "on it", re: "1", thread: "1" });
-    const thread = await (await call(app, "GET", "/messages/1")).json();
+    expect(posted.body.message).toMatchObject({ id: "3", channel: "dev", text: "on it", re: "2", thread: "2" });
+    const thread = await (await call(app, "GET", "/messages/2")).json();
     expect(thread).toEqual({ message: root, replies: [posted.body.message] });
   });
 
   test("lists the reply in its root's channel, after the root", async () => {
     app = makeApp();
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
-    await call(app, "POST", "/messages", { re: "1", text: "on it" });
+    await call(app, "POST", "/messages", { re: "2", text: "on it" });
     const { body } = await answer(call(app, "GET", "/messages?channel=dev"));
     expect(body.messages.map((message) => [message.id, message.text])).toEqual([
-      ["1", "hello"],
-      ["2", "on it"],
+      ["2", "hello"],
+      ["3", "on it"],
     ]);
   });
 
@@ -141,24 +141,24 @@ describe("replying in a thread", () => {
     const missing = await answer(call(app, "POST", "/messages", { re, text: "x" }));
     expect([missing.status, missing.body.error.code]).toEqual([404, "message_not_found"]);
     const { body } = await answer(call(app, "GET", "/messages?channel=dev"));
-    expect(body.messages.map((message) => message.id)).toEqual(["1"]);
+    expect(body.messages.map((message) => message.id)).toEqual(["2"]);
   });
 
   test("puts a reply to a reply in the root's thread, with the reply it answered as replyTo", async () => {
     app = makeApp();
     const root = (await answer(call(app, "POST", "/messages", { channel: "dev", text: "hello" }))).body.message;
-    const first = (await answer(call(app, "POST", "/messages", { re: "1", text: "on it" }))).body.message;
-    const deeper = await answer(call(app, "POST", "/messages", { re: "2", text: "deeper" }));
+    const first = (await answer(call(app, "POST", "/messages", { re: "2", text: "on it" }))).body.message;
+    const deeper = await answer(call(app, "POST", "/messages", { re: "3", text: "deeper" }));
     expect(deeper.status).toBe(201);
-    expect(deeper.body.message).toMatchObject({ id: "3", channel: "dev", re: "1", replyTo: "2", thread: "1" });
-    const thread = await (await call(app, "GET", "/messages/1")).json();
+    expect(deeper.body.message).toMatchObject({ id: "4", channel: "dev", re: "2", replyTo: "3", thread: "2" });
+    const thread = await (await call(app, "GET", "/messages/2")).json();
     expect(thread).toEqual({ message: root, replies: [first, deeper.body.message] });
   });
 
   test("names the field a reply gets wrong, not the channel it leaves out", async () => {
     app = makeApp();
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
-    const refused = await answer(call(app, "POST", "/messages", { re: "1", text: "x", sync: ["somewhere"] }));
+    const refused = await answer(call(app, "POST", "/messages", { re: "2", text: "x", sync: ["somewhere"] }));
     expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
     expect(refused.body.error.message).toStartWith("sync");
   });
@@ -166,7 +166,7 @@ describe("replying in a thread", () => {
   test("answers 400 invalid_request for a post that names both a channel and re", async () => {
     app = makeApp();
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
-    const refused = await answer(call(app, "POST", "/messages", { channel: "dev", re: "1", text: "x" }));
+    const refused = await answer(call(app, "POST", "/messages", { channel: "dev", re: "2", text: "x" }));
     expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
   });
 });

@@ -15,7 +15,7 @@ describe("reading a thread by its ID", () => {
     const posted = await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
     const { message } = (await posted.json()) as Thread;
     await call(app, "POST", "/messages", { channel: "dev", text: "another thread" });
-    const read = await call(app, "GET", "/messages/1");
+    const read = await call(app, "GET", `/messages/${message.id}`);
     expect(read.status).toBe(200);
     expect(read.headers.get("content-type")).toStartWith("application/json");
     expect(await read.json()).toEqual({ message, replies: [] });
@@ -46,5 +46,5 @@ test("GET /threads answers an empty channel with the board cursor", async () => 
   await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
   const read = await call(app, "GET", "/threads?channel=ops");
   expect(read.status).toBe(200);
-  expect(await read.json()).toEqual({ threads: [], cursor: "1" });
+  expect(await read.json()).toEqual({ threads: [], cursor: "2" });
 });

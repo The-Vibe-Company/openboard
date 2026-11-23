@@ -38,6 +38,7 @@ export {
   discoverBoard,
   getMe,
   getOpenApi,
+  listActors,
   listChannels,
   listMessages,
   listThreads,

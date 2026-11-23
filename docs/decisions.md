@@ -605,6 +605,23 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   connection would keep its old name on old messages (names are immutable in
   v1). Avatars (113) add to the same `author`.
 
+### D47. `actor.seen` takes the log position before the write it records
+
+- **Context.** Upstream writes `actor.seen` on an actor's first write, or when
+  its display details change, in the same commit and before the write's own
+  event. Here every event takes the next log position and a message ID is
+  its event's position (D9), so the event costs a position.
+- **Decision.** Ticket 53: a write whose author the board does not yet show
+  as it is appends `actor.seen` (visibility 1, bookkeeping) at `head + 1` and
+  its own event after it, as upstream orders them. The board's record of the
+  author is read at the start of the write (`BoardView.write(fn, actor)`): on
+  SQLite by the head read itself, so a steady-state write runs no extra
+  statement; on Postgres by a statement after the board's row lock, since a
+  statement that waited on the lock re-reads only that row.
+- **Consequence.** An actor's first message on a board is at position 2, not
+  1, and later writes that record who writes (edits, reactions, tasks) use
+  the same rule and the same lock read.
+
 ## Hard blockers found
 
 None. Limits worth knowing:

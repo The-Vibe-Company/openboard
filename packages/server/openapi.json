@@ -575,6 +575,73 @@
         }
       }
     },
+    "/actors": {
+      "get": {
+        "operationId": "actors",
+        "summary": "List every actor the board has seen write, by handle.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["actors", "cursor"],
+                  "properties": {
+                    "actors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "kind", "handle", "name", "avatar"],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "kind": {
+                            "anyOf": [
+                              { "const": "person", "type": "string" },
+                              { "const": "workflow", "type": "string" },
+                              { "const": "agent", "type": "string" }
+                            ]
+                          },
+                          "handle": { "type": "string" },
+                          "name": { "type": "string" },
+                          "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "via": {
+                            "type": "object",
+                            "required": ["name", "environment"],
+                            "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                          }
+                        }
+                      }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/messages": {
       "get": {
         "operationId": "channelMessages",

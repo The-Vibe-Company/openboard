@@ -12,10 +12,10 @@ test("GET /channels lists posted channels and counts on the board", async () => 
     expect(listed.status).toBe(200);
     expect(await listed.json()).toEqual({
       channels: [
-        { path: "dev", lastIndex: 1, messages: 1, threads: 1 },
-        { path: "dev/web", lastIndex: 2, messages: 1, threads: 1 },
+        { path: "dev", lastIndex: 2, messages: 1, threads: 1 },
+        { path: "dev/web", lastIndex: 3, messages: 1, threads: 1 },
       ],
-      cursor: "2",
+      cursor: "3",
       next: null,
     });
   } finally {
@@ -42,7 +42,7 @@ test("GET /channels pages through the channels under a prefix, each once", async
       expect(page.status).toBe(200);
       const body = (await page.json()) as { channels: { path: string }[]; cursor: string; next: string | null };
       expect(body.channels.length).toBeLessThanOrEqual(1);
-      expect(body.cursor).toBe("3");
+      expect(body.cursor).toBe("4");
       seen.push(...body.channels.map((channel) => channel.path));
       after = body.next;
     } while (after !== null && seen.length < 5);
@@ -64,7 +64,7 @@ test("GET /channels answers the last page with next null, and none under an unkn
     expect(under).toMatchObject({ channels: [{ path: "dev/web" }], next: null });
     expect(await (await call(app, "GET", "/channels?prefix=zz")).json()).toEqual({
       channels: [],
-      cursor: "2",
+      cursor: "3",
       next: null,
     });
   } finally {
@@ -114,8 +114,8 @@ test("creates and lists an empty channel, with one log position for concurrent c
 
     await postTo(app, [path]);
     expect(await (await call(app, "GET", "/channels")).json()).toEqual({
-      channels: [{ path, lastIndex: 2, messages: 1, threads: 1 }],
-      cursor: "2",
+      channels: [{ path, lastIndex: 3, messages: 1, threads: 1 }],
+      cursor: "3",
       next: null,
     });
   } finally {
@@ -128,14 +128,14 @@ test("creating a channel opened by a post returns its counts without advancing t
   try {
     const path = "dev";
     await postTo(app, [path]);
-    const channel = { path, lastIndex: 1, messages: 1, threads: 1 };
+    const channel = { path, lastIndex: 2, messages: 1, threads: 1 };
 
     const response = await call(app, "POST", "/channels", { path });
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ channel, created: false });
     expect(await (await call(app, "GET", "/channels")).json()).toEqual({
       channels: [channel],
-      cursor: "1",
+      cursor: "2",
       next: null,
     });
   } finally {
