@@ -17,7 +17,7 @@ writes:
 conformance: ["core/puts a reply in its root's thread"]
 modes: [local]
 depends_on: [45]
-status: claimed
+status: done
 claimed_by: claude-opus-t46
 issue: 46
 ---
@@ -26,7 +26,7 @@ issue: 46
 As a person or agent, I answer a reply and my message joins the root's thread.
 
 ## Done when
-- [ ] `ob reply 2 "deeper"` prints `3`, and `ob read 1 --json` shows #3 with `re` `"1"` and `replyTo` `"2"`
+- [x] `ob reply 2 "deeper"` prints `3`, and `ob read 1 --json` shows #3 with `re` `"1"` and `replyTo` `"2"`
 
 ## Out of scope
 - Thread reads after a message (84).
