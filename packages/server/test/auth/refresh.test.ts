@@ -99,7 +99,7 @@ test("a refresh never moves the expiry past hardExpiresAt, and past it answers 4
   expect(await codeOf(refresh(app, late.token))).toEqual([401, "unauthorized"]);
 });
 
-test("only a claimed agent token refreshes: a connection's secret or the owner token is 403", async () => {
+test("only a claimed agent token refreshes: a direct secret or the owner token is 403, a claim-only secret 401", async () => {
   const booted = await boot();
   app = booted.app;
   const direct = await call(app, "POST", "/x/connections", { name: "laptop", can: CAN, direct: true });
@@ -107,4 +107,12 @@ test("only a claimed agent token refreshes: a connection's secret or the owner t
   expect(await codeOf(refresh(app, directSecret))).toEqual([403, "forbidden"]);
   expect(await codeOf(call(app, "POST", "/x/connections/refresh"))).toEqual([403, "forbidden"]);
   expect(await codeOf(refresh(app, booted.secret))).toEqual([401, "unauthorized"]);
+});
+
+test("two refreshes of one token at once: one answers a new token, the other 401", async () => {
+  const booted = await boot();
+  app = booted.app;
+  const claimed = await issued(as(app, booted.secret, "POST", "/x/connections/claim", { profile: "fixer-2" }));
+  const answers = await Promise.all([refresh(app, claimed.token), refresh(app, claimed.token)]);
+  expect(answers.map((answer) => answer.status).sort()).toEqual([200, 401]);
 });

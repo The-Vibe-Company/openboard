@@ -149,7 +149,8 @@ export interface AgentRecord {
   /** The pinned profile as the claim spelled it, which is how it is shown. */
   readonly profile: string;
   readonly tokenHash: string;
-  /** Epoch milliseconds of `agent.hardExpiresAt`, past which none of the agent's tokens refreshes. */
+  /** Epoch milliseconds of `agent.expiresAt`, and of `agent.hardExpiresAt`, past which none of its tokens refreshes. */
+  readonly tokenExpires: number;
   readonly hardExpires: number;
   /** The token the last refresh replaced: its SHA-256 (hex), and the epoch milliseconds it works until. */
   readonly previous: { readonly tokenHash: string; readonly until: number } | null;

@@ -177,7 +177,8 @@ export interface RefreshingAgent {
   readonly agent: ClaimedAgent;
   /** SHA-256 of the agent's current token, hex. */
   readonly tokenHash: string;
-  /** Epoch milliseconds of `agent.hardExpiresAt`. */
+  /** Epoch milliseconds of `agent.expiresAt` and `agent.hardExpiresAt`. */
+  readonly tokenExpires: number;
   readonly hardExpires: number;
   /** The connection's token lifetime, in seconds. */
   readonly tokenTtl: number;
@@ -206,8 +207,8 @@ export interface AgentRefreshed {
 }
 
 /**
- * A new token for `state.agent`, with the same pins, living the connection's token lifetime from `now` and never past
- * the agent's hard expiry; the token it replaces keeps working `PREVIOUS_TOKEN_MS`. Only the current token refreshes
+ * A new token for `state.agent`, with the same pins, living the connection's token lifetime from `now`, never less
+ * than the token it replaces (a claim may ask for a longer one) and never past the agent's hard expiry; the token it replaces keeps working `PREVIOUS_TOKEN_MS`. Only the current token refreshes
  * (`presented` is its hash): its predecessor, or a token another refresh already replaced, is 401 `unauthorized`. Past
  * the hard expiry nothing refreshes: the connection's secret claims a new agent.
  */
@@ -216,7 +217,7 @@ export function decideRefresh(
   context: { readonly by: Author; readonly now: number; readonly presented: string; readonly token: MintedToken },
 ): { agent: ClaimedAgent; events: [AgentRefreshed] } {
   const { by, now, presented, token } = context;
-  const { agent, tokenHash, tokenTtl, hardExpires } = state.agent;
+  const { agent, tokenHash, tokenTtl, tokenExpires: currentExpires, hardExpires } = state.agent;
   if (presented !== tokenHash) {
     throw new BoardError("unauthorized", "this token was already refreshed", {
       hint: "Use the token the refresh answered.",
@@ -227,7 +228,7 @@ export function decideRefresh(
       hint: "Claim a new token with the connection's secret: `ob connect <BOARD_URL> --as <profile>`.",
     });
   }
-  const tokenExpires = Math.min(now + tokenTtl * 1000, hardExpires);
+  const tokenExpires = Math.min(Math.max(now + tokenTtl * 1000, currentExpires), hardExpires);
   const refreshed: ClaimedAgent = { ...agent, expiresAt: isoTime(tokenExpires) };
   const event: AgentRefreshed = {
     id: state.head + 1,

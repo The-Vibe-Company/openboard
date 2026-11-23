@@ -78,6 +78,7 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
         connection: { id: fixers.id, name: "fixers", profiles: ["*"], tokenTtl: 3600 },
         profile: "Fixer-2",
         tokenHash: "ef".repeat(32),
+        tokenExpires: 3_600_001,
         hardExpires: 86_400_001,
         previous: null,
       });

@@ -74,16 +74,9 @@ describe("claiming an agent token", () => {
 describe("refreshing an agent token", () => {
   const claimed = claim({ profile: "fixer-2", ttl: "5m" }).agent;
   const next = { id: token.id, hash: "12".repeat(32) };
-  const refresh = (now: number, presented = token.hash) =>
-    decideRefresh(
-      { head: 9, agent: { agent: claimed, tokenHash: token.hash, tokenTtl: 3600, hardExpires: NOW + 86_400_000 } },
-      {
-        by,
-        now,
-        presented,
-        token: next,
-      },
-    );
+  const stored = { tokenHash: token.hash, tokenTtl: 3600, tokenExpires: NOW + 300_000, hardExpires: NOW + 86_400_000 };
+  const refresh = (now: number, presented = token.hash, agent = { ...stored, agent: claimed }) =>
+    decideRefresh({ head: 9, agent }, { by, now, presented, token: next });
 
   test("lives the connection's token lifetime from now, keeps the pins, and keeps the old token 60 s", () => {
     const { agent, events } = refresh(NOW + 60_000);
@@ -100,6 +93,12 @@ describe("refreshing an agent token", () => {
   test("never moves past the hard expiry, and refuses past it", () => {
     expect(refresh(NOW + 86_000_000).agent.expiresAt).toBe(claimed.hardExpiresAt);
     expect(() => refresh(NOW + 86_400_000)).toThrow("hard expiry");
+  });
+
+  test("never shortens a token claimed for longer than the connection's token lifetime", () => {
+    const long = claim({ profile: "fixer-2", ttl: "12h" }).agent;
+    const agent = { ...stored, agent: long, tokenExpires: NOW + 43_200_000 };
+    expect(refresh(NOW + 60_000, token.hash, agent).agent.expiresAt).toBe(long.expiresAt);
   });
 
   test("refuses a token that is no longer the agent's current one", () => {

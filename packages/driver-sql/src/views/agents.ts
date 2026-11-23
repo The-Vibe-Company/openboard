@@ -70,6 +70,7 @@ function recordOf(row: Row): AgentRecord {
     },
     profile: String(row.profile),
     tokenHash: hexOf(row.token_hash),
+    tokenExpires: Number(row.token_expires),
     hardExpires: Number(row.hard_expires),
     previous,
   };
