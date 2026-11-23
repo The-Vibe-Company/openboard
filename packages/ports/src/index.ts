@@ -4,6 +4,7 @@ export type {
   BoardView,
   BoardWriter,
   ChannelMessagesQuery,
+  ChannelsQuery,
   PlatformView,
   Store,
 } from "./store.ts";

@@ -22,3 +22,70 @@ test("GET /channels lists posted channels and counts on the board", async () => 
     await app.close();
   }
 });
+
+async function postTo(app: ReturnType<typeof makeApp>, channels: readonly string[]): Promise<void> {
+  for (const channel of channels) {
+    const posted = await call(app, "POST", "/messages", { channel, text: "hello" });
+    expect(posted.status).toBe(201);
+  }
+}
+
+test("GET /channels pages through the channels under a prefix, each once", async () => {
+  const app = makeApp();
+  try {
+    await postTo(app, ["dev/web", "ops", "dev"]);
+    const seen: string[] = [];
+    let after: string | null = null;
+    do {
+      const query: string = `/channels?prefix=dev&limit=1${after === null ? "" : `&after=${encodeURIComponent(after)}`}`;
+      const page = await call(app, "GET", query);
+      expect(page.status).toBe(200);
+      const body = (await page.json()) as { channels: { path: string }[]; cursor: string; next: string | null };
+      expect(body.channels.length).toBeLessThanOrEqual(1);
+      expect(body.cursor).toBe("3");
+      seen.push(...body.channels.map((channel) => channel.path));
+      after = body.next;
+    } while (after !== null && seen.length < 5);
+    expect(seen).toEqual(["dev", "dev/web"]);
+  } finally {
+    await app.close();
+  }
+});
+
+test("GET /channels answers the last page with next null, and none under an unknown prefix", async () => {
+  const app = makeApp();
+  try {
+    await postTo(app, ["dev", "dev/web"]);
+    const first = await (await call(app, "GET", "/channels?limit=1")).json();
+    expect(first).toMatchObject({ channels: [{ path: "dev" }], next: "dev" });
+    const last = await (await call(app, "GET", "/channels?limit=1&after=dev")).json();
+    expect(last).toMatchObject({ channels: [{ path: "dev/web" }], next: null });
+    const under = await (await call(app, "GET", "/channels?prefix=dev/")).json();
+    expect(under).toMatchObject({ channels: [{ path: "dev/web" }], next: null });
+    expect(await (await call(app, "GET", "/channels?prefix=zz")).json()).toEqual({
+      channels: [],
+      cursor: "2",
+      next: null,
+    });
+  } finally {
+    await app.close();
+  }
+});
+
+test.each([
+  ["a limit of 0", "/channels?limit=0", "limit"],
+  ["a limit over 500", "/channels?limit=501", "limit"],
+  ["an empty prefix", "/channels?prefix=", "prefix"],
+  ["an unknown parameter", "/channels?page=2", "page"],
+])("GET /channels answers 400 invalid_request for %s", async (_, path, field) => {
+  const app = makeApp();
+  try {
+    const refused = await call(app, "GET", path);
+    expect(refused.status).toBe(400);
+    const body = (await refused.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("invalid_request");
+    expect(body.error.message).toStartWith(field);
+  } finally {
+    await app.close();
+  }
+});

@@ -84,3 +84,45 @@ test("ob channels prints paths when the board omits counts", async () => {
   expect(lines.out).toEqual(["dev"]);
   expect(board.seen).toEqual([{ method: "GET", url: `${env.BOARD_URL}/channels`, body: "" }]);
 });
+
+const queryOf = (url: string | undefined) => Object.fromEntries(new URL(url ?? "").searchParams);
+
+describe("ob channels pages", () => {
+  test("passes the prefix and options, and prints the command for the next page", async () => {
+    const board = fakeBoard(200, { channels: [{ path: "dev", messages: 1, threads: 1 }], cursor: "2", next: "dev" });
+    const { lines, output } = capture();
+    expect(await runCli(["channels", "dev", "--limit", "1"], env, { fetch: board.fetch, output })).toBe(0);
+    expect(queryOf(board.seen[0]?.url)).toEqual({ prefix: "dev", limit: "1" });
+    expect(lines.out).toEqual(["dev  1 thread · 1 message\n\n(more not shown: ob channels dev --limit 1 --after dev)"]);
+  });
+
+  test("prints no next-page line on the last page", async () => {
+    const board = fakeBoard(200, { channels: [{ path: "dev/web" }], cursor: "2", next: null });
+    const { lines, output } = capture();
+    expect(
+      await runCli(["channels", "dev", "--limit", "1", "--after", "dev"], env, { fetch: board.fetch, output }),
+    ).toBe(0);
+    expect(queryOf(board.seen[0]?.url)).toEqual({ prefix: "dev", limit: "1", after: "dev" });
+    expect(lines.out).toEqual(["dev/web"]);
+  });
+
+  test("puts a prefix that starts with a dash after -- in the next-page command", async () => {
+    const board = fakeBoard(200, { channels: [], cursor: "2", next: "x" });
+    const { lines, output } = capture();
+    expect(await runCli(["channels", "--", "--x"], env, { fetch: board.fetch, output })).toBe(0);
+    expect(board.seen[0]?.url).toBe(`${env.BOARD_URL}/channels?prefix=--x`);
+    expect(lines.out).toEqual(["\n(more not shown: ob channels --after x -- --x)"]);
+  });
+
+  test.each([
+    ["an unknown option", ["channels", "--page", "2"]],
+    ["an option without its value", ["channels", "--limit"]],
+    ["a second prefix", ["channels", "dev", "ops"]],
+    ["a positional field given as an option", ["channels", "--prefix", "dev"]],
+  ])("exits 2 for %s", async (_, argv) => {
+    const board = fakeBoard(200, {});
+    const { output } = capture();
+    expect(await runCli(argv, env, { fetch: board.fetch, output })).toBe(2);
+    expect(board.seen).toEqual([]);
+  });
+});
