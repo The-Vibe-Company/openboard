@@ -106,8 +106,8 @@ draft --(owner or planner agent reviews)--> ready --(agent claims)--> claimed --
   - `Tests:` what is covered and at which layer, what is faked and why;
   - `Dependency:` none, or the package, its install size, why Bun or the standard library cannot do it, and what else was considered.
 - **Size**: at most 600 changed lines per workspace (generated files, lockfile, pure deletions and renames excluded). Bigger work is split before it is coded. CI enforces it; only the owner can apply `size-exception`.
-- **Merge**: GitHub merge queue on `main`, squash only, one required check `Verify` (armada: `docs/merge-queue.md`). An agent enqueues with `gh pr merge <n> --squash` once `Verify` is green and review is done; it never uses `--admin`. Branches are deleted on merge.
-- **Review**: the PR author is never its only reviewer. Until the owner says otherwise, a second agent session (not the author) reviews every PR against this file, `AGENTS.md` and the ticket, and the owner reviews anything touching CODEOWNERS paths. After three review rounds, non-security, non-data-loss findings may be deferred to a new ticket that contains the failing test (armada: `AGENTS.md` "Review").
+- **Merge**: GitHub merge queue on `main`, squash only, one required check `Verify` (armada: `docs/merge-queue.md`). The orchestrator merges with `gh pr merge <n> --squash` once `Verify` is green and review is done; an agent never merges its own PR, and no one uses `--admin`. Branches are deleted on merge.
+- **Review**: the PR author is never its only reviewer. The author ships with the `ship-pr-dev` skill, whose `review-code-dev` pass is an independent review; the orchestrator then re-runs the ticket's acceptance criteria, reviews the diff against this file, `AGENTS.md` and the ticket, and merges. There is no CODEOWNERS file (D44). After three review rounds, non-security, non-data-loss findings may be deferred to a new ticket that contains the failing test (armada: `AGENTS.md` "Review").
 
 ## 4. Labels
 
@@ -121,7 +121,7 @@ draft --(owner or planner agent reviews)--> ready --(agent claims)--> claimed --
 | `perf` | the ticket changes bench numbers or budgets |
 | `size-exception` | owner only; lets one PR exceed the size limit |
 | `bug` | behaviour differs from the docs or upstream's protocol |
-| `isolation` | touches tenant scoping or the isolation suites; owner review required |
+| `isolation` | touches tenant scoping or the isolation suites; the PR says so in its body |
 
 ## 5. Parallel agents
 

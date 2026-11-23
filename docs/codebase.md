@@ -33,7 +33,6 @@ openboard/
     workflows/web.yml        Playwright, not required
     workflows/nightly.yml    full bench both modes, Playwright, conformance against staging
     workflows/release.yml    release-please, binaries, image, npm, Railway
-    CODEOWNERS
     pull_request_template.md
   .veebee/
     cut.md                   every ticket of every milestone, one line each
@@ -217,7 +216,7 @@ All of it runs in `bun run lint`, inside the required check.
 5. **Drift between engines** (D32, data-model.md "The store port"): the shared store suite on both drivers, an `EXPLAIN` of every registered statement on both engines, and a schema-parity test comparing both catalogs. These run in the `unit-sqlite` and `postgres` jobs.
 4. **`scripts/ci/migrations.ts`** over the single migration source `packages/driver-sql/migrations/`: numbers are unique and newer than `main`'s, applied files are never edited, every file renders to SQLite through `driver-sqlite/src/ddl.ts` (the mechanical differences of `docs/data-model.md` "DDL"), and no migration contains a destructive statement (`DROP`, `RENAME`, `ALTER … TYPE`, `SET NOT NULL` without default) unless marked `-- contract-phase` and preceded by a release that stopped using the object (section 7.6).
 
-`scripts/ci/boundaries.json`, `.oxlintrc.json`, `biome.json`, `tools/conformance/score.json`, `tools/bench/budgets.json`, `packages/driver-sql/migrations/`, `packages/ports/testkit/isolation.test-suite.ts`, `packages/server/test/isolation/**` and `.github/` are in `.github/CODEOWNERS` for `@StanGirard`. An agent cannot widen the graph, add a dependency, lower a score, raise a budget or weaken isolation without owner review.
+There is no CODEOWNERS file (D44): agents open pull requests under the owner's GitHub account, so GitHub could not route their review to the owner. The orchestrator reviews and merges every pull request. A change to `scripts/ci/boundaries.json`, `.oxlintrc.json`, `biome.json`, `tools/conformance/score.json`, `tools/bench/budgets.json`, `packages/driver-sql/migrations/`, `packages/ports/testkit/isolation.test-suite.ts`, `packages/server/test/isolation/**` or `.github/` says so in its PR body, and one that widens the graph, adds a dependency, lowers a score, raises a budget or weakens isolation says why.
 
 ## 4. One operation, defined once
 

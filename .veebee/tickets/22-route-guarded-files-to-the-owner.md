@@ -8,7 +8,7 @@ writes:
 conformance: []
 modes: []
 depends_on: [01]
-status: ready
+status: dropped
 claimed_by: null
 issue: 22
 ---

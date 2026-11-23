@@ -29,7 +29,7 @@ Legend.
 19  Refuse a PR over 600 changed lines in one workspace   ← 18
 20  See one required check, Verify, on every pull request   ← 04, 19
 21  Open a PR that carries the template's lines   ← 01
-22  Route guarded files to the owner for review   ← 01
+22  Route guarded files to the owner for review   ← 01   (dropped: no CODEOWNERS, D44)
 23  Mirror ticket files as GitHub issues   ← 01
 24  Refuse a ticket claim whose writes overlap a claimed ticket   ← 23
 25  Refuse a driver import outside a composition root   ← 10

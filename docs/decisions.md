@@ -558,6 +558,22 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
 - **Consequence.** The lockout check runs; app, viewer, sync, root-edit-blocks
   (via sync), and upstream's unspecified checks are skipped.
 
+### D44. No CODEOWNERS; the orchestrator reviews and merges every pull request
+
+- **Context.** Coding agents open pull requests under the owner's GitHub
+  account, so GitHub can neither request the owner's review on them nor let
+  anyone approve them. Routing guarded files to the owner (ticket 22) could
+  never work, and holding guarded pull requests for him stalled the build.
+- **Decision.** Stan, 2026-11-23: no CODEOWNERS file. Every pull request ships
+  through the `ship-pr-dev` skill, whose `review-code-dev` pass is the
+  independent review; the orchestrator re-runs the ticket's acceptance
+  criteria, reviews the diff and merges, guarded files included. An agent
+  never merges its own pull request.
+- **Consequence.** Ticket 22 is dropped. A pull request that touches a guarded
+  file says so in its body, and one that widens the import graph, adds a
+  dependency, lowers a score, raises a budget or weakens isolation says why
+  ([codebase.md](./codebase.md) section 3.3).
+
 ## Hard blockers found
 
 None. Limits worth knowing:

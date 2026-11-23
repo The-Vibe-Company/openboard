@@ -26,4 +26,4 @@ As a contributor, I cannot register a statement that could read or write across 
 - The isolation suites (33, 135).
 
 ## Notes
-`docs/codebase.md` 3.2 (statement row) and 4.4; `docs/data-model.md` "Tenancy". Owner-reviewed: label `isolation`.
+`docs/codebase.md` 3.2 (statement row) and 4.4; `docs/data-model.md` "Tenancy". Label `isolation`.
