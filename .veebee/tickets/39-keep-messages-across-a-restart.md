@@ -4,6 +4,7 @@ title: Keep messages across a restart
 milestone: M1-walking-skeleton
 package: driver-sqlite
 writes:
+  - packages/driver-sqlite/src/index.ts
   - packages/driver-sqlite/src/open.ts
   - packages/driver-sqlite/src/migrate.ts
   - packages/driver-sqlite/test/open.test.ts
@@ -12,8 +13,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [36]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 39
 ---
 

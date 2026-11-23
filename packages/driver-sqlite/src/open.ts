@@ -1,0 +1,91 @@
+import { Database, type SQLQueryBindings } from "bun:sqlite";
+import { closeSync, mkdirSync, openSync } from "node:fs";
+import { join } from "node:path";
+import { createViews, type Db, migrations, type Row, type SqlValue } from "@openboard/driver-sql";
+import type { Store } from "@openboard/ports";
+import { sqliteDialect } from "./dialect.ts";
+import { migrate } from "./migrate.ts";
+
+export type SqliteOptions = { readonly memory: true } | { readonly dir: string; readonly sync?: "NORMAL" | "FULL" };
+
+const PRAGMAS = [
+  "foreign_keys = OFF",
+  "temp_store = MEMORY",
+  "cache_size = -16000",
+  "mmap_size = 67108864",
+  "journal_size_limit = 67108864",
+  "wal_autocheckpoint = 1000",
+];
+
+function openDatabase(options: SqliteOptions, now: () => number): Database {
+  const file = "dir" in options ? join(options.dir, "board.db") : ":memory:";
+  if ("dir" in options) {
+    mkdirSync(options.dir, { recursive: true, mode: 0o700 });
+    // Create privately without opening an existing file outside SQLite's locking protocol.
+    try {
+      closeSync(openSync(file, "wx", 0o600));
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) throw error;
+    }
+  }
+
+  const database = new Database(file, { readwrite: true, create: false, strict: true });
+  try {
+    database.run("PRAGMA busy_timeout = 5000");
+    database.run("PRAGMA journal_mode = WAL");
+    database.run(
+      "dir" in options && options.sync === "FULL" ? "PRAGMA synchronous = FULL" : "PRAGMA synchronous = NORMAL",
+    );
+    for (const pragma of PRAGMAS) database.run(`PRAGMA ${pragma}`);
+    migrate(database, migrations, now());
+    return database;
+  } catch (error) {
+    database.close();
+    throw error;
+  }
+}
+
+/**
+ * One connection, and one queue in front of it: a write transaction holds the queue from `BEGIN IMMEDIATE` to
+ * `COMMIT`, so no other statement interleaves with it between awaits (the process write mutex of D33).
+ */
+function connection(database: Database): Db {
+  let tail: Promise<unknown> = Promise.resolve();
+  const exclusive = <T>(task: () => Promise<T>): Promise<T> => {
+    const run = tail.then(task);
+    tail = run.catch(() => undefined);
+    return run;
+  };
+  const run = async (text: string, values: readonly SqlValue[]) =>
+    database.query<Row, SQLQueryBindings[]>(text).all(...(values as SQLQueryBindings[]));
+  const inTransaction: Db = {
+    query: run,
+    transaction: () => Promise.reject(new Error("a board write does not nest")),
+  };
+  return {
+    query: (text, values) => exclusive(() => run(text, values)),
+    transaction: (fn) =>
+      exclusive(async () => {
+        database.run("BEGIN IMMEDIATE");
+        try {
+          const result = await fn(inTransaction);
+          database.run("COMMIT");
+          return result;
+        } catch (error) {
+          database.run("ROLLBACK");
+          throw error;
+        }
+      }),
+  };
+}
+
+/** Local mode's store on SQLite: migrated on open, with the implicit organization `local` and board `main`. */
+export function sqliteDriver(options: SqliteOptions, now: () => number = Date.now): Store {
+  const database = openDatabase(options, now);
+  return {
+    ...createViews(connection(database), sqliteDialect),
+    async close() {
+      database.close();
+    },
+  };
+}
