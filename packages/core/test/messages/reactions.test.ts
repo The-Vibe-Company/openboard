@@ -39,6 +39,7 @@ test("an unseen writer is recorded with actor.seen before its reaction", () => {
 test("an alias is stored as its canonical name", () => {
   expect(canonicalEmoji("+1")).toBe("thumbs_up");
   expect(canonicalEmoji("eyes")).toBe("eyes");
+  expect([canonicalEmoji("sob"), canonicalEmoji("cry")]).toEqual(["cry", "cry"]);
 });
 
 test.each(["", "Eyes", ":eyes:", "👀", "constructor", "__proto__", "prototype", "a".repeat(65)])(

@@ -38,7 +38,6 @@ const ALIASES: Readonly<Record<string, string>> = Object.freeze({
   satisfied: "laugh",
   joy: "laugh",
   thinking_face: "thinking",
-  cry: "sad",
   white_frowning_face: "sad",
   sob: "cry",
   heart_eyes: "love_eyes",

@@ -87,3 +87,12 @@ describe("connections.decideCreate", () => {
     expect(codeOf(decide)).toBe("slug_taken");
   });
 });
+
+describe("withImplied", () => {
+  test("adds read to react, label and sync, and every permission to manage", () => {
+    expect(grants.withImplied(["react"])).toEqual(["read", "react"]);
+    expect(grants.withImplied(["post", "label"])).toEqual(["read", "post", "label"]);
+    expect(grants.withImplied(["post"])).toEqual(["post"]);
+    expect(grants.withImplied(["manage"])).toEqual(["read", "post", "react", "label", "sync", "manage"]);
+  });
+});

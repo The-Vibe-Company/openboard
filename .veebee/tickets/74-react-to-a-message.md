@@ -19,6 +19,11 @@ writes:
   - packages/core/src/index.ts
   - packages/server/src/operations/index.ts
   - packages/server/openapi.json
+  - packages/core/src/access/grants.ts
+  - packages/core/src/access/agents.ts
+  - packages/core/test/access/grants.test.ts
+  - packages/server/src/auth/tokens.ts
+  - packages/server/test/auth/pinned.test.ts
 conformance: []
 modes: [local]
 depends_on: [73]

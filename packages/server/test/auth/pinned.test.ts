@@ -9,8 +9,11 @@ afterEach(() => app?.close());
  * Creates the connection `fixers`, letting in `fixer-*` with read and post under `dev/` and read in `ops`, claims a
  * token pinned to `fixer-2` (and to `can`, when given) and answers it.
  */
-async function pinnedToken(target: App, can?: Record<string, string[]>): Promise<string> {
-  const grant = { "dev/": ["read", "post"], ops: ["read"] };
+async function pinnedToken(
+  target: App,
+  can?: Record<string, string[]>,
+  grant: Record<string, string[]> = { "dev/": ["read", "post"], ops: ["read"] },
+): Promise<string> {
   const body = { name: "fixers", can: grant, direct: false, profiles: ["fixer-*"] };
   const created = await call(target, "POST", "/x/connections", body);
   expect(created.status).toBe(201);
@@ -160,4 +163,21 @@ test("a pinned token asking for a message not yet posted gets 404 before the han
     404,
     "message_not_found",
   ]);
+});
+
+test("a token claimed with only react reacts, since react implies read", async () => {
+  app = makeApp();
+  await call(app, "POST", "/messages", post);
+  const token = await pinnedToken(app, { "dev/": ["react"] }, { "dev/": ["read", "post", "react"] });
+  const reacted = await as(app, token, null, "POST", "/messages/2/reactions", { emoji: "eyes" });
+  expect([reacted.status, await reacted.json()]).toEqual([200, { ok: true }]);
+});
+
+test("a token without react answers 403 forbidden to a reaction in a channel it reads", async () => {
+  app = makeApp();
+  await call(app, "POST", "/messages", post);
+  const token = await pinnedToken(app);
+  const refused = await as(app, token, null, "POST", "/messages/2/reactions", { emoji: "eyes" });
+  expect(refused.status).toBe(403);
+  expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
 });
