@@ -39,6 +39,7 @@ export {
   createChannel,
   createConnection,
   createOrg,
+  deleteMessage,
   discoverBoard,
   editMessage,
   getAccount,

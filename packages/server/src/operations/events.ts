@@ -13,6 +13,16 @@ export const readEventsHandler: Handler<typeof readEvents> = async ({ board }, {
   return {
     cursor: formatId(cursor),
     events: events.map((event) => {
+      if (event.type === "message.deleted") {
+        const { view, ...payload } = event.payload;
+        return {
+          cursor: formatId(event.id),
+          type: event.type,
+          createdAt: isoTime(event.at),
+          payload,
+          message: view,
+        };
+      }
       if (event.type === "message.edited") {
         const { view, ...payload } = event.payload;
         return {

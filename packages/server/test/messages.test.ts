@@ -414,3 +414,58 @@ describe("editing a message", () => {
     expect([status, body.error.code]).toEqual([404, "message_not_found"]);
   });
 });
+
+describe("deleting a message", () => {
+  test("keeps the root and reply in the thread and emits one deletion across concurrent retries", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "earlier", labels: { topic: "deploy" } });
+    const reply = (await answer(call(app, "POST", "/messages", { re: "2", text: "reply" }))).body.message;
+
+    const deletes = await Promise.all([
+      call(app, "POST", "/messages/2/delete"),
+      call(app, "POST", "/messages/2/delete"),
+    ]);
+    for (const response of deletes) {
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ ok: true });
+    }
+
+    const tombstone = { id: "2", text: "", deleted: true, labels: {}, revision: 1, version: 4 };
+    expect(await (await call(app, "GET", "/messages/2")).json()).toMatchObject({
+      message: tombstone,
+      replies: [reply],
+    });
+    expect(await (await call(app, "GET", "/events?after=3")).json()).toMatchObject({
+      cursor: "4",
+      events: [{ type: "message.deleted", payload: { id: "2", thread: "2", from: null }, message: tombstone }],
+    });
+    const edit = await answer(call(app, "POST", "/messages/2/edit", { text: "new" }));
+    expect([edit.status, edit.body.error.code]).toEqual([400, "message_deleted"]);
+  });
+
+  test("refuses a delete from a different profile", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "keep me" });
+    const refused = await answer(
+      app.fetch(
+        new Request(`${BOARD_URL}/messages/2/delete`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${OWNER.token}`, "x-board-profile": "bot" },
+        }),
+      ),
+    );
+    expect([refused.status, refused.body.error.code]).toEqual([403, "forbidden"]);
+  });
+
+  test("returns message_not_found for an ID without a message", async () => {
+    app = makeApp();
+    const missing = await answer(call(app, "POST", "/messages/3/delete", {}));
+    expect([missing.status, missing.body.error.code]).toEqual([404, "message_not_found"]);
+  });
+
+  test("returns invalid_request for a non-object body", async () => {
+    app = makeApp();
+    const invalid = await answer(call(app, "POST", "/messages/3/delete", "bad body"));
+    expect([invalid.status, invalid.body.error.code]).toEqual([400, "invalid_request"]);
+  });
+});
