@@ -1,0 +1,4 @@
+DROP TABLE obsolete;
+ALTER TABLE boards RENAME COLUMN title TO name;
+ALTER TABLE boards ALTER COLUMN id TYPE bigint;
+ALTER TABLE ONLY public."boards" ALTER COLUMN name SET NOT NULL;

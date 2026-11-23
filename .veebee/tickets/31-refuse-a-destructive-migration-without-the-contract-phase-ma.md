@@ -10,8 +10,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [30]
-status: ready
-claimed_by: null
+status: done
+claimed_by: codex-t31
 issue: 31
 ---
 
