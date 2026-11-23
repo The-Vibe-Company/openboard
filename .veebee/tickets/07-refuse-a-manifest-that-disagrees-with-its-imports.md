@@ -5,12 +5,14 @@ milestone: M0-foundations
 package: tools
 writes:
   - scripts/ci/boundaries.ts
+  - scripts/ci/boundaries.test.ts
   - scripts/ci/fixtures/boundaries/manifest/**
+  - scripts/ci/fixtures/boundaries/graph/README.md
 conformance: []
 modes: []
 depends_on: [06]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-opus-t07
 issue: 7
 ---
 
@@ -18,8 +20,8 @@ issue: 7
 As a contributor, I cannot declare a dependency a package does not use, or use one it does not declare.
 
 ## Done when
-- [ ] a workspace importing a package missing from its `package.json` makes `bun run lint` exit 1 naming the package
-- [ ] a workspace declaring a dependency outside its allow-list makes `bun run lint` exit 1 naming it
+- [x] a workspace importing a package missing from its `package.json` makes `bun run lint` exit 1 naming the package
+- [x] a workspace declaring a dependency outside its allow-list makes `bun run lint` exit 1 naming it
 
 ## Out of scope
 - The import-edge rule (06).
