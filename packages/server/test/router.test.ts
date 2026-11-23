@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { call, makeApp } from "./support/app.ts";
+import { call, makeApp, OWNER } from "./support/app.ts";
 
 let app: ReturnType<typeof makeApp>;
 afterEach(() => app.close());
@@ -12,9 +12,10 @@ interface Body {
   readonly error?: { readonly code: string; readonly message: string };
 }
 
-/** One request to the app, with the answer's status, headers and raw text kept as sent. */
+/** One request to the app as the local owner, with the answer's status, headers and raw text kept as sent. */
 async function answer(method: string, path: string) {
-  const settled = await app.fetch(new Request(`${ORIGIN}${path}`, { method }));
+  const headers = { authorization: `Bearer ${OWNER.token}` };
+  const settled = await app.fetch(new Request(`${ORIGIN}${path}`, { method, headers }));
   const text = await settled.text();
   return {
     status: settled.status,
