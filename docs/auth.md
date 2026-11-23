@@ -64,8 +64,9 @@ Verified against `docs/01-board/03-identity.md`, `docs/01-board/09-access.md`,
   (`all-projects`) and `g3` (`all-apps`) exist for upstream parity and let no
   one in.
 - **v1: one organization per person.** The schema is many-to-many
-  (`memberships`); the product enforces one: accepting an invitation while
-  already a member elsewhere answers 409 `already_in_org`. What an org
+  (`memberships`); creating an organization while already a member, or
+  accepting an invitation while already a member elsewhere, answers 409
+  `already_in_org`. What an org
   switcher needs later: `GET /api/x/me` already lists memberships; the URL
   already carries the organization, so switching is navigation; sessions are
   per person, not per organization; personal tokens are per organization, so

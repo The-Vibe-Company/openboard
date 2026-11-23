@@ -1,11 +1,11 @@
 import { BoardError, type Role } from "@openboard/contract";
 import type { BoardMemberRecord, BoardScope, BoardView, CreateOrgRecord, PlatformView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
-import { query, sql } from "../sql.ts";
+import { forUpdate, query, sql } from "../sql.ts";
 
 /** Organizations, their memberships and their events. */
 export const orgStatements = {
-  userIdOf: sql`SELECT id FROM users WHERE public_id = ${"personId"}`,
+  lockPerson: sql`SELECT id FROM users WHERE public_id = ${"personId"}${forUpdate}`,
   insertOrg: sql`INSERT INTO orgs (slug, name, created_by, created_at)
     VALUES (${"slug"}, ${"name"}, ${"userId"}, ${"at"}) ON CONFLICT (slug) DO NOTHING RETURNING id`,
   insertMembership: sql`INSERT INTO memberships (org_id, user_id, role, created_at)
@@ -24,15 +24,15 @@ export const orgStatements = {
 
 /** Statements that run before an organization exists or across a person's organizations. */
 export const orgPlatformStatements: readonly (keyof typeof orgStatements)[] = Object.freeze([
-  "userIdOf",
+  "lockPerson",
   "insertOrg",
   "personMemberships",
 ]);
 
 const role = (row: Row) => String(row.role) as Role;
 
-async function userIdOf(tx: Db, dialect: Dialect, personId: string): Promise<number> {
-  const [user] = await query(tx, dialect, orgStatements.userIdOf, { personId });
+async function lockPerson(tx: Db, dialect: Dialect, personId: string): Promise<number> {
+  const [user] = await query(tx, dialect, orgStatements.lockPerson, { personId });
   if (!user) throw new Error(`person ${personId} creates an organization but does not exist`);
   return Number(user.id);
 }
@@ -43,7 +43,9 @@ export function orgView(db: Db, dialect: Dialect): Pick<PlatformView, "createOrg
     createOrg: (record: CreateOrgRecord) =>
       db.transaction(async (tx) => {
         const at = record.now;
-        const userId = await userIdOf(tx, dialect, record.personId);
+        const userId = await lockPerson(tx, dialect, record.personId);
+        const [membership] = await query(tx, dialect, orgStatements.personMemberships, { personId: record.personId });
+        if (membership) throw new BoardError("already_in_org", "you already belong to an organization");
         const [org] = await query(tx, dialect, orgStatements.insertOrg, { ...record.org, userId, at });
         if (!org) {
           throw new BoardError("slug_taken", "this organization slug is already in use", {
