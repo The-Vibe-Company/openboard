@@ -1,5 +1,5 @@
 import type { Actor, Message } from "@openboard/contract";
-import { type BoardEvent, type MessagePosted, messages, parseId } from "@openboard/core";
+import { type BoardEvent, type MessageDeleted, type MessagePosted, messages, parseId } from "@openboard/core";
 import type { BoardKeys, BoardScope, BoardView, BoardWriter } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { query, sql } from "../sql.ts";
@@ -29,6 +29,15 @@ export const messageStatements = {
   message: sql`SELECT view FROM messages WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   editMessage: sql`UPDATE messages SET text = ${"text"}, text_lower = ${"textLower"}, revision = ${"revision"},
     version = ${"version"}, view = ${"view"} WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  deleteMessage: sql`UPDATE messages SET deleted = 1, text = '', text_lower = '', labels = ${"labels"},
+    revision = ${"revision"}, version = ${"version"}, view = ${"view"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  dropRootReply: sql`UPDATE messages SET replies = replies - 1,
+    (last_reply, active) = (
+      SELECT MAX(reply.id), COALESCE(MAX(reply.id), ${"root"}) FROM messages AS reply
+      WHERE reply.org_id = ${"orgId"} AND reply.board_id = ${"boardId"} AND reply.re = ${"root"} AND reply.deleted = 0
+    )
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"root"}`,
   newerReply: sql`SELECT id FROM messages WHERE board_id = ${"boardId"} AND re = ${"thread"} AND id > ${"after"}
     ORDER BY id LIMIT 1`,
   clientPost: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND client_id = ${"clientId"}`,
@@ -82,6 +91,21 @@ async function foldMessagePosted(tx: Db, dialect: Dialect, keys: BoardKeys, even
   });
 }
 
+async function foldMessageDeleted(tx: Db, dialect: Dialect, keys: BoardKeys, event: MessageDeleted): Promise<void> {
+  const { view } = event.payload;
+  await query(tx, dialect, messageStatements.deleteMessage, {
+    ...keys,
+    id: event.message,
+    labels: JSON.stringify(view.labels),
+    revision: view.revision,
+    version: view.version,
+    view: JSON.stringify(view),
+  });
+  if (event.thread !== event.message) {
+    await query(tx, dialect, messageStatements.dropRootReply, { ...keys, root: event.thread });
+  }
+}
+
 /** Appends one event to the log and folds it, in the caller's transaction. */
 async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: BoardEvent): Promise<void> {
   await query(tx, dialect, messageStatements.insertEvent, {
@@ -113,7 +137,8 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
       version: view.version,
       view: JSON.stringify(view),
     });
-  } else await foldMessagePosted(tx, dialect, keys, event);
+  } else if (event.type === "message.deleted") await foldMessageDeleted(tx, dialect, keys, event);
+  else await foldMessagePosted(tx, dialect, keys, event);
 }
 
 function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor: Actor | null): BoardWriter {

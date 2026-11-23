@@ -8,7 +8,13 @@ import { createChannelHandler, listChannelsHandler } from "./channels.ts";
 import { claimConnectionHandler, createConnectionHandler, refreshAgentTokenHandler } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
-import { editMessageHandler, listMessagesHandler, postMessageHandler, readPostHandler } from "./messages.ts";
+import {
+  deleteMessageHandler,
+  editMessageHandler,
+  listMessagesHandler,
+  postMessageHandler,
+  readPostHandler,
+} from "./messages.ts";
 import { createOrgHandler } from "./orgs.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 
@@ -61,6 +67,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   createChannel: createChannelHandler,
   createConnection: createConnectionHandler,
   createOrg: createOrgHandler,
+  deleteMessage: deleteMessageHandler,
   discoverBoard: discoverBoardHandler,
   editMessage: editMessageHandler,
   getAccount: getAccountHandler,

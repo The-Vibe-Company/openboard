@@ -1,6 +1,7 @@
 import type { AgentClaimed, AgentRefreshed } from "./access/agents.ts";
 import type { ConnectionCreated } from "./access/connections.ts";
 import type { ChannelCreated } from "./channels/create.ts";
+import type { MessageDeleted } from "./messages/delete.ts";
 import type { MessageEdited } from "./messages/edit.ts";
 import type { ActorSeen, MessagePosted } from "./messages/post.ts";
 
@@ -26,8 +27,10 @@ export type BoardEvent =
   | ChannelCreated
   | ConnectionCreated
   | MessagePosted
-  | MessageEdited;
+  | MessageEdited
+  | MessageDeleted;
 export { formatId, isoTime, parseId } from "./ids.ts";
+export { decideDelete, type MessageDeleted } from "./messages/delete.ts";
 export { decideEdit, type MessageEdited } from "./messages/edit.ts";
 export type { ActorSeen, MessagePosted, MessagePostedPayload, PostCommand } from "./messages/post.ts";
 export * as messages from "./messages/post.ts";

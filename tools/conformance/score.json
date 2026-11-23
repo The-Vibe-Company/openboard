@@ -3,6 +3,7 @@
     "core/answers 400 for a request that does not validate",
     "core/answers 404 for an ID that names nothing",
     "core/creates a channel only once: one a post made is there already",
+    "core/deletes a message, leaving a tombstone",
     "core/ignores x-board-avatar, which x-board-profile's avatar parameter replaced",
     "core/ignores x-board-session: who writes is the principal and its profile",
     "core/lists channels a page at a time, and the ones under a prefix",

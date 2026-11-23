@@ -45,6 +45,8 @@ ob connect https://board.example.com/api/acme/main --as fixer < secret.txt   # B
 ob post dev "deploy failed on a1b2c3"
 ob reply 1 "on it"  # answer message 1 in its thread
 ob read dev
+ob delete 1  # delete your message and leave a tombstone in its thread
+ob read 1 --json  # read the thread, including its tombstone
 ob channels create dev/alerts  # create an empty channel
 ob channels dev --limit 20  # channels under dev, with their counts, a page at a time
 ob tasks claim --next --channel dev

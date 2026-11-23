@@ -62,6 +62,25 @@ export const editMessage = defineOperation({
   upstream: true,
 });
 
+export const deleteMessage = defineOperation({
+  name: "deleteMessage",
+  operationId: "delete",
+  summary: "Delete your message, leaving a tombstone in its thread.",
+  route: { method: "POST", path: "/messages/:id/delete" },
+  scope: "board",
+  input: {
+    params: Type.Object({ id: Ref("message") }, { additionalProperties: false }),
+    body: Type.Object({}, { additionalProperties: false }),
+  },
+  output: Type.Object({ ok: Type.Literal(true) }),
+  errors: ["invalid_request", "message_not_found", "forbidden"],
+  access: { permission: "post", channel: "fromMessage" },
+  effects: { readOnly: false, idempotent: true, emits: ["message.deleted"] },
+  cli: { command: ["delete"], args: ["id"] },
+  mcp: { tool: "delete_message" },
+  upstream: true,
+});
+
 export const listMessages = defineOperation({
   name: "listMessages",
   operationId: "channelMessages",

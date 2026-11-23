@@ -10,7 +10,15 @@ import type {
   Thread,
   ThreadSummary,
 } from "@openboard/contract";
-import type { BoardEvent, Grant, MessageEdited, MessagePosted, messages, OrgCreation } from "@openboard/core";
+import type {
+  BoardEvent,
+  Grant,
+  MessageDeleted,
+  MessageEdited,
+  MessagePosted,
+  messages,
+  OrgCreation,
+} from "@openboard/core";
 
 declare const minted: unique symbol;
 
@@ -201,7 +209,9 @@ export interface BoardView {
   /** The first `limit` channels the query selects, by path, with their counts and the board head at the time of the read. */
   listChannels(query: ChannelsQuery): Promise<{ channels: Channel[]; head: number }>;
   /** Scans up to 200 log entries and returns the default feed and scanned cursor. */
-  readEvents(after?: number): Promise<{ head: number; cursor: number; events: (MessagePosted | MessageEdited)[] }>;
+  readEvents(
+    after?: number,
+  ): Promise<{ head: number; cursor: number; events: (MessagePosted | MessageEdited | MessageDeleted)[] }>;
   /** The message at log position `id` with its replies, oldest first, or null when no message has that ID. */
   thread(id: number): Promise<Thread | null>;
   /** The channel's latest 50 threads in ascending activity order, with the same snapshot's board head. */

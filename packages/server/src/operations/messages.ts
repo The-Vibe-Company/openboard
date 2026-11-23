@@ -1,5 +1,12 @@
-import { BoardError, type editMessage, type listMessages, type postMessage, type readPost } from "@openboard/contract";
-import { decideEdit, formatId, messages, parseId } from "@openboard/core";
+import {
+  BoardError,
+  type deleteMessage,
+  type editMessage,
+  type listMessages,
+  type postMessage,
+  type readPost,
+} from "@openboard/contract";
+import { decideDelete, decideEdit, formatId, messages, parseId } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
 import { authorOf } from "../auth/author.ts";
 import type { Handler } from "./index.ts";
@@ -33,6 +40,16 @@ export const editMessageHandler: Handler<typeof editMessage> = async (ctx, { id,
     const target = position === null ? null : await writer.message(position);
     const event = decideEdit({ head: writer.head, target }, { id, text }, { by: ctx.by, now: ctx.now() });
     await writer.append([event]);
+  });
+  return { ok: true };
+};
+
+export const deleteMessageHandler: Handler<typeof deleteMessage> = async (ctx, { id }) => {
+  const position = parseId(id);
+  await ctx.board.write(async (writer) => {
+    const target = position === null ? null : await writer.message(position);
+    const event = decideDelete({ head: writer.head, target }, id, { by: ctx.by, now: ctx.now() });
+    if (event) await writer.append([event]);
   });
   return { ok: true };
 };

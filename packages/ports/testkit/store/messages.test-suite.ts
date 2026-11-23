@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { decideEdit, messages } from "@openboard/core";
+import { decideDelete, decideEdit, messages } from "@openboard/core";
 import type { BoardView, Store } from "../../src/index.ts";
 import { type OpenStore, testScope } from "../index.ts";
 
@@ -127,6 +127,7 @@ function clientIdsSuite(driver: string, open: OpenStore): void {
 
 export function messagesSuite(driver: string, open: OpenStore): void {
   editMessageSuite(open);
+  deleteMessageSuite(open);
   repliesSuite(driver, open);
   clientIdsSuite(driver, open);
   describe(`${driver}: messages`, () => {
@@ -227,6 +228,35 @@ function editMessageSuite(open: OpenStore) {
       const stored = await board.channelMessages({ channel: "dev", limit: 50 });
       expect(stored?.[0]).toEqual(edits[1]?.payload.view);
       expect(stored?.[0]).toMatchObject({ id: original.id, createdAt: original.createdAt, revision: 2 });
+    });
+  });
+}
+
+function deleteMessageSuite(open: OpenStore) {
+  describe("deleting stored replies", () => {
+    const fixture = eachStore(open);
+    test("counts live replies and keeps tombstones in the thread", async () => {
+      const board = await fixture.board();
+      const root = await post(board, "dev", "root");
+      const first = await reply(board, 1, "first");
+      await reply(board, 1, "latest");
+      for (const id of [3, 2]) {
+        await board.write(async (writer) => {
+          const target = await writer.message(id);
+          const event = decideDelete({ head: writer.head, target }, String(id), { by, now: at });
+          if (!event) throw new Error("expected a deletion");
+          await writer.append([event]);
+        });
+        const { threads } = await board.listThreads("dev");
+        expect(threads).toEqual([{ message: root, replies: id - 2, last: id === 3 ? first : null }]);
+      }
+      expect(await board.thread(1)).toMatchObject({
+        message: root,
+        replies: [
+          { id: "2", deleted: true, text: "" },
+          { id: "3", deleted: true, text: "" },
+        ],
+      });
     });
   });
 }
