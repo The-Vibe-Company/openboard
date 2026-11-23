@@ -1,14 +1,21 @@
 import { timingSafeEqual } from "node:crypto";
 import { BoardError, type Can, type Operation, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
 import { agents, connections, parseId } from "@openboard/core";
-import type { BoardView } from "@openboard/ports";
-import { agentOf, connectionOf, credentialKind, type Principal, pinnedCan, profileName } from "../deps.ts";
+import type { AgentRecord, BoardView } from "@openboard/ports";
+import { agentOf, connectionOf, credentialKind, type Principal, pinnedCan, profileName, tokenHashOf } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { bearer, hashToken } from "./secrets.ts";
 
 const PREFIX = "obt_";
+/** The one board extension a claimed token reaches: refreshing itself (docs/auth.md "Routes a claimed token can never reach"). */
+const REFRESH = "refreshAgentToken";
+
 /** Configuration operations are all board extensions and all operations mounted under /api/x. */
-export function refuseClaimedConfiguration(request: Request, operation: Pick<Operation, "scope" | "route">): void {
+export function refuseClaimedConfiguration(
+  request: Request,
+  operation: Pick<Operation, "name" | "scope" | "route">,
+): void {
+  if (operation.name === REFRESH) return;
   if (operation.scope !== "account" && !operation.route.path.startsWith("/x/")) return;
   if (bearer(request)?.startsWith(PREFIX)) {
     throw new BoardError("forbidden", "claimed tokens cannot access configuration routes");
@@ -17,6 +24,25 @@ export function refuseClaimedConfiguration(request: Request, operation: Pick<Ope
 
 /** `obt_<16 base32>_<43 base64url>`: the 16 base32 characters name the agent, `ag_<name>`. */
 const TOKEN = /^obt_([a-z2-7]{16})_[A-Za-z0-9_-]{43}$/;
+/** Random bytes of a token's secret part: 32, which base64url writes in 43 characters. */
+export const TOKEN_SECRET_BYTES = 32;
+
+/** A new token for the agent `ag_<name>`: the same name, so it selects the same row, and a fresh secret part. */
+export function reissueToken(agentId: string, random: Uint8Array): { readonly token: string; readonly hash: string } {
+  if (random.length !== TOKEN_SECRET_BYTES) throw new RangeError(`a token takes ${TOKEN_SECRET_BYTES} random bytes`);
+  const token = `${PREFIX}${agentId.slice("ag_".length)}_${Buffer.from(random).toString("base64url")}`;
+  return { token, hash: hashToken(token) };
+}
+
+/** Whether `hash` (hex) is the agent's token, or the one its last refresh replaced while that still works. */
+function holdsToken(record: AgentRecord, hash: string, now: number): boolean {
+  const presented = Buffer.from(hash, "hex");
+  if (timingSafeEqual(presented, Buffer.from(record.tokenHash, "hex"))) return true;
+  const { previous } = record;
+  return (
+    previous !== null && now < previous.until && timingSafeEqual(presented, Buffer.from(previous.tokenHash, "hex"))
+  );
+}
 
 /**
  * Step 1 of the verifier chain (docs/auth.md "Three ways to connect", mode 2): an `obt_` bearer writes as the profile
@@ -24,7 +50,7 @@ const TOKEN = /^obt_([a-z2-7]{16})_[A-Za-z0-9_-]{43}$/;
  * token's SHA-256 is the one kept. The profile is pinned (D30): an `x-board-profile` naming another one is refused.
  * The `can` it was claimed with is pinned too: `keepInsidePin` checks it on every request.
  */
-export function agentTokenVerifier(): CredentialVerifier {
+export function agentTokenVerifier(now: () => number): CredentialVerifier {
   return {
     name: "agent",
     match: (request) => bearer(request)?.startsWith(PREFIX) ?? false,
@@ -34,8 +60,8 @@ export function agentTokenVerifier(): CredentialVerifier {
       if (id === undefined) return null;
       const record = await board.agent(`ag_${id}`);
       if (!record) return null;
-      const presented = Buffer.from(hashToken(token), "hex");
-      if (!timingSafeEqual(presented, Buffer.from(record.tokenHash, "hex"))) return null;
+      const presented = hashToken(token);
+      if (!holdsToken(record, presented, now())) return null;
       const { agent, connection, profile } = record;
       refuseOtherProfile(request, profile);
       return {
@@ -47,6 +73,7 @@ export function agentTokenVerifier(): CredentialVerifier {
         [agentOf]: agent.id,
         [pinnedCan]: agent.can,
         [profileName]: profile,
+        [tokenHashOf]: presented,
       };
     },
   };

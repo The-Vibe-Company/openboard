@@ -19,10 +19,10 @@ export interface CredentialVerifier {
 
 /**
  * The chain this server runs, in docs/auth.md order: agent tokens (step 1), connection secrets (step 2), then the
- * local owner token (step 4).
+ * local owner token (step 4). `now` is the clock credentials with a lifetime are checked against.
  */
-export function verifiers(config: ServerConfig): readonly CredentialVerifier[] {
-  const chain: CredentialVerifier[] = [agentTokenVerifier(), connectionVerifier()];
+export function verifiers(config: ServerConfig, now: () => number): readonly CredentialVerifier[] {
+  const chain: CredentialVerifier[] = [agentTokenVerifier(now), connectionVerifier()];
   if (config.mode === "local" && config.localOwnerTokenHash) {
     chain.push(localOwnerVerifier(config.localOwner, config.localOwnerTokenHash));
   }

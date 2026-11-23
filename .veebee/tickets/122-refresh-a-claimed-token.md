@@ -12,10 +12,23 @@ writes:
   - packages/ports/src/store.ts
   - packages/server/src/auth/tokens.ts
   - packages/server/test/auth/refresh.test.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/core/src/access/agents.ts
+  - packages/core/src/index.ts
+  - packages/core/test/access/agents.test.ts
+  - packages/driver-sql/src/views/agents.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/server/openapi.json
+  - packages/server/src/auth/chain.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/index.ts
+  - docs/data-model.md
 conformance: []
 modes: [local]
 depends_on: [121]
-status: claimed
+status: done
 claimed_by: claude-opus-t122
 issue: 123
 ---
@@ -24,8 +37,8 @@ issue: 123
 As an agent, I renew my token before it expires, within the limit my connection set.
 
 ## Done when
-- [ ] `curl -X POST http://127.0.0.1:8787/api/local/main/x/connections/refresh -H "authorization: Bearer <obt_>"` answers a new token with a later `expiresAt`, never past `hardExpiresAt`
-- [ ] the old token keeps working for 60 seconds, then answers 401
+- [x] `curl -X POST http://127.0.0.1:8787/api/local/main/x/connections/refresh -H "authorization: Bearer <obt_>"` answers a new token with a later `expiresAt`, never past `hardExpiresAt`
+- [x] the old token keeps working for 60 seconds, then answers 401
 
 ## Out of scope
 - Refresh rate limits (M7, 202).

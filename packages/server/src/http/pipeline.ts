@@ -103,7 +103,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   }
   if (operation.scope === "account") throw notFound();
   const board = await pipeline.tenants.board(path);
-  const by = await authenticate(request, verifiers(pipeline.config), board, operation.name);
+  const by = await authenticate(request, verifiers(pipeline.config, pipeline.deps.now), board, operation.name);
   logged.actor = by.actor;
   refuseClaimedConfiguration(request, operation);
   const input = validate(operation, {

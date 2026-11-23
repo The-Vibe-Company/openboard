@@ -51,5 +51,6 @@ export {
   readEvents,
   readPost,
   readThread,
+  refreshAgentToken,
 } from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

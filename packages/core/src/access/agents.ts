@@ -168,3 +168,85 @@ export function decideClaim(
   };
   return { agent, events: [event] };
 }
+
+/** How long a refreshed token's predecessor keeps working (docs/auth.md mode 2, "Refresh"). */
+export const PREVIOUS_TOKEN_MS = 60_000;
+
+/** The agent as stored when its token is refreshed: the current token's hash and its lifetimes. */
+export interface RefreshingAgent {
+  readonly agent: ClaimedAgent;
+  /** SHA-256 of the agent's current token, hex. */
+  readonly tokenHash: string;
+  /** Epoch milliseconds of `agent.hardExpiresAt`. */
+  readonly hardExpires: number;
+  /** The connection's token lifetime, in seconds. */
+  readonly tokenTtl: number;
+}
+
+/** The rotation of an agent's token: the new token's hash, its predecessor's, and when the predecessor stops. */
+export interface AgentRefreshed {
+  readonly id: number;
+  readonly type: "ob.agent.refreshed";
+  readonly at: number;
+  readonly thread: null;
+  readonly message: null;
+  readonly channel: null;
+  readonly actor: string;
+  readonly principal: string;
+  readonly visibility: 2;
+  readonly payload: {
+    readonly agent: string;
+    readonly tokenHash: string;
+    readonly previousHash: string;
+    /** Epoch milliseconds: the predecessor works until then, the new token until `tokenExpires`. */
+    readonly previousUntil: number;
+    readonly tokenExpires: number;
+    readonly by: Author;
+  };
+}
+
+/**
+ * A new token for `state.agent`, with the same pins, living the connection's token lifetime from `now` and never past
+ * the agent's hard expiry; the token it replaces keeps working `PREVIOUS_TOKEN_MS`. Only the current token refreshes
+ * (`presented` is its hash): its predecessor, or a token another refresh already replaced, is 401 `unauthorized`. Past
+ * the hard expiry nothing refreshes: the connection's secret claims a new agent.
+ */
+export function decideRefresh(
+  state: { readonly head: number; readonly agent: RefreshingAgent },
+  context: { readonly by: Author; readonly now: number; readonly presented: string; readonly token: MintedToken },
+): { agent: ClaimedAgent; events: [AgentRefreshed] } {
+  const { by, now, presented, token } = context;
+  const { agent, tokenHash, tokenTtl, hardExpires } = state.agent;
+  if (presented !== tokenHash) {
+    throw new BoardError("unauthorized", "this token was already refreshed", {
+      hint: "Use the token the refresh answered.",
+    });
+  }
+  if (now >= hardExpires) {
+    throw new BoardError("unauthorized", "this agent's tokens reached their hard expiry", {
+      hint: "Claim a new token with the connection's secret: `ob connect <BOARD_URL> --as <profile>`.",
+    });
+  }
+  const tokenExpires = Math.min(now + tokenTtl * 1000, hardExpires);
+  const refreshed: ClaimedAgent = { ...agent, expiresAt: isoTime(tokenExpires) };
+  const event: AgentRefreshed = {
+    id: state.head + 1,
+    type: "ob.agent.refreshed",
+    at: now,
+    thread: null,
+    message: null,
+    channel: null,
+    actor: by.actor,
+    principal: by.principal,
+    visibility: 2,
+    payload: {
+      agent: agent.id,
+      tokenHash: token.hash,
+      previousHash: tokenHash,
+      previousUntil: now + PREVIOUS_TOKEN_MS,
+      tokenExpires,
+      by: { actor: by.actor, principal: by.principal, profile: by.profile },
+    },
+  };
+  return { agent: refreshed, events: [event] };
+}

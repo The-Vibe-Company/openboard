@@ -104,6 +104,8 @@ export interface BoardWriter {
   nextGrant(): Promise<number>;
   /** Whether a connection of this board, revoked or not, has the name. */
   connectionNamed(name: string): Promise<boolean>;
+  /** The agent of this board with the ID, read under the lock, or null when the board has none with it. */
+  agent(id: string): Promise<AgentRecord | null>;
   /** The board's record of the actor `write` named, read with the lock; null when it has none or none was named. */
   readonly actor: Actor | null;
   append(events: readonly BoardEvent[]): Promise<void>;
@@ -137,10 +139,20 @@ export interface ConnectionRecord {
 /** An agent claimed with a connection's secret, with its connection and the SHA-256 (hex) of its token. */
 export interface AgentRecord {
   readonly agent: ClaimedAgent;
-  readonly connection: { readonly id: string; readonly name: string; readonly profiles: readonly string[] };
+  readonly connection: {
+    readonly id: string;
+    readonly name: string;
+    readonly profiles: readonly string[];
+    /** The connection's token lifetime in seconds, which a refresh grants again. */
+    readonly tokenTtl: number;
+  };
   /** The pinned profile as the claim spelled it, which is how it is shown. */
   readonly profile: string;
   readonly tokenHash: string;
+  /** Epoch milliseconds of `agent.hardExpiresAt`, past which none of the agent's tokens refreshes. */
+  readonly hardExpires: number;
+  /** The token the last refresh replaced: its SHA-256 (hex), and the epoch milliseconds it works until. */
+  readonly previous: { readonly tokenHash: string; readonly until: number } | null;
 }
 
 /** One board's storage; every statement it runs is bound to its scope. */

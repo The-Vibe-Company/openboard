@@ -58,3 +58,20 @@ export const claimConnection = defineOperation({
   why: "`ob connect` reads the secret from stdin and stores the token it answers; no agent tool should carry either.",
   upstream: false,
 });
+
+export const refreshAgentToken = defineOperation({
+  name: "refreshAgentToken",
+  summary: "Trade a claimed agent token for a new one with the same pins, never past its hard expiry.",
+  route: { method: "POST", path: "/x/connections/refresh" },
+  scope: "board",
+  input: {},
+  output: ClaimResult,
+  status: 200,
+  errors: ["unauthorized", "forbidden"],
+  access: null,
+  effects: { readOnly: false, idempotent: false, emits: ["ob.agent.refreshed"] },
+  cli: false,
+  mcp: false,
+  why: "`ob connect` stores the token and refreshes it itself; the token it answers should be stored, never printed.",
+  upstream: false,
+});

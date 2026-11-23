@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Can, CanInput } from "@openboard/contract";
-import { decideClaim, ttlSeconds } from "../../src/access/agents.ts";
+import { decideClaim, decideRefresh, ttlSeconds } from "../../src/access/agents.ts";
 
 const NOW = 1_700_000_000_000;
 const by = { actor: "ob:conn:cn_aaaaaaaaaaaaaaaa", principal: "ob:conn:cn_aaaaaaaaaaaaaaaa", profile: null };
@@ -68,5 +68,41 @@ describe("claiming an agent token", () => {
   test("reads lifetimes in seconds, minutes, hours and days, and refuses anything else", () => {
     expect([ttlSeconds("90s"), ttlSeconds("5m"), ttlSeconds("1h"), ttlSeconds("2d")]).toEqual([90, 300, 3600, 172_800]);
     expect(() => ttlSeconds("1w")).toThrow(expect.objectContaining({ code: "invalid_request" }));
+  });
+});
+
+describe("refreshing an agent token", () => {
+  const claimed = claim({ profile: "fixer-2", ttl: "5m" }).agent;
+  const next = { id: token.id, hash: "12".repeat(32) };
+  const refresh = (now: number, presented = token.hash) =>
+    decideRefresh(
+      { head: 9, agent: { agent: claimed, tokenHash: token.hash, tokenTtl: 3600, hardExpires: NOW + 86_400_000 } },
+      {
+        by,
+        now,
+        presented,
+        token: next,
+      },
+    );
+
+  test("lives the connection's token lifetime from now, keeps the pins, and keeps the old token 60 s", () => {
+    const { agent, events } = refresh(NOW + 60_000);
+    expect(agent).toEqual({ ...claimed, expiresAt: "2023-11-14T23:14:20.000Z" });
+    expect(events[0]).toMatchObject({ id: 10, type: "ob.agent.refreshed", visibility: 2, actor: by.actor });
+    expect(events[0].payload).toMatchObject({
+      agent: token.id,
+      tokenHash: next.hash,
+      previousHash: token.hash,
+      previousUntil: NOW + 120_000,
+    });
+  });
+
+  test("never moves past the hard expiry, and refuses past it", () => {
+    expect(refresh(NOW + 86_000_000).agent.expiresAt).toBe(claimed.hardExpiresAt);
+    expect(() => refresh(NOW + 86_400_000)).toThrow("hard expiry");
+  });
+
+  test("refuses a token that is no longer the agent's current one", () => {
+    expect(() => refresh(NOW, "34".repeat(32))).toThrow("already refreshed");
   });
 });
