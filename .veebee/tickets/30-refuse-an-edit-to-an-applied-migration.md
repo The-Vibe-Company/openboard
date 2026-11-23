@@ -10,7 +10,7 @@ writes:
 conformance: []
 modes: []
 depends_on: [29]
-status: claimed
+status: done
 claimed_by: claude-opus-t30
 issue: 30
 ---
