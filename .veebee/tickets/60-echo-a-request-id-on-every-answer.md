@@ -18,7 +18,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [38, 59]
-status: claimed
+status: done
 claimed_by: claude-opus-ticket-60
 issue: 60
 ---
@@ -27,7 +27,7 @@ issue: 60
 As an operator, I follow one request from the client's error to the server's log line.
 
 ## Done when
-- [ ] `curl -i http://127.0.0.1:8787/api/local/main` shows an `x-request-id`; sending `x-request-id: abc` gets `abc` back, and the log line carries it
+- [x] `curl -i http://127.0.0.1:8787/api/local/main` shows an `x-request-id`; sending `x-request-id: abc` gets `abc` back, and the log line carries it
 
 ## Out of scope
 - Tracing across instances (M6).
