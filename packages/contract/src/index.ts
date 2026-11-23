@@ -28,5 +28,13 @@ export {
   refKind,
   type Scope,
 } from "./operation.ts";
-export { discoverBoard, getMe, listChannels, listMessages, operations, postMessage, readThread } from "./operations/index.ts";
+export {
+  discoverBoard,
+  getMe,
+  listChannels,
+  listMessages,
+  operations,
+  postMessage,
+  readThread,
+} from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";
