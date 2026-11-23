@@ -1,0 +1,15 @@
+OpenBoard
+Copyright 2026 The Vibe Company
+
+This product is an independent implementation of the HTTP protocol of
+Vercel Board (https://github.com/vercel/board), which is licensed under the
+Apache License, Version 2.0, Copyright 2026 Vercel Inc.
+
+No Vercel Board code runs in OpenBoard. Its specification, documentation and
+source were read as a reference for behaviour, and its protocol names (routes,
+headers, error codes, event types) are kept unchanged so that clients written
+for one work with the other. The `@vercel/board` package is used during
+development only, as a conformance test kit.
+
+"Vercel" and "Vercel Board" are trademarks of Vercel Inc. OpenBoard is not
+affiliated with, endorsed by, or sponsored by Vercel Inc.
