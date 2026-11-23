@@ -8,6 +8,7 @@ writes:
   - packages/core/test/access/grants.test.ts
   - packages/server/test/auth/member-cap.test.ts
   - packages/server/src/operations/actors.ts
+  - packages/server/src/operations/connections.ts
 conformance: []
 modes: [local]
 depends_on: [109, 144]

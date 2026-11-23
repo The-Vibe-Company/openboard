@@ -99,12 +99,14 @@ test("seeded g1 caps a member to read, post, react and label, and leaves an admi
   }
 });
 
-test("a member creating a connection answers 403 forbidden", async () => {
+test("a member creating a connection answers 403 forbidden for lack of manage", async () => {
   const { app, send, lin } = await setup();
   try {
     const created = await send("POST", "/acme/main/x/connections", lin, { name: "ci", can: { "*": "all" } });
     expect(created.status).toBe(403);
-    expect(await created.json()).toMatchObject({ error: { code: "forbidden" } });
+    expect(await created.json()).toMatchObject({
+      error: { code: "forbidden", message: "a member may not manage this board" },
+    });
   } finally {
     await app.close();
   }

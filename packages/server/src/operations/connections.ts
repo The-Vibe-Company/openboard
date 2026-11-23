@@ -1,8 +1,8 @@
 import { BoardError, type claimConnection, type createConnection, type refreshAgentToken } from "@openboard/contract";
-import { agents, connections } from "@openboard/core";
+import { agents, connections, grants } from "@openboard/core";
 import { mintSecret, SECRET_BYTES } from "../auth/secrets.ts";
 import { reissueToken, TOKEN_SECRET_BYTES } from "../auth/tokens.ts";
-import { agentOf, credentialKind, profileName, tokenHashOf } from "../deps.ts";
+import { agentOf, credentialKind, memberOf, profileName, tokenHashOf } from "../deps.ts";
 import type { Handler } from "./index.ts";
 
 /** The first and last four characters of a secret, for people to tell secrets apart; never enough to use one. */
@@ -11,10 +11,17 @@ function hintOf(secret: string): string {
 }
 
 /**
- * A connection on this board, holding one grant and one `obc_` secret answered here once. Only the board's owner
- * creates one until grants decide who may (docs/auth.md "Connections", "Who may create one").
+ * A connection on this board, holding one grant and one `obc_` secret answered here once. A member, whose role caps
+ * them below `manage`, never creates one; otherwise only the board's owner does until grants decide who may
+ * (docs/auth.md "Connections", "Who may create one").
  */
 export const createConnectionHandler: Handler<typeof createConnection> = async (ctx, input) => {
+  const member = ctx.by[memberOf];
+  if (member && !grants.allUsersCan(member.role)["*"]?.includes("manage")) {
+    throw new BoardError("forbidden", `a ${member.role} may not manage this board`, {
+      hint: "Ask an organization admin or owner to create the connection.",
+    });
+  }
   if (ctx.by[credentialKind] !== "local") {
     throw new BoardError("forbidden", "only the board's owner creates connections", {
       hint: "Run `ob connections create` as the user who started `ob serve`.",

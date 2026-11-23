@@ -19,13 +19,14 @@ const ROLE_CAP: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
 
 /**
  * `can` as a person with `role` holds it, as upstream caps g1 by team role (`09-access.md` "How grants combine"):
- * each pattern keeps only what the role allows, and a pattern left with nothing is dropped.
+ * each pattern keeps only what the role allows of its permissions and what they imply, and a pattern left with
+ * nothing is dropped.
  */
 export function capByRole(can: Can, role: Role): Can {
   const cap = ROLE_CAP[role];
   const capped: Record<string, Permission[]> = {};
   for (const [pattern, permissions] of Object.entries(can)) {
-    const kept = permissions.filter((permission) => cap.includes(permission));
+    const kept = withImplied(permissions).filter((permission) => cap.includes(permission));
     if (kept.length > 0) capped[pattern] = kept;
   }
   return capped;

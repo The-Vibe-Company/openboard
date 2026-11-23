@@ -108,10 +108,13 @@ describe("capByRole", () => {
     expect(grants.capByRole({ "*": [...all["*"]] }, role)).toEqual({ "*": [...all["*"]] });
   });
 
-  test("drops a pattern a member keeps nothing of", () => {
-    expect(grants.capByRole({ "dev/": ["sync", "manage"], ops: ["read", "manage"] }, "member")).toEqual({
+  test("caps what a pattern's permissions imply, and drops a pattern a member keeps nothing of", () => {
+    expect(grants.capByRole({ "dev/": ["manage"], ops: ["sync"], ci: ["post"] }, "member")).toEqual({
+      "dev/": ["read", "post", "react", "label"],
       ops: ["read"],
+      ci: ["post"],
     });
+    expect(grants.capByRole({ ci: ["post"], ops: [] }, "member")).toEqual({ ci: ["post"] });
   });
 
   test("seeded g1 gives a member the capped set and an admin manage", () => {
