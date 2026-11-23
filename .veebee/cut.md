@@ -126,7 +126,7 @@ Legend.
 107  Exit 1 when a wait times out   ← 106
 108  Measure 50 SSE tails in the local bench   ← 57, 99
 
-## M4 Accounts, organizations and auth (53)
+## M4 Accounts, organizations and auth (54)
 
 109  Create a connection on the board   ← 38, 43
 110  Post with a connection's secret   ← 109
@@ -181,6 +181,7 @@ Legend.
 159  Revoke a personal token   ← 156
 160  Refuse a personal token at another organization's URL   ← 155, 159
 161  Read the organization's audit events   ← 132, 143, 149
+402  Hold every caller to its can on every operation   ← 120, 152
 
 ## M5 Postgres driver (14)
 
@@ -214,7 +215,7 @@ Legend.
 186  Run conformance on two instances behind a round-robin proxy   ← 177, 181
 187  Build one openboard binary for both modes   ← 186
 188  Build the image from the binary   ← 183, 187
-189  Deploy staging on Railway with two replicas   ← 120, 123, 167, 184, 188
+189  Deploy staging on Railway with two replicas   ← 120, 123, 402, 167, 184, 188
 190  Deploy every merge to staging   ← 189
 191  Prove a rolling deploy loses nothing with rolling-check   ← 183, 190
 192  Run the nightly checks against staging   ← 190
