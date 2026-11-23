@@ -52,6 +52,8 @@ export type Principal = Author & {
   /** A profile's name as the caller spelled it, which is how it is shown; `profile` is its lowercase. */
   readonly [profileName]?: string;
   readonly [profileAvatar]?: string | null;
+  /** The SHA-256 (hex) of the `obt_` token presented, which a refresh checks is still the agent's current one. */
+  readonly [tokenHashOf]?: string;
 };
 
 /** A connection's secret: the connection's name, which its profiles show through, and the profiles it may use. */
@@ -67,3 +69,4 @@ export const agentOf = Symbol("agent");
 export const pinnedCan = Symbol("pinned can");
 export const profileName = Symbol("profile name");
 export const profileAvatar = Symbol("profile avatar");
+export const tokenHashOf = Symbol("token hash");

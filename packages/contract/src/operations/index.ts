@@ -1,7 +1,7 @@
 import { getSession } from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
 import { createChannel, listChannels } from "./channels.ts";
-import { claimConnection, createConnection } from "./connections.ts";
+import { claimConnection, createConnection, refreshAgentToken } from "./connections.ts";
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { editMessage, listMessages, postMessage, readPost } from "./messages.ts";
@@ -25,6 +25,7 @@ export const operations = [
   readEvents,
   readPost,
   readThread,
+  refreshAgentToken,
 ] as const;
 
 export {
@@ -44,4 +45,5 @@ export {
   readEvents,
   readPost,
   readThread,
+  refreshAgentToken,
 };

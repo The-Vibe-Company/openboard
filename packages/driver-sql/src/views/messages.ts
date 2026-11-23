@@ -4,7 +4,7 @@ import type { BoardKeys, BoardScope, BoardView, BoardWriter } from "@openboard/p
 import type { Db, Dialect } from "../db.ts";
 import { query, sql } from "../sql.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
-import { foldAgentClaimed } from "./agents.ts";
+import { findAgent, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
 import { lockBoard, setHead } from "./boards.ts";
 import { findChannel, foldChannelCreated } from "./channels.ts";
 import { connectionNamed, foldConnectionCreated, nextGrant } from "./connections.ts";
@@ -101,6 +101,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
   else if (event.type === "actor.seen") await foldActorSeen(tx, dialect, keys, event);
   else if (event.type === "ob.agent.claimed") await foldAgentClaimed(tx, dialect, keys, event);
+  else if (event.type === "ob.agent.refreshed") await foldAgentRefreshed(tx, dialect, keys, event);
   else if (event.type === "message.edited") {
     const { text, view } = event.payload;
     await query(tx, dialect, messageStatements.editMessage, {
@@ -142,6 +143,7 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor:
     },
     nextGrant: () => nextGrant(tx, dialect, keys),
     connectionNamed: (name) => connectionNamed(tx, dialect, keys, name),
+    agent: (id) => findAgent(tx, dialect, keys, id),
     async append(events) {
       for (const event of events) {
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);

@@ -2163,6 +2163,85 @@
           }
         }
       }
+    },
+    "/x/connections/refresh": {
+      "post": {
+        "operationId": "refreshAgentToken",
+        "summary": "Trade a claimed agent token for a new one with the same pins, never past its hard expiry.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["agent", "token", "env"],
+                  "properties": {
+                    "agent": {
+                      "type": "object",
+                      "required": ["id", "actor", "can", "expiresAt", "hardExpiresAt"],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "actor": { "type": "string" },
+                        "can": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^(.*)$": {
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  { "const": "read", "type": "string" },
+                                  { "const": "post", "type": "string" },
+                                  { "const": "react", "type": "string" },
+                                  { "const": "label", "type": "string" },
+                                  { "const": "sync", "type": "string" },
+                                  { "const": "manage", "type": "string" }
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        "expiresAt": { "type": "string" },
+                        "hardExpiresAt": { "type": "string" }
+                      }
+                    },
+                    "token": { "type": "string" },
+                    "env": {
+                      "type": "object",
+                      "required": ["BOARD_URL", "BOARD_TOKEN", "BOARD_PROFILE"],
+                      "properties": {
+                        "BOARD_URL": { "type": "string" },
+                        "BOARD_TOKEN": { "type": "string" },
+                        "BOARD_PROFILE": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
     }
   }
 }

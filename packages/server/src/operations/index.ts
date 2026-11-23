@@ -5,7 +5,7 @@ import type { Principal } from "../deps.ts";
 import { getSessionHandler } from "./accounts.ts";
 import { getMeHandler, listActorsHandler } from "./actors.ts";
 import { createChannelHandler, listChannelsHandler } from "./channels.ts";
-import { claimConnectionHandler, createConnectionHandler } from "./connections.ts";
+import { claimConnectionHandler, createConnectionHandler, refreshAgentTokenHandler } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
 import { editMessageHandler, listMessagesHandler, postMessageHandler, readPostHandler } from "./messages.ts";
@@ -72,6 +72,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   readEvents: readEventsHandler,
   readPost: readPostHandler,
   readThread: readThreadHandler,
+  refreshAgentToken: refreshAgentTokenHandler,
 };
 
 /** The handler of an operation the router matched, its input already validated against the same contract. */

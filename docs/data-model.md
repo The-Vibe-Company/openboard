@@ -591,6 +591,7 @@ decide and may append several events; folds never append.
 | `task.expired` | clear claim; `ready` (or `blocked` if held) |
 | `ob.connection.created` | insert `connections` and its grant |
 | `ob.agent.claimed` | insert `connection_agents` (the token's hash, never the token) |
+| `ob.agent.refreshed` | `connection_agents`: the new token's hash; the old one to `prev_hash` until `prev_until` (60 s) |
 
 **Reprojection.** Each board records the projection version its folds were
 built with (`boards.projection`). In local mode a changed version rebuilds the
