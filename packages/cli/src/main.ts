@@ -1,14 +1,15 @@
 import { BoardError, createClient } from "@the-vibe-company/openboard";
 import {
   type Command,
-  type ConnectContext,
   connectCommand,
   createConnectionCommand,
   derivedCommands,
-  messagesCommand,
+  loginCommand,
   Misuse,
+  messagesCommand,
   readCommand,
   replyCommand,
+  type StandaloneContext,
   whoamiCommand,
 } from "./commands/index.ts";
 import { clientConfig } from "./config.ts";
@@ -17,11 +18,14 @@ import { consoleOutput, type Output, printError } from "./output.ts";
 export interface CliOptions {
   readonly output?: Output;
   readonly fetch?: (request: Request) => Promise<Response>;
+  readonly wait?: (ms: number) => Promise<void>;
+  readonly now?: () => number;
   readonly readStdin?: () => string;
 }
 
-const commands: readonly (Command | typeof connectCommand)[] = [
+const commands: readonly (Command | typeof connectCommand | typeof loginCommand)[] = [
   connectCommand,
+  loginCommand,
   createConnectionCommand,
   readCommand,
   messagesCommand,
@@ -30,7 +34,7 @@ const commands: readonly (Command | typeof connectCommand)[] = [
   ...derivedCommands,
 ];
 
-function find(words: readonly string[]): Command | typeof connectCommand | undefined {
+function find(words: readonly string[]): Command | typeof connectCommand | typeof loginCommand | undefined {
   return commands
     .filter((command) => command.words.every((word, at) => words[at] === word))
     .sort((a, b) => b.words.length - a.words.length)[0];
@@ -76,8 +80,8 @@ export async function runCli(
     const args = words.slice(command.words.length);
     const context = { args, optionsEnd, json, output };
     if ("standalone" in command) {
-      const connectContext: ConnectContext = { ...context, env, profile: picked.profile, options };
-      return await command.run(connectContext);
+      const standalone: StandaloneContext = { ...context, env, profile: picked.profile, options };
+      return await command.run(standalone);
     }
     const config = clientConfig(env);
     const profile = picked.profile ?? config.profile;

@@ -6,7 +6,13 @@ import { sessionOf, signOut } from "../auth/sessions.ts";
 import { keepInsidePin, refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
-import { type AccountOperation, handlerOf, type OrgOperation, type PublicOperation } from "../operations/index.ts";
+import {
+  type AccountOperation,
+  type DeviceOperation,
+  handlerOf,
+  type OrgOperation,
+  type PublicOperation,
+} from "../operations/index.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
@@ -107,6 +113,16 @@ async function runPreview(url: URL, operation: typeof previewInvitation, params:
   return operationResponse(operation, output);
 }
 
+async function runDevice(request: Request, operation: DeviceOperation, pipeline: Pipeline) {
+  const { config, deps, platform } = pipeline;
+  const input = decodeInput(operation, { body: await readBody(request) });
+  const output = await handlerOf(operation)(
+    { platform, publicUrl: config.publicUrl, now: deps.now, randomBytes: deps.randomBytes },
+    input,
+  );
+  return operationResponse(operation, output);
+}
+
 async function runPlatform(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields) {
   const matched = matchRoute(pipeline.platformRoutes, request.method, url.pathname.slice("/api/x".length));
   if (!matched) return null;
@@ -115,6 +131,9 @@ async function runPlatform(request: Request, url: URL, pipeline: Pipeline, logge
   refuseClaimedConfiguration(request, operation);
   if (operation.scope === "account") return runAccount(request, url, operation, params, pipeline);
   if (operation.scope === "org") return runOrg(request, url, operation, params, pipeline);
+  if (operation.name === "startDeviceSignIn" || operation.name === "pollDeviceSignIn") {
+    return runDevice(request, operation, pipeline);
+  }
   if (operation.name === "previewInvitation") return runPreview(url, operation, params, pipeline);
   return null;
 }
@@ -139,7 +158,13 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   if (!matched) throw notFound();
   const { operation } = matched;
   logged.op = operation.name;
-  if (operation.scope === "public" && operation.name !== "previewInvitation") {
+  if (
+    operation.scope === "public" &&
+    !operation.route.mount &&
+    operation.name !== "previewInvitation" &&
+    operation.name !== "startDeviceSignIn" &&
+    operation.name !== "pollDeviceSignIn"
+  ) {
     refuseClaimedConfiguration(request, operation);
     return runPublic(url, path, operation, matched.params, pipeline);
   }
@@ -195,6 +220,9 @@ export async function handle(request: Request, pipeline: Pipeline): Promise<Resp
     response = errorResponse(error, log);
   }
   if (
+    logged.op === "startDeviceSignIn" ||
+    logged.op === "pollDeviceSignIn" ||
+    logged.op === "approveDeviceSignIn" ||
     logged.op === "createInvitation" ||
     logged.op === "previewInvitation" ||
     logged.op === "acceptInvitation" ||

@@ -1,4 +1,6 @@
 import type { Client } from "@the-vibe-company/openboard";
+import type { CliEnvironment } from "../config.ts";
+import type { CliOptions } from "../main.ts";
 import type { Output } from "../output.ts";
 
 /** What a command runs with: the client of the board at `BOARD_URL`, its arguments, and where to print. */
@@ -12,6 +14,12 @@ export interface CommandContext {
   readonly output: Output;
 }
 
+export interface StandaloneContext extends Omit<CommandContext, "client" | "boardUrl"> {
+  readonly env: CliEnvironment;
+  readonly profile: string | undefined;
+  readonly options: CliOptions;
+}
+
 export interface Command {
   /** `["read"]`, `["tasks", "claim"]`. */
   readonly words: readonly string[];
@@ -21,9 +29,10 @@ export interface Command {
 
 export class Misuse extends Error {}
 
-export { connectCommand, type ConnectContext } from "./connect.ts";
+export { connectCommand } from "./connect.ts";
 export { createConnectionCommand } from "./connections.ts";
 export { derivedCommands } from "./derived.ts";
+export { loginCommand } from "./login.ts";
 export { messagesCommand } from "./messages.ts";
 export { readCommand } from "./read.ts";
 export { replyCommand } from "./reply.ts";

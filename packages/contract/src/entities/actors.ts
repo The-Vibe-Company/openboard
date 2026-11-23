@@ -11,7 +11,7 @@ export const Me = Type.Object({
   handle: Type.String(),
   name: Type.String(),
   avatar: Type.Union([Type.String(), Type.Null()]),
-  expiresAt: Type.Null(),
+  expiresAt: Type.Union([Type.Number(), Type.Null()]),
   can: Type.Record(
     Type.String(),
     Type.Array(
@@ -35,6 +35,7 @@ export const Me = Type.Object({
       Type.Literal("connection"),
       Type.Literal("agent"),
       Type.Literal("session"),
+      Type.Literal("personal"),
     ]),
   }),
 });

@@ -147,8 +147,23 @@ export interface OrgView {
   createBoard(creation: BoardCreation, personId: string): Promise<"created" | "not_admin" | "slug_taken">;
 }
 
+interface DeviceTokenIssue {
+  readonly id: string;
+  readonly tokenHash: string;
+  readonly now: number;
+  readonly expiresAt: number;
+}
+
+type DevicePoll = { status: "missing" | "pending" | "too_soon" } | { status: "issued"; org: Named; boards: Named[] };
+
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
 export interface PlatformView {
+  /** Start a device request and prune prior expired requests using the supplied clock. */
+  startDevice(deviceHash: string, userCode: string, clientName: string, now: number, expiresAt: number): Promise<void>;
+  /** Only a current member of the named organization can approve an unused, live code. */
+  approveDevice(userCode: string, org: string, personId: string, now: number): Promise<boolean>;
+  /** Poll a device capability; consume approval and issue its token in one transaction. */
+  pollDevice(deviceHash: string, minInterval: number, issue: DeviceTokenIssue): Promise<DevicePoll>;
   /** The board `orgSlug/boardSlug` names, or null when either is unknown or deleted. */
   findBoard(orgSlug: string, boardSlug: string): Promise<BoardKeys | null>;
   /**
@@ -271,6 +286,11 @@ export interface AgentRecord {
 
 /** One board's storage; every statement it runs is bound to its scope. */
 export interface BoardView {
+  /** Look up a personal credential in scope. A known but unusable token returns "inactive"; a scope miss returns null. */
+  personalToken(
+    tokenHash: string,
+    now: number,
+  ): Promise<(Pick<PersonRecord, "id" | "handle" | "name" | "avatar"> & { expiresAt: number }) | "inactive" | null>;
   /**
    * Locks the board, runs `fn`, and commits what it appended, or rolls everything back if it throws. With `actor`,
    * the board's record of that actor is read at the start of the write, after the lock.
