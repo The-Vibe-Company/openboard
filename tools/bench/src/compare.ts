@@ -8,22 +8,44 @@ interface CounterBudget {
   readonly idleTimers: number;
 }
 
-const counterBudgets: Partial<Record<Mode, { readonly counters: CounterBudget }>> = budgets;
+interface LatencyBudget {
+  readonly p50Ms: number;
+  readonly p99Ms: number;
+}
 
-/** Returns diagnostics for exact counters that rose above the mode's recorded budget. */
-export function compareCounters(report: ModeReport): string[] {
-  const budget = counterBudgets[report.mode]?.counters;
+interface ModeBudget {
+  readonly counters: CounterBudget;
+  readonly measured: Readonly<Record<WorkloadName, LatencyBudget>>;
+}
+
+const modeBudgets: Partial<Record<Mode, ModeBudget>> = budgets;
+const measuredBudgetMultiplier = 1.2;
+
+/** Returns diagnostics for increased exact counters and measured values more than 20% over budget. */
+export function compareBudgets(report: ModeReport): string[] {
+  const budget = modeBudgets[report.mode];
   if (!budget) return [];
 
   const failures: string[] = [];
-  for (const { workload, operation, statements } of report.workloads) {
-    const previous = budget.statements[workload];
+  for (const { workload, operation, statements, p50, p99 } of report.workloads) {
+    const name = `${report.mode} ${operation} (${workload})`;
+    const previous = budget.counters.statements[workload];
     if (statements > previous) {
-      failures.push(`${report.mode} ${operation} (${workload}) statements: ${previous} -> ${statements}`);
+      failures.push(`${name} statements: ${previous} -> ${statements}`);
+    }
+
+    const { p50Ms, p99Ms } = budget.measured[workload];
+    for (const [metric, value, limit] of [
+      ["p50", p50, p50Ms],
+      ["p99", p99, p99Ms],
+    ] as const) {
+      if (value > limit * measuredBudgetMultiplier) {
+        failures.push(`${name} ${metric}: ${value} ms exceeds budget ${limit} ms by more than 20%`);
+      }
     }
   }
-  if (report.idleTimers > budget.idleTimers) {
-    failures.push(`${report.mode} timers armed when idle: ${budget.idleTimers} -> ${report.idleTimers}`);
+  if (report.idleTimers > budget.counters.idleTimers) {
+    failures.push(`${report.mode} timers armed when idle: ${budget.counters.idleTimers} -> ${report.idleTimers}`);
   }
   return failures;
 }

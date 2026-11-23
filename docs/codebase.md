@@ -466,7 +466,7 @@ The storage-level twin, `packages/ports/testkit/isolation.test-suite.ts`, checks
 
 `tools/bench/budgets.json` has one section per mode:
 - **Deterministic counters, exact**, both modes: statements per operation, database round trips per operation (Postgres), response bytes for canonical requests, timers armed when idle. Any increase fails.
-- **Measured values with headroom**: RSS idle and after load, p50/p99 latency per operation, cross-instance event delivery (hosted), cold start, idle wakeups, binary size.
+- **Measured values with headroom**: RSS idle and after load, p50/p99 latency per operation, cross-instance event delivery (hosted), cold start, idle wakeups, binary size. A measured value fails only when it exceeds its budget by more than 20%.
 
 The target numbers for each mode are set in one place, `docs/architecture.md` "Efficiency budgets"; this file does not restate them. `tools/bench/budgets.json` holds the values CI enforces: the architecture targets at first, replaced by measured baselines in M1 (local) and M5 (hosted) wherever the measurement is better, never looser than the target.
 
