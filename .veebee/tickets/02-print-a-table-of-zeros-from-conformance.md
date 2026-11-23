@@ -9,11 +9,12 @@ writes:
   - packages/server/src/index.ts
   - packages/contract/src/protocol.ts
   - package.json
+  - bun.lock
 conformance: []
 modes: [local, hosted]
 depends_on: [01]
-status: ready
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 2
 ---
 
@@ -21,8 +22,8 @@ issue: 2
 As a contributor, I run the upstream conformance kit against our still-empty server, in both modes, and see where we stand.
 
 ## Done when
-- [ ] `bun run conformance` prints one row per group (core, paging, search, schedules, tasks, grants, schemas, attachments, watchers, sync) with 0 passed in each, and exits 0
-- [ ] `bun run conformance --driver postgres --instances 2` prints the same table of zeros for two instances behind a round-robin proxy, and `tools/conformance/score.json` has an empty `local` and an empty `hosted` list
+- [x] `bun run conformance` prints one row per group (core, paging, search, schedules, tasks, grants, schemas, attachments, watchers, sync) with 0 passed in each, and exits 0
+- [x] `bun run conformance --driver postgres --instances 2` prints the same table of zeros for two instances behind a round-robin proxy, and `tools/conformance/score.json` has an empty `local` and an empty `hosted` list
 
 ## Out of scope
 - Refusing a run that loses a recorded check (04); checking the `@vercel/board` pin (03).
