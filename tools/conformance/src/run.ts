@@ -30,12 +30,12 @@ function printTable(checks: readonly CheckResult[]) {
   }
 }
 
-async function runKit(url: URL): Promise<CheckResult[]> {
+async function runKit(url: URL, token: string): Promise<CheckResult[]> {
   const manifest = import.meta.resolve("@vercel/board/package.json");
   const { bin } = (await Bun.file(fileURLToPath(manifest)).json()) as { bin: { vb: string } };
   const cli = fileURLToPath(new URL(bin.vb, manifest));
   const child = Bun.spawn([execPath, cli, "conformance", "--json"], {
-    env: { BOARD_URL: url.href },
+    env: { BOARD_URL: url.href, BOARD_TOKEN: token },
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -50,8 +50,9 @@ async function runKit(url: URL): Promise<CheckResult[]> {
       data?: { error?: { code?: string; status?: number } };
     };
     const error = report.data?.error;
-    // The empty server stops discovery before the CLI reports any checks.
-    if (report.reason === "board_not_found" && error?.code === "no_board" && error.status === 404) return [];
+    // The kit stops before reporting any check while the server lacks its first route: discovery without a token,
+    // `GET /me` with one (both 404 until they are built).
+    if (error?.status === 404 && (error.code === "no_board" || error.code === "not_found")) return [];
   }
   throw new Error(`The upstream conformance kit exited with code ${exitCode} without a report`);
 }
@@ -74,7 +75,7 @@ const mode = driver === "sqlite" ? "local" : "hosted";
 const score = (await Bun.file(new URL("../score.json", import.meta.url)).json()) as Score;
 const server = await boot(driver, Number(instances));
 try {
-  const checks = await runKit(server.url);
+  const checks = await runKit(server.url, server.token);
   printTable(checks);
   const lost = lostChecks(score[mode], checks);
   for (const name of lost) console.error(`Lost conformance check (${mode}): ${name}`);

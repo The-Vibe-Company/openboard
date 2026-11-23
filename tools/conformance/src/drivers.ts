@@ -1,18 +1,18 @@
 import process from "node:process";
 import { sqliteDriver } from "@openboard/driver-sqlite";
-import { createApp } from "@openboard/server";
+import { createApp, mintLocalOwnerToken } from "@openboard/server";
 
 /**
  * One app on its own store. Hosted mode runs on SQLite too until the Postgres driver exists (M5): its counters and
  * conformance score are the local ones until then.
  */
-function bootApp(mode: "local" | "hosted") {
+function bootApp(mode: "local" | "hosted", localOwnerTokenHash: string) {
   const now = () => Date.now();
   const log = {
     error: (message: string, fields: object) => process.stderr.write(`${JSON.stringify({ message, ...fields })}\n`),
   };
   return createApp(
-    { mode, localOwner: "ob:user:local-tools" },
+    { mode, localOwner: "ob:user:local-tools", localOwnerTokenHash },
     { store: sqliteDriver({ memory: true }, now) },
     { now, log },
   );
@@ -20,7 +20,8 @@ function bootApp(mode: "local" | "hosted") {
 
 export async function boot(driver: "sqlite" | "postgres", instances: number) {
   const mode = driver === "sqlite" ? "local" : "hosted";
-  const apps = Array.from({ length: instances }, () => bootApp(mode));
+  const owner = mintLocalOwnerToken(crypto.getRandomValues(new Uint8Array(42)));
+  const apps = Array.from({ length: instances }, () => bootApp(mode, owner.hash));
   const servers: Bun.Server<undefined>[] = [];
   const hostname = "127.0.0.1";
   let proxy: Bun.Server<undefined> | undefined;
@@ -55,7 +56,8 @@ export async function boot(driver: "sqlite" | "postgres", instances: number) {
     }
 
     const path = mode === "local" ? "/api/local/main" : "/api/conformance-ci/main";
-    return { url: new URL(path, (proxy ?? first).url), close };
+    // The kit runs as the local owner until connections exist (docs/codebase.md 6.3 step 2).
+    return { url: new URL(path, (proxy ?? first).url), token: owner.token, close };
   } catch (error) {
     await close();
     throw error;

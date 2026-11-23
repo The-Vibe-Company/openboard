@@ -5,6 +5,8 @@ export interface ServerConfig {
   readonly mode: "local" | "hosted";
   /** Local mode: who writes until credentials arrive: the local owner person, `ob:user:local-<os user>`. */
   readonly localOwner: string;
+  /** Local mode: the SHA-256 (hex) of the owner token `ob serve` wrote to its 0600 file; absent, none is accepted. */
+  readonly localOwnerTokenHash?: string;
 }
 
 export interface Logger {
