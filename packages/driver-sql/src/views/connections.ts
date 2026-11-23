@@ -21,8 +21,8 @@ export const connectionStatements = {
     ${"name"}, ${"secretHash"}, ${"secretHint"}, ${"direct"}, ${"profiles"}, ${"tokenTtl"}, ${"tokenMax"},
     ${"createdBy"}, ${"at"})`,
   /** The connection with the first grant naming it: the one created with it. */
-  connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.direct, c.profiles, c.created_by,
-    c.created_at, g.id AS grant_id, g.principals, g.can
+  connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.direct, c.profiles, c.token_ttl_s,
+    c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can
     FROM connections c JOIN grant_principals p ON p.board_id = c.board_id AND p.kind = 'connection' AND p.key = c.id
       JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
     WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.id = ${"id"} ORDER BY g.id LIMIT 1`,
@@ -94,7 +94,9 @@ function recordOf(row: Row): ConnectionRecord {
   };
   const principals = JSON.parse(String(row.principals)) as GrantPrincipal[];
   const secretHash = Buffer.from(row.secret_hash as Uint8Array).toString("hex");
-  return { connection, grant: { id: grantId, principals, can }, secretHash };
+  const tokenTtl = Number(row.token_ttl_s);
+  const tokenMax = Number(row.token_max_s);
+  return { connection, grant: { id: grantId, principals, can }, secretHash, tokenTtl, tokenMax };
 }
 
 export function connectionReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "connection"> {

@@ -31,8 +31,10 @@ export interface Deps {
 
 /** Who a request writes as, once the pipeline has authenticated it. */
 export type Principal = Author & {
-  readonly [credentialKind]?: "local" | "connection";
+  readonly [credentialKind]?: "local" | "connection" | "agent";
   readonly [connectionOf]?: ConnectionIdentity;
+  /** The agent an `obt_` token was claimed as, `ag_…`. */
+  readonly [agentOf]?: string;
   /** A profile's name as the caller spelled it, which is how it is shown; `profile` is its lowercase. */
   readonly [profileName]?: string;
   readonly [profileAvatar]?: string | null;
@@ -47,5 +49,6 @@ export interface ConnectionIdentity {
 /** Request-only metadata. Symbol keys stay out of serialized message authors. */
 export const credentialKind = Symbol("credential kind");
 export const connectionOf = Symbol("connection");
+export const agentOf = Symbol("agent");
 export const profileName = Symbol("profile name");
 export const profileAvatar = Symbol("profile avatar");

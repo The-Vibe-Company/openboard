@@ -4,6 +4,7 @@ import type { BoardView } from "@openboard/ports";
 import { connectionOf, type Principal, profileAvatar, profileName, type ServerConfig } from "../deps.ts";
 import { connectionVerifier } from "./connections.ts";
 import { localOwnerVerifier } from "./local-owner.ts";
+import { agentTokenVerifier } from "./tokens.ts";
 
 /**
  * One step of the verifier chain (docs/auth.md "The verifier chain"): a cheap `match`, then `verify` against the board
@@ -12,12 +13,16 @@ import { localOwnerVerifier } from "./local-owner.ts";
 export interface CredentialVerifier {
   readonly name: string;
   match(request: Request): boolean;
-  verify(request: Request, board: BoardView): Promise<Principal | null>;
+  /** `operation` is the name of the contract operation the request's route matched. */
+  verify(request: Request, board: BoardView, operation: string): Promise<Principal | null>;
 }
 
-/** The chain this server runs, in docs/auth.md order: connection secrets (step 2), then the local owner token (step 4). */
+/**
+ * The chain this server runs, in docs/auth.md order: agent tokens (step 1), connection secrets (step 2), then the
+ * local owner token (step 4).
+ */
 export function verifiers(config: ServerConfig): readonly CredentialVerifier[] {
-  const chain: CredentialVerifier[] = [connectionVerifier()];
+  const chain: CredentialVerifier[] = [agentTokenVerifier(), connectionVerifier()];
   if (config.mode === "local" && config.localOwnerTokenHash) {
     chain.push(localOwnerVerifier(config.localOwner, config.localOwnerTokenHash));
   }
@@ -57,18 +62,19 @@ function withProfile(request: Request, principal: Principal): Principal {
 }
 
 /**
- * Who a request writes as on `board`: the first verifier that matches decides, and a credential it refuses is 401
- * `unauthorized`. A request no verifier matches carries no credential and is 401 `unauthorized` too. A verified
- * caller then writes as the profile `x-board-profile` names, if any.
+ * Who a request for `operation` writes as on `board`: the first verifier that matches decides, and a credential it
+ * refuses is 401 `unauthorized`. A request no verifier matches carries no credential and is 401 `unauthorized` too. A
+ * verified caller then writes as the profile `x-board-profile` names, if any.
  */
 export async function authenticate(
   request: Request,
   chain: readonly CredentialVerifier[],
   board: BoardView,
+  operation: string,
 ): Promise<Principal> {
   const verifier = chain.find((candidate) => candidate.match(request));
   if (!verifier) throw noCredential();
-  const principal = await verifier.verify(request, board);
+  const principal = await verifier.verify(request, board, operation);
   if (!principal) throw new BoardError("unauthorized", "the credential is not valid on this board");
   return withProfile(request, principal);
 }

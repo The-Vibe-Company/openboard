@@ -14,11 +14,34 @@ writes:
   - packages/server/src/auth/chain.ts
   - packages/driver-sql/migrations/*-agents.sql
   - packages/server/test/auth/claim.test.ts
+  - packages/contract/src/entities/connections.ts
+  - packages/contract/src/entities/actors.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/core/src/access/agents.ts
+  - packages/core/src/index.ts
+  - packages/core/test/access/agents.test.ts
+  - packages/driver-sql/src/views/agents.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/src/index.ts
+  - packages/server/src/auth/connections.ts
+  - packages/server/src/auth/local-owner.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/actors.ts
+  - packages/server/openapi.json
+  - packages/ports/src/index.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/cli/src/commands/connections.ts
+  - packages/cli/test/connections.test.ts
+  - docs/data-model.md
 conformance: []
 modes: [local]
 depends_on: [112]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t117
 issue: 117
 ---
 

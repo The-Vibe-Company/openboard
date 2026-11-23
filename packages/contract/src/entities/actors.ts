@@ -29,7 +29,7 @@ export const Me = Type.Object({
     board: tenant,
     /** The person's role in the organization; null for a credential that is not a person's. */
     role: Type.Union([Type.Literal("owner"), Type.Null()]),
-    credential: Type.Union([Type.Literal("local"), Type.Literal("connection")]),
+    credential: Type.Union([Type.Literal("local"), Type.Literal("connection"), Type.Literal("agent")]),
   }),
 });
 
