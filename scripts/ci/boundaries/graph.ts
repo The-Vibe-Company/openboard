@@ -67,6 +67,12 @@ function checkProviderImport(ctx: FileContext, specifier: string): string | null
   return `${ctx.workspace.short} -> ${resolved} (${specifier}) is a login provider import outside its registry; only ${REGISTRY} may import it`;
 }
 
+function pathWorkspace(workspaces: Workspace[], resolved: string): Workspace | undefined {
+  return workspaces
+    .filter((workspace) => resolved === workspace.dir || resolved.startsWith(`${workspace.dir}/`))
+    .sort((a, b) => b.dir.length - a.dir.length)[0];
+}
+
 /**
  * Checks a path import: a workspace reaches another only by package name, never by a relative or
  * absolute path (docs/codebase.md 3.1 universal rules). Returns the reason it is refused, or null.
@@ -77,9 +83,7 @@ function checkPathImport(ctx: FileContext, specifier: string): string | null {
   if (ctx.file.startsWith(`${SERVER}/src/`) && modulePath === TEST_STORE_ROOT) {
     return `the unscoped Store factory in ${TEST_STORE_ROOT}.ts is only available to server tests`;
   }
-  const target = ctx.workspaces
-    .filter((workspace) => resolved === workspace.dir || resolved.startsWith(`${workspace.dir}/`))
-    .sort((a, b) => b.dir.length - a.dir.length)[0];
+  const target = pathWorkspace(ctx.workspaces, resolved);
   if (target?.dir === ctx.workspace.dir) return null;
   const edge = `${ctx.workspace.short} -> ${target?.short ?? resolved} (${specifier})`;
   if (target) return `${edge} is a relative import into another workspace; import ${target.name} by its package name`;
@@ -115,15 +119,19 @@ function checkImport(ctx: FileContext, specifier: string, typeOnly: boolean): st
   return `${workspace.short} -> ${packageOf(specifier)} (${kind}${specifier}) is not in the allow-list; it may import ${describeAllowed(rule)}`;
 }
 
+function inspectImports(file: string, source: string) {
+  try {
+    return scanImports(file, source);
+  } catch (error) {
+    return { file, message: `cannot scan imports: ${(error as Error).message}` };
+  }
+}
+
 /** Scans one file; a file that cannot be scanned is a violation, so the check fails closed. */
 async function checkFile(root: string, file: string, ctx: FileContext): Promise<Violation[]> {
   const source = await readFile(join(root, file), "utf8");
-  let imports: ReturnType<typeof scanImports>;
-  try {
-    imports = scanImports(file, source);
-  } catch (error) {
-    return [{ file, message: `cannot scan imports: ${(error as Error).message}` }];
-  }
+  const imports = inspectImports(file, source);
+  if ("message" in imports) return [imports];
   const violations = checkDbClientNames(file, source, ctx.workspace, ctx.dbClients);
   for (const specifier of [...imports.all].sort()) {
     const message = checkImport(ctx, specifier, !imports.values.has(specifier));
@@ -158,6 +166,39 @@ export async function checkBoundaries(root: string, config: Config): Promise<Vio
         dbClients: config.dbClients.clients,
       };
       violations.push(...(await checkFile(root, file, ctx)));
+    }
+  }
+  return violations;
+}
+
+/** CI tooling can reach drivers only by an exact file and subpath listed in the configuration. */
+export async function checkCiDriverImports(
+  root: string,
+  config: Config,
+  workspaces: Workspace[],
+): Promise<Violation[]> {
+  const ci = { dir: "scripts/ci", name: "scripts/ci", short: "scripts/ci" };
+  const violations: Violation[] = [];
+  const byName = new Map(workspaces.map((workspace) => [workspace.name, workspace]));
+  for (const file of await sourceFiles(root, ci.dir)) {
+    if (file.startsWith(`${ci.dir}/fixtures/`)) continue;
+    const source = await readFile(join(root, file), "utf8");
+    const imports = inspectImports(file, source);
+    if ("message" in imports) {
+      violations.push(imports);
+      continue;
+    }
+    violations.push(...checkDbClientNames(file, source, ci, config.dbClients.clients));
+    for (const specifier of [...imports.all].sort()) {
+      if (specifier === config.drivers.ciImports[file]) continue;
+      const target = isBare(specifier)
+        ? byName.get(packageOf(specifier))
+        : pathWorkspace(workspaces, resolveImport(file, specifier));
+      const message =
+        checkDbClientImport(ci, specifier, specifier, config.dbClients.clients) ??
+        checkDriverSqlImport(ci, target, specifier, config.drivers) ??
+        checkDriverImport(file, ci, target, specifier, config.drivers);
+      if (message) violations.push({ file, message });
     }
   }
   return violations;
