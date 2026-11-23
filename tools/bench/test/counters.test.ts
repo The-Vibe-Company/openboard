@@ -37,6 +37,7 @@ test("each mode prints its counters, with round trips only for hosted", async ()
     [
       "local",
       "Operation                 Statements",
+      "getMe                              -",
       "listChannels                       -",
       "listMessages                       -",
       "postMessage                        -",
@@ -48,6 +49,7 @@ test("each mode prints its counters, with round trips only for hosted", async ()
     [
       "hosted",
       "Operation                 Statements Round trips",
+      "getMe                              -           -",
       "listChannels                       -           -",
       "listMessages                       -           -",
       "postMessage                        -           -",

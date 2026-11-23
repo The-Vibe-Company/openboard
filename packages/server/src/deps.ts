@@ -24,4 +24,7 @@ export interface Deps {
 }
 
 /** Who a request writes as, once the pipeline has authenticated it. */
-export type Principal = Author;
+export type Principal = Author & { readonly [credentialKind]?: "local" };
+
+/** Request-only metadata. Symbol keys stay out of serialized message authors. */
+export const credentialKind = Symbol("credential kind");

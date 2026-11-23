@@ -10,11 +10,20 @@ writes:
   - packages/server/test/me.test.ts
   - packages/cli/src/commands/whoami.ts
   - packages/cli/src/commands/index.ts
+  - .veebee/tickets/43-see-who-i-am.md
+  - README.md
+  - packages/cli/src/main.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/server/src/auth/local-owner.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/operations/index.ts
+  - tools/bench/test/counters.test.ts
 conformance: []
 modes: [local]
 depends_on: [38]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 43
 ---
 

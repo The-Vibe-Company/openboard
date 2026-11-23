@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import type { Principal } from "../deps.ts";
+import { credentialKind, type Principal } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
 
 const PREFIX = "obl_";
@@ -35,7 +35,7 @@ function bearer(request: Request): string | null {
 /** Step 4 of the verifier chain: an `obl_` bearer is the local owner, if its SHA-256 is the one `ob serve` wrote. */
 export function localOwnerVerifier(owner: string, hash: string): CredentialVerifier {
   const expected = Buffer.from(hash, "hex");
-  const principal: Principal = { actor: owner, principal: owner, profile: null };
+  const principal: Principal = { actor: owner, principal: owner, profile: null, [credentialKind]: "local" };
   return {
     name: "local",
     match: (request) => bearer(request)?.startsWith(PREFIX) ?? false,
