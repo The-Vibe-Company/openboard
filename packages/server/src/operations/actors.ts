@@ -1,5 +1,5 @@
 import { BoardError, type getMe, type listActors, type OutputOf } from "@openboard/contract";
-import { formatId } from "@openboard/core";
+import { formatId, grants } from "@openboard/core";
 import { authorOf } from "../auth/author.ts";
 import { agentOf, credentialKind, memberOf, type Principal, type SessionMember } from "../deps.ts";
 import type { BoardContext, Handler } from "./index.ts";
@@ -39,19 +39,12 @@ async function connectionMe(
   };
 }
 
-/** What a role lets its member do on the organization's boards (docs/auth.md "Organizations, boards, people"). */
-const ROLE_CAN = {
-  owner: ["read", "post", "react", "label", "sync", "manage"],
-  admin: ["read", "post", "react", "label", "sync", "manage"],
-  member: ["read", "post", "react", "label"],
-} as const;
-
 /** A signed-in person: as their sign-in shows them, with their role in the board's organization. */
 function sessionMe(by: Principal, member: SessionMember): Me {
   const { actor, principal, profile } = by;
   const { kind, handle, name, avatar } = authorOf(by);
   const { role, org, board } = member;
-  const can = { "*": [...ROLE_CAN[role]] };
+  const can = grants.allUsersCan(role);
   return {
     actor,
     principal,

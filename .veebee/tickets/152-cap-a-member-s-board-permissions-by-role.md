@@ -7,11 +7,12 @@ writes:
   - packages/core/src/access/grants.ts
   - packages/core/test/access/grants.test.ts
   - packages/server/test/auth/member-cap.test.ts
+  - packages/server/src/operations/actors.ts
 conformance: []
 modes: [local]
 depends_on: [109, 144]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-5-5
 issue: 153
 ---
 

@@ -96,3 +96,26 @@ describe("withImplied", () => {
     expect(grants.withImplied(["manage"])).toEqual(["read", "post", "react", "label", "sync", "manage"]);
   });
 });
+
+describe("capByRole", () => {
+  const all = { "*": ["read", "post", "react", "label", "sync", "manage"] } as const;
+
+  test("caps a member to read, post, react and label", () => {
+    expect(grants.capByRole({ "*": [...all["*"]] }, "member")).toEqual({ "*": ["read", "post", "react", "label"] });
+  });
+
+  test.each([["owner"], ["admin"]] as const)("leaves an %s uncapped", (role) => {
+    expect(grants.capByRole({ "*": [...all["*"]] }, role)).toEqual({ "*": [...all["*"]] });
+  });
+
+  test("drops a pattern a member keeps nothing of", () => {
+    expect(grants.capByRole({ "dev/": ["sync", "manage"], ops: ["read", "manage"] }, "member")).toEqual({
+      ops: ["read"],
+    });
+  });
+
+  test("seeded g1 gives a member the capped set and an admin manage", () => {
+    expect(grants.allUsersCan("member")).toEqual({ "*": ["read", "post", "react", "label"] });
+    expect(grants.allUsersCan("admin")["*"]).toContain("manage");
+  });
+});

@@ -1,4 +1,4 @@
-import { BoardError, type Can, type CanInput, isChannelPath, type Permission } from "@openboard/contract";
+import { BoardError, type Can, type CanInput, isChannelPath, type Permission, type Role } from "@openboard/contract";
 
 /** Upstream's permissions, in the order a compiled grant lists them; `all` is every one of them. */
 export const PERMISSIONS: readonly Permission[] = Object.freeze(["read", "post", "react", "label", "sync", "manage"]);
@@ -8,6 +8,32 @@ export function withImplied(given: readonly Permission[]): readonly Permission[]
   if (given.includes("manage")) return PERMISSIONS;
   const reads = given.includes("read") || given.some((p) => p === "react" || p === "label" || p === "sync");
   return PERMISSIONS.filter((permission) => given.includes(permission) || (permission === "read" && reads));
+}
+
+/** What a role keeps of a grant on the organization's boards; owners and admins are uncapped (docs/auth.md). */
+const ROLE_CAP: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
+  owner: PERMISSIONS,
+  admin: PERMISSIONS,
+  member: Object.freeze(["read", "post", "react", "label"] as const),
+});
+
+/**
+ * `can` as a person with `role` holds it, as upstream caps g1 by team role (`09-access.md` "How grants combine"):
+ * each pattern keeps only what the role allows, and a pattern left with nothing is dropped.
+ */
+export function capByRole(can: Can, role: Role): Can {
+  const cap = ROLE_CAP[role];
+  const capped: Record<string, Permission[]> = {};
+  for (const [pattern, permissions] of Object.entries(can)) {
+    const kept = permissions.filter((permission) => cap.includes(permission));
+    if (kept.length > 0) capped[pattern] = kept;
+  }
+  return capped;
+}
+
+/** What seeded grant `g1` (`all-users`, `*=all`: every member of the board's organization) gives a `role`. */
+export function allUsersCan(role: Role): Can {
+  return capByRole({ "*": [...PERMISSIONS] }, role);
 }
 
 /** Who a grant names. Only the OpenBoard kind `connection` is compiled so far (docs/auth.md "Connections"). */
