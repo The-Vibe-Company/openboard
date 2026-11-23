@@ -14,9 +14,9 @@
     "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "lint": "biome lint . && oxlint --format default && bun scripts/ci/agents-guard.ts",
+    "lint": "biome lint . && oxlint --format default && bun scripts/ci/boundaries.ts && bun scripts/ci/agents-guard.ts",
     "typecheck": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' typecheck",
-    "test": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' test",
+    "test": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' test && bun test ./scripts/ci",
     "conformance": "bun tools/conformance/src/run.ts",
     "bench": "bun tools/bench/src/run.ts"
   },
