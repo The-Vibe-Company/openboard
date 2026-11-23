@@ -8,8 +8,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [01]
-status: ready
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-5-5
 issue: 22
 ---
 
