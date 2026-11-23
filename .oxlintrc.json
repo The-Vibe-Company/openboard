@@ -4,6 +4,61 @@
   "ignorePatterns": ["node_modules", ".tsbuild"],
   "overrides": [
     {
+      "files": ["**"],
+      "excludeFiles": [
+        "packages/contract/**",
+        "packages/core/**",
+        "packages/ports/**",
+        "packages/server/**",
+        "apps/openboard/src/config.ts",
+        "packages/cli/src/config.ts",
+        "scripts/ci/fixtures/**"
+      ],
+      "rules": {
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "process",
+            "property": "env",
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          },
+          {
+            "object": "Bun",
+            "property": "env",
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          },
+          {
+            "object": "globalThis",
+            "property": "process",
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          },
+          {
+            "object": "globalThis",
+            "property": "Bun",
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "name": "node:process",
+            "importNames": ["env"],
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          },
+          {
+            "name": "process",
+            "importNames": ["env"],
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          },
+          {
+            "name": "bun",
+            "importNames": ["env", "default"],
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          }
+        ]
+      }
+    },
+    {
       "files": ["packages/contract/**", "packages/core/**", "packages/ports/**", "packages/server/**"],
       "rules": {
         "no-restricted-globals": [
@@ -33,7 +88,45 @@
             "message": "Timers come from deps (docs/codebase.md 3.2)."
           },
           { "object": "globalThis", "property": "Date", "message": "Time comes from deps (docs/codebase.md 3.2)." },
-          { "object": "globalThis", "property": "crypto", "message": "IDs come from deps (docs/codebase.md 3.2)." }
+          { "object": "globalThis", "property": "crypto", "message": "IDs come from deps (docs/codebase.md 3.2)." },
+          {
+            "object": "process",
+            "property": "env",
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          },
+          {
+            "object": "Bun",
+            "property": "env",
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          },
+          {
+            "object": "globalThis",
+            "property": "process",
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          },
+          {
+            "object": "globalThis",
+            "property": "Bun",
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "name": "node:process",
+            "importNames": ["env"],
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          },
+          {
+            "name": "process",
+            "importNames": ["env"],
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          },
+          {
+            "name": "bun",
+            "importNames": ["env", "default"],
+            "message": "Env is read only in the config modules (docs/codebase.md 3.2)."
+          }
         ]
       }
     },

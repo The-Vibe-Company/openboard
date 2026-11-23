@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [12]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-62ab5e42
 issue: 13
 ---
 
@@ -18,7 +18,7 @@ issue: 13
 As a contributor, I read the environment only in the two config modules.
 
 ## Done when
-- [ ] `process.env.PORT` or `Bun.env.PORT` in `packages/server/src/app.ts` makes `bun run lint` exit 1, while `apps/openboard/src/config.ts` and `packages/cli/src/config.ts` pass
+- [x] `process.env.PORT` or `Bun.env.PORT` in `packages/server/src/app.ts` makes `bun run lint` exit 1, while `apps/openboard/src/config.ts` and `packages/cli/src/config.ts` pass
 
 ## Out of scope
 - The typed config itself (36, 61).
