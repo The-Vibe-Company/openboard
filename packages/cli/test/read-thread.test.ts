@@ -43,3 +43,10 @@ test("ob reply <id> <text> posts in the thread and prints the reply's ID", async
   expect(lines).toEqual(["2"]);
   expect(requests).toEqual([{ url: `${env.BOARD_URL}/messages`, body: { re: "1", text: "on it" } }]);
 });
+
+test("ob post --help shows the channel as required, since a post without one reads text as the channel", async () => {
+  const lines: string[] = [];
+  const output = { out: (line: string) => lines.push(line), err: () => {} };
+  expect(await runCli(["post", "--help"], env, { output })).toBe(0);
+  expect(lines[0]).toStartWith("ob post <channel> <text>");
+});

@@ -30,6 +30,11 @@ function isOption(name: string, field: Field, args: readonly string[]): boolean 
   return !args.includes(name) && (field.type === "string" || field.type === "integer");
 }
 
+/** Positionals fill `args` in order, so every one up to the last required argument must be given. */
+function requiredPositionals(args: readonly string[], fields: ReturnType<typeof fieldsOf>): number {
+  return args.findLastIndex((name) => fields.get(name)?.required) + 1;
+}
+
 /** Positional arguments in order, and `--name value` for any other input field (only before `--`). */
 function inputOf(ctx: CommandContext, args: readonly string[], fields: ReturnType<typeof fieldsOf>) {
   const input: Record<string, unknown> = {};
@@ -48,7 +53,7 @@ function inputOf(ctx: CommandContext, args: readonly string[], fields: ReturnTyp
     input[name] = optionValue(field.schema, value);
     at += 1;
   }
-  const needed = args.filter((name) => fields.get(name)?.required).length;
+  const needed = requiredPositionals(args, fields);
   if (positional.length < needed || positional.length > args.length) {
     throw new Misuse(needed === args.length ? `expected ${args.length} argument(s)` : "wrong number of arguments");
   }
@@ -65,7 +70,8 @@ function derive(operation: Contracted & { cli: { command: readonly string[]; arg
   const options = [...fields]
     .filter(([name, field]) => isOption(name, field.schema, args))
     .map(([name]) => `[--${name} <${name}>]`);
-  const shown = args.map((arg) => (fields.get(arg)?.required ? `<${arg}>` : `[${arg}]`));
+  const needed = requiredPositionals(args, fields);
+  const shown = args.map((arg, at) => (at < needed ? `<${arg}>` : `[${arg}]`));
   return {
     words: command,
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
