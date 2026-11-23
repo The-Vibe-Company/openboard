@@ -5,12 +5,14 @@ milestone: M1-walking-skeleton
 package: tools
 writes:
   - tools/bench/src/compare.ts
+  - tools/bench/src/run.ts
+  - tools/bench/tsconfig.json
   - tools/bench/test/compare.test.ts
 conformance: []
 modes: [local]
 depends_on: [55]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-56
 issue: 56
 ---
 
@@ -18,7 +20,7 @@ issue: 56
 As a contributor, I learn at once that my change added a statement to a hot operation.
 
 ## Done when
-- [ ] a change adding one statement per post makes `bun run bench --quick` exit 1 naming `postMessage` with the old and new counts
+- [x] a change adding one statement per post makes `bun run bench --quick` exit 1 naming `postMessage` with the old and new counts
 
 ## Out of scope
 - Measured values (57).
