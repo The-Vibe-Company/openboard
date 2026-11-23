@@ -43,7 +43,6 @@ writes:
   - apps/openboard/src/compose.ts
   - tools/conformance/src/drivers.ts
   - tools/bench/src/drivers.ts
-  - tools/bench/test/counters.test.ts
 conformance: []
 modes: [local]
 depends_on: [38, 43]
