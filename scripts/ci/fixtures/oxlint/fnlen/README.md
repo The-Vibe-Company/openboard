@@ -10,7 +10,7 @@ Run these commands in a disposable checkout containing the lint configuration an
 | Command | Expected lint exit |
 | --- | --- |
 | `cp scripts/ci/fixtures/oxlint/fnlen/refused/packages/core/src/over-limit.ts packages/core/src/over-limit.ts && bun run lint` | 1 with a diagnostic in `packages/core/src/over-limit.ts` |
-| `cp scripts/ci/fixtures/oxlint/fnlen/refused/apps/openboard/src/over-limit.ts apps/openboard/src/over-limit.ts && bun run lint` | 1 with a diagnostic in `apps/openboard/src/over-limit.ts` |
+| `mkdir -p apps/openboard/src && cp scripts/ci/fixtures/oxlint/fnlen/refused/apps/openboard/src/over-limit.ts apps/openboard/src/over-limit.ts && bun run lint` | 1 with a diagnostic in `apps/openboard/src/over-limit.ts` |
 | `cp scripts/ci/fixtures/oxlint/fnlen/refused/tools/bench/src/over-limit.ts tools/bench/src/over-limit.ts && bun run lint` | 1 with a diagnostic in `tools/bench/src/over-limit.ts` |
 | `cp scripts/ci/fixtures/oxlint/fnlen/allowed/packages/core/src/at-limit.ts packages/core/src/at-limit.ts && bun run lint` | 0 |
 
