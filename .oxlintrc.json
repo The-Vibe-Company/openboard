@@ -36,6 +36,14 @@
           { "object": "globalThis", "property": "crypto", "message": "IDs come from deps (docs/codebase.md 3.2)." }
         ]
       }
+    },
+    {
+      "files": ["packages/**", "apps/**"],
+      "rules": { "no-console": "error" }
+    },
+    {
+      "files": ["packages/server/src/log.ts", "packages/cli/src/output.ts"],
+      "rules": { "no-console": "off" }
     }
   ]
 }
