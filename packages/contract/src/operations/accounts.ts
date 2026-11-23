@@ -1,3 +1,4 @@
+import { Type } from "@sinclair/typebox";
 import { SessionState } from "../entities/accounts.ts";
 import { Account } from "../entities/orgs.ts";
 import { defineOperation } from "../operation.ts";
@@ -32,5 +33,21 @@ export const getAccount = defineOperation({
   cli: false,
   mcp: false,
   why: "It reads the browser's session cookie; the CLI and agents authenticate with tokens, never with a session.",
+  upstream: false,
+});
+
+export const revokeAllSessions = defineOperation({
+  name: "revokeAllSessions",
+  summary: "Sign the person out of every browser session.",
+  route: { method: "POST", path: "/me/sessions/revoke-all" },
+  scope: "account",
+  input: {},
+  output: Type.Object({ ok: Type.Literal(true) }),
+  errors: ["unauthorized", "forbidden"],
+  access: null,
+  effects: { readOnly: false, idempotent: true, emits: [] },
+  cli: false,
+  mcp: false,
+  why: "It requires a browser session cookie and its CSRF proof.",
   upstream: false,
 });

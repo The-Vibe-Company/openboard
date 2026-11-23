@@ -225,7 +225,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | GET | `/api/x/session` | anyone | signed in or not, person, CSRF value, providers |
 | GET | `/api/x/me` | person | person, identities, memberships (with role), personal tokens |
 | POST | `/api/x/me/identities/:provider/link`; POST `/api/x/me/identities/:provider/:subject/unlink` | person | explicit linking |
-| POST | `/api/x/me/sessions/revoke-all` | person | |
+| POST | `/api/x/me/sessions/revoke-all` | person | Revokes all the person's sessions, including the caller. Requires the session cookie, Origin and CSRF proof. Returns `200 { "ok": true }`. |
 | POST | `/api/x/orgs` | person | `{ name, slug }` → organization, owner membership, board `main`; 409 `already_in_org` in v1 if already a member |
 | GET | `/api/x/orgs/:org` | member | |
 | POST | `/api/x/orgs/:org` | admin | rename (display name only) |

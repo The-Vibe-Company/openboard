@@ -2,7 +2,7 @@ import type { InputOf, Operation, OutputOf, operations, previewInvitation, SignI
 import type { BoardView, OrgView, PersonRecord, PlatformView } from "@openboard/ports";
 import type { Session } from "../auth/sessions.ts";
 import type { Principal } from "../deps.ts";
-import { getAccountHandler, getSessionHandler } from "./accounts.ts";
+import { getAccountHandler, getSessionHandler, revokeAllSessionsHandler } from "./accounts.ts";
 import { getMeHandler, listActorsHandler } from "./actors.ts";
 import { createBoardHandler, listBoardsHandler } from "./boards.ts";
 import { createChannelHandler, listChannelsHandler } from "./channels.ts";
@@ -109,6 +109,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   readPost: readPostHandler,
   readThread: readThreadHandler,
   refreshAgentToken: refreshAgentTokenHandler,
+  revokeAllSessions: revokeAllSessionsHandler,
 };
 
 /** The handler of an operation the router matched, its input already validated against the same contract. */

@@ -1,4 +1,4 @@
-import type { getAccount, getSession } from "@openboard/contract";
+import type { getAccount, getSession, revokeAllSessions } from "@openboard/contract";
 import type { Handler } from "./index.ts";
 import { signedIn } from "./orgs.ts";
 
@@ -20,4 +20,10 @@ export const getAccountHandler: Handler<typeof getAccount> = async (ctx) => {
   const { id, providers, ...details } = signedIn(ctx);
   const memberships = await ctx.platform.memberships(id);
   return { person: { principal: `ob:user:${id}`, ...details, providers: [...providers] }, memberships };
+};
+
+export const revokeAllSessionsHandler: Handler<typeof revokeAllSessions> = async (ctx) => {
+  const { id } = signedIn(ctx);
+  await ctx.platform.revokeAllSessions(id, ctx.now());
+  return { ok: true };
 };

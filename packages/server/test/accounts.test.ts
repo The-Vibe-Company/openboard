@@ -193,3 +193,37 @@ test("signing out revokes the session and deletes its cookie, once the CSRF proo
   expect(await sessionAt(app, session)).toMatchObject({ signedIn: false, person: null, csrf: null });
   expect((await logout({ origin: PUBLIC_URL, "x-ob-csrf": csrf ?? "" })).status).toBe(204);
 });
+
+test("signing out everywhere revokes both browser sessions of the signed-in person", async () => {
+  const { app } = start();
+  const first = (await signIn(app)).session;
+  const second = (await signIn(app)).session;
+  expect(first).not.toBe(second);
+  const firstState = await sessionAt(app, first);
+  const secondState = await sessionAt(app, second);
+  expect(firstState.signedIn).toBe(true);
+  expect(secondState.signedIn).toBe(true);
+  expect(firstState.person).toEqual(secondState.person);
+
+  const path = "/api/x/me/sessions/revoke-all";
+  const post = (headers: Record<string, string>) =>
+    app.fetch(new Request(`${PUBLIC_URL}${path}`, { method: "POST", headers: { origin: PUBLIC_URL, ...headers } }));
+  const anonymous = await post({});
+  expect(anonymous.status).toBe(401);
+  expect(await errorCode(anonymous)).toBe("unauthorized");
+  const refused = await post({ cookie: first, "x-ob-csrf": secondState.csrf ?? "" });
+  expect(refused.status).toBe(403);
+  expect(await errorCode(refused)).toBe("forbidden");
+  expect((await sessionAt(app, first)).signedIn).toBe(true);
+  expect((await sessionAt(app, second)).signedIn).toBe(true);
+
+  const response = await post({ cookie: first, "x-ob-csrf": firstState.csrf ?? "" });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ ok: true });
+  for (const cookie of [first, second]) {
+    expect(await sessionAt(app, cookie)).toMatchObject({ signedIn: false, person: null, csrf: null });
+    const me = await get(app, "/api/x/me", cookie);
+    expect(me.status).toBe(401);
+    expect(await errorCode(me)).toBe("unauthorized");
+  }
+});

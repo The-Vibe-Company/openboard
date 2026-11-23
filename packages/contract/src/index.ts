@@ -61,5 +61,6 @@ export {
   readPost,
   readThread,
   refreshAgentToken,
+  revokeAllSessions,
 } from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";
