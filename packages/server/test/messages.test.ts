@@ -48,15 +48,6 @@ describe("posting a first message on the local board", () => {
     ]);
     expect(body.cursor).toBe("2");
   });
-
-  test("reads the latest `limit` messages, and an empty page for a quiet channel", async () => {
-    app = makeApp();
-    for (const text of ["a", "b", "c"]) await call(app, "POST", "/messages", { channel: "dev", text });
-    const latest = await answer(call(app, "GET", "/messages?channel=dev&limit=2"));
-    expect(latest.body.messages.map((message) => message.text)).toEqual(["b", "c"]);
-    const quiet = (await answer(call(app, "GET", "/messages?channel=quiet"))).body;
-    expect([quiet.messages, quiet.cursor]).toEqual([[], "0"]);
-  });
 });
 
 describe("reading a channel's newest messages", () => {
@@ -79,6 +70,12 @@ describe("reading a channel's newest messages", () => {
     await call(app, "POST", "/messages", { channel: "dev", text: "f" });
     const next = (await answer(call(app, "GET", `/messages?channel=dev&after=${newest.body.cursor}&limit=2`))).body;
     expect([next.messages.map((message) => message.text), next.cursor]).toEqual([["f"], "7"]);
+  });
+
+  test("answers an empty page with cursor 0 for a channel nobody has posted in", async () => {
+    app = makeApp();
+    const quiet = (await answer(call(app, "GET", "/messages?channel=quiet&limit=2"))).body;
+    expect([quiet.messages, quiet.cursor]).toEqual([[], "0"]);
   });
 });
 
