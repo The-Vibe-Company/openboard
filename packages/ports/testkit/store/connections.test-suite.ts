@@ -15,7 +15,7 @@ function create(board: BoardView, name: string, letter: string, claims: number |
       nextGrant: await writer.nextGrant(),
       nameTaken: await writer.connectionNamed(name),
     };
-    const command = { name, can: { "*": "all" as const }, direct: true, claims };
+    const command = { name, can: { "*": "all" as const }, direct: claims === null, claims };
     const decided = connections.decideCreate(state, command, { by, now: 1_700_000_000_000, secret: secret(letter) });
     await writer.append(decided.events);
     return decided.connection;

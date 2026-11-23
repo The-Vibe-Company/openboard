@@ -20,10 +20,11 @@ writes:
   - packages/cli/src/commands/connections.ts
   - packages/cli/test/connections.test.ts
   - packages/server/openapi.json
+  - docs/auth.md
 conformance: []
 modes: [local]
 depends_on: [123]
-status: claimed
+status: done
 claimed_by: claude-opus-t124
 issue: 125
 ---
@@ -32,7 +33,7 @@ issue: 125
 As an orchestrator, a secret minted for one sandbox is useless once claimed.
 
 ## Done when
-- [ ] for a connection created with `--claims 1`, the first claim answers a token and the second answers 410 `secret_spent`
+- [x] for a connection created with `--claims 1`, the first claim answers a token and the second answers 410 `secret_spent`
 
 ## Out of scope
 - Profile collisions (125).

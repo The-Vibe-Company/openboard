@@ -273,7 +273,9 @@ Authorization: Bearer obc_…
   from `hardExpiresAt` on (the previous token's 60 s too); renew before
   `expiresAt`, or claim a new token with the connection's secret.
 - **Single-use secrets:** `"claims": 1` spends the secret on the first claim,
-  in the claim's transaction (410 `secret_spent` after).
+  in the claim's transaction (410 `secret_spent` after). A direct connection
+  takes no `claims` (400 `invalid_request`): its secret is a bearer that
+  counting claims could never spend.
 - **Profile collisions:** 409 `profile_taken` unless the same
   `idempotencyKey`.
 - **Per-agent revoke:** `POST {BOARD_URL}/x/connections/:id/agents/:agent/revoke`,

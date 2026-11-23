@@ -72,6 +72,14 @@ describe("connections.decideCreate", () => {
     expect(event.payload.claims).toBeNull();
   });
 
+  test("keeps claims on a claim-only connection, and refuses them on a direct one as invalid_request", () => {
+    const state = { head: 7, nextGrant: 4, nameTaken: false };
+    const create = (direct: boolean) => () =>
+      connections.decideCreate(state, { name: "sbx", can: { "*": "all" }, direct, claims: 1 }, { by, now: 1, secret });
+    expect(create(false)().events[0].payload.claims).toBe(1);
+    expect(codeOf(create(true))).toBe("invalid_request");
+  });
+
   test("refuses a name the board already uses as slug_taken", () => {
     const state = { head: 7, nextGrant: 5, nameTaken: true };
     const decide = () =>

@@ -59,7 +59,8 @@ export function connectionPrincipal(id: string): string {
 
 /**
  * A new connection holding one grant whose only principal is the connection itself. A name already used on the
- * board is 409 `slug_taken`; the grant's `can` is compiled (`grants.compileCan`).
+ * board is 409 `slug_taken`; the grant's `can` is compiled (`grants.compileCan`). A direct connection takes no
+ * `claims`: its secret is a bearer on every route, which counting claims could never spend (400 `invalid_request`).
  */
 export function decideCreate(
   state: ConnectionState,
@@ -69,6 +70,11 @@ export function decideCreate(
   if (state.nameTaken) {
     throw new BoardError("slug_taken", `a connection named ${command.name} already exists on this board`, {
       hint: "Pick another name, or use the connection that has it.",
+    });
+  }
+  if (command.direct && command.claims != null) {
+    throw new BoardError("invalid_request", "a direct connection's secret is a bearer, so its claims cannot spend it", {
+      hint: "Leave out direct to make a single-use secret: it then only claims agent tokens.",
     });
   }
   const grant: Grant = {

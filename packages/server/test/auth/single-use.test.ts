@@ -59,10 +59,11 @@ test("a refused claim spends nothing, and a secret without claims keeps claiming
   for (const profile of ["a", "b", "c"]) expect((await claim(app, open, profile)).status).toBe(200);
 });
 
-test("claims below one or not whole answer 400 invalid_request", async () => {
+test("claims below one or not whole, or on a direct connection, answer 400 invalid_request", async () => {
   app = makeApp();
-  for (const claims of [0, -1, 1.5, "1"]) {
-    const response = await call(app, "POST", "/x/connections", { name: "bad", can: { "*": "all" }, claims });
+  const extras: Record<string, unknown>[] = [{ claims: 0 }, { claims: -1 }, { claims: 1.5 }, { claims: "1" }];
+  for (const extra of [...extras, { claims: 1, direct: true }]) {
+    const response = await call(app, "POST", "/x/connections", { name: "bad", can: { "*": "all" }, ...extra });
     expect(await codeOf(response)).toEqual([400, "invalid_request"]);
   }
 });
