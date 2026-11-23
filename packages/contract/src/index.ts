@@ -37,6 +37,7 @@ export {
 } from "./operation.ts";
 export {
   acceptInvitation,
+  changeMemberRole,
   claimConnection,
   createBoard,
   createChannel,

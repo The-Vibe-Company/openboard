@@ -111,6 +111,13 @@ export interface OrgScope {
 
 export interface OrgView {
   listMembers(): Promise<{ principal: string; role: Role }[]>;
+  /** Changes the role and records its audit event together. Null when the target is outside this organization. */
+  changeMemberRole(record: {
+    readonly personId: string;
+    readonly targetId: string;
+    readonly role: Role;
+    readonly at: number;
+  }): Promise<{ principal: string; role: Role } | null>;
   /** Stores the invitation and audit event together. False if the creator no longer has admin rights here. */
   createInvitation(record: {
     readonly invitation: Invitation;
@@ -200,6 +207,8 @@ export interface BoardWriter {
   connection(id: string): Promise<ConnectionRecord | null>;
   /** The agent of this board with the ID, read under the lock, or null when the board has none with it. */
   agent(id: string): Promise<AgentRecord | null>;
+  /** The agent associated with this connection's claim key, including expired and revoked agents. */
+  agentByClaimKey(connection: string, key: string): Promise<{ record: AgentRecord; revoked: boolean } | null>;
   /**
    * The unrevoked agent of the connection pinned to the profile (any case) whose token expires last, with that expiry
    * in epoch milliseconds, read under the lock; null when the connection has none.

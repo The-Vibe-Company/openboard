@@ -44,8 +44,9 @@ export {
   type ReactionRemoved,
   type ReactionState,
 } from "./messages/reactions.ts";
-export type { CreateOrgCommand, OrgCreation, OrgEvent } from "./orgs/create.ts";
-export { decideInvitation, previewInvite } from "./orgs/invite.ts";
 export type { BoardCreation, CreateBoardCommand } from "./orgs/boards.ts";
 export * as boards from "./orgs/boards.ts";
+export type { CreateOrgCommand, OrgCreation, OrgEvent } from "./orgs/create.ts";
 export * as orgs from "./orgs/create.ts";
+export { decideInvitation, previewInvite } from "./orgs/invite.ts";
+export { decideMemberRole } from "./orgs/roles.ts";

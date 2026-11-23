@@ -16,6 +16,7 @@ import {
   previewInvitationHandler,
   revokeInvitationHandler,
 } from "./invitations.ts";
+import { changeMemberRoleHandler } from "./memberships.ts";
 import {
   deleteMessageHandler,
   editMessageHandler,
@@ -93,6 +94,7 @@ export type OrgOperation = Extract<Contracted, { readonly scope: "org" }>;
 /** One handler per contract operation: a missing or mistyped one is a compile error. */
 export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> } = {
   acceptInvitation: acceptInvitationHandler,
+  changeMemberRole: changeMemberRoleHandler,
   claimConnection: claimConnectionHandler,
   createBoard: createBoardHandler,
   createChannel: createChannelHandler,

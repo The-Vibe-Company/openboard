@@ -148,6 +148,99 @@
         }
       }
     },
+    "/api/x/orgs/{org}/members/{user}/role": {
+      "post": {
+        "operationId": "changeMemberRole",
+        "summary": "Change an organization member's role.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" }
+          },
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "member", "type": "string" }
+          },
+          {
+            "name": "x-ob-csrf",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["role"],
+                "properties": {
+                  "role": {
+                    "anyOf": [
+                      { "const": "owner", "type": "string" },
+                      { "const": "admin", "type": "string" },
+                      { "const": "member", "type": "string" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["principal", "role"],
+                  "properties": {
+                    "principal": { "type": "string" },
+                    "role": {
+                      "anyOf": [
+                        { "const": "owner", "type": "string" },
+                        { "const": "admin", "type": "string" },
+                        { "const": "member", "type": "string" }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/x/connections/claim": {
       "post": {
         "operationId": "claimConnection",
@@ -186,7 +279,8 @@
                       }
                     }
                   },
-                  "ttl": { "pattern": "^[1-9][0-9]{0,6}[smhd]$", "type": "string" }
+                  "ttl": { "pattern": "^[1-9][0-9]{0,6}[smhd]$", "type": "string" },
+                  "idempotencyKey": { "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000]+$", "type": "string" }
                 }
               }
             }

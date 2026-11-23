@@ -8,6 +8,7 @@ import { channelStatements } from "./views/channels.ts";
 import { connectionStatements } from "./views/connections.ts";
 import { eventStatements } from "./views/events.ts";
 import { invitationStatements } from "./views/invitations.ts";
+import { membershipStatements } from "./views/memberships.ts";
 import { messageStatements } from "./views/messages.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
 import { threadStatements } from "./views/threads.ts";
@@ -28,6 +29,7 @@ export const statements: Readonly<Record<string, string>> = Object.freeze(
       ...connectionStatements,
       ...eventStatements,
       ...invitationStatements,
+      ...membershipStatements,
       ...messageStatements,
       ...orgStatements,
       ...threadStatements,
