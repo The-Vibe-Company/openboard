@@ -9,7 +9,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [134]
-status: claimed
+status: done
 claimed_by: claude-opus-5-5
 issue: 140
 ---
@@ -18,7 +18,7 @@ issue: 140
 As a person, a page on another site cannot act on the board with my session.
 
 ## Done when
-- [ ] `curl -b cookies -X POST http://127.0.0.1:8787/api/x/orgs …` without `x-ob-csrf`, or with another `origin`, answers 403 `forbidden`; with a bearer token instead of the cookie no CSRF header is needed
+- [x] `curl -b cookies -X POST http://127.0.0.1:8787/api/x/orgs …` without `x-ob-csrf`, or with another `origin`, answers 403 `forbidden`; with a bearer token instead of the cookie no CSRF header is needed
 
 ## Out of scope
 - Security headers of the front (M8, 217).

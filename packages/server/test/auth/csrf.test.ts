@@ -115,7 +115,8 @@ test("a bearer write needs no CSRF header, even when the browser's cookie rides 
 test("a refused cross-site write does not keep an idle session alive", async () => {
   const { app, clock, cookie } = await start();
   clock.now = NOW + 6 * DAY;
-  const forged = await send(app, "POST", `${PUBLIC_URL}/api/x/orgs`, { cookie }, { name: "Acme", slug: "acme" });
+  const crossSite = { cookie, origin: "https://evil.example" };
+  const forged = await send(app, "POST", `${PUBLIC_URL}/api/x/orgs`, crossSite, { name: "Acme", slug: "acme" });
   expect(forged.status).toBe(403);
   clock.now = NOW + 7 * DAY;
   expect(await signedIn(app, cookie)).toBe(false);

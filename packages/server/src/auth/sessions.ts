@@ -66,7 +66,7 @@ function checkCsrf(request: Request, csrf: string, publicUrl: string): void {
 /**
  * The session a request's cookie names, when it is live: not revoked, used within 7 days, younger than 30. Only a
  * request without an `authorization` header is read by its cookie (docs/auth.md "The verifier chain", step 6). A write
- * without the CSRF proof is refused before the session is touched, so a page on another site cannot keep it alive.
+ * without the CSRF proof is refused before the session is touched, so a refused write never renews it.
  */
 export async function sessionOf(
   request: Request,
