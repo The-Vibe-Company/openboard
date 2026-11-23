@@ -10,12 +10,15 @@ export interface PostCommand {
   readonly noSync?: boolean;
 }
 
-/** Upstream's `message.posted` payload (upstream `03-http.md` "Event types"); `re` is the root of a reply. */
+/**
+ * Upstream's `message.posted` payload (upstream `03-http.md` "Event types"): `re` is the root of a reply, and
+ * `replyTo` the message it answered when that is not the root.
+ */
 export interface MessagePostedPayload {
   readonly channel: string;
   readonly text: string;
   readonly re: string | null;
-  readonly replyTo: null;
+  readonly replyTo: string | null;
   readonly thread: string;
   readonly labels: Readonly<Record<string, string>>;
   readonly noSync: boolean;
@@ -45,8 +48,8 @@ export interface MessagePosted {
 export interface ReplyTarget {
   readonly id: number;
   readonly channel: string;
-  /** The root it replies to, or null when it is a root itself. */
-  readonly re: string | null;
+  /** The log position of its thread's root: its own for a root. */
+  readonly thread: number;
 }
 
 /**
@@ -93,7 +96,7 @@ export function messageView(event: MessagePosted): Message {
     channel: payload.channel,
     text: payload.text,
     re: payload.re,
-    replyTo: null,
+    replyTo: payload.replyTo,
     thread: payload.thread,
     labels: { ...payload.labels },
     reactions: {},
@@ -114,13 +117,16 @@ export function messageView(event: MessagePosted): Message {
   };
 }
 
-/** Where a post lands: a new thread in its channel, or the thread of the root `re` names. */
+/**
+ * Where a post lands: a new thread in its channel, or the thread of the message `re` names. Threads are one level
+ * deep: a reply to a reply joins the root's thread, and keeps the message it answered as `replyTo`.
+ */
 function placePost(state: PostState, command: PostCommand, id: number) {
-  if (command.channel !== undefined) return { channel: command.channel, root: id, re: null };
+  if (command.channel !== undefined) return { channel: command.channel, root: id, re: null, replyTo: null };
   const target = state.target;
   if (!target) throw new BoardError("message_not_found", `Couldn't find message #${command.re}.`);
-  if (target.re !== null) throw new BoardError("invalid_request", `re: message #${command.re} is a reply, not a root`);
-  return { channel: target.channel, root: target.id, re: formatId(target.id) };
+  const replyTo = target.id === target.thread ? null : formatId(target.id);
+  return { channel: target.channel, root: target.thread, re: formatId(target.thread), replyTo };
 }
 
 /**
@@ -130,7 +136,7 @@ function placePost(state: PostState, command: PostCommand, id: number) {
 export function decidePost(state: PostState, command: PostCommand, context: PostContext) {
   checkCommand(command);
   const id = state.head + 1;
-  const { channel, root, re } = placePost(state, command, id);
+  const { channel, root, re, replyTo } = placePost(state, command, id);
   const event: MessagePosted = {
     id,
     type: "message.posted",
@@ -145,7 +151,7 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
       channel,
       text: command.text,
       re,
-      replyTo: null,
+      replyTo,
       thread: formatId(root),
       labels: { ...command.labels },
       noSync: command.noSync ?? false,

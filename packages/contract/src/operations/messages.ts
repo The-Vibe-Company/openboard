@@ -5,7 +5,7 @@ import { defineOperation, Ref } from "../operation.ts";
 export const postMessage = defineOperation({
   name: "postMessage",
   operationId: "post",
-  summary: "Post a message: a new thread in a channel, or a reply in the thread of the root `re` names.",
+  summary: "Post a message: a new thread in a channel, or a reply in the thread of any message `re` names.",
   route: { method: "POST", path: "/messages" },
   scope: "board",
   input: {

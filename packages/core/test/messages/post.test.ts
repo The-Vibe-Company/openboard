@@ -59,7 +59,7 @@ describe("posting a message", () => {
 });
 
 describe("replying in a thread", () => {
-  const root = { id: 1, channel: "dev", re: null };
+  const root = { id: 1, channel: "dev", thread: 1 };
 
   test("joins the root's thread and channel at the next log position", () => {
     const { events, message } = decidePost({ head: 1, target: root }, { re: "1", text: "on it" }, { by, now: at });
@@ -73,11 +73,12 @@ describe("replying in a thread", () => {
     expect(refused).toEqual({ code: "message_not_found", message: "Couldn't find message #9." });
   });
 
-  test("refuses a reply to a reply, which belongs in its root's thread", () => {
-    const target = { id: 2, channel: "dev", re: "1" };
-    const refused = refusal(() => decidePost({ head: 2, target }, { re: "2", text: "x" }, { by, now: at }));
-    expect(refused.code).toBe("invalid_request");
-    expect(refused.message).toStartWith("re");
+  test("puts a reply to a reply in the root's thread, and keeps the reply it answered as replyTo", () => {
+    const target = { id: 2, channel: "dev", thread: 1 };
+    const { events, message } = decidePost({ head: 2, target }, { re: "2", text: "deeper" }, { by, now: at });
+    expect(events[0]).toMatchObject({ id: 3, thread: 1, message: 3, channel: "dev" });
+    expect(events[0].payload).toMatchObject({ channel: "dev", re: "1", replyTo: "2", thread: "1" });
+    expect(message).toMatchObject({ id: "3", channel: "dev", text: "deeper", re: "1", replyTo: "2", thread: "1" });
   });
 
   test.each([
