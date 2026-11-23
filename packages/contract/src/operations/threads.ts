@@ -4,6 +4,7 @@ import { defineOperation, Ref } from "../operation.ts";
 
 export const readThread = defineOperation({
   name: "readThread",
+  operationId: "message",
   summary: "Read one message as a thread: the message, then its replies, oldest first.",
   route: { method: "GET", path: "/messages/:id" },
   scope: "board",

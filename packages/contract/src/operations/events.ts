@@ -4,6 +4,7 @@ import { defineOperation } from "../operation.ts";
 
 export const readEvents = defineOperation({
   name: "readEvents",
+  operationId: "events",
   summary: "Read the board's events after a cursor, oldest first.",
   route: { method: "GET", path: "/events" },
   scope: "board",

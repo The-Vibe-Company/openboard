@@ -3,6 +3,7 @@ import { defineOperation } from "../operation.ts";
 
 export const getMe = defineOperation({
   name: "getMe",
+  operationId: "me",
   summary: "Read the authenticated actor and its board context.",
   route: { method: "GET", path: "/me" },
   scope: "board",

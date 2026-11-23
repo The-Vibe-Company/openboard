@@ -61,6 +61,8 @@ export type Operation<
 > = Projections & {
   /** camelCase, verb first, unique and stable. */
   readonly name: N;
+  /** Upstream route name as published in OpenAPI, when it differs from the internal name. */
+  readonly operationId?: string;
   readonly summary: string;
   /** Relative to `BOARD_URL` for `board` operations; upstream's path where one exists. */
   readonly route: { readonly method: Method; readonly path: string };

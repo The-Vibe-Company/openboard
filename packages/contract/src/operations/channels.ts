@@ -7,6 +7,7 @@ const CHANNELS_PAGE_DEFAULT = 100;
 
 export const listChannels = defineOperation({
   name: "listChannels",
+  operationId: "channels",
   summary: "List the board's channels a page at a time, or those whose path starts with a prefix.",
   route: { method: "GET", path: "/channels" },
   scope: "board",

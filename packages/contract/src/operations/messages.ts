@@ -4,6 +4,7 @@ import { defineOperation } from "../operation.ts";
 
 export const postMessage = defineOperation({
   name: "postMessage",
+  operationId: "post",
   summary: "Post a message that starts a thread in a channel.",
   route: { method: "POST", path: "/messages" },
   scope: "board",
@@ -30,6 +31,7 @@ export const postMessage = defineOperation({
 
 export const listMessages = defineOperation({
   name: "listMessages",
+  operationId: "channelMessages",
   summary: "Read one channel's latest messages, oldest first.",
   route: { method: "GET", path: "/messages" },
   scope: "board",

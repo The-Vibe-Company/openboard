@@ -120,7 +120,7 @@ answers. OpenBoard adds:
 | GET | `/me` | U | plus an `openboard` object (org, board, role, credential kind) |
 | GET, POST | `/channels` | U | `private` makes two grants and the channel, as upstream |
 | GET | `/actors` | U | |
-| GET | `/openapi.json` | U | generated from the contract; upstream `operationId`s; extensions included |
+| GET | `/openapi.json` | U | OpenAPI 3.1, no token; generated from the contract with upstream `operationId`s; extensions included |
 | GET | `/avatars/:name` | U | generic marks only; upstream's vendor marks not shipped (404) |
 
 ### Messages, reading, events
