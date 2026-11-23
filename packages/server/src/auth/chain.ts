@@ -1,7 +1,7 @@
 import { BoardError, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
 import { connections } from "@openboard/core";
 import type { BoardView } from "@openboard/ports";
-import { connectionOf, type Principal, profileName, type ServerConfig } from "../deps.ts";
+import { connectionOf, type Principal, profileAvatar, profileName, type ServerConfig } from "../deps.ts";
 import { connectionVerifier } from "./connections.ts";
 import { localOwnerVerifier } from "./local-owner.ts";
 
@@ -39,7 +39,7 @@ function noCredential(): BoardError {
 function withProfile(request: Request, principal: Principal): Principal {
   const header = request.headers.get(PROFILE_HEADER);
   if (header === null) return principal;
-  const { name } = parseProfileHeader(header);
+  const { name, avatar } = parseProfileHeader(header);
   const connection = principal[connectionOf];
   if (connection && !connections.profileAllowed(connection.profiles, name)) {
     throw new BoardError("forbidden", `this connection may not write as ${name}`, {
@@ -47,7 +47,13 @@ function withProfile(request: Request, principal: Principal): Principal {
     });
   }
   const profile = name.toLowerCase();
-  return { ...principal, actor: `${principal.principal}+${profile}`, profile, [profileName]: name };
+  return {
+    ...principal,
+    actor: `${principal.principal}+${profile}`,
+    profile,
+    [profileName]: name,
+    [profileAvatar]: avatar,
+  };
 }
 
 /**

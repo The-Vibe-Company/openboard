@@ -13,14 +13,14 @@ async function connectionMe(board: BoardContext["board"], by: Principal): Promis
   const record = await board.connection(by.principal.slice(CONNECTION.length));
   if (!record) throw new BoardError("unauthorized", "the credential is not valid on this board");
   const { actor, principal, profile } = by;
-  const { kind, handle, name } = authorOf(by);
+  const { kind, handle, name, avatar } = authorOf(by);
   return {
     actor,
     principal,
     kind,
     handle,
     name,
-    avatar: null,
+    avatar,
     profile,
     expiresAt: null,
     can: record.connection.can,
@@ -33,14 +33,14 @@ export const getMeHandler: Handler<typeof getMe> = async ({ board, by }) => {
   if (credential === "connection") return connectionMe(board, by);
   if (!credential) throw new BoardError("unauthorized", "a local owner credential is required");
   const { actor, principal, profile } = by;
-  const { kind, handle, name } = authorOf(by);
+  const { kind, handle, name, avatar } = authorOf(by);
   return {
     actor,
     principal,
     kind,
     handle,
     name,
-    avatar: null,
+    avatar,
     profile,
     expiresAt: null,
     can: { "*": ["read", "post", "react", "label", "sync", "manage"] },

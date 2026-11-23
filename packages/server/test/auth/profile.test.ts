@@ -47,11 +47,26 @@ test("a connection's profile writes as principal+profile, shown as the profile v
   expect(await read.json()).toMatchObject({ messages: [{ text: "hi", by: { actor }, author }] });
 });
 
+test("a profile avatar from x-board-profile is shown on the posted message and its readback", async () => {
+  app = makeApp();
+  const secret = await connect(app, ["fixer-*"]);
+  const avatar = "https://example.com/f.png";
+  const header = `fixer-2; avatar="${avatar}"`;
+  const author = { name: "fixer-2", kind: "agent", avatar };
+  const response = await as(app, secret, header, "POST", "/messages", post);
+  expect(response.status).toBe(201);
+  expect(await response.json()).toMatchObject({ message: { author } });
+  const read = await as(app, secret, null, "GET", "/messages?channel=dev");
+  expect(read.status).toBe(200);
+  expect(await read.json()).toMatchObject({ messages: [{ author }] });
+});
+
 test("GET /me as a profile answers the profile's actor, as an agent of the connection", async () => {
   app = makeApp();
   const secret = await connect(app, ["*"]);
   const actor = `${principalOf(secret)}+fixer-2`;
-  const response = await as(app, secret, "fixer-2", "GET", "/me");
+  const avatar = "https://example.com/f.png";
+  const response = await as(app, secret, `fixer-2; avatar="${avatar}"`, "GET", "/me");
   expect(response.status).toBe(200);
   expect(await response.json()).toMatchObject({
     actor,
@@ -59,6 +74,7 @@ test("GET /me as a profile answers the profile's actor, as an agent of the conne
     kind: "agent",
     handle: "laptop/fixer-2",
     name: "fixer-2",
+    avatar,
     profile: "fixer-2",
     openboard: { credential: "connection" },
   });

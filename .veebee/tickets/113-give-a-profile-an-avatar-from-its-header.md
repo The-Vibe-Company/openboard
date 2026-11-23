@@ -7,11 +7,19 @@ writes:
   - packages/contract/src/headers.ts
   - packages/contract/test/headers.test.ts
   - packages/server/test/auth/profile.test.ts
+  - packages/server/src/auth/chain.ts
+  - packages/server/src/auth/author.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/operations/actors.ts
+  - packages/contract/src/entities/actors.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
+  - tools/conformance/score.json
 conformance: ["core/takes a profile and its avatar as one x-board-profile header, and shows both on what it writes"]
 modes: [local]
 depends_on: [112]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t113
 issue: 113
 ---
 

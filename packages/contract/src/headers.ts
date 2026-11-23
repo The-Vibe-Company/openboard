@@ -14,10 +14,10 @@ const BOOLEAN = /^\?[01]/;
 /** Longer than any name with an avatar URL needs; refused before parsing so a long header costs nothing. */
 const HEADER_MAX = 2048;
 
-/** What `x-board-profile` names: the name as sent, and its parameters, which later tickets read (avatar). */
+/** What `x-board-profile` names: the name as sent, and its optional avatar URL. */
 export interface ProfileHeader {
   readonly name: string;
-  readonly params: Readonly<Record<string, string | boolean>>;
+  readonly avatar: string | null;
 }
 
 function invalid(detail: string): BoardError {
@@ -55,9 +55,21 @@ function bareItem(rest: string): [string | boolean, string] {
   return [match, rest.slice(match.length)];
 }
 
-/** The `;key=value` parameters after an item; a key without a value is `true`. */
-function parameters(rest: string): Record<string, string | boolean> {
-  const params: Record<string, string | boolean> = {};
+/** The avatar is a quoted URL. Upstream also accepts HTTP for local development. */
+function avatarUrl(value: string): string {
+  const url = URL.parse(value);
+  if (
+    url?.protocol === "https:" ||
+    (url?.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1"))
+  ) {
+    return value;
+  }
+  throw invalid("avatar must be an HTTPS URL (HTTP only on localhost)");
+}
+
+/** Read the parameters after an item and take the last avatar, ignoring unknown keys. */
+function avatarParameter(rest: string): string | null {
+  let avatar: string | null = null;
   let left = rest;
   while (left.length > 0) {
     if (!left.startsWith(";")) throw invalid("expected `;` before a parameter");
@@ -65,10 +77,14 @@ function parameters(rest: string): Record<string, string | boolean> {
     const key = KEY.exec(left)?.[0];
     if (!key) throw invalid("a parameter key is not lowercase");
     left = left.slice(key.length);
-    if (left.startsWith("=")) [params[key], left] = bareItem(left.slice(1));
-    else params[key] = true;
+    if (key === "avatar") {
+      if (!left.startsWith('="')) throw invalid("avatar must be a quoted string");
+      [avatar, left] = sfString(left.slice(1));
+    } else if (left.startsWith("=")) {
+      [, left] = bareItem(left.slice(1));
+    }
   }
-  return params;
+  return avatar === null ? null : avatarUrl(avatar);
 }
 
 /** Reads `x-board-profile` as an RFC 8941 Item whose value is a profile name; anything else is 400 `invalid_profile`. */
@@ -83,5 +99,5 @@ export function parseProfileHeader(value: string): ProfileHeader {
   if (typeof name !== "string" || !NAME.test(name)) {
     throw invalid("a profile name starts with a letter and has up to 32 letters, digits and hyphens");
   }
-  return { name, params: parameters(rest) };
+  return { name, avatar: avatarParameter(rest) };
 }

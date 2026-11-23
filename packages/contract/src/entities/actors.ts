@@ -9,7 +9,7 @@ export const Me = Type.Object({
   kind: ActorKind,
   handle: Type.String(),
   name: Type.String(),
-  avatar: Type.Null(),
+  avatar: Type.Union([Type.String(), Type.Null()]),
   expiresAt: Type.Null(),
   can: Type.Record(
     Type.String(),
