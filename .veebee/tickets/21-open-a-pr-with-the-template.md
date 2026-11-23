@@ -8,8 +8,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [01]
-status: ready
-claimed_by: null
+status: done
+claimed_by: codex-a925b7f8
 issue: 21
 ---
 
@@ -17,7 +17,8 @@ issue: 21
 As a contributor, I open a PR and its body already asks for Ticket, Users, Protocol, Conformance, Performance, Tests and Dependency.
 
 ## Done when
-- [ ] `gh pr create --fill` on a new branch opens a PR whose body holds the lines `Ticket:`, `Closes #`, `Users:`, `Protocol:`, `Conformance:`, `Performance:`, `Tests:`, `Dependency:`
+- [x] `.github/pull_request_template.md` contains the eight lines `Ticket:`, `Closes #`, `Users:`, `Protocol:`, `Conformance:`, `Performance:`, `Tests:`, and `Dependency:`.
+- [ ] Once the template is on `main`, GitHub's new pull request form prefills those eight lines.
 
 ## Out of scope
 - Code owners (22).
