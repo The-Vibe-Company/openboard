@@ -30,6 +30,7 @@ describe("one JSON log line per request", () => {
       t: expect.any(Number),
       level: "info",
       msg: "request",
+      request_id: "req-1",
       req: "POST /api/local/main/messages",
       op: "postMessage",
       org: "local",
@@ -79,7 +80,7 @@ describe("one JSON log line per request", () => {
     app = createApp(
       { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: owner.hash },
       { store: openStore(now) },
-      { now, log: jsonLogger({ now, write: (line) => lines.push(JSON.parse(line)) }) },
+      { now, log: jsonLogger({ now, write: (line) => lines.push(JSON.parse(line)) }), requestId: () => "req-test" },
     );
     for (const token of [stranger.token, owner.token]) {
       await app.fetch(

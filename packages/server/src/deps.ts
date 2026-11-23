@@ -23,6 +23,8 @@ export interface Logger {
 export interface Deps {
   readonly now: () => number;
   readonly log: Logger;
+  /** A fresh ID for a request whose client sent none (docs/protocol.md "Request headers"). */
+  readonly requestId: () => string;
 }
 
 /** Who a request writes as, once the pipeline has authenticated it. */

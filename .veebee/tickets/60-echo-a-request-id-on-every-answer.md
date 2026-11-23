@@ -7,11 +7,19 @@ writes:
   - packages/server/src/http/pipeline.ts
   - packages/server/src/log.ts
   - packages/server/test/request-id.test.ts
+  - packages/server/src/deps.ts
+  - packages/server/test/support/app.ts
+  - packages/server/test/log.test.ts
+  - packages/server/test/auth/local-owner.test.ts
+  - apps/openboard/src/compose.ts
+  - tools/bench/src/drivers.ts
+  - tools/conformance/src/drivers.ts
+  - docs/codebase.md
 conformance: []
 modes: [local]
 depends_on: [38, 59]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-ticket-60
 issue: 60
 ---
 
@@ -19,7 +27,7 @@ issue: 60
 As an operator, I follow one request from the client's error to the server's log line.
 
 ## Done when
-- [ ] `curl -i http://127.0.0.1:8787/api/local/main` shows an `x-request-id`; sending `x-request-id: abc` gets `abc` back, and the log line carries it
+- [x] `curl -i http://127.0.0.1:8787/api/local/main` shows an `x-request-id`; sending `x-request-id: abc` gets `abc` back, and the log line carries it
 
 ## Out of scope
 - Tracing across instances (M6).

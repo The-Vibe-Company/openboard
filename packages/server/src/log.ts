@@ -22,9 +22,17 @@ export function jsonLogger(options: JsonLoggerOptions): Logger {
   return { info: emit("info"), error: emit("error") };
 }
 
+/** `log` with `fields` added to every line it prints, so each line of one request carries its request ID. */
+export function withFields(log: Logger, fields: Readonly<Record<string, unknown>>): Logger {
+  return {
+    info: (message, more) => log.info(message, { ...fields, ...more }),
+    error: (message, more) => log.error(message, { ...fields, ...more }),
+  };
+}
+
 /** What the request line says about one answer; filled in by the pipeline as each part becomes known. */
 export interface RequestFields {
-  /** The method and path, without the query: the request until request IDs arrive. */
+  /** The method and path, without the query. */
   req: string;
   /** The contract operation the route matched, or null when none did. */
   op: string | null;
