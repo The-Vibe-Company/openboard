@@ -67,6 +67,7 @@ describe("ob post and ob read", () => {
 
   test.each([
     ["a BOARD_URL that is not a URL", ["read", "dev"], { BOARD_URL: "notaurl" }],
+    ["a BOARD_URL without its scheme", ["read", "dev"], { BOARD_URL: "localhost:1/api" }],
     ["an unknown command", ["nope"], env],
     ["a missing argument", ["post", "dev"], env],
     ["no BOARD_URL", ["read", "dev"], {}],
