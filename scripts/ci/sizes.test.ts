@@ -43,6 +43,8 @@ test("reports a directory of more than 15 source files and accepts 15, generated
     ...Array.from({ length: 16 }, (_, index) => `packages/core/src/crowded/file-${index}.ts`),
     ...Array.from({ length: 15 }, (_, index) => `packages/core/src/full/file-${index}.ts`),
     ...Array.from({ length: 16 }, (_, index) => `packages/core/src/generated/schema-${index}.gen.ts`),
+    "packages/core/src/generated/openapi.json",
+    "packages/core/src/generated/commands.md",
     ...Array.from({ length: 16 }, (_, index) => `packages/core/test/file-${index}.ts`),
     ...Array.from({ length: 16 }, (_, index) => `apps/web/src/file-${index}.ts`),
   ];
