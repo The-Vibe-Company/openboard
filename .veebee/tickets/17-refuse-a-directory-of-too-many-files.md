@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [16]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-opus-t17
 issue: 17
 ---
 
@@ -18,7 +18,7 @@ issue: 17
 As a contributor, I split a directory into subdirectories once it holds 15 source files.
 
 ## Done when
-- [ ] a 16th source file in one directory under `packages/*/src` makes `bun run lint` exit 1 naming the directory
+- [x] a 16th source file in one directory under `packages/*/src` makes `bun run lint` exit 1 naming the directory
 
 ## Out of scope
 - File length (16).
