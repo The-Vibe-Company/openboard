@@ -1,5 +1,5 @@
 import type { Channel, Message, Thread } from "@openboard/contract";
-import type { BoardEvent } from "@openboard/core";
+import type { BoardEvent, MessagePosted } from "@openboard/core";
 
 declare const minted: unique symbol;
 
@@ -28,6 +28,8 @@ export interface PlatformView {
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */
 export interface BoardWriter {
   readonly head: number;
+  /** The exact channel path and counts as seen under this write lock. */
+  channel(path: string): Promise<Channel | null>;
   append(events: readonly BoardEvent[]): Promise<void>;
 }
 
@@ -52,8 +54,8 @@ export interface BoardView {
   channelMessages(query: ChannelMessagesQuery): Promise<Message[]>;
   /** The first `limit` channels the query selects, by path, with their counts and the board head at the time of the read. */
   listChannels(query: ChannelsQuery): Promise<{ channels: Channel[]; head: number }>;
-  /** Scans up to 200 log entries after the position, or starts at the current head when omitted. */
-  readEvents(after?: number): Promise<{ head: number; cursor: number; events: BoardEvent[] }>;
+  /** Scans up to 200 log entries and returns the default feed and scanned cursor. */
+  readEvents(after?: number): Promise<{ head: number; cursor: number; events: MessagePosted[] }>;
   /** The message at log position `id` with its replies, oldest first, or null when no message has that ID. */
   thread(id: number): Promise<Thread | null>;
 }

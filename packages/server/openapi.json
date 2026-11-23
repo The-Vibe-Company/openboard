@@ -60,6 +60,188 @@
     "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer" } }
   },
   "paths": {
+    "/channels": {
+      "post": {
+        "operationId": "createChannel",
+        "summary": "Create a public channel before anyone posts to it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["path"],
+                "properties": {
+                  "path": {
+                    "maxLength": 2048,
+                    "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["channel", "created"],
+                  "properties": {
+                    "channel": {
+                      "type": "object",
+                      "required": ["path"],
+                      "properties": {
+                        "path": {
+                          "maxLength": 2048,
+                          "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+                          "type": "string"
+                        },
+                        "lastIndex": { "minimum": 0, "type": "integer" },
+                        "messages": { "minimum": 0, "type": "integer" },
+                        "threads": { "minimum": 0, "type": "integer" }
+                      }
+                    },
+                    "created": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["channel", "created"],
+                  "properties": {
+                    "channel": {
+                      "type": "object",
+                      "required": ["path"],
+                      "properties": {
+                        "path": {
+                          "maxLength": 2048,
+                          "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+                          "type": "string"
+                        },
+                        "lastIndex": { "minimum": 0, "type": "integer" },
+                        "messages": { "minimum": 0, "type": "integer" },
+                        "threads": { "minimum": 0, "type": "integer" }
+                      }
+                    },
+                    "created": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      },
+      "get": {
+        "operationId": "channels",
+        "summary": "List the board's channels a page at a time, or those whose path starts with a prefix.",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 501, "type": "string" }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 1024, "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "minimum": 1, "maximum": 500, "default": 100, "type": "integer" }
+          }
+        ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "prefix": { "minLength": 1, "maxLength": 501, "type": "string" },
+            "after": { "minLength": 1, "maxLength": 1024, "type": "string" },
+            "limit": { "minimum": 1, "maximum": 500, "default": 100, "type": "integer" }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["channels", "cursor", "next"],
+                  "properties": {
+                    "channels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["path"],
+                        "properties": {
+                          "path": {
+                            "maxLength": 2048,
+                            "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+                            "type": "string"
+                          },
+                          "lastIndex": { "minimum": 0, "type": "integer" },
+                          "messages": { "minimum": 0, "type": "integer" },
+                          "threads": { "minimum": 0, "type": "integer" }
+                        }
+                      }
+                    },
+                    "cursor": { "type": "string" },
+                    "next": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "operationId": "discovery",
@@ -222,91 +404,6 @@
           },
           "400": {
             "description": "invalid_request",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
-          },
-          "500": {
-            "description": "internal",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
-          }
-        }
-      }
-    },
-    "/channels": {
-      "get": {
-        "operationId": "channels",
-        "summary": "List the board's channels a page at a time, or those whose path starts with a prefix.",
-        "parameters": [
-          {
-            "name": "prefix",
-            "in": "query",
-            "required": false,
-            "schema": { "minLength": 1, "maxLength": 501, "type": "string" }
-          },
-          {
-            "name": "after",
-            "in": "query",
-            "required": false,
-            "schema": { "minLength": 1, "maxLength": 1024, "type": "string" }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": { "minimum": 1, "maximum": 500, "default": 100, "type": "integer" }
-          }
-        ],
-        "x-query-schema": {
-          "additionalProperties": false,
-          "type": "object",
-          "properties": {
-            "prefix": { "minLength": 1, "maxLength": 501, "type": "string" },
-            "after": { "minLength": 1, "maxLength": 1024, "type": "string" },
-            "limit": { "minimum": 1, "maximum": 500, "default": 100, "type": "integer" }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": ["channels", "cursor", "next"],
-                  "properties": {
-                    "channels": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": ["path"],
-                        "properties": {
-                          "path": {
-                            "maxLength": 2048,
-                            "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
-                            "type": "string"
-                          },
-                          "lastIndex": { "minimum": 0, "type": "integer" },
-                          "messages": { "minimum": 0, "type": "integer" },
-                          "threads": { "minimum": 0, "type": "integer" }
-                        }
-                      }
-                    },
-                    "cursor": { "type": "string" },
-                    "next": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_request",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
-          },
-          "401": {
-            "description": "unauthorized",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
-          },
-          "404": {
-            "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {

@@ -30,6 +30,10 @@ export function channelsSuite(driver: string, open: OpenStore): void {
         ],
         head: 3,
       });
+      await board.write(async (writer) => {
+        expect(await writer.channel("dev")).toEqual({ path: "dev", lastIndex: 3, messages: 2, threads: 2 });
+        expect(await writer.channel("de")).toBeNull();
+      });
       const otherOrg = store.board(testScope({ ...keys, orgId: keys.orgId + 1 }));
       expect(await otherOrg.listChannels({ limit: 10 })).toEqual({ channels: [], head: 0 });
     } finally {

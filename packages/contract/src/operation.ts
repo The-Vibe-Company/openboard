@@ -69,8 +69,8 @@ export type Operation<
   readonly scope: S;
   readonly input: I;
   readonly output: O;
-  /** The success status: 200 unless the operation creates something. */
-  readonly status?: 200 | 201;
+  /** The success status, or the boolean output field that distinguishes 201 from 200. */
+  readonly status?: 200 | 201 | { readonly createdWhen: string };
   readonly errors: readonly ErrorCode[];
   readonly access: {
     readonly permission: "read" | "post" | "manage";

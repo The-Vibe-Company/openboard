@@ -1,4 +1,4 @@
-import type { listChannels, OutputOf } from "@openboard/contract";
+import type { createChannel, listChannels, OutputOf } from "@openboard/contract";
 import type { BoardError } from "@the-vibe-company/openboard";
 
 /** Where the CLI writes; tests hand in their own. */
@@ -53,7 +53,7 @@ function channelsText(output: unknown, input: Readonly<Record<string, unknown>>)
   const argv =
     prefix === undefined
       ? ["ob", "channels", ...options]
-      : prefix.startsWith("-")
+      : prefix.startsWith("-") || prefix === "create"
         ? ["ob", "channels", ...options, "--", prefix]
         : ["ob", "channels", prefix, ...options];
   return [...lines, "", `(more not shown: ${argv.map(shellWord).join(" ")})`].join("\n");
@@ -62,6 +62,10 @@ function channelsText(output: unknown, input: Readonly<Record<string, unknown>>)
 /** How a derived command prints its operation's answer and input without `--json`; raw JSON for one not listed. */
 export const formats: Readonly<Record<string, (output: unknown, input: Readonly<Record<string, unknown>>) => string>> =
   Object.freeze({
+    createChannel: (output) => {
+      const { channel, created } = output as OutputOf<typeof createChannel>;
+      return created ? `created ${channel.path}` : `${channel.path} already exists`;
+    },
     listChannels: channelsText,
     postMessage: (output: unknown) => (output as { message: { id: string } }).message.id,
   });

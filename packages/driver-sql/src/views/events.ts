@@ -1,4 +1,4 @@
-import type { BoardEvent } from "@openboard/core";
+import type { MessagePosted } from "@openboard/core";
 import type { BoardScope, BoardView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
 import { query, sql } from "../sql.ts";
@@ -12,7 +12,7 @@ export const eventStatements = {
     ORDER BY e.id ASC LIMIT 200`,
 };
 
-function postedEvent(row: Row): BoardEvent {
+function postedEvent(row: Row): MessagePosted {
   return {
     id: Number(row.id),
     type: "message.posted",
@@ -23,7 +23,7 @@ function postedEvent(row: Row): BoardEvent {
     actor: String(row.actor),
     principal: String(row.principal),
     visibility: 0,
-    payload: JSON.parse(String(row.payload)) as BoardEvent["payload"],
+    payload: JSON.parse(String(row.payload)) as MessagePosted["payload"],
   };
 }
 

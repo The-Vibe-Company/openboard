@@ -1,9 +1,9 @@
 import type { InputOf, Operation, OutputOf, operations, Scope } from "@openboard/contract";
 import type { BoardView } from "@openboard/ports";
 import type { Principal } from "../deps.ts";
-import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { getMeHandler } from "./actors.ts";
-import { listChannelsHandler } from "./channels.ts";
+import { createChannelHandler, listChannelsHandler } from "./channels.ts";
+import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
 import { listMessagesHandler, postMessageHandler } from "./messages.ts";
 import { readThreadHandler } from "./threads.ts";
@@ -37,6 +37,7 @@ export type PublicOperation = Extract<Contracted, { readonly scope: "public" }>;
 
 /** One handler per contract operation: a missing or mistyped one is a compile error. */
 export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> } = {
+  createChannel: createChannelHandler,
   discoverBoard: discoverBoardHandler,
   getMe: getMeHandler,
   getOpenApi: getOpenApiHandler,

@@ -32,8 +32,9 @@ export async function runCli(
   const end = argv.indexOf("--");
   const flags = end < 0 ? argv : argv.slice(0, end);
   const json = flags.includes("--json");
-  const words = [...flags.filter((arg) => arg !== "--json"), ...(end < 0 ? [] : argv.slice(end + 1))];
-  const command = find(words);
+  const commandWords = flags.filter((arg) => arg !== "--json");
+  const words = [...commandWords, ...(end < 0 ? [] : argv.slice(end + 1))];
+  const command = find(commandWords);
   if (!command) return usage(output, words.length === 0 ? "usage:" : `unknown command: ${words.join(" ")}`);
   if (end === -1 && words.length === command.words.length + 1 && words.at(-1) === "--help") {
     output.out(command.usage);
@@ -50,7 +51,7 @@ export async function runCli(
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
   try {
-    const optionsEnd = Math.max(0, flags.filter((arg) => arg !== "--json").length - command.words.length);
+    const optionsEnd = Math.max(0, commandWords.length - command.words.length);
     const args = words.slice(command.words.length);
     return await command.run({ client, boardUrl: config.boardUrl, args, optionsEnd, json, output });
   } catch (error) {
