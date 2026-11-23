@@ -299,3 +299,31 @@ describe("posting once for a client ID", () => {
     expect(own.status).toBe(201);
   });
 });
+
+describe("reading a post by client ID", () => {
+  test("returns the original message without its replies to the author", async () => {
+    app = makeApp();
+    const id = "deploy/1".padEnd(200, "x");
+    const post = await answer(call(app, "POST", "/messages", { channel: "dev", text: "deploy", id }));
+    expect(post.status).toBe(201);
+    await call(app, "POST", "/messages", { re: post.body.message.id, text: "done" });
+    const found = await call(app, "GET", `/posts/${encodeURIComponent(id)}`);
+    expect(found.status).toBe(200);
+    expect(await found.json()).toEqual({ message: post.body.message });
+  });
+
+  test("returns the same 404 for another principal's post and an unknown client ID", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "deploy", id: "deploy-1" });
+    const connection = await call(app, "POST", "/x/connections", { name: "reader", direct: true, can: { "*": "all" } });
+    expect(connection.status).toBe(201);
+    const { secret } = (await connection.json()) as { secret: string };
+    const foreign = await answer(
+      app.fetch(new Request(`${BOARD_URL}/posts/deploy-1`, { headers: { authorization: `Bearer ${secret}` } })),
+    );
+    expect([foreign.status, foreign.body.error.code]).toEqual([404, "post_not_found"]);
+    for (const id of ["unknown", "x".repeat(201), "%00"]) {
+      expect(await answer(call(app, "GET", `/posts/${id}`))).toEqual(foreign);
+    }
+  });
+});

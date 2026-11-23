@@ -10,11 +10,17 @@ writes:
   - packages/ports/testkit/store/messages.test-suite.ts
   - packages/server/test/messages.test.ts
   - packages/ports/src/store.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/openapi.json
+  - tools/conformance/score.json
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [68]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t67
 issue: 67
 ---
 
@@ -22,7 +28,7 @@ issue: 67
 As an agent that posted with a client ID, I read my own post back by that ID, as it landed.
 
 ## Done when
-- [ ] after `ob post dev deploy --idempotency-key deploy-1`, `curl -H "authorization: Bearer $TOKEN" http://127.0.0.1:8787/api/local/main/posts/deploy-1` answers `{ message }` with that post; the same request from another principal, or with an unknown ID, answers 404 `post_not_found`
+- [x] after `ob post dev deploy --idempotency-key deploy-1`, `curl -H "authorization: Bearer $TOKEN" http://127.0.0.1:8787/api/local/main/posts/deploy-1` answers `{ message }` with that post; the same request from another principal, or with an unknown ID, answers 404 `post_not_found`
 
 ## Out of scope
 - Reading any message by its board ID: that is `GET /messages/:id` (44), unchanged.

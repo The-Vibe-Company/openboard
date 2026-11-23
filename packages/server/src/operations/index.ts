@@ -6,7 +6,7 @@ import { createChannelHandler, listChannelsHandler } from "./channels.ts";
 import { claimConnectionHandler, createConnectionHandler } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
-import { listMessagesHandler, postMessageHandler } from "./messages.ts";
+import { listMessagesHandler, postMessageHandler, readPostHandler } from "./messages.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
@@ -53,6 +53,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listThreads: listThreadsHandler,
   postMessage: postMessageHandler,
   readEvents: readEventsHandler,
+  readPost: readPostHandler,
   readThread: readThreadHandler,
 };
 
