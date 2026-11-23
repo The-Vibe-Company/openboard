@@ -456,7 +456,7 @@ Because the SQLite driver's broadcaster and jobs are in-process, a server featur
 5. Before and after the whole run it takes B's digest (a digest of B's events and rows taken through the platform view: hash of B's events and derived rows); they must be equal.
 6. The suite fails if an operation has a `Ref` kind `seed.ts` cannot create, or if `scope` is missing; adding an operation therefore adds its isolation cases automatically.
 
-The storage-level twin, `packages/ports/testkit/isolation.test-suite.ts`, checks every scoped store method with two organizations, so a driver is isolated before any handler uses it. Both suites run on SQLite and on Postgres in the required check, from the first multi-tenant ticket. They are owner-reviewed (CODEOWNERS); an expected-failure list does not exist and must not be added.
+The storage-level twin, `packages/ports/testkit/isolation.test-suite.ts`, checks every scoped store method with two organizations, so a driver is isolated before any handler uses it. Both suites run on SQLite and on Postgres in the required check, from the first multi-tenant ticket. A PR that changes them says so in its body; an expected-failure list does not exist and must not be added.
 
 ### 6.6 Benchmark and budgets per mode
 
