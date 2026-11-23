@@ -1,7 +1,9 @@
 import { createApp, type Logger, mintLocalOwnerToken } from "../../src/index.ts";
 import { openStore } from "./drivers.ts";
 
-export const BOARD_URL = "http://127.0.0.1:8787/api/local/main";
+/** `OPENBOARD_PUBLIC_URL` of every test app. */
+export const PUBLIC_URL = "http://127.0.0.1:8787";
+export const BOARD_URL = `${PUBLIC_URL}/api/local/main`;
 export const LOCAL_OWNER = "ob:user:local-test";
 /** The fake clock every test app reads: 2023-11-14T22:13:20.000Z. */
 export const NOW = 1_700_000_000_000;
@@ -20,7 +22,7 @@ export function makeApp(options: { readonly now?: () => number; readonly log?: L
     error: (message, fields) => logged.push({ message, ...fields }),
   };
   const app = createApp(
-    { mode: "local", localOwner: LOCAL_OWNER, localOwnerTokenHash: OWNER.hash },
+    { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: OWNER.hash },
     { store: openStore(now) },
     { now, log },
   );

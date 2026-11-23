@@ -6,7 +6,7 @@ import { handlerOf } from "../operations/index.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
 import { json } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
-import { boardPath, notFound, type Tenants } from "./scope.ts";
+import { type BoardPath, boardPath, notFound, type Tenants } from "./scope.ts";
 
 type Contracted = (typeof operations)[number];
 
@@ -36,6 +36,17 @@ function validate(operation: Contracted, raw: RawInput) {
   }
 }
 
+type Matched = NonNullable<ReturnType<typeof matchRoute<Contracted>>>;
+
+/** A `public` operation: no tenant lookup and no credential, so it cannot say whether the board exists (D35). */
+async function runPublic(url: URL, path: BoardPath, matched: Matched, pipeline: Pipeline): Promise<Response> {
+  const { operation } = matched;
+  const input = decodeInput(operation, { params: matched.params, query: Object.fromEntries(url.searchParams) });
+  const boardUrl = `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`;
+  const output = await handlerOf(operation)({ boardUrl, now: pipeline.deps.now }, input);
+  return json(output, operation.status ?? 200);
+}
+
 async function run(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields): Promise<Response> {
   const path = boardPath(url.pathname);
   if (!path) throw notFound();
@@ -44,6 +55,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   if (!matched) throw notFound();
   const { operation } = matched;
   logged.op = operation.name;
+  if (operation.scope === "public") return runPublic(url, path, matched, pipeline);
   const board = await pipeline.tenants.board(path);
   const by = await authenticate(request, verifiers(pipeline.config));
   logged.actor = by.actor;

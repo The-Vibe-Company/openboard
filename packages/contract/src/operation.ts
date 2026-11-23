@@ -57,13 +57,14 @@ export type Operation<
   I extends OperationInput = OperationInput,
   O extends TSchema = TSchema,
   N extends string = string,
+  S extends Scope = Scope,
 > = Projections & {
   /** camelCase, verb first, unique and stable. */
   readonly name: N;
   readonly summary: string;
   /** Relative to `BOARD_URL` for `board` operations; upstream's path where one exists. */
   readonly route: { readonly method: Method; readonly path: string };
-  readonly scope: Scope;
+  readonly scope: S;
   readonly input: I;
   readonly output: O;
   /** The success status: 200 unless the operation creates something. */
@@ -82,9 +83,12 @@ export type Operation<
   readonly upstream: boolean;
 };
 
-export function defineOperation<const N extends string, const I extends OperationInput, O extends TSchema>(
-  operation: Operation<I, O, N>,
-): Operation<I, O, N> {
+export function defineOperation<
+  const N extends string,
+  const I extends OperationInput,
+  O extends TSchema,
+  const S extends Scope,
+>(operation: Operation<I, O, N, S>): Operation<I, O, N, S> {
   return Object.freeze(operation);
 }
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createApp, jsonLogger, mintLocalOwnerToken } from "../src/index.ts";
-import { BOARD_URL, call, LOCAL_OWNER, makeApp, NOW } from "./support/app.ts";
+import { BOARD_URL, call, LOCAL_OWNER, makeApp, NOW, PUBLIC_URL } from "./support/app.ts";
 import { openStore } from "./support/drivers.ts";
 
 let app: ReturnType<typeof createApp>;
@@ -77,7 +77,7 @@ describe("one JSON log line per request", () => {
     const lines: Record<string, unknown>[] = [];
     const now = () => NOW;
     app = createApp(
-      { mode: "local", localOwner: LOCAL_OWNER, localOwnerTokenHash: owner.hash },
+      { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: owner.hash },
       { store: openStore(now) },
       { now, log: jsonLogger({ now, write: (line) => lines.push(JSON.parse(line)) }) },
     );

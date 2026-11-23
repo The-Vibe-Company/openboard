@@ -7,7 +7,7 @@ export function compose(config: Config, localOwnerTokenHash: string) {
   const now = () => Date.now();
   const deps: Deps = { now, log: jsonLogger({ now }) };
   return createApp(
-    { mode: "local", localOwner: config.localOwner, localOwnerTokenHash },
+    { mode: "local", publicUrl: config.publicUrl, localOwner: config.localOwner, localOwnerTokenHash },
     { store: sqliteDriver({ dir: config.dataDir, sync: config.sync }, deps.now) },
     deps,
   );

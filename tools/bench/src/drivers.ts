@@ -14,7 +14,8 @@ function bootApp(mode: "local" | "hosted") {
     error: (message: string, fields: object) => process.stderr.write(`${JSON.stringify({ message, ...fields })}\n`),
   };
   return createApp(
-    { mode, localOwner: "ob:user:local-tools" },
+    // The bench serves no port: discovery's URL is never read here.
+    { mode, publicUrl: "http://127.0.0.1", localOwner: "ob:user:local-tools" },
     { store: sqliteDriver({ memory: true }, now) },
     { now, log },
   );

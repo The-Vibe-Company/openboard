@@ -1,5 +1,6 @@
 export * from "./entities/actors.ts";
 export * from "./entities/channels.ts";
+export * from "./entities/discovery.ts";
 export * from "./entities/messages.ts";
 export * from "./entities/threads.ts";
 export {
@@ -27,5 +28,5 @@ export {
   refKind,
   type Scope,
 } from "./operation.ts";
-export { getMe, listChannels, listMessages, operations, postMessage, readThread } from "./operations/index.ts";
+export { discoverBoard, getMe, listChannels, listMessages, operations, postMessage, readThread } from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";
