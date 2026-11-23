@@ -6,5 +6,16 @@
     "outDir": "../../.tsbuild/packages/driver-sql",
     "types": ["bun"]
   },
+  "references": [
+    {
+      "path": "../contract"
+    },
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../ports"
+    }
+  ],
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
 }

@@ -7,8 +7,17 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "dependencies": {
+    "@openboard/contract": "workspace:*",
+    "@openboard/core": "workspace:*",
+    "@openboard/driver-sql": "workspace:*",
+    "@openboard/ports": "workspace:*"
+  },
   "scripts": {
     "typecheck": "tsc -b",
     "test": "bun test --pass-with-no-tests"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.5"
   }
 }

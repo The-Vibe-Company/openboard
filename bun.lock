@@ -13,6 +13,16 @@
     "apps/openboard": {
       "name": "@openboard/app",
       "version": "0.0.0",
+      "dependencies": {
+        "@openboard/contract": "workspace:*",
+        "@openboard/driver-sqlite": "workspace:*",
+        "@openboard/ports": "workspace:*",
+        "@openboard/server": "workspace:*",
+        "@the-vibe-company/openboard-cli": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.5",
+      },
     },
     "apps/web": {
       "name": "@openboard/web",
@@ -21,14 +31,30 @@
     "packages/cli": {
       "name": "@the-vibe-company/openboard-cli",
       "version": "0.0.0",
+      "dependencies": {
+        "@openboard/contract": "workspace:*",
+        "@the-vibe-company/openboard": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.5",
+      },
     },
     "packages/contract": {
       "name": "@openboard/contract",
       "version": "0.0.0",
+      "dependencies": {
+        "@sinclair/typebox": "0.34.52",
+      },
     },
     "packages/core": {
       "name": "@openboard/core",
       "version": "0.0.0",
+      "dependencies": {
+        "@openboard/contract": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.5",
+      },
     },
     "packages/driver-postgres": {
       "name": "@openboard/driver-postgres",
@@ -37,6 +63,11 @@
     "packages/driver-sql": {
       "name": "@openboard/driver-sql",
       "version": "0.0.0",
+      "dependencies": {
+        "@openboard/contract": "workspace:*",
+        "@openboard/core": "workspace:*",
+        "@openboard/ports": "workspace:*",
+      },
       "devDependencies": {
         "@types/bun": "1.4.5",
       },
@@ -44,22 +75,44 @@
     "packages/driver-sqlite": {
       "name": "@openboard/driver-sqlite",
       "version": "0.0.0",
+      "dependencies": {
+        "@openboard/contract": "workspace:*",
+        "@openboard/core": "workspace:*",
+        "@openboard/driver-sql": "workspace:*",
+        "@openboard/ports": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.5",
+      },
     },
     "packages/ports": {
       "name": "@openboard/ports",
       "version": "0.0.0",
+      "dependencies": {
+        "@openboard/contract": "workspace:*",
+        "@openboard/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.5",
+      },
     },
     "packages/sdk": {
       "name": "@the-vibe-company/openboard",
       "version": "0.0.0",
+      "dependencies": {
+        "@openboard/contract": "workspace:*",
+      },
     },
     "packages/server": {
       "name": "@openboard/server",
       "version": "0.0.0",
       "dependencies": {
         "@openboard/contract": "workspace:*",
+        "@openboard/core": "workspace:*",
+        "@openboard/ports": "workspace:*",
       },
       "devDependencies": {
+        "@openboard/driver-sqlite": "workspace:*",
         "@types/bun": "1.4.5",
       },
     },
@@ -161,6 +214,8 @@
     "@oxlint/binding-win32-ia32-msvc": ["@oxlint/binding-win32-ia32-msvc@1.94.0", "", { "os": "win32", "cpu": "ia32" }, "sha512-1l1FDlzbPmAeDoZ8UGspOE2dOmz1ZL6SlDsvOmRCmWSQjCdTy5LzUepS8mO/SGpAoz4D6WAt/yNZAUyHqbkmkQ=="],
 
     "@oxlint/binding-win32-x64-msvc": ["@oxlint/binding-win32-x64-msvc@1.94.0", "", { "os": "win32", "cpu": "x64" }, "sha512-I3eZdd4bemIJQDNv9XDV/FEofDxIoN32tzCv98wIgLdW05EqxZb5hF4AwPrRzHD/dQhl0n7KgPy5AQPfM0HWrA=="],
+
+    "@sinclair/typebox": ["@sinclair/typebox@0.34.52", "", {}, "sha512-XiMQh7qqVlxZzcVD+kkGMNGMzcTrDMLWI7S4x7z1MkCkbDPrekpZXEUK0eZqZFMuHQg2a2DZOcDIh9o5v3Gonw=="],
 
     "@the-vibe-company/openboard": ["@the-vibe-company/openboard@workspace:packages/sdk"],
 

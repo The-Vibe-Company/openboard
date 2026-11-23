@@ -5,5 +5,10 @@
     "rootDir": ".",
     "outDir": "../../.tsbuild/packages/sdk"
   },
+  "references": [
+    {
+      "path": "../contract"
+    }
+  ],
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
 }

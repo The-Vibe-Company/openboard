@@ -1,0 +1,21 @@
+import { describe, expect, test } from "bun:test";
+import { runStoreSuite } from "@openboard/ports/testkit";
+import { renderDdl } from "../src/ddl.ts";
+import { sqliteDriver } from "../src/index.ts";
+
+runStoreSuite("sqlite", async () => sqliteDriver({ memory: true }, () => 0));
+
+describe("rendering Postgres DDL for SQLite", () => {
+  test("applies the mechanical differences", () => {
+    const postgres = `CREATE EXTENSION pg_trgm;
+      CREATE TABLE orgs (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, n SMALLINT NOT NULL, b BYTEA); -- note
+      CREATE TABLE events (board_id BIGINT NOT NULL, id BIGINT NOT NULL, PRIMARY KEY (board_id, id));
+      CREATE INDEX CONCURRENTLY events_id ON events (board_id, id);
+      CREATE INDEX messages_text_trgm ON messages USING gin (text_lower gin_trgm_ops);`;
+    expect(renderDdl(postgres).split("\n")).toEqual([
+      "CREATE TABLE orgs (id INTEGER PRIMARY KEY, n INTEGER NOT NULL, b BLOB) STRICT;",
+      "CREATE TABLE events (board_id INTEGER NOT NULL, id INTEGER NOT NULL, PRIMARY KEY (board_id, id)) STRICT, WITHOUT ROWID;",
+      "CREATE INDEX events_id ON events (board_id, id);",
+    ]);
+  });
+});

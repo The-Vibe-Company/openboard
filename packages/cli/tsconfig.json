@@ -3,7 +3,16 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": ".",
-    "outDir": "../../.tsbuild/packages/cli"
+    "outDir": "../../.tsbuild/packages/cli",
+    "types": ["bun"]
   },
+  "references": [
+    {
+      "path": "../sdk"
+    },
+    {
+      "path": "../contract"
+    }
+  ],
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
 }

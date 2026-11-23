@@ -1,0 +1,128 @@
+import { type SchemaOptions, type Static, type TObject, type TSchema, type TString, Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
+import { BoardError, type ErrorCode } from "./errors.ts";
+
+/** Where an operation is mounted and which tenant it is scoped to (docs/codebase.md 4.1). */
+export type Scope = "public" | "account" | "org" | "board";
+export type Method = "GET" | "POST" | "PATCH" | "DELETE";
+
+/** Kinds of tenant resources an input field may name; the isolation suite seeds one of each. */
+export type RefKind =
+  | "message"
+  | "thread"
+  | "task"
+  | "grant"
+  | "schema"
+  | "file"
+  | "schedule"
+  | "webhook"
+  | "connection"
+  | "member"
+  | "invitation"
+  | "board";
+
+/** Marks an input field that names a tenant resource: an ID of 1 to 128 characters (upstream "IDs and cursors"). */
+export function Ref(kind: RefKind, options: SchemaOptions = {}): TString {
+  return Type.String({ minLength: 1, maxLength: 128, ...options, "x-ref": kind });
+}
+
+/** The `Ref` kind a schema carries, if any. */
+export function refKind(schema: TSchema): RefKind | undefined {
+  return (schema as { "x-ref"?: RefKind })["x-ref"];
+}
+
+export interface OperationInput {
+  readonly params?: TObject;
+  readonly query?: TObject;
+  readonly body?: TObject;
+}
+
+export interface CliSpec {
+  /** `ob <command…>`: `["post"]`, `["tasks", "claim"]`. */
+  readonly command: readonly string[];
+  /** Input fields taken as positional arguments, in order. */
+  readonly args: readonly string[];
+}
+
+export interface McpSpec {
+  readonly tool: string;
+}
+
+/** A projection turned off needs a reason (docs/codebase.md 4.1). */
+type Projections =
+  | { readonly cli: CliSpec; readonly mcp: McpSpec; readonly why?: string }
+  | { readonly cli: CliSpec | false; readonly mcp: McpSpec | false; readonly why: string };
+
+export type Operation<
+  I extends OperationInput = OperationInput,
+  O extends TSchema = TSchema,
+  N extends string = string,
+> = Projections & {
+  /** camelCase, verb first, unique and stable. */
+  readonly name: N;
+  readonly summary: string;
+  /** Relative to `BOARD_URL` for `board` operations; upstream's path where one exists. */
+  readonly route: { readonly method: Method; readonly path: string };
+  readonly scope: Scope;
+  readonly input: I;
+  readonly output: O;
+  /** The success status: 200 unless the operation creates something. */
+  readonly status?: 200 | 201;
+  readonly errors: readonly ErrorCode[];
+  readonly access: { readonly permission: "read" | "post" | "manage"; readonly channel: "fromInput" | "any" } | null;
+  readonly effects: {
+    readonly readOnly: boolean;
+    readonly idempotent: boolean;
+    readonly emits: readonly string[];
+    readonly meter?: string;
+  };
+  readonly upstream: boolean;
+};
+
+export function defineOperation<const N extends string, const I extends OperationInput, O extends TSchema>(
+  operation: Operation<I, O, N>,
+): Operation<I, O, N> {
+  return Object.freeze(operation);
+}
+
+type Part<S> = S extends TObject ? Static<S> : unknown;
+/** The flat input of an operation: params, query and body fields together, as the SDK takes them. */
+export type InputOf<Op> =
+  Op extends Operation<infer I, TSchema> ? Part<I["params"]> & Part<I["query"]> & Part<I["body"]> : never;
+export type OutputOf<Op> = Op extends Operation<OperationInput, infer O> ? Static<O> : never;
+
+/** The raw parts of a request, before validation; path params and query values are strings. */
+export interface RawInput {
+  readonly params?: Readonly<Record<string, string>>;
+  readonly query?: Readonly<Record<string, string>>;
+  readonly body?: unknown;
+}
+
+function decodePart(schema: TObject | undefined, value: unknown, where: string, convert: boolean): object {
+  if (!schema) {
+    const empty =
+      value === undefined || (typeof value === "object" && value !== null && Object.keys(value).length === 0);
+    if (empty) return {};
+    throw new BoardError("invalid_request", `this route takes no ${where}`);
+  }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    if (value !== undefined) throw new BoardError("invalid_request", `the ${where} must be a JSON object`);
+  }
+  const copy = Value.Default(schema, Value.Clone(value ?? {}));
+  const decoded = convert ? Value.Convert(schema, copy) : copy;
+  const [first] = Value.Errors(schema, decoded);
+  if (first) {
+    const field = first.path.replace(/^\//, "").replaceAll("/", ".") || where;
+    throw new BoardError("invalid_request", `${field}: ${first.message}`);
+  }
+  return decoded as object;
+}
+
+/** Validates a request's parts against an operation's input and returns the flat input, or throws `invalid_request`. */
+export function decodeInput<Op extends Operation>(operation: Op, raw: RawInput): InputOf<Op> {
+  return {
+    ...decodePart(operation.input.params, raw.params, "path", true),
+    ...decodePart(operation.input.query, raw.query, "query", true),
+    ...decodePart(operation.input.body, raw.body, "body", false),
+  } as InputOf<Op>;
+}

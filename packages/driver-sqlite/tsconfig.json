@@ -3,7 +3,22 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": ".",
-    "outDir": "../../.tsbuild/packages/driver-sqlite"
+    "outDir": "../../.tsbuild/packages/driver-sqlite",
+    "types": ["bun"]
   },
+  "references": [
+    {
+      "path": "../driver-sql"
+    },
+    {
+      "path": "../contract"
+    },
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../ports"
+    }
+  ],
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
 }

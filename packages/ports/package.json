@@ -5,10 +5,18 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testkit": "./testkit/index.ts"
+  },
+  "dependencies": {
+    "@openboard/contract": "workspace:*",
+    "@openboard/core": "workspace:*"
   },
   "scripts": {
     "typecheck": "tsc -b",
     "test": "bun test --pass-with-no-tests"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.5"
   }
 }

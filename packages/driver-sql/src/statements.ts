@@ -1,12 +1,24 @@
+import { postgresText } from "./db.ts";
+import { render } from "./sql.ts";
+import { boardPlatformStatements, boardStatements } from "./views/boards.ts";
+import { messageStatements } from "./views/messages.ts";
+
 /**
  * The registry of every SQL statement the shared views run (docs/codebase.md 3.2 and 4.4).
  * Keys name a statement; values are its text in Postgres syntax with `$n` or `?` parameters.
  * Every statement must filter on `board_id` or `org_id`, except the platform statements listed below.
  */
-export const statements: Readonly<Record<string, string>> = {};
+export const statements: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(
+    Object.entries({ ...boardStatements, ...messageStatements }).map(([name, statement]) => [
+      name,
+      render(statement, postgresText).text,
+    ]),
+  ),
+);
 
 /** Statements that run outside any tenant (accounts, sign-in); exempt from the tenant filter rule. */
-export const platformStatements: ReadonlySet<string> = new Set<string>();
+export const platformStatements: ReadonlySet<string> = new Set<string>(boardPlatformStatements);
 
 const PARAM = String.raw`(?:\?|\$\d+)(?:::[a-z_][a-z0-9_]*)?`;
 const TENANT = String.raw`(?:[a-z_][a-z0-9_]*\.)?(?:board_id|org_id)`;
