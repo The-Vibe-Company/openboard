@@ -16,10 +16,25 @@ const MessagePostedPayload = Type.Object({
   links: Type.Array(Type.Unknown()),
 });
 
-export const Event = Type.Object({
+const PostedEvent = Type.Object({
   cursor: Type.String(),
   type: Type.Literal("message.posted"),
   createdAt: Type.String(),
   payload: MessagePostedPayload,
   message: Message,
 });
+
+const EditedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("message.edited"),
+  createdAt: Type.String(),
+  payload: Type.Object({
+    id: Type.String(),
+    text: Type.String(),
+    by: Author,
+    from: Type.Null(),
+  }),
+  message: Message,
+});
+
+export const Event = Type.Union([PostedEvent, EditedEvent]);

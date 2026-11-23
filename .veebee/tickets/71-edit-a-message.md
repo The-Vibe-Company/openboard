@@ -12,11 +12,21 @@ writes:
   - packages/ports/src/store.ts
   - packages/core/src/messages/edit.ts
   - packages/core/test/messages/edit.test.ts
+  - docs/protocol.md
+  - packages/contract/src/entities/events.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/core/src/index.ts
+  - packages/core/src/messages/post.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/index.ts
 conformance: []
 modes: [local]
 depends_on: [70]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 71
 ---
 
@@ -24,7 +34,7 @@ issue: 71
 As the author, I fix a message I wrote.
 
 ## Done when
-- [ ] `ob edit 1 "new text"` succeeds, and `ob read 1 --json` shows the new text, an `editedAt` and a higher `revision`
+- [x] `ob edit 1 "new text"` succeeds, and `ob read 1 --json` shows the new text, an `editedAt` and a higher `revision`
 
 ## Out of scope
 - Stale revisions (73).

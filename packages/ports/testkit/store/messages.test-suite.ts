@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { messages } from "@openboard/core";
+import { decideEdit, messages } from "@openboard/core";
 import type { BoardView, Store } from "../../src/index.ts";
 import { type OpenStore, testScope } from "../index.ts";
 
@@ -126,6 +126,7 @@ function clientIdsSuite(driver: string, open: OpenStore): void {
 }
 
 export function messagesSuite(driver: string, open: OpenStore): void {
+  editMessageSuite(open);
   repliesSuite(driver, open);
   clientIdsSuite(driver, open);
   describe(`${driver}: messages`, () => {
@@ -200,6 +201,32 @@ export function messagesSuite(driver: string, open: OpenStore): void {
       await expect(failing).rejects.toThrow("decided against it");
       expect(await board.channelMessages({ channel: "dev", limit: 50 })).toEqual([]);
       expect((await post(board, "dev", "kept")).id).toBe("1");
+    });
+  });
+}
+
+function editMessageSuite(open: OpenStore) {
+  describe("editing a stored message", () => {
+    const fixture = eachStore(open);
+    test("serializes edits and persists each revision in its event", async () => {
+      const board = await fixture.board();
+      const original = await post(board, "dev", "old text");
+      const edit = (text: string) =>
+        board.write(async (writer) => {
+          const target = await writer.message(1);
+          const event = decideEdit({ head: writer.head, target }, { id: original.id, text }, { by, now: at + 1 });
+          await writer.append([event]);
+        });
+      await Promise.all([edit("first edit"), edit("second edit")]);
+      const { events } = await board.readEvents(1);
+      const edits = events.filter((event) => event.type === "message.edited");
+      expect(edits.map(({ payload: { view } }) => [view.revision, view.version])).toEqual([
+        [1, 2],
+        [2, 3],
+      ]);
+      const stored = await board.channelMessages({ channel: "dev", limit: 50 });
+      expect(stored?.[0]).toEqual(edits[1]?.payload.view);
+      expect(stored?.[0]).toMatchObject({ id: original.id, createdAt: original.createdAt, revision: 2 });
     });
   });
 }

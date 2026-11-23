@@ -26,6 +26,9 @@ export const messageStatements = {
     threads = channels.threads + excluded.threads`,
   replyTarget: sql`SELECT id, channel, COALESCE(re, id) AS thread FROM messages
     WHERE board_id = ${"boardId"} AND id = ${"id"}`,
+  message: sql`SELECT view FROM messages WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  editMessage: sql`UPDATE messages SET text = ${"text"}, text_lower = ${"textLower"}, revision = ${"revision"},
+    version = ${"version"}, view = ${"view"} WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   newerReply: sql`SELECT id FROM messages WHERE board_id = ${"boardId"} AND re = ${"thread"} AND id > ${"after"}
     ORDER BY id LIMIT 1`,
   clientPost: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND client_id = ${"clientId"}`,
@@ -98,7 +101,18 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
   else if (event.type === "actor.seen") await foldActorSeen(tx, dialect, keys, event);
   else if (event.type === "ob.agent.claimed") await foldAgentClaimed(tx, dialect, keys, event);
-  else await foldMessagePosted(tx, dialect, keys, event);
+  else if (event.type === "message.edited") {
+    const { text, view } = event.payload;
+    await query(tx, dialect, messageStatements.editMessage, {
+      ...keys,
+      id: event.message,
+      text,
+      textLower: text.toLowerCase(),
+      revision: view.revision,
+      version: view.version,
+      view: JSON.stringify(view),
+    });
+  } else await foldMessagePosted(tx, dialect, keys, event);
 }
 
 function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor: Actor | null): BoardWriter {
@@ -113,6 +127,10 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor:
       const [row] = await query(tx, dialect, messageStatements.replyTarget, { boardId: keys.boardId, id });
       if (!row) return null;
       return { id: Number(row.id), channel: String(row.channel), thread: Number(row.thread) };
+    },
+    async message(id) {
+      const [row] = await query(tx, dialect, messageStatements.message, { ...keys, id });
+      return row ? (JSON.parse(String(row.view)) as Message) : null;
     },
     async newerReply(thread, after) {
       const [row] = await query(tx, dialect, messageStatements.newerReply, { boardId: keys.boardId, thread, after });

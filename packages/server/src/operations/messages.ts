@@ -1,5 +1,5 @@
-import { BoardError, type listMessages, type postMessage, type readPost } from "@openboard/contract";
-import { formatId, messages, parseId } from "@openboard/core";
+import { BoardError, type editMessage, type listMessages, type postMessage, type readPost } from "@openboard/contract";
+import { decideEdit, formatId, messages, parseId } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
 import { authorOf } from "../auth/author.ts";
 import type { Handler } from "./index.ts";
@@ -25,6 +25,16 @@ export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input
     return decided.message;
   }, ctx.by.actor);
   return { message };
+};
+
+export const editMessageHandler: Handler<typeof editMessage> = async (ctx, { id, text }) => {
+  const position = parseId(id);
+  await ctx.board.write(async (writer) => {
+    const target = position === null ? null : await writer.message(position);
+    const event = decideEdit({ head: writer.head, target }, { id, text }, { by: ctx.by, now: ctx.now() });
+    await writer.append([event]);
+  });
+  return { ok: true };
 };
 
 /** What a reply's `after` names, with the first reply of its thread after it; null when it names no message. */

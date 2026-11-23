@@ -547,6 +547,67 @@
         }
       }
     },
+    "/messages/{id}/edit": {
+      "post": {
+        "operationId": "edit",
+        "summary": "Replace a message's text.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["text"],
+                "properties": { "text": { "maxLength": 10000, "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ok"],
+                  "properties": { "ok": { "const": true, "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, message_deleted, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "message_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/me": {
       "get": {
         "operationId": "me",
@@ -1413,159 +1474,292 @@
                     "events": {
                       "type": "array",
                       "items": {
-                        "type": "object",
-                        "required": ["cursor", "type", "createdAt", "payload", "message"],
-                        "properties": {
-                          "cursor": { "type": "string" },
-                          "type": { "const": "message.posted", "type": "string" },
-                          "createdAt": { "type": "string" },
-                          "payload": {
+                        "anyOf": [
+                          {
                             "type": "object",
-                            "required": [
-                              "channel",
-                              "text",
-                              "re",
-                              "replyTo",
-                              "thread",
-                              "labels",
-                              "noSync",
-                              "by",
-                              "origin",
-                              "from",
-                              "attachments",
-                              "links"
-                            ],
+                            "required": ["cursor", "type", "createdAt", "payload", "message"],
                             "properties": {
-                              "channel": {
-                                "maxLength": 2048,
-                                "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
-                                "type": "string"
-                              },
-                              "text": { "type": "string" },
-                              "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                              "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                              "thread": { "type": "string" },
-                              "labels": {
-                                "type": "object",
-                                "patternProperties": {
-                                  "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
-                                }
-                              },
-                              "noSync": { "type": "boolean" },
-                              "by": {
-                                "type": "object",
-                                "required": ["actor", "principal", "profile"],
-                                "properties": {
-                                  "actor": { "type": "string" },
-                                  "principal": { "type": "string" },
-                                  "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
-                                }
-                              },
-                              "origin": { "type": "null" },
-                              "from": { "type": "null" },
-                              "attachments": { "type": "array", "items": {} },
-                              "links": { "type": "array", "items": {} }
-                            }
-                          },
-                          "message": {
-                            "type": "object",
-                            "required": [
-                              "id",
-                              "channel",
-                              "text",
-                              "re",
-                              "replyTo",
-                              "thread",
-                              "labels",
-                              "reactions",
-                              "by",
-                              "noSync",
-                              "origin",
-                              "from",
-                              "createdAt",
-                              "editedAt",
-                              "deleted",
-                              "undelivered",
-                              "attachments",
-                              "links",
-                              "version",
-                              "revision",
-                              "author",
-                              "blocks"
-                            ],
-                            "properties": {
-                              "id": { "type": "string" },
-                              "channel": { "type": "string" },
-                              "text": { "type": "string" },
-                              "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                              "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                              "thread": { "type": "string" },
-                              "labels": {
-                                "type": "object",
-                                "patternProperties": {
-                                  "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
-                                }
-                              },
-                              "reactions": {
-                                "type": "object",
-                                "patternProperties": { "^(.*)$": { "type": "array", "items": { "type": "string" } } }
-                              },
-                              "by": {
-                                "type": "object",
-                                "required": ["actor", "principal", "profile"],
-                                "properties": {
-                                  "actor": { "type": "string" },
-                                  "principal": { "type": "string" },
-                                  "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
-                                }
-                              },
-                              "noSync": { "type": "boolean" },
-                              "origin": { "type": "null" },
-                              "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                              "cursor": { "type": "string" },
+                              "type": { "const": "message.posted", "type": "string" },
                               "createdAt": { "type": "string" },
-                              "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                              "deleted": { "type": "boolean" },
-                              "undelivered": {
+                              "payload": {
                                 "type": "object",
-                                "patternProperties": { "^(.*)$": { "type": "string" } }
-                              },
-                              "attachments": { "type": "array", "items": {} },
-                              "links": { "type": "array", "items": {} },
-                              "version": { "type": "integer" },
-                              "revision": { "type": "integer" },
-                              "author": {
-                                "anyOf": [
-                                  {
+                                "required": [
+                                  "channel",
+                                  "text",
+                                  "re",
+                                  "replyTo",
+                                  "thread",
+                                  "labels",
+                                  "noSync",
+                                  "by",
+                                  "origin",
+                                  "from",
+                                  "attachments",
+                                  "links"
+                                ],
+                                "properties": {
+                                  "channel": {
+                                    "maxLength": 2048,
+                                    "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+                                    "type": "string"
+                                  },
+                                  "text": { "type": "string" },
+                                  "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "thread": { "type": "string" },
+                                  "labels": {
                                     "type": "object",
-                                    "required": ["kind", "handle", "name", "avatar"],
-                                    "properties": {
-                                      "kind": {
-                                        "anyOf": [
-                                          { "const": "person", "type": "string" },
-                                          { "const": "workflow", "type": "string" },
-                                          { "const": "agent", "type": "string" }
-                                        ]
-                                      },
-                                      "handle": { "type": "string" },
-                                      "name": { "type": "string" },
-                                      "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                                      "via": {
-                                        "type": "object",
-                                        "required": ["name", "environment"],
-                                        "properties": {
-                                          "name": { "type": "string" },
-                                          "environment": { "type": "null" }
-                                        }
-                                      }
+                                    "patternProperties": {
+                                      "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
                                     }
                                   },
-                                  { "type": "null" }
-                                ]
+                                  "noSync": { "type": "boolean" },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "origin": { "type": "null" },
+                                  "from": { "type": "null" },
+                                  "attachments": { "type": "array", "items": {} },
+                                  "links": { "type": "array", "items": {} }
+                                }
                               },
-                              "blocks": { "type": "array", "items": {} }
+                              "message": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "channel",
+                                  "text",
+                                  "re",
+                                  "replyTo",
+                                  "thread",
+                                  "labels",
+                                  "reactions",
+                                  "by",
+                                  "noSync",
+                                  "origin",
+                                  "from",
+                                  "createdAt",
+                                  "editedAt",
+                                  "deleted",
+                                  "undelivered",
+                                  "attachments",
+                                  "links",
+                                  "version",
+                                  "revision",
+                                  "author",
+                                  "blocks"
+                                ],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "channel": { "type": "string" },
+                                  "text": { "type": "string" },
+                                  "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "thread": { "type": "string" },
+                                  "labels": {
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                                    }
+                                  },
+                                  "reactions": {
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^(.*)$": { "type": "array", "items": { "type": "string" } }
+                                    }
+                                  },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "noSync": { "type": "boolean" },
+                                  "origin": { "type": "null" },
+                                  "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "createdAt": { "type": "string" },
+                                  "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "deleted": { "type": "boolean" },
+                                  "undelivered": {
+                                    "type": "object",
+                                    "patternProperties": { "^(.*)$": { "type": "string" } }
+                                  },
+                                  "attachments": { "type": "array", "items": {} },
+                                  "links": { "type": "array", "items": {} },
+                                  "version": { "type": "integer" },
+                                  "revision": { "type": "integer" },
+                                  "author": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": ["kind", "handle", "name", "avatar"],
+                                        "properties": {
+                                          "kind": {
+                                            "anyOf": [
+                                              { "const": "person", "type": "string" },
+                                              { "const": "workflow", "type": "string" },
+                                              { "const": "agent", "type": "string" }
+                                            ]
+                                          },
+                                          "handle": { "type": "string" },
+                                          "name": { "type": "string" },
+                                          "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                          "via": {
+                                            "type": "object",
+                                            "required": ["name", "environment"],
+                                            "properties": {
+                                              "name": { "type": "string" },
+                                              "environment": { "type": "null" }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      { "type": "null" }
+                                    ]
+                                  },
+                                  "blocks": { "type": "array", "items": {} }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "payload", "message"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "message.edited", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id", "text", "by", "from"],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "text": { "type": "string" },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "from": { "type": "null" }
+                                }
+                              },
+                              "message": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "channel",
+                                  "text",
+                                  "re",
+                                  "replyTo",
+                                  "thread",
+                                  "labels",
+                                  "reactions",
+                                  "by",
+                                  "noSync",
+                                  "origin",
+                                  "from",
+                                  "createdAt",
+                                  "editedAt",
+                                  "deleted",
+                                  "undelivered",
+                                  "attachments",
+                                  "links",
+                                  "version",
+                                  "revision",
+                                  "author",
+                                  "blocks"
+                                ],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "channel": { "type": "string" },
+                                  "text": { "type": "string" },
+                                  "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "thread": { "type": "string" },
+                                  "labels": {
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                                    }
+                                  },
+                                  "reactions": {
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^(.*)$": { "type": "array", "items": { "type": "string" } }
+                                    }
+                                  },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "noSync": { "type": "boolean" },
+                                  "origin": { "type": "null" },
+                                  "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "createdAt": { "type": "string" },
+                                  "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "deleted": { "type": "boolean" },
+                                  "undelivered": {
+                                    "type": "object",
+                                    "patternProperties": { "^(.*)$": { "type": "string" } }
+                                  },
+                                  "attachments": { "type": "array", "items": {} },
+                                  "links": { "type": "array", "items": {} },
+                                  "version": { "type": "integer" },
+                                  "revision": { "type": "integer" },
+                                  "author": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": ["kind", "handle", "name", "avatar"],
+                                        "properties": {
+                                          "kind": {
+                                            "anyOf": [
+                                              { "const": "person", "type": "string" },
+                                              { "const": "workflow", "type": "string" },
+                                              { "const": "agent", "type": "string" }
+                                            ]
+                                          },
+                                          "handle": { "type": "string" },
+                                          "name": { "type": "string" },
+                                          "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                          "via": {
+                                            "type": "object",
+                                            "required": ["name", "environment"],
+                                            "properties": {
+                                              "name": { "type": "string" },
+                                              "environment": { "type": "null" }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      { "type": "null" }
+                                    ]
+                                  },
+                                  "blocks": { "type": "array", "items": {} }
+                                }
+                              }
                             }
                           }
-                        }
+                        ]
                       }
                     },
                     "cursor": { "type": "string" }

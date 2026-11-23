@@ -43,6 +43,25 @@ export const postMessage = defineOperation({
   upstream: true,
 });
 
+export const editMessage = defineOperation({
+  name: "editMessage",
+  operationId: "edit",
+  summary: "Replace a message's text.",
+  route: { method: "POST", path: "/messages/:id/edit" },
+  scope: "board",
+  input: {
+    params: Type.Object({ id: Ref("message") }, { additionalProperties: false }),
+    body: Type.Object({ text: Type.String({ maxLength: MESSAGE_TEXT_MAX }) }, { additionalProperties: false }),
+  },
+  output: Type.Object({ ok: Type.Literal(true) }),
+  errors: ["invalid_request", "message_not_found", "message_deleted"],
+  access: { permission: "post", channel: "fromMessage" },
+  effects: { readOnly: false, idempotent: false, emits: ["message.edited"] },
+  cli: { command: ["edit"], args: ["id", "text"] },
+  mcp: { tool: "edit_message" },
+  upstream: true,
+});
+
 export const listMessages = defineOperation({
   name: "listMessages",
   operationId: "channelMessages",

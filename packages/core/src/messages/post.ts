@@ -126,6 +126,13 @@ function checkClientId(id: string, principal: string) {
   }
 }
 
+export function checkMessageText(text: string) {
+  if (text.trim().length === 0) throw new BoardError("invalid_request", "text: message text is empty");
+  if (!storable(text)) {
+    throw new BoardError("invalid_request", "text: message text has a NUL character or a lone surrogate");
+  }
+}
+
 /** Refuses a post the board cannot take, before anything is read for it. */
 export function checkPost(command: PostCommand, by: Author) {
   if (command.id !== undefined) checkClientId(command.id, by.principal);
@@ -135,10 +142,7 @@ export function checkPost(command: PostCommand, by: Author) {
   if (command.after !== undefined && command.re === undefined) {
     throw new BoardError("invalid_after", "after: `after` is for replies");
   }
-  if (command.text.trim().length === 0) throw new BoardError("invalid_request", "text: message text is empty");
-  if (!storable(command.text)) {
-    throw new BoardError("invalid_request", "text: message text has a NUL character or a lone surrogate");
-  }
+  checkMessageText(command.text);
   for (const [key, value] of Object.entries(command.labels ?? {})) {
     if (key.startsWith(RESERVED_LABEL_PREFIX)) {
       throw new BoardError("reserved_label", `labels.${key}: the board writes labels under ${RESERVED_LABEL_PREFIX}`);

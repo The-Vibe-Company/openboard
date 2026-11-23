@@ -1,4 +1,4 @@
-import type { MessagePosted } from "@openboard/core";
+import type { MessageEdited, MessagePosted } from "@openboard/core";
 import type { BoardScope, BoardView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
 import { query, sql } from "../sql.ts";
@@ -12,19 +12,21 @@ export const eventStatements = {
     ORDER BY e.id ASC LIMIT 200`,
 };
 
-function postedEvent(row: Row): MessagePosted {
-  return {
+function messageEvent(row: Row): MessagePosted | MessageEdited {
+  const common = {
     id: Number(row.id),
-    type: "message.posted",
     at: Number(row.at),
     thread: Number(row.thread),
     message: Number(row.message),
     channel: String(row.channel),
     actor: String(row.actor),
     principal: String(row.principal),
-    visibility: 0,
-    payload: JSON.parse(String(row.payload)) as MessagePosted["payload"],
+    visibility: 0 as const,
   };
+  const payload = JSON.parse(String(row.payload)) as unknown;
+  return row.type === "message.edited"
+    ? { ...common, type: "message.edited", payload: payload as MessageEdited["payload"] }
+    : { ...common, type: "message.posted", payload: payload as MessagePosted["payload"] };
 }
 
 export function eventReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "readEvents"> {
@@ -39,8 +41,10 @@ export function eventReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<Bo
       if (!first) throw new Error("the scoped board is missing");
       const head = Number(first.head);
       const cursor = Number(rows.at(-1)?.id ?? head);
-      const events = rows.filter((row) => row.type === "message.posted" && Number(row.visibility) === 0);
-      return { head, cursor, events: events.map(postedEvent) };
+      const events = rows.filter(
+        (row) => (row.type === "message.posted" || row.type === "message.edited") && Number(row.visibility) === 0,
+      );
+      return { head, cursor, events: events.map(messageEvent) };
     },
   };
 }
