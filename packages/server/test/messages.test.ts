@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { call, LOCAL_OWNER, makeApp } from "./support/app.ts";
+import { BOARD_URL, call, LOCAL_OWNER, makeApp, OWNER } from "./support/app.ts";
 
 let app: ReturnType<typeof makeApp>;
 afterEach(() => app.close());
@@ -235,5 +235,61 @@ describe("answering only for boards and routes that exist", () => {
     expect([failed.status, failed.body.error.code]).toEqual([500, "internal"]);
     expect(app.logged).toHaveLength(1);
     expect(String(app.logged[0]?.stack)).not.toContain('"text"');
+  });
+});
+
+describe("posting once for a client ID", () => {
+  test("answers a retry with the post that landed, whatever its text says, and posts it once", async () => {
+    app = makeApp();
+    const first = await answer(call(app, "POST", "/messages", { channel: "dev", text: "deploy", id: "deploy-1" }));
+    const again = await answer(call(app, "POST", "/messages", { channel: "dev", text: "changed", id: "deploy-1" }));
+    expect([first.status, again.status]).toEqual([201, 201]);
+    expect(again.body.message).toEqual(first.body.message);
+    const { body } = await answer(call(app, "GET", "/messages?channel=dev"));
+    expect(body.messages.map((message) => [message.id, message.text])).toEqual([["2", "deploy"]]);
+    const feed = (await (await call(app, "GET", "/events?after=0")).json()) as { events: { payload: object }[] };
+    expect(feed.events).toHaveLength(1);
+    expect(feed.events[0]?.payload).not.toHaveProperty("clientId");
+  });
+
+  test("answers a retried reply with the reply that landed", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const first = await answer(call(app, "POST", "/messages", { re: "2", text: "on it", id: "r-1" }));
+    const again = await answer(call(app, "POST", "/messages", { re: "2", text: "on it", id: "r-1" }));
+    expect(again.body.message).toEqual(first.body.message);
+    const thread = (await (await call(app, "GET", "/messages/2")).json()) as { replies: unknown[] };
+    expect(thread.replies).toHaveLength(1);
+  });
+
+  test("answers 409 duplicate_id for the same ID in another channel, thread, or from another profile", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "deploy", id: "deploy-1" });
+    const elsewhere = await answer(call(app, "POST", "/messages", { channel: "ops", text: "deploy", id: "deploy-1" }));
+    const asReply = await answer(call(app, "POST", "/messages", { re: "2", text: "deploy", id: "deploy-1" }));
+    const headers = { authorization: `Bearer ${OWNER.token}`, "content-type": "application/json" };
+    const init = { method: "POST", body: JSON.stringify({ channel: "dev", text: "deploy", id: "deploy-1" }) };
+    const request = new Request(`${BOARD_URL}/messages`, {
+      ...init,
+      headers: { ...headers, "x-board-profile": "bot" },
+    });
+    const asProfile = await answer(app.fetch(request));
+    for (const refused of [elsewhere, asReply, asProfile]) {
+      expect([refused.status, refused.body.error.code]).toEqual([409, "duplicate_id"]);
+    }
+    const { body } = await answer(call(app, "GET", "/messages?channel=dev"));
+    expect(body.messages.map((message) => message.id)).toEqual(["2"]);
+  });
+
+  test("answers 400 invalid_request for an ID that is the board's, a sync's, or another key's", async () => {
+    app = makeApp();
+    for (const id of ["0f0f0f0f-0f0f-8f0f-8f0f-0f0f0f0f0f0f", "sync:chat:1", `key:other:${"a".repeat(32)}`, ""]) {
+      const refused = await answer(call(app, "POST", "/messages", { channel: "dev", text: "x", id }));
+      expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
+    }
+    const own = await answer(
+      call(app, "POST", "/messages", { channel: "dev", text: "x", id: `key:${LOCAL_OWNER}:${"a".repeat(32)}` }),
+    );
+    expect(own.status).toBe(201);
   });
 });

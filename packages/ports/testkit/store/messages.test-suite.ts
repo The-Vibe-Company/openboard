@@ -81,8 +81,31 @@ function repliesSuite(driver: string, open: OpenStore): void {
   });
 }
 
+function clientIdsSuite(driver: string, open: OpenStore): void {
+  describe(`${driver}: client IDs`, () => {
+    const opened = eachStore(open);
+    const localBoard = () => opened.board();
+
+    test("finds a post by its client ID under the lock, and none for an ID nothing was posted with", async () => {
+      const board = await localBoard();
+      const landed = await board.write(async (writer) => {
+        const command = { channel: "dev", text: "deploy", id: "deploy-1" };
+        const { events, message } = messages.decidePost({ head: writer.head }, command, { by, now: at });
+        await writer.append(events);
+        return message;
+      });
+      await post(board, "dev", "no client ID");
+      const found = await board.write(async (writer) =>
+        Promise.all([writer.clientPost("deploy-1"), writer.clientPost("deploy-2")]),
+      );
+      expect(found).toEqual([landed, null]);
+    });
+  });
+}
+
 export function messagesSuite(driver: string, open: OpenStore): void {
   repliesSuite(driver, open);
+  clientIdsSuite(driver, open);
   describe(`${driver}: messages`, () => {
     const opened = eachStore(open);
     const localBoard = () => opened.board();

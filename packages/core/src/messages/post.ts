@@ -8,6 +8,8 @@ export interface PostCommand {
   readonly text: string;
   readonly labels?: Readonly<Record<string, string>>;
   readonly noSync?: boolean;
+  /** The client's idempotency key: a retry under it gets back the post that landed instead of posting again. */
+  readonly id?: string;
 }
 
 /**
@@ -25,6 +27,8 @@ export interface MessagePostedPayload {
   readonly by: Author;
   /** Who wrote it, for people to read; the server resolves it from the credential. Not part of upstream's payload. */
   readonly author?: MessageAuthor;
+  /** The client ID it was posted under, which the fold keeps to find it again. Not part of upstream's payload. */
+  readonly clientId?: string;
   readonly origin: null;
   readonly from: null;
   readonly attachments: readonly never[];
@@ -81,6 +85,8 @@ export interface PostState {
   readonly head: number;
   readonly target?: ReplyTarget | null;
   readonly actor?: Actor | null;
+  /** The message the command's `id` already landed with, as the board holds it; null or left out when none did. */
+  readonly landed?: Message | null;
 }
 
 export interface PostContext {
@@ -93,8 +99,22 @@ export interface PostContext {
 /** No board string holds a NUL, which Postgres cannot store, or a lone surrogate (upstream `storable`). */
 const storable = (value: string) => !value.includes("\0") && value.isWellFormed();
 const RESERVED_LABEL_PREFIX = "board.";
+/** The shape of the IDs a board derives for its own writes, a UUIDv8 (upstream `DERIVED_ID`): never a client's. */
+const DERIVED_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-function checkCommand(command: PostCommand) {
+/** Refuses a client ID that is someone else's to post with: the board's own, a sync's import, or another's key. */
+function checkClientId(id: string, principal: string) {
+  if (!storable(id)) throw new BoardError("invalid_request", "id: the ID has a NUL character or a lone surrogate");
+  if (DERIVED_ID.test(id)) throw new BoardError("invalid_request", "id: UUIDv8s are the board's own, for its writes");
+  if (id.startsWith("sync:")) throw new BoardError("invalid_request", "id: sync:… IDs are what sync imports");
+  const own = `key:${principal}:`;
+  if (id.startsWith("key:") && !(id.startsWith(own) && /^[0-9a-f]{32}$/.test(id.slice(own.length)))) {
+    throw new BoardError("invalid_request", `id: key:… IDs derive from a client's key, and this one's are ${own}…`);
+  }
+}
+
+function checkCommand(command: PostCommand, by: Author) {
+  if (command.id !== undefined) checkClientId(command.id, by.principal);
   if ((command.channel === undefined) === (command.re === undefined)) {
     throw new BoardError("invalid_request", "channel: a post needs channel and a reply needs re, never both");
   }
@@ -158,7 +178,7 @@ function placePost(state: PostState, command: PostCommand, id: number) {
  * thread is named by it too; a reply joins the thread of its root, in the root's channel.
  */
 export function decidePost(state: PostState, command: PostCommand, context: PostContext) {
-  checkCommand(command);
+  checkCommand(command, context.by);
   const seen = actorSeen(state.actor, context, state.head + 1);
   const id = state.head + (seen ? 2 : 1);
   const { channel, root, re, replyTo } = placePost(state, command, id);
@@ -182,6 +202,7 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
       noSync: command.noSync ?? false,
       by: context.by,
       ...(context.author === undefined ? {} : { author: context.author }),
+      ...(command.id === undefined ? {} : { clientId: command.id }),
       origin: null,
       from: null,
       attachments: [],
@@ -189,6 +210,26 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
     },
   };
   return { events: seen ? ([seen, event] as const) : ([event] as const), message: messageView(event) };
+}
+
+/**
+ * A retry of a post: null when its `id` landed nothing yet, so it posts; otherwise the message that landed, as the
+ * board holds it now. The same ID from another author, or for another channel, thread or reply, is `duplicate_id`
+ * (upstream `03-http.md` "Posting"). Text and labels may differ: a retry gets back what landed.
+ */
+export function replayPost(state: PostState, command: PostCommand, context: PostContext): Message | null {
+  checkCommand(command, context.by);
+  const landed = state.landed;
+  if (command.id === undefined || !landed) return null;
+  const place = placePost(state, command, 0); // Its root position is never compared: a landed post has its own.
+  const { by } = context;
+  const sameAuthor =
+    landed.by.actor === by.actor && landed.by.principal === by.principal && landed.by.profile === by.profile;
+  const samePlace = landed.channel === place.channel && landed.re === place.re && landed.replyTo === place.replyTo;
+  if (!sameAuthor || !samePlace) {
+    throw new BoardError("duplicate_id", `id: ${command.id} was already used for a different post`);
+  }
+  return landed;
 }
 
 /**

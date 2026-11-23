@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { BoardError } from "@openboard/contract";
 import { isoTime, parseId } from "../../src/ids.ts";
-import { decidePost } from "../../src/messages/post.ts";
+import { decidePost, replayPost } from "../../src/messages/post.ts";
 
 const by = { actor: "ob:user:local-dev", principal: "ob:user:local-dev", profile: null };
 const at = 1_700_000_000_123;
@@ -178,5 +178,58 @@ describe("wire IDs and times", () => {
     [1_798_761_599_999, "2026-12-31T23:59:59.999Z"],
   ])("formats %p as %p", (ms, iso) => {
     expect(isoTime(ms)).toBe(iso);
+  });
+});
+
+describe("posting once for a client ID", () => {
+  const command = { channel: "dev", text: "deploy", id: "deploy-1" };
+  const landed = decidePost({ head: 0 }, command, { by, now: at }).message;
+
+  test("keeps the client ID on the event, and posts when nothing landed under it", () => {
+    const [event] = decidePost({ head: 0 }, command, { by, now: at }).events;
+    expect(event.payload).toMatchObject({ clientId: "deploy-1" });
+    expect(replayPost({ head: 1, landed: null }, command, { by, now: at })).toBeNull();
+    expect(replayPost({ head: 1, landed }, { channel: "dev", text: "deploy" }, { by, now: at })).toBeNull();
+  });
+
+  test("answers a retry with the message that landed, whatever its text and labels say", () => {
+    const retry = { ...command, text: "changed", labels: { status: "open" } };
+    expect(replayPost({ head: 1, landed }, retry, { by, now: at })).toBe(landed);
+  });
+
+  test("answers a retried reply with the reply that landed", () => {
+    const reply = decidePost(
+      { head: 1, target: { id: 1, channel: "dev", thread: 1 } },
+      { re: "1", text: "x", id: "r" },
+      { by, now: at },
+    ).message;
+    const state = { head: 2, target: { id: 1, channel: "dev", thread: 1 }, landed: reply };
+    expect(replayPost(state, { re: "1", text: "x", id: "r" }, { by, now: at })).toBe(reply);
+  });
+
+  test.each([
+    ["another channel", { ...command, channel: "ops" }, { by }],
+    ["a reply", { re: "1", text: "deploy", id: "deploy-1" }, { by }],
+    ["another profile", command, { by: { ...by, profile: "bot" } }],
+    ["another principal", command, { by: { ...by, actor: "ob:user:other", principal: "ob:user:other" } }],
+  ])("refuses the ID for %s with duplicate_id", (_, retry, context) => {
+    const state = { head: 1, target: { id: 1, channel: "dev", thread: 1 }, landed };
+    expect(refusal(() => replayPost(state, retry, { ...context, now: at })).code).toBe("duplicate_id");
+  });
+
+  test.each([
+    ["a UUIDv8, the board's own", "0f0f0f0f-0f0f-8f0f-8f0f-0f0f0f0f0f0f"],
+    ["a sync: ID", "sync:chat:1"],
+    ["another principal's key: ID", `key:ob:user:other:${"a".repeat(32)}`],
+    ["a key: ID of the wrong shape", `key:${by.principal}:xyz`],
+    ["a NUL character", "a\0b"],
+  ])("refuses %s", (_, id) => {
+    expect(refusal(() => decidePost({ head: 0 }, { ...command, id }, { by, now: at })).code).toBe("invalid_request");
+    expect(refusal(() => replayPost({ head: 0 }, { ...command, id }, { by, now: at })).code).toBe("invalid_request");
+  });
+
+  test("takes a key: ID of its own principal", () => {
+    const id = `key:${by.principal}:${"a".repeat(32)}`;
+    expect(decidePost({ head: 0 }, { ...command, id }, { by, now: at }).message.id).toBe("1");
   });
 });

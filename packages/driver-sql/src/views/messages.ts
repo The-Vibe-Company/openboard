@@ -13,8 +13,9 @@ export const messageStatements = {
     visibility, payload) VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"type"}, ${"at"}, ${"thread"}, ${"message"},
     ${"channel"}, ${"actor"}, ${"principal"}, ${"visibility"}, ${"payload"})`,
   insertMessage: sql`INSERT INTO messages (org_id, board_id, id, channel, re, reply_to, actor, principal, profile,
-    text, text_lower, labels, no_sync, version, created_at, active, view) VALUES (${"orgId"}, ${"boardId"}, ${"id"},
-    ${"channel"}, ${"re"}, ${"replyTo"}, ${"actor"}, ${"principal"}, ${"profile"}, ${"text"}, ${"textLower"},
+    client_id, text, text_lower, labels, no_sync, version, created_at, active, view) VALUES (${"orgId"}, ${"boardId"},
+    ${"id"}, ${"channel"}, ${"re"}, ${"replyTo"}, ${"actor"}, ${"principal"}, ${"profile"}, ${"clientId"}, ${"text"},
+    ${"textLower"},
     ${"labels"}, ${"noSync"}, ${"id"}, ${"at"}, ${"active"}, ${"view"})`,
   bumpRoot: sql`UPDATE messages SET replies = replies + 1, last_reply = ${"id"}, active = ${"id"}, version = ${"id"}
     WHERE board_id = ${"boardId"} AND id = ${"root"}`,
@@ -24,6 +25,7 @@ export const messageStatements = {
     threads = channels.threads + excluded.threads`,
   replyTarget: sql`SELECT id, channel, COALESCE(re, id) AS thread FROM messages
     WHERE board_id = ${"boardId"} AND id = ${"id"}`,
+  clientPost: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND client_id = ${"clientId"}`,
   channelMessages: sql`SELECT view FROM messages WHERE board_id = ${"boardId"} AND channel = ${"channel"}
     ORDER BY id DESC LIMIT ${"limit"}`,
   // Bound the page with the channel index before joining it to the board head from the same snapshot.
@@ -53,6 +55,7 @@ async function foldMessagePosted(tx: Db, dialect: Dialect, keys: BoardKeys, even
     actor: payload.by.actor,
     principal: payload.by.principal,
     profile: payload.by.profile,
+    clientId: payload.clientId ?? null,
     text: payload.text,
     textLower: payload.text.toLowerCase(),
     labels: JSON.stringify(payload.labels),
@@ -104,6 +107,10 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor:
       const [row] = await query(tx, dialect, messageStatements.replyTarget, { boardId: keys.boardId, id });
       if (!row) return null;
       return { id: Number(row.id), channel: String(row.channel), thread: Number(row.thread) };
+    },
+    async clientPost(clientId) {
+      const [row] = await query(tx, dialect, messageStatements.clientPost, { boardId: keys.boardId, clientId });
+      return row ? (JSON.parse(String(row.view)) as Message) : null;
     },
     nextGrant: () => nextGrant(tx, dialect, keys),
     connectionNamed: (name) => connectionNamed(tx, dialect, keys, name),

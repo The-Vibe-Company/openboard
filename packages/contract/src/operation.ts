@@ -42,6 +42,8 @@ export interface CliSpec {
   readonly command: readonly string[];
   /** Input fields taken as positional arguments, in order. */
   readonly args: readonly string[];
+  /** Input fields taken as `--<flag>` under another name than their own, as upstream's CLI names them. */
+  readonly options?: Readonly<Record<string, string>>;
 }
 
 export interface McpSpec {
