@@ -1,0 +1,4 @@
+CREATE TABLE boards (
+  id TEXT PRIMARY KEY,
+  nome TEXT NOT NULL
+);

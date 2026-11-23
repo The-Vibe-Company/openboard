@@ -36,6 +36,27 @@ export function checkMigrationNumbers(files: readonly string[], mainFiles: reado
   return problems;
 }
 
+/**
+ * Applied migrations are immutable: every file on `main` must still exist with the same content.
+ * Values are content fingerprints (git blob ids in CI, raw contents in tests); only equality matters.
+ */
+export function checkAppliedMigrations(
+  working: ReadonlyMap<string, string>,
+  main: ReadonlyMap<string, string>,
+): string[] {
+  const problems: string[] = [];
+  for (const [file, applied] of [...main].sort(([a], [b]) => a.localeCompare(b))) {
+    if (!numberedMigration.test(file)) continue;
+    const current = working.get(file);
+    if (current === undefined) {
+      problems.push(`${file}: migration is applied on main and must not be removed; add a new migration instead`);
+    } else if (current !== applied) {
+      problems.push(`${file}: migration is applied on main and must not be edited; add a new migration instead`);
+    }
+  }
+  return problems;
+}
+
 function workingMigrations(): string[] {
   try {
     return readdirSync(directory, { withFileTypes: true })
@@ -47,23 +68,55 @@ function workingMigrations(): string[] {
   }
 }
 
-function mainMigrations(): string[] {
-  const result = Bun.spawnSync(["git", "ls-tree", "-r", "-z", "--name-only", baseRef, "--", directory]);
-  if (result.exitCode !== 0) {
-    throw new Error(
-      `cannot read ${baseRef}; fetch origin/main before running the migration check: ${result.stderr.toString().trim()}`,
-    );
+/**
+ * Parses `git ls-tree -r -z <ref> -- <directory>` into the directory's own migrations, by file name, with their
+ * blob ids. Only regular files count, as on the working side; symlinks, submodules and subdirectories are skipped.
+ */
+export function parseMigrationTree(output: string): Map<string, string> {
+  const entries = new Map<string, string>();
+  for (const record of output.split("\0")) {
+    // "<mode> <type> <object>\t<path>"
+    const tab = record.indexOf("\t");
+    const [mode, type, object] = record.slice(0, tab).split(" ");
+    const path = record.slice(tab + 1);
+    if (tab < 0 || type !== "blob" || object === undefined || !mode?.startsWith("100")) continue;
+    if (!path.startsWith(`${directory}/`) || path.slice(directory.length + 1).includes("/")) continue;
+    entries.set(basename(path), object);
   }
-  return result.stdout
-    .toString()
-    .split("\0")
-    .filter((path) => path.startsWith(`${directory}/`) && !path.slice(directory.length + 1).includes("/"))
-    .map((path) => basename(path));
+  return entries;
+}
+
+function git(args: string[], hint: string): string {
+  const result = Bun.spawnSync(["git", ...args]);
+  if (result.exitCode !== 0) throw new Error(`${hint}: ${result.stderr.toString().trim()}`);
+  return result.stdout.toString();
+}
+
+/** Git blob ids of the working files, hashed with the same filters `git add` would apply. */
+function workingBlobIds(files: readonly string[]): Map<string, string> {
+  if (files.length === 0) return new Map();
+  const paths = files.map((file) => `${directory}/${file}`);
+  const ids = git(["hash-object", "--", ...paths], "cannot hash the working migrations")
+    .trim()
+    .split("\n");
+  return new Map(files.map((file, index) => [file, ids[index] ?? ""]));
+}
+
+function treeMigrations(ref: string): Map<string, string> {
+  const hint = `cannot read ${ref}; fetch origin/main before running the migration check`;
+  return parseMigrationTree(git(["ls-tree", "-r", "-z", ref, "--", directory], hint));
 }
 
 if (import.meta.main) {
   try {
-    const problems = checkMigrationNumbers(workingMigrations(), mainMigrations());
+    const files = workingMigrations();
+    // Numbers must beat main's tip; content is compared with the fork point, so a branch behind main is not blamed
+    // for migrations main added since.
+    const forkPoint = git(["merge-base", "HEAD", baseRef], `cannot find where HEAD forked from ${baseRef}`).trim();
+    const problems = [
+      ...checkMigrationNumbers(files, [...treeMigrations(baseRef).keys()]),
+      ...checkAppliedMigrations(workingBlobIds(files), treeMigrations(forkPoint)),
+    ];
     for (const problem of problems) process.stderr.write(`${directory}: ${problem}\n`);
     process.exitCode = problems.length > 0 ? 1 : 0;
   } catch (error) {
