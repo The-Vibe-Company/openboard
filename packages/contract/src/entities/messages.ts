@@ -16,6 +16,7 @@ export function isChannelPath(value: unknown): value is string {
 export const Labels = Type.Record(
   Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]{0,63}$" }),
   Type.String({ maxLength: 256 }),
+  { additionalProperties: false },
 );
 
 /** Who wrote a message: the actor, the principal it acts for, and the profile, if any. */

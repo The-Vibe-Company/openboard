@@ -32,9 +32,8 @@ function addEntry(input: Record<string, unknown>, name: string, flag: string, te
   // No prototype, so `__proto__=x` stays a key the board refuses instead of vanishing here.
   input[name] ??= Object.create(null);
   const entries = input[name] as Record<string, string>;
-  const key = text.slice(0, split);
-  if (Object.hasOwn(entries, key)) throw new Misuse(`--${flag} ${key} is given twice: a key holds one value`);
-  entries[key] = text.slice(split + 1);
+  // A key holds one value: a later `--label k=…` replaces an earlier one, as upstream's CLI does.
+  entries[text.slice(0, split)] = text.slice(split + 1);
 }
 
 /** Positionals fill `args` in order, so every one up to the last required argument must be given. */

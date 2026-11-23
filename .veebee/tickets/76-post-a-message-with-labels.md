@@ -17,10 +17,14 @@ writes:
   - packages/contract/test/decode.test.ts
   - packages/cli/src/commands/derived.ts
   - packages/cli/test/cli.test.ts
+  - packages/contract/src/entities/messages.ts
+  - packages/server/openapi.json
+  - packages/server/src/auth/tokens.ts
+  - packages/server/test/auth/pinned.test.ts
 conformance: []
 modes: [local]
 depends_on: [75]
-status: claimed
+status: done
 claimed_by: claude-opus-t76
 issue: 76
 ---
@@ -29,7 +33,7 @@ issue: 76
 As an agent, I tag a message with state when I post it.
 
 ## Done when
-- [ ] `ob post dev x --label status=open` then `ob read <id> --json` shows `labels.status` `open`
+- [x] `ob post dev x --label status=open` then `ob read <id> --json` shows `labels.status` `open`
 
 ## Out of scope
 - Finding threads by label (82).

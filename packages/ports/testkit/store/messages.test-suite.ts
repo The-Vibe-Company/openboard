@@ -126,7 +126,7 @@ function clientIdsSuite(driver: string, open: OpenStore): void {
   });
 }
 
-/** The writes that change a stored message: edits, deletes and reactions. */
+/** A post's labels, stored with it. */
 function labelsSuite(open: OpenStore) {
   describe("posting a message with labels", () => {
     const opened = eachStore(open);
@@ -142,15 +142,16 @@ function labelsSuite(open: OpenStore) {
   });
 }
 
+/** The writes that change a stored message: edits, deletes and reactions. */
 function changeSuites(open: OpenStore): void {
   editMessageSuite(open);
   deleteMessageSuite(open);
   reactionSuite(open);
-  labelsSuite(open);
 }
 
 export function messagesSuite(driver: string, open: OpenStore): void {
   changeSuites(open);
+  labelsSuite(open);
   repliesSuite(driver, open);
   clientIdsSuite(driver, open);
   describe(`${driver}: messages`, () => {

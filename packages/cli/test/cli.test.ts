@@ -205,10 +205,10 @@ describe("ob channels pages", () => {
 });
 
 describe("ob post --label", () => {
-  test("sends each k=v as a label, the value as written after the first =", async () => {
+  test("sends each k=v as a label, the value after the first =, the last for a repeated key", async () => {
     const board = fakeBoard(201, { message: message("3", "x") });
     const { output } = capture();
-    const argv = ["post", "dev", "x", "--label", "status=open", "--label", "url=a=b"];
+    const argv = ["post", "dev", "x", "--label", "status=new", "--label", "url=a=b", "--label", "status=open"];
     expect(await runCli(argv, env, { fetch: board.fetch, output })).toBe(0);
     expect(board.seen.map(({ body }) => JSON.parse(body))).toEqual([
       { channel: "dev", text: "x", labels: { status: "open", url: "a=b" } },
@@ -220,7 +220,6 @@ describe("ob post --label", () => {
     ["without a key", ["--label", "=open"], "--label takes k=v, a key and a value"],
     ["without a value", ["--label", "status="], "--label takes k=v, a key and a value"],
     ["without its value", ["--label"], "--label takes a value"],
-    ["twice for one key", ["--label", "s=a", "--label", "s=b"], "--label s is given twice: a key holds one value"],
   ])("exits 2 for --label %s, posting nothing", async (_, extra, error) => {
     const board = fakeBoard(201, {});
     const { lines, output } = capture();

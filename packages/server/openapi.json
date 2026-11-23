@@ -1399,6 +1399,7 @@
                           "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "thread": { "type": "string" },
                           "labels": {
+                            "additionalProperties": false,
                             "type": "object",
                             "patternProperties": {
                               "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
@@ -1513,6 +1514,7 @@
                   },
                   "text": { "maxLength": 10000, "type": "string" },
                   "labels": {
+                    "additionalProperties": false,
                     "type": "object",
                     "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
                   },
@@ -1571,6 +1573,7 @@
                         "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "thread": { "type": "string" },
                         "labels": {
+                          "additionalProperties": false,
                           "type": "object",
                           "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
                         },
@@ -1736,6 +1739,7 @@
                               "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                               "thread": { "type": "string" },
                               "labels": {
+                                "additionalProperties": false,
                                 "type": "object",
                                 "patternProperties": {
                                   "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
@@ -1837,6 +1841,7 @@
                                   "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "thread": { "type": "string" },
                                   "labels": {
+                                    "additionalProperties": false,
                                     "type": "object",
                                     "patternProperties": {
                                       "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
@@ -2120,6 +2125,7 @@
                                   "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "thread": { "type": "string" },
                                   "labels": {
+                                    "additionalProperties": false,
                                     "type": "object",
                                     "patternProperties": {
                                       "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
@@ -2175,6 +2181,7 @@
                                   "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "thread": { "type": "string" },
                                   "labels": {
+                                    "additionalProperties": false,
                                     "type": "object",
                                     "patternProperties": {
                                       "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
@@ -2302,6 +2309,7 @@
                                   "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "thread": { "type": "string" },
                                   "labels": {
+                                    "additionalProperties": false,
                                     "type": "object",
                                     "patternProperties": {
                                       "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
@@ -2429,6 +2437,7 @@
                                   "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "thread": { "type": "string" },
                                   "labels": {
+                                    "additionalProperties": false,
                                     "type": "object",
                                     "patternProperties": {
                                       "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
@@ -2584,6 +2593,7 @@
                         "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "thread": { "type": "string" },
                         "labels": {
+                          "additionalProperties": false,
                           "type": "object",
                           "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
                         },
@@ -2723,6 +2733,7 @@
                         "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "thread": { "type": "string" },
                         "labels": {
+                          "additionalProperties": false,
                           "type": "object",
                           "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
                         },
@@ -2815,6 +2826,7 @@
                           "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "thread": { "type": "string" },
                           "labels": {
+                            "additionalProperties": false,
                             "type": "object",
                             "patternProperties": {
                               "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
