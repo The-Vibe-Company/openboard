@@ -21,3 +21,22 @@ describe("reading a thread by its ID", () => {
     expect(await read.json()).toEqual({ message, replies: [] });
   });
 });
+
+describe("reading a message that does not exist", () => {
+  test("answers 404 message_not_found for an ID past the last message", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const read = await call(app, "GET", "/messages/9999");
+    expect(read.status).toBe(404);
+    expect(await read.json()).toMatchObject({
+      error: { code: "message_not_found", message: "Couldn't find message #9999." },
+    });
+  });
+
+  test("answers 404 message_not_found, not 400, for an ID that is not a number", async () => {
+    app = makeApp();
+    const read = await call(app, "GET", "/messages/no-such-message");
+    expect(read.status).toBe(404);
+    expect(await read.json()).toMatchObject({ error: { code: "message_not_found" } });
+  });
+});
