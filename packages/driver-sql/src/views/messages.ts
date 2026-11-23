@@ -34,6 +34,8 @@ export const messageStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   reactToMessage: sql`UPDATE messages SET version = ${"version"}, view = ${"view"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  labelMessage: sql`UPDATE messages SET labels = ${"labels"}, version = ${"version"}, view = ${"view"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   dropRootReply: sql`UPDATE messages SET replies = replies - 1,
     (last_reply, active) = (
       SELECT MAX(reply.id), COALESCE(MAX(reply.id), ${"root"}) FROM messages AS reply
@@ -145,6 +147,15 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
     await query(tx, dialect, messageStatements.reactToMessage, {
       ...keys,
       id: event.message,
+      version: view.version,
+      view: JSON.stringify(view),
+    });
+  } else if (event.type === "labels.changed") {
+    const { view } = event.payload;
+    await query(tx, dialect, messageStatements.labelMessage, {
+      ...keys,
+      id: event.message,
+      labels: JSON.stringify(view.labels),
       version: view.version,
       view: JSON.stringify(view),
     });

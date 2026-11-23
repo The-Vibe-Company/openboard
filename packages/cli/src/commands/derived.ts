@@ -25,10 +25,10 @@ function optionValue(field: Field, text: string): unknown {
   return field.type === "integer" && /^(?:0|[1-9]\d{0,15})$/.test(text) ? Number(text) : text;
 }
 
-/** Adds `k=v`, the value of a repeatable map option such as `--label`, to what `flag` has collected. */
-function addEntry(input: Record<string, unknown>, name: string, flag: string, text: string) {
+/** Adds `k=v`, a value of a repeatable map option such as `--label` or of a trailing map argument, to `name`'s map. */
+function addEntry(input: Record<string, unknown>, name: string, what: string, text: string) {
   const split = text.indexOf("=");
-  if (split < 1 || split === text.length - 1) throw new Misuse(`--${flag} takes k=v, a key and a value`);
+  if (split < 1 || split === text.length - 1) throw new Misuse(`${what} takes k=v, a key and a value`);
   // No prototype, so `__proto__=x` stays a key the board refuses instead of vanishing here.
   input[name] ??= Object.create(null);
   const entries = input[name] as Record<string, string>;
@@ -45,6 +45,11 @@ function requiredPositionals(args: readonly string[], fields: ReturnType<typeof 
 function isSwitch(word: string, flags: ReadonlyMap<string, string>, fields: ReturnType<typeof fieldsOf>): boolean {
   const name = word.startsWith("--") ? flags.get(word.slice(2)) : undefined;
   return name !== undefined && fields.get(name)?.schema.type === "boolean";
+}
+
+/** A last argument naming a map field, such as `set` in `ob label <id> k=v...`, takes every remaining positional. */
+function takesEntries(args: readonly string[], fields: ReturnType<typeof fieldsOf>): boolean {
+  return fields.get(args.at(-1) ?? "")?.schema.type === "object";
 }
 
 /** Positional arguments in order, with options recognized only before `--`. */
@@ -73,16 +78,19 @@ function inputOf(
     if (value === undefined || at + 1 >= ctx.optionsEnd || isSwitch(value, flags, fields)) {
       throw new Misuse(`${word} takes a value`);
     }
-    if (field.type === "object") addEntry(input, name, word.slice(2), value);
+    if (field.type === "object") addEntry(input, name, word, value);
     else input[name] = optionValue(field, value);
     at += 1;
   }
   const needed = requiredPositionals(args, fields);
-  if (positional.length < needed || positional.length > args.length) {
+  const entries = takesEntries(args, fields);
+  if (positional.length < needed || (!entries && positional.length > args.length)) {
     throw new Misuse(needed === args.length ? `expected ${args.length} argument(s)` : "wrong number of arguments");
   }
   positional.forEach((value, at) => {
-    input[args[at] ?? ""] = value;
+    const name = args[Math.min(at, args.length - 1)] ?? "";
+    if (entries && at >= args.length - 1) addEntry(input, name, "each label", value);
+    else input[name] = value;
   });
   return input;
 }
@@ -110,6 +118,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   }
   const needed = requiredPositionals(args, fields);
   const shown = args.map((arg, at) => (at < needed ? `<${arg}>` : `[${arg}]`));
+  if (takesEntries(args, fields)) shown[shown.length - 1] = needed === args.length ? "<k=v>..." : "[k=v]...";
   return {
     words: command,
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,

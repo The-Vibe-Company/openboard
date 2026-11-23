@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { decideDelete, decideEdit, decideReaction, messages } from "@openboard/core";
+import { decideDelete, decideEdit, decideLabels, decideReaction, messages } from "@openboard/core";
 import type { BoardView, Store } from "../../src/index.ts";
 import { type OpenStore, testScope } from "../index.ts";
 
@@ -142,11 +142,12 @@ function labelsSuite(open: OpenStore) {
   });
 }
 
-/** The writes that change a stored message: edits, deletes and reactions. */
+/** The writes that change a stored message: edits, deletes, reactions and labels. */
 function changeSuites(open: OpenStore): void {
   editMessageSuite(open);
   deleteMessageSuite(open);
   reactionSuite(open);
+  labelWriteSuite(open);
 }
 
 export function messagesSuite(driver: string, open: OpenStore): void {
@@ -306,6 +307,25 @@ function reactionSuite(open: OpenStore) {
       const [stored] = (await board.channelMessages({ channel: "dev", limit: 50 })) ?? [];
       expect(stored?.reactions.eyes?.toSorted()).toEqual(["ob:user:a", "ob:user:b"]);
       expect(stored).toMatchObject({ version: 3, revision: 0 });
+      expect((await board.thread(1))?.message).toEqual(stored);
+    });
+  });
+}
+
+function labelWriteSuite(open: OpenStore) {
+  describe("labeling a stored message", () => {
+    const fixture = eachStore(open);
+    test("serializes label writes racing on one message and keeps every label in the stored view", async () => {
+      const board = await fixture.board();
+      await post(board, "dev", "hello", { status: "open" });
+      const label = (set: Record<string, string>) =>
+        board.write(async (writer) => {
+          const target = await writer.message(1);
+          await writer.append(decideLabels({ head: writer.head, target }, { id: "1", set }, { by, now: at }));
+        });
+      await Promise.all([label({ status: "done" }), label({ owner: "a" })]);
+      const [stored] = (await board.channelMessages({ channel: "dev", limit: 50 })) ?? [];
+      expect(stored).toMatchObject({ labels: { status: "done", owner: "a" }, version: 3, revision: 0 });
       expect((await board.thread(1))?.message).toEqual(stored);
     });
   });
