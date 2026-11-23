@@ -29,3 +29,9 @@ export function mintSecret(
   const token = `${prefix}${name}_${Buffer.from(random.subarray(10)).toString("base64url")}`;
   return { name, token, hash: hashToken(token) };
 }
+
+/** The bearer token of a request's `authorization` header, or null when it carries none. */
+export function bearer(request: Request): string | null {
+  const header = request.headers.get("authorization");
+  return header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : null;
+}

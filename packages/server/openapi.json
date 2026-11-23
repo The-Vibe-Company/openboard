@@ -447,7 +447,9 @@
                     "actor": { "type": "string" },
                     "principal": { "type": "string" },
                     "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                    "kind": { "const": "person", "type": "string" },
+                    "kind": {
+                      "anyOf": [{ "const": "person", "type": "string" }, { "const": "workflow", "type": "string" }]
+                    },
                     "handle": { "type": "string" },
                     "name": { "type": "string" },
                     "avatar": { "type": "null" },
@@ -484,8 +486,10 @@
                           "required": ["slug", "name"],
                           "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }
                         },
-                        "role": { "const": "owner", "type": "string" },
-                        "credential": { "const": "local", "type": "string" }
+                        "role": { "anyOf": [{ "const": "owner", "type": "string" }, { "type": "null" }] },
+                        "credential": {
+                          "anyOf": [{ "const": "local", "type": "string" }, { "const": "connection", "type": "string" }]
+                        }
                       }
                     }
                   }

@@ -5,7 +5,8 @@ const tenant = Type.Object({ slug: Type.String(), name: Type.String() });
 
 export const Me = Type.Object({
   ...Author.properties,
-  kind: Type.Literal("person"),
+  /** Upstream's actor kinds: `person` for the local owner; `workflow` for a connection's secret (D45). */
+  kind: Type.Union([Type.Literal("person"), Type.Literal("workflow")]),
   handle: Type.String(),
   name: Type.String(),
   avatar: Type.Null(),
@@ -26,7 +27,8 @@ export const Me = Type.Object({
   openboard: Type.Object({
     org: tenant,
     board: tenant,
-    role: Type.Literal("owner"),
-    credential: Type.Literal("local"),
+    /** The person's role in the organization; null for a credential that is not a person's. */
+    role: Type.Union([Type.Literal("owner"), Type.Null()]),
+    credential: Type.Union([Type.Literal("local"), Type.Literal("connection")]),
   }),
 });

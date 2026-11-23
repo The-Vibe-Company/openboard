@@ -574,6 +574,20 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   dependency, lowers a score, raises a budget or weakens isolation says why
   ([codebase.md](./codebase.md) section 3.3).
 
+### D45. A connection's `/me` kind is upstream's `workflow`
+
+- **Context.** Upstream's `/me` `kind` is one of `person`, `agent`,
+  `deployment`, `workflow`, `external` (`@vercel/board` 0.54.0 `ActorKind`),
+  and mode 1 must work with the stock `vb` CLI and `@vercel/board` client.
+  A connection is to OpenBoard what a GitHub repository is to upstream, whose
+  principal upstream reports as `workflow`.
+- **Decision.** A connection's secret answers `kind: "workflow"` on `/me`;
+  the OpenBoard credential kind stays in `openboard.credential`
+  (`connection`), and `openboard.role` is null for a credential that is not a
+  person's. Writing as a profile is upstream's `agent` (ticket 112).
+- **Consequence.** No OpenBoard-only value enters upstream's `kind`; clients
+  that need to tell a connection apart read `openboard.credential`.
+
 ## Hard blockers found
 
 None. Limits worth knowing:
