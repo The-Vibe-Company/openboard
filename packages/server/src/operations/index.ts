@@ -1,6 +1,7 @@
 import type { InputOf, Operation, OutputOf, operations } from "@openboard/contract";
 import type { BoardView } from "@openboard/ports";
 import type { Principal } from "../deps.ts";
+import { listChannelsHandler } from "./channels.ts";
 import { listMessagesHandler, postMessageHandler } from "./messages.ts";
 import { readThreadHandler } from "./threads.ts";
 
@@ -17,6 +18,7 @@ type Contracted = (typeof operations)[number];
 
 /** One handler per contract operation: a missing or mistyped one is a compile error. */
 export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> } = {
+  listChannels: listChannelsHandler,
   listMessages: listMessagesHandler,
   postMessage: postMessageHandler,
   readThread: readThreadHandler,

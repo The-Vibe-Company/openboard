@@ -81,7 +81,7 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number): Board
 }
 
 /** One board's view: every statement binds the scope's keys, and a view cannot name another tenant. */
-export function boardView(db: Db, dialect: Dialect, scope: BoardScope): Omit<BoardView, "thread"> {
+export function boardView(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "write" | "channelMessages"> {
   const keys: BoardKeys = { orgId: scope.orgId, boardId: scope.boardId };
   return {
     write: (fn) =>

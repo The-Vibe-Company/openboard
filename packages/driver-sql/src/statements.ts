@@ -1,6 +1,7 @@
 import { postgresText } from "./db.ts";
 import { render } from "./sql.ts";
 import { boardPlatformStatements, boardStatements } from "./views/boards.ts";
+import { channelStatements } from "./views/channels.ts";
 import { messageStatements } from "./views/messages.ts";
 import { threadStatements } from "./views/threads.ts";
 
@@ -11,10 +12,9 @@ import { threadStatements } from "./views/threads.ts";
  */
 export const statements: Readonly<Record<string, string>> = Object.freeze(
   Object.fromEntries(
-    Object.entries({ ...boardStatements, ...messageStatements, ...threadStatements }).map(([name, statement]) => [
-      name,
-      render(statement, postgresText).text,
-    ]),
+    Object.entries({ ...boardStatements, ...channelStatements, ...messageStatements, ...threadStatements }).map(
+      ([name, statement]) => [name, render(statement, postgresText).text],
+    ),
   ),
 );
 
