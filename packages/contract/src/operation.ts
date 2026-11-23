@@ -105,7 +105,7 @@ export type OutputOf<Op> = Op extends Operation<OperationInput, infer O> ? Stati
 /** The raw parts of a request, before validation; path params and query values are strings. */
 export interface RawInput {
   readonly params?: Readonly<Record<string, string>>;
-  readonly query?: Readonly<Record<string, string>>;
+  readonly query?: Readonly<Record<string, string | readonly string[]>>;
   readonly body?: unknown;
 }
 

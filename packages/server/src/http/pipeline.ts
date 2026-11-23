@@ -27,6 +27,17 @@ export interface Pipeline {
   readonly providers: readonly LoginProvider[];
 }
 
+/** Array query fields take one element per occurrence. Scalar fields retain the last value. */
+function readQuery(operation: Contracted, params: URLSearchParams): Record<string, string | string[]> {
+  const query: Record<string, string | string[]> = Object.fromEntries(params);
+  if ("query" in operation.input) {
+    for (const [name, schema] of Object.entries(operation.input.query.properties)) {
+      if (schema.type === "array" && params.has(name)) query[name] = params.getAll(name);
+    }
+  }
+  return query;
+}
+
 async function readBody(request: Request): Promise<unknown> {
   const text = await request.text();
   if (text === "") return undefined;
@@ -54,7 +65,7 @@ async function runPublic(
   params: Readonly<Record<string, string>>,
   pipeline: Pipeline,
 ): Promise<Response> {
-  const input = decodeInput(operation, { params, query: Object.fromEntries(url.searchParams) });
+  const input = decodeInput(operation, { params, query: readQuery(operation, url.searchParams) });
   const boardUrl = `${pipeline.config.publicUrl}${path.mount}`;
   const output = await handlerOf(operation)({ boardUrl, now: pipeline.deps.now }, input);
   return operationResponse(operation, output);
@@ -66,7 +77,7 @@ async function runAccount(request: Request, url: URL, operation: AccountOperatio
   const session = await sessionOf(request, platform, deps.now(), config.publicUrl);
   const input = validate(operation, {
     params,
-    query: Object.fromEntries(url.searchParams),
+    query: readQuery(operation, url.searchParams),
     body: request.method === "GET" ? undefined : await readBody(request),
   });
   const providers = providerLinks(pipeline.providers, config.publicUrl);
@@ -88,7 +99,7 @@ async function runOrg(request: Request, url: URL, operation: OrgOperation, param
   const org = await resolve(params.org ?? "", session.person.id);
   const input = validate(operation, {
     params,
-    query: Object.fromEntries(url.searchParams),
+    query: readQuery(operation, url.searchParams),
     body: request.method === "GET" ? undefined : await readBody(request),
   });
   const { now, randomBytes } = deps;
@@ -102,7 +113,7 @@ async function runOrg(request: Request, url: URL, operation: OrgOperation, param
 }
 
 async function runPreview(url: URL, operation: typeof previewInvitation, params: Params, pipeline: Pipeline) {
-  const input = decodeInput(operation, { params, query: Object.fromEntries(url.searchParams) });
+  const input = decodeInput(operation, { params, query: readQuery(operation, url.searchParams) });
   const output = await handlerOf(operation)({ platform: pipeline.platform, now: pipeline.deps.now }, input);
   return operationResponse(operation, output);
 }
@@ -151,7 +162,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   refuseClaimedConfiguration(request, operation);
   const input = validate(operation, {
     params: matched.params,
-    query: Object.fromEntries(url.searchParams),
+    query: readQuery(operation, url.searchParams),
     body: request.method === "GET" ? undefined : await readBody(request),
   });
   await keepInsidePin(operation, input, by, board);

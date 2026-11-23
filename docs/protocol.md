@@ -138,6 +138,12 @@ answers. OpenBoard adds:
 | POST | `/messages/:id/reactions`, `/messages/:id/labels` | U | |
 | GET | `/events` | U | JSON feed with `after`; SSE and long-poll planned |
 
+Use `ob read <channel> --label status=open` to list threads with a matching root or reply.
+`GET /threads` accepts `label=key` for presence and `label=key=value` for an exact value.
+Use `key=a|b` for alternatives. Repeat the flag or query parameter to require all filters
+on one message, including labels inherited from its thread root. Each summary keeps the
+thread's full reply count and latest reply.
+
 Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --idempotency-key`.
 
 ### Attachments, schedules, tasks, grants, schemas
