@@ -1,7 +1,7 @@
 import { writeSync } from "node:fs";
 import process from "node:process";
 import { parseArgs } from "node:util";
-import { compareCounters } from "./compare";
+import { compareBudgets } from "./compare";
 import { formatTable, measure } from "./counters";
 import { modes } from "./drivers";
 import { fullSizes, quickSizes } from "./workloads/messages";
@@ -23,7 +23,7 @@ const failures: string[] = [];
 for (const mode of selected) {
   const report = await measure(mode, sizes);
   tables.push(formatTable(report));
-  failures.push(...compareCounters(report));
+  failures.push(...compareBudgets(report));
 }
 writeSync(process.stdout.fd, `${tables.join("\n\n")}\n`);
 if (failures.length > 0) {
