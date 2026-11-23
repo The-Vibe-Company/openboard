@@ -45,7 +45,7 @@ describe("ob post and ob read", () => {
     const board = fakeBoard(400, { error: { code: "invalid_request", message: "channel: bad" } });
     const { lines, output } = capture();
     expect(await runCli(["post", "Dev", "x"], env, { fetch: board.fetch, output })).toBe(1);
-    expect(lines.err).toEqual(["invalid_request: channel: bad"]);
+    expect(lines.err).toEqual(["error: invalid_request: channel: bad"]);
   });
 
   test("takes the words after -- as arguments, flags included", async () => {
@@ -62,7 +62,7 @@ describe("ob post and ob read", () => {
       throw new TypeError("Unable to connect");
     };
     expect(await runCli(["read", "dev"], env, { fetch: down, output })).toBe(1);
-    expect(lines.err[0]).toStartWith("unreachable: the board at http://127.0.0.1:8787 did not answer");
+    expect(lines.err[0]).toStartWith("error: unreachable: the board at http://127.0.0.1:8787 did not answer");
   });
 
   test.each([

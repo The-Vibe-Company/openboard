@@ -18,7 +18,7 @@ function shellArg(arg: string): string {
 /** A board error followed by the board's recovery guidance when supplied. */
 export function printError(output: Output, error: BoardError): void {
   const next = error.code === "invalid_request" ? error.next : undefined;
-  output.err(`${next?.length ? "error: " : ""}${error.code}: ${error.message}`);
+  output.err(`error: ${error.code}: ${error.message}`);
   if (error.reason) output.err(`reason: ${error.reason}`);
   if (error.hint) output.err(error.hint);
   for (const step of next ?? []) {

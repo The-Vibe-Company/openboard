@@ -3,6 +3,7 @@ import init from "../migrations/0001-init.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { platformView } from "./views/boards.ts";
 import { boardView } from "./views/messages.ts";
+import { threadReads } from "./views/threads.ts";
 
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
 export { platformStatements, statements } from "./statements.ts";
@@ -24,6 +25,6 @@ export function createViews(
 ): { platform(): PlatformView; board(scope: BoardScope): BoardView } {
   return {
     platform: () => platformView(db, dialect),
-    board: (scope) => boardView(db, dialect, scope),
+    board: (scope) => ({ ...boardView(db, dialect, scope), ...threadReads(db, dialect, scope) }),
   };
 }

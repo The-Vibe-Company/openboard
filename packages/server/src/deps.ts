@@ -9,7 +9,10 @@ export interface ServerConfig {
   readonly localOwnerTokenHash?: string;
 }
 
+/** JSON lines on standard output (docs/codebase.md 5.4); `fields` never hold a body, text, token or secret. */
 export interface Logger {
+  /** One line per request and per job run. */
+  info(message: string, fields: Readonly<Record<string, unknown>>): void;
   /** A bug reached an edge: logged with its stack, never with a body, text or secret. */
   error(message: string, fields: Readonly<Record<string, unknown>>): void;
 }

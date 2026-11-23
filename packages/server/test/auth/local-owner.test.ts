@@ -15,7 +15,7 @@ function localApp() {
   app = createApp(
     { mode: "local", localOwner: LOCAL_OWNER, localOwnerTokenHash: owner.hash },
     { store: openStore(now) },
-    { now, log: { error: () => {} } },
+    { now, log: { info: () => {}, error: () => {} } },
   );
   return app;
 }

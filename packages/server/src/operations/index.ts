@@ -2,6 +2,7 @@ import type { InputOf, Operation, OutputOf, operations } from "@openboard/contra
 import type { BoardView } from "@openboard/ports";
 import type { Principal } from "../deps.ts";
 import { listMessagesHandler, postMessageHandler } from "./messages.ts";
+import { readThreadHandler } from "./threads.ts";
 
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
 export interface BoardContext {
@@ -18,6 +19,7 @@ type Contracted = (typeof operations)[number];
 export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> } = {
   listMessages: listMessagesHandler,
   postMessage: postMessageHandler,
+  readThread: readThreadHandler,
 };
 
 /** The handler of an operation the router matched, its input already validated against the same contract. */
