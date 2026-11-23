@@ -1,4 +1,4 @@
-import type { InputOf, Operation, OutputOf, operations } from "@openboard/contract";
+import type { InputOf, Operation, OutputOf, operations, Scope } from "@openboard/contract";
 import type { BoardView } from "@openboard/ports";
 import type { Principal } from "../deps.ts";
 import { discoverBoardHandler } from "./discovery.ts";
@@ -21,11 +21,18 @@ export interface PublicContext {
   readonly now: () => number;
 }
 
-type ContextOf<Op> = Op extends { readonly scope: "public" } ? PublicContext : BoardContext;
+/** The context an operation's handler takes; `never` for a union mixing public and tenant operations. */
+type ContextOf<Op> = [Op] extends [{ readonly scope: "public" }]
+  ? PublicContext
+  : [Op] extends [{ readonly scope: Exclude<Scope, "public"> }]
+    ? BoardContext
+    : never;
 
 export type Handler<Op extends Operation> = (ctx: ContextOf<Op>, input: InputOf<Op>) => Promise<OutputOf<Op>>;
 
 type Contracted = (typeof operations)[number];
+/** The operations answered without a tenant or a credential. */
+export type PublicOperation = Extract<Contracted, { readonly scope: "public" }>;
 
 /** One handler per contract operation: a missing or mistyped one is a compile error. */
 export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> } = {
