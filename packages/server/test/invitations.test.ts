@@ -147,6 +147,7 @@ test("an administrator revokes a link, after which accepting it answers 410 invi
     expect((await post(revoke)).status).toBe(401);
     expect((await post(revoke, { ...acme, "x-ob-csrf": "wrong" })).status).toBe(403);
     expect((await post(revoke, other)).status).toBe(404);
+    expect((await post(`/orgs/other/invitations/${invitation.id}/revoke`, other)).status).toBe(404);
     expect((await post(`/orgs/acme/invitations/inv_${"b".repeat(16)}/revoke`, acme)).status).toBe(404);
     expect((await preview(token)).status).toBe(200);
     const revoked = await post(revoke, acme);

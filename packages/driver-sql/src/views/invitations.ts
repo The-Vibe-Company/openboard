@@ -49,11 +49,16 @@ export function invitationPlatform(
       db.transaction(async (tx) => {
         const [found] = await query(tx, dialect, invitationStatements.invitationByHash, { tokenHash });
         if (!found) return null;
-        if (found.revoked_at !== null) throw new BoardError("invitation_used", "this invitation was revoked");
         const orgId = Number(found.org_id);
         const scope = { orgId, tokenHash, at };
         const [invitation] = await query(tx, dialect, invitationStatements.lockRedeemableInvitation, scope);
-        if (!invitation) return null;
+        if (!invitation) {
+          // Read again after the lock wait, so a revoke that committed meanwhile is seen.
+          const [latest] = await query(tx, dialect, invitationStatements.invitationByHash, { tokenHash });
+          if (latest && latest.revoked_at !== null)
+            throw new BoardError("invitation_used", "this invitation was revoked");
+          return null;
+        }
         await query(tx, dialect, orgStatements.lockPerson, { personId });
         const [joined] = await query(tx, dialect, orgStatements.personMemberships, { personId });
         if (joined) throw new BoardError("already_in_org", "you already belong to an organization");
@@ -125,9 +130,10 @@ export function invitationView(
       }),
     revokeInvitation: (id, personId, at) =>
       db.transaction(async (tx) => {
+        // The invitation row is locked before the organization's, in the same order as accepting it.
+        const [invitation] = await query(tx, dialect, invitationStatements.lockOrgInvitation, { orgId, id });
         const [admin] = await query(tx, dialect, invitationStatements.lockInvitationOrg, { orgId, personId });
         if (!admin) return "not_admin";
-        const [invitation] = await query(tx, dialect, invitationStatements.lockOrgInvitation, { orgId, id });
         if (!invitation) return "not_found";
         if (invitation.accepted_at !== null || invitation.revoked_at !== null) return "used";
         await query(tx, dialect, invitationStatements.markInvitationRevoked, { orgId, id, at });
