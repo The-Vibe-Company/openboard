@@ -1,0 +1,42 @@
+{
+  "$comment": "The allow-list graph of docs/codebase.md 3.1, read by scripts/ci/boundaries.ts. Keys are workspace directories, or a directory inside one (the longest key wins). Names in may and types are workspace directory names. Owner-reviewed: never edit this file to make a change pass.",
+  "graph": {
+    "packages/contract": { "may": [], "external": ["@sinclair/typebox"] },
+    "packages/core": { "may": ["contract"], "external": [] },
+    "packages/ports": { "may": ["contract"], "types": ["core"], "external": [] },
+    "packages/ports/testkit": { "may": ["contract", "core", "ports"], "external": ["bun:test"] },
+    "packages/driver-sql": { "may": ["contract", "core", "ports"], "external": [] },
+    "packages/driver-sqlite": {
+      "may": ["driver-sql", "contract", "core", "ports"],
+      "external": ["bun:sqlite", "node:fs", "node:path"]
+    },
+    "packages/driver-postgres": { "may": ["driver-sql", "contract", "core", "ports"], "external": ["bun"] },
+    "packages/server": { "may": ["contract", "core", "ports"], "external": ["bun", "node:crypto", "node:path"] },
+    "packages/sdk": { "may": ["contract"], "external": [] },
+    "packages/cli": { "may": ["sdk", "contract"], "external": ["node:*"] },
+    "apps/openboard": {
+      "may": ["server", "cli", "ports", "driver-sqlite", "driver-postgres", "contract"],
+      "external": ["bun", "node:*"]
+    },
+    "apps/web": {
+      "may": ["sdk", "contract"],
+      "external": [
+        "react",
+        "react-dom",
+        "@tanstack/react-router",
+        "@tanstack/react-query",
+        "@tanstack/react-virtual",
+        "geist"
+      ]
+    },
+    "tools/conformance": {
+      "may": ["server", "ports", "driver-sqlite", "driver-postgres", "contract"],
+      "external": ["@vercel/board", "node:*"]
+    },
+    "tools/bench": {
+      "may": ["server", "ports", "driver-sqlite", "driver-postgres", "sdk", "contract"],
+      "external": ["node:*"]
+    }
+  },
+  "tests": { "external": ["bun:test", "@openboard/ports/testkit"] }
+}

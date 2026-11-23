@@ -12,8 +12,8 @@ writes:
 conformance: []
 modes: []
 depends_on: [05]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-opus-t06
 issue: 6
 ---
 
@@ -21,8 +21,8 @@ issue: 6
 As a contributor, I cannot make core import the server, or a client import core, without CI naming the edge that broke the rule.
 
 ## Done when
-- [ ] a file in `packages/core/src` importing `@openboard/server` makes `bun run lint` exit 1 naming the edge `core -> server`, and a type-only import fails the same way
-- [ ] `packages/contract` importing anything but `@sinclair/typebox` makes `bun run lint` exit 1 naming the package
+- [x] a file in `packages/core/src` importing `@openboard/server` makes `bun run lint` exit 1 naming the edge `core -> server`, and a type-only import fails the same way
+- [x] `packages/contract` importing anything but `@sinclair/typebox` makes `bun run lint` exit 1 naming the package
 
 ## Out of scope
 - Manifest agreement (07), deny terms (08), relative paths (09), the provider directory (10).
