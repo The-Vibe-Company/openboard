@@ -20,7 +20,7 @@ writes:
 conformance: []
 modes: []
 depends_on: []
-status: claimed
+status: review
 claimed_by: claude-0ad7d5d1
 issue: 1
 ---
