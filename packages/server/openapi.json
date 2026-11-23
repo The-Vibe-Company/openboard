@@ -186,6 +186,146 @@
         }
       }
     },
+    "/api/x/orgs/{org}/boards": {
+      "post": {
+        "operationId": "createBoard",
+        "summary": "Create a board in the organization at /api/<org>/<board>, its grant IDs g1 to g3 kept for the seeded grants.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" }
+          },
+          {
+            "name": "x-ob-csrf",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["slug", "name"],
+                "properties": {
+                  "slug": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" },
+                  "name": { "minLength": 1, "maxLength": 80, "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["board"],
+                  "properties": {
+                    "board": {
+                      "type": "object",
+                      "required": ["slug", "name"],
+                      "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, reserved_slug, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "slug_taken",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listBoards",
+        "summary": "List the organization's boards, by slug.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["boards"],
+                  "properties": {
+                    "boards": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["slug", "name"],
+                        "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/channels": {
       "post": {
         "operationId": "createChannel",

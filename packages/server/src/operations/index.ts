@@ -4,6 +4,7 @@ import type { Session } from "../auth/sessions.ts";
 import type { Principal } from "../deps.ts";
 import { getAccountHandler, getSessionHandler } from "./accounts.ts";
 import { getMeHandler, listActorsHandler } from "./actors.ts";
+import { createBoardHandler, listBoardsHandler } from "./boards.ts";
 import { createChannelHandler, listChannelsHandler } from "./channels.ts";
 import { claimConnectionHandler, createConnectionHandler, refreshAgentTokenHandler } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
@@ -79,10 +80,13 @@ type Contracted = (typeof operations)[number];
 export type PublicOperation = Exclude<Extract<Contracted, { readonly scope: "public" }>, typeof previewInvitation>;
 /** The operations of the signed-in person, under `/api/x`. */
 export type AccountOperation = Extract<Contracted, { readonly scope: "account" }>;
+/** The operations of one organization, under `/api/x/orgs/<org>`. */
+export type OrgOperation = Extract<Contracted, { readonly scope: "org" }>;
 
 /** One handler per contract operation: a missing or mistyped one is a compile error. */
 export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> } = {
   claimConnection: claimConnectionHandler,
+  createBoard: createBoardHandler,
   createChannel: createChannelHandler,
   createConnection: createConnectionHandler,
   createInvitation: createInvitationHandler,
@@ -95,6 +99,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   getOpenApi: getOpenApiHandler,
   getSession: getSessionHandler,
   listActors: listActorsHandler,
+  listBoards: listBoardsHandler,
   listChannels: listChannelsHandler,
   listMessages: listMessagesHandler,
   listThreads: listThreadsHandler,

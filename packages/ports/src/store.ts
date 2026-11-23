@@ -13,6 +13,7 @@ import type {
   ThreadSummary,
 } from "@openboard/contract";
 import type {
+  BoardCreation,
   BoardEvent,
   Grant,
   MessageDeleted,
@@ -117,6 +118,15 @@ export interface OrgView {
     readonly at: number;
     readonly expiresAt: number;
   }): Promise<boolean>;
+  /** The organization's boards that are not deleted, by slug. */
+  listBoards(): Promise<Named[]>;
+  /**
+   * In one transaction, under the organization's row and the creator's admin membership locked: the board, its grant
+   * IDs g1 to g3 kept for the seeded grants as every board's are, and its event at the organization's next event ID.
+   * Nothing is written when the person `personId` (`u_…`) is no longer an owner or admin (`not_admin`) or a board of
+   * the organization, deleted or not, already has the slug (`slug_taken`).
+   */
+  createBoard(creation: BoardCreation, personId: string): Promise<"created" | "not_admin" | "slug_taken">;
 }
 
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */

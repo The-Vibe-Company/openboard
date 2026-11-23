@@ -10,7 +10,7 @@ import type { Db, Dialect } from "./db.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
 import { agentReads } from "./views/agents.ts";
-import { platformView } from "./views/boards.ts";
+import { orgBoardsView, platformView } from "./views/boards.ts";
 import { channelReads } from "./views/channels.ts";
 import { connectionReads } from "./views/connections.ts";
 import { eventReads } from "./views/events.ts";
@@ -52,7 +52,7 @@ export function createViews(
       ...orgView(db, dialect),
       ...invitationPlatform(db, dialect),
     }),
-    org: (scope) => invitationView(db, dialect, scope),
+    org: (scope) => ({ ...invitationView(db, dialect, scope), ...orgBoardsView(db, dialect, scope) }),
     board: (scope) => ({
       ...boardView(db, dialect, scope),
       ...agentReads(db, dialect, scope),

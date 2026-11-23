@@ -51,3 +51,12 @@ test("a claimed token cannot use a platform operation", async () => {
   expect(await blocked.json()).toMatchObject({ error: { code: "forbidden" } });
   expect((await app.fetch(new Request(preview))).status).toBe(404);
 });
+
+test("a claimed token cannot reach an organization's routes", async () => {
+  app = makeApp();
+  const token = await claim(app);
+  const url = `${PUBLIC_URL}/api/x/orgs/local/boards`;
+  const refused = await app.fetch(new Request(url, { headers: { authorization: `Bearer ${token}` } }));
+  expect(refused.status).toBe(403);
+  expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
+});
