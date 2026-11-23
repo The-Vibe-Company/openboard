@@ -15,7 +15,7 @@ writes:
 conformance: []
 modes: []
 depends_on: [25]
-status: claimed
+status: done
 claimed_by: claude-opus-ticket-26
 issue: 26
 ---
