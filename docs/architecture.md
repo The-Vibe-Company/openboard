@@ -373,7 +373,7 @@ from the first hosted release, for a failover to be survivable:
 section is the single source of the numbers; other docs point here. A
 benchmark harness (`tools/bench`) drives the
 compiled binary over HTTP; CI fails a change that misses a budget by more than
-20% on the CI runner. Baseline to beat (upstream's SQLite `local()` on Node,
+20% and by more than 0.5 ms on the CI runner. Baseline to beat (upstream's SQLite `local()` on Node,
 measured by the spike): 80 to 90 MB RSS idle, about 1.1 ms per write, about
 0.5 ms per 50-message channel read.
 
