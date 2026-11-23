@@ -10,11 +10,15 @@ writes:
   - packages/ports/testkit/store/messages.test-suite.ts
   - packages/server/test/messages.test.ts
   - packages/ports/src/store.ts
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/src/commands/reply.ts
+  - packages/cli/test/cli.test.ts
+  - docs/protocol.md
 conformance: ["sync/keeps noSync on a post and a reply, so sync sends neither"]
 modes: [local]
 depends_on: [68]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t69
 issue: 69
 ---
 
@@ -22,7 +26,7 @@ issue: 69
 As a person, I mark a message as board-only and it reads back that way.
 
 ## Done when
-- [ ] `ob post dev x --no-sync` and `ob reply <id> y --no-sync` both read back with `"noSync": true` in `ob read <id> --json`
+- [x] `ob post dev x --no-sync` and `ob reply <id> y --no-sync` both read back with `"noSync": true` in `ob read <id> --json`
 
 ## Out of scope
 - Sync targets on a post (M14, 383).

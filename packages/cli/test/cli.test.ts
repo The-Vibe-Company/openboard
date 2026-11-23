@@ -22,6 +22,29 @@ function capture() {
 
 const message = (id: string, text: string) => ({ id, text });
 
+test.each([
+  ["post", "dev", { channel: "dev" }],
+  ["reply", "2", { re: "2" }],
+])("ob %s sends --no-sync as a boolean and respects --", async (command, target, input) => {
+  const board = fakeBoard(201, { message: message("3", "hello") });
+  const { output } = capture();
+  expect(await runCli([command, target, "hello", "--no-sync"], env, { fetch: board.fetch, output })).toBe(0);
+  expect(await runCli([command, target, "--", "--no-sync"], env, { fetch: board.fetch, output })).toBe(0);
+  expect(board.seen.map(({ body }) => JSON.parse(body))).toEqual([
+    { ...input, text: "hello", noSync: true },
+    { ...input, text: "--no-sync" },
+  ]);
+});
+
+test("ob post rejects a missing idempotency key before --no-sync", async () => {
+  const board = fakeBoard(201, { message: message("3", "hello") });
+  const { lines, output } = capture();
+  const argv = ["post", "dev", "hello", "--idempotency-key", "--no-sync"];
+  expect(await runCli(argv, env, { fetch: board.fetch, output })).toBe(2);
+  expect(lines.err[0]).toStartWith("error: invalid_request: --idempotency-key takes a value");
+  expect(board.seen).toEqual([]);
+});
+
 describe("ob post and ob messages", () => {
   test("ob post prints the new message's ID", async () => {
     const board = fakeBoard(201, { message: message("1", "hello") });

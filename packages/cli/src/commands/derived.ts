@@ -25,17 +25,18 @@ function optionValue(field: Field, text: string): unknown {
   return field.type === "integer" && /^(?:0|[1-9]\d{0,15})$/.test(text) ? Number(text) : text;
 }
 
-/** A text or integer field that is not positional can be given as `--name value`. */
-function isOption(name: string, field: Field, args: readonly string[]): boolean {
-  return !args.includes(name) && (field.type === "string" || field.type === "integer");
-}
-
 /** Positionals fill `args` in order, so every one up to the last required argument must be given. */
 function requiredPositionals(args: readonly string[], fields: ReturnType<typeof fieldsOf>): number {
   return args.findLastIndex((name) => fields.get(name)?.required) + 1;
 }
 
-/** Positional arguments in order, and `--flag value` for any other input field (only before `--`). */
+/** A recognized switch cannot supply the value for another option. */
+function isSwitch(word: string, flags: ReadonlyMap<string, string>, fields: ReturnType<typeof fieldsOf>): boolean {
+  const name = word.startsWith("--") ? flags.get(word.slice(2)) : undefined;
+  return name !== undefined && fields.get(name)?.schema.type === "boolean";
+}
+
+/** Positional arguments in order, with options recognized only before `--`. */
 function inputOf(
   ctx: CommandContext,
   args: readonly string[],
@@ -50,12 +51,18 @@ function inputOf(
       positional.push(word);
       continue;
     }
-    const name = flags.get(word.slice(2)) ?? "";
-    const field = fields.get(name);
+    const name = flags.get(word.slice(2));
+    if (name === undefined) throw new Misuse(`unknown option ${word}`);
+    const field = fields.get(name)?.schema ?? {};
+    if (field.type === "boolean") {
+      input[name] = true;
+      continue;
+    }
     const value = ctx.args[at + 1];
-    if (!field || !isOption(name, field.schema, args)) throw new Misuse(`unknown option ${word}`);
-    if (value === undefined || at + 1 >= ctx.optionsEnd) throw new Misuse(`${word} takes a value`);
-    input[name] = optionValue(field.schema, value);
+    if (value === undefined || at + 1 >= ctx.optionsEnd || isSwitch(value, flags, fields)) {
+      throw new Misuse(`${word} takes a value`);
+    }
+    input[name] = optionValue(field, value);
     at += 1;
   }
   const needed = requiredPositionals(args, fields);
@@ -73,10 +80,19 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   const { command, args, options: renamed = {} } = operation.cli;
   const fields = fieldsOf(operation);
   // A field's flag is its own name unless the contract gives it upstream's: `--idempotency-key` for `id`.
-  const flags = new Map([...fields.keys()].map((name) => [renamed[name] ?? name, name]));
-  const options = [...flags]
-    .filter(([, name]) => isOption(name, fields.get(name)?.schema ?? {}, args))
-    .map(([flag]) => `[--${flag} <${flag}>]`);
+  const flags = new Map<string, string>();
+  const options: string[] = [];
+  for (const [name, { schema }] of fields) {
+    if (args.includes(name)) continue;
+    const flag = renamed[name] ?? name;
+    if (schema.type === "boolean" && renamed[name] !== undefined) {
+      flags.set(flag, name);
+      options.push(`[--${flag}]`);
+    } else if (schema.type === "string" || schema.type === "integer") {
+      flags.set(flag, name);
+      options.push(`[--${flag} <${flag}>]`);
+    }
+  }
   const needed = requiredPositionals(args, fields);
   const shown = args.map((arg, at) => (at < needed ? `<${arg}>` : `[${arg}]`));
   return {
