@@ -10,11 +10,14 @@ writes:
   - packages/ports/testkit/store/orgs.test-suite.ts
   - packages/server/test/orgs.test.ts
   - packages/ports/src/store.ts
+  - packages/server/src/http/scope.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/index.ts
 conformance: []
 modes: [local]
 depends_on: [134]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 137
 ---
 
@@ -22,7 +25,7 @@ issue: 137
 As a person creating an organization, I cannot take a name the board's own pages use.
 
 ## Done when
-- [ ] creating an organization with slug `api`, `settings` or `x` answers 400 `reserved_slug`
+- [x] creating an organization with slug `api`, `settings` or `x` answers 400 `reserved_slug`
 
 ## Out of scope
 - Taken slugs (137).

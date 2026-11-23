@@ -11,12 +11,12 @@ export const createOrg = defineOperation({
   scope: "account",
   input: {
     body: Type.Object(
-      { name: Type.String({ minLength: 1, maxLength: 80 }), slug: Slug },
+      { name: Type.String({ minLength: 1, maxLength: 80 }), slug: Type.Union([Slug, Type.Literal("x")]) },
       { additionalProperties: false },
     ),
   },
   output: CreatedOrg,
-  errors: ["invalid_request", "unauthorized", "forbidden"],
+  errors: ["invalid_request", "unauthorized", "forbidden", "reserved_slug"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: ["ob.org.created", "ob.board.created"] },
   cli: false,

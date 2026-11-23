@@ -34,6 +34,7 @@ export interface AccountContext {
   readonly platform: PlatformView;
   readonly session: Session | null;
   readonly now: () => number;
+  readonly mode: "local" | "hosted";
   /** The sign-in providers this server offers. */
   readonly providers: readonly SignInProvider[];
 }

@@ -5,7 +5,7 @@ import type { BoardKeys, BoardScope, BoardView, Store } from "@openboard/ports";
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}$/;
 
 // Reserve documented segments before their operations ship, plus new segments from the contract.
-const BOARD_ROUTE_SEGMENTS = Object.freeze([
+export const BOARD_ROUTE_SEGMENTS = Object.freeze([
   "actors",
   "attachments",
   "avatars",

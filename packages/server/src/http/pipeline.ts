@@ -71,7 +71,7 @@ async function runAccount(request: Request, url: URL, operation: AccountOperatio
     body: request.method === "GET" ? undefined : await readBody(request),
   });
   const providers = providerLinks(pipeline.providers, config.publicUrl);
-  const output = await handlerOf(operation)({ platform, session, now: deps.now, providers }, input);
+  const output = await handlerOf(operation)({ platform, session, now: deps.now, mode: config.mode, providers }, input);
   const response = operationResponse(operation, output);
   response.headers.set("cache-control", "no-store");
   return response;
