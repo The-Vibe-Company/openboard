@@ -9,7 +9,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [113]
-status: claimed
+status: done
 claimed_by: claude-code-t114
 issue: 114
 ---
@@ -18,7 +18,7 @@ issue: 114
 As an agent, a profile header the board cannot read is refused instead of guessed.
 
 ## Done when
-- [ ] `curl -H 'x-board-profile: 9 bad' http://127.0.0.1:8787/api/local/main/me` with a valid token answers 400 `invalid_profile`
+- [x] `curl -H 'x-board-profile: 9 bad' http://127.0.0.1:8787/api/local/main/me` with a valid token answers 400 `invalid_profile`
 
 ## Out of scope
 - `x-board-can` parsing (M10, 287).
