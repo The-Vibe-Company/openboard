@@ -80,6 +80,13 @@ describe("reading a channel's newest messages", () => {
 });
 
 describe("reading a channel on from a cursor", () => {
+  test.each(["abc", "", "-1", "1e0", "1%0A", "999999"])("answers 400 invalid_cursor for after=%s", async (after) => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const { status, body } = await answer(call(app, "GET", `/messages?channel=dev&after=${after}`));
+    expect([status, body.error?.code]).toEqual([400, "invalid_cursor"]);
+  });
+
   test("lists the first `limit` messages after the cursor, and reading on from its cursor repeats and skips none", async () => {
     app = makeApp();
     for (const text of ["a", "b"]) await call(app, "POST", "/messages", { channel: "dev", text });
@@ -198,7 +205,6 @@ describe("refusing what the contract does not take", () => {
       "",
       "?channel=dev&limit=0",
       "?channel=dev&limit=501",
-      "?channel=dev&after=",
       "?channel=dev&limit=1e2",
       "?channel=dev&limit=2.9",
       "?channel=dev&limit=true",

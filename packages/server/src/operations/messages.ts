@@ -20,9 +20,9 @@ export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input
  */
 export const listMessagesHandler: Handler<typeof listMessages> = async (ctx, input) => {
   const after = input.after === undefined ? undefined : parseId(input.after);
-  if (after === null)
-    throw new BoardError("invalid_request", "after: expected a cursor a read of this channel answered");
+  if (after === null) throw new BoardError("invalid_cursor", "after: expected a decimal board cursor");
   const query = { channel: input.channel, limit: input.limit ?? 50 };
   const page = await ctx.board.channelMessages(after === undefined ? query : { ...query, after });
+  if (page === null) throw new BoardError("invalid_cursor", "after: cursor is ahead of the board");
   return { messages: page, cursor: page.at(-1)?.id ?? formatId(after ?? 0) };
 };

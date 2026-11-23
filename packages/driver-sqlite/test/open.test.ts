@@ -49,7 +49,7 @@ test("keeps a posted message and the initial migration record on reopen", async 
     const reopened = sqliteDriver({ dir }, () => 200);
     try {
       const messages = await reopened.board(scope).channelMessages({ channel: "dev", limit: 1 });
-      expect(messages.map(({ id, text }) => ({ id, text }))).toEqual([{ id: "1", text: "hello" }]);
+      expect(messages?.map(({ id, text }) => ({ id, text }))).toEqual([{ id: "1", text: "hello" }]);
     } finally {
       await reopened.close();
     }
