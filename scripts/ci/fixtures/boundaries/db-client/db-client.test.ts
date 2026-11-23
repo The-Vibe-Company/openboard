@@ -88,29 +88,49 @@ test("finds every way of reaching Bun's SQL client", async () => {
     alias: 'import { serve, SQL as Pg } from "bun";\nexport const a = [serve, Pg];\n',
     typeOnly: 'import { type SQL } from "bun";\nexport type A = SQL;\n',
     reexport: 'export { sql } from "bun";\n',
+    exportAll: 'export * as B from "bun";\n',
     namespace: 'import * as B from "bun";\nexport const a = new B.SQL("");\n',
-    defaultBinding: 'import bun from "bun";\nexport const a = bun["postgres"];\n',
-    global: "\n\nexport const a = Bun.sql;\n",
-    dynamic: 'export const { SQL } = await import("bun");\n',
-    required: 'export const a = require("bun").SQL;\n',
-    imported: 'export const a = (await import("bun")).sql;\n',
+    dollar: 'import $b from "bun";\nexport const a = $b?.["postgres"];\n',
+    global: "\n\nexport const a = globalThis.Bun?.sql;\n",
+    globalDestructured: "export const { env, SQL: Pg } = Bun;\n",
+    aliased: "const B = Bun;\nconst { ...rest } = B;\nexport const a = rest.SQL;\n",
+    nested: "export const {\n  env: { HOME },\n  sql,\n} = Bun;\n",
+    commented: '/* the client */ import { SQL } from "bun";\n',
+    required: 'export const a = require("bun");\n',
+    imported: 'export const a = import("bun").then((m) => m.sql);\n',
   };
   const files = Object.fromEntries(
     Object.entries(forms).map(([name, text]) => [`packages/server/src/${name}.ts`, text]),
   );
   const found = await messages(files);
-  expect(found.map((line) => line.slice(0, line.indexOf(" ->")))).toEqual([
-    "packages/server/src/alias.ts:1: server",
-    "packages/server/src/defaultBinding.ts:2: server",
-    "packages/server/src/dynamic.ts:1: server",
-    "packages/server/src/global.ts:3: server",
-    "packages/server/src/imported.ts:1: server",
-    "packages/server/src/namespace.ts:2: server",
-    "packages/server/src/reexport.ts:1: server",
-    "packages/server/src/required.ts:1: server",
-    "packages/server/src/typeOnly.ts:1: server",
+  const rest = (line: string) => line.slice(line.indexOf(" -> bun (") + 9, line.indexOf(`) ${OUTSIDE}`));
+  expect(found.map((line) => `${line.slice(0, line.indexOf(": "))} ${rest(line)}`)).toEqual([
+    "packages/server/src/alias.ts:1 SQL from bun",
+    "packages/server/src/aliased.ts:3 SQL from bun",
+    "packages/server/src/commented.ts:1 SQL from bun",
+    "packages/server/src/dollar.ts:2 postgres from bun",
+    "packages/server/src/exportAll.ts:1 export * from bun, which re-exports SQL, sql, postgres",
+    "packages/server/src/global.ts:3 sql from bun",
+    "packages/server/src/globalDestructured.ts:1 SQL from bun",
+    "packages/server/src/imported.ts:1 run-time load of bun, which can reach SQL, sql, postgres",
+    "packages/server/src/namespace.ts:2 SQL from bun",
+    "packages/server/src/nested.ts:1 sql from bun",
+    "packages/server/src/reexport.ts:1 sql from bun",
+    "packages/server/src/required.ts:1 run-time load of bun, which can reach SQL, sql, postgres",
+    "packages/server/src/typeOnly.ts:1 SQL from bun",
   ]);
-  expect(found.every((line) => line.includes(`from bun) ${OUTSIDE}`))).toBe(true);
+});
+
+test("leaves the rest of bun alone outside driver-postgres", async () => {
+  const source = [
+    'import bun, { serve } from "bun";',
+    "const { env } = Bun;",
+    "const version = Bun.version;",
+    "const B = Bun.env;",
+    "export const a = [bun.file, serve, env, version, B.SQL, Bun.SQLite, mySql.sql];",
+    "// Bun.SQL in a comment",
+  ].join("\n");
+  expect(await messages({ "packages/server/src/bun.ts": source })).toEqual([]);
 });
 
 test("refuses bun:sqlite in a test file too", async () => {
