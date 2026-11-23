@@ -34,21 +34,21 @@ export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input
   return { message };
 };
 
-export const editMessageHandler: Handler<typeof editMessage> = async (ctx, { id, text }) => {
-  const position = parseId(id);
+export const editMessageHandler: Handler<typeof editMessage> = async (ctx, input) => {
+  const position = parseId(input.id);
   await ctx.board.write(async (writer) => {
     const target = position === null ? null : await writer.message(position);
-    const event = decideEdit({ head: writer.head, target }, { id, text }, { by: ctx.by, now: ctx.now() });
+    const event = decideEdit({ head: writer.head, target }, input, { by: ctx.by, now: ctx.now() });
     await writer.append([event]);
   });
   return { ok: true };
 };
 
-export const deleteMessageHandler: Handler<typeof deleteMessage> = async (ctx, { id }) => {
-  const position = parseId(id);
+export const deleteMessageHandler: Handler<typeof deleteMessage> = async (ctx, input) => {
+  const position = parseId(input.id);
   await ctx.board.write(async (writer) => {
     const target = position === null ? null : await writer.message(position);
-    const event = decideDelete({ head: writer.head, target }, id, { by: ctx.by, now: ctx.now() });
+    const event = decideDelete({ head: writer.head, target }, input, { by: ctx.by, now: ctx.now() });
     if (event) await writer.append([event]);
   });
   return { ok: true };

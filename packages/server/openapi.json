@@ -621,7 +621,19 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "additionalProperties": false, "type": "object", "properties": {} } }
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "minimum": 0,
+                    "description": "The message revision observed before editing or deleting.",
+                    "type": "integer"
+                  }
+                }
+              }
+            }
           }
         },
         "responses": {
@@ -651,6 +663,10 @@
           },
           "404": {
             "description": "message_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "revision_conflict",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -716,7 +732,14 @@
                 "additionalProperties": false,
                 "type": "object",
                 "required": ["text"],
-                "properties": { "text": { "maxLength": 10000, "type": "string" } }
+                "properties": {
+                  "text": { "maxLength": 10000, "type": "string" },
+                  "revision": {
+                    "minimum": 0,
+                    "description": "The message revision observed before editing or deleting.",
+                    "type": "integer"
+                  }
+                }
               }
             }
           }
@@ -748,6 +771,10 @@
           },
           "404": {
             "description": "message_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "revision_conflict",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
