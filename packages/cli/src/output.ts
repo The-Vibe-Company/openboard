@@ -11,10 +11,20 @@ export const consoleOutput: Output = Object.freeze({
   err: (line: string) => console.error(line),
 });
 
-/** A board error as `code: message`, then its hint. */
+function shellArg(arg: string): string {
+  return /^[\w./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", "'\"'\"'")}'`;
+}
+
+/** A board error followed by the board's recovery guidance when supplied. */
 export function printError(output: Output, error: BoardError): void {
-  output.err(`${error.code}: ${error.message}`);
+  const next = error.code === "invalid_request" ? error.next : undefined;
+  output.err(`${next?.length ? "error: " : ""}${error.code}: ${error.message}`);
   if (error.hint) output.err(error.hint);
+  for (const step of next ?? []) {
+    if (step.kind === "run" && step.argv.every((arg) => !/[\p{Cc}\p{Cf}]/u.test(arg))) {
+      output.err(`next: ${step.argv.map(shellArg).join(" ")}`);
+    }
+  }
 }
 
 /** A message on one line: its ID, then the first line of its text. */

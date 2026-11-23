@@ -3,6 +3,7 @@ import {
   type ErrorBody,
   type InputOf,
   isErrorCode,
+  type NextStep,
   type Operation,
   type OutputOf,
   operations,
@@ -45,6 +46,27 @@ function requestOf(base: string, operation: Operation, input: Readonly<Record<st
   return new Request(url, { method: operation.route.method, headers, body: JSON.stringify(body) });
 }
 
+function isNextStep(value: unknown): value is NextStep {
+  if (typeof value !== "object" || value === null || !("kind" in value)) return false;
+  switch (value.kind) {
+    case "run":
+      return (
+        "argv" in value &&
+        Array.isArray(value.argv) &&
+        value.argv.length > 0 &&
+        value.argv.every((arg: unknown) => typeof arg === "string")
+      );
+    case "call":
+      return "operation" in value && typeof value.operation === "string" && "input" in value;
+    case "wait":
+      return "seconds" in value && typeof value.seconds === "number" && value.seconds >= 0;
+    case "read":
+      return "url" in value && typeof value.url === "string";
+    default:
+      return false;
+  }
+}
+
 /** The board's answer, or its error envelope thrown as a `BoardError`. */
 async function answerOf(response: Response): Promise<unknown> {
   const text = await response.text();
@@ -59,7 +81,11 @@ async function answerOf(response: Response): Promise<unknown> {
   const body = (parsed as { error?: Partial<ErrorBody> }).error ?? {};
   const code = typeof body.code === "string" && isErrorCode(body.code) ? body.code : "remote_error";
   const message = typeof body.message === "string" ? body.message : `the board answered ${response.status}`;
-  throw new BoardError(code, message, body.hint === undefined ? {} : { hint: body.hint });
+  const [first, second] = Array.isArray(body.next) ? body.next.slice(0, 2).filter(isNextStep) : [];
+  throw new BoardError(code, message, {
+    ...(body.hint === undefined ? {} : { hint: body.hint }),
+    ...(first === undefined ? {} : { next: second === undefined ? [first] : [first, second] }),
+  });
 }
 
 /** Sends the request; a board that does not answer is upstream's `unreachable`, not a transport exception. */

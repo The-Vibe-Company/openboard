@@ -7,12 +7,13 @@ writes:
   - packages/server/src/http/errors.ts
   - packages/server/src/http/respond.ts
   - packages/cli/src/output.ts
+  - packages/sdk/src/client.ts
   - packages/server/test/errors.test.ts
 conformance: ["core/answers 400 for a request that does not validate"]
 modes: [local]
 depends_on: [36]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 51
 ---
 
