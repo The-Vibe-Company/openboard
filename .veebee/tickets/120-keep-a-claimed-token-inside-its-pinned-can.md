@@ -6,11 +6,17 @@ package: server
 writes:
   - packages/server/src/auth/tokens.ts
   - packages/server/test/auth/pinned.test.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/deps.ts
+  - packages/core/src/access/agents.ts
+  - packages/cli/src/commands/whoami.ts
+  - packages/cli/test/profile.test.ts
+  - packages/cli/test/connect.test.ts
 conformance: []
 modes: [local]
 depends_on: [119]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t120
 issue: 120
 ---
 
@@ -18,7 +24,7 @@ issue: 120
 As an orchestrator, the token I hand a sandbox can do only what I claimed it for.
 
 ## Done when
-- [ ] a token claimed with `"can": {"dev": ["read"]}` reads `dev`, gets `error: forbidden` posting there, and `ob whoami` shows `can dev read`
+- [x] a token claimed with `"can": {"dev": ["read"]}` reads `dev`, gets `error: forbidden` posting there, and `ob whoami` shows `can dev read`
 
 ## Out of scope
 - `x-board-can` on other callers (M10, 286).

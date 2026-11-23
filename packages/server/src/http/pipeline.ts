@@ -1,5 +1,6 @@
 import { BoardError, decodeInput, type operations, type RawInput } from "@openboard/contract";
 import { authenticate, verifiers } from "../auth/chain.ts";
+import { keepInsidePin } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
 import { handlerOf, type PublicOperation } from "../operations/index.ts";
@@ -67,6 +68,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
     query: Object.fromEntries(url.searchParams),
     body: request.method === "GET" ? undefined : await readBody(request),
   });
+  await keepInsidePin(operation, input, by, board);
   const { now, randomBytes } = pipeline.deps;
   const boardUrl = `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`;
   const output = await handlerOf(operation)({ board, by, now, boardUrl, randomBytes }, input);

@@ -5,16 +5,20 @@ type App = ReturnType<typeof makeApp>;
 let app: App | undefined;
 afterEach(() => app?.close());
 
-/** Creates the connection `fixers`, letting in `fixer-*`, claims a token pinned to `fixer-2` and answers it. */
-async function pinnedToken(target: App): Promise<string> {
-  const body = { name: "fixers", can: { "dev/": ["read", "post"] }, direct: false, profiles: ["fixer-*"] };
+/**
+ * Creates the connection `fixers`, letting in `fixer-*` with read and post under `dev/` and read in `ops`, claims a
+ * token pinned to `fixer-2` (and to `can`, when given) and answers it.
+ */
+async function pinnedToken(target: App, can?: Record<string, string[]>): Promise<string> {
+  const grant = { "dev/": ["read", "post"], ops: ["read"] };
+  const body = { name: "fixers", can: grant, direct: false, profiles: ["fixer-*"] };
   const created = await call(target, "POST", "/x/connections", body);
   expect(created.status).toBe(201);
   const { secret } = (await created.json()) as { secret: string };
   const claim = new Request(`${BOARD_URL}/x/connections/claim`, {
     method: "POST",
     headers: { authorization: `Bearer ${secret}` },
-    body: JSON.stringify({ profile: "fixer-2" }),
+    body: JSON.stringify({ profile: "fixer-2", ...(can === undefined ? {} : { can }) }),
   });
   const claimed = await target.fetch(claim);
   expect(claimed.status).toBe(200);
@@ -63,5 +67,97 @@ test("a claimed token checks its pin on reads too, and a bad profile header is s
   expect([bad.status, ((await bad.json()) as { error: { code: string } }).error.code]).toEqual([
     400,
     "invalid_profile",
+  ]);
+});
+
+async function codeOf(response: Response): Promise<[number, string]> {
+  return [response.status, ((await response.json()) as { error: { code: string } }).error.code];
+}
+
+test("a token claimed to read dev reads dev, is 403 forbidden posting there, and whoami shows its can", async () => {
+  app = makeApp();
+  const token = await pinnedToken(app, { dev: ["read"] });
+  const read = await as(app, token, null, "GET", "/messages?channel=dev");
+  expect(read.status).toBe(200);
+  const posted = await as(app, token, null, "POST", "/messages", post);
+  expect(posted.status).toBe(403);
+  const { error } = (await posted.json()) as { error: { code: string; message: string } };
+  expect([error.code, error.message]).toEqual(["forbidden", "this token was claimed without post in dev"]);
+  expect(await (await as(app, token, null, "GET", "/messages?channel=dev")).json()).toMatchObject({ messages: [] });
+  const me = await as(app, token, null, "GET", "/me");
+  expect(await me.json()).toMatchObject({ can: { dev: ["read"] } });
+});
+
+/** A token of a new connection `name` (`*` read and post), claimed as `reader` with `can`. */
+async function readerToken(target: App, can: Record<string, string[]>, name = "readers"): Promise<string> {
+  const body = { name, can: { "*": ["read", "post"] }, direct: false, profiles: ["reader"] };
+  const { secret } = (await (await call(target, "POST", "/x/connections", body)).json()) as { secret: string };
+  const claimed = await as(target, secret, null, "POST", "/x/connections/claim", { profile: "reader", can });
+  return ((await claimed.json()) as { token: string }).token;
+}
+
+/** Posts in `channel` as the board's owner and answers the message's ID. */
+async function postIn(target: App, channel: string): Promise<string> {
+  const posted = await call(target, "POST", "/messages", { channel, text: "hi" });
+  return ((await posted.json()) as { message: { id: string } }).message.id;
+}
+
+test("a pinned can keeps a token out of channels it does not name", async () => {
+  app = makeApp();
+  const token = await readerToken(app, { ops: ["read", "post"] });
+  expect(await codeOf(await as(app, token, null, "GET", "/messages?channel=dev/api"))).toEqual([403, "forbidden"]);
+  expect(await codeOf(await as(app, token, null, "GET", "/threads?channel=dev"))).toEqual([403, "forbidden"]);
+  expect(await codeOf(await as(app, token, null, "POST", "/channels", { path: "dev/new" }))).toEqual([
+    403,
+    "forbidden",
+  ]);
+  expect((await as(app, token, null, "POST", "/messages", { channel: "ops", text: "up" })).status).toBe(201);
+});
+
+test("a message in a channel the pin cannot read answers as missing, to reads and replies", async () => {
+  app = makeApp();
+  const id = await postIn(app, "dev/api");
+  const token = await readerToken(app, { ops: ["read", "post"] });
+  expect(await codeOf(await as(app, token, null, "GET", `/messages/${id}`))).toEqual([404, "message_not_found"]);
+  const reply = await as(app, token, null, "POST", "/messages", { re: id, text: "in" });
+  expect(await codeOf(reply)).toEqual([404, "message_not_found"]);
+  expect(await codeOf(await as(app, token, null, "GET", "/messages/999"))).toEqual([404, "message_not_found"]);
+});
+
+test("a reply in a channel the pin reads but may not post in is 403 forbidden, and posts nothing", async () => {
+  app = makeApp();
+  const id = await postIn(app, "dev");
+  const token = await pinnedToken(app, { dev: ["read"] });
+  expect((await as(app, token, null, "GET", `/messages/${id}`)).status).toBe(200);
+  expect(await codeOf(await as(app, token, null, "POST", "/messages", { re: id, text: "in" }))).toEqual([
+    403,
+    "forbidden",
+  ]);
+  expect(await (await as(app, token, null, "GET", `/messages/${id}`)).json()).toMatchObject({ replies: [] });
+});
+
+test("a token without a permission at * cannot use what spans every channel, which nothing narrows yet", async () => {
+  app = makeApp();
+  const token = await readerToken(app, { ops: ["read"] });
+  for (const path of ["/channels", "/actors", "/events"]) {
+    expect(await codeOf(await as(app, token, null, "GET", path))).toEqual([403, "forbidden"]);
+  }
+  const everywhere = await readerToken(app, { "*": ["read"] }, "watchers");
+  expect((await as(app, everywhere, null, "GET", "/channels")).status).toBe(200);
+});
+
+test("a token missing a permission under any one pattern cannot use what spans every channel", async () => {
+  app = makeApp();
+  const token = await readerToken(app, { "*": ["read", "post"], "secrets/": ["post"] });
+  expect(await codeOf(await as(app, token, null, "GET", "/events"))).toEqual([403, "forbidden"]);
+  expect((await as(app, token, null, "POST", "/messages", { channel: "secrets/a", text: "x" })).status).toBe(201);
+});
+
+test("a pinned token asking for a message not yet posted gets 404 before the handler, even with a bad body", async () => {
+  app = makeApp();
+  const token = await readerToken(app, { ops: ["read", "post"] });
+  expect(await codeOf(await as(app, token, null, "POST", "/messages", { re: "999", text: "" }))).toEqual([
+    404,
+    "message_not_found",
   ]);
 });

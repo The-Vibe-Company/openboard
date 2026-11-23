@@ -46,6 +46,7 @@ test.each(["stdin", "env", "file", "env file"])("connect claims with %s and whoa
       return Response.json({
         handle: `fixers/${profile}`,
         name: profile,
+        can: { "dev/": ["read", "post"] },
         openboard: { credential: "agent", role: null, org: { slug: "local" }, board: { slug: "main" } },
       });
     };

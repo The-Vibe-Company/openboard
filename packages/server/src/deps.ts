@@ -1,4 +1,4 @@
-import type { Author } from "@openboard/contract";
+import type { Author, Can } from "@openboard/contract";
 
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
@@ -35,6 +35,8 @@ export type Principal = Author & {
   readonly [connectionOf]?: ConnectionIdentity;
   /** The agent an `obt_` token was claimed as, `ag_…`. */
   readonly [agentOf]?: string;
+  /** What an `obt_` token was claimed for: every request it makes stays inside it (docs/auth.md "Pinned narrowing"). */
+  readonly [pinnedCan]?: Can;
   /** A profile's name as the caller spelled it, which is how it is shown; `profile` is its lowercase. */
   readonly [profileName]?: string;
   readonly [profileAvatar]?: string | null;
@@ -50,5 +52,6 @@ export interface ConnectionIdentity {
 export const credentialKind = Symbol("credential kind");
 export const connectionOf = Symbol("connection");
 export const agentOf = Symbol("agent");
+export const pinnedCan = Symbol("pinned can");
 export const profileName = Symbol("profile name");
 export const profileAvatar = Symbol("profile avatar");
