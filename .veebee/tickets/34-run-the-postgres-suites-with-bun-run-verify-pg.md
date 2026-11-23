@@ -10,8 +10,8 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [31]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-opus-t34
 issue: 34
 ---
 
