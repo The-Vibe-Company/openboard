@@ -58,6 +58,31 @@ describe("posting a message", () => {
   });
 });
 
+describe("replying in a thread", () => {
+  const root = { id: 1, channel: "dev", re: null };
+
+  test("joins the root's thread and channel at the next log position", () => {
+    const { events, message } = decidePost({ head: 1, target: root }, { re: "1", text: "on it" }, { by, now: at });
+    expect(events[0]).toMatchObject({ id: 2, thread: 1, message: 2, channel: "dev" });
+    expect(events[0].payload).toMatchObject({ channel: "dev", re: "1", replyTo: null, thread: "1" });
+    expect(message).toMatchObject({ id: "2", channel: "dev", text: "on it", re: "1", replyTo: null, thread: "1" });
+  });
+
+  test("refuses a reply to a message the board does not have", () => {
+    const refused = refusal(() => decidePost({ head: 1, target: null }, { re: "9", text: "x" }, { by, now: at }));
+    expect(refused).toEqual({ code: "message_not_found", message: "Couldn't find message #9." });
+  });
+
+  test.each([
+    ["both channel and re", { channel: "dev", re: "1" }, "channel"],
+    ["neither channel nor re", {}, "channel"],
+  ])("refuses a post with %s", (_, place, field) => {
+    const refused = refusal(() => decidePost({ head: 1, target: root }, { ...place, text: "x" }, { by, now: at }));
+    expect(refused.code).toBe("invalid_request");
+    expect(refused.message).toStartWith(field);
+  });
+});
+
 describe("wire IDs and times", () => {
   test.each([
     ["1", 1],

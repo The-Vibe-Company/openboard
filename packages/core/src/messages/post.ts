@@ -1,19 +1,20 @@
 import { type Author, BoardError, type Message } from "@openboard/contract";
 import { formatId, isoTime } from "../ids.ts";
 
-/** A new thread, as `POST /messages` asks for it once the contract has validated its shape. */
+/** A new thread (`channel`) or a reply (`re`), as `POST /messages` asks for it once the contract has validated it. */
 export interface PostCommand {
-  readonly channel: string;
+  readonly channel?: string;
+  readonly re?: string;
   readonly text: string;
   readonly labels?: Readonly<Record<string, string>>;
   readonly noSync?: boolean;
 }
 
-/** Upstream's `message.posted` payload for a root (upstream `03-http.md` "Event types"). */
+/** Upstream's `message.posted` payload (upstream `03-http.md` "Event types"); `re` is the root of a reply. */
 export interface MessagePostedPayload {
   readonly channel: string;
   readonly text: string;
-  readonly re: null;
+  readonly re: string | null;
   readonly replyTo: null;
   readonly thread: string;
   readonly labels: Readonly<Record<string, string>>;
@@ -40,9 +41,21 @@ export interface MessagePosted {
   readonly payload: MessagePostedPayload;
 }
 
-/** What the board holds when a post is decided: its log head, read under the board's lock. */
+/** The message a reply's `re` names, as the board holds it. */
+export interface ReplyTarget {
+  readonly id: number;
+  readonly channel: string;
+  /** The root it replies to, or null when it is a root itself. */
+  readonly re: string | null;
+}
+
+/**
+ * What the board holds when a post is decided, read under the board's lock: its log head and, for a reply, the
+ * message `re` names, or null when no message has that ID.
+ */
 export interface PostState {
   readonly head: number;
+  readonly target?: ReplyTarget | null;
 }
 
 export interface PostContext {
@@ -55,6 +68,9 @@ const storable = (value: string) => !value.includes("\0") && value.isWellFormed(
 const RESERVED_LABEL_PREFIX = "board.";
 
 function checkCommand(command: PostCommand) {
+  if ((command.channel === undefined) === (command.re === undefined)) {
+    throw new BoardError("invalid_request", "channel: a post needs channel and a reply needs re, never both");
+  }
   if (command.text.trim().length === 0) throw new BoardError("invalid_request", "text: message text is empty");
   if (!storable(command.text)) {
     throw new BoardError("invalid_request", "text: message text has a NUL character or a lone surrogate");
@@ -76,7 +92,7 @@ export function messageView(event: MessagePosted): Message {
     id: formatId(event.id),
     channel: payload.channel,
     text: payload.text,
-    re: null,
+    re: payload.re,
     replyTo: null,
     thread: payload.thread,
     labels: { ...payload.labels },
@@ -98,26 +114,39 @@ export function messageView(event: MessagePosted): Message {
   };
 }
 
-/** Decides a post that starts a thread: the next log position names the message and its thread. */
+/** Where a post lands: a new thread in its channel, or the thread of the root `re` names. */
+function placePost(state: PostState, command: PostCommand, id: number) {
+  if (command.channel !== undefined) return { channel: command.channel, root: id, re: null };
+  const target = state.target;
+  if (!target) throw new BoardError("message_not_found", `Couldn't find message #${command.re}.`);
+  if (target.re !== null) throw new BoardError("invalid_request", `re: message #${command.re} is a reply, not a root`);
+  return { channel: target.channel, root: target.id, re: formatId(target.id) };
+}
+
+/**
+ * Decides a post: the next log position names the message. A new thread is named by it too; a reply joins the
+ * thread of its root, in the root's channel.
+ */
 export function decidePost(state: PostState, command: PostCommand, context: PostContext) {
   checkCommand(command);
   const id = state.head + 1;
+  const { channel, root, re } = placePost(state, command, id);
   const event: MessagePosted = {
     id,
     type: "message.posted",
     at: context.now,
-    thread: id,
+    thread: root,
     message: id,
-    channel: command.channel,
+    channel,
     actor: context.by.actor,
     principal: context.by.principal,
     visibility: 0,
     payload: {
-      channel: command.channel,
+      channel,
       text: command.text,
-      re: null,
+      re,
       replyTo: null,
-      thread: formatId(id),
+      thread: formatId(root),
       labels: { ...command.labels },
       noSync: command.noSync ?? false,
       by: context.by,

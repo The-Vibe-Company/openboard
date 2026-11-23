@@ -4,7 +4,7 @@ import { Author, ChannelPath, Labels, Message } from "./messages.ts";
 const MessagePostedPayload = Type.Object({
   channel: ChannelPath,
   text: Type.String(),
-  re: Type.Null(),
+  re: Type.Union([Type.String(), Type.Null()]),
   replyTo: Type.Null(),
   thread: Type.String(),
   labels: Labels,

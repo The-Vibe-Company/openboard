@@ -29,3 +29,17 @@ test("ob read <id> --json prints the thread as the board answers it", async () =
   expect(await code).toBe(0);
   expect(JSON.parse(lines.out.join("\n"))).toEqual(thread);
 });
+
+test("ob reply <id> <text> posts in the thread and prints the reply's ID", async () => {
+  const requests: { url: string; body: unknown }[] = [];
+  const lines: string[] = [];
+  const fetch = async (request: Request) => {
+    requests.push({ url: request.url, body: await request.json() });
+    const answer = { message: { ...message("2", "on it"), re: "1" } };
+    return new Response(JSON.stringify(answer), { status: 201, headers: { "content-type": "application/json" } });
+  };
+  const output = { out: (line: string) => lines.push(line), err: () => {} };
+  expect(await runCli(["reply", "1", "on it"], env, { fetch, output })).toBe(0);
+  expect(lines).toEqual(["2"]);
+  expect(requests).toEqual([{ url: `${env.BOARD_URL}/messages`, body: { re: "1", text: "on it" } }]);
+});
