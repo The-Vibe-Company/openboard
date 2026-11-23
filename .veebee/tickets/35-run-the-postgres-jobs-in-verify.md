@@ -8,8 +8,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [20, 34]
-status: ready
-claimed_by: null
+status: done
+claimed_by: codex-t35
 issue: 35
 ---
 
