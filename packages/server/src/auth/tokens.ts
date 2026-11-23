@@ -61,19 +61,6 @@ function refuseOtherProfile(request: Request, pinned: string): void {
 
 type Permission = NonNullable<Operation["access"]>["permission"];
 
-/** The channel an operation's input names: `channel`, or `path` when it creates one. */
-function channelOf(input: unknown): string | undefined {
-  const { channel, path } = input as { channel?: unknown; path?: unknown };
-  const named = channel ?? path;
-  return typeof named === "string" ? named : undefined;
-}
-
-/** The channel of the message a `fromMessage` operation names; a message the board lacks is left to the handler. */
-async function messageChannel(board: BoardView, input: unknown): Promise<string | undefined> {
-  const id = parseId(String((input as { id?: unknown }).id));
-  return id === null ? undefined : (await board.thread(id))?.message.channel;
-}
-
 function outsidePin(permission: Permission, where: string): BoardError {
   return new BoardError("forbidden", `this token was claimed without ${permission} ${where}`, {
     hint: "Run `ob whoami` to see what it can do; claim another token with that permission in its can.",
@@ -81,9 +68,25 @@ function outsidePin(permission: Permission, where: string): BoardError {
 }
 
 /**
- * A claimed token is always a narrowed caller (docs/auth.md mode 2, "Pinned narrowing"): an operation needing a
- * permission its pinned `can` does not give at the channel it names, or at the message's channel, is 403 `forbidden`.
- * One that reaches any channel needs the permission at some pattern. Other credentials pass untouched.
+ * The message `id` names stays inside the pin: in a channel the pin cannot read it answers as a missing one (404
+ * `message_not_found`, docs/auth.md rule 9), so the token learns nothing of it; readable without `permission` is 403
+ * `forbidden`. A message the board lacks is left to the handler, which answers the same 404.
+ */
+async function checkMessage(can: Can, permission: Permission, board: BoardView, id: unknown): Promise<void> {
+  const position = typeof id === "string" ? parseId(id) : null;
+  if (position === null) return;
+  const channel = (await board.thread(position))?.message.channel;
+  if (channel === undefined) return;
+  const allowed = agents.allowedAt(can, channel);
+  if (!allowed.includes("read")) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
+  if (!allowed.includes(permission)) throw outsidePin(permission, `in ${channel}`);
+}
+
+/**
+ * A claimed token is always a narrowed caller (docs/auth.md mode 2, "Pinned narrowing"). An operation on a channel
+ * needs the permission there: the channel its input names (`channel`, or `path` when it creates one), and the channel
+ * of the message it reads or replies to (`id`, `re`). One that reaches every channel needs the permission at `*`, since
+ * nothing narrows its answer yet. Other credentials pass untouched.
  */
 export async function keepInsidePin(
   operation: Pick<Operation, "access">,
@@ -96,10 +99,14 @@ export async function keepInsidePin(
   if (can === undefined || access === null) return;
   const { permission } = access;
   if (access.channel === "any") {
-    if (Object.values(can).some((given) => given.includes(permission))) return;
-    throw outsidePin(permission, "on any channel");
+    if (agents.allowedAt(can, "*").includes(permission)) return;
+    throw outsidePin(permission, "on every channel");
   }
-  const channel = access.channel === "fromInput" ? channelOf(input) : await messageChannel(board, input);
-  if (channel === undefined) return;
-  if (!agents.allowedAt(can, channel).includes(permission)) throw outsidePin(permission, `in ${channel}`);
+  const named = input as { channel?: unknown; path?: unknown; re?: unknown; id?: unknown };
+  if (access.channel === "fromMessage") return checkMessage(can, permission, board, named.id);
+  const channel = named.channel ?? named.path;
+  if (typeof channel === "string" && !agents.allowedAt(can, channel).includes(permission)) {
+    throw outsidePin(permission, `in ${channel}`);
+  }
+  await checkMessage(can, permission, board, named.re);
 }
