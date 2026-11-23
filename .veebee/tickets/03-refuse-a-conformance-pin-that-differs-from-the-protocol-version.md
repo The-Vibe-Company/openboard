@@ -12,7 +12,7 @@ writes:
 conformance: []
 modes: []
 depends_on: [02]
-status: claimed
+status: done
 claimed_by: claude-opus-t03
 issue: 3
 ---
