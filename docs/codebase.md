@@ -60,7 +60,7 @@ openboard/
   examples/
     <recipe>/                integrations and recipes; SDK/CLI consumers only
   scripts/
-    ci/                      boundaries, sizes, migrations, agents guard, PR size, gen check
+    ci/                      boundaries, sizes, migrations, module state, agents guard, PR size, gen check
     build/  release/  tickets/
 ```
 
@@ -215,6 +215,7 @@ All of it runs in `bun run lint`, inside the required check.
 3. **TypeScript** makes the scoped-store rule structural: handler types receive `BoardView`/`OrgView` views, which have no `orgId` or `boardId` parameters, and only the tenant resolver can mint the `BoardScope` a view is opened with (section 4.4, D33).
 5. **Drift between engines** (D32, data-model.md "The store port"): the shared store suite on both drivers, an `EXPLAIN` of every registered statement on both engines, and a schema-parity test comparing both catalogs. These run in the `unit-sqlite` and `postgres` jobs.
 4. **`scripts/ci/migrations.ts`** over the single migration source `packages/driver-sql/migrations/`: numbers are unique and newer than `main`'s, applied files are never edited, every file renders to SQLite through `driver-sqlite/src/ddl.ts` (the mechanical differences of `docs/data-model.md` "DDL"), and no migration contains a destructive statement (`DROP`, `RENAME`, `ALTER … TYPE`, `SET NOT NULL` without default) unless marked `-- contract-phase` and preceded by a release that stopped using the object (section 7.6).
+6. **`scripts/ci/module-state.ts`** parses every file under `packages/*/src` and `apps/openboard/src` with the TypeScript API and fails on a module-level `let`/`var`, a module-level `new …()`, array or object that the module or a file importing it changes in place, and a `static` class field that is not `readonly` or holds a container that is changed in place (section 3.2, 5.6). Names are resolved lexically; aliases (`const c = cache`) are not followed. Unit tests: `scripts/ci/module-state.test.ts`, fixtures in `scripts/ci/fixtures/module-state/`.
 
 There is no CODEOWNERS file (D44): agents open pull requests under the owner's GitHub account, so GitHub could not route their review to the owner. The orchestrator reviews and merges every pull request. A change to `scripts/ci/boundaries.json`, `.oxlintrc.json`, `biome.json`, `tools/conformance/score.json`, `tools/bench/budgets.json`, `packages/driver-sql/migrations/`, `packages/ports/testkit/isolation.test-suite.ts`, `packages/server/test/isolation/**` or `.github/` says so in its PR body, and one that widens the graph, adds a dependency, lowers a score, raises a budget or weakens isolation says why.
 
@@ -474,7 +475,7 @@ Raising a budget is the owner's decision. `--quick` runs counters and reduced wo
 
 | Gate | Runs | Required |
 |---|---|---|
-| `Verify` (`.github/workflows/ci.yml`), every PR and the merge queue | six parallel jobs, then an aggregate job named `Verify` that fails unless all succeeded: **`static`** (Biome, oxlint, boundaries, sizes, migrations check, agents guard, typecheck, `gen:check`, PR size); **`unit-sqlite`** (`bun test`: core, contract, SQLite testkit, HTTP, isolation, clients, web unit); **`conformance-sqlite`**; **`postgres`** (Postgres service container; Postgres testkit, HTTP, isolation and HA tests with two instances); **`conformance-postgres`** (service container; two instances); **`bench`** (`--quick`, both modes' counters, local measured values) | yes, the only one |
+| `Verify` (`.github/workflows/ci.yml`), every PR and the merge queue | six parallel jobs, then an aggregate job named `Verify` that fails unless all succeeded: **`static`** (Biome, oxlint, boundaries, sizes, migrations check, module state, agents guard, typecheck, `gen:check`, PR size); **`unit-sqlite`** (`bun test`: core, contract, SQLite testkit, HTTP, isolation, clients, web unit); **`conformance-sqlite`**; **`postgres`** (Postgres service container; Postgres testkit, HTTP, isolation and HA tests with two instances); **`conformance-postgres`** (service container; two instances); **`bench`** (`--quick`, both modes' counters, local measured values) | yes, the only one |
 | `web.yml`, PRs touching `apps/web/**`, `packages/sdk/**`, `packages/contract/**` | Vite build, Playwright on Chromium | no |
 | `nightly.yml` | full bench both modes, full Playwright, conformance against staging, `bun test --rerun-each 3` on both drivers to surface flakes | no; failures post to the board and open an issue |
 | `release.yml` | binaries, image, npm, deploys, rolling check | not a PR gate |
