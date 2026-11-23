@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import { Channel } from "../entities/channels.ts";
+import { ChannelPath } from "../entities/messages.ts";
 import { defineOperation } from "../operation.ts";
 
 /** Upstream's page size when a list of channels names none. */
@@ -32,5 +33,21 @@ export const listChannels = defineOperation({
   effects: { readOnly: true, idempotent: true, emits: [] },
   cli: { command: ["channels"], args: ["prefix"] },
   mcp: { tool: "list_channels" },
+  upstream: true,
+});
+
+export const createChannel = defineOperation({
+  name: "createChannel",
+  summary: "Create a public channel before anyone posts to it.",
+  route: { method: "POST", path: "/channels" },
+  scope: "board",
+  input: { body: Type.Object({ path: ChannelPath }, { additionalProperties: false }) },
+  output: Type.Object({ channel: Channel, created: Type.Boolean() }),
+  status: { createdWhen: "created" },
+  errors: ["invalid_request"],
+  access: { permission: "post", channel: "fromInput" },
+  effects: { readOnly: false, idempotent: true, emits: ["channel.created"] },
+  cli: { command: ["channels", "create"], args: ["path"] },
+  mcp: { tool: "create_channel" },
   upstream: true,
 });

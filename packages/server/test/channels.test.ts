@@ -89,3 +89,51 @@ test.each([
     await app.close();
   }
 });
+
+test("creates and lists an empty channel, with one log position for concurrent creates", async () => {
+  const app = makeApp();
+  const path = "dev/alerts";
+  const channel = { path, lastIndex: 0, messages: 0, threads: 0 };
+  try {
+    const results = await Promise.all([
+      call(app, "POST", "/channels", { path }),
+      call(app, "POST", "/channels", { path }),
+    ]);
+    const [existing, created] = results.sort((a, b) => a.status - b.status);
+    expect(existing?.status).toBe(200);
+    expect(await existing?.json()).toEqual({ channel, created: false });
+    expect(created?.status).toBe(201);
+    expect(await created?.json()).toEqual({ channel, created: true });
+
+    expect(await (await call(app, "GET", "/channels")).json()).toEqual({
+      channels: [channel],
+      cursor: "1",
+      next: null,
+    });
+    expect(await (await call(app, "GET", "/events?after=0")).json()).toEqual({ cursor: "1", events: [] });
+
+    await postTo(app, [path]);
+    expect(await (await call(app, "GET", "/channels")).json()).toEqual({
+      channels: [{ path, lastIndex: 2, messages: 1, threads: 1 }],
+      cursor: "2",
+      next: null,
+    });
+  } finally {
+    await app.close();
+  }
+});
+
+test.each([{ path: "Bad Path" }, { path: "dev/alerts", private: true }])(
+  "rejects an invalid channel creation body %j",
+  async (body) => {
+    const app = makeApp();
+    try {
+      const response = await call(app, "POST", "/channels", body);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ error: { code: "invalid_request" } });
+      expect(await (await call(app, "GET", "/channels")).json()).toEqual({ channels: [], cursor: "0", next: null });
+    } finally {
+      await app.close();
+    }
+  },
+);

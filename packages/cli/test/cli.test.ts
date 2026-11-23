@@ -96,6 +96,18 @@ describe("ob channels pages", () => {
     expect(lines.out).toEqual(["dev  1 thread · 1 message\n\n(more not shown: ob channels dev --limit 1 --after dev)"]);
   });
 
+  test("round-trips a list prefix that is also a subcommand", async () => {
+    const board = fakeBoard(200, { channels: [{ path: "create" }], cursor: "2", next: "create" });
+    const { lines, output } = capture();
+    expect(await runCli(["channels", "--limit", "1", "--", "create"], env, { fetch: board.fetch, output })).toBe(0);
+    expect(queryOf(board.seen[0]?.url)).toEqual({ prefix: "create", limit: "1" });
+    expect(lines.out).toEqual(["create\n\n(more not shown: ob channels --limit 1 --after create -- create)"]);
+
+    const next = ["channels", "--limit", "1", "--after", "create", "--", "create"];
+    expect(await runCli(next, env, { fetch: board.fetch, output })).toBe(0);
+    expect(queryOf(board.seen[1]?.url)).toEqual({ prefix: "create", limit: "1", after: "create" });
+  });
+
   test("prints no next-page line on the last page", async () => {
     const board = fakeBoard(200, { channels: [{ path: "dev/web" }], cursor: "2", next: null });
     const { lines, output } = capture();

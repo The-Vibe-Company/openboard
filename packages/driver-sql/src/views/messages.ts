@@ -1,9 +1,10 @@
 import type { Message } from "@openboard/contract";
-import { type BoardEvent, messages } from "@openboard/core";
+import { type BoardEvent, type MessagePosted, messages } from "@openboard/core";
 import type { BoardKeys, BoardScope, BoardView, BoardWriter } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { query, sql } from "../sql.ts";
 import { lockBoard, setHead } from "./boards.ts";
+import { findChannel, foldChannelCreated } from "./channels.ts";
 
 export const messageStatements = {
   insertEvent: sql`INSERT INTO events (org_id, board_id, id, type, at, thread, message, channel, actor, principal,
@@ -21,7 +22,7 @@ export const messageStatements = {
 };
 
 /** The fold of `message.posted` for a root: the message row with its precomputed view, and its channel's row. */
-async function foldMessagePosted(tx: Db, dialect: Dialect, keys: BoardKeys, event: BoardEvent): Promise<void> {
+async function foldMessagePosted(tx: Db, dialect: Dialect, keys: BoardKeys, event: MessagePosted): Promise<void> {
   const { payload } = event;
   await query(tx, dialect, messageStatements.insertMessage, {
     ...keys,
@@ -60,7 +61,8 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
     visibility: event.visibility,
     payload: JSON.stringify(event.payload),
   });
-  await foldMessagePosted(tx, dialect, keys, event);
+  if (event.type === "channel.created") await foldChannelCreated(tx, dialect, keys, event);
+  else await foldMessagePosted(tx, dialect, keys, event);
 }
 
 function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number): BoardWriter {
@@ -69,6 +71,7 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number): Board
     get head() {
       return head;
     },
+    channel: (path) => findChannel(tx, dialect, keys, path),
     async append(events) {
       for (const event of events) {
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);

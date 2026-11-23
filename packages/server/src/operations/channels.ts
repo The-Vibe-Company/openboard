@@ -1,5 +1,5 @@
-import type { listChannels } from "@openboard/contract";
-import { formatId } from "@openboard/core";
+import type { createChannel, listChannels } from "@openboard/contract";
+import { channels, formatId } from "@openboard/core";
 import type { Handler } from "./index.ts";
 
 /** One page of channels; `next` is the last path shown when one more matched, as upstream pages them. */
@@ -13,3 +13,14 @@ export const listChannelsHandler: Handler<typeof listChannels> = async (ctx, inp
   const page = channels.slice(0, limit);
   return { channels: page, cursor: formatId(head), next: channels.length > limit ? (page.at(-1)?.path ?? null) : null };
 };
+
+export const createChannelHandler: Handler<typeof createChannel> = async (ctx, { path }) =>
+  ctx.board.write(async (writer) => {
+    const existing = await writer.channel(path);
+    const { events, ...result } = channels.decideCreate({ head: writer.head, existing }, path, {
+      by: ctx.by,
+      now: ctx.now(),
+    });
+    if (events.length > 0) await writer.append(events);
+    return result;
+  });

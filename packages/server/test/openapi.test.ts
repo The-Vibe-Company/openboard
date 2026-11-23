@@ -14,6 +14,13 @@ test("publishes the board's OpenAPI description without credentials or a tenant 
       paths: {
         "/": { get: { operationId: "discovery" } },
         "/channels": {
+          post: {
+            operationId: "createChannel",
+            responses: {
+              "200": { content: { "application/json": { schema: { type: "object" } } } },
+              "201": { content: { "application/json": { schema: { type: "object" } } } },
+            },
+          },
           get: {
             operationId: "channels",
             responses: {

@@ -40,10 +40,18 @@ function describeOperation(operation: Operation) {
   const { params, query, body } = operation.input;
   const fields = [...parameters(params, "path"), ...parameters(query, "query")];
   const responses = errorResponses(operation);
-  responses[operation.status ?? 200] = {
+  const success = {
     description: "Success",
     content: { "application/json": { schema: operation.output } },
   };
+
+  const { status } = operation;
+  if (typeof status === "object") {
+    responses[200] = success;
+    responses[201] = success;
+  } else {
+    responses[status ?? 200] = success;
+  }
 
   return {
     operationId: operation.operationId ?? operation.name,

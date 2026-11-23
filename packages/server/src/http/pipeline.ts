@@ -4,7 +4,7 @@ import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
 import { handlerOf, type PublicOperation } from "../operations/index.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
-import { json } from "./respond.ts";
+import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
 import { type BoardPath, boardPath, notFound, type Tenants } from "./scope.ts";
 
@@ -47,7 +47,7 @@ async function runPublic(
   const input = decodeInput(operation, { params, query: Object.fromEntries(url.searchParams) });
   const boardUrl = `${pipeline.config.publicUrl}${path.mount}`;
   const output = await handlerOf(operation)({ boardUrl, now: pipeline.deps.now }, input);
-  return json(output, operation.status ?? 200);
+  return operationResponse(operation, output);
 }
 
 async function run(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields): Promise<Response> {
@@ -68,7 +68,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
     body: request.method === "GET" ? undefined : await readBody(request),
   });
   const output = await handlerOf(operation)({ board, by, now: pipeline.deps.now }, input);
-  return json(output, operation.status ?? 200);
+  return operationResponse(operation, output);
 }
 
 const REQUEST_ID = "x-request-id";

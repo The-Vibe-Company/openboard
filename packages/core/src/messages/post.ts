@@ -40,9 +40,6 @@ export interface MessagePosted {
   readonly payload: MessagePostedPayload;
 }
 
-/** Every event type a command appends so far. */
-export type BoardEvent = MessagePosted;
-
 /** What the board holds when a post is decided: its log head, read under the board's lock. */
 export interface PostState {
   readonly head: number;

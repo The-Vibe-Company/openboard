@@ -37,6 +37,7 @@ test("each mode prints its counters, with round trips only for hosted", async ()
     [
       "local",
       "Operation                 Statements",
+      "createChannel                      -",
       "discoverBoard                      -",
       "getMe                              -",
       "getOpenApi                         -",
@@ -52,6 +53,7 @@ test("each mode prints its counters, with round trips only for hosted", async ()
     [
       "hosted",
       "Operation                 Statements Round trips",
+      "createChannel                      -           -",
       "discoverBoard                      -           -",
       "getMe                              -           -",
       "getOpenApi                         -           -",

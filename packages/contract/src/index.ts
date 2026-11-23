@@ -31,6 +31,7 @@ export {
   type Scope,
 } from "./operation.ts";
 export {
+  createChannel,
   discoverBoard,
   getMe,
   getOpenApi,
