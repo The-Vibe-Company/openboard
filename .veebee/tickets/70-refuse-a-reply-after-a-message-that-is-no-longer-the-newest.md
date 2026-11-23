@@ -20,7 +20,7 @@ writes:
 conformance: ["core/replies after a message only while it's the thread's newest, one of any that race"]
 modes: [local]
 depends_on: [69]
-status: claimed
+status: done
 claimed_by: claude-t70
 issue: 70
 ---
@@ -29,7 +29,7 @@ issue: 70
 As an agent, I reply only if nobody has answered since I last read.
 
 ## Done when
-- [ ] with #2 the newest message of thread 1, `ob reply 1 a --after 2` posts; `ob reply 1 b --after 2` then prints `error: newer_message` with the command that reads what came after, exits 1, and posts nothing
+- [x] with #2 the newest message of thread 1, `ob reply 1 a --after 2` posts; `ob reply 1 b --after 2` then prints `error: newer_message` with the command that reads what came after, exits 1, and posts nothing
 
 ## Out of scope
 - Edits at a revision (73).
