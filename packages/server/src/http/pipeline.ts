@@ -1,5 +1,6 @@
 import { BoardError, decodeInput, type operations } from "@openboard/contract";
-import type { Deps, Principal, ServerConfig } from "../deps.ts";
+import { authenticate, verifiers } from "../auth/chain.ts";
+import type { Deps, ServerConfig } from "../deps.ts";
 import { handlerOf } from "../operations/index.ts";
 import { errorResponse } from "./errors.ts";
 import { json } from "./respond.ts";
@@ -13,11 +14,6 @@ export interface Pipeline {
   readonly deps: Deps;
   readonly routes: readonly Route<Contracted>[];
   readonly tenants: Tenants;
-}
-
-/** Authenticates the request. The local owner writes until the local owner token arrives (docs/auth.md). */
-function authenticate(config: ServerConfig): Principal {
-  return { actor: config.localOwner, principal: config.localOwner, profile: null };
 }
 
 async function readBody(request: Request): Promise<unknown> {
@@ -38,7 +34,7 @@ async function run(request: Request, pipeline: Pipeline): Promise<Response> {
   const matched = matchRoute(pipeline.routes, request.method, path.rest);
   if (!matched) throw notFound();
   const board = await pipeline.tenants.board(path);
-  const by = authenticate(pipeline.config);
+  const by = await authenticate(request, verifiers(pipeline.config), pipeline.config);
   const { operation } = matched;
   const input = decodeInput(operation, {
     params: matched.params,

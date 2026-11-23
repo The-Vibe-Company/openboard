@@ -11,6 +11,11 @@ writes:
   - packages/server/test/auth/local-owner.test.ts
   - packages/cli/src/config.ts
   - tools/conformance/src/run.ts
+  - tools/conformance/src/drivers.ts
+  - apps/openboard/src/compose.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/index.ts
+  - packages/cli/test/config.test.ts
 conformance: []
 modes: [local]
 depends_on: [36]
