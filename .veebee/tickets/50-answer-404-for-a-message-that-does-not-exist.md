@@ -9,8 +9,8 @@ writes:
 conformance: ["core/answers 404 for an ID that names nothing"]
 modes: [local]
 depends_on: [44]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-t50
 issue: 50
 ---
 
