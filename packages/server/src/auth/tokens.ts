@@ -7,6 +7,14 @@ import type { CredentialVerifier } from "./chain.ts";
 import { bearer, hashToken } from "./secrets.ts";
 
 const PREFIX = "obt_";
+/** Configuration operations are all board extensions and all operations mounted under /api/x. */
+export function refuseClaimedConfiguration(request: Request, operation: Pick<Operation, "scope" | "route">): void {
+  if (operation.scope !== "account" && !operation.route.path.startsWith("/x/")) return;
+  if (bearer(request)?.startsWith(PREFIX)) {
+    throw new BoardError("forbidden", "claimed tokens cannot access configuration routes");
+  }
+}
+
 /** `obt_<16 base32>_<43 base64url>`: the 16 base32 characters name the agent, `ag_<name>`. */
 const TOKEN = /^obt_([a-z2-7]{16})_[A-Za-z0-9_-]{43}$/;
 

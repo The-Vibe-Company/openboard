@@ -3,7 +3,7 @@ import type { PlatformView } from "@openboard/ports";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
 import { sessionOf } from "../auth/sessions.ts";
-import { keepInsidePin } from "../auth/tokens.ts";
+import { keepInsidePin, refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
 import { type AccountOperation, handlerOf, type PublicOperation } from "../operations/index.ts";
@@ -62,6 +62,7 @@ async function runPublic(
 
 /** An `account` operation: no tenant; the browser's session, if live, is the person (docs/auth.md step 6). */
 async function runAccount(request: Request, url: URL, operation: AccountOperation, params: Params, pipeline: Pipeline) {
+  refuseClaimedConfiguration(request, operation);
   const { config, deps, platform } = pipeline;
   const session = await sessionOf(request, platform, deps.now(), config.publicUrl);
   const input = validate(operation, {
@@ -96,11 +97,15 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   if (!matched) throw notFound();
   const { operation } = matched;
   logged.op = operation.name;
-  if (operation.scope === "public") return runPublic(url, path, operation, matched.params, pipeline);
+  if (operation.scope === "public") {
+    refuseClaimedConfiguration(request, operation);
+    return runPublic(url, path, operation, matched.params, pipeline);
+  }
   if (operation.scope === "account") throw notFound();
   const board = await pipeline.tenants.board(path);
   const by = await authenticate(request, verifiers(pipeline.config), board, operation.name);
   logged.actor = by.actor;
+  refuseClaimedConfiguration(request, operation);
   const input = validate(operation, {
     params: matched.params,
     query: Object.fromEntries(url.searchParams),
