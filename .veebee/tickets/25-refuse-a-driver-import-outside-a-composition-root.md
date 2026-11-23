@@ -7,11 +7,14 @@ writes:
   - scripts/ci/boundaries.ts
   - scripts/ci/boundaries.json
   - scripts/ci/fixtures/boundaries/driver/**
+  - scripts/ci/boundaries/driver.ts
+  - scripts/ci/boundaries/graph.ts
+  - scripts/ci/boundaries/types.ts
 conformance: []
 modes: []
 depends_on: [10]
-status: ready
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-ticket-25
 issue: 25
 ---
 
