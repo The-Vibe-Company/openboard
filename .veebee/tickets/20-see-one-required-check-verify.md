@@ -8,8 +8,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [04, 19]
-status: ready
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t20
 issue: 20
 ---
 
