@@ -6,11 +6,14 @@ package: driver-sql
 writes:
   - packages/driver-sql/src/statements.ts
   - packages/driver-sql/test/statements.test.ts
+  - packages/driver-sql/package.json
+  - packages/driver-sql/tsconfig.json
+  - bun.lock
 conformance: []
 modes: []
 depends_on: [01]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-opus-5-5
 issue: 32
 ---
 
