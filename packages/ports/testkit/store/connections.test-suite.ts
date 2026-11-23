@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { connections } from "@openboard/core";
+import { agents, connections } from "@openboard/core";
 import type { BoardView } from "../../src/index.ts";
 import { type OpenStore, testScope } from "../index.ts";
 
@@ -34,6 +34,8 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
         connection: laptop,
         grant: { id: 4, principals: [{ kind: "connection", connection: laptop.id }], can: laptop.can },
         secretHash: "cd".repeat(32),
+        tokenTtl: 3600,
+        tokenMax: 86_400,
       });
       const ci = await create(board, "ci", "b");
       expect(ci.grant).toBe("g5");
@@ -46,6 +48,41 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
       expect(await board.connection("cn_cccccccccccccccc")).toBeNull();
       const otherOrg = store.board(testScope({ ...keys, orgId: keys.orgId + 1 }));
       expect(await otherOrg.connection(laptop.id)).toBeNull();
+    } finally {
+      await store.close();
+    }
+  });
+
+  test(`${driver}: stores a claimed agent with its connection and token hash, off the feed`, async () => {
+    const store = await open();
+    try {
+      const keys = await store.platform().findBoard("local", "main");
+      if (!keys) throw new Error("the implicit board local/main is missing");
+      const board = store.board(testScope(keys));
+      const fixers = await create(board, "fixers", "a");
+      const connection = { ...fixers, profiles: ["fixer-*"], tokenTtl: 3600, tokenMax: 86_400 };
+      const token = { id: `ag_${"b".repeat(16)}`, hash: "ef".repeat(32) };
+      const agent = await board.write(async (writer) => {
+        const context = {
+          by: { ...by, actor: fixers.principal, principal: fixers.principal },
+          now: 1,
+          connection,
+          token,
+        };
+        const decided = agents.decideClaim({ head: writer.head }, { profile: "Fixer-2" }, context);
+        await writer.append(decided.events);
+        return decided.agent;
+      });
+      expect(await board.agent(token.id)).toEqual({
+        agent,
+        connection: { id: fixers.id, name: "fixers", profiles: ["*"] },
+        profile: "Fixer-2",
+        tokenHash: "ef".repeat(32),
+      });
+      expect(await board.readEvents(0)).toEqual({ head: 2, cursor: 2, events: [] });
+      expect(await board.agent(`ag_${"c".repeat(16)}`)).toBeNull();
+      const otherOrg = store.board(testScope({ ...keys, orgId: keys.orgId + 1 }));
+      expect(await otherOrg.agent(token.id)).toBeNull();
     } finally {
       await store.close();
     }

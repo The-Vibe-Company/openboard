@@ -60,7 +60,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   logged.op = operation.name;
   if (operation.scope === "public") return runPublic(url, path, operation, matched.params, pipeline);
   const board = await pipeline.tenants.board(path);
-  const by = await authenticate(request, verifiers(pipeline.config), board);
+  const by = await authenticate(request, verifiers(pipeline.config), board, operation.name);
   logged.actor = by.actor;
   const input = validate(operation, {
     params: matched.params,

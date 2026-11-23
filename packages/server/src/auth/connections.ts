@@ -8,20 +8,24 @@ const PREFIX = "obc_";
 /** `obc_<16 base32>_<43 base64url>`: the 16 base32 characters name the connection, `cn_<name>`. */
 const SECRET = /^obc_([a-z2-7]{16})_[A-Za-z0-9_-]{43}$/;
 
+/** The operation any connection's secret may call, `direct` or not: trading it for an agent token (mode 2). */
+const CLAIM = "claimConnection";
+
 /**
- * Step 2 of the verifier chain (docs/auth.md "Three ways to connect", mode 1): an `obc_` bearer writes as its
- * connection when the request's board holds that connection, it is `direct`, and the secret's SHA-256 is the one kept.
+ * Step 2 of the verifier chain (docs/auth.md "Three ways to connect", modes 1 and 2): an `obc_` bearer writes as its
+ * connection when the request's board holds that connection, the secret's SHA-256 is the one kept, and the connection
+ * is `direct` or the request claims an agent token.
  */
 export function connectionVerifier(): CredentialVerifier {
   return {
     name: "connection",
     match: (request) => bearer(request)?.startsWith(PREFIX) ?? false,
-    async verify(request: Request, board: BoardView): Promise<Principal | null> {
+    async verify(request: Request, board: BoardView, operation: string): Promise<Principal | null> {
       const secret = bearer(request) ?? "";
       const id = SECRET.exec(secret)?.[1];
       if (id === undefined) return null;
       const record = await board.connection(`cn_${id}`);
-      if (!record?.connection.direct) return null;
+      if (!record || !(record.connection.direct || operation === CLAIM)) return null;
       const presented = Buffer.from(hashToken(secret), "hex");
       if (!timingSafeEqual(presented, Buffer.from(record.secretHash, "hex"))) return null;
       const { principal, name, profiles } = record.connection;

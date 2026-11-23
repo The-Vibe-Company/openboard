@@ -52,3 +52,23 @@ export const CreatedConnection = Type.Object({
   env: Type.Object({ BOARD_URL: Type.String(), BOARD_TOKEN: Type.String() }),
 });
 export type CreatedConnection = Static<typeof CreatedConnection>;
+
+/** An agent claimed with a connection's secret: its token is pinned to one profile (docs/auth.md mode 2). */
+export const ClaimedAgent = Type.Object({
+  id: Type.String(),
+  /** `ob:conn:cn_…+<profile>`: the connection's principal and the pinned profile. */
+  actor: Type.String(),
+  can: Can,
+  /** When the token stops working; a refresh moves it, never past `hardExpiresAt`. */
+  expiresAt: Type.String(),
+  hardExpiresAt: Type.String(),
+});
+export type ClaimedAgent = Static<typeof ClaimedAgent>;
+
+/** What a claim answers: the agent, its `obt_` token shown once, and the env an orchestrator injects. */
+export const ClaimResult = Type.Object({
+  agent: ClaimedAgent,
+  token: Type.String(),
+  env: Type.Object({ BOARD_URL: Type.String(), BOARD_TOKEN: Type.String(), BOARD_PROFILE: Type.String() }),
+});
+export type ClaimResult = Static<typeof ClaimResult>;

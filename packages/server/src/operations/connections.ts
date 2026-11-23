@@ -1,5 +1,5 @@
-import { BoardError, type createConnection } from "@openboard/contract";
-import { connections } from "@openboard/core";
+import { BoardError, type claimConnection, type createConnection } from "@openboard/contract";
+import { agents, connections } from "@openboard/core";
 import { mintSecret, SECRET_BYTES } from "../auth/secrets.ts";
 import { credentialKind } from "../deps.ts";
 import type { Handler } from "./index.ts";
@@ -32,4 +32,31 @@ export const createConnectionHandler: Handler<typeof createConnection> = async (
     return decided.connection;
   });
   return { connection, secret: minted.token, env: { BOARD_URL: ctx.boardUrl, BOARD_TOKEN: minted.token } };
+};
+
+const CONNECTION = "ob:conn:";
+
+/**
+ * Trades a connection's secret for an agent token pinned to one profile, answered here once with the env an
+ * orchestrator injects (docs/auth.md "Three ways to connect", mode 2). Only a connection's secret claims.
+ */
+export const claimConnectionHandler: Handler<typeof claimConnection> = async (ctx, input) => {
+  if (ctx.by[credentialKind] !== "connection") {
+    throw new BoardError("forbidden", "only a connection's secret claims an agent token", {
+      hint: "Send the connection's secret as the bearer: `ob connect <BOARD_URL> --as <profile>` reads it from stdin.",
+    });
+  }
+  const record = await ctx.board.connection(ctx.by.principal.slice(CONNECTION.length));
+  if (!record) throw new BoardError("unauthorized", "the credential is not valid on this board");
+  const minted = mintSecret("obt_", ctx.randomBytes(SECRET_BYTES));
+  const token = { id: `ag_${minted.name}`, hash: minted.hash };
+  const { id, profiles, can } = record.connection;
+  const connection = { id, profiles, can, tokenTtl: record.tokenTtl, tokenMax: record.tokenMax };
+  const agent = await ctx.board.write(async (writer) => {
+    const decided = agents.decideClaim({ head: writer.head }, input, { by: ctx.by, now: ctx.now(), connection, token });
+    await writer.append(decided.events);
+    return decided.agent;
+  });
+  const env = { BOARD_URL: ctx.boardUrl, BOARD_TOKEN: minted.token, BOARD_PROFILE: input.profile };
+  return { agent, token: minted.token, env };
 };

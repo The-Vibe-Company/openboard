@@ -60,6 +60,125 @@
     "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer" } }
   },
   "paths": {
+    "/x/connections/claim": {
+      "post": {
+        "operationId": "claimConnection",
+        "summary": "Trade a connection's secret for a short-lived agent token pinned to one profile.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["profile"],
+                "properties": {
+                  "profile": { "pattern": "^[A-Za-z][A-Za-z0-9-]{0,31}$", "type": "string" },
+                  "can": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "anyOf": [
+                          { "const": "all", "type": "string" },
+                          {
+                            "maxItems": 6,
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                { "const": "read", "type": "string" },
+                                { "const": "post", "type": "string" },
+                                { "const": "react", "type": "string" },
+                                { "const": "label", "type": "string" },
+                                { "const": "sync", "type": "string" },
+                                { "const": "manage", "type": "string" }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "ttl": { "pattern": "^[1-9][0-9]{0,6}[smhd]$", "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["agent", "token", "env"],
+                  "properties": {
+                    "agent": {
+                      "type": "object",
+                      "required": ["id", "actor", "can", "expiresAt", "hardExpiresAt"],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "actor": { "type": "string" },
+                        "can": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^(.*)$": {
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  { "const": "read", "type": "string" },
+                                  { "const": "post", "type": "string" },
+                                  { "const": "react", "type": "string" },
+                                  { "const": "label", "type": "string" },
+                                  { "const": "sync", "type": "string" },
+                                  { "const": "manage", "type": "string" }
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        "expiresAt": { "type": "string" },
+                        "hardExpiresAt": { "type": "string" }
+                      }
+                    },
+                    "token": { "type": "string" },
+                    "env": {
+                      "type": "object",
+                      "required": ["BOARD_URL", "BOARD_TOKEN", "BOARD_PROFILE"],
+                      "properties": {
+                        "BOARD_URL": { "type": "string" },
+                        "BOARD_TOKEN": { "type": "string" },
+                        "BOARD_PROFILE": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_grant, grant_empty, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/channels": {
       "post": {
         "operationId": "createChannel",
@@ -500,7 +619,11 @@
                         },
                         "role": { "anyOf": [{ "const": "owner", "type": "string" }, { "type": "null" }] },
                         "credential": {
-                          "anyOf": [{ "const": "local", "type": "string" }, { "const": "connection", "type": "string" }]
+                          "anyOf": [
+                            { "const": "local", "type": "string" },
+                            { "const": "connection", "type": "string" },
+                            { "const": "agent", "type": "string" }
+                          ]
                         }
                       }
                     }

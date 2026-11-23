@@ -33,6 +33,7 @@ export {
   type Scope,
 } from "./operation.ts";
 export {
+  claimConnection,
   createChannel,
   createConnection,
   discoverBoard,

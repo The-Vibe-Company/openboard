@@ -4,6 +4,7 @@ import type { BoardKeys, BoardScope, BoardView, BoardWriter } from "@openboard/p
 import type { Db, Dialect } from "../db.ts";
 import { query, sql } from "../sql.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
+import { foldAgentClaimed } from "./agents.ts";
 import { lockBoard, setHead } from "./boards.ts";
 import { findChannel, foldChannelCreated } from "./channels.ts";
 import { connectionNamed, foldConnectionCreated, nextGrant } from "./connections.ts";
@@ -89,6 +90,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   if (event.type === "channel.created") await foldChannelCreated(tx, dialect, keys, event);
   else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
   else if (event.type === "actor.seen") await foldActorSeen(tx, dialect, keys, event);
+  else if (event.type === "ob.agent.claimed") await foldAgentClaimed(tx, dialect, keys, event);
   else await foldMessagePosted(tx, dialect, keys, event);
 }
 

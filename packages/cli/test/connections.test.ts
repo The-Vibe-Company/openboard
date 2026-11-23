@@ -65,6 +65,20 @@ describe("ob connections create", () => {
     expect(JSON.parse(lines.out.join("\n"))).toEqual({ connection, env: { BOARD_URL }, secretFile: file });
   });
 
+  test("sends the profile patterns --profiles names, comma-separated or repeated", async () => {
+    const fake = board(201, created);
+    const { output } = capture();
+    const argv = ["connections", "create", "fixers", "--can", "dev/=post", "--profiles", "fixer-*,ci"];
+    const more = ["--profiles", "bot", "--secret-file", join(dir, "fixers.secret")];
+    expect(await runCli([...argv, ...more], env, { fetch: fake.fetch, output })).toBe(0);
+    expect(fake.seen[0]?.body).toEqual({
+      name: "fixers",
+      can: { "dev/": ["post"] },
+      direct: false,
+      profiles: ["fixer-*", "ci", "bot"],
+    });
+  });
+
   test("refuses an existing secret file before asking the board", async () => {
     const file = join(dir, "laptop.secret");
     writeFileSync(file, "keep me");

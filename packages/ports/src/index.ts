@@ -1,4 +1,5 @@
 export type {
+  AgentRecord,
   BoardKeys,
   BoardScope,
   BoardView,

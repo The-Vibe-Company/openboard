@@ -1,4 +1,4 @@
-import type { Actor, Channel, Connection, Message, Thread, ThreadSummary } from "@openboard/contract";
+import type { Actor, Channel, ClaimedAgent, Connection, Message, Thread, ThreadSummary } from "@openboard/contract";
 import type { BoardEvent, Grant, MessagePosted, messages } from "@openboard/core";
 
 declare const minted: unique symbol;
@@ -61,6 +61,18 @@ export interface ConnectionRecord {
   readonly connection: Connection;
   readonly grant: Grant;
   readonly secretHash: string;
+  /** A claimed token's lifetime and hard cap, in seconds. */
+  readonly tokenTtl: number;
+  readonly tokenMax: number;
+}
+
+/** An agent claimed with a connection's secret, with its connection and the SHA-256 (hex) of its token. */
+export interface AgentRecord {
+  readonly agent: ClaimedAgent;
+  readonly connection: { readonly id: string; readonly name: string; readonly profiles: readonly string[] };
+  /** The pinned profile as the claim spelled it, which is how it is shown. */
+  readonly profile: string;
+  readonly tokenHash: string;
 }
 
 /** One board's storage; every statement it runs is bound to its scope. */
@@ -74,6 +86,8 @@ export interface BoardView {
   listActors(): Promise<{ actors: Actor[]; head: number }>;
   /** The channel's first `limit` messages after `after`, or its latest `limit`, oldest first. Null if `after` exceeds the board head. */
   channelMessages(query: ChannelMessagesQuery): Promise<Message[] | null>;
+  /** The agent of this board with the ID, or null when the board has none with it. */
+  agent(id: string): Promise<AgentRecord | null>;
   /** The connection of this board with the ID, or null when the board has none with it. */
   connection(id: string): Promise<ConnectionRecord | null>;
   /** The first `limit` channels the query selects, by path, with their counts and the board head at the time of the read. */
