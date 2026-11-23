@@ -8,6 +8,6 @@ Inputs for the provider rule of `scripts/ci/boundaries.ts` (docs/codebase.md 3.2
 ```sh
 cp -r scripts/ci/fixtures/boundaries/provider/refused/. . && bun run lint   # exits 1
 git clean -fdq packages
-cp -r scripts/ci/fixtures/boundaries/provider/allowed/. . && bun run lint   # graph accepted; the manifest rule names the undeclared import
+cp -r scripts/ci/fixtures/boundaries/provider/allowed/. . && bun run lint   # exits 0
 git clean -fdq packages
 ```
