@@ -15,7 +15,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [139]
-status: claimed
+status: done
 claimed_by: claude-opus-5-5
 issue: 141
 ---
@@ -24,7 +24,7 @@ issue: 141
 As a person, I end my session.
 
 ## Done when
-- [ ] `curl -b cookies -H 'x-ob-csrf: …' -X POST http://127.0.0.1:8787/auth/logout` ends the session, and `http://127.0.0.1:8787/api/x/session` then answers signed out
+- [x] `curl -b cookies -H 'x-ob-csrf: …' -X POST http://127.0.0.1:8787/auth/logout` ends the session, and `http://127.0.0.1:8787/api/x/session` then answers signed out
 
 ## Out of scope
 - Signing out everywhere (141).
