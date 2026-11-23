@@ -1,24 +1,60 @@
-import { BoardError } from "@openboard/contract";
+import { BoardError, operations } from "@openboard/contract";
 import type { BoardKeys, BoardScope, BoardView, Store } from "@openboard/ports";
 
 /** Organization and board slugs (docs/protocol.md "Slugs"). */
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}$/;
 
+// Reserve documented segments before their operations ship, plus new segments from the contract.
+const BOARD_ROUTE_SEGMENTS = Object.freeze([
+  "actors",
+  "attachments",
+  "avatars",
+  "channels",
+  "events",
+  "grants",
+  "inbox",
+  "links",
+  "me",
+  "messages",
+  "posts",
+  "schedules",
+  "schemas",
+  "sources",
+  "sync",
+  "tasks",
+  "threads",
+  "wake",
+  "watchers",
+  "webhooks",
+  "x",
+  ...operations.map(({ route }) => route.path.split("/")[1] ?? "").filter(Boolean),
+]);
+
 export interface BoardPath {
   readonly org: string;
   readonly board: string;
+  /** The mount the client used, without a trailing slash. */
+  readonly mount: string;
   /** The rest of the path, relative to `BOARD_URL`. */
   readonly rest: string;
 }
 
 export const notFound = () => new BoardError("not_found", "no such board or route");
 
-/** Splits `/api/<org>/<board>/<rest>` (D35); null for a path that does not name a board. */
-export function boardPath(pathname: string): BoardPath | null {
-  const match = /^\/api\/([^/]+)\/([^/]+)(\/.*)?$/.exec(pathname);
+/** Resolves the local alias before validating the explicit organization and board slugs (D35). */
+export function boardPath(pathname: string, mode: "local" | "hosted"): BoardPath | null {
+  if (pathname !== "/api" && !pathname.startsWith("/api/")) return null;
+  const relative = pathname.slice("/api".length) || "/";
+  const [, first = ""] = relative.split("/", 2);
+  const reserved = BOARD_ROUTE_SEGMENTS.includes(first);
+  if (mode === "local" && (relative === "/" || reserved)) {
+    return { org: "local", board: "main", mount: "/api", rest: relative };
+  }
+
+  const match = /^\/([^/]+)\/([^/]+)(\/.*)?$/.exec(relative);
   const [, org = "", board = "", rest = "/"] = match ?? [];
-  if (!match || !SLUG.test(org) || !SLUG.test(board)) return null;
-  return { org, board, rest };
+  if (!match || reserved || !SLUG.test(org) || !SLUG.test(board)) return null;
+  return { org, board, mount: `/api/${org}/${board}`, rest };
 }
 
 /** The board a path names. Unknown slugs answer 404 without saying which part is unknown (docs/codebase.md 4.4). */

@@ -45,13 +45,13 @@ async function runPublic(
   pipeline: Pipeline,
 ): Promise<Response> {
   const input = decodeInput(operation, { params, query: Object.fromEntries(url.searchParams) });
-  const boardUrl = `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`;
+  const boardUrl = `${pipeline.config.publicUrl}${path.mount}`;
   const output = await handlerOf(operation)({ boardUrl, now: pipeline.deps.now }, input);
   return json(output, operation.status ?? 200);
 }
 
 async function run(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields): Promise<Response> {
-  const path = boardPath(url.pathname);
+  const path = boardPath(url.pathname, pipeline.config.mode);
   if (!path) throw notFound();
   logged.org = path.org;
   const matched = matchRoute(pipeline.routes, request.method, path.rest);
