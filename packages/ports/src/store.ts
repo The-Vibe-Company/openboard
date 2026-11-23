@@ -110,6 +110,7 @@ export interface OrgScope {
 }
 
 export interface OrgView {
+  listMembers(): Promise<{ principal: string; role: Role }[]>;
   /** Stores the invitation and audit event together. False if the creator no longer has admin rights here. */
   createInvitation(record: {
     readonly invitation: Invitation;
@@ -156,6 +157,8 @@ export interface PlatformView {
   memberships(personId: string): Promise<MembershipRecord[]>;
   /** The tenant resolver checks the signed-in person's membership before minting an organization scope. */
   orgMembership(slug: string, personId: string): Promise<{ orgId: number; role: Role } | null>;
+  /** Redeems the exact token hash and records the membership and audit event in one transaction. */
+  acceptInvitation(tokenHash: Uint8Array, personId: string, at: number): Promise<MembershipRecord | null>;
   /** A capability lookup: only the exact token hash selects an invitation, returning preview fields. */
   invitationPreview(tokenHash: Uint8Array): Promise<{
     orgName: string;

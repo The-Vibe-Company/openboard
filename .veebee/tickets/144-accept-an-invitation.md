@@ -10,11 +10,21 @@ writes:
   - packages/ports/testkit/store/invitations.test-suite.ts
   - packages/server/test/invitations.test.ts
   - packages/ports/src/store.ts
+  - .veebee/tickets/144-accept-an-invitation.md
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/sdk/src/client.ts
+  - packages/server/openapi.json
+  - packages/server/src/http/openapi.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/index.ts
 conformance: []
 modes: [local]
 depends_on: [143]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 145
 ---
 
@@ -22,11 +32,11 @@ issue: 145
 As an invited person, I join the organization with the role I was given.
 
 ## Done when
-- [ ] a second person, signed in with GitHub, `POST http://127.0.0.1:8787/api/x/invitations/accept {"token":…}` becomes a `member` of `acme`, and `GET http://127.0.0.1:8787/api/x/orgs/acme/members` lists both people
+- [x] a second person, signed in with GitHub, `POST http://127.0.0.1:8787/api/x/invitations/accept {"token":…}` becomes a `member` of `acme`, and `GET http://127.0.0.1:8787/api/x/orgs/acme/members` lists both people
 
 ## Out of scope
 - Used, revoked or expired links (147).
 - Membership caps on boards (152).
 
 ## Notes
-One transaction with `ob.member.added` (`docs/auth.md`). Notes on mode: M4 must pass in local mode, but local mode has "no sign-up" (`docs/architecture.md` table) while sign-in providers can be configured (`docs/auth.md` "Local mode"). These criteria assume `ob serve` with `OPENBOARD_GITHUB_CLIENT_ID`, `OPENBOARD_GITHUB_CLIENT_SECRET` and `OPENBOARD_SIGNUP=open`; the owner must confirm (`.veebee/cut.md` "Could not place"). Until the front (M8), browser pages after sign-in are not built, so criteria use the documented `/api/x/…` routes with the session cookie and `x-ob-csrf`.
+One transaction with `ob.member.added` (`docs/auth.md`). The [orchestrator confirmed](https://github.com/The-Vibe-Company/openboard/issues/145#issuecomment-7116543071) that M4 acceptance runs on local SQLite with `OPENBOARD_SIGNUP=open` and GitHub configured. Tests fake the provider and use the `/api/x/…` routes with the session cookie and `x-ob-csrf`.

@@ -231,13 +231,13 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/api/x/orgs/:org` | admin | rename (display name only) |
 | POST | `/api/x/orgs/:org/delete` | owner | soft delete; hard delete after 30 days |
 | POST | `/api/x/orgs/:org/export` | owner | export job; `GET /api/x/orgs/:org/exports/:id` |
-| GET | `/api/x/orgs/:org/members` | member | |
+| GET | `/api/x/orgs/:org/members` | member | `{ members: [{ principal, role }] }` |
 | POST | `/api/x/orgs/:org/members/:user/role` | admin (owner to grant `owner`) | `{ role }`; the last owner cannot be demoted |
 | POST | `/api/x/orgs/:org/members/:user/remove` | admin, or the person themself | |
 | GET, POST | `/api/x/orgs/:org/invitations` | admin | `{ role, email?, send? }` → `{ invitation, url }` |
 | POST | `/api/x/orgs/:org/invitations/:id/revoke` | admin | |
 | GET | `/api/x/invitations/:token` | anyone | organization name, role, expiry (for the accept page) |
-| POST | `/api/x/invitations/accept` | person | `{ token }` |
+| POST | `/api/x/invitations/accept` | person | `{ token }` → `{ org, role }` |
 | GET, POST | `/api/x/orgs/:org/boards` | member / admin | list; create `{ slug, name }` with seeded grants |
 | POST | `/api/x/orgs/:org/boards/:board/delete` | admin | soft delete |
 | GET | `/api/x/orgs/:org/audit` | admin | organization events |

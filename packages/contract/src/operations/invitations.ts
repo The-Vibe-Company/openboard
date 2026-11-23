@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import { Invitation, InvitationPreview, InvitationRole } from "../entities/invitations.ts";
-import { Slug } from "../entities/orgs.ts";
+import { Membership, Role, Slug } from "../entities/orgs.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
 export const createInvitation = defineOperation({
@@ -43,5 +43,37 @@ export const previewInvitation = defineOperation({
   cli: false,
   mcp: false,
   why: "The invitation page opens the link directly without a board credential.",
+  upstream: false,
+});
+
+export const acceptInvitation = defineOperation({
+  name: "acceptInvitation",
+  summary: "Join the organization with the role granted by an invitation link.",
+  route: { method: "POST", path: "/invitations/accept", mount: "/api/x" },
+  scope: "account",
+  input: { body: Type.Object({ token: Ref("invitation") }, { additionalProperties: false }) },
+  output: Membership,
+  errors: ["invalid_request", "unauthorized", "forbidden", "not_found"],
+  access: null,
+  effects: { readOnly: false, idempotent: false, emits: ["ob.member.added"] },
+  cli: false,
+  mcp: false,
+  why: "An invited person joins with a browser session.",
+  upstream: false,
+});
+
+export const listMembers = defineOperation({
+  name: "listMembers",
+  summary: "List the members of the organization.",
+  route: { method: "GET", path: "/orgs/:org/members" },
+  scope: "org",
+  input: { params: Type.Object({ org: Slug }) },
+  output: Type.Object({ members: Type.Array(Type.Object({ principal: Type.String(), role: Role })) }),
+  errors: ["not_found", "unauthorized", "forbidden"],
+  access: { permission: "read", channel: "any" },
+  effects: { readOnly: true, idempotent: true, emits: [] },
+  cli: false,
+  mcp: false,
+  why: "Organization membership is read with a browser session.",
   upstream: false,
 });

@@ -22,7 +22,7 @@ export interface ClientOptions {
   /** `BOARD_URL`: `http://127.0.0.1:8787/api/local/main`. */
   readonly url: string;
   readonly token?: string;
-  /** CSRF value from the browser's session for organization writes. */
+  /** CSRF value from the browser's session for account and organization writes. */
   readonly csrf?: string;
   /** `BOARD_PROFILE`: write as this profile of the token's principal, sent as `x-board-profile`. */
   readonly profile?: string;
@@ -52,7 +52,7 @@ function requestOf(operation: Operation, input: Readonly<Record<string, unknown>
   if (!platformMount && options.token) headers.authorization = `Bearer ${options.token}`;
   if (!platformMount && options.profile) headers[PROFILE_HEADER] = options.profile;
   if (!operation.input.body) return new Request(url, { method: operation.route.method, headers });
-  if (operation.scope === "org" && options.csrf) headers["x-ob-csrf"] = options.csrf;
+  if (platformMount && operation.scope !== "public" && options.csrf) headers["x-ob-csrf"] = options.csrf;
   headers["content-type"] = "application/json";
   return new Request(url, { method: operation.route.method, headers, body: JSON.stringify(body) });
 }
