@@ -8,7 +8,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [04, 19]
-status: claimed
+status: done
 claimed_by: claude-opus-t20
 issue: 20
 ---
