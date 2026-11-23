@@ -38,6 +38,7 @@ async function withTickets(files: Record<string, string>, run: (cwd: string) => 
 test.each([
   ["scripts/ci/**", "scripts/ci/sizes.ts", true],
   ["scripts/ci/**", "scripts/ci", true],
+  ["scripts/ci/", "scripts/ci/sizes.ts", true],
   ["scripts/ci/**", "scripts/cid/x.ts", false],
   ["packages/*/package.json", "packages/core/package.json", true],
   ["packages/*/package.json", "packages/core/src/package.json", false],
@@ -54,7 +55,9 @@ test.each([
 });
 
 test("Unsupported glob syntax is refused rather than guessed", () => {
-  expect(() => globsOverlap("src/{a,b}.ts", "src/a.ts")).toThrow("unsupported writes glob");
+  for (const glob of ["src/{a,b}.ts", "./src/a.ts", "src//a.ts", "src/../a.ts", "/src/a.ts", ""]) {
+    expect(() => globsOverlap(glob, "src/a.ts")).toThrow("unsupported writes glob");
+  }
 });
 
 test("A claim only rewrites status and claimed_by", () => {

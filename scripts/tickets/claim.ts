@@ -43,7 +43,9 @@ function overLimit(ticket: Ticket, held: Ticket[]) {
 export async function claimTicket(reference: string, { cwd = process.cwd(), agent }: Options) {
   if (!/^\d+$/.test(reference)) throw new ClaimRefused(`Expected a ticket number, got ${JSON.stringify(reference)}`);
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(agent)) {
-    throw new ClaimRefused(`Expected an agent name of letters, digits, '.', '_' or '-', got ${JSON.stringify(agent)}`);
+    throw new ClaimRefused(
+      `Expected an agent name of letters, digits, '.', '_' or '-', got ${JSON.stringify(agent)}; pass --as <agent>`,
+    );
   }
   const paths = Array.from(new Bun.Glob(".veebee/tickets/*.md").scanSync({ cwd })).sort();
   const tickets = await Promise.all(

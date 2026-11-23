@@ -100,11 +100,12 @@ type Token = string;
 // characters within a segment, `?` one character. Other glob syntax is refused, not guessed.
 export function globsOverlap(a: string, b: string): boolean {
   for (const glob of [a, b]) {
-    if (/[[\]{}!\\]/.test(glob) || glob.startsWith("/") || glob === "") {
+    const parts = glob.replace(/\/$/, "").split("/");
+    if (/[[\]{}!\\]/.test(glob) || parts.some((segment) => ["", ".", ".."].includes(segment))) {
       throw new Error(`unsupported writes glob: ${JSON.stringify(glob)}`);
     }
   }
-  const segments = (glob: string) => glob.replace(/\/+$/, "/**").split("/");
+  const segments = (glob: string) => glob.replace(/\/$/, "/**").split("/");
   return intersects(segments(a), segments(b), "**", (x, y) => intersects([...x], [...y], "*", charsMatch));
 }
 
