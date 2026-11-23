@@ -3,6 +3,7 @@ import init from "../migrations/0001-init.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { platformView } from "./views/boards.ts";
 import { channelReads } from "./views/channels.ts";
+import { eventReads } from "./views/events.ts";
 import { boardView } from "./views/messages.ts";
 import { threadReads } from "./views/threads.ts";
 
@@ -30,6 +31,7 @@ export function createViews(
       ...boardView(db, dialect, scope),
       ...threadReads(db, dialect, scope),
       ...channelReads(db, dialect, scope),
+      ...eventReads(db, dialect, scope),
     }),
   };
 }

@@ -4,6 +4,7 @@ import type { Principal } from "../deps.ts";
 import { discoverBoardHandler } from "./discovery.ts";
 import { getMeHandler } from "./actors.ts";
 import { listChannelsHandler } from "./channels.ts";
+import { readEventsHandler } from "./events.ts";
 import { listMessagesHandler, postMessageHandler } from "./messages.ts";
 import { readThreadHandler } from "./threads.ts";
 
@@ -41,6 +42,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listChannels: listChannelsHandler,
   listMessages: listMessagesHandler,
   postMessage: postMessageHandler,
+  readEvents: readEventsHandler,
   readThread: readThreadHandler,
 };
 

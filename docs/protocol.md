@@ -133,7 +133,7 @@ answers. OpenBoard adds:
 | GET | `/posts/:id` | U | |
 | POST | `/messages` | U | `sync` targets: 400 `invalid_request` "this board syncs nowhere" |
 | POST | `/messages/:id/edit`, `/delete`, `/reactions`, `/labels` | U | |
-| GET | `/events` | U | SSE and long-poll on any instance |
+| GET | `/events` | U | JSON feed with `after`; SSE and long-poll planned |
 
 ### Attachments, schedules, tasks, grants, schemas
 

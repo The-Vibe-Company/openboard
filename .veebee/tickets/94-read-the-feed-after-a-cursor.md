@@ -4,6 +4,13 @@ title: Read the feed after a cursor
 milestone: M3-live-tail
 package: server
 writes:
+  - docs/protocol.md
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/statements.ts
+  - packages/ports/testkit/index.ts
+  - packages/server/src/operations/index.ts
   - packages/contract/src/operations/events.ts
   - packages/server/src/operations/events.ts
   - packages/driver-sql/src/views/events.ts
@@ -11,11 +18,12 @@ writes:
   - packages/server/test/events.test.ts
   - packages/ports/src/store.ts
   - packages/contract/src/entities/events.ts
+  - tools/bench/test/counters.test.ts
 conformance: []
 modes: [local]
 depends_on: [36]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 94
 ---
 
@@ -23,8 +31,8 @@ issue: 94
 As an agent, I read what happened on the board since a cursor.
 
 ## Done when
-- [ ] `curl 'http://127.0.0.1:8787/api/local/main/events?after=0'` answers `{ events, cursor }` with a `message.posted` event for #1 whose `cursor` is `"1"`
-- [ ] reading again `after` that answer's `cursor` repeats none of those events
+- [x] `curl 'http://127.0.0.1:8787/api/local/main/events?after=0'` answers `{ events, cursor }` with a `message.posted` event for #1 whose `cursor` is `"1"`
+- [x] reading again `after` that answer's `cursor` repeats none of those events
 
 ## Out of scope
 - Filters (95), long-poll (97), SSE (99).
