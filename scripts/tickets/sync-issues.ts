@@ -1,4 +1,6 @@
-import { rename } from "node:fs/promises";
+import { readFileSync, renameSync } from "node:fs";
+import { mkdir, rm, rmdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { isManagedLabel, parseTicket, updateIssueNumber } from "./lib.ts";
 
@@ -33,6 +35,27 @@ async function readTickets(cwd: string) {
   return Promise.all(paths.map(async (path) => parseTicket(path, await Bun.file(join(cwd, path)).text())));
 }
 
+async function withCreationLock<T>(run: () => Promise<T>): Promise<T> {
+  const lock = join(tmpdir(), `openboard-ticket-sync-${repository.replace("/", "-")}.lock`);
+  try {
+    await mkdir(lock);
+  } catch (error) {
+    if (!(error instanceof Error) || !("code" in error) || error.code !== "EEXIST") throw error;
+    throw new Error(
+      `Issue creation is locked at ${lock}. Use one creation host with a shared temporary directory. Remove the lock only after confirming no creation run is active.`,
+    );
+  }
+  try {
+    return await run();
+  } finally {
+    await rmdir(lock);
+  }
+}
+
+function issueMarkers(body: string) {
+  return body.match(/^<!-- openboard-ticket: .+ -->$/gm) ?? [];
+}
+
 function editArguments(issue: Issue, ticket: ReturnType<typeof parseTicket>, milestone: string, body?: string) {
   const args: string[] = [];
   const existing = issue.labels.map(({ name }) => name);
@@ -57,24 +80,53 @@ export async function syncIssues(options: Options = {}, run: RunGitHub = runGitH
   if (options.metadataOnly && tickets.some((ticket) => ticket.issue === null)) {
     throw new Error("--metadata-only requires every ticket to have an issue number");
   }
-  const issues: Issue[] = JSON.parse(
-    gh(["issue", "list", "--state", "all", "--limit", "10000", "--json", "number,title,body,labels,milestone"]),
-  );
+  const mirror = () => mirrorTickets(tickets, cwd, gh, options.metadataOnly ?? false);
+  return tickets.some((ticket) => ticket.issue === null) ? withCreationLock(mirror) : mirror();
+}
+
+function planTickets(tickets: ReturnType<typeof parseTicket>[], issues: Issue[]) {
   const byNumber = new Map(issues.map((issue) => [issue.number, issue]));
+  const byMarker = new Map<string, Issue[]>();
+  for (const issue of issues) {
+    for (const marker of issueMarkers(issue.body)) {
+      const matches = byMarker.get(marker) ?? [];
+      if (!matches.includes(issue)) matches.push(issue);
+      byMarker.set(marker, matches);
+    }
+  }
+
   const plan = tickets.map((ticket) => {
-    const matches =
-      ticket.issue === null
-        ? issues.filter((issue) => issue.body.split(/\r?\n/).includes(ticket.marker))
-        : [byNumber.get(ticket.issue)].filter(Boolean);
-    const issue = matches[0];
-    if (matches.length > 1 || (!issue && ticket.issue !== null)) {
-      throw new Error(`${ticket.path}: expected exactly one matching GitHub issue`);
+    const matches = byMarker.get(ticket.marker) ?? [];
+    const issue = ticket.issue === null ? matches[0] : byNumber.get(ticket.issue);
+    if (ticket.issue !== null && !issue) {
+      throw new Error(`${ticket.path}: GitHub issue #${ticket.issue} was not found`);
+    }
+    const markers = issueMarkers(issue?.body ?? "");
+    if (
+      matches.length > 1 ||
+      matches.some((match) => match !== issue) ||
+      markers.some((marker) => marker !== ticket.marker)
+    ) {
+      throw new Error(`${ticket.path}: conflicting GitHub issue links`);
     }
     return { ticket, issue, milestone: ticket.milestoneTitle };
   });
   const linked = plan.flatMap(({ issue }) => (issue ? [issue.number] : []));
   if (new Set(linked).size !== linked.length) throw new Error("Multiple tickets point to the same GitHub issue");
 
+  return plan;
+}
+
+async function mirrorTickets(
+  tickets: ReturnType<typeof parseTicket>[],
+  cwd: string,
+  gh: RunGitHub,
+  metadataOnly: boolean,
+) {
+  const issues: Issue[] = JSON.parse(
+    gh(["issue", "list", "--state", "all", "--limit", "10000", "--json", "number,title,body,labels,milestone"]),
+  );
+  const plan = planTickets(tickets, issues);
   const labels = new Set<string>(
     JSON.parse(gh(["label", "list", "--limit", "1000", "--json", "name"])).map(({ name }: { name: string }) => name),
   );
@@ -88,7 +140,7 @@ export async function syncIssues(options: Options = {}, run: RunGitHub = runGitH
     const body = `${ticket.body}\n\n${ticket.marker}`;
     let number = issue?.number;
     if (issue) {
-      const args = editArguments(issue, ticket, milestone, options.metadataOnly ? undefined : body);
+      const args = editArguments(issue, ticket, milestone, metadataOnly ? undefined : body);
       if (args.length) {
         gh(["issue", "edit", String(issue.number), ...args], args.includes("--body-file") ? body : undefined);
         updated++;
@@ -104,11 +156,18 @@ export async function syncIssues(options: Options = {}, run: RunGitHub = runGitH
       number = Number(parsed[1]);
       created++;
     }
-    if (ticket.issue === null && number !== undefined && !options.metadataOnly) {
+    if (ticket.issue === null && number !== undefined) {
       const path = join(cwd, ticket.path);
       const temporary = `${path}.${process.pid}.tmp`;
-      await Bun.write(temporary, updateIssueNumber(ticket.source, number));
-      await rename(temporary, path);
+      try {
+        await Bun.write(temporary, updateIssueNumber(ticket.source, number));
+        if (readFileSync(path, "utf8") !== ticket.source) {
+          throw new Error(`${ticket.path} changed during sync; rerun to recover issue #${number}`);
+        }
+        renameSync(temporary, path);
+      } finally {
+        await rm(temporary, { force: true });
+      }
     }
   }
   return `Tickets: ${tickets.length}; issues created: ${created}; updated: ${updated}; closed: 0.`;
@@ -117,8 +176,13 @@ export async function syncIssues(options: Options = {}, run: RunGitHub = runGitH
 if (import.meta.main) {
   const args = Bun.argv.slice(2);
   if (args.length > 1 || (args.length === 1 && args[0] !== "--metadata-only")) {
-    console.error("Usage: bun scripts/tickets/sync-issues.ts [--metadata-only]");
-    process.exitCode = 2;
+    const usage =
+      "Usage: bun scripts/tickets/sync-issues.ts [--metadata-only]\nRun issue creation from one host with a shared temporary directory.";
+    if (args.length === 1 && args[0] === "--help") console.log(usage);
+    else {
+      console.error(usage);
+      process.exitCode = 2;
+    }
   } else {
     try {
       console.log(await syncIssues({ metadataOnly: args[0] === "--metadata-only" }));

@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { writeFileSync } from "node:fs";
+import { mkdir, mkdtemp, rm, rmdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseTicket } from "../lib.ts";
@@ -10,12 +11,12 @@ const source = `---
 id: 01
 title: Mirror a sample ticket
 milestone: M0-foundations
-package: tools
+package: tools  # owning workspace
 writes:
   - packages/server/test/isolation/**
 conformance: []
-status: ready
-issue: null
+status: ready  # state
+issue: null  # issue number
 ---
 
 ## Done when
@@ -125,6 +126,96 @@ test("Metadata-only corrects labels and milestone while preserving manually mana
     ]);
     expect(result).toBe("Tickets: 1; issues created: 0; updated: 1; closed: 0.");
     expect(await file.text()).toBe(numbered);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test.each([
+  [42, "<!-- openboard-ticket: .veebee/tickets/02-other.md -->"],
+  [41, `<!-- openboard-ticket: ${path} -->`],
+] as const)(
+  "A numbered ticket refuses conflicting links from issue #%i before any remote edits",
+  async (number, marker) => {
+    const cwd = await mkdtemp(join(tmpdir(), "openboard-ticket-"));
+    const file = Bun.file(join(cwd, path));
+    try {
+      await file.write(source.replace("issue: null", "issue: 42"));
+      const issues = [{ number: 42, body: "" }];
+      if (number === 42) issues[0] = { number, body: marker };
+      else issues.push({ number, body: marker });
+      const commands: string[][] = [];
+      await expect(
+        syncIssues({ cwd, metadataOnly: true }, (args) => {
+          commands.push(args);
+          return JSON.stringify(issues);
+        }),
+      ).rejects.toThrow("conflicting GitHub issue links");
+      expect(commands.map((args) => args.slice(0, 2))).toEqual([["issue", "list"]]);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  },
+);
+
+test("An intervening ticket edit survives and the next run recovers the issue number", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "openboard-ticket-"));
+  const file = Bun.file(join(cwd, path));
+  const edited = `${source}\nAn edit made during sync.\n`;
+  const labels = ["pkg:tools", "M0", "ready", "isolation"].map((name) => ({ name }));
+  const issues: unknown[] = [];
+  let creations = 0;
+  const mockGitHub = (args: string[], body?: string) => {
+    switch (args.slice(0, 2).join(" ")) {
+      case "issue list":
+        return JSON.stringify(issues);
+      case "label list":
+        return JSON.stringify(labels);
+      case "issue create":
+        creations++;
+        writeFileSync(join(cwd, path), edited);
+        issues.push({
+          number: 42,
+          title: "Mirror a sample ticket",
+          body,
+          labels,
+          milestone: { title: "M0 Foundations" },
+        });
+        return "https://github.example/issues/42";
+      case "issue edit":
+        expect(body).toContain("An edit made during sync.");
+        return "";
+      default:
+        throw new Error("Unexpected GitHub command");
+    }
+  };
+  try {
+    await file.write(source);
+    await expect(syncIssues({ cwd }, mockGitHub)).rejects.toThrow("changed during sync");
+    expect(await file.text()).toBe(edited);
+    await syncIssues({ cwd }, mockGitHub);
+    expect(creations).toBe(1);
+    expect(await file.text()).toBe(edited.replace("issue: null", "issue: 42"));
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("A second creation checkout fails before reading GitHub while the host lock is held", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "openboard-ticket-"));
+  const lock = join(tmpdir(), "openboard-ticket-sync-The-Vibe-Company-openboard.lock");
+  try {
+    await Bun.write(join(cwd, path), source);
+    await mkdir(lock);
+    try {
+      await expect(
+        syncIssues({ cwd }, () => {
+          throw new Error("GitHub was called while creation was locked");
+        }),
+      ).rejects.toThrow("Issue creation is locked");
+    } finally {
+      await rmdir(lock);
+    }
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }

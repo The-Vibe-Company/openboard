@@ -7,7 +7,10 @@ export function parseTicket(path: string, source: string) {
   }
   const [, frontMatter, body] = match;
   const fields = new Map(
-    Array.from(frontMatter.matchAll(/^([a-z_]+):[ \t]*(.*)$/gm), ([, key, value]) => [key, value?.trim()]),
+    Array.from(frontMatter.matchAll(/^([a-z_]+):[ \t]*(.*)$/gm), ([, key, value]) => [
+      key,
+      value?.replace(/[ \t]+#.*$/, "").trim(),
+    ]),
   );
   const title = fields.get("title");
   const milestone = fields.get("milestone");
@@ -57,7 +60,9 @@ export function parseTicket(path: string, source: string) {
 export function updateIssueNumber(source: string, number: number) {
   const end = source.indexOf("\n---", 3);
   return (
-    source.slice(0, end).replace(/^issue:[ \t]*null[ \t]*\r?$/m, (line) => line.replace("null", String(number))) +
+    source
+      .slice(0, end)
+      .replace(/^issue:[ \t]*null(?:[ \t]+#[^\r\n]*)?[ \t]*\r?$/m, (line) => line.replace("null", String(number))) +
     source.slice(end)
   );
 }
