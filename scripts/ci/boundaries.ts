@@ -1,7 +1,7 @@
 // Refuses an import the allow-list graph forbids, a relative import that leaves its workspace, a
-// login provider import outside its registry, and a package.json that disagrees with its
-// workspace's imports (docs/codebase.md 3.1, 3.2, 3.3 point 1). Data: scripts/ci/boundaries.json.
-// Run by `bun run lint`. The checks live in scripts/ci/boundaries/.
+// login provider import outside its registry, a driver import outside a composition root, and a
+// package.json that disagrees with its workspace's imports (docs/codebase.md 3.1, 3.2, 3.3 point 1).
+// Data: scripts/ci/boundaries.json. Run by `bun run lint`. The checks live in scripts/ci/boundaries/.
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { checkDenyTerms } from "./boundaries/deny.ts";

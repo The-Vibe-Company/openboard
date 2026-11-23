@@ -42,6 +42,16 @@
       "external": ["node:*"]
     }
   },
+  "drivers": {
+    "$comment": "docs/codebase.md 3.1 universal rules: a driver is imported only by these composition roots and by its own workspace (its tests).",
+    "workspaces": ["driver-sqlite", "driver-postgres"],
+    "compositionRoots": [
+      "apps/openboard/src/compose.ts",
+      "packages/server/test/support/drivers.ts",
+      "tools/conformance/src/drivers.ts",
+      "tools/bench/src/drivers.ts"
+    ]
+  },
   "denyTerms": ["armada", "slack", "linear", "notion", "discord", "granite"],
   "tests": { "external": ["bun:test", "@openboard/ports/testkit"] }
 }

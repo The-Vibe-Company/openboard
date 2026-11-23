@@ -7,11 +7,14 @@ writes:
   - scripts/ci/boundaries.ts
   - scripts/ci/boundaries.json
   - scripts/ci/fixtures/boundaries/driver/**
+  - scripts/ci/boundaries/driver.ts
+  - scripts/ci/boundaries/graph.ts
+  - scripts/ci/boundaries/types.ts
 conformance: []
 modes: []
 depends_on: [10]
-status: ready
-claimed_by: null
+status: done
+claimed_by: claude-opus-ticket-25
 issue: 25
 ---
 
@@ -19,8 +22,8 @@ issue: 25
 As a contributor, I cannot make a handler depend on one mode by importing a driver.
 
 ## Done when
-- [ ] importing `@openboard/driver-sqlite` in `packages/server/src/app.ts` makes `bun run lint` exit 1 naming the file and the driver
-- [ ] the same import in `apps/openboard/src/compose.ts`, `packages/server/test/support/drivers.ts`, `tools/conformance/src/drivers.ts` or `tools/bench/src/drivers.ts` passes
+- [x] importing `@openboard/driver-sqlite` in `packages/server/src/app.ts` makes `bun run lint` exit 1 naming the file and the driver
+- [x] the same import in `apps/openboard/src/compose.ts`, `packages/server/test/support/drivers.ts`, `tools/conformance/src/drivers.ts` or `tools/bench/src/drivers.ts` passes
 
 ## Out of scope
 - `driver-sql` imports (26).

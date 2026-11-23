@@ -1,4 +1,5 @@
 import { describeAllowed } from "./describe.ts";
+import { checkDriverImport } from "./driver.ts";
 import { isBare, matchesExternal, packageOf, readImports, resolveImport } from "./imports.ts";
 import type { Config, Rule, Violation } from "./types.ts";
 import { findWorkspaces, sourceFiles, type Workspace } from "./workspaces.ts";
@@ -29,6 +30,7 @@ type FileContext = {
   rule: Rule;
   test: boolean;
   testExternal: string[];
+  drivers: Config["drivers"];
 };
 
 /** The provider directory a resolved path belongs to, or null for the registry and everything else. */
@@ -83,6 +85,8 @@ function checkImport(ctx: FileContext, specifier: string, typeOnly: boolean): st
   if (ctx.test && matchesExternal(specifier, ctx.testExternal)) return null;
   const target = ctx.byName.get(packageOf(specifier));
   const kind = typeOnly ? "type-only import of " : "";
+  const driver = checkDriverImport(ctx.file, workspace, target, `${kind}${specifier}`, ctx.drivers);
+  if (driver) return driver;
   if (target && ctx.testExternal.includes(specifier)) {
     return `${workspace.short} -> ${target.short} (${kind}${specifier}) is allowed in test files only`;
   }
@@ -131,6 +135,7 @@ export async function checkBoundaries(root: string, config: Config): Promise<Vio
         rule,
         test: isTestFile(workspace, file),
         testExternal: config.tests.external,
+        drivers: config.drivers,
       };
       violations.push(...(await checkFile(root, file, ctx)));
     }
@@ -146,6 +151,10 @@ export function checkConfig(config: Config, workspaces: Workspace[]): Violation[
     const dirs = workspaces.filter((workspace) => workspace.short === short).map((workspace) => workspace.dir);
     if (dirs.length > 1)
       violations.push({ file: "package.json", message: `workspaces ${dirs.join(", ")} share the name ${short}` });
+  }
+  for (const name of config.drivers.workspaces) {
+    if (!shorts.has(name))
+      violations.push({ file: "scripts/ci/boundaries.json", message: `drivers names unknown workspace ${name}` });
   }
   for (const [key, rule] of Object.entries(config.graph)) {
     for (const name of [...rule.may, ...(rule.types ?? [])]) {
