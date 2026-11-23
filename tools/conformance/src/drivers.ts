@@ -67,7 +67,6 @@ export async function boot(driver: "sqlite" | "postgres", instances: number) {
     for (let at = 0; at < instances; at++) apps.push(bootApp(mode, origin, owner.hash));
 
     const path = mode === "local" ? "/api/local/main" : "/api/conformance-ci/main";
-    // The kit runs as the local owner until connections exist (docs/codebase.md 6.3 step 2).
     return { url: new URL(path, (proxy ?? first).url), token: owner.token, close };
   } catch (error) {
     await close();
