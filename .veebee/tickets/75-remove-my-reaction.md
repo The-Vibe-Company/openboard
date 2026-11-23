@@ -10,13 +10,15 @@ writes:
   - packages/ports/testkit/store/messages.test-suite.ts
   - packages/server/test/messages.test.ts
   - packages/ports/src/store.ts
+  - packages/server/openapi.json
+  - packages/core/src/index.ts
   - packages/core/src/messages/reactions.ts
   - packages/core/test/messages/reactions.test.ts
 conformance: []
 modes: [local]
 depends_on: [74]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 75
 ---
 

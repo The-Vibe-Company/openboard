@@ -2,9 +2,8 @@ import { type Author, BoardError, type Message } from "@openboard/contract";
 import { parseId } from "../ids.ts";
 import { type ActorSeen, actorSeen, type PostContext, type PostState } from "./post.ts";
 
-export interface ReactionAdded {
+interface ReactionChange {
   readonly id: number;
-  readonly type: "reaction.added";
   readonly at: number;
   readonly thread: number;
   readonly message: number;
@@ -22,6 +21,9 @@ export interface ReactionAdded {
     readonly view: Message;
   };
 }
+
+export type ReactionAdded = ReactionChange & { readonly type: "reaction.added" };
+export type ReactionRemoved = ReactionChange & { readonly type: "reaction.removed" };
 
 /** Upstream's emoji value rule (`03-http.md` "Event types"): a short name, never a name every object has. */
 const EMOJI = /^[a-z0-9_+-]{1,64}$/;
@@ -96,29 +98,32 @@ export interface ReactionState {
 }
 
 /**
- * Decides a reaction: the writer's actor ID joins the emoji's list on the message, after the writer's `actor.seen`
- * when it has one. A reaction the writer already holds appends no reaction event.
+ * Adds or removes the writer's actor ID under the emoji. A change follows the writer's
+ * `actor.seen` when needed. A repeated request appends no reaction event.
  */
 export function decideReaction(
   { head, target, actor }: ReactionState,
-  { id, emoji }: { readonly id: string; readonly emoji: string },
+  { id, emoji, remove = false }: { readonly id: string; readonly emoji: string; readonly remove?: boolean },
   context: PostContext,
-): readonly (ActorSeen | ReactionAdded)[] {
+): readonly (ActorSeen | ReactionAdded | ReactionRemoved)[] {
   const name = canonicalEmoji(emoji);
   if (!target) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
   if (target.deleted) throw new BoardError("message_deleted", `Message #${id} is deleted.`);
   const { by, now } = context;
   const seen = actorSeen(actor, context, head + 1);
   const held = Object.hasOwn(target.reactions, name) ? (target.reactions[name] ?? []) : [];
-  if (held.includes(by.actor)) return seen ? [seen] : [];
+  if (held.includes(by.actor) !== remove) return seen ? [seen] : [];
   const message = parseId(target.id);
   const thread = parseId(target.thread);
   if (message === null || thread === null) throw new Error("invalid stored message or thread position");
   const version = head + (seen ? 2 : 1);
-  const reactions = { ...target.reactions, [name]: [...held, by.actor] };
-  const event: ReactionAdded = {
+  const reactions = { ...target.reactions };
+  const remaining = remove ? held.filter((actorId) => actorId !== by.actor) : [...held, by.actor];
+  if (remaining.length > 0) reactions[name] = remaining;
+  else delete reactions[name];
+  const event: ReactionAdded | ReactionRemoved = {
     id: version,
-    type: "reaction.added",
+    type: remove ? "reaction.removed" : "reaction.added",
     at: now,
     thread,
     message,
