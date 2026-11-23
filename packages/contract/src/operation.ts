@@ -67,7 +67,7 @@ export type Operation<
   readonly operationId?: string;
   readonly summary: string;
   /** Relative to `BOARD_URL` for `board` operations; upstream's path where one exists. */
-  readonly route: { readonly method: Method; readonly path: string };
+  readonly route: { readonly method: Method; readonly path: string; readonly mount?: "/api/x" };
   readonly scope: S;
   readonly input: I;
   readonly output: O;

@@ -11,6 +11,8 @@ export type {
   CreateOrgRecord,
   IdentityRecord,
   MembershipRecord,
+  OrgScope,
+  OrgView,
   PersonRecord,
   PlatformView,
   SessionRecord,

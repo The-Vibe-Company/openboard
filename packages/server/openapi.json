@@ -57,7 +57,10 @@
         }
       }
     },
-    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer" } }
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer" },
+      "sessionAuth": { "type": "apiKey", "in": "cookie", "name": "__Host-ob_session" }
+    }
   },
   "paths": {
     "/x/connections/claim": {
@@ -502,6 +505,98 @@
           },
           "409": {
             "description": "slug_taken",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/api/x/orgs/{org}/invitations": {
+      "post": {
+        "operationId": "createInvitation",
+        "summary": "Create an organization invitation link.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" }
+          },
+          {
+            "name": "x-ob-csrf",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["role"],
+                "properties": {
+                  "role": {
+                    "anyOf": [{ "const": "admin", "type": "string" }, { "const": "member", "type": "string" }]
+                  },
+                  "email": { "maxLength": 254, "pattern": "^[^\\s@]+@[^\\s@]+$", "type": "string" },
+                  "send": { "const": false, "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["invitation", "url"],
+                  "properties": {
+                    "invitation": {
+                      "type": "object",
+                      "required": ["id", "role", "createdBy", "createdAt", "expiresAt"],
+                      "properties": {
+                        "id": { "pattern": "^inv_[a-z2-7]{16}$", "type": "string" },
+                        "role": {
+                          "anyOf": [{ "const": "admin", "type": "string" }, { "const": "member", "type": "string" }]
+                        },
+                        "email": { "type": "string" },
+                        "createdBy": { "type": "string" },
+                        "createdAt": { "type": "string" },
+                        "expiresAt": { "type": "string" }
+                      }
+                    },
+                    "url": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -1509,6 +1604,62 @@
           },
           "404": {
             "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/api/x/invitations/{token}": {
+      "get": {
+        "operationId": "previewInvitation",
+        "summary": "Preview the organization, role and expiry of an invitation link.",
+        "security": [],
+        "servers": [{ "url": "/" }],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "invitation", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["orgName", "role", "expiresAt"],
+                  "properties": {
+                    "orgName": { "type": "string" },
+                    "role": {
+                      "anyOf": [{ "const": "admin", "type": "string" }, { "const": "member", "type": "string" }]
+                    },
+                    "expiresAt": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "410": {
+            "description": "invitation_used",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {

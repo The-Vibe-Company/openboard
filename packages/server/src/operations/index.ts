@@ -1,5 +1,5 @@
-import type { InputOf, Operation, OutputOf, operations, SignInProvider } from "@openboard/contract";
-import type { BoardView, PlatformView } from "@openboard/ports";
+import type { InputOf, Operation, OutputOf, operations, previewInvitation, SignInProvider } from "@openboard/contract";
+import type { BoardView, OrgView, PersonRecord, PlatformView } from "@openboard/ports";
 import type { Session } from "../auth/sessions.ts";
 import type { Principal } from "../deps.ts";
 import { getAccountHandler, getSessionHandler } from "./accounts.ts";
@@ -8,6 +8,7 @@ import { createChannelHandler, listChannelsHandler } from "./channels.ts";
 import { claimConnectionHandler, createConnectionHandler, refreshAgentTokenHandler } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
+import { createInvitationHandler, previewInvitationHandler } from "./invitations.ts";
 import {
   deleteMessageHandler,
   editMessageHandler,
@@ -28,7 +29,7 @@ export interface BoardContext {
   readonly randomBytes: (length: number) => Uint8Array;
 }
 
-/** What a `public` operation's handler sees: no store and no credential, only the board URL the request named. */
+/** What a public board operation's handler sees: no store and no credential, only the board URL the request named. */
 export interface PublicContext {
   /** `OPENBOARD_PUBLIC_URL` + `/api/<org>/<board>`, whether or not that board exists. */
   readonly boardUrl: string;
@@ -45,20 +46,37 @@ export interface AccountContext {
   readonly providers: readonly SignInProvider[];
 }
 
+export interface OrgContext {
+  readonly org: OrgView;
+  readonly person: PersonRecord;
+  readonly now: () => number;
+  readonly publicUrl: string;
+  readonly randomBytes: (length: number) => Uint8Array;
+}
+
+export interface PublicPlatformContext {
+  readonly platform: Pick<PlatformView, "invitationPreview">;
+  readonly now: () => number;
+}
+
 /** The context an operation's handler takes; `never` for a union mixing scopes that take different contexts. */
-type ContextOf<Op> = [Op] extends [{ readonly scope: "public" }]
-  ? PublicContext
-  : [Op] extends [{ readonly scope: "account" }]
-    ? AccountContext
-    : [Op] extends [{ readonly scope: "org" | "board" }]
-      ? BoardContext
-      : never;
+type ContextOf<Op> = [Op] extends [typeof previewInvitation]
+  ? PublicPlatformContext
+  : [Op] extends [{ readonly scope: "org" }]
+    ? OrgContext
+    : [Op] extends [{ readonly scope: "public" }]
+      ? PublicContext
+      : [Op] extends [{ readonly scope: "account" }]
+        ? AccountContext
+        : [Op] extends [{ readonly scope: "board" }]
+          ? BoardContext
+          : never;
 
 export type Handler<Op extends Operation> = (ctx: ContextOf<Op>, input: InputOf<Op>) => Promise<OutputOf<Op>>;
 
 type Contracted = (typeof operations)[number];
 /** The operations answered without a tenant or a credential. */
-export type PublicOperation = Extract<Contracted, { readonly scope: "public" }>;
+export type PublicOperation = Exclude<Extract<Contracted, { readonly scope: "public" }>, typeof previewInvitation>;
 /** The operations of the signed-in person, under `/api/x`. */
 export type AccountOperation = Extract<Contracted, { readonly scope: "account" }>;
 
@@ -67,6 +85,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   claimConnection: claimConnectionHandler,
   createChannel: createChannelHandler,
   createConnection: createConnectionHandler,
+  createInvitation: createInvitationHandler,
   createOrg: createOrgHandler,
   deleteMessage: deleteMessageHandler,
   discoverBoard: discoverBoardHandler,
@@ -80,6 +99,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listMessages: listMessagesHandler,
   listThreads: listThreadsHandler,
   postMessage: postMessageHandler,
+  previewInvitation: previewInvitationHandler,
   readEvents: readEventsHandler,
   readPost: readPostHandler,
   readThread: readThreadHandler,

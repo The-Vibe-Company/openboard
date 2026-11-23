@@ -4,6 +4,7 @@ export * from "./entities/channels.ts";
 export * from "./entities/connections.ts";
 export * from "./entities/discovery.ts";
 export * from "./entities/events.ts";
+export * from "./entities/invitations.ts";
 export * from "./entities/messages.ts";
 export * from "./entities/orgs.ts";
 export * from "./entities/threads.ts";
@@ -38,6 +39,7 @@ export {
   claimConnection,
   createChannel,
   createConnection,
+  createInvitation,
   createOrg,
   deleteMessage,
   discoverBoard,
@@ -52,6 +54,7 @@ export {
   listThreads,
   operations,
   postMessage,
+  previewInvitation,
   readEvents,
   readPost,
   readThread,

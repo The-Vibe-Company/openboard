@@ -16,8 +16,12 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps) {
   const pipeline: Pipeline = {
     config,
     deps,
-    routes: routeTable(operations.filter(({ scope }) => scope === "board" || scope === "public")),
-    accountRoutes: routeTable(operations.filter(({ scope }) => scope === "account")),
+    routes: routeTable(
+      operations.filter(({ scope, route }) => scope === "board" || (scope === "public" && !route.mount)),
+    ),
+    platformRoutes: routeTable(
+      operations.filter(({ scope, route }) => scope === "account" || scope === "org" || route.mount),
+    ),
     tenants: tenants(ports.store),
     platform: ports.store.platform(),
     providers: loginProviders(config, deps),

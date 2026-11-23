@@ -4,6 +4,7 @@ import { createChannel, listChannels } from "./channels.ts";
 import { claimConnection, createConnection, refreshAgentToken } from "./connections.ts";
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
+import { createInvitation, previewInvitation } from "./invitations.ts";
 import { deleteMessage, editMessage, listMessages, postMessage, readPost } from "./messages.ts";
 import { createOrg } from "./orgs.ts";
 import { listThreads, readThread } from "./threads.ts";
@@ -13,6 +14,7 @@ export const operations = [
   claimConnection,
   createChannel,
   createConnection,
+  createInvitation,
   createOrg,
   deleteMessage,
   discoverBoard,
@@ -26,6 +28,7 @@ export const operations = [
   listMessages,
   listThreads,
   postMessage,
+  previewInvitation,
   readEvents,
   readPost,
   readThread,
@@ -36,6 +39,7 @@ export {
   claimConnection,
   createChannel,
   createConnection,
+  createInvitation,
   createOrg,
   deleteMessage,
   discoverBoard,
@@ -49,6 +53,7 @@ export {
   listMessages,
   listThreads,
   postMessage,
+  previewInvitation,
   readEvents,
   readPost,
   readThread,

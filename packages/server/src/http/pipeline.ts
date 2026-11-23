@@ -1,4 +1,11 @@
-import { BoardError, decodeInput, type operations, type RawInput } from "@openboard/contract";
+import {
+  BoardError,
+  decodeInput,
+  type createInvitation,
+  type operations,
+  type previewInvitation,
+  type RawInput,
+} from "@openboard/contract";
 import type { PlatformView } from "@openboard/ports";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
@@ -20,8 +27,8 @@ export interface Pipeline {
   readonly deps: Deps;
   /** Board and public operations, relative to `BOARD_URL`. */
   readonly routes: readonly Route<Contracted>[];
-  /** Account operations, relative to `/api/x`. */
-  readonly accountRoutes: readonly Route<Contracted>[];
+  /** Platform and organization operations, relative to `/api/x`. */
+  readonly platformRoutes: readonly Route<Contracted>[];
   readonly tenants: Tenants;
   readonly platform: PlatformView;
   readonly providers: readonly LoginProvider[];
@@ -62,7 +69,6 @@ async function runPublic(
 
 /** An `account` operation: no tenant; the browser's session, if live, is the person (docs/auth.md step 6). */
 async function runAccount(request: Request, url: URL, operation: AccountOperation, params: Params, pipeline: Pipeline) {
-  refuseClaimedConfiguration(request, operation);
   const { config, deps, platform } = pipeline;
   const session = await sessionOf(request, platform, deps.now(), config.publicUrl);
   const input = validate(operation, {
@@ -77,6 +83,48 @@ async function runAccount(request: Request, url: URL, operation: AccountOperatio
   return response;
 }
 
+async function runOrg(
+  request: Request,
+  url: URL,
+  operation: typeof createInvitation,
+  params: Params,
+  pipeline: Pipeline,
+) {
+  const { config, deps, platform } = pipeline;
+  const session = await sessionOf(request, platform, deps.now(), config.publicUrl);
+  if (!session) throw new BoardError("unauthorized", "sign in first");
+  const org = await pipeline.tenants.adminOrg(params.org ?? "", session.person.id);
+  const input = validate(operation, {
+    params,
+    query: Object.fromEntries(url.searchParams),
+    body: await readBody(request),
+  });
+  const { now, randomBytes } = deps;
+  const output = await handlerOf(operation)(
+    { org, person: session.person, now, randomBytes, publicUrl: config.publicUrl },
+    input,
+  );
+  return operationResponse(operation, output);
+}
+
+async function runPreview(url: URL, operation: typeof previewInvitation, params: Params, pipeline: Pipeline) {
+  const input = decodeInput(operation, { params, query: Object.fromEntries(url.searchParams) });
+  const output = await handlerOf(operation)({ platform: pipeline.platform, now: pipeline.deps.now }, input);
+  return operationResponse(operation, output);
+}
+
+async function runPlatform(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields) {
+  const matched = matchRoute(pipeline.platformRoutes, request.method, url.pathname.slice("/api/x".length));
+  if (!matched) return null;
+  const { operation, params } = matched;
+  logged.op = operation.name;
+  refuseClaimedConfiguration(request, operation);
+  if (operation.scope === "account") return runAccount(request, url, operation, params, pipeline);
+  if (operation.scope === "org") return runOrg(request, url, operation, params, pipeline);
+  if (operation.name === "previewInvitation") return runPreview(url, operation, params, pipeline);
+  return null;
+}
+
 async function run(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields): Promise<Response> {
   if (url.pathname.startsWith("/auth/")) {
     const answer = signInRoute(request, url, pipeline);
@@ -84,11 +132,8 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
     return answer;
   }
   if (url.pathname.startsWith("/api/x/")) {
-    const account = matchRoute(pipeline.accountRoutes, request.method, url.pathname.slice("/api/x".length));
-    if (account?.operation.scope === "account") {
-      logged.op = account.operation.name;
-      return runAccount(request, url, account.operation, account.params, pipeline);
-    }
+    const response = await runPlatform(request, url, pipeline, logged);
+    if (response) return response;
   }
   const path = boardPath(url.pathname, pipeline.config.mode);
   if (!path) throw notFound();
@@ -97,11 +142,11 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   if (!matched) throw notFound();
   const { operation } = matched;
   logged.op = operation.name;
-  if (operation.scope === "public") {
+  if (operation.scope === "public" && operation.name !== "previewInvitation") {
     refuseClaimedConfiguration(request, operation);
     return runPublic(url, path, operation, matched.params, pipeline);
   }
-  if (operation.scope === "account") throw notFound();
+  if (operation.scope !== "board") throw notFound();
   const board = await pipeline.tenants.board(path);
   const chain = verifiers(pipeline.config, pipeline.platform, pipeline.deps.now);
   const by = await authenticate(request, chain, board, operation.name);
@@ -128,6 +173,11 @@ function requestIdOf(request: Request, deps: Deps): string {
   return given !== null && echoable.test(given) ? given : deps.requestId();
 }
 
+/** Invitation links contain a secret even when the method or token names no route. */
+function loggedPath(path: string): string {
+  return path.replace(/^(\/api\/x\/invitations|\/invite)\/.*$/, "$1/[redacted]");
+}
+
 /** Every request goes through here, once: tenant from the path, auth, scope, validation, handler (4.4). */
 export async function handle(request: Request, pipeline: Pipeline): Promise<Response> {
   const { now } = pipeline.deps;
@@ -135,12 +185,20 @@ export async function handle(request: Request, pipeline: Pipeline): Promise<Resp
   const requestId = requestIdOf(request, pipeline.deps);
   const log = withFields(pipeline.deps.log, { request_id: requestId });
   const url = new URL(request.url);
-  const logged: RequestFields = { req: `${request.method} ${url.pathname}`, op: null, org: null, actor: null };
+  const logged: RequestFields = {
+    req: `${request.method} ${loggedPath(url.pathname)}`,
+    op: null,
+    org: null,
+    actor: null,
+  };
   let response: Response;
   try {
     response = await run(request, url, pipeline, logged);
   } catch (error) {
     response = errorResponse(error, log);
+  }
+  if (logged.op === "createInvitation" || logged.op === "previewInvitation") {
+    response.headers.set("cache-control", "no-store");
   }
   response.headers.set(REQUEST_ID, requestId);
   logRequest(log, logged, response.status, now() - started);
