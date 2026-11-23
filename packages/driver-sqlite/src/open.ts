@@ -3,6 +3,7 @@ import { closeSync, mkdirSync, openSync } from "node:fs";
 import { join } from "node:path";
 import { createViews, type Db, migrations, type Row, type SqlValue } from "@openboard/driver-sql";
 import type { Store } from "@openboard/ports";
+import type { StatementCounter } from "./counters.ts";
 import { sqliteDialect } from "./dialect.ts";
 import { migrate } from "./migrate.ts";
 
@@ -49,15 +50,21 @@ function openDatabase(options: SqliteOptions, now: () => number): Database {
  * One connection, and one queue in front of it: a write transaction holds the queue from `BEGIN IMMEDIATE` to
  * `COMMIT`, so no other statement interleaves with it between awaits (the process write mutex of D33).
  */
-function connection(database: Database): Db {
+function connection(database: Database, counter?: StatementCounter): Db {
   let tail: Promise<unknown> = Promise.resolve();
   const exclusive = <T>(task: () => Promise<T>): Promise<T> => {
     const run = tail.then(task);
     tail = run.catch(() => undefined);
     return run;
   };
-  const run = async (text: string, values: readonly SqlValue[]) =>
-    database.query<Row, SQLQueryBindings[]>(text).all(...(values as SQLQueryBindings[]));
+  const control = (text: string) => {
+    counter?.count();
+    database.run(text);
+  };
+  const run = async (text: string, values: readonly SqlValue[]) => {
+    counter?.count();
+    return database.query<Row, SQLQueryBindings[]>(text).all(...(values as SQLQueryBindings[]));
+  };
   const inTransaction: Db = {
     query: run,
     transaction: () => Promise.reject(new Error("a board write does not nest")),
@@ -66,24 +73,27 @@ function connection(database: Database): Db {
     query: (text, values) => exclusive(() => run(text, values)),
     transaction: (fn) =>
       exclusive(async () => {
-        database.run("BEGIN IMMEDIATE");
+        control("BEGIN IMMEDIATE");
         try {
           const result = await fn(inTransaction);
-          database.run("COMMIT");
+          control("COMMIT");
           return result;
         } catch (error) {
-          database.run("ROLLBACK");
+          control("ROLLBACK");
           throw error;
         }
       }),
   };
 }
 
-/** Local mode's store on SQLite: migrated on open, with the implicit organization `local` and board `main`. */
-export function sqliteDriver(options: SqliteOptions, now: () => number = Date.now): Store {
+/**
+ * Local mode's store on SQLite: migrated on open, with the implicit organization `local` and board `main`. A
+ * `counter`, when given, counts every statement the store sends from then on (tests and bench only).
+ */
+export function sqliteDriver(options: SqliteOptions, now: () => number = Date.now, counter?: StatementCounter): Store {
   const database = openDatabase(options, now);
   return {
-    ...createViews(connection(database), sqliteDialect),
+    ...createViews(connection(database, counter), sqliteDialect),
     async close() {
       database.close();
     },

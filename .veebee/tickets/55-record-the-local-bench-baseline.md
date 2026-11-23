@@ -7,11 +7,18 @@ writes:
   - tools/bench/src/**
   - tools/bench/budgets.json
   - packages/driver-sqlite/src/counters.ts
+  - packages/driver-sqlite/src/open.ts
+  - packages/driver-sqlite/src/index.ts
+  - packages/driver-sqlite/test/counters.test.ts
+  - tools/bench/test/counters.test.ts
+  - tools/bench/package.json
+  - tools/bench/tsconfig.json
+  - bun.lock
 conformance: []
 modes: [local]
 depends_on: [05, 48]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t55
 issue: 55
 ---
 
