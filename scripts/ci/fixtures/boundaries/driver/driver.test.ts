@@ -84,3 +84,10 @@ test("accepts a driver import in each composition root and in the driver's own w
   ]);
   expect(await messages(files)).toEqual([]);
 });
+
+test("refuses a subpath import of the Postgres driver outside a composition root", async () => {
+  const found = await messages(await fixtures("refused", ["apps/openboard/src/postgres-subpath.ts"]));
+  expect(found).toEqual([
+    `apps/openboard/src/postgres-subpath.ts: openboard -> driver-postgres (@openboard/driver-postgres/src/open) is a driver import outside a composition root; only ${ROOTS} and the driver's own workspace may import a driver`,
+  ]);
+});
