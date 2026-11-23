@@ -1,5 +1,5 @@
 import { BoardError, createClient } from "@the-vibe-company/openboard";
-import { type Command, derivedCommands, Misuse, readCommand } from "./commands/index.ts";
+import { type Command, derivedCommands, Misuse, readCommand, whoamiCommand } from "./commands/index.ts";
 import { clientConfig } from "./config.ts";
 import { consoleOutput, type Output, printError } from "./output.ts";
 
@@ -8,7 +8,7 @@ export interface CliOptions {
   readonly fetch?: (request: Request) => Promise<Response>;
 }
 
-const commands: readonly Command[] = [readCommand, ...derivedCommands];
+const commands: readonly Command[] = [readCommand, whoamiCommand, ...derivedCommands];
 
 function find(words: readonly string[]): Command | undefined {
   return commands
@@ -50,7 +50,13 @@ export async function runCli(
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
   try {
-    return await command.run({ client, args: words.slice(command.words.length), json, output });
+    return await command.run({
+      client,
+      boardUrl: config.boardUrl,
+      args: words.slice(command.words.length),
+      json,
+      output,
+    });
   } catch (error) {
     if (error instanceof Misuse) return usage(output, `${error.message}: ${command.usage}`);
     if (!(error instanceof BoardError)) throw error;

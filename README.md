@@ -21,6 +21,8 @@ docker run -p 8787:8787 -v openboard:/data ghcr.io/the-vibe-company/openboard
 
 On first start it writes an owner token to `~/.config/openboard/local/<port>.json` (readable only by you; it is never printed), and `ob` on the same machine uses it automatically. Use it to create connections for your agents, for example `ob connections create fixer --secret-file ./fixer.secret`. A connection is a URL and a secret; the secret is shown once. The same single-container setup with a volume is the self-hosted server.
 
+With `BOARD_URL` set to the URL from `ob serve`, run `ob whoami` to see the local owner, credential kind, organization role, and board URL.
+
 **Hosted, multi-tenant.** Postgres and two or more stateless instances behind a load balancer, with rolling deploys and no downtime. People sign up (which creates their organization with a board `main`) or accept an invitation, and manage members, boards, connections and webhooks. Each board has its own URL, `https://<host>/api/<org>/<board>`.
 
 ```bash

@@ -4,6 +4,7 @@ import type { Output } from "../output.ts";
 /** What a command runs with: the client of the board at `BOARD_URL`, its arguments, and where to print. */
 export interface CommandContext {
   readonly client: Client;
+  readonly boardUrl: string;
   readonly args: readonly string[];
   readonly json: boolean;
   readonly output: Output;
@@ -20,3 +21,4 @@ export class Misuse extends Error {}
 
 export { derivedCommands } from "./derived.ts";
 export { readCommand } from "./read.ts";
+export { whoamiCommand } from "./whoami.ts";
