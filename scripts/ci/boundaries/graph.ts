@@ -1,5 +1,6 @@
 import { describeAllowed } from "./describe.ts";
 import { checkDriverImport } from "./driver.ts";
+import { checkDriverSqlImport } from "./driver-sql.ts";
 import { isBare, matchesExternal, packageOf, readImports, resolveImport } from "./imports.ts";
 import type { Config, Rule, Violation } from "./types.ts";
 import { findWorkspaces, sourceFiles, type Workspace } from "./workspaces.ts";
@@ -85,6 +86,8 @@ function checkImport(ctx: FileContext, specifier: string, typeOnly: boolean): st
   if (ctx.test && matchesExternal(specifier, ctx.testExternal)) return null;
   const target = ctx.byName.get(packageOf(specifier));
   const kind = typeOnly ? "type-only import of " : "";
+  const driverSql = checkDriverSqlImport(workspace, target, `${kind}${specifier}`, ctx.drivers);
+  if (driverSql) return driverSql;
   const driver = checkDriverImport(ctx.file, workspace, target, `${kind}${specifier}`, ctx.drivers);
   if (driver) return driver;
   if (target && ctx.testExternal.includes(specifier)) {

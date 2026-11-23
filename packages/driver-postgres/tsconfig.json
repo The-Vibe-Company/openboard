@@ -5,5 +5,10 @@
     "rootDir": ".",
     "outDir": "../../.tsbuild/packages/driver-postgres"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"],
+  "references": [
+    {
+      "path": "../driver-sql"
+    }
+  ]
 }
