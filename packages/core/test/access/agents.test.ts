@@ -14,7 +14,7 @@ const connection = {
 };
 const token = { id: "ag_bbbbbbbbbbbbbbbb", hash: "ef".repeat(32) };
 const claim = (command: Parameters<typeof decideClaim>[1]) =>
-  decideClaim({ head: 7 }, command, { by, now: NOW, connection, token });
+  decideClaim({ head: 7, holder: null }, command, { by, now: NOW, connection, token });
 
 describe("claiming an agent token", () => {
   test("pins the profile, keeps the connection's grant, and lives the connection's token lifetime", () => {
@@ -56,7 +56,7 @@ describe("claiming an agent token", () => {
     const grant = { "*": ["read" as const, "post" as const], "ops/": ["read" as const] };
     const at = { by, now: NOW, connection: { ...connection, profiles: ["*"], can: grant }, token };
     const decide = (can: Record<string, ("read" | "post")[]>) => () =>
-      decideClaim({ head: 7 }, { profile: "a", can }, at);
+      decideClaim({ head: 7, holder: null }, { profile: "a", can }, at);
     expect(decide({ "*": ["post"] })).toThrow(expect.objectContaining({ code: "forbidden" }));
     expect(decide({ ops: ["post"] })).toThrow(expect.objectContaining({ code: "forbidden" }));
     expect(decide({ "*": ["post"], "ops/": ["read"] })).not.toThrow();
@@ -68,9 +68,25 @@ describe("claiming an agent token", () => {
 
   test("spends a single-use secret on its first claim: the next answers 410 secret_spent", () => {
     const at = (used: number) => ({ by, now: NOW, connection: { ...connection, claims: { max: 1, used } }, token });
-    expect(decideClaim({ head: 7 }, { profile: "fixer-2" }, at(0)).agent.id).toBe(token.id);
-    const spent = () => decideClaim({ head: 7 }, { profile: "fixer-2" }, at(1));
+    expect(decideClaim({ head: 7, holder: null }, { profile: "fixer-2" }, at(0)).agent.id).toBe(token.id);
+    const spent = () => decideClaim({ head: 7, holder: null }, { profile: "fixer-2" }, at(1));
     expect(spent).toThrow(expect.objectContaining({ code: "secret_spent", status: 410 }));
+  });
+
+  test("refuses a profile a live agent holds with 409 profile_taken, and takes it once that agent expired", () => {
+    const held = (tokenExpires: number) => () =>
+      decideClaim(
+        { head: 7, holder: { id: "ag_cccccccccccccccc", tokenExpires } },
+        { profile: "fixer-2" },
+        {
+          by,
+          now: NOW,
+          connection,
+          token,
+        },
+      );
+    expect(held(NOW + 1)).toThrow(expect.objectContaining({ code: "profile_taken", status: 409 }));
+    expect(held(NOW)().agent.id).toBe(token.id);
   });
 
   test("reads lifetimes in seconds, minutes, hours and days, and refuses anything else", () => {

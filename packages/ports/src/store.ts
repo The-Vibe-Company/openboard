@@ -189,6 +189,11 @@ export interface BoardWriter {
   connection(id: string): Promise<ConnectionRecord | null>;
   /** The agent of this board with the ID, read under the lock, or null when the board has none with it. */
   agent(id: string): Promise<AgentRecord | null>;
+  /**
+   * The unrevoked agent of the connection pinned to the profile (any case) whose token expires last, with that expiry
+   * in epoch milliseconds, read under the lock; null when the connection has none.
+   */
+  profileHolder(connection: string, profile: string): Promise<{ id: string; tokenExpires: number } | null>;
   /** The board's record of the actor `write` named, read with the lock; null when it has none or none was named. */
   readonly actor: Actor | null;
   append(events: readonly BoardEvent[]): Promise<void>;

@@ -71,7 +71,7 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
           connection,
           token,
         };
-        const decided = agents.decideClaim({ head: writer.head }, { profile: "Fixer-2" }, context);
+        const decided = agents.decideClaim({ head: writer.head, holder: null }, { profile: "Fixer-2" }, context);
         await writer.append(decided.events);
         return decided.agent;
       });
@@ -112,10 +112,18 @@ function claimsSuite(driver: string, open: OpenStore): void {
         if (!record) throw new Error("the connection is missing under the lock");
         const connection = { ...sandbox, tokenTtl: 3600, tokenMax: 86_400, claims: record.claims };
         const context = { by: actor, now: 0, connection, token: { id: `ag_${"b".repeat(16)}`, hash: "ef".repeat(32) } };
-        await writer.append(agents.decideClaim({ head: writer.head }, { profile: "fixer-2" }, context).events);
+        await writer.append(
+          agents.decideClaim({ head: writer.head, holder: null }, { profile: "fixer-2" }, context).events,
+        );
         return (await writer.connection(sandbox.id))?.claims;
       });
       expect(used).toEqual({ max: 1, used: 1 });
+      await board.write(async (writer) => {
+        const holder = { id: `ag_${"b".repeat(16)}`, tokenExpires: 3_600_000 };
+        expect(await writer.profileHolder(sandbox.id, "Fixer-2")).toEqual(holder);
+        expect(await writer.profileHolder(sandbox.id, "fixer-3")).toBeNull();
+        expect(await writer.profileHolder(`cn_${"c".repeat(16)}`, "fixer-2")).toBeNull();
+      });
       expect((await board.connection(sandbox.id))?.claims).toEqual({ max: 1, used: 1 });
       await board.write(async (writer) => {
         expect(await writer.connection(`cn_${"c".repeat(16)}`)).toBeNull();
@@ -140,7 +148,9 @@ function agentRefreshSuite(driver: string, open: OpenStore): void {
       const actor = { ...by, actor: fixers.principal, principal: fixers.principal };
       await board.write(async (writer) => {
         const context = { by: actor, now: 0, connection, token: { id, hash: "ef".repeat(32) } };
-        await writer.append(agents.decideClaim({ head: writer.head }, { profile: "fixer-2" }, context).events);
+        await writer.append(
+          agents.decideClaim({ head: writer.head, holder: null }, { profile: "fixer-2" }, context).events,
+        );
       });
       const refreshed = await board.write(async (writer) => {
         const record = await writer.agent(id);

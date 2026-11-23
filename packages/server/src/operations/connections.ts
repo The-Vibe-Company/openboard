@@ -41,7 +41,8 @@ const CONNECTION = "ob:conn:";
  * Trades a connection's secret for an agent token pinned to one profile, answered here once with the env an
  * orchestrator injects (docs/auth.md "Three ways to connect", mode 2). Only a connection's secret claims. Its claims
  * are counted under the board lock and spent in the claim's transaction, so of two racing claims of a single-use
- * secret exactly one wins and the other answers 410 `secret_spent`.
+ * secret exactly one wins and the other answers 410 `secret_spent`; likewise, of two claims of one profile while
+ * the first agent lives, the second answers 409 `profile_taken`.
  */
 export const claimConnectionHandler: Handler<typeof claimConnection> = async (ctx, input) => {
   if (ctx.by[credentialKind] !== "connection") {
@@ -58,7 +59,8 @@ export const claimConnectionHandler: Handler<typeof claimConnection> = async (ct
     const { id, profiles, can } = record.connection;
     const { tokenTtl, tokenMax, claims } = record;
     const connection = { id, profiles, can, tokenTtl, tokenMax, claims };
-    const decided = agents.decideClaim({ head: writer.head }, input, { by: ctx.by, now: ctx.now(), connection, token });
+    const state = { head: writer.head, holder: await writer.profileHolder(id, input.profile) };
+    const decided = agents.decideClaim(state, input, { by: ctx.by, now: ctx.now(), connection, token });
     await writer.append(decided.events);
     return decided.agent;
   });

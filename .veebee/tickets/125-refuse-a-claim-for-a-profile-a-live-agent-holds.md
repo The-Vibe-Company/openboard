@@ -11,11 +11,18 @@ writes:
   - packages/server/test/connections.test.ts
   - packages/ports/src/store.ts
   - packages/server/test/auth/profile-taken.test.ts
+  - packages/core/src/access/agents.ts
+  - packages/core/test/access/agents.test.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/server/openapi.json
+  - docs/auth.md
+  - docs/data-model.md
+  - docs/decisions.md
 conformance: []
 modes: [local]
 depends_on: [124]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t125
 issue: 126
 ---
 

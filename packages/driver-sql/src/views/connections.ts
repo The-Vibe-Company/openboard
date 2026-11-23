@@ -23,6 +23,11 @@ export const connectionStatements = {
   /** One more claim made with the connection's secret, in the claim's transaction. */
   spendClaim: sql`UPDATE connections SET claims_used = claims_used + 1
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  /** The connection's unrevoked agent pinned to the profile whose token expires last: the one that may still hold it. */
+  profileHolder: sql`SELECT id, token_expires FROM connection_agents
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND connection = ${"connection"}
+      AND profile_key = ${"profileKey"} AND revoked_at IS NULL
+    ORDER BY token_expires DESC LIMIT 1`,
   /** The connection with the first grant naming it: the one created with it. */
   connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.direct, c.claims_max, c.claims_used,
     c.profiles, c.token_ttl_s, c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can
@@ -114,6 +119,13 @@ export async function findConnection(db: Db, dialect: Dialect, keys: BoardKeys, 
 /** Counts a claim made with the connection's secret; the fold of `ob.agent.claimed` runs it in the claim's write. */
 export async function spendClaim(tx: Db, dialect: Dialect, keys: BoardKeys, id: string): Promise<void> {
   await query(tx, dialect, connectionStatements.spendClaim, { ...keys, id });
+}
+
+/** The connection's agent that may still hold the profile, read under the caller's board lock (docs/auth.md mode 2). */
+export async function profileHolder(tx: Db, dialect: Dialect, keys: BoardKeys, connection: string, profile: string) {
+  const params = { ...keys, connection, profileKey: profile.toLowerCase() };
+  const [row] = await query(tx, dialect, connectionStatements.profileHolder, params);
+  return row ? { id: String(row.id), tokenExpires: Number(row.token_expires) } : null;
 }
 
 export function connectionReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "connection"> {
