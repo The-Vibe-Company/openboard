@@ -16,7 +16,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [36]
-status: claimed
+status: done
 claimed_by: claude-opus-5-5
 issue: 58
 ---
@@ -25,7 +25,7 @@ issue: 58
 As an operator, I read one structured line per request in the server output.
 
 ## Done when
-- [ ] each request to `ob serve` prints one JSON line with `req`, `op`, `org`, `actor`, `ms` and the status
+- [x] each request to `ob serve` prints one JSON line with `req`, `op`, `org`, `actor`, `ms` and the status
 
 ## Out of scope
 - Redaction (59).

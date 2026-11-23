@@ -36,6 +36,7 @@ describe("one JSON log line per request", () => {
       ms: expect.any(Number),
     });
     expect(lines[0]?.ms).toBeGreaterThan(0);
+    expect(lines[0]?.ms).toBeLessThan(1_000);
   });
 
   test("prints a line with what is known for a request that matches no route", async () => {
@@ -57,6 +58,8 @@ describe("one JSON log line per request", () => {
       ["info", "request"],
     ]);
     expect(lines[1]).toMatchObject({ op: "postMessage", status: 500 });
+    expect(lines[1]?.ms).toBeGreaterThan(0);
+    expect(lines[1]?.ms).toBeLessThan(1_000);
   });
 
   test("never prints the body of a request", async () => {
