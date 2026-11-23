@@ -283,7 +283,13 @@ describe("posting once for a client ID", () => {
 
   test("answers 400 invalid_request for an ID that is the board's, a sync's, or another key's", async () => {
     app = makeApp();
-    for (const id of ["0f0f0f0f-0f0f-8f0f-8f0f-0f0f0f0f0f0f", "sync:chat:1", `key:other:${"a".repeat(32)}`, ""]) {
+    for (const id of [
+      "0f0f0f0f-0f0f-8f0f-8f0f-0f0f0f0f0f0f",
+      "sync:chat:1",
+      `key:other:${"a".repeat(32)}`,
+      "",
+      "a\u0000b",
+    ]) {
       const refused = await answer(call(app, "POST", "/messages", { channel: "dev", text: "x", id }));
       expect([refused.status, refused.body.error.code]).toEqual([400, "invalid_request"]);
     }

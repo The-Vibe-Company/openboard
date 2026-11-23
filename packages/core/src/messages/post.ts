@@ -113,7 +113,8 @@ function checkClientId(id: string, principal: string) {
   }
 }
 
-function checkCommand(command: PostCommand, by: Author) {
+/** Refuses a post the board cannot take, before anything is read for it. */
+export function checkPost(command: PostCommand, by: Author) {
   if (command.id !== undefined) checkClientId(command.id, by.principal);
   if ((command.channel === undefined) === (command.re === undefined)) {
     throw new BoardError("invalid_request", "channel: a post needs channel and a reply needs re, never both");
@@ -178,7 +179,7 @@ function placePost(state: PostState, command: PostCommand, id: number) {
  * thread is named by it too; a reply joins the thread of its root, in the root's channel.
  */
 export function decidePost(state: PostState, command: PostCommand, context: PostContext) {
-  checkCommand(command, context.by);
+  checkPost(command, context.by);
   const seen = actorSeen(state.actor, context, state.head + 1);
   const id = state.head + (seen ? 2 : 1);
   const { channel, root, re, replyTo } = placePost(state, command, id);
@@ -218,7 +219,7 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
  * (upstream `03-http.md` "Posting"). Text and labels may differ: a retry gets back what landed.
  */
 export function replayPost(state: PostState, command: PostCommand, context: PostContext): Message | null {
-  checkCommand(command, context.by);
+  checkPost(command, context.by);
   const landed = state.landed;
   if (command.id === undefined || !landed) return null;
   const place = placePost(state, command, 0); // Its root position is never compared: a landed post has its own.

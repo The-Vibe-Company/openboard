@@ -9,6 +9,7 @@ import type { Handler } from "./index.ts";
  */
 export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input) => {
   const message = await ctx.board.write(async (writer) => {
+    messages.checkPost(input, ctx.by);
     const re = input.re === undefined ? null : parseId(input.re);
     const target = re === null ? null : await writer.replyTarget(re);
     const landed = input.id === undefined ? null : await writer.clientPost(input.id);
