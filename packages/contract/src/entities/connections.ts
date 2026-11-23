@@ -1,0 +1,54 @@
+import { type Static, Type } from "@sinclair/typebox";
+
+/** Upstream's grant permissions (docs/auth.md "Upstream's model, as we keep it"). */
+export const Permission = Type.Union([
+  Type.Literal("read"),
+  Type.Literal("post"),
+  Type.Literal("react"),
+  Type.Literal("label"),
+  Type.Literal("sync"),
+  Type.Literal("manage"),
+]);
+export type Permission = Static<typeof Permission>;
+
+/** A grant pattern: `*`, a channel `name`, or a channel prefix `name/`. */
+const Pattern = Type.String({ minLength: 1, maxLength: 501 });
+
+/** What a grant lets in, as written: per pattern, `"all"` or a list of permissions. */
+export const CanInput = Type.Record(
+  Pattern,
+  Type.Union([Type.Literal("all"), Type.Array(Permission, { maxItems: 6 })]),
+);
+export type CanInput = Static<typeof CanInput>;
+
+/** What a grant lets in, compiled: per pattern, its permissions in upstream's order, none repeated. */
+export const Can = Type.Record(Type.String(), Type.Array(Permission));
+export type Can = Static<typeof Can>;
+
+/** Connection names: the handle its profiles write under (`laptop`, `ci-fixers`). */
+export const ConnectionName = Type.String({ pattern: "^[a-z0-9][a-z0-9-]{0,62}$" });
+
+/** A connection as the board shows it; its secret is never part of it (docs/auth.md "Connections"). */
+export const Connection = Type.Object({
+  id: Type.String(),
+  principal: Type.String(),
+  name: ConnectionName,
+  /** The ID of the connection's grant on this board, `g<n>`. */
+  grant: Type.String(),
+  can: Can,
+  direct: Type.Boolean(),
+  profiles: Type.Array(Type.String()),
+  /** The first and last characters of the secret, for people to tell secrets apart. */
+  secretHint: Type.String(),
+  createdBy: Type.String(),
+  createdAt: Type.String(),
+});
+export type Connection = Static<typeof Connection>;
+
+/** What creating a connection answers: the secret is shown here once, and nowhere else. */
+export const CreatedConnection = Type.Object({
+  connection: Connection,
+  secret: Type.String(),
+  env: Type.Object({ BOARD_URL: Type.String(), BOARD_TOKEN: Type.String() }),
+});
+export type CreatedConnection = Static<typeof CreatedConnection>;

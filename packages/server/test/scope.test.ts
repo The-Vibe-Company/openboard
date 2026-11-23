@@ -49,7 +49,12 @@ test.each(["/api", "/api/messages/10", "/api/tasks/main", "/api/x/main"])(
     app = createApp(
       { mode: "hosted", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER },
       { store: openStore(() => NOW) },
-      { now: () => NOW, requestId: () => "req-1", log: { info: () => {}, error: () => {} } },
+      {
+        now: () => NOW,
+        requestId: () => "req-1",
+        randomBytes: (length) => new Uint8Array(length),
+        log: { info: () => {}, error: () => {} },
+      },
     );
     const response = await app.fetch(new Request(`${PUBLIC_URL}${path}`));
     expect(response.status).toBe(404);

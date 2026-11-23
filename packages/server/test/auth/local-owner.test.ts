@@ -15,7 +15,12 @@ function localApp() {
   app = createApp(
     { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: owner.hash },
     { store: openStore(now) },
-    { now, log: { info: () => {}, error: () => {} }, requestId: () => "req-test" },
+    {
+      now,
+      log: { info: () => {}, error: () => {} },
+      requestId: () => "req-test",
+      randomBytes: (length) => new Uint8Array(length),
+    },
   );
   return app;
 }

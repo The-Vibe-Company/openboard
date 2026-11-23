@@ -12,7 +12,7 @@ export const OWNER = mintLocalOwnerToken(new Uint8Array(42).fill(7));
 
 /**
  * One app on in-memory SQLite, with a fixed clock unless one is given, a logger that keeps the errors it is told
- * unless one is given, and request IDs `req-1`, `req-2`, … in the order requests arrive.
+ * unless one is given, request IDs `req-1`, `req-2`, … in the order requests arrive, and random bytes all 1, then all 2, ….
  */
 export function makeApp(options: { readonly now?: () => number; readonly log?: Logger } = {}) {
   const logged: Readonly<Record<string, unknown>>[] = [];
@@ -22,10 +22,11 @@ export function makeApp(options: { readonly now?: () => number; readonly log?: L
     error: (message, fields) => logged.push({ message, ...fields }),
   };
   let minted = 0;
+  let drawn = 0;
   const app = createApp(
     { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: OWNER.hash },
     { store: openStore(now) },
-    { now, log, requestId: () => `req-${++minted}` },
+    { now, log, requestId: () => `req-${++minted}`, randomBytes: (length) => new Uint8Array(length).fill(++drawn) },
   );
   return { ...app, logged };
 }

@@ -76,11 +76,11 @@ describe("one JSON log line per request", () => {
     const owner = mintLocalOwnerToken(new Uint8Array(42).fill(7));
     const stranger = mintLocalOwnerToken(new Uint8Array(42).fill(9));
     const lines: Record<string, unknown>[] = [];
-    const now = () => NOW;
+    const log = jsonLogger({ now: () => NOW, write: (line) => lines.push(JSON.parse(line)) });
     app = createApp(
       { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: owner.hash },
-      { store: openStore(now) },
-      { now, log: jsonLogger({ now, write: (line) => lines.push(JSON.parse(line)) }), requestId: () => "req-test" },
+      { store: openStore(() => NOW) },
+      { now: () => NOW, log, requestId: () => "req-test", randomBytes: (length) => new Uint8Array(length) },
     );
     for (const token of [stranger.token, owner.token]) {
       await app.fetch(

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { testScope } from "@openboard/ports/testkit";
 import { sqliteDriver } from "../src/index.ts";
 
-test("keeps a posted message and the initial migration record on reopen", async () => {
+test("keeps a posted message and the migration records on reopen", async () => {
   const root = mkdtempSync("openboard-test-");
   const dir = join(root, "nested", "data");
   const scope = testScope({ orgId: 1, boardId: 1 });
@@ -62,6 +62,7 @@ test("keeps a posted message and the initial migration record on reopen", async 
       expect(database.query("PRAGMA journal_mode").get()).toEqual({ journal_mode: "wal" });
       expect(database.query("SELECT version, applied_at FROM schema_migrations").all()).toEqual([
         { version: 1, applied_at: 100 },
+        { version: 2, applied_at: 100 },
       ]);
     } finally {
       database.close();

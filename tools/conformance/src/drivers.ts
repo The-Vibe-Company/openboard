@@ -16,7 +16,12 @@ function bootApp(mode: "local" | "hosted", publicUrl: string, localOwnerTokenHas
   return createApp(
     { mode, publicUrl, localOwner: "ob:user:local-tools", localOwnerTokenHash },
     { store: sqliteDriver({ memory: true }, now) },
-    { now, log, requestId: () => crypto.randomUUID() },
+    {
+      now,
+      log,
+      requestId: () => crypto.randomUUID(),
+      randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+    },
   );
 }
 

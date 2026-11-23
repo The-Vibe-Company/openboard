@@ -5,6 +5,7 @@ import type { Db, Dialect } from "../db.ts";
 import { query, sql } from "../sql.ts";
 import { lockBoard, setHead } from "./boards.ts";
 import { findChannel, foldChannelCreated } from "./channels.ts";
+import { connectionNamed, foldConnectionCreated, nextGrant } from "./connections.ts";
 
 export const messageStatements = {
   insertEvent: sql`INSERT INTO events (org_id, board_id, id, type, at, thread, message, channel, actor, principal,
@@ -80,6 +81,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
     payload: JSON.stringify(event.payload),
   });
   if (event.type === "channel.created") await foldChannelCreated(tx, dialect, keys, event);
+  else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
   else await foldMessagePosted(tx, dialect, keys, event);
 }
 
@@ -95,6 +97,8 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number): Board
       if (!row) return null;
       return { id: Number(row.id), channel: String(row.channel), thread: Number(row.thread) };
     },
+    nextGrant: () => nextGrant(tx, dialect, keys),
+    connectionNamed: (name) => connectionNamed(tx, dialect, keys, name),
     async append(events) {
       for (const event of events) {
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);

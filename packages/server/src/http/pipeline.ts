@@ -67,7 +67,9 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
     query: Object.fromEntries(url.searchParams),
     body: request.method === "GET" ? undefined : await readBody(request),
   });
-  const output = await handlerOf(operation)({ board, by, now: pipeline.deps.now }, input);
+  const { now, randomBytes } = pipeline.deps;
+  const boardUrl = `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`;
+  const output = await handlerOf(operation)({ board, by, now, boardUrl, randomBytes }, input);
   return operationResponse(operation, output);
 }
 

@@ -15,11 +15,40 @@ writes:
   - packages/core/src/access/grants.ts
   - packages/core/test/access/grants.test.ts
   - packages/driver-sql/migrations/*-connections.sql
+  - .veebee/tickets/109-create-a-connection-on-the-board.md
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/core/src/access/connections.ts
+  - packages/core/src/index.ts
+  - packages/ports/src/index.ts
+  - packages/ports/testkit/index.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/server/openapi.json
+  - packages/server/src/auth/secrets.ts
+  - packages/server/src/auth/local-owner.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/test/support/app.ts
+  - packages/server/test/auth/local-owner.test.ts
+  - packages/server/test/log.test.ts
+  - packages/server/test/scope.test.ts
+  - packages/cli/src/commands/connections.ts
+  - packages/cli/src/commands/index.ts
+  - packages/cli/src/main.ts
+  - packages/cli/test/connections.test.ts
+  - apps/openboard/src/compose.ts
+  - tools/conformance/src/drivers.ts
+  - tools/bench/src/drivers.ts
+  - tools/bench/test/counters.test.ts
 conformance: []
 modes: [local]
 depends_on: [38, 43]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-ticket-109
 issue: 109
 ---
 
