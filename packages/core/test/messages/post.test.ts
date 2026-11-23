@@ -91,6 +91,74 @@ describe("replying in a thread", () => {
   });
 });
 
+describe("recording who writes", () => {
+  const author = { kind: "person", handle: "local-dev", name: "local-dev", avatar: null } as const;
+  const known = { id: by.actor, ...author };
+
+  test("writes actor.seen before an actor's first post, which takes the position after it", () => {
+    const { events, message } = decidePost(
+      { head: 4, actor: null },
+      { channel: "dev", text: "hi" },
+      { by, author, now: at },
+    );
+    expect(events.map((event) => [event.id, event.type])).toEqual([
+      [5, "actor.seen"],
+      [6, "message.posted"],
+    ]);
+    expect(events[0]).toMatchObject({ at, actor: by.actor, principal: by.principal, visibility: 1, channel: null });
+    expect(events[0].payload).toEqual({
+      actor: by.actor,
+      kind: "person",
+      handle: "local-dev",
+      name: "local-dev",
+      avatar: null,
+    });
+    expect(message).toMatchObject({ id: "6", thread: "6" });
+  });
+
+  test("writes nothing more for an actor the board already shows as it is", () => {
+    const { events } = decidePost(
+      { head: 6, actor: known },
+      { channel: "dev", text: "again" },
+      { by, author, now: at },
+    );
+    expect(events.map((event) => [event.id, event.type])).toEqual([[7, "message.posted"]]);
+  });
+
+  test("writes actor.seen again when the actor shows otherwise", () => {
+    const renamed = { ...known, name: "Dev" };
+    const { events } = decidePost(
+      { head: 6, actor: renamed },
+      { channel: "dev", text: "again" },
+      { by, author, now: at },
+    );
+    expect(events.map((event) => event.type)).toEqual(["actor.seen", "message.posted"]);
+  });
+
+  test("writes no actor.seen when the board's record of the writer was not read", () => {
+    const { events } = decidePost({ head: 0 }, { channel: "dev", text: "hi" }, { by, author, now: at });
+    expect(events.map((event) => event.type)).toEqual(["message.posted"]);
+  });
+
+  test("records a profile with the principal it acts through", () => {
+    const agent = { kind: "agent", handle: "local-dev/fixer", name: "Fixer", avatar: null } as const;
+    const via = { name: "local-dev", environment: null };
+    const { events } = decidePost(
+      { head: 0, actor: null },
+      { channel: "dev", text: "hi" },
+      { by: { ...by, actor: `${by.actor}+fixer`, profile: "fixer" }, author: { ...agent, via }, now: at },
+    );
+    expect(events[0].payload).toEqual({ actor: `${by.actor}+fixer`, ...agent, via });
+  });
+
+  test("writes no actor.seen for a refused post", () => {
+    const refused = refusal(() =>
+      decidePost({ head: 0, actor: null }, { channel: "dev", text: " " }, { by, author, now: at }),
+    );
+    expect(refused.code).toBe("invalid_request");
+  });
+});
+
 describe("wire IDs and times", () => {
   test.each([
     ["1", 1],

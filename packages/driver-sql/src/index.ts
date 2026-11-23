@@ -1,7 +1,9 @@
 import type { BoardScope, BoardView, PlatformView } from "@openboard/ports";
 import init from "../migrations/0001-init.sql" with { type: "text" };
 import connectionsDdl from "../migrations/0002-connections.sql" with { type: "text" };
+import actors from "../migrations/0003-actors.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
+import { actorReads } from "./views/actors.ts";
 import { platformView } from "./views/boards.ts";
 import { channelReads } from "./views/channels.ts";
 import { connectionReads } from "./views/connections.ts";
@@ -23,6 +25,7 @@ export interface Migration {
 export const migrations: readonly Migration[] = Object.freeze([
   { version: 1, name: "0001-init", sql: init },
   { version: 2, name: "0002-connections", sql: connectionsDdl },
+  { version: 3, name: "0003-actors", sql: actors },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -38,6 +41,7 @@ export function createViews(
       ...channelReads(db, dialect, scope),
       ...connectionReads(db, dialect, scope),
       ...eventReads(db, dialect, scope),
+      ...actorReads(db, dialect, scope),
     }),
   };
 }

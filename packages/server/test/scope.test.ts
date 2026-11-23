@@ -18,17 +18,17 @@ test("reads the same local channel through either mount", async () => {
   expect(await alias.json()).toEqual(await canonical.json());
 });
 
-test("reads message 10 through the short mount", async () => {
+test("reads the tenth message through the short mount", async () => {
   app = makeApp();
   for (let id = 1; id <= 10; id++) {
     const response = await call(app, "POST", "/messages", { channel: "dev", text: `Message ${id}` });
     expect(response.status).toBe(201);
   }
   const response = await app.fetch(
-    new Request(`${PUBLIC_URL}/api/messages/10`, { headers: { authorization: `Bearer ${OWNER.token}` } }),
+    new Request(`${PUBLIC_URL}/api/messages/11`, { headers: { authorization: `Bearer ${OWNER.token}` } }),
   );
   expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ message: { id: "10", text: "Message 10" }, replies: [] });
+  expect(await response.json()).toMatchObject({ message: { id: "11", text: "Message 10" }, replies: [] });
 });
 
 test.each([
