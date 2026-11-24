@@ -8,11 +8,13 @@ writes:
   - apps/web/src/routes/$org/settings/index.tsx
   - apps/web/src/routes/$org/settings/boards.tsx
   - apps/web/e2e/boards.spec.ts
+  - apps/web/src/routeTree.gen.ts
+  - apps/web/src/routes/$org/settings/settings.css
 conformance: []
 modes: [local, hosted]
 depends_on: [216]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 394
 ---
 
@@ -20,8 +22,8 @@ issue: 394
 As an organization admin, I open my organization's settings, see its boards, and create a new one that I can open at once.
 
 ## Done when
-- [ ] `bun run e2e apps/web/e2e/boards.spec.ts` passes: an admin on `/acme/settings` sees the organization's name and a "Boards" section; on `/acme/settings/boards`, creating "Ops" with slug `ops` adds it to the list with its `BOARD_URL`, and opening it goes to `/acme/ops`
-- [ ] in the same spec, a taken slug shows "ops is taken" (409 `slug_taken`), the 11th board shows the quota's message (196), and a member who is not an admin sees the list without the create form
+- [x] `bun run e2e apps/web/e2e/boards.spec.ts` passes: an admin on `/acme/settings` sees the organization's name and a "Boards" section; on `/acme/settings/boards`, creating "Ops" with slug `ops` adds it to the list with its `BOARD_URL`, and opening it goes to `/acme/ops`
+- [x] in the same spec, a taken slug shows "ops is taken" (409 `slug_taken`), the 11th board shows the quota's message (196), and a member who is not an admin sees the list without the create form
 
 ## Out of scope
 - Deleting a board from the page (the route exists, 209; its page is not planned in the cut).

@@ -13,6 +13,9 @@
 import { Route as rootRouteImport } from "./routes/__root.tsx";
 import { Route as IndexRouteImport } from "./routes/index.tsx";
 import { Route as SigninRouteImport } from "./routes/signin.tsx";
+import { Route as OrgSettingsRouteRouteImport } from "./routes/$org/settings/route.tsx";
+import { Route as OrgSettingsIndexRouteImport } from "./routes/$org/settings/index.tsx";
+import { Route as OrgSettingsBoardsRouteImport } from "./routes/$org/settings/boards.tsx";
 
 const IndexRoute = IndexRouteImport.update({
   id: "/",
@@ -24,31 +27,66 @@ const SigninRoute = SigninRouteImport.update({
   path: "/signin",
   getParentRoute: () => rootRouteImport,
 } as any);
+const OrgSettingsRouteRoute = OrgSettingsRouteRouteImport.update({
+  id: "/$org/settings",
+  path: "/$org/settings",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const OrgSettingsIndexRoute = OrgSettingsIndexRouteImport.update({
+  id: "/",
+  path: "/",
+  getParentRoute: () => OrgSettingsRouteRoute,
+} as any);
+const OrgSettingsBoardsRoute = OrgSettingsBoardsRouteImport.update({
+  id: "/boards",
+  path: "/boards",
+  getParentRoute: () => OrgSettingsRouteRoute,
+} as any);
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/signin": typeof SigninRoute;
+  "/$org/settings": typeof OrgSettingsRouteRouteWithChildren;
+  "/$org/settings/boards": typeof OrgSettingsBoardsRoute;
+  "/$org/settings/": typeof OrgSettingsIndexRoute;
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/signin": typeof SigninRoute;
+  "/$org/settings/boards": typeof OrgSettingsBoardsRoute;
+  "/$org/settings": typeof OrgSettingsIndexRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
   "/signin": typeof SigninRoute;
+  "/$org/settings": typeof OrgSettingsRouteRouteWithChildren;
+  "/$org/settings/boards": typeof OrgSettingsBoardsRoute;
+  "/$org/settings/": typeof OrgSettingsIndexRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/signin";
+  fullPaths:
+    | "/"
+    | "/signin"
+    | "/$org/settings"
+    | "/$org/settings/boards"
+    | "/$org/settings/";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/signin";
-  id: "__root__" | "/" | "/signin";
+  to: "/" | "/signin" | "/$org/settings/boards" | "/$org/settings";
+  id:
+    | "__root__"
+    | "/"
+    | "/signin"
+    | "/$org/settings"
+    | "/$org/settings/boards"
+    | "/$org/settings/";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   SigninRoute: typeof SigninRoute;
+  OrgSettingsRouteRoute: typeof OrgSettingsRouteRouteWithChildren;
 }
 
 declare module "@tanstack/react-router" {
@@ -67,12 +105,47 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof SigninRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/$org/settings": {
+      id: "/$org/settings";
+      path: "/$org/settings";
+      fullPath: "/$org/settings";
+      preLoaderRoute: typeof OrgSettingsRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/$org/settings/": {
+      id: "/$org/settings/";
+      path: "/";
+      fullPath: "/$org/settings/";
+      preLoaderRoute: typeof OrgSettingsIndexRouteImport;
+      parentRoute: typeof OrgSettingsRouteRoute;
+    };
+    "/$org/settings/boards": {
+      id: "/$org/settings/boards";
+      path: "/boards";
+      fullPath: "/$org/settings/boards";
+      preLoaderRoute: typeof OrgSettingsBoardsRouteImport;
+      parentRoute: typeof OrgSettingsRouteRoute;
+    };
   }
 }
+
+interface OrgSettingsRouteRouteChildren {
+  OrgSettingsBoardsRoute: typeof OrgSettingsBoardsRoute;
+  OrgSettingsIndexRoute: typeof OrgSettingsIndexRoute;
+}
+
+const OrgSettingsRouteRouteChildren: OrgSettingsRouteRouteChildren = {
+  OrgSettingsBoardsRoute: OrgSettingsBoardsRoute,
+  OrgSettingsIndexRoute: OrgSettingsIndexRoute,
+};
+
+const OrgSettingsRouteRouteWithChildren =
+  OrgSettingsRouteRoute._addFileChildren(OrgSettingsRouteRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SigninRoute: SigninRoute,
+  OrgSettingsRouteRoute: OrgSettingsRouteRouteWithChildren,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

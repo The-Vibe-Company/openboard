@@ -1,0 +1,66 @@
+.organization-settings {
+  display: block;
+  min-height: auto;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.organization-settings h1 {
+  margin: 0 0 1rem;
+  font-size: 2rem;
+}
+
+.organization-settings nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.organization-settings nav [aria-current="page"] {
+  font-weight: 650;
+}
+
+.organization-settings a {
+  color: inherit;
+}
+
+.organization-boards {
+  list-style: none;
+  padding: 0;
+}
+
+.organization-boards li {
+  display: grid;
+  gap: 0.25rem;
+  border-bottom: 1px solid #ddd;
+  padding: 0.75rem 0;
+}
+
+.organization-settings h1,
+.organization-boards a,
+.organization-boards code {
+  overflow-wrap: anywhere;
+}
+
+.organization-settings fieldset {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 22rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.organization-settings label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.organization-settings input,
+.organization-settings button {
+  font: inherit;
+  padding: 0.5rem;
+}
