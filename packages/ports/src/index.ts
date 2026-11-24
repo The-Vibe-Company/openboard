@@ -14,6 +14,7 @@ export type {
   IdentityRecord,
   MembershipRecord,
   MentionEvidence,
+  OrgAuditRecord,
   OrgScope,
   OrgView,
   PersonRecord,

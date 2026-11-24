@@ -8,11 +8,20 @@ writes:
   - packages/server/src/operations/audit.ts
   - packages/driver-sql/src/views/audit.ts
   - packages/server/test/audit.test.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/ports/src/index.ts
+  - packages/ports/src/store.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/driver-sql/src/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [132, 143, 149]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-5.5
 issue: 162
 ---
 
@@ -20,7 +29,7 @@ issue: 162
 As an admin, I see who joined, who invited whom and who changed roles.
 
 ## Done when
-- [ ] `GET http://127.0.0.1:8787/api/x/orgs/acme/audit` as an admin lists `ob.org.created`, `ob.invitation.created`, `ob.member.added` and `ob.member.role_changed` with their actors; as a member it answers 403
+- [x] `GET http://127.0.0.1:8787/api/x/orgs/acme/audit` as an admin lists `ob.org.created`, `ob.invitation.created`, `ob.member.added` and `ob.member.role_changed` with their actors; as a member it answers 403
 
 ## Out of scope
 - Operator access records (M7, 214).

@@ -20,6 +20,15 @@ import type { BoardMessageReads } from "./board-message-reads.ts";
 /** A board configuration event (`ob.*`, visibility 2), as stored: its payload may hold hashes the audit strips. */
 export type AuditRecord = Extract<BoardEvent, { readonly visibility: 2 }>;
 
+/** An organization event as stored in `org_events`: the audit picks what its payload shows. */
+export interface OrgAuditRecord {
+  readonly id: number;
+  readonly type: string;
+  readonly at: number;
+  readonly actor: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+}
+
 declare const minted: unique symbol;
 
 /**
@@ -108,6 +117,8 @@ export interface OrgScope {
 
 export interface OrgView {
   listMembers(): Promise<{ principal: string; role: Role }[]>;
+  /** The organization's first `limit` events after its event ID `after`, oldest first, and the last event ID read first. */
+  auditEvents(after: number, limit: number): Promise<{ events: OrgAuditRecord[]; head: number }>;
   /**
    * Changes the role and records its audit event together. Throws `last_owner` if the change would leave no owner.
    * Returns null when the target is outside this organization.

@@ -4311,6 +4311,245 @@
         }
       }
     },
+    "/api/x/orgs/{org}/audit": {
+      "get": {
+        "operationId": "readOrgAudit",
+        "summary": "Read the organization's audit events (members, roles, invitations, boards) after a cursor, oldest first.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": { "description": "A cursor this route answered; absent, from the start.", "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "minimum": 1, "maximum": 200, "default": 100, "type": "integer" }
+          }
+        ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "after": { "description": "A cursor this route answered; absent, from the start.", "type": "string" },
+            "limit": { "minimum": 1, "maximum": 200, "default": 100, "type": "integer" }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["events", "cursor"],
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.org.created", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["org", "owner"],
+                                "properties": {
+                                  "org": {
+                                    "type": "object",
+                                    "required": ["slug", "name"],
+                                    "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }
+                                  },
+                                  "owner": { "type": "string" }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.board.created", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["board"],
+                                "properties": {
+                                  "board": {
+                                    "type": "object",
+                                    "required": ["slug", "name"],
+                                    "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.invitation.created", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id", "role"],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "role": {
+                                    "anyOf": [
+                                      { "const": "admin", "type": "string" },
+                                      { "const": "member", "type": "string" }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.invitation.revoked", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id"],
+                                "properties": { "id": { "type": "string" } }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.member.added", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["principal", "role"],
+                                "properties": {
+                                  "principal": { "type": "string" },
+                                  "role": {
+                                    "anyOf": [
+                                      { "const": "owner", "type": "string" },
+                                      { "const": "admin", "type": "string" },
+                                      { "const": "member", "type": "string" }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.member.role_changed", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["principal", "previousRole", "role"],
+                                "properties": {
+                                  "principal": { "type": "string" },
+                                  "previousRole": {
+                                    "anyOf": [
+                                      { "const": "owner", "type": "string" },
+                                      { "const": "admin", "type": "string" },
+                                      { "const": "member", "type": "string" }
+                                    ]
+                                  },
+                                  "role": {
+                                    "anyOf": [
+                                      { "const": "owner", "type": "string" },
+                                      { "const": "admin", "type": "string" },
+                                      { "const": "member", "type": "string" }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.member.removed", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["principal", "role"],
+                                "properties": {
+                                  "principal": { "type": "string" },
+                                  "role": {
+                                    "anyOf": [
+                                      { "const": "owner", "type": "string" },
+                                      { "const": "admin", "type": "string" },
+                                      { "const": "member", "type": "string" }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_cursor, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/posts/{id}": {
       "get": {
         "operationId": "posted",

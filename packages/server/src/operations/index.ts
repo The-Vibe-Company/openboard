@@ -22,7 +22,7 @@ import {
   startDeviceSignInHandler,
 } from "./accounts.ts";
 import { getMeHandler, listActorsHandler } from "./actors.ts";
-import { readBoardAuditHandler } from "./audit.ts";
+import { readBoardAuditHandler, readOrgAuditHandler } from "./audit.ts";
 import { createBoardHandler, listBoardsHandler } from "./boards.ts";
 import { createChannelHandler, listChannelsHandler } from "./channels.ts";
 import {
@@ -171,6 +171,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   reactToMessage: reactToMessageHandler,
   readBoardAudit: readBoardAuditHandler,
   readEvents: readEventsHandler,
+  readOrgAudit: readOrgAuditHandler,
   readPost: readPostHandler,
   readThread: readThreadHandler,
   refreshAgentToken: refreshAgentTokenHandler,

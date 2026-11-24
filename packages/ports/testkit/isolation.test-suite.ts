@@ -106,6 +106,7 @@ const writerCases: Cases<BoardWriter> = {
 /** One case per `OrgView` method, on A's organization, with B's people and IDs. */
 const orgCases: Cases<OrgView> = {
   listMembers: (a) => a.org.listMembers(),
+  auditEvents: (a) => a.org.auditEvents(0, 500),
   changeMemberRole: async (a, b) =>
     expectNull(await a.org.changeMemberRole({ personId: a.personId, targetId: b.personId, role: "admin", at })),
   removeMember: async (a, b) =>
@@ -148,6 +149,7 @@ async function digestOf(b: StoreTenant): Promise<string> {
     await b.board.auditEvents(0, 500),
     await b.board.thread(b.message),
     await b.org.listMembers(),
+    await b.org.auditEvents(0, 500),
     await b.org.listBoards(),
   ]);
 }
