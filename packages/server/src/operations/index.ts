@@ -73,7 +73,7 @@ import {
   recordSyncReceiptHandler,
   showTypingHandler,
 } from "./sync/stubs.ts";
-import { createTaskHandler } from "./tasks.ts";
+import { createTaskHandler, listTasksHandler } from "./tasks.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
@@ -194,6 +194,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listPersonalTokens: listPersonalTokensHandler,
   listSyncCopies: listSyncCopiesHandler,
   listSyncTargets: listSyncTargetsHandler,
+  listTasks: listTasksHandler,
   listThreads: listThreadsHandler,
   pollDeviceSignIn: pollDeviceSignInHandler,
   postMessage: postMessageHandler,

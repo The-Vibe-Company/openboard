@@ -472,6 +472,38 @@ Example:
 ob connections
 ```
 
+## `ob tasks`
+
+List the tasks of a channel, a subtree (`dev/`), or the whole board, oldest first, each as its thread's summary.
+
+```sh
+ob tasks [channel] [--state <state>] [--label <label>]... [--by <by>] [--owner <owner>] [--for <for>] [--after <after>] [--limit <limit>]
+```
+
+Arguments:
+
+- `channel`: A channel by its whole name, or `dev/` for `dev` and every channel under it.
+
+Options:
+
+- `--state`: `open` by default (`waiting`, `ready`, `claimed`, `blocked`), `all`, or one task state.
+- `--label`: A root label `key` that must be set, or `key=value` (`key=v|w`): repeatable, all must match.
+- `--by`: A task whose root this handle, actor ID, or `me` (the caller's actor) wrote.
+- `--owner`: A task this principal owns: its handle or principal ID.
+- `--for`: A task assigned to this actor: its handle or actor ID.
+- `--after`: A page's `cursor`, or a task ID: the tasks made after it.
+- `--limit`: Maximum tasks, 50 by default.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_cursor`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `list_tasks`.
+
+Example:
+
+```sh
+ob tasks dev
+```
+
 ## `ob post`
 
 Post a message: a new thread in a channel, or a reply in the thread of any message `re` names.

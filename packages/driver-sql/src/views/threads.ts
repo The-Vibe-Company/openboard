@@ -52,7 +52,7 @@ const oneChannel = sql`root.channel = ${"channel"}`;
 const subtreeChannels = sql`(root.channel = ${"channel"} OR root.channel LIKE ${"under"} ESCAPE '\\')`;
 
 /** `outer` with `inner`'s text and parameters in place of the `marker` slot. */
-function splice<K extends string>(outer: Statement<K>, marker: Fragment, inner: Statement<K>): Statement<K> {
+export function splice<K extends string>(outer: Statement<K>, marker: Fragment, inner: Statement<K>): Statement<K> {
   const at = outer.slots.indexOf(marker);
   const [first = "", ...rest] = inner.strings;
   const middle = [`${outer.strings[at]}${first}`, ...rest];
