@@ -24,26 +24,76 @@ function pollBoardHeads(
   boards: ReadonlyMap<number, Board>,
   publish: (scope: Pick<BoardScope, "boardId">, position: number) => void,
 ) {
-  let polling = false;
   return async () => {
-    if (polling || boards.size === 0) return;
-    polling = true;
+    if (boards.size === 0) return;
     const subscribed = new Map(boards);
-    try {
-      // Platform query: board IDs are globally unique and come only from active scoped subscriptions.
-      const ids = `{${Array.from(subscribed.keys()).join(",")}}`;
-      // A failed background read leaves positions intact, so the next tick can retry.
-      const heads = await db.query("SELECT id, head FROM boards WHERE id = ANY($1::bigint[])", [ids]).catch(() => []);
+    // Platform query: board IDs are globally unique and come only from active scoped subscriptions.
+    const ids = `{${Array.from(subscribed.keys()).join(",")}}`;
+    // A failed background read leaves positions intact, so the next tick can retry.
+    const heads = await db.query("SELECT id, head FROM boards WHERE id = ANY($1::bigint[])", [ids]).catch(() => []);
 
-      for (const row of heads) {
-        const boardId = Number(row.id);
-        if (boards.get(boardId) === subscribed.get(boardId)) {
-          publish({ boardId }, Number(row.head));
-        }
+    for (const row of heads) {
+      const boardId = Number(row.id);
+      if (boards.get(boardId) === subscribed.get(boardId)) {
+        publish({ boardId }, Number(row.head));
       }
+    }
+  };
+}
+
+function reconnectPoll(readHeads: () => Promise<void>) {
+  let polling = false;
+  let catchUpPending = false;
+
+  async function poll() {
+    if (polling) return;
+    polling = true;
+    try {
+      do {
+        catchUpPending = false;
+        await readHeads();
+      } while (catchUpPending);
     } finally {
       polling = false;
     }
+  }
+
+  let listening = false;
+  function onListen() {
+    // Bun calls this after the initial LISTEN and after each successful re-subscription.
+    if (listening) {
+      // A poll already in flight could have read a snapshot from before LISTEN was restored.
+      catchUpPending = true;
+      void poll();
+    }
+    listening = true;
+  }
+
+  return { poll, onListen };
+}
+
+function onNotification(
+  boards: ReadonlyMap<number, Board>,
+  publish: (scope: Pick<BoardScope, "boardId">, position: number) => void,
+) {
+  return (payload: string) => {
+    const match = /^(\d+):(\d+)$/.exec(payload);
+    if (!match) return;
+    const boardId = Number(match[1]);
+    const position = Number(match[2]);
+    if (!Number.isSafeInteger(boardId) || !Number.isSafeInteger(position)) return;
+    const board = boards.get(boardId);
+    if (!board) return;
+    if (board.pending) {
+      board.pending.position = Math.max(board.pending.position, position);
+      return;
+    }
+    const flush = setImmediate(() => {
+      const pending = board.pending;
+      delete board.pending;
+      if (pending) publish({ boardId }, pending.position);
+    });
+    board.pending = { position, flush };
   };
 }
 
@@ -65,7 +115,7 @@ export async function postgresBroadcaster(
     stopPoll = undefined;
   }
 
-  const poll = pollBoardHeads(db, boards, publish);
+  const { poll, onListen } = reconnectPoll(pollBoardHeads(db, boards, publish));
 
   function remove(id: number, board: Board, subscription: Subscription) {
     if (!board.subscribers.delete(subscription) || board.subscribers.size !== 0) return;
@@ -89,25 +139,7 @@ export async function postgresBroadcaster(
     }
   }
 
-  const listener = await sql.listen("ob_events", (payload) => {
-    const match = /^(\d+):(\d+)$/.exec(payload);
-    if (!match) return;
-    const boardId = Number(match[1]);
-    const position = Number(match[2]);
-    if (!Number.isSafeInteger(boardId) || !Number.isSafeInteger(position)) return;
-    const board = boards.get(boardId);
-    if (!board) return;
-    if (board.pending) {
-      board.pending.position = Math.max(board.pending.position, position);
-      return;
-    }
-    const flush = setImmediate(() => {
-      const pending = board.pending;
-      delete board.pending;
-      if (pending) publish({ boardId }, pending.position);
-    });
-    board.pending = { position, flush };
-  });
+  const listener = await sql.listen("ob_events", onNotification(boards, publish), onListen);
 
   return {
     publish,
