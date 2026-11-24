@@ -10,13 +10,14 @@ writes:
   - packages/driver-sql/src/views/invitations.ts
   - packages/ports/testkit/store/accounts.test-suite.ts
   - packages/server/test/auth/signup.test.ts
+  - packages/server/test/support/sign-in.ts
   - docs/auth.md
   - docs/decisions.md
 conformance: []
 modes: [local, hosted]
 depends_on: [169, 177, 182]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 356
 ---
 
@@ -24,9 +25,9 @@ issue: 356
 As the operator of an invite-only board, only people who arrive with an invitation can sign up, and they land in the organization that invited them.
 
 ## Done when
-- [ ] `bun test packages/server/test/auth/signup.test.ts` passes, through the GitHub provider's test double: with `signup: "invite"`, a new identity signing in from `/auth/github/start` is refused with 403 `forbidden` and no person is created; one starting from `/auth/github/start?invitation=<token>` of a live invitation becomes a person and a member with the invited role in the sign-in's transaction, and is redirected to `/<org>/main`; with `closed` no new person is created even with an invitation, with `open` anyone is; a known person signs in in all three
-- [ ] the same file passes on Postgres: `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/auth/signup.test.ts`
-- [ ] in the same file, the callback redirects a returning member to `/<org>/main` and a person without a membership to `/new` (docs/auth.md "Sign-up and sign-in")
+- [x] `bun test packages/server/test/auth/signup.test.ts` passes, through the GitHub provider's test double: with `signup: "invite"`, a new identity signing in from `/auth/github/start` is refused with 403 `forbidden` and no person is created; one starting from `/auth/github/start?invitation=<token>` of a live invitation becomes a person and a member with the invited role in the sign-in's transaction, and is redirected to `/<org>/main`; with `closed` no new person is created even with an invitation, with `open` anyone is; a known person signs in in all three
+- [x] the same file passes on Postgres: `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/auth/signup.test.ts`
+- [x] in the same file, the callback redirects a returning member to `/<org>/main` and a person without a membership to `/new` (docs/auth.md "Sign-up and sign-in")
 
 ## Out of scope
 - The `/signin`, `/new` and `/invite/:token` pages (M8, 218, 219, 220).

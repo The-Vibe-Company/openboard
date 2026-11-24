@@ -75,13 +75,15 @@ Verified against `docs/01-board/03-identity.md`, `docs/01-board/09-access.md`,
 ### Sign-up and sign-in
 
 ```
-/signin ─ GitHub ─> /auth/github/callback
-   │                     │ identity known? ── yes ──> session ──> /<org>/main (or /new if no membership)
-   │                     └─ no ──> create user ──> invitation cookie present?
-   │                                                  ├─ yes ──> accept ──> /<org>/main
-   │                                                  └─ no ───> /new: name + slug ──> POST /api/x/orgs
-   │                                                                ──> org + owner membership + board main
-/invite/:token ─> stores the token in a short-lived cookie, then /signin (or accepts at once if signed in)
+/invite/:token ─> /signin ─> /auth/github/start?invitation=<token>
+/signin ───────────────────> /auth/github/start
+                                └─> pending sign-in cookie ─> GitHub ─> /auth/github/callback
+                                                                         ├─ known identity ─> session
+                                                                         └─ new identity ─> check sign-up policy
+                                                                                              ├─ admitted ─> person + session
+                                                                                              │              + membership in invite mode
+                                                                                              └─ refused ──> JSON error
+Session ─> /<org>/main if a member, or /new to create an organization
 ```
 
 - Creating an organization (`POST /api/x/orgs { name, slug }`) creates the
@@ -116,13 +118,20 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
   verified email is **not** linked automatically (account takeover risk
   through a provider with weaker email verification); linking is explicit
   from `/account` while signed in.
-- **Self-host restriction:** `OPENBOARD_SIGNUP=open|invite|closed` (hosted
-  default `open`; a private self-host sets `invite` or `closed`). The earlier
-  "allowed GitHub organizations" rule becomes an optional `admit` hook of the
-  GitHub provider for self-hosts (`OPENBOARD_GITHUB_ALLOWED_ORGS`), not a
-  hosted feature.
+- **Sign-up policy:** `OPENBOARD_SIGNUP=open|invite|closed` controls new
+  people. `open` accepts new identities, `invite` requires a live invitation,
+  and `closed` refuses all new identities. Known identities can sign in in
+  every mode. The earlier "allowed GitHub organizations" rule is a possible
+  provider hook for self-hosts (`OPENBOARD_GITHUB_ALLOWED_ORGS`).
 
 ### Invitations
+
+- A signed-out recipient starts sign-in with `?invitation=<token>`. The
+  token travels in the ten-minute pending sign-in cookie, then the callback
+  hashes it for lookup. In invite mode, successful redemption creates the
+  person, membership and session and consumes the invitation in one
+  transaction. An expired, revoked or used link returns 410 `invitation_used`
+  at the callback. A bound email requires a matching verified address.
 
 - `POST /api/x/orgs/:org/invitations { role, email? , send? }` (admin+) →
   `{ invitation, url: "<origin>/invite/<token>" }`. Token: 256 bits, stored

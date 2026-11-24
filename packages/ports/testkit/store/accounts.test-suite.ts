@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
-import { orgs } from "@openboard/core";
-import type { IdentityRecord, PlatformView, SignInRecord, Store } from "../../src/index.ts";
+import { decideInvitation, orgs } from "@openboard/core";
+import type { IdentityRecord, OrgScope, PlatformView, SignInRecord, Store } from "../../src/index.ts";
 import type { OpenStore } from "../index.ts";
 
 const at = 1_700_000_000_000;
@@ -104,6 +104,7 @@ export function accountsSuite(driver: string, open: OpenStore): void {
   });
 
   revokeAllSessionsCase(driver, platform);
+  invitationRollbackCase(driver, open);
 }
 
 function revokeAllSessionsCase(driver: string, platform: () => Promise<PlatformView>): void {
@@ -168,5 +169,36 @@ function personalTokenRevocationCase(driver: string, platform: () => Promise<Pla
       { id: laptop, revokedAt: first },
       { id: desktop, revokedAt: null },
     ]);
+  });
+}
+
+function invitationRollbackCase(driver: string, open: OpenStore): void {
+  test(`${driver}: a failed invited session rolls back the person and leaves the invitation redeemable`, async () => {
+    const store = await open();
+    try {
+      const accounts = store.platform();
+      const owner = signIn({ ...ada, subject: "owner", login: "owner" }, hash("a"));
+      await accounts.signIn(owner);
+      const personId = owner.newPersonId;
+      const by = `ob:user:${personId}`;
+      const slug = "acme";
+      await accounts.createOrg({ ...orgs.decideCreate({ name: "Acme", slug }, { by, now: at }), personId, now: at });
+      const membership = await accounts.orgMembership(slug, personId);
+      if (!membership) throw new Error("expected the organization's owner");
+      const tokenHash = new Uint8Array(32).fill(7);
+      const invitation = decideInvitation({ role: "admin" }, { by, id: "inv_fixture", now: at });
+      const org = store.org({ orgId: membership.orgId } as OrgScope);
+      expect(await org.createInvitation({ ...invitation, personId, tokenHash, at })).toBe(true);
+
+      const guest = signIn(ada, hash("b"), false);
+      await expect(accounts.signIn({ ...guest, invitationHash: tokenHash, session: owner.session })).rejects.toThrow();
+      expect(await accounts.signIn(guest)).toBeNull();
+      expect(await accounts.invitationPreview(tokenHash)).toMatchObject({ used: false });
+      expect(await accounts.signIn({ ...guest, invitationHash: tokenHash })).toMatchObject({ id: guest.newPersonId });
+      expect(await accounts.orgMembership(slug, guest.newPersonId)).toMatchObject({ role: "admin" });
+      expect(await accounts.invitationPreview(tokenHash)).toMatchObject({ used: true });
+    } finally {
+      await store.close();
+    }
   });
 }
