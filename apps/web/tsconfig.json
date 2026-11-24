@@ -15,7 +15,9 @@
     "test/**/*.tsx",
     "vite.config.ts",
     "playwright.config.ts",
-    "e2e/**/*.ts"
+    "e2e/**/*.ts",
+    "router.options.ts",
+    "scripts/**/*.ts"
   ],
   "references": [
     {
