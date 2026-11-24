@@ -253,6 +253,15 @@ describe("ob label", () => {
     ]);
   });
 
+  test("leaves a write with nothing to set or unset to the board, which refuses it", async () => {
+    const refusal = { error: { code: "invalid_request", message: "a label write sets or unsets at least one label" } };
+    const board = fakeBoard(400, refusal);
+    const { lines, output } = capture();
+    expect(await runCli(["label", "2"], env, { fetch: board.fetch, output })).toBe(1);
+    expect(board.seen.map(({ body }) => JSON.parse(body))).toEqual([{}]);
+    expect(lines.err[0]).toStartWith("error: invalid_request: a label write sets or unsets at least one label");
+  });
+
   test.each([
     ["--unset without a key", ["label", "2", "--unset"], "--unset takes a value"],
     ["a label without =", ["label", "2", "status"], "each label takes k=v, a key and a value"],
