@@ -91,6 +91,12 @@ function orgEntry<Kind extends string, Payload extends TProperties>(type: Kind, 
 
 /** An organization event (`org_events`) as the audit shows it (docs/auth.md "Audit"). */
 export const OrgAuditEvent = Type.Union([
+  orgEntry("ob.operator.quota_changed", {
+    quota: Type.Union([Type.Literal("boards"), Type.Literal("members"), Type.Literal("connections")]),
+    previousLimit: Type.Integer({ minimum: 0 }),
+    limit: Type.Integer({ minimum: 0 }),
+    reason: Type.String({ minLength: 1 }),
+  }),
   orgEntry("ob.org.created", { org: Named, owner: Type.String() }),
   orgEntry("ob.org.deleted", DeletedOrg.properties),
   orgEntry("ob.board.created", { board: Named }),

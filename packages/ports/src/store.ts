@@ -34,6 +34,7 @@ import type { Bucket, OrgLogMaintenance } from "./bucket.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
 import type { BoardJobWriter, JobLease, Jobs } from "./jobs.ts";
 import type { OidcKeyStore } from "./oidc-keys.ts";
+import type { OperatorWrites } from "./operator.ts";
 import type { OrgAuditRecord } from "./org-audit-record.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
 import type { BoardKeys, BoardScope, OrgScope } from "./tenant-scope.ts";
@@ -141,7 +142,7 @@ interface DeviceTokenIssue {
 type DevicePoll = { status: "missing" | "pending" | "too_soon" } | { status: "issued"; org: Named; boards: Named[] };
 
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
-export interface PlatformView extends RateView, OidcKeyStore {
+export interface PlatformView extends RateView, OidcKeyStore, OperatorWrites {
   /** At startup, enqueue board-scoped work for any rows still missing their organization. */
   queueBoardOrgBackfill(now: number, signal?: AbortSignal): Promise<void>;
   /** Maintenance scan of unpurged organization IDs with unshipped events in ascending order. */

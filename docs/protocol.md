@@ -505,6 +505,12 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | GET | `/api/x/tokens` | person | `{ tokens: [{ id, name, org, createdAt, expiresAt, revokedAt }] }` for the session holder. Timestamps are epoch milliseconds, and `revokedAt` is null until revoked. |
 | POST | `/api/x/tokens/:id/revoke` | person | Requires the session cookie, Origin and CSRF proof. Returns `{ id, revokedAt }` and preserves the first revocation time on retry. An unknown or unowned ID returns 404 `not_found`. The revoked credential returns 401 `unauthorized` on subsequent board requests. |
 | GET | `/api/x/metrics` | operator | Prometheus; not exposed to tenants |
+`GET /api/x/orgs/:org/audit` can return the OpenBoard-only
+`ob.operator.quota_changed` event with actor `ob:operator:<name>` and payload
+`{ quota, previousLimit, limit, reason }`. The limits are the effective values
+before and after the command. The quota is `boards`, `members` or
+`connections`.
+
 
 ## Events
 

@@ -1,7 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { migratePostgres, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
-import { createApp, type Deps, jsonLogger, maintenanceJobs } from "@openboard/server";
+import { createApp, type Deps, jsonLogger, maintenanceJobs, setOperatorQuota } from "@openboard/server";
 import { backupBucket } from "./bucket.ts";
 import type { Config } from "./config.ts";
 
@@ -28,6 +28,18 @@ export async function migrateSchema(config: Config, onApplied: (name: string) =>
   } catch {
     // Connection errors can contain credentials supplied in the URL.
     throw new Error("Could not open or migrate the Postgres database");
+  }
+}
+
+export async function changeQuota(config: Config, change: Parameters<typeof setOperatorQuota>[1]) {
+  const store =
+    config.mode === "hosted"
+      ? await hostedStore(config.databaseUrl, Date.now)
+      : sqliteDriver({ dir: config.dataDir, sync: config.sync });
+  try {
+    return await setOperatorQuota(store.platform(), change, Date.now);
+  } finally {
+    await store.close();
   }
 }
 

@@ -12401,6 +12401,32 @@
                             "required": ["cursor", "type", "createdAt", "actor", "payload"],
                             "properties": {
                               "cursor": { "type": "string" },
+                              "type": { "const": "ob.operator.quota_changed", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["quota", "previousLimit", "limit", "reason"],
+                                "properties": {
+                                  "quota": {
+                                    "anyOf": [
+                                      { "const": "boards", "type": "string" },
+                                      { "const": "members", "type": "string" },
+                                      { "const": "connections", "type": "string" }
+                                    ]
+                                  },
+                                  "previousLimit": { "minimum": 0, "type": "integer" },
+                                  "limit": { "minimum": 0, "type": "integer" },
+                                  "reason": { "minLength": 1, "type": "string" }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
                               "type": { "const": "ob.org.created", "type": "string" },
                               "createdAt": { "type": "string" },
                               "actor": { "type": "string" },

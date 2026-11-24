@@ -557,6 +557,15 @@ Lease consumption and the database effect commit together.
   limits, audit, deletion, and the isolation suite in CI. Billing is out of
   scope.
 
+- **Operator access.** The support role changes tenant state through
+  `openboard admin` server commands in a trusted shell with database access.
+  The first command is `admin quota <org> <quota>=<limit> --reason "<reason>"`.
+  The actor is `ob:operator:<name>` from `OPENBOARD_OPERATOR` or the OS user.
+  The action and its `ob.operator.*` event commit in the same transaction
+  under the organization's row lock (D49). Owners and admins read the event
+  through the existing organization audit route. A missing or blank reason
+  or an unknown organization leaves no change or event.
+
 - **Deletion rollout.** The purge handler and enqueue ship together under the job
   rollout exception in codebase.md §5.7. The enqueue is first due at `purgeAt`,
   30 days after soft deletion. A compatible runner can also lease an older
