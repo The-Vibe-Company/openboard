@@ -29,7 +29,7 @@ import type {
   QuotaOutcome,
 } from "@openboard/core";
 import type { DeviceView, PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
-import type { BoardMessageReads } from "./board-message-reads.ts";
+import type { BoardMessageReads, ChannelMessagesQuery, ChannelsQuery } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
 import type { Bucket, OrgLogMaintenance } from "./bucket.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
@@ -41,6 +41,7 @@ import type { OrgAuditRecord } from "./org-audit-record.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
 import type { BoardKeys, BoardScope, OrgScope } from "./tenant-scope.ts";
 import type { BoardWatcherReads, BoardWatcherWriter } from "./watchers.ts";
+import type { BoardWebhookReads, BoardWebhookWriter } from "./webhooks/index.ts";
 
 export type { BoardKeys, BoardScope, OrgScope } from "./tenant-scope.ts";
 
@@ -197,7 +198,12 @@ export interface PlatformView extends RateView, OidcKeyStore, OperatorReads, Ope
 }
 
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */
-export interface BoardWriter extends BoardTaskWriter, BoardGrantWriter, BoardJobWriter, BoardWatcherWriter {
+export interface BoardWriter
+  extends BoardTaskWriter,
+    BoardGrantWriter,
+    BoardJobWriter,
+    BoardWatcherWriter,
+    BoardWebhookWriter {
   readonly head: number;
   schema(id: string): Promise<SchemaView | null>;
   schemaCount(): Promise<number>;
@@ -235,27 +241,6 @@ export interface BoardWriter extends BoardTaskWriter, BoardGrantWriter, BoardJob
   /** The board's record of the actor `write` named, read with the lock; null when it has none or none was named. */
   readonly actor: Actor | null;
   append(events: readonly BoardEvent[]): Promise<void>;
-}
-
-export interface ChannelsQuery {
-  /** Only the channels whose path starts with it. */
-  readonly prefix?: string;
-  /** Only the channels whose path sorts after it. */
-  readonly after?: string;
-  readonly limit: number;
-}
-
-export interface ChannelMessagesQuery {
-  readonly channel: string;
-  /** Only the messages after this log position, the first `limit` of them. */
-  readonly after?: number;
-  readonly limit: number;
-}
-
-/** Where a thread stands in activity order: its latest activity's log position, then its root's ID. */
-export interface ThreadPosition {
-  readonly active: number;
-  readonly root: number;
 }
 
 /** A connection as stored, with its grant and the SHA-256 (hex) of its secret, which is never stored itself. */
@@ -305,7 +290,13 @@ export interface MentionEvidence {
 }
 
 /** One board's storage; every statement it runs is bound to its scope. */
-export interface BoardView extends RateView, BoardMessageReads, BoardTaskReads, BoardGrantReads, BoardWatcherReads {
+export interface BoardView
+  extends RateView,
+    BoardMessageReads,
+    BoardTaskReads,
+    BoardGrantReads,
+    BoardWatcherReads,
+    BoardWebhookReads {
   /**
    * Wake when a write advances this board past the cursor, with the head it reached and its events when in memory.
    * Returns an unsubscribe.
@@ -387,3 +378,5 @@ export interface Store {
   org(scope: OrgScope): OrgView;
   close(): Promise<void>;
 }
+
+export type { ChannelMessagesQuery, ChannelsQuery, ThreadPosition } from "./board-message-reads.ts";

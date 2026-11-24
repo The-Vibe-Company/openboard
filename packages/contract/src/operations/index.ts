@@ -77,6 +77,8 @@ import { listThreads, readThread } from "./threads.ts";
 import { ackWatcherMatch, listWatchers, pullWatcherMatches, registerWatchers } from "./watchers/index.ts";
 
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
+import { createWebhook, deleteWebhook, getWebhook, listWebhooks } from "./webhooks/index.ts";
+
 export const operations = [
   acceptInvitation,
   ackInbox,
@@ -96,9 +98,11 @@ export const operations = [
   createOrg,
   createSchema,
   createTask,
+  createWebhook,
   deleteBoard,
   deleteMessage,
   deleteOrg,
+  deleteWebhook,
   discoverBoard,
   downloadOrgExport,
   editMessage,
@@ -113,6 +117,7 @@ export const operations = [
   getOpenApi,
   getOrgExport,
   getSession,
+  getWebhook,
   getSyncThread,
   importSync,
   joinSource,
@@ -132,6 +137,7 @@ export const operations = [
   listTasks,
   listThreads,
   listWatchers,
+  listWebhooks,
   pollDeviceSignIn,
   postMessage,
   previewDeviceSignIn,
@@ -185,9 +191,11 @@ export {
   createOrg,
   createSchema,
   createTask,
+  createWebhook,
   deleteBoard,
   deleteMessage,
   deleteOrg,
+  deleteWebhook,
   discoverBoard,
   downloadOrgExport,
   editMessage,
@@ -204,6 +212,7 @@ export {
   getOrgExport,
   getSession,
   getSyncThread,
+  getWebhook,
   importSync,
   joinSource,
   labelMessage,
@@ -222,6 +231,7 @@ export {
   listTasks,
   listThreads,
   listWatchers,
+  listWebhooks,
   pollDeviceSignIn,
   postMessage,
   previewDeviceSignIn,

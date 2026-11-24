@@ -3,6 +3,7 @@ import type { OidcPrincipal, RepositoryPrincipal } from "@openboard/core";
 
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
+  readonly secretKey?: Uint8Array;
   readonly instanceId?: string | undefined;
   readonly deploymentTag?: string | undefined;
   /** Vite output directory for a source app with a front. */

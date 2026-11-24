@@ -32,3 +32,11 @@ export function isoTime(ms: number): string {
   const time = [Math.floor(inDay / 3_600_000), Math.floor(inDay / 60_000) % 60, Math.floor(inDay / 1000) % 60];
   return `${pad(year, 4)}-${pad(month)}-${pad(day)}T${time.map((part) => pad(part)).join(":")}.${pad(inDay % 1000, 3)}Z`;
 }
+
+const BASE32 = "abcdefghijklmnopqrstuvwxyz234567";
+/** RFC 4648 base32, lower case, of bytes whose bit length is a multiple of 5 (10 bytes give 16 characters). */
+export function base32(bytes: Uint8Array): string {
+  let bits = "";
+  for (const byte of bytes) bits += byte.toString(2).padStart(8, "0");
+  return (bits.match(/.{5}/g) ?? []).map((chunk) => BASE32[Number.parseInt(chunk, 2)]).join("");
+}

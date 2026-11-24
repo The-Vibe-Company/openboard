@@ -5,7 +5,7 @@ import process from "node:process";
 import { type App, DRAIN_TIMEOUT_MS, mintLocalOwnerToken } from "@openboard/server";
 import { clientIp } from "./client-ip.ts";
 import { compose } from "./compose.ts";
-import type { Config } from "./config.ts";
+import { type Config, ConfigError } from "./config.ts";
 
 /**
  * Writes the owner token where `ob` looks for it, `~/.config/openboard/local/<port>.json`, readable by the user only
@@ -26,6 +26,8 @@ async function writeTokenFile(port: number, url: string, token: string): Promise
 
 /** `ob serve`: starts the configured listener and writes the local owner credential. */
 export async function serve(config: Config): Promise<void> {
+  if (config.mode === "hosted" && !config.secretKey)
+    throw new ConfigError("OPENBOARD_SECRET_KEY is required in hosted mode");
   const owner = config.mode === "local" ? mintLocalOwnerToken(crypto.getRandomValues(new Uint8Array(42))) : undefined;
   const app = await compose(config, owner?.hash);
   try {

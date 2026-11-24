@@ -28,7 +28,7 @@ function shellArg(arg: string): string {
 }
 
 /** The codes whose `next` the CLI prints: the board's way out of a bad input, or of a reply someone answered first. */
-const GUIDED = new Set(["invalid_request", "newer_message"]);
+const GUIDED = new Set(["invalid_request", "newer_message", "grant_lockout"]);
 
 /** A board error followed by the board's recovery guidance when supplied. */
 export function printError(output: Output, error: BoardError): void {

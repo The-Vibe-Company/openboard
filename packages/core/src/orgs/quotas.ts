@@ -1,8 +1,8 @@
 import { BoardError } from "@openboard/contract";
 
-const defaults: CountQuotas = Object.freeze({ boards: 10, members: 50, connections: 100 });
+const defaults: CountQuotas = Object.freeze({ boards: 10, members: 50, connections: 100, webhooks: 20 });
 
-export type CountQuotas = Readonly<Record<"boards" | "members" | "connections", number>>;
+export type CountQuotas = Readonly<Record<"boards" | "members" | "connections" | "webhooks", number>>;
 export type CountQuota = keyof CountQuotas;
 export type QuotaOutcome = { readonly quota: number };
 
@@ -11,9 +11,11 @@ export function countQuotas(overrides: Partial<CountQuotas> = {}): CountQuotas {
 }
 
 export function countQuotaError(reason: CountQuota, limit: number): BoardError {
+  const scope = reason === "connections" || reason === "webhooks" ? "per board" : "per organization";
+  const next = reason === "webhooks" ? "Delete a webhook to make room." : "Ask an instance operator to raise it.";
   return new BoardError("quota_exceeded", `the ${reason} quota has been reached`, {
     reason,
-    hint: `The limit is ${limit} ${reason} ${reason === "connections" ? "per board" : "per organization"}. Ask an instance operator to raise it.`,
+    hint: `The limit is ${limit} ${reason} ${scope}. ${next}`,
   });
 }
 

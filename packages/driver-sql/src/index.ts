@@ -30,7 +30,8 @@ import jobKeyDdl from "../migrations/0028-job-key.sql" with { type: "text" };
 import jobKeyIndexDdl from "../migrations/0029-job-key-index.sql" with { type: "text" };
 import taskExpiryJobsDdl from "../migrations/0030-task-expiry-jobs.sql" with { type: "text" };
 import exportsDdl from "../migrations/0031-exports.sql" with { type: "text" };
-import deviceCanDdl from "../migrations/0032-device-can.sql" with { type: "text" };
+import webhooksDdl from "../migrations/0032-webhooks.sql" with { type: "text" };
+import deviceCanDdl from "../migrations/0033-device-can.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -56,8 +57,8 @@ import { rateView } from "./views/rates/index.ts";
 import { schemaReads } from "./views/schemas/registry.ts";
 import { taskListReads } from "./views/tasks/list.ts";
 import { threadReads } from "./views/threads.ts";
-
 import { watcherReads } from "./views/watchers/index.ts";
+import { webhookReads } from "./views/webhooks/webhooks.ts";
 
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
 export { postgresText } from "./db.ts";
@@ -108,7 +109,8 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 29, name: "0029-job-key-index", sql: jobKeyIndexDdl },
   { version: 30, name: "0030-task-expiry-jobs", sql: taskExpiryJobsDdl },
   { version: 31, name: "0031-exports", sql: exportsDdl },
-  { version: 32, name: "0032-device-can", sql: deviceCanDdl },
+  { version: 32, name: "0032-webhooks", sql: webhooksDdl },
+  { version: 33, name: "0033-device-can", sql: deviceCanDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -159,6 +161,7 @@ export function createViews(
       ...auditReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),
       ...watcherReads(db, dialect, scope),
+      ...webhookReads(db, dialect, scope),
       ...schemaReads(db, dialect, scope),
       ...taskListReads(db, dialect, scope, jobs.now),
       ...channelReads(db, dialect, scope),

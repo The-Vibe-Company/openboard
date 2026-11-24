@@ -30,7 +30,7 @@ const kindSet: Fragment = {
 
 // A tombstone cannot run board writes. Skip its expiry jobs in both dispatch and the next timer.
 const activeExpiryBoard: Fragment = {
-  fragment: () => `(jobs.kind <> 'task-expiry' OR EXISTS (
+  fragment: () => `(jobs.kind NOT IN ('task-expiry', 'webhook-delivery') OR EXISTS (
   SELECT 1 FROM boards b JOIN orgs o ON o.id = b.org_id
   WHERE b.id = jobs.board_id AND b.org_id = jobs.org_id AND b.deleted_at IS NULL AND o.deleted_at IS NULL
 ))`,

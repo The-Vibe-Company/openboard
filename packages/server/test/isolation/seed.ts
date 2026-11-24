@@ -1,7 +1,7 @@
-import { testOrgScope } from "@openboard/ports/testkit";
 import { createHash } from "node:crypto";
 import type { RefKind } from "@openboard/contract";
 import type { BoardKeys, Store } from "@openboard/ports";
+import { testOrgScope } from "@openboard/ports/testkit";
 import type { App } from "../../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "../support/app.ts";
 import { createCluster } from "../support/cluster.ts";
@@ -176,6 +176,11 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
   };
 }
 
+function seedWebhook(send: Send, base: string, session: Headers, marker: string) {
+  const spec = { name: marker, url: "http://127.0.0.1:9000/hook", filter: { tail: "dev" }, enabled: false };
+  return ok<{ webhook: { id: string } }>(send("POST", `${base}/x/webhooks`, session, spec), "webhook");
+}
+
 async function tenant(send: Send, store: Store, org: string, digit: string, replies: number): Promise<Tenant> {
   const marker = `${org}-only`;
   const { headers: session, personId } = await signIn(store, `${org}-owner`, digit);
@@ -202,7 +207,8 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
     if (!membership) throw new Error("seed: missing organization membership");
     await store.org(testOrgScope(membership.orgId)).requestExport(id, personId, NOW, () => {});
   }
-  const ids = { ...made, export: id, member: `ob:user:${personId}`, org, board: boardRef };
+  const { webhook } = await seedWebhook(send, `/api/${org}/main`, session, marker);
+  const ids = { ...made, webhook: webhook.id, export: id, member: `ob:user:${personId}`, org, board: boardRef };
   const credentials = { session, personal, connection, agent };
   return { org, board: "main", ...credentials, ids, firstThread, invitationToken, userCode: pending.userCode, marker };
 }
@@ -222,7 +228,7 @@ export async function seed(
   };
   // As every HTTP test's app: two instances on one Postgres database, requests alternating, or one app on SQLite.
   const app = createCluster(
-    { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, signup: "open" },
+    { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, signup: "open", secretKey: new Uint8Array(32) },
     { store },
     {
       schedule: unexpectedTimer,
@@ -243,7 +249,7 @@ export async function seed(
   const a = await tenant(send, store, "alpha", "a", 1);
   const aOther = "other";
   await ok(send("POST", "/api/x/orgs/alpha/boards", a.session, { slug: aOther, name: aOther }), "board");
-  const b = await tenant(send, store, "bravo", "b", 11);
+  const b = await tenant(send, store, "bravo", "b", 12);
   const events = await ok<{ cursor: string }>(send("GET", "/api/alpha/main/events", a.session), "events");
   if (Number(b.ids.message) <= Number(events.cursor)) throw new Error("seed: B's last message must be past A's head");
   const deleted = await tenant(send, store, "archived", "c", 0);

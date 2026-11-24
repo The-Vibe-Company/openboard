@@ -11,6 +11,7 @@ test("grants create sends the upstream modifiers with their principal and prints
       { kind: "oidc", issuer: "https://issuer.example", claims: { sub: "repo:example/*", group: ["one", "two"] } },
     ],
     can: { "deploys/": ["read", "post"], "deploys/secret/": [], ops: "all" },
+    lockMeOut: true,
   };
   const out: string[] = [];
   const code = await runCli(
@@ -39,6 +40,7 @@ test("grants create sends the upstream modifiers with their principal and prints
       "deploys/secret/=none",
       "--can",
       "ops=all",
+      "--lock-me-out",
     ],
     { BOARD_URL },
     {

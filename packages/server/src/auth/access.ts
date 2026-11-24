@@ -115,7 +115,7 @@ export function allowedEverywhere(can: Can, permission: Permission): boolean {
  * Whether `can` lets `permission` in at `channel`, and for a subtree (`dev/`) also at every pattern inside it, since
  * nothing narrows a subtree's answer to the channels the caller may see.
  */
-function allowedThroughout(can: Can, channel: string, permission: Permission): boolean {
+export function allowedThroughout(can: Can, channel: string, permission: Permission): boolean {
   if (!agents.allowedAt(can, channel).includes(permission)) return false;
   if (!channel.endsWith("/")) return true;
   return Object.entries(can).every(

@@ -16,6 +16,7 @@ export * from "./entities/task-events.ts";
 export * from "./entities/tasks.ts";
 export * from "./entities/threads.ts";
 export { Registration, Watch, WatcherMatch } from "./entities/watchers.ts";
+export * from "./entities/webhooks/index.ts";
 export {
   BoardError,
   type BoardErrorOptions,
@@ -136,4 +137,5 @@ export {
   startDeviceSignIn,
   updateGrant,
 } from "./operations/index.ts";
+export { createWebhook, deleteWebhook, getWebhook, listWebhooks } from "./operations/webhooks/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

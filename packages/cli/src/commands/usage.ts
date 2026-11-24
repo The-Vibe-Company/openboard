@@ -5,6 +5,7 @@ import {
   createConnectionCommand,
   createGrantCommand,
   createSchemaCommand,
+  createWebhookCommand,
   derivedCommands,
   downloadOrgExportCommand,
   explainGrantsCommand,
@@ -32,6 +33,7 @@ export const commands: readonly AnyCommand[] = [
   updateGrantCommand,
   useCommand,
   createConnectionCommand,
+  createWebhookCommand,
   createGrantCommand,
   explainGrantsCommand,
   createSchemaCommand,
@@ -155,6 +157,12 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
       "all-users": "All members of the board's organization.",
       everyone: "The upstream everyone principal.",
     },
+  },
+  "webhooks create": {
+    summary: "Subscribe to board events and store the signing secret privately.",
+    operations: ["createWebhook"],
+    example: "ob webhooks create --file dev-ready.json --secret-file ./hook.secret",
+    options: { file: "JSON subscription spec.", "secret-file": "Existing signing secret or a new 0600 file." },
   },
   "connections create": {
     summary: "Create a connection: a secret agents claim tokens from, with the permissions they get.",

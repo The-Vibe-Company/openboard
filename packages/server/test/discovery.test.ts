@@ -9,11 +9,11 @@ afterEach(() => app.close());
 /** A request with no token, as an upstream client reads discovery before it has one. */
 const anonymous = (path: string, init: RequestInit = {}) => app.fetch(new Request(`${PUBLIC_URL}${path}`, init));
 
-const discovery = (boardUrl: string) => ({
+const discovery = (boardUrl: string, org = "local") => ({
   version: `openboard/${manifest.version} (board-protocol ${UPSTREAM_VERSION})`,
   url: boardUrl,
   audience: boardUrl,
-  team_id: null,
+  team_id: org,
   project_id: null,
   sync: [],
 });
@@ -39,7 +39,7 @@ describe("discovering a board at its URL", () => {
     app = makeApp();
     const answer = await anonymous("/api/nobody/nothing");
     expect(answer.status).toBe(200);
-    expect(await answer.json()).toEqual(discovery(`${PUBLIC_URL}/api/nobody/nothing`));
+    expect(await answer.json()).toEqual(discovery(`${PUBLIC_URL}/api/nobody/nothing`, "nobody"));
   });
 
   test("builds its URL on the public URL, never on the Host the request named", async () => {

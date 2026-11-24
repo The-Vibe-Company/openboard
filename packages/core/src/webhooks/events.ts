@@ -1,0 +1,22 @@
+import type { Webhook } from "@openboard/contract";
+
+interface Audit {
+  readonly id: number;
+  readonly at: number;
+  readonly actor: string;
+  readonly principal: string;
+  readonly channel: null;
+  readonly thread: null;
+  readonly message: null;
+  readonly visibility: 2;
+}
+
+export interface WebhookCreated extends Audit {
+  readonly type: "ob.webhook.created";
+  readonly payload: { readonly webhook: Webhook; readonly directory: boolean; readonly secretId: string };
+}
+
+export interface WebhookDeleted extends Audit {
+  readonly type: "ob.webhook.deleted";
+  readonly payload: { readonly id: string; readonly secretId: string };
+}

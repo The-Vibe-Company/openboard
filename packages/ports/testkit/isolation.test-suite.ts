@@ -2,10 +2,10 @@ import { afterEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
 import {
   BACKFILL_BOARD_ORG_JOB,
-  EXPORT_ORG_JOB,
-  EXPORT_RUN_MS,
   type BoardView,
   type BoardWriter,
+  EXPORT_ORG_JOB,
+  EXPORT_RUN_MS,
   type OrgView,
   type Store,
 } from "../src/index.ts";
@@ -13,6 +13,7 @@ import { type OpenStore, testScope } from "./index.ts";
 import { at, boardCreation, type StoreTenant, seedPersonGrant, storeTenant } from "./isolation-seed.ts";
 import { appendSchema } from "./store/schemas.test-suite.ts";
 import { pull, seedWatcher } from "./store/watchers.test-suite.ts";
+import { seedWebhook } from "./store/webhooks.test-suite.ts";
 
 /** Fails when a result carries any of B's names or text. */
 function holdsNothingOf(b: StoreTenant, result: unknown, method: string): void {
@@ -28,6 +29,14 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  * case does not compile. A case answers what the view gave, which must hold nothing of B.
  */
 const boardCases: Cases<BoardView> = {
+  webhooks: async (a) => {
+    expect(await a.board.webhooks()).toEqual([]);
+  },
+  webhook: async (a, b) => {
+    const [foreign] = await b.board.webhooks();
+    if (!foreign) throw new Error("missing foreign webhook");
+    return expectNull(await a.board.webhook(foreign.webhook.id));
+  },
   takeRate: (a, b) => isolatedRates(a.board, b.board),
   identity: async (a) => {
     const result = await a.board.identity();
@@ -123,6 +132,29 @@ const boardCases: Cases<BoardView> = {
 
 /** One case per `BoardWriter` member, inside A's write with B's IDs. */
 const writerCases: Cases<BoardWriter> = {
+  webhooks: async (a) => {
+    expect(await inWrite(a, (writer) => writer.webhooks())).toEqual([]);
+  },
+  webhook: async (a, b) => {
+    const [foreign] = await b.board.webhooks();
+    if (!foreign) throw new Error("missing foreign webhook");
+    return expectNull(await inWrite(a, (writer) => writer.webhook(foreign.webhook.id)));
+  },
+  webhookQuota: (a) => inWrite(a, async (writer) => expectNull(await writer.webhookQuota())),
+  storeWebhookSecret: (a) => seedWebhook(a.board, a.marker, a.actor),
+  removeWebhookSecret: async (a, b) => {
+    const [foreign] = await b.board.webhooks();
+    if (!foreign) throw new Error("missing foreign webhook");
+    await inWrite(a, (writer) => writer.removeWebhookSecret(foreign));
+    expect(await b.board.webhook(foreign.webhook.id)).toEqual(foreign);
+  },
+  beginWebhookAttempt: (a) =>
+    inWrite(a, async (writer) => expectNull(await writer.beginWebhookAttempt("missing", "fixture", at))),
+  finishWebhookAttempt: (a) =>
+    inWrite(a, (writer) =>
+      writer.finishWebhookAttempt("missing", 1, { state: "dead", status: 400, error: null, now: at }),
+    ),
+
   listGrants: async (a) => {
     const expected = await a.board.listGrants();
     const listed = await inWrite(a, (writer) => writer.listGrants());
@@ -508,6 +540,9 @@ export function isolationSuite(driver: string, open: OpenStore): void {
         }
         if (["readExport", "auditExportDownload", "runExport", "exportAudit"].includes(method)) {
           await b.org.requestExport("foreign", b.personId, at, () => {});
+        }
+        if (["webhooks", "webhook", "removeWebhookSecret"].includes(method)) {
+          await seedWebhook(b.board, b.marker, b.actor);
         }
         const before = await digestOf(b);
         holdsNothingOf(b, await run(a, b, store), `${view}.${method}`);

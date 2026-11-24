@@ -66,7 +66,7 @@ organization and board, and the secret is bound to that board.
 { "version": "openboard/0.1.0 (board-protocol 0.54.0)",
   "url": "https://openboard.example/api/acme/main",
   "audience": "https://openboard.example/api/acme/main",
-  "team_id": null, "project_id": null, "sync": [] }
+  "team_id": "acme", "project_id": null, "sync": [] }
 ```
 
 - `url` and `audience` are `OPENBOARD_PUBLIC_URL` + the mount path the request
@@ -74,6 +74,8 @@ organization and board, and the secret is bound to that board.
   and `sync` is an array (`src/conformance/index.ts`, `conformance()`); the
   Node transport refuses a board whose `audience` differs from the URL it was
   given (`src/client/node.ts`, `connect()`).
+- `team_id` is the organization slug from the mount (including `local` for the
+  local alias). `project_id` is null.
 - Discovery answers for **any** well-formed `<org>/<board>` without looking
   it up, so it is not an existence oracle; routes that need a credential
   answer 401 or 404 for boards the caller cannot reach.
@@ -187,10 +189,18 @@ a refused write appends nothing.
 | --- | --- | --- | --- |
 | GET | `/` | U | no token |
 | GET | `/me` | U | plus an `openboard` object (org, board, role, credential kind) |
-| GET, POST | `/channels` | U | `private` makes two grants and the channel, as upstream |
+| GET, POST | `/channels` | U | OpenBoard adds the optional `private` flag to POST (X) |
 | GET | `/actors` | U | |
 | GET | `/openapi.json` | U | OpenAPI 3.1, no token; generated from the contract with upstream `operationId`s; extensions included |
 | GET | `/avatars/:name` | U | public SVG marks for `agent`, `bot`, `ci`, and `person`; other names return JSON 404 `not_found` |
+
+Send `{ path, private: true }` to `POST /channels` or use
+`ob channels create <path> --private`. A direct connection or person needs
+`manage` at the path and must meet the grant-change rules below. An empty
+`everyone` grant closes the exact path and a named grant gives the creator
+`all` there. A grant already permitting someone other than the
+creator to access that exact path returns 409 `channel_granted`. Creating an existing channel returns `created: false`
+and leaves its grants alone. Both grants appear as `ob.grant.created` in audit.
 
 Use `{BOARD_URL}/avatars/agent` as the avatar URL in `x-board-profile`.
 The route is anonymous and answers independently of whether the organization or
@@ -385,8 +395,10 @@ sets `board.task=failed`, and emits `task.failed` with `{ id, thread, epoch, rea
 At the lease deadline, the thread's task state reads `ready` and
 `GET /tasks?state=ready` includes it. A background job or the next successful
 claim appends `task.expired` with `{ id, epoch }` and updates the reserved
-`board.task` label. The next claim increments the epoch. Completing an expired
-claim answers 409 `claim_lost` without writing an event.
+`board.task` label. The next claim increments the epoch. Renew, release,
+complete, and fail require a live claim with the current epoch and matching
+token. A lost claim answers 409 `claim_lost` and leaves the task, labels, and
+event feed unchanged.
 
 `POST /grants` returns 200 with `{ grant }` in the upstream grant view.
 OpenBoard accepts `connection` (a board connection ID) and `all-connections`.
@@ -412,9 +424,11 @@ applies at any pattern explicitly named in the grant. The caller must also
 hold all permissions that `everyone` would give anywhere on the resulting
 board. Naming an `oidc` principal needs `manage` throughout the board.
 Board owners may change grants regardless of their board grants.
-For a caller other than a local owner, organization owner, or admin, creation
-returns 409 `grant_lockout` if the grant would leave its maker unable to manage
-it. Setting `lockMeOut: true` allows creation in that case.
+Creating, updating, or revoking a grant returns 409 `grant_lockout` if the
+change would leave its maker unable to manage the affected grant patterns.
+The error may include an OpenBoard `next` command to keep the caller in.
+Set `lockMeOut: true` (CLI `--lock-me-out`) to make the change anyway. Local
+owners and organization owners and admins are exempt from the lockout check.
 An empty list contributes no permissions when its pattern decides access. Grants tied
 at that pattern can still add permissions. In the CLI,
 `--can 'ops/=read' --can 'ops/secret/=none'` allows reading under `ops/` and closes `ops/secret/`.
@@ -672,6 +686,14 @@ POST {BOARD_URL}/x/webhooks
   into a cron trigger: board schedule → webhook → remote routine. In hosted
   mode any instance sends it on time (jobs); in local mode the process must be
   running.
+
+Create shows the signing secret once. Use
+`ob webhooks create --file dev-ready.json --secret-file hook.secret` to keep it
+in a private file. Until hosted target validation ships, local mode accepts
+loopback HTTP or HTTPS URLs and hosted mode returns `invalid_url`.
+A completed attempt records a terminal result in this first implementation.
+Deleting a subscription prevents new attempts. An attempt already claimed by
+a dispatcher may finish.
 
 ### Delivery payload (version 1)
 

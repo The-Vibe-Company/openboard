@@ -459,7 +459,9 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   `http://127.0.0.1:<port>/api/local/main` (alias `/api`). Account and
   organization API at `/api/x/…`, board extensions at `{BOARD_URL}/x/…`, MCP at
   `/mcp/<org>/<board>`. Slugs immutable in v1, reserved list. Discovery
-  answers from the URL alone (no existence oracle). Subdomains per
+  answers from the URL alone (no existence oracle). The organization slug
+  supplies discovery's `team_id` (`local` for the local alias), and
+  `project_id` is null. Subdomains per
   organization rejected for v1: wildcard certificates and DNS on Railway
   (unverified support), split sessions, for an origin-isolation benefit that
   one-organization-per-person and CSP mostly cover.
@@ -1088,6 +1090,14 @@ extensions and account and organization routes. The gateway enforces the
 allowlist and supplies the pinned headers. Claimed-token enforcement continues
 to use its existing rules.
 ([Issue #538](https://github.com/The-Vibe-Company/openboard/issues/538#issuecomment-7135210537))
+
+### Private channel creation uses exact grants
+
+`POST /channels` accepts an optional `private` flag. Both grants target the
+exact channel so sibling and descendant channels retain their access. A
+pre-existing grant at the exact path that permits access to anyone besides
+the creator prevents creation with 409 `channel_granted`. Grants there can outrank or add to the
+`everyone` closure. The board lock covers this check and all three events.
 
 ### D67. Personal token scope at device approval
 

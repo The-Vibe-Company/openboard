@@ -25,7 +25,7 @@ writes:
   - packages/contract/src/index.ts
   - packages/contract/src/operation.ts
   - packages/core/src/access/narrow.ts
-  - packages/driver-sql/migrations/0032-device-can.sql
+  - packages/driver-sql/migrations/0033-device-can.sql
   - packages/driver-sql/src/index.ts
   - packages/ports/src/account-records.ts
   - packages/ports/src/store.ts
@@ -59,4 +59,4 @@ As a person, I sign a terminal in with less than I may do, `ob login <origin> --
 - Narrowing a session in the browser: not planned.
 
 ## Notes
-Personal tokens (docs/auth.md "Secret and token formats": one person, one organization, optionally one board); migration 0032 adds the nullable `device_codes.can` column. The scope is shown on /device and capped per board at approval. Run `ob tokens` with an unrestricted personal token. The pin applies as an `x-board-can` would (286), intersected with any header. Depends on 221, the last ticket before it to change the device flow's files.
+Personal tokens (docs/auth.md "Secret and token formats": one person, one organization, optionally one board); migration 0033 adds the nullable `device_codes.can` column. The scope is shown on /device and capped per board at approval. Run `ob tokens` with an unrestricted personal token. The pin applies as an `x-board-can` would (286), intersected with any header. Depends on 221, the last ticket before it to change the device flow's files.
