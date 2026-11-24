@@ -12,6 +12,13 @@ const rootLabels: Fragment = {
 const hitLabels: Fragment = {
   fragment: ({ name }) => (name === "sqlite" ? "json_each(hit.labels)" : "jsonb_each_text(hit.labels::jsonb)"),
 };
+/** Case-sensitive substring position on both engines (SQLite's `LIKE` ignores ASCII case, Postgres's does not). */
+const position: Fragment = { fragment: ({ name }) => (name === "sqlite" ? "instr" : "strpos") };
+/** The mentions the board settled when the message was written, as its view stores them (none: no rows). */
+const hitMentions: Fragment = {
+  fragment: ({ name }) =>
+    name === "sqlite" ? "json_each(hit.view, '$.mentions')" : "jsonb_array_elements(hit.view::jsonb -> 'mentions')",
+};
 const filterValues: Fragment = {
   fragment: ({ name }) =>
     name === "sqlite" ? "json_each(filter.value -> 1)" : "jsonb_array_elements_text(filter.value -> 1)",
@@ -72,13 +79,12 @@ function threadList(order: "ASC" | "DESC", subtree = false) {
       SELECT board_id, id, kind FROM actors WHERE board_id = ${"boardId"} AND lower(handle) = CAST(${"authorHandle"} AS TEXT)
         AND NOT EXISTS (SELECT 1 FROM exact_author WHERE board_id = ${"boardId"})
     ), mentioned AS (
-      SELECT CAST(${"boardId"} AS BIGINT) AS board_id, CAST(${"mentionId"} AS TEXT) AS id
+      SELECT CAST(${"boardId"} AS BIGINT) AS board_id, CAST(${"mentionId"} AS TEXT) AS id,
+        CAST(${"mentionHandle"} AS TEXT) AS handle
       WHERE CAST(${"mentionId"} AS TEXT) IS NOT NULL
       UNION
-      SELECT board_id, id FROM actors WHERE board_id = ${"boardId"} AND lower(handle) = CAST(${"mentionHandle"} AS TEXT)
-    ), mention_patterns AS (
-      SELECT board_id, replace(replace(replace(id, '\\', '\\\\'), '%', '\\%'), '_', '\\_') AS id
-      FROM mentioned WHERE board_id = ${"boardId"}
+      SELECT board_id, id, lower(handle) FROM actors WHERE board_id = ${"boardId"} AND CAST(${"mentionResolve"} AS BIGINT) = 1
+        AND (id = CAST(${"mentionId"} AS TEXT) OR lower(handle) = CAST(${"mentionHandle"} AS TEXT))
     ),
     recent AS (
       SELECT root.board_id, root.id, root.active, root.view, root.replies, root.last_reply
@@ -101,8 +107,14 @@ function threadList(order: "ASC" | "DESC", subtree = false) {
                 AND (authors.id = hit.actor OR (authors.kind = 'person' AND authors.id = hit.principal))
             ))
             AND (CAST(${"mentionId"} AS TEXT) IS NULL OR EXISTS (
-              SELECT 1 FROM mention_patterns AS mention WHERE mention.board_id = ${"boardId"}
-                AND (hit.text LIKE '%@[' || mention.id || ']%' ESCAPE '\\' OR hit.text LIKE '%@[' || mention.id || '+%' ESCAPE '\\')
+              SELECT 1 FROM mentioned AS mention WHERE mention.board_id = ${"boardId"} AND (
+                ${position}(hit.text, '@[' || mention.id || ']') > 0 OR ${position}(hit.text, '@[' || mention.id || '+') > 0
+                OR (mention.handle IS NOT NULL AND EXISTS (
+                  SELECT 1 FROM ${hitMentions} AS settled WHERE hit.board_id = ${"boardId"} AND settled.value ->> 'actor' IS NULL
+                    AND (lower(settled.value ->> 'written') = '@' || mention.handle
+                      OR substr(lower(settled.value ->> 'written'), 1, length(mention.handle) + 2) = '@' || mention.handle || '/')
+                ))
+              )
             ))
             AND (CAST(${"text"} AS TEXT) IS NULL OR hit.text_lower LIKE CAST(${"text"} AS TEXT) ESCAPE '\\')
             AND NOT EXISTS (
@@ -154,6 +166,7 @@ export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<B
         authorActor: author && "actor" in author ? author.actor : null,
         mentionId: mentions?.id ?? null,
         mentionHandle: mentions?.handle ?? null,
+        mentionResolve: mentions?.resolve ? 1 : 0,
         boardId: scope.boardId,
         orgId: scope.orgId,
         channel,

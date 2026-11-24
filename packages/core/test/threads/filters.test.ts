@@ -15,12 +15,19 @@ test("a channel names itself alone, and a trailing slash adds every channel unde
 });
 
 test("mentionFilter reads me, an explicit ID, and a name with or without its @", () => {
-  expect(mentionFilter("me", "ob:user:ada", true)).toEqual({ id: "ob:user:ada" });
-  expect(mentionFilter("@[ob:user:ada+claude]", "ob:user:me", true)).toEqual({ id: "ob:user:ada+claude" });
-  expect(mentionFilter("@Ada/Claude", "ob:user:me", true)).toEqual({ id: "Ada/Claude", handle: "ada/claude" });
-  expect(mentionFilter("ada@vercel.com", "ob:user:me", true)).toEqual({
+  expect(mentionFilter("me", "ob:user:ada", false)).toEqual({ id: "ob:user:ada", resolve: true });
+  expect(mentionFilter("@[ob:user:ada+claude]", "ob:user:me", true)).toEqual({
+    id: "ob:user:ada+claude",
+    resolve: true,
+  });
+  expect(mentionFilter("@Ada/Claude", "ob:user:me", true)).toEqual({
+    id: "Ada/Claude",
+    handle: "ada/claude",
+    resolve: true,
+  });
+  expect(mentionFilter("ada@vercel.com", "ob:user:me", false)).toEqual({
     id: "ada@vercel.com",
     handle: "ada@vercel.com",
+    resolve: false,
   });
-  expect(mentionFilter("@ada", "ob:user:me", false)).toEqual({ id: "ada" });
 });

@@ -298,20 +298,24 @@ test("GET /threads finds threads that mention someone, by handle, ID or me, a pe
     return ((await read.json()) as { threads: Thread[] }).threads.map(({ message }) => message.id);
   };
 
+  // The owner has not written yet, so this handle names no one and stays text.
+  const early = await post({ channel: "dev", text: "hi @local-test" }, { "x-board-profile": "bot" });
   const replied = await post({ channel: "dev", text: "root" });
   await post({ channel: "dev", text: "bot here" }, { "x-board-profile": "bot" });
   const me = await post({ channel: "dev", text: "over to @local-test" }, { "x-board-profile": "bot" });
   const agent = await post({ channel: "dev", text: "cc @local-test/bot" });
   await post({ re: replied, text: `ping @[${LOCAL_OWNER}]` });
-  await post({ channel: "dev", text: "`@local-test` in code, and @nobody" });
+  await post({ channel: "dev", text: "`@local-test` in code" });
+  const nobody = await post({ channel: "dev", text: "is @nobody there?" });
   await post({ channel: "ops", text: "elsewhere @local-test" });
 
-  expect(await found("me")).toEqual([me, agent, replied]);
-  expect(await found("@LOCAL-TEST")).toEqual([me, agent, replied]);
-  expect(await found(LOCAL_OWNER)).toEqual([me, agent, replied]);
+  expect(await found("me")).toEqual([early, me, agent, replied]);
+  expect(await found("@LOCAL-TEST")).toEqual([early, me, agent, replied]);
+  expect(await found(LOCAL_OWNER)).toEqual([early, me, agent, replied]);
   expect(await found(`@[${LOCAL_OWNER}+bot]`)).toEqual([agent]);
   expect(await found("local-test/bot")).toEqual([agent]);
-  expect(await found("nobody")).toEqual([]);
+  expect(await found("@Nobody")).toEqual([nobody]);
+  expect(await found("someone")).toEqual([]);
 
   const connection = await call(app, "POST", "/x/connections", {
     name: "reader",
@@ -319,8 +323,9 @@ test("GET /threads finds threads that mention someone, by handle, ID or me, a pe
     can: { dev: ["read"] },
   });
   const { secret } = (await connection.json()) as { secret: string };
-  expect(await found("local-test", secret)).toEqual([]);
+  expect(await found("nobody", secret)).toEqual([nobody]);
   expect(await found(LOCAL_OWNER, secret)).toEqual([me, agent, replied]);
+  expect(await found("local-test", secret)).toEqual([early]);
 
   const refused = await call(app, "GET", "/threads?channel=dev&mentions=%40");
   expect(refused.status).toBe(400);

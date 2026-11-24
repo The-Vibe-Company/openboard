@@ -54,7 +54,7 @@ export const listThreadsHandler: Handler<typeof listThreads> = async ({ board, b
     after,
     author: input.by === "me" ? { actor: by.actor } : input.by === undefined ? undefined : { query: input.by },
     limit,
-    // Only a caller that reads every channel may learn who goes by a handle, as message views show them.
+    // Only a caller that reads every channel may learn who goes by a handle, as mention details in message views.
     mentions:
       input.mentions === undefined ? undefined : mentionFilter(input.mentions, by.actor, canListMentionActors(by)),
     text: text === undefined ? undefined : textPattern(text),

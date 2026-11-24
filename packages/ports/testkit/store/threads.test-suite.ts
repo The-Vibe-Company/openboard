@@ -6,12 +6,14 @@ import { type OpenStore, testScope } from "../index.ts";
 const by = { actor: "ob:user:local-dev", principal: "ob:user:local-dev", profile: null };
 const at = 1_700_000_000_000;
 
-function post(board: BoardView, channel: string, text: string, labels?: Record<string, string>) {
+function post(board: BoardView, channel: string, text: string, labels?: Record<string, string>, written?: string) {
+  const settled = written === undefined ? undefined : { text, mentions: [{ written, actor: null, candidates: [] }] };
   return board.write(async (writer) => {
     const { events, message } = messages.decidePost(
       { head: writer.head },
       { channel, text, ...(labels && { labels }) },
       { by, now: at },
+      settled,
     );
     await writer.append(events);
     return message;
@@ -57,20 +59,29 @@ async function checkTextSearch(board: BoardView): Promise<void> {
   expect(await found("deploy fixed")).toEqual([lookalike.id]);
 }
 
-/** Threads whose root or reply holds `@[id]`, or `@[id+…` for an agent under it, with `%` and `_` as characters. */
+/**
+ * Threads whose root or reply holds `@[id]`, or `@[id+…` for an agent under it, case-sensitively, with `%` and `_`
+ * as characters; or settled a mention of no one written as the handle, or as a name under it.
+ */
 async function checkMentions(board: BoardView): Promise<void> {
   const direct = await post(board, "dev", "over to @[ob:user:a_b%c]");
   const agent = await post(board, "dev", "cc @[ob:user:a_b%c+claude]");
-  await post(board, "dev", "cc @[ob:user:axbyc] and @[ob:user:a_b%cd] and @ob:user:a_b%c");
+  await post(board, "dev", "cc @[ob:user:axbyc] and @[ob:user:a_b%cd] and @[OB:USER:A_B%C] and @ob:user:a_b%c");
   const replied = await post(board, "dev", "root");
   await reply(board, Number(replied.id), "ping @[ob:user:a_b%c]");
   await post(board, "ops", "elsewhere @[ob:user:a_b%c]");
-  const found = async (id: string, limit?: number) =>
-    (await board.listThreads("dev", [], { mentions: { id }, limit })).threads.map(({ message }) => message.id);
+  const unresolved = await post(board, "dev", "ask @Ada", undefined, "@Ada");
+  const under = await post(board, "dev", "ask @ada/claude", undefined, "@ada/claude");
+  await post(board, "dev", "ask @adam", undefined, "@adam");
+  const found = async (id: string, limit?: number, handle?: string) =>
+    (await board.listThreads("dev", [], { mentions: { id, handle, resolve: false }, limit })).threads.map(
+      ({ message }) => message.id,
+    );
   expect(await found("ob:user:a_b%c")).toEqual([direct.id, agent.id, replied.id]);
   expect(await found("ob:user:a_b%c", 1)).toEqual([replied.id]);
   expect(await found("ob:user:a_b%c+claude")).toEqual([agent.id]);
   expect(await found("ob:user:a_b")).toEqual([]);
+  expect(await found("ada", undefined, "ada")).toEqual([unresolved.id, under.id]);
   await edit(board, Number(direct.id), "no one now");
   expect(await found("ob:user:a_b%c")).toEqual([agent.id, replied.id]);
 }
