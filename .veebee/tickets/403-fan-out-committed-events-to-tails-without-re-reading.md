@@ -23,7 +23,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [108]
-status: claimed
+status: done
 claimed_by: claude-403
 issue: 603
 ---
@@ -32,8 +32,8 @@ issue: 603
 As an operator with many agents tailing one board, a post reaches every tail within the architecture's 5 ms budget instead of each tail re-reading the store.
 
 ## Done when
-- [ ] `bun run bench --quick` with 50 SSE tails shows write-to-last-frame p99 at or under 5 ms locally, and `tools/bench/budgets.json` records the new, lower numbers
-- [ ] the HTTP and SSE tests still pass on SQLite and Postgres, a slow tail never delays the others (each tail keeps at most one queued page, then catches up from the store), and a filtered tail still receives only matching events
+- [x] `bun run bench --quick` with 50 SSE tails shows write-to-last-frame p99 at or under 5 ms locally, and `tools/bench/budgets.json` records the new, lower numbers
+- [x] the HTTP and SSE tests still pass on SQLite and Postgres, a slow tail never delays the others (each tail keeps at most one queued page, then catches up from the store), and a filtered tail still receives only matching events
 
 ## Out of scope
 - Cross-instance delivery (176): this ticket speeds up delivery inside one instance.

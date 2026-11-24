@@ -27,6 +27,8 @@ function countingStore() {
   return { store: wrapped, counted };
 }
 
+type Stream = Awaited<ReturnType<typeof openStream>>;
+
 /** A stream's frames as the client reads them, one enqueued page per read. */
 async function openStream(app: ReturnType<typeof makeApp>, query: string, token = OWNER.token) {
   const response = await app.fetch(
@@ -61,7 +63,7 @@ function streamingApp(store: Store) {
 test("a commit reaches every caught-up tail from memory, without a store read", async () => {
   const { store, counted } = countingStore();
   const app = streamingApp(store);
-  const streams = [];
+  const streams: Stream[] = [];
   try {
     for (let i = 0; i < 3; i++) streams.push(await openStream(app, "?after=0"));
     counted.reads = 0;
@@ -164,3 +166,48 @@ test("a tail sends a page from the store when it is behind, the queue overflows,
   tail.close();
   expect(subscribed).toBe(0);
 });
+
+test("a page served from memory carries the same events a store read returns", async () => {
+  const { store, counted } = countingStore();
+  const app = streamingApp(store);
+  const queries = ["", "&all=true", "&channel=dev", "&from=board"];
+  const streams: Stream[] = [];
+  try {
+    for (const query of queries) streams.push(await openStream(app, `?after=0${query}`));
+    counted.reads = 0;
+    const id = await post(app, "dev", "first");
+    const writes = [
+      () => call(app, "POST", `/messages/${id}/edit`, { text: "edited" }),
+      () => call(app, "POST", `/messages/${id}/labels`, { set: { status: "open" } }),
+      () => call(app, "POST", "/messages", { channel: "ops", text: "elsewhere" }),
+      () => call(app, "POST", `/messages/${id}/delete`, {}),
+    ];
+    const streamed: unknown[][] = queries.map(() => []);
+    const collect = async () => {
+      for (const [i, stream] of streams.entries()) {
+        const page = await stream.next();
+        streamed[i]!.push(...Array.from(page.matchAll(/^data: (.+)$/gm), ([, data]) => JSON.parse(data!)));
+      }
+    };
+    await collect();
+    for (const write of writes) {
+      expect((await write()).status).toBeLessThan(300);
+      await collect();
+    }
+    expect(counted.reads).toBe(0);
+    for (const [i, query] of queries.entries()) {
+      const stored = (await (await call(app, "GET", `/events?after=0${query}`)).json()) as { events: unknown[] };
+      expect(streamed[i]).toEqual(stored.events);
+    }
+    expect(streamed[0]!.map((event) => (event as { type: string }).type)).toEqual([
+      "message.posted",
+      "message.edited",
+      "labels.changed",
+      "message.posted",
+      "message.deleted",
+    ]);
+  } finally {
+    await Promise.all(streams.map((stream) => stream.close()));
+    await app.close();
+  }
+}, 1000);
