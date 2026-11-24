@@ -237,3 +237,29 @@ test("accepting a link a second time, or one created more than seven days ago, a
     await app.close();
   }
 });
+
+test("an email-bound invitation rejects a different or unverified email and admits the verified recipient", async () => {
+  const app = makeBrowserApp();
+  const post = (path: string, data: unknown, headers: Record<string, string>) =>
+    app.fetch(new Request(`${PUBLIC_URL}/api/x${path}`, { method: "POST", headers, body: JSON.stringify(data) }));
+  try {
+    const owner = await browserSession(app.fetch, "lin");
+    const ada = await browserSession(app.fetch, "ada");
+    const unverified = await browserSession(app.fetch, "mei");
+    expect((await post("/orgs", { slug: "acme", name: "Acme" }, owner.headers)).status).toBe(201);
+    const link = await post("/orgs/acme/invitations", { role: "member", email: "ada@example.com" }, owner.headers);
+    expect(link.status).toBe(201);
+    const { url } = (await link.json()) as OutputOf<typeof createInvitation>;
+    const body = { token: new URL(url).pathname.slice("/invite/".length) };
+    for (const person of [owner, unverified]) {
+      const refused = await post("/invitations/accept", body, person.headers);
+      expect(refused.status).toBe(403);
+      expect(await refused.json()).toMatchObject({ error: { code: "invitation_email_mismatch" } });
+    }
+    const accepted = await post("/invitations/accept", body, ada.headers);
+    expect(accepted.status).toBe(200);
+    expect(await accepted.json()).toEqual({ org: { slug: "acme", name: "Acme" }, role: "member" });
+  } finally {
+    await app.close();
+  }
+});

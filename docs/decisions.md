@@ -438,6 +438,11 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   owner” and hint “promote another member to owner first”. Check for another
   owner inside the same organization write transaction as the membership change.
 
+- **Email-bound invitations (ticket 148):** accept only when the signed-in
+  person's verified provider email matches the invitation, case-insensitively.
+  A missing or different verified email returns 403 `invitation_email_mismatch`
+  without consuming the invitation.
+
 ### D35. Board URLs are paths: `/api/<org>/<board>` (N5)
 
 - **Context.** Upstream's client requires discovery `url` and `audience` to

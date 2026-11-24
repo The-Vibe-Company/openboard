@@ -10,11 +10,17 @@ writes:
   - packages/ports/testkit/store/invitations.test-suite.ts
   - packages/server/test/invitations.test.ts
   - packages/ports/src/store.ts
+  - packages/contract/src/errors.ts
+  - packages/driver-sql/src/views/orgs.ts
+  - packages/server/test/support/browser-session.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
+  - docs/decisions.md
 conformance: []
 modes: [local]
 depends_on: [147]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t148
 issue: 149
 ---
 
@@ -22,7 +28,7 @@ issue: 149
 As an admin, I make sure only the person I invited can use the link.
 
 ## Done when
-- [ ] an invitation created with `"email": "ada@example.com"` is refused to a person whose verified GitHub email differs, and accepted by Ada
+- [x] an invitation created with `"email": "ada@example.com"` is refused to a person whose verified GitHub email differs, and accepted by Ada
 
 ## Out of scope
 - Sending the email (Q4).

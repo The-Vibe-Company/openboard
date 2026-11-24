@@ -18,7 +18,10 @@ async function fakeProvider(request: Request): Promise<Response> {
       const id = people.indexOf(login ?? "") + 1;
       return id ? Response.json({ id, login, name: login }) : new Response(null, { status: 401 });
     }
-    if (pathname === "/user/emails") return Response.json([]);
+    if (pathname === "/user/emails") {
+      const email = login === "lin" ? "lin@example.com" : "Ada@Example.com";
+      return Response.json([{ email, primary: true, verified: login !== "mei" }]);
+    }
   }
   return new Response(null, { status: 404 });
 }
