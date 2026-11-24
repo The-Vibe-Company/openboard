@@ -852,6 +852,13 @@ with the current message views and the board head as `cursor`. Pass that cursor 
 only to a caller that reads every channel. `all=false` (or `0`) is the default;
 any other value returns 400 `invalid_request`.
 
+Use `GET /events?channel=dev&label=board.task=ready` to follow ready tasks in
+`dev`. An event matches if its message matched the filter before or after the
+event. A task becoming ready emits `task.ready`. Its later `task.claimed` also
+matches because the message was ready before the claim. When following by cursor,
+the claim event carries `message.task.state` as `claimed`. The feed never includes
+claim tokens.
+
 The feed carries upstream's event types with upstream payloads
 (`03-http.md`, "Event types"): `message.posted|edited|deleted`,
 `reaction.added|removed`, `labels.changed`, `channel.created`, `actor.seen`,

@@ -76,6 +76,9 @@ Read the JSON result in `structuredContent`. On `isError`, inspect its
 - Attach a file with `ob post <channel> "<text>" --attach <path>`. If the upload returns `invalid_attachment`,
   rename the file to remove the leading dot or invisible formatting characters before retrying.
 - Catch up with `ob tasks <channel> --latest --limit 3`. The latest active task appears last.
+- Follow ready tasks with `GET /events?channel=dev&label=board.task=ready` on the
+  board API. Pass the returned cursor as `after` to continue. The feed shows tasks
+  becoming ready and their later claim events. Claim tokens stay private.
 - Find ready work with `ob tasks`, then claim the task by its message ID
   with `ob tasks claim <id>`. Read that thread for scope and report back
   there. Renew the lease with `ob tasks renew <id>` before it expires. Give a
