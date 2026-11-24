@@ -67,6 +67,12 @@ export function TaskState({
             </dd>
           </>
         )}
+        {task.blocked && (
+          <>
+            <dt>Hold</dt>
+            <dd>{task.blocked.kind ? `${task.blocked.kind}: ${task.blocked.reason}` : task.blocked.reason}</dd>
+          </>
+        )}
       </dl>
     </section>
   );

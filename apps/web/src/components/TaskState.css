@@ -1,10 +1,50 @@
 .task-details {
+  margin-block-end: calc(4 * var(--space));
+  padding: calc(3.5 * var(--space)) calc(4 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
   overflow-wrap: anywhere;
 }
 
+.task-details h2 {
+  margin: 0 0 calc(2.5 * var(--space));
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.task-details dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: calc(2 * var(--space)) calc(4 * var(--space));
+  margin: 0;
+}
+
+.task-details dt {
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 500;
+}
+
+.task-details dd {
+  margin: 0;
+  min-inline-size: 0;
+}
+
 .task-state-badge.ui-badge {
-  border-color: var(--task-state-color, var(--control-border));
+  display: inline-flex;
+  align-items: center;
+  padding: calc(0.5 * var(--space)) calc(2.5 * var(--space));
+  border-color: color-mix(in srgb, var(--task-state-color, var(--control-border)) 35%, var(--border));
+  border-inline-start-color: var(--task-state-color, var(--control-border));
   border-inline-start-width: calc(3 * var(--stroke));
+  background: color-mix(in srgb, var(--task-state-color, var(--control-border)) 10%, var(--background));
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .task-state-badge[data-state="ready"] {
@@ -27,6 +67,11 @@
   --task-state-color: var(--muted);
 }
 
-.task-state-badge[data-state="expired"] {
+.task-state-badge[data-state="expired"],
+.task-state-badge[data-state="blocked"] {
   --task-state-color: var(--warning);
+}
+
+.task-state-badge[data-state="waiting"] {
+  --task-state-color: var(--control-border);
 }

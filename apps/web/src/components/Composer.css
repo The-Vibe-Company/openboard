@@ -4,10 +4,36 @@
   margin-block-end: calc(4 * var(--space));
 }
 
-.composer textarea {
+.composer-label {
   display: block;
+  margin-block-end: var(--space);
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 500;
 }
 
-.composer button {
-  justify-self: start;
+.composer textarea {
+  display: block;
+  inline-size: 100%;
+  resize: vertical;
+}
+
+.composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(2 * var(--space));
+}
+
+.composer-hint {
+  color: var(--muted);
+  font-size: var(--type-small);
+}
+
+.composer-hint kbd {
+  padding: 1px 4px;
+  border: var(--stroke) solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 11px;
 }

@@ -101,10 +101,13 @@ code,
 pre,
 kbd,
 samp,
-time,
 :root input[readonly],
 input[type="password"] {
   font-family: var(--font-mono);
+}
+
+time {
+  font-variant-numeric: tabular-nums;
 }
 
 a {

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { useLayoutEffect, useRef } from "react";
 import { threadsQuery } from "../../../../api/board.ts";
@@ -68,6 +68,11 @@ function ThreadPage() {
 
   return (
     <section className="thread-page">
+      {root && (
+        <Link className="thread-back" to="/$org/$board" params={params} search={{ channel: root.channel }}>
+          ← {root.channel}
+        </Link>
+      )}
       <h1 ref={heading} tabIndex={-1}>
         {title}
       </h1>

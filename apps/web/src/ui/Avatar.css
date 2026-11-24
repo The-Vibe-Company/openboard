@@ -4,8 +4,12 @@
   inline-size: var(--control-small);
   aspect-ratio: 1;
   overflow: hidden;
+  border: var(--stroke) solid var(--border);
   border-radius: var(--radius-pill);
   background: var(--surface);
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 600;
 }
 
 .ui-avatar img {

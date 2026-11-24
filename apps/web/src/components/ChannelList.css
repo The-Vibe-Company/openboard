@@ -1,10 +1,16 @@
 .shell-channels h2 {
   margin: 0 0 calc(2 * var(--space));
+  padding-inline: calc(2 * var(--space));
   color: var(--muted);
-  font-size: var(--type-base);
+  font-size: var(--type-small);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .shell-channels ul {
+  display: grid;
+  gap: calc(0.5 * var(--space));
   margin: 0;
   padding: 0;
   list-style: none;
@@ -12,15 +18,21 @@
 
 .shell-channels a {
   display: block;
-  padding: calc(2 * var(--space));
+  padding: calc(1.5 * var(--space)) calc(2.5 * var(--space));
   border-radius: var(--radius-control);
+  color: var(--muted);
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 
 .shell-channels a:hover,
 .shell-channels a[aria-current="page"] {
   background: var(--border);
+  color: var(--text);
+  text-decoration: none;
 }
 
 .shell-channels a[aria-current="page"] {
-  font-weight: 650;
+  font-weight: 600;
 }

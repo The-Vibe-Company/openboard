@@ -42,10 +42,11 @@ export function Composer({ ref, onPost }: ComposerProps) {
   return (
     <form ref={ref} className="composer" onSubmit={submit}>
       <label htmlFor={messageId}>
-        Message
+        <span className="composer-label">Message</span>
         <Textarea
           id={messageId}
           rows={3}
+          placeholder="Write a message… Markdown supported"
           value={text}
           readOnly={pending}
           onChange={(event) => {
@@ -60,9 +61,14 @@ export function Composer({ ref, onPost }: ComposerProps) {
           }}
         />
       </label>
-      <Button type="submit" pending={pending} disabled={!text.trim()}>
-        {pending ? "Posting…" : "Post"}
-      </Button>
+      <div className="composer-footer">
+        <span className="composer-hint">
+          <kbd>⌘</kbd>+<kbd>↵</kbd> to post
+        </span>
+        <Button type="submit" pending={pending} disabled={!text.trim()}>
+          {pending ? "Posting…" : "Post"}
+        </Button>
+      </div>
       {error && (
         <div role="alert">
           <div>{error.message}</div>

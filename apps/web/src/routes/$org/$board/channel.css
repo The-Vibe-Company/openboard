@@ -25,15 +25,8 @@
   z-index: 1;
   margin-block-end: 0;
   padding-block: calc(2 * var(--space));
+  border-block-start: var(--stroke) solid var(--border);
   background: var(--background);
-}
-
-.channel-view > .composer textarea {
-  margin-block-start: var(--space);
-}
-
-.channel-view > .composer button {
-  justify-self: end;
 }
 
 /* Keep keyboard focus visible when navigating the content above the composer. */

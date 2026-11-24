@@ -17,7 +17,10 @@ export function TaskList({ board, channel }: { board: { org: string; board: stri
 
   return (
     <section className="channel-tasks" aria-label="Tasks">
-      <h2>Tasks</h2>
+      <div className="channel-tasks-header">
+        <h2>Tasks</h2>
+        {tasks.length > 0 && <span className="channel-tasks-count">{tasks.length}</span>}
+      </div>
       {tasks.length > 0 && (
         <ol aria-label="Open tasks">
           {tasks.map(({ message }) => {
@@ -26,7 +29,12 @@ export function TaskList({ board, channel }: { board: { org: string; board: stri
             const title = message.text.split(/\r?\n/, 1)[0]?.trim() || `Thread #${message.id}`;
             return (
               <li key={message.id}>
-                <Link to="/$org/$board/t/$id" params={{ ...board, id: message.id }} search={true}>
+                <Link
+                  className="channel-task-link"
+                  to="/$org/$board/t/$id"
+                  params={{ ...board, id: message.id }}
+                  search={true}
+                >
                   {title}
                 </Link>
                 <TaskStateBadge
