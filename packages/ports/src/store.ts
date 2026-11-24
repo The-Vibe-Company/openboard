@@ -99,12 +99,14 @@ export interface OrgView {
     readonly targetId: string;
     readonly role: Role;
     readonly at: number;
+    readonly admit?: () => void;
   }): Promise<{ principal: string; role: Role } | null>;
   /** Removes a member and records its audit event together, preserving the last owner and the person's sessions. */
   removeMember(record: {
     readonly personId: string;
     readonly targetId: string;
     readonly at: number;
+    readonly admit?: () => void;
   }): Promise<{ principal: string } | null>;
   /** Stores the invitation and audit event together. False if the creator no longer has admin rights here. */
   createInvitation(record: {
@@ -113,6 +115,7 @@ export interface OrgView {
     readonly personId: string;
     readonly at: number;
     readonly expiresAt: number;
+    readonly admit?: () => void;
   }): Promise<boolean>;
   /**
    * In one transaction, under the person `personId`'s admin membership locked: marks the organization's invitation
@@ -120,7 +123,12 @@ export interface OrgView {
    * or admin (`not_admin`), the organization has no such invitation (`not_found`), or it was already accepted or
    * revoked (`used`).
    */
-  revokeInvitation(id: string, personId: string, at: number): Promise<"revoked" | "not_admin" | "not_found" | "used">;
+  revokeInvitation(
+    id: string,
+    personId: string,
+    at: number,
+    admit?: () => void,
+  ): Promise<"revoked" | "not_admin" | "not_found" | "used">;
   /** The organization's boards that are not deleted, by slug. */
   listBoards(): Promise<Named[]>;
   /**
@@ -132,6 +140,7 @@ export interface OrgView {
   createBoard(
     creation: BoardCreation,
     personId: string,
+    admit?: () => void,
   ): Promise<"created" | "not_admin" | "slug_taken" | QuotaOutcome>;
 }
 

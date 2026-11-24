@@ -122,6 +122,7 @@ export function invitationView(
         const { invitation, tokenHash, personId, at } = record;
         const [org] = await query(tx, dialect, invitationStatements.lockInvitationOrg, { orgId, personId });
         if (!org) return false;
+        record.admit?.();
         await query(tx, dialect, invitationStatements.insertInvitation, {
           ...invitation,
           orgId,
@@ -142,12 +143,13 @@ export function invitationView(
         });
         return true;
       }),
-    revokeInvitation: (id, personId, at) =>
+    revokeInvitation: (id, personId, at, admit) =>
       db.transaction(async (tx) => {
         // The invitation row is locked before the organization's, in the same order as accepting it.
         const [invitation] = await query(tx, dialect, invitationStatements.lockOrgInvitation, { orgId, id });
         const [admin] = await query(tx, dialect, invitationStatements.lockInvitationOrg, { orgId, personId });
         if (!admin) return "not_admin";
+        admit?.();
         if (!invitation) return "not_found";
         if (invitation.accepted_at !== null || invitation.revoked_at !== null) return "used";
         await query(tx, dialect, invitationStatements.markInvitationRevoked, { orgId, id, at });

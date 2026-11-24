@@ -12,6 +12,7 @@ Sources of borrowed rules are named inline: `armada:` means the sibling project 
 4. **One contract, many projections.** Every operation is defined once in `packages/contract` and reaches REST, OpenAPI, SDK, CLI, MCP and the tenant isolation suite from that definition (armada: `docs/architecture.md` target 7).
 5. **Pure domain in the middle.** Rules (threads, revisions, labels, tasks, claims, needs, grants, memberships, schemas) are pure functions with no I/O, no clock and no randomness.
 6. **Nothing lives only in one process.** Any state another request might need (a waiter to wake, a job to run, a lease to expire, a rate counter) goes through a port. A single instance is a cluster of one, not a special case. The two-instance test suite proves it (section 6.4).
+   Cheap per-request throttles are per-instance by design, so N instances allow N times the limit. Counters that must hold across instances (claims, sign-in, org creation, invitations) go through Postgres.
 7. **Clients are API-only.** The SDK, the CLI's client commands and the web app never import server, driver or core code (armada: `AGENTS.md` non-negotiable 3).
 8. **Integrations are consumers.** Anything named after a product we integrate with (Armada, Slack, Linear, a CI vendor) lives in `examples/` and uses the published SDK, the CLI, MCP or webhooks. CI rejects those names in core source.
 9. **Few packages, hard edges.** A package exists only when its boundary is enforced by CI and buys something: purity, a published artifact, isolation of a foreign dependency, or the port/driver split. Upstream's single package grew files of 1,300 to 4,000 lines (`server/backend-vercel.ts` 4,082, `cli/main.ts` 2,967, `conformance/index.ts` 2,553, `server/a2.ts` 1,444, `api/routes.ts` 1,332); the size rules in section 5 exist to stop that.
@@ -299,7 +300,7 @@ What enforces isolation, in v1 (D33): only step 3 can create a scope; every view
 | Seam | Where it plugs in | v1 |
 |---|---|---|
 | Count and size quotas per organization | `Quotas` port, pipeline step 6; error `quota_exceeded` with `next` | enforced (M7) |
-| Rate limits per organization and credential | `RateLimits` port, pipeline step 4; error `rate_limited` with `Retry-After` | enforced (M7); the hosted implementation is shared across instances through Postgres, never an in-memory counter |
+| Rate limits per organization and credential | `RateLimits` port, pipeline step 4; error `rate_limited` with `Retry-After` | enforced (M7); cheap per-request throttles are per instance; counters that must hold across instances use Postgres |
 | Usage metering | `Meter` port, pipeline step 8, keyed by `effects.meter`, daily rollups as a job | designed; rollups after v1 |
 | Organization export | the log-shipping format, importable into `ob serve` | designed; built with backups (M15) |
 | Organization deletion | soft delete, hard delete by a job after 30 days | enforced (M7) |
@@ -307,7 +308,7 @@ What enforces isolation, in v1 (D33): only step 3 can create a scope; every view
 | SSRF guard on webhook targets, no tenant override | webhook dispatcher | enforced (M11) |
 | Tenant isolation suite in CI | 6.5 | enforced (M4) |
 
-Billing is out of scope. Each seam that holds state has an implementation in each driver.
+Billing is out of scope. Each seam that shares state across instances has an implementation in each driver.
 
 ## 5. Conventions
 

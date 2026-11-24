@@ -44,6 +44,7 @@ export const createConnectionHandler: Handler<typeof createConnection> = async (
   }
   const minted = mintSecret("obc_", ctx.randomBytes(SECRET_BYTES));
   const secret = { id: `cn_${minted.name}`, hash: minted.hash, hint: hintOf(minted.token) };
+  ctx.debitWrite();
   const connection = await ctx.board.write(async (writer) => {
     const state = {
       head: writer.head,
@@ -96,6 +97,7 @@ async function replayClaim(ctx: ClaimContext, writer: BoardWriter, connection: s
     token: { id, hash: minted.hash },
     preserveExpiry: true,
   });
+  ctx.debitWrite();
   await writer.append(events);
   return { agent, token: minted.token, profile: record.profile };
 }
@@ -128,6 +130,7 @@ export const claimConnectionHandler: Handler<typeof claimConnection> = async (ct
     const connection = { id, profiles, can, tokenTtl, tokenMax, claims };
     const state = { head: writer.head, holder: await writer.profileHolder(id, input.profile) };
     const decided = agents.decideClaim(state, input, { by: ctx.by, now: ctx.now(), connection, token });
+    ctx.debitWrite();
     await writer.append(decided.events);
     return { agent: decided.agent, token: minted.token, profile: input.profile };
   });
@@ -157,6 +160,7 @@ export const refreshAgentTokenHandler: Handler<typeof refreshAgentToken> = async
     const state = { head: writer.head, agent: { ...record, tokenTtl: record.connection.tokenTtl } };
     const token = { id, hash: minted.hash };
     const decided = agents.decideRefresh(state, { by: ctx.by, now: ctx.now(), presented, token });
+    ctx.debitWrite();
     await writer.append(decided.events);
     return decided.agent;
   });
@@ -181,6 +185,7 @@ export function requireManager(ctx: Parameters<Handler<typeof revokeConnection>>
 
 export const revokeConnectionHandler: Handler<typeof revokeConnection> = async (ctx, { id }) => {
   requireManager(ctx, "revoke a connection");
+  ctx.debitWrite();
   return ctx.board.write(async (writer) => {
     const record = await writer.connection(id);
     if (!record) throw new BoardError("not_found", "no such active connection on this board");
@@ -198,6 +203,7 @@ export const revokeConnectionHandler: Handler<typeof revokeConnection> = async (
 /** Revokes one agent of the connection: its tokens answer 401 from the next request, its siblings keep working. */
 export const revokeAgentHandler: Handler<typeof revokeAgent> = async (ctx, { id, agent }) => {
   requireManager(ctx, "revoke an agent");
+  ctx.debitWrite();
   return ctx.board.write(async (writer) => {
     const record = await writer.agent(agent);
     const now = ctx.now();
@@ -215,6 +221,7 @@ export const revokeAgentHandler: Handler<typeof revokeAgent> = async (ctx, { id,
  */
 export const rotateConnectionHandler: Handler<typeof rotateConnection> = async (ctx, { id, overlap }) => {
   requireManager(ctx, "rotate a connection's secret");
+  ctx.debitWrite();
   const minted = reissueSecret(id, ctx.randomBytes(SECRET_PART_BYTES));
   const now = ctx.now();
   const { connection, previousUntil } = await ctx.board.write(async (writer) => {

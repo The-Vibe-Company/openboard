@@ -29,6 +29,7 @@ export async function send(
   const { counters } = instance;
   const statementsBefore = counters.statements;
   const roundTripsBefore = counters.roundTrips;
+  if (request.method !== "GET") instance.advanceWriteClock();
   const started = performance.now();
   const response = await instance.app.fetch(new Request(`${board.url}${request.path}`, init));
   const body: unknown = await response.json();

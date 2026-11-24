@@ -26,13 +26,20 @@ function errorResponses(operation: Operation) {
     codes.add("invalid_profile");
     codes.add("forbidden");
   }
-  const responses: Record<number, { description: string; content: object }> = {};
+  const retryAfter = (operation.scope === "board" || operation.scope === "org") && codes.has("rate_limited");
+  const responses: Record<number, { description: string; content: object; headers?: object }> = {};
   for (const code of codes) {
     for (const status of ERRORS[code].statuses) {
       const previous = responses[status]?.description;
       responses[status] = {
         description: previous ? `${previous}, ${code}` : code,
         content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } },
+        ...(status === 429 &&
+          retryAfter && {
+            headers: {
+              "retry-after": { description: "Seconds until the write may be retried.", schema: { type: "integer" } },
+            },
+          }),
       };
     }
   }

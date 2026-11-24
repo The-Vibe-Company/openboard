@@ -554,6 +554,12 @@ Lease consumption and the database effect commit together.
   limits, audit, deletion, and the isolation suite in CI. Billing is out of
   scope.
 
+- **Write throttling.** Each instance admits up to 1,000 writes per organization
+  in a burst and refills at 200 writes per second. The aggregate rate scales
+  with the number of instances. Authorized writes debit the bucket after
+  permission checks so unauthorized requests cannot exhaust it. Scoped reads
+  skip the bucket. Forwarded-IP trust is deferred to tickets 200 and 205.
+
 ### D41. Budgets per mode, targets until measured (N9)
 
 - **Decision.** [architecture.md](./architecture.md#efficiency-budgets) is the

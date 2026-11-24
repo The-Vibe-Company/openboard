@@ -46,6 +46,7 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
   }
   const command = { ...input, channel, text };
   messages.checkPost(command, ctx.by);
+  ctx.debitWrite();
   const { replay, ...answer } = await writeWithMentionVisibility(
     ctx,
     text,
@@ -86,6 +87,7 @@ async function makeTask(ctx: BoardContext, re: string, claim: boolean | undefine
     const state = { head: writer.head, target, actor: writer.actor };
     const now = ctx.now();
     const decided = decideMakeTask(state, re, { by: ctx.by, author: authorOf(ctx.by), now });
+    ctx.debitWrite();
     return writeNewTask(ctx, writer, decided, claim, now);
   }, ctx.by.actor);
   const { task } = answer;

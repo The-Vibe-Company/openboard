@@ -19,6 +19,10 @@ test("publishes the board's OpenAPI description without credentials or a tenant 
             responses: {
               "200": { content: { "application/json": { schema: { type: "object" } } } },
               "201": { content: { "application/json": { schema: { type: "object" } } } },
+              "429": {
+                description: expect.stringContaining("rate_limited"),
+                headers: { "retry-after": { schema: { type: "integer" } } },
+              },
             },
           },
           get: {
@@ -56,6 +60,10 @@ test("publishes the board's OpenAPI description without credentials or a tenant 
         },
       },
     });
+
+    expect(document).not.toHaveProperty("paths./channels.get.responses.429");
+
+    expect(document).not.toHaveProperty("paths./api/x/auth/device/token.post.responses.429.headers");
 
     const unknown = await app.fetch(new Request(`${PUBLIC_URL}/api/nobody/nothing/openapi.json`));
     expect(unknown.status).toBe(200);

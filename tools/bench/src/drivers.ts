@@ -7,6 +7,7 @@ import { fakeGitHub, hostedBoard, hostedConfig } from "./hosted";
 /** One server instance and the database counters of its store. */
 export interface Instance {
   readonly app: App;
+  readonly advanceWriteClock: () => void;
   readonly counters: { readonly statements: number; readonly roundTrips: number };
 }
 
@@ -17,9 +18,19 @@ export const modes: readonly Mode[] = ["local", "hosted"];
 /** The bench serves no port: this origin only addresses the in-process instances. */
 const ORIGIN = "http://127.0.0.1";
 
+/** Pace synthetic writes at 200/s without adding sleeps to the benchmark. Both hosted instances share this clock. */
+function workloadClock() {
+  let offset = 0;
+  return {
+    now: () => Date.now() + offset,
+    advanceWriteClock: () => {
+      offset += 5;
+    },
+  };
+}
+
 /** Per-process deps; `fetch` reaches only the faked sign-in provider, which hosted mode signs in through. */
-function deps(): Deps {
-  const now = () => Date.now();
+function deps(now: () => number): Deps {
   return {
     now,
     log: {
@@ -47,9 +58,13 @@ function bootLocal() {
     localOwnerTokenHash: owner.hash,
   };
   const counters = Object.assign(statementCounter(), { roundTrips: 0 });
-  const store = sqliteDriver({ memory: true }, Date.now, counters);
-  const app = createApp(config, { store, jobs: store.jobs }, deps());
-  return { instances: [{ app, counters }], board: { url: `${ORIGIN}/api/local/main`, token: owner.token } };
+  const { now, advanceWriteClock } = workloadClock();
+  const store = sqliteDriver({ memory: true }, now, counters);
+  const app = createApp(config, { store, jobs: store.jobs }, deps(now));
+  return {
+    instances: [{ app, counters, advanceWriteClock }],
+    board: { url: `${ORIGIN}/api/local/main`, token: owner.token },
+  };
 }
 
 /**
@@ -67,19 +82,20 @@ async function bootHosted(cleanup: (() => Promise<void>)[]) {
   cleanup.push(() => database.drop());
   const config = { mode: "hosted", publicUrl: ORIGIN, localOwner: "ob:user:local-tools", ...hostedConfig } as const;
   const instances: Instance[] = [];
+  const { now, advanceWriteClock } = workloadClock();
   for (let at = 0; at < 2; at++) {
     const counters = postgresCounter();
-    const store = await postgresDriver({ url: database.url }, Date.now, counters);
+    const store = await postgresDriver({ url: database.url }, now, counters);
     let app: App;
     try {
-      app = createApp(config, { store, jobs: store.jobs }, deps());
+      app = createApp(config, { store, jobs: store.jobs }, deps(now));
     } catch (error) {
       await store.close();
       throw error;
     }
     // Closing the app closes its store.
     cleanup.push(() => app.close());
-    instances.push({ app, counters });
+    instances.push({ app, counters, advanceWriteClock });
   }
   const [first] = instances;
   if (!first) throw new Error("hosted mode booted no instance");

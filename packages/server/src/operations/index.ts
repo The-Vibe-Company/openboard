@@ -11,6 +11,7 @@ import type {
 import type { BoardView, OrgView, PersonRecord, PlatformView } from "@openboard/ports";
 import type { Session } from "../auth/sessions.ts";
 import type { Deps, Principal } from "../deps.ts";
+import type { RequestLimits } from "../http/limits.ts";
 import {
   approveDeviceSignInHandler,
   getAccountHandler,
@@ -85,7 +86,9 @@ import { createTaskHandler, listTasksHandler } from "./tasks.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
-export interface BoardContext {
+export interface BoardContext extends RequestLimits {
+  /** Admit a write once its operation-specific permissions have been checked. */
+  readonly debitWrite: () => void;
   readonly board: BoardView;
   readonly signal: AbortSignal;
   readonly shutdown: AbortSignal;
@@ -106,7 +109,7 @@ export interface PublicContext {
 }
 
 /** What an `account` operation's handler sees: the platform view and the browser's session, if one is live. */
-export interface AccountContext {
+export interface AccountContext extends RequestLimits {
   readonly platform: PlatformView;
   readonly session: Session | null;
   readonly now: () => number;
@@ -115,7 +118,8 @@ export interface AccountContext {
   readonly providers: readonly SignInProvider[];
 }
 
-export interface OrgContext {
+export interface OrgContext extends RequestLimits {
+  readonly debitWrite: () => void;
   readonly org: OrgView;
   readonly person: PersonRecord;
   readonly now: () => number;
@@ -130,7 +134,7 @@ export interface PublicPlatformContext {
 
 export type DeviceOperation = typeof startDeviceSignIn | typeof pollDeviceSignIn;
 
-interface DeviceContext {
+interface DeviceContext extends RequestLimits {
   readonly platform: Pick<PlatformView, "startDevice" | "pollDevice">;
   readonly now: () => number;
   readonly randomBytes: (length: number) => Uint8Array;

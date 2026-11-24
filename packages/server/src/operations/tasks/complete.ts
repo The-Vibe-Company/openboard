@@ -20,6 +20,7 @@ export const completeTaskHandler: Handler<typeof completeTask> = async (ctx, { i
       { id, epoch, result },
       { by: ctx.by, author: authorOf(ctx.by), now: ctx.now() },
     );
+    ctx.debitWrite();
     await writer.append(decided.events);
     const { task } = decided;
     return { task: canListMentionActors(ctx.by) ? task : { ...withoutMentionDetails(task), task: task.task } };

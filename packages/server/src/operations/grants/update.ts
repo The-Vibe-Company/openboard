@@ -27,6 +27,7 @@ export const updateGrantHandler: Handler<typeof updateGrant> = (ctx, input) =>
         add.some(({ kind }) => kind === "oidc"),
       );
     }
+    ctx.debitWrite();
     for (const named of add) {
       if (named.kind === "connection" && !(await writer.connection(named.connection))) {
         throw new BoardError("not_found", "no such connection");

@@ -1,5 +1,5 @@
 import { BoardError, decodeInput, type operations, type previewInvitation, type RawInput } from "@openboard/contract";
-import type { PlatformView } from "@openboard/ports";
+import type { PlatformView, RateLimits } from "@openboard/ports";
 import { keepInsideCan } from "../auth/access.ts";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
@@ -17,6 +17,7 @@ import {
 } from "../operations/index.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
 import { healthProbe } from "./health.ts";
+import { limitWrite, type RequestLimits } from "./limits.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
 import { type BoardPath, boardPath, notFound, type Tenants } from "./scope.ts";
@@ -31,6 +32,7 @@ export interface Pipeline {
   readonly track: <T>(work: Promise<T>) => Promise<T>;
   readonly config: ServerConfig;
   readonly deps: Deps;
+  readonly rateLimits: RateLimits;
   /** Board and public operations, relative to `BOARD_URL`. */
   readonly routes: readonly Route<Contracted>[];
   /** Platform and organization operations, relative to `/api/x`. */
@@ -85,7 +87,13 @@ async function runPublic(
 }
 
 /** An `account` operation: no tenant; the browser's session, if live, is the person (docs/auth.md step 6). */
-async function runAccount(request: Request, url: URL, operation: AccountOperation, params: Params, pipeline: Pipeline) {
+async function runAccount(
+  request: Request,
+  url: URL,
+  operation: AccountOperation,
+  params: Params,
+  pipeline: Pipeline & RequestLimits,
+) {
   const { config, deps, platform } = pipeline;
   const session = await sessionOf(request, platform, deps.now(), config.publicUrl);
   const input = validate(operation, {
@@ -94,7 +102,18 @@ async function runAccount(request: Request, url: URL, operation: AccountOperatio
     body: request.method === "GET" ? undefined : await readBody(request),
   });
   const providers = providerLinks(pipeline.providers, config.publicUrl);
-  const output = await handlerOf(operation)({ platform, session, now: deps.now, mode: config.mode, providers }, input);
+  const output = await handlerOf(operation)(
+    {
+      platform,
+      session,
+      now: deps.now,
+      mode: config.mode,
+      providers,
+      rateLimits: pipeline.rateLimits,
+      ip: pipeline.ip,
+    },
+    input,
+  );
   const response = operationResponse(operation, output);
   response.headers.set("cache-control", "no-store");
   return response;
@@ -105,22 +124,39 @@ async function runAccount(request: Request, url: URL, operation: AccountOperatio
  * otherwise, as for an unknown one, before any CSRF proof is asked). Reading (`access.permission` `read`) takes any
  * member; anything else an admin.
  */
-async function runOrg(request: Request, url: URL, operation: OrgOperation, params: Params, pipeline: Pipeline) {
+async function runOrg(
+  request: Request,
+  url: URL,
+  operation: OrgOperation,
+  params: Params,
+  pipeline: Pipeline & RequestLimits,
+) {
   const { config, deps, platform } = pipeline;
   const at = deps.now();
   const live = await liveSession(request, platform, at);
   if (!live) throw new BoardError("unauthorized", "sign in first");
   const resolve = operation.access?.permission === "read" ? pipeline.tenants.memberOrg : pipeline.tenants.adminOrg;
-  const org = await resolve(params.org ?? "", live.record.person.id);
+  const slug = params.org ?? "";
+  const org = await resolve(slug, live.record.person.id);
   const session = await proveSession(request, live, platform, at, config.publicUrl);
   const input = validate(operation, {
     params,
     query: readQuery(operation, url.searchParams),
     body: request.method === "GET" ? undefined : await readBody(request),
   });
+  const debitWrite = () => limitWrite(pipeline.rateLimits, slug, operation.effects.readOnly);
   const { now, randomBytes } = deps;
   const output = await handlerOf(operation)(
-    { org, person: session.person, now, randomBytes, publicUrl: config.publicUrl },
+    {
+      org,
+      debitWrite,
+      person: session.person,
+      now,
+      randomBytes,
+      publicUrl: config.publicUrl,
+      rateLimits: pipeline.rateLimits,
+      ip: pipeline.ip,
+    },
     input,
   );
   const response = operationResponse(operation, output);
@@ -134,17 +170,24 @@ async function runPreview(url: URL, operation: typeof previewInvitation, params:
   return operationResponse(operation, output);
 }
 
-async function runDevice(request: Request, operation: DeviceOperation, pipeline: Pipeline) {
+async function runDevice(request: Request, operation: DeviceOperation, pipeline: Pipeline & RequestLimits) {
   const { config, deps, platform } = pipeline;
   const input = decodeInput(operation, { body: await readBody(request) });
   const output = await handlerOf(operation)(
-    { platform, publicUrl: config.publicUrl, now: deps.now, randomBytes: deps.randomBytes },
+    {
+      platform,
+      publicUrl: config.publicUrl,
+      now: deps.now,
+      randomBytes: deps.randomBytes,
+      rateLimits: pipeline.rateLimits,
+      ip: pipeline.ip,
+    },
     input,
   );
   return operationResponse(operation, output);
 }
 
-async function runPlatform(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields) {
+async function runPlatform(request: Request, url: URL, pipeline: Pipeline & RequestLimits, logged: RequestFields) {
   const matched = matchRoute(pipeline.platformRoutes, request.method, url.pathname.slice("/api/x".length));
   if (!matched) return null;
   const { operation, params } = matched;
@@ -159,7 +202,12 @@ async function runPlatform(request: Request, url: URL, pipeline: Pipeline, logge
   return null;
 }
 
-async function run(request: Request, url: URL, pipeline: Pipeline, logged: RequestFields): Promise<Response> {
+async function run(
+  request: Request,
+  url: URL,
+  pipeline: Pipeline & RequestLimits,
+  logged: RequestFields,
+): Promise<Response> {
   if (url.pathname === "/auth/logout" && request.method === "POST") {
     return signOut(request, pipeline.platform, pipeline.deps.now(), pipeline.config.publicUrl);
   }
@@ -172,6 +220,15 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
     const response = await runPlatform(request, url, pipeline, logged);
     if (response) return response;
   }
+  return runBoard(request, url, pipeline, logged);
+}
+
+async function runBoard(
+  request: Request,
+  url: URL,
+  pipeline: Pipeline & RequestLimits,
+  logged: RequestFields,
+): Promise<Response> {
   const path = boardPath(url.pathname, pipeline.config.mode);
   if (!path) throw notFound();
   logged.org = path.org;
@@ -212,6 +269,9 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
     };
     return {
       board,
+      debitWrite: () => limitWrite(pipeline.rateLimits, path.org, operation.effects.readOnly),
+      rateLimits: pipeline.rateLimits,
+      ip: pipeline.ip,
       by,
       now,
       boardUrl,
@@ -252,7 +312,7 @@ function loggedPath(path: string): string {
 }
 
 /** Every request goes through here, once: tenant from the path, auth, scope, validation, handler (4.4). */
-export async function handle(request: Request, pipeline: Pipeline): Promise<Response> {
+export async function handle(request: Request, pipeline: Pipeline, ip?: string): Promise<Response> {
   const { now } = pipeline.deps;
   const started = now();
   const requestId = requestIdOf(request, pipeline.deps);
@@ -268,7 +328,9 @@ export async function handle(request: Request, pipeline: Pipeline): Promise<Resp
   try {
     const probe = request.method === "GET" ? healthProbe(url.pathname, pipeline) : undefined;
     if (!probe && pipeline.shutdown.aborted) throw new BoardError("unavailable", "the instance is draining");
-    response = await (probe ?? pipeline.staticFiles(request, url.pathname) ?? run(request, url, pipeline, logged));
+    response = await (probe ??
+      pipeline.staticFiles(request, url.pathname) ??
+      run(request, url, { ...pipeline, ip }, logged));
   } catch (error) {
     response = errorResponse(error, log);
   }

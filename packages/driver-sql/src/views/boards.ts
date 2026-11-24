@@ -186,11 +186,12 @@ export function orgBoardsView(
       const rows = await query(db, dialect, boardStatements.orgBoards, { orgId });
       return rows.map((row) => ({ slug: String(row.slug), name: String(row.name) }));
     },
-    createBoard: ({ board, event }: BoardCreation, personId: string) =>
+    createBoard: ({ board, event }: BoardCreation, personId: string, admit?: () => void) =>
       db.transaction(async (tx) => {
         // The organization's row and the creator's admin membership, locked as every organization write locks them.
         const [admin] = await query(tx, dialect, invitationStatements.lockInvitationOrg, { orgId, personId });
         if (!admin) return "not_admin" as const;
+        admit?.();
         const [used] = await query(tx, dialect, boardStatements.boardSlugUsed, { orgId, slug: board.slug });
         if (used) return "slug_taken" as const;
         const [usage] = await query(tx, dialect, boardStatements.orgBoardCount, { orgId });
