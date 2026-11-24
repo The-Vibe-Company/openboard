@@ -859,6 +859,26 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   round trips per request, not per statement. That variant is not measured
   here. The bench would measure it before any ticket turns RLS on.
 
+### D57. Upstream stubs are marked in the contract and checked by one isolation rule
+
+- **Context.** Sync is deferred (D19), yet upstream's clients call its routes
+  (docs/protocol.md "Sync (deferred)", the U-stub rows). Ticket 382 answers them
+  as a board with no sync does: 404 `not_synced_here`, 404
+  `message_not_found`, empty lists, 403 "this board keeps no sync". Read-only
+  stubs never answer 2xx with the caller's data, so D54's list and shared-ID
+  checks could not hold for them ([issue #577](https://github.com/The-Vibe-Company/openboard/issues/577)).
+- **Decision.** An operation that answers an upstream route as a board without
+  the feature does carries `stub: true` in the contract. The isolation suite
+  checks a stub by one rule: A on A's board answers exactly as B on B's board
+  (same status, same body), A's answer carries none of B's names, and B's IDs
+  on A's URL answer as IDs no board holds (D54). A stub's message route still
+  reads the message first, so a missing or unreadable one answers 404
+  `message_not_found` before the stub's answer. Stubs are `cli: false` and
+  `mcp: false`.
+- **Consequence.** No expected-failure list: a stub that answered with data, or
+  differently for A and B, fails the suite. Building the feature later removes
+  `stub` and the ordinary checks apply again.
+
 ## Hard blockers found
 
 None. Limits worth knowing:

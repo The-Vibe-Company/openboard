@@ -13,7 +13,7 @@ export const authenticated = operations.filter((operation) => operation.scope !=
  * A tenant's valid input for an operation besides its path: an ID case must reach the handler, not stop at
  * validation. An operation missing here sends no query and no body; `callOf` throws if validation refuses that.
  */
-const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { query?: Fields; body?: Fields }>> = {
+const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; query?: Fields; body?: Fields }>> = {
   createTask: (tenant) => ({ body: { channel: "dev", text: `${tenant.marker} task` } }),
   postMessage: (tenant) => ({ body: { re: tenant.ids.message, text: `${tenant.marker} reply` } }),
   editMessage: (tenant) => ({ body: { text: `${tenant.marker} edit` } }),
@@ -29,6 +29,16 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { query?: Fields; bod
   listThreads: () => ({ query: { channel: "dev" } }),
   approveDeviceSignIn: (tenant) => ({ body: { userCode: tenant.userCode, org: tenant.org } }),
   acceptInvitation: (tenant) => ({ body: { token: tenant.invitationToken } }),
+  attachSync: () => ({ body: { target: "elsewhere" } }),
+  findLinkedThread: () => ({ query: { url: "https://example.com/thread/1" } }),
+  readSource: () => ({ params: { key: "elsewhere" }, query: { target: "elsewhere" } }),
+  joinSource: () => ({ params: { key: "elsewhere" }, body: { target: "elsewhere" } }),
+  pushInbox: () => ({ params: { key: "elsewhere" }, body: { events: [] } }),
+  ackInbox: () => ({ params: { key: "elsewhere", id: "event" }, body: { lease: "lease" } }),
+  readInbox: () => ({ params: { key: "elsewhere" } }),
+  leaseInbox: () => ({ params: { key: "elsewhere" } }),
+  importSync: () => ({ body: { op: "post", from: null } }),
+  recordSyncReceipt: (tenant) => ({ body: { kind: "message", message: tenant.ids.message } }),
 };
 
 /** The `Ref` fields of an operation's input, where each sits and which kind it names. */
@@ -82,7 +92,7 @@ export function callOf(
 ): Call {
   const sample = SAMPLES[operation.name]?.(tenant) ?? {};
   const parts: Record<Part, Fields> = {
-    params: {},
+    params: { ...sample.params },
     query: { ...sample.query, ...queryOverrides },
     body: { ...sample.body },
   };
@@ -144,6 +154,8 @@ export interface IdCase {
   readonly nowhere?: Call;
   readonly startsAtHead?: true;
   readonly eventThread?: string;
+  /** For a stub (no answer holds data): B's own call on B's board, which A's call on A's board must answer exactly as. */
+  readonly twin?: Call;
 }
 
 /** An ID of the same shape as `id` that no board holds. */
@@ -176,7 +188,8 @@ export function idCases(seeded: Seeded): IdCase[] {
         cases.push({ name: `${name} at the head`, call: callWith(eventThread), startsAtHead: true });
         cases.push({ name, call: callWith(eventThread, history), eventThread });
       } else if (kind === "message" && operation.effects.readOnly) {
-        cases.push({ name: `${label}, an ID both boards hold`, call: callWith(seeded.sharedMessage) });
+        const twin = operation.stub ? { twin: callOf(operation, seeded.b) } : {};
+        cases.push({ name: `${label}, an ID both boards hold`, call: callWith(seeded.sharedMessage), ...twin });
       }
     }
   }

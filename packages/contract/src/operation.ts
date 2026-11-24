@@ -81,7 +81,7 @@ export type Operation<
   readonly status?: 200 | 201 | { readonly createdWhen: string };
   readonly errors: readonly ErrorCode[];
   readonly access: {
-    readonly permission: "read" | "post" | "react" | "label" | "manage";
+    readonly permission: "read" | "post" | "react" | "label" | "sync" | "manage";
     readonly channel: "fromInput" | "fromInputOrAny" | "fromMessage" | "any";
   } | null;
   readonly effects: {
@@ -91,6 +91,11 @@ export type Operation<
     readonly meter?: string;
   };
   readonly upstream: boolean;
+  /**
+   * An upstream route this board answers as one without the feature does (docs/protocol.md "U-stub" rows): the
+   * isolation suite then asks that A on A's board answer exactly as B on B's board, since no answer holds data.
+   */
+  readonly stub?: true;
 };
 
 export function defineOperation<

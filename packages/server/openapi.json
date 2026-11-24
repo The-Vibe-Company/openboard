@@ -148,6 +148,76 @@
         }
       }
     },
+    "/inbox/{key}/{id}/ack": {
+      "post": {
+        "operationId": "inboxAck",
+        "summary": "Finish or retry a leased inbox event; this board keeps no sync, so it answers 403.",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 300, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["lease"],
+                "properties": {
+                  "lease": { "minLength": 1, "maxLength": 1024, "type": "string" },
+                  "error": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "required": ["ok"],
+                  "properties": { "ok": { "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/api/x/auth/device/approve": {
       "post": {
         "operationId": "approveDeviceSignIn",
@@ -211,6 +281,128 @@
           },
           "404": {
             "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/messages/{id}/sync": {
+      "post": {
+        "operationId": "sync",
+        "summary": "Attach a message's thread to an external target; this board syncs nowhere, so it answers 404.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["target"],
+                "properties": { "target": { "minLength": 1, "maxLength": 2048, "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["target", "attached"],
+                  "properties": { "target": { "type": "string" }, "attached": { "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "message_not_found, not_synced_here, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      },
+      "get": {
+        "operationId": "synced",
+        "summary": "Where a message's thread is synced: nowhere on this board.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["targets"],
+                  "properties": {
+                    "targets": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["target", "key", "thread", "message", "url", "undelivered"],
+                        "properties": {
+                          "target": { "type": "string" },
+                          "key": { "type": "string" },
+                          "thread": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "message": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "url": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "undelivered": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "message_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -1601,6 +1793,491 @@
         }
       }
     },
+    "/links": {
+      "get": {
+        "operationId": "linked",
+        "summary": "The thread a platform link names; this board synced none, so every link answers 404.",
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 2048, "type": "string" }
+          }
+        ],
+        "x-query-schema": {
+          "type": "object",
+          "required": ["url"],
+          "properties": { "url": { "minLength": 1, "maxLength": 2048, "type": "string" } }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["message", "replies"],
+                  "properties": {
+                    "message": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "channel",
+                        "text",
+                        "re",
+                        "replyTo",
+                        "thread",
+                        "labels",
+                        "reactions",
+                        "by",
+                        "noSync",
+                        "origin",
+                        "from",
+                        "createdAt",
+                        "editedAt",
+                        "deleted",
+                        "undelivered",
+                        "attachments",
+                        "links",
+                        "version",
+                        "revision",
+                        "author",
+                        "blocks"
+                      ],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "channel": { "type": "string" },
+                        "text": { "type": "string" },
+                        "mentions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["written", "actor", "candidates"],
+                            "properties": {
+                              "written": { "type": "string" },
+                              "actor": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": ["id", "handle", "name"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "handle": { "type": "string" },
+                                      "name": { "type": "string" }
+                                    }
+                                  },
+                                  { "type": "null" }
+                                ]
+                              },
+                              "candidates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["id", "handle", "name"],
+                                  "properties": {
+                                    "id": { "type": "string" },
+                                    "handle": { "type": "string" },
+                                    "name": { "type": "string" }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "thread": { "type": "string" },
+                        "labels": {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
+                        },
+                        "reactions": {
+                          "type": "object",
+                          "patternProperties": { "^(.*)$": { "type": "array", "items": { "type": "string" } } }
+                        },
+                        "by": {
+                          "type": "object",
+                          "required": ["actor", "principal", "profile"],
+                          "properties": {
+                            "actor": { "type": "string" },
+                            "principal": { "type": "string" },
+                            "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                          }
+                        },
+                        "noSync": { "type": "boolean" },
+                        "origin": { "type": "null" },
+                        "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "createdAt": { "type": "string" },
+                        "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "deleted": { "type": "boolean" },
+                        "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
+                        "attachments": { "type": "array", "items": {} },
+                        "links": { "type": "array", "items": {} },
+                        "version": { "type": "integer" },
+                        "task": {
+                          "type": "object",
+                          "required": [
+                            "state",
+                            "owner",
+                            "by",
+                            "for",
+                            "needs",
+                            "epoch",
+                            "claim",
+                            "blocked",
+                            "result",
+                            "reason"
+                          ],
+                          "properties": {
+                            "state": {
+                              "anyOf": [
+                                { "const": "blocked", "type": "string" },
+                                { "const": "canceled", "type": "string" },
+                                { "const": "claimed", "type": "string" },
+                                { "const": "completed", "type": "string" },
+                                { "const": "failed", "type": "string" },
+                                { "const": "ready", "type": "string" },
+                                { "const": "waiting", "type": "string" }
+                              ]
+                            },
+                            "owner": { "type": "string" },
+                            "by": { "type": "string" },
+                            "for": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                            "needs": { "type": "array", "items": { "type": "string" } },
+                            "epoch": { "minimum": 0, "type": "integer" },
+                            "claim": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": ["actor", "until"],
+                                  "properties": { "actor": { "type": "string" }, "until": { "type": "string" } }
+                                },
+                                { "type": "null" }
+                              ]
+                            },
+                            "blocked": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": ["kind", "reason"],
+                                  "properties": {
+                                    "kind": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                    "reason": { "type": "string" }
+                                  }
+                                },
+                                { "type": "null" }
+                              ]
+                            },
+                            "result": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                            "reason": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                          }
+                        },
+                        "revision": { "type": "integer" },
+                        "author": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": ["kind", "handle", "name", "avatar"],
+                              "properties": {
+                                "kind": {
+                                  "anyOf": [
+                                    { "const": "person", "type": "string" },
+                                    { "const": "workflow", "type": "string" },
+                                    { "const": "agent", "type": "string" }
+                                  ]
+                                },
+                                "handle": { "type": "string" },
+                                "name": { "type": "string" },
+                                "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                "via": {
+                                  "type": "object",
+                                  "required": ["name", "environment"],
+                                  "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                                }
+                              }
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "blocks": { "type": "array", "items": {} }
+                      }
+                    },
+                    "replies": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "channel",
+                          "text",
+                          "re",
+                          "replyTo",
+                          "thread",
+                          "labels",
+                          "reactions",
+                          "by",
+                          "noSync",
+                          "origin",
+                          "from",
+                          "createdAt",
+                          "editedAt",
+                          "deleted",
+                          "undelivered",
+                          "attachments",
+                          "links",
+                          "version",
+                          "revision",
+                          "author",
+                          "blocks"
+                        ],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "channel": { "type": "string" },
+                          "text": { "type": "string" },
+                          "mentions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["written", "actor", "candidates"],
+                              "properties": {
+                                "written": { "type": "string" },
+                                "actor": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": ["id", "handle", "name"],
+                                      "properties": {
+                                        "id": { "type": "string" },
+                                        "handle": { "type": "string" },
+                                        "name": { "type": "string" }
+                                      }
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                },
+                                "candidates": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": ["id", "handle", "name"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "handle": { "type": "string" },
+                                      "name": { "type": "string" }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "thread": { "type": "string" },
+                          "labels": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "patternProperties": {
+                              "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                            }
+                          },
+                          "reactions": {
+                            "type": "object",
+                            "patternProperties": { "^(.*)$": { "type": "array", "items": { "type": "string" } } }
+                          },
+                          "by": {
+                            "type": "object",
+                            "required": ["actor", "principal", "profile"],
+                            "properties": {
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                            }
+                          },
+                          "noSync": { "type": "boolean" },
+                          "origin": { "type": "null" },
+                          "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "createdAt": { "type": "string" },
+                          "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "deleted": { "type": "boolean" },
+                          "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
+                          "attachments": { "type": "array", "items": {} },
+                          "links": { "type": "array", "items": {} },
+                          "version": { "type": "integer" },
+                          "task": {
+                            "type": "object",
+                            "required": [
+                              "state",
+                              "owner",
+                              "by",
+                              "for",
+                              "needs",
+                              "epoch",
+                              "claim",
+                              "blocked",
+                              "result",
+                              "reason"
+                            ],
+                            "properties": {
+                              "state": {
+                                "anyOf": [
+                                  { "const": "blocked", "type": "string" },
+                                  { "const": "canceled", "type": "string" },
+                                  { "const": "claimed", "type": "string" },
+                                  { "const": "completed", "type": "string" },
+                                  { "const": "failed", "type": "string" },
+                                  { "const": "ready", "type": "string" },
+                                  { "const": "waiting", "type": "string" }
+                                ]
+                              },
+                              "owner": { "type": "string" },
+                              "by": { "type": "string" },
+                              "for": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                              "needs": { "type": "array", "items": { "type": "string" } },
+                              "epoch": { "minimum": 0, "type": "integer" },
+                              "claim": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": ["actor", "until"],
+                                    "properties": { "actor": { "type": "string" }, "until": { "type": "string" } }
+                                  },
+                                  { "type": "null" }
+                                ]
+                              },
+                              "blocked": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": ["kind", "reason"],
+                                    "properties": {
+                                      "kind": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "reason": { "type": "string" }
+                                    }
+                                  },
+                                  { "type": "null" }
+                                ]
+                              },
+                              "result": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                              "reason": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                            }
+                          },
+                          "revision": { "type": "integer" },
+                          "author": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": ["kind", "handle", "name", "avatar"],
+                                "properties": {
+                                  "kind": {
+                                    "anyOf": [
+                                      { "const": "person", "type": "string" },
+                                      { "const": "workflow", "type": "string" },
+                                      { "const": "agent", "type": "string" }
+                                    ]
+                                  },
+                                  "handle": { "type": "string" },
+                                  "name": { "type": "string" },
+                                  "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "via": {
+                                    "type": "object",
+                                    "required": ["name", "environment"],
+                                    "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                                  }
+                                }
+                              },
+                              { "type": "null" }
+                            ]
+                          },
+                          "blocks": { "type": "array", "items": {} }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "message_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/sync/find": {
+      "get": {
+        "operationId": "syncFind",
+        "summary": "The board thread and message platform IDs name; this board keeps no sync, so it answers 403.",
+        "parameters": [
+          { "name": "post", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "thread", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "message", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "x-query-schema": {
+          "type": "object",
+          "properties": {
+            "post": { "type": "string" },
+            "thread": { "type": "string" },
+            "message": { "type": "string" }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["thread", "message"],
+                  "properties": {
+                    "thread": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                    "message": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/x/connections/{id}": {
       "get": {
         "operationId": "getConnection",
@@ -1911,6 +2588,189 @@
         }
       }
     },
+    "/sync/threads/{thread}": {
+      "get": {
+        "operationId": "syncThread",
+        "summary": "A board thread's sync, by its key; this board keeps no sync, so it answers 403.",
+        "parameters": [
+          {
+            "name": "thread",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "thread", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["thread", "root", "channel", "targets", "external"],
+                  "properties": {
+                    "thread": { "type": "string" },
+                    "root": { "type": "string" },
+                    "channel": { "type": "string" },
+                    "targets": { "type": "array", "items": { "type": "string" } },
+                    "external": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/sync/imports": {
+      "post": {
+        "operationId": "syncImport",
+        "summary": "A platform's write through a sync entry; this board keeps no sync, so it answers 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "required": ["op", "from"],
+                "properties": {
+                  "op": {
+                    "anyOf": [
+                      { "const": "post", "type": "string" },
+                      { "const": "edit", "type": "string" },
+                      { "const": "delete", "type": "string" },
+                      { "const": "react", "type": "string" },
+                      { "const": "labels", "type": "string" },
+                      { "const": "links", "type": "string" }
+                    ]
+                  },
+                  "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["message"],
+                  "properties": { "message": { "anyOf": [{ "type": "string" }, { "type": "null" }] } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/sources/{key}/join": {
+      "post": {
+        "operationId": "joinSource",
+        "summary": "Add a sync entry's app to a platform channel; this board runs no sync entry, so it answers 404.",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["target"],
+                "properties": { "target": { "minLength": 1, "maxLength": 2048, "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["channel", "name", "joined"],
+                  "properties": {
+                    "channel": { "type": "string" },
+                    "name": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                    "joined": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_synced_here, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/messages/{id}/labels": {
       "post": {
         "operationId": "label",
@@ -1984,6 +2844,86 @@
           },
           "409": {
             "description": "label_conflict",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/inbox/{key}/next": {
+      "get": {
+        "operationId": "inboxNext",
+        "summary": "Lease the caller's next inbox events; this board keeps no sync, so it answers 403.",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "minimum": 1, "maximum": 100, "type": "integer" }
+          }
+        ],
+        "x-query-schema": {
+          "type": "object",
+          "properties": { "limit": { "minimum": 1, "maximum": 100, "type": "integer" } }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["items"],
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "key", "thread", "lease", "attempt", "event", "raw"],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "key": { "type": "string" },
+                          "thread": { "type": "string" },
+                          "lease": { "type": "string" },
+                          "attempt": { "minimum": 0, "type": "integer" },
+                          "event": {
+                            "additionalProperties": true,
+                            "type": "object",
+                            "required": ["kind", "thread"],
+                            "properties": { "kind": { "type": "string" }, "thread": { "type": "string" } }
+                          },
+                          "raw": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -2760,6 +3700,73 @@
         }
       }
     },
+    "/sync/copies": {
+      "get": {
+        "operationId": "syncCopies",
+        "summary": "Messages' copies on platforms the caller's sync made; this board keeps no sync, so it answers 403.",
+        "parameters": [
+          {
+            "name": "message",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxItems": 100,
+              "type": "array",
+              "items": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+            }
+          }
+        ],
+        "x-query-schema": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "maxItems": 100,
+              "type": "array",
+              "items": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["copies"],
+                  "properties": {
+                    "copies": {
+                      "type": "object",
+                      "patternProperties": { "^(.*)$": { "type": "object", "patternProperties": { "^(.*)$": {} } } }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/threads": {
       "get": {
         "operationId": "threads",
@@ -3473,6 +4480,166 @@
           },
           "410": {
             "description": "invitation_used",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/inbox/{key}": {
+      "post": {
+        "operationId": "inboxPush",
+        "summary": "Push platform events to a sync entry's inbox; this board keeps no sync, so it answers 403.",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["events"],
+                "properties": {
+                  "events": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["id", "event", "raw"],
+                      "properties": {
+                        "id": { "minLength": 1, "maxLength": 300, "type": "string" },
+                        "event": {
+                          "additionalProperties": true,
+                          "type": "object",
+                          "required": ["kind", "thread"],
+                          "properties": { "kind": { "type": "string" }, "thread": { "type": "string" } }
+                        },
+                        "raw": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "required": ["ok"],
+                  "properties": { "ok": { "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      },
+      "get": {
+        "operationId": "inbox",
+        "summary": "Raw platform events for a sync entry, newest first: none on this board. Needs `sync` in every channel.",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "type": "string" }
+          },
+          { "name": "channel", "in": "query", "required": false, "schema": { "type": "string" } },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "minimum": 1, "maximum": 500, "type": "integer" }
+          }
+        ],
+        "x-query-schema": {
+          "type": "object",
+          "properties": {
+            "channel": { "type": "string" },
+            "limit": { "minimum": 1, "maximum": 500, "type": "integer" }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["events"],
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "channel", "createdAt", "sync", "event", "raw"],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "channel": { "type": "string" },
+                          "createdAt": { "type": "string" },
+                          "sync": { "type": "string" },
+                          "event": {
+                            "additionalProperties": true,
+                            "type": "object",
+                            "required": ["kind", "thread"],
+                            "properties": { "kind": { "type": "string" }, "thread": { "type": "string" } }
+                          },
+                          "raw": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -5743,6 +6910,83 @@
         }
       }
     },
+    "/sources/{key}/read": {
+      "get": {
+        "operationId": "readSource",
+        "summary": "Read a platform channel without syncing it; this board runs no sync entry, so it answers 404.",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "type": "string" }
+          },
+          {
+            "name": "target",
+            "in": "query",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 2048, "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "minimum": 1, "maximum": 200, "type": "integer" }
+          },
+          { "name": "after", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "x-query-schema": {
+          "type": "object",
+          "required": ["target"],
+          "properties": {
+            "target": { "minLength": 1, "maxLength": 2048, "type": "string" },
+            "limit": { "minimum": 1, "maximum": 200, "type": "integer" },
+            "after": { "type": "string" }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["channel", "name", "thread", "messages", "more"],
+                  "properties": {
+                    "channel": { "type": "string" },
+                    "name": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                    "thread": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                    "messages": { "type": "array", "items": {} },
+                    "more": { "type": "boolean" },
+                    "next": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_synced_here, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/messages/{id}": {
       "get": {
         "operationId": "message",
@@ -6200,6 +7444,111 @@
           },
           "404": {
             "description": "message_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/webhooks/{key}": {
+      "post": {
+        "operationId": "webhook",
+        "summary": "Platform ingress for a sync entry (no token); this board runs none, so it answers 404.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "type": "string" }
+          }
+        ],
+        "x-query-schema": {
+          "additionalProperties": true,
+          "description": "Whatever the platform puts on its URL.",
+          "type": "object",
+          "properties": {}
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": { "schema": { "additionalProperties": true, "type": "object", "properties": {} } }
+            }
+          },
+          "400": {
+            "description": "invalid_request",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/sync/receipts": {
+      "post": {
+        "operationId": "syncReceipt",
+        "summary": "What sync did about a board message; this board keeps no sync, so it answers 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "required": ["kind", "message"],
+                "properties": {
+                  "kind": {
+                    "anyOf": [
+                      { "const": "message", "type": "string" },
+                      { "const": "files", "type": "string" },
+                      { "const": "failed", "type": "string" },
+                      { "const": "thread", "type": "string" }
+                    ]
+                  },
+                  "message": { "minLength": 1, "maxLength": 1024, "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "required": ["ok"],
+                  "properties": { "ok": { "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -6691,6 +8040,62 @@
           },
           "404": {
             "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/messages/{id}/typing": {
+      "post": {
+        "operationId": "typing",
+        "summary": "Show typing in a thread's synced platform threads: none on this board.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "status": { "maxLength": 256, "type": "string" } } }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["targets"],
+                  "properties": { "targets": { "type": "array", "items": { "type": "string" } } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "message_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
