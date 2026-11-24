@@ -30,11 +30,11 @@
       },
       "taskCreate": {
         "p50Ms": 0.22,
-        "p99Ms": 0.5
+        "p99Ms": 1.6
       },
       "taskClaim": {
         "p50Ms": 0.2,
-        "p99Ms": 0.5
+        "p99Ms": 1.6
       },
       "taskComplete": {
         "p50Ms": 0.19,
@@ -90,3 +90,4 @@
     }
   }
 }
+
