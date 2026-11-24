@@ -81,11 +81,44 @@ describe("labeling a message", () => {
     ["a label under board.", { set: { "board.task": "ready" } }, "reserved_label"],
     ["a malformed key", { set: { Status: "open" } }, "invalid_request"],
     ["a value with a control character", { set: { status: "a\nb" } }, "invalid_request"],
-    ["no set", {}, "invalid_request"],
   ])("answers 400 for %s and changes nothing", async (_, body, code) => {
     app = makeApp();
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
     expect(await refusal(call(app, "POST", "/messages/2/labels", body))).toEqual([400, code]);
     expect(await root()).toMatchObject({ labels: {}, version: 2 });
+  });
+});
+
+describe("unsetting a label", () => {
+  test("unsets each named label, keeps the others, raises the version, and drops it from label filters", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "deploy", labels: { status: "open", repo: "web" } });
+    const before = await root();
+    const unset = await call(app, "POST", "/messages/2/labels", { unset: ["status", "missing"] });
+    expect([unset.status, await unset.json()]).toEqual([200, { ok: true }]);
+    const after = await root();
+    expect(after).toMatchObject({ labels: { repo: "web" }, revision: 0 });
+    expect(after.version).toBeGreaterThan(before.version);
+    const found = (await (await call(app, "GET", "/threads?channel=dev&label=status")).json()) as { threads: [] };
+    expect(found.threads).toEqual([]);
+  });
+
+  test("applies unset after set, so a key named in both is removed", async () => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "deploy", labels: { status: "open" } });
+    await call(app, "POST", "/messages/2/labels", { set: { status: "done", owner: "me" }, unset: ["status"] });
+    expect((await root()).labels).toEqual({ owner: "me" });
+  });
+
+  test.each([
+    ["neither set nor unset", {}, "invalid_request"],
+    ["an empty set and unset", { set: {}, unset: [] }, "invalid_request"],
+    ["unsetting a label under board.", { unset: ["board.task"] }, "reserved_label"],
+    ["an unset that is not a list of keys", { unset: "status" }, "invalid_request"],
+  ])("answers 400 for %s and changes nothing", async (_, body, code) => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello", labels: { status: "open" } });
+    expect(await refusal(call(app, "POST", "/messages/2/labels", body))).toEqual([400, code]);
+    expect(await root()).toMatchObject({ labels: { status: "open" }, version: 2 });
   });
 });

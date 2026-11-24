@@ -12,12 +12,11 @@ export function isChannelPath(value: unknown): value is string {
   return Value.Check(ChannelPath, value);
 }
 
-/** Label keys as upstream takes them: 1 to 64 lowercase letters, digits, `.`, `_` and `-`. */
-export const Labels = Type.Record(
-  Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]{0,63}$" }),
-  Type.String({ maxLength: 256 }),
-  { additionalProperties: false },
-);
+/** A label key as upstream takes it: 1 to 64 lowercase letters, digits, `.`, `_` and `-`. */
+export const LabelKey = Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]{0,63}$" });
+
+/** Labels as upstream takes them: each key to one value. */
+export const Labels = Type.Record(LabelKey, Type.String({ maxLength: 256 }), { additionalProperties: false });
 
 /** Who wrote a message: the actor, the principal it acts for, and the profile, if any. */
 export const Author = Type.Object({

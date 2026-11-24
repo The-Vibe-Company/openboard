@@ -79,6 +79,7 @@ function inputOf(
       throw new Misuse(`${word} takes a value`);
     }
     if (field.type === "object") addEntry(input, name, word, value);
+    else if (field.type === "array") input[name] = [...((input[name] as string[] | undefined) ?? []), value];
     else input[name] = optionValue(field, value);
     at += 1;
   }
@@ -114,6 +115,10 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     } else if (schema.type === "object") {
       flags.set(flag, name);
       options.push(`[--${flag} <k=v>]...`);
+    } else if (schema.type === "array") {
+      // A repeatable option, such as `--unset k` on `ob label`: each one adds a value.
+      flags.set(flag, name);
+      options.push(`[--${flag} <${flag}>]...`);
     }
   }
   const needed = requiredPositionals(args, fields);

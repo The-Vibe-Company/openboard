@@ -13,6 +13,7 @@
     "core/posts a message, and reads it back by its ID",
     "core/posts once for a client ID, however many times it is sent",
     "core/puts a reply in its root's thread",
+    "core/raises the version with each edit, reaction, and label",
     "core/reads one channel's messages after a cursor of its own, oldest first, and on from where it stopped",
     "core/reads one channel's newest messages, as many as it's asked for",
     "core/says in its discovery where it is",

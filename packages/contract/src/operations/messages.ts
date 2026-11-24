@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { ChannelPath, Labels, MESSAGE_TEXT_MAX, Message } from "../entities/messages.ts";
+import { ChannelPath, LabelKey, Labels, MESSAGE_TEXT_MAX, Message } from "../entities/messages.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
 export const postMessage = defineOperation({
@@ -118,12 +118,16 @@ export const reactToMessage = defineOperation({
 export const labelMessage = defineOperation({
   name: "labelMessage",
   operationId: "label",
-  summary: "Set labels on a message, each key to one value, raising its version.",
+  summary: "Set and unset labels on a message, each key to one value, raising its version; unset applies last.",
   route: { method: "POST", path: "/messages/:id/labels" },
   scope: "board",
   input: {
     params: Type.Object({ id: Ref("message") }, { additionalProperties: false }),
-    body: Type.Object({ set: Labels }, { additionalProperties: false }),
+    // Upstream's `{ set?, unset? }`, at least one of the two (`03-http.md` "Messages"): core refuses neither as 400.
+    body: Type.Object(
+      { set: Type.Optional(Labels), unset: Type.Optional(Type.Array(LabelKey)) },
+      { additionalProperties: false },
+    ),
   },
   output: Type.Object({ ok: Type.Literal(true) }),
   errors: ["invalid_request", "reserved_label", "message_not_found", "message_deleted"],
