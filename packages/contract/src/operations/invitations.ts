@@ -61,6 +61,7 @@ export const acceptInvitation = defineOperation({
     "already_in_org",
     "invitation_used",
     "invitation_email_mismatch",
+    "quota_exceeded",
   ],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: ["ob.member.added"] },

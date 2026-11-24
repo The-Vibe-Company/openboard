@@ -120,6 +120,12 @@ answers. OpenBoard adds:
 | 401 | `bad_signature` | inbound endpoint signature |
 | 429 | `rate_limited`, `quota_exceeded` | with `retry-after` for rate limits |
 
+Board creation, invitation acceptance, and connection creation can return 429
+`quota_exceeded` with reason `boards`, `members`, or `connections`. The defaults
+are 10 active boards and 50 members per organization, and 100 active connections
+per board. The hint gives the effective limit, including any organization override.
+A rejected invitation acceptance leaves the link usable.
+
 ## Route inventory: the board (relative to `BOARD_URL`)
 
 ### Discovery, identity, channels, actors

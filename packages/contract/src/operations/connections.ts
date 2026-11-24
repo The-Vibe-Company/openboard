@@ -32,7 +32,7 @@ export const createConnection = defineOperation({
   },
   output: CreatedConnection,
   status: 201,
-  errors: ["invalid_request", "invalid_grant", "grant_empty", "forbidden", "slug_taken"],
+  errors: ["invalid_request", "invalid_grant", "grant_empty", "forbidden", "slug_taken", "quota_exceeded"],
   access: { permission: "manage", channel: "any" },
   effects: { readOnly: false, idempotent: false, emits: ["ob.connection.created"] },
   cli: false,

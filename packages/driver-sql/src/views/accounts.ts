@@ -1,4 +1,5 @@
 import { BoardError } from "@openboard/contract";
+import { countQuotaError } from "@openboard/core";
 import type { PersonRecord, PlatformView, SessionRecord, SignInRecord } from "@openboard/ports";
 import type { Db, Dialect, Row, SqlValue } from "../db.ts";
 import { query, sql } from "../sql.ts";
@@ -77,8 +78,10 @@ async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<n
   const userId = Number(created?.id);
   const [inserted] = await query(tx, dialect, accountStatements.insertIdentity, { ...identity, userId, at: now });
   if (!inserted) throw new IdentityCreatedConcurrently();
-  if (record.invitationHash && !(await redeemInvitation(tx, dialect, record.invitationHash, record.newPersonId, now))) {
-    throw new BoardError("forbidden", "a live invitation is required to sign up with this link");
+  if (record.invitationHash) {
+    const outcome = await redeemInvitation(tx, dialect, record.invitationHash, record.newPersonId, now);
+    if (!outcome) throw new BoardError("forbidden", "a live invitation is required to sign up with this link");
+    if ("quota" in outcome) throw countQuotaError("members", outcome.quota);
   }
   return userId;
 }

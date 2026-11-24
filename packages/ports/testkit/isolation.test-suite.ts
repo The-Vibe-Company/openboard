@@ -10,7 +10,7 @@ function holdsNothingOf(b: StoreTenant, result: unknown, method: string): void {
   expect(text.includes(b.marker) || text.includes(b.personId), `${method} answered ${text}`).toBe(false);
 }
 
-type Case = (a: StoreTenant, b: StoreTenant) => Promise<unknown>;
+type Case = (a: StoreTenant, b: StoreTenant, store: Store) => Promise<unknown>;
 type Cases<View> = { readonly [Method in keyof View]-?: Case };
 
 /**
@@ -55,13 +55,13 @@ const boardCases: Cases<BoardView> = {
   listConnections: (a) => a.board.listConnections(at),
   managedConnection: async (a, b) => expectNull(await a.board.managedConnection(b.connection, at)),
   listChannels: (a) => a.board.listChannels({ limit: 500 }),
-  subscribeEvents: async (a, b) => {
+  subscribeEvents: async (a, b, store) => {
     let wakes = 0;
     const unsubscribe = a.board.subscribeEvents(0, () => {
       wakes++;
     });
     try {
-      await writerCases.append(a, b);
+      await writerCases.append(a, b, store);
       expect(wakes).toBe(1);
     } finally {
       unsubscribe();
@@ -131,6 +131,16 @@ const writerCases: Cases<BoardWriter> = {
   grantMember: (a, b) => inWrite(a, async (writer) => expectNull(await writer.grantMember(b.personId))),
   connectionNamed: (a, b) =>
     inWrite(a, async (writer) => expect(await writer.connectionNamed(`${b.marker}-fleet`)).toBe(false)),
+  connectionQuota: async (a, b, store) => {
+    const platform = store.platform();
+    const alpha = await platform.findBoard("alpha", "main");
+    const bravo = await platform.findBoard("bravo", "main");
+    if (!alpha || !bravo) throw new Error("isolation seed boards are missing");
+    await platform.setOrgQuotas(alpha.orgId, { connections: 2 });
+    await platform.setOrgQuotas(bravo.orgId, { connections: 1 });
+    expect(await inWrite(b, (writer) => writer.connectionQuota())).toEqual({ quota: 1 });
+    expectNull(await inWrite(a, (writer) => writer.connectionQuota()));
+  },
   connection: (a, b) => inWrite(a, async (writer) => expectNull(await writer.connection(b.connection))),
   agent: (a, b) => inWrite(a, async (writer) => expectNull(await writer.agent(b.agent))),
   agentByClaimKey: (a, b) =>
@@ -220,7 +230,7 @@ export function isolationSuite(driver: string, open: OpenStore): void {
         const a = await storeTenant(store, "alpha", "a", 2);
         const b = await storeTenant(store, "bravo", "b", 12);
         const before = await digestOf(b);
-        holdsNothingOf(b, await run(a, b), `${view}.${method}`);
+        holdsNothingOf(b, await run(a, b, store), `${view}.${method}`);
         expect(await digestOf(b)).toBe(before);
       });
     }

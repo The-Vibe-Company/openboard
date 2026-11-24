@@ -15,7 +15,16 @@ import type {
   PersonalToken,
   Role,
 } from "@openboard/contract";
-import type { BoardCreation, BoardEvent, Grant, messages, OrgCreation } from "@openboard/core";
+import type {
+  BoardCreation,
+  BoardEvent,
+  CountQuotas,
+  Grant,
+  messages,
+  OrgCreation,
+  QuotaOutcome,
+} from "@openboard/core";
+import type { PersonRecord, SessionRecord, SignInRecord } from "./account-records.ts";
 import type { BoardMessageReads } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
@@ -49,51 +58,6 @@ export interface BoardScope {
 export interface BoardKeys {
   readonly orgId: number;
   readonly boardId: number;
-}
-
-/** A person (docs/auth.md "Organizations, boards, people"): one `users` row, independent of providers and orgs. */
-export interface PersonRecord {
-  /** `u_<base32>`; the principal is `ob:user:<id>`. */
-  readonly id: string;
-  /** The provider login at the last sign-in. */
-  readonly handle: string;
-  readonly name: string;
-  /** The verified email the provider gave, if any. */
-  readonly email: string | null;
-  readonly avatar: string | null;
-  /** The providers the person signs in with, sorted: `["github"]`. */
-  readonly providers: readonly string[];
-}
-
-/** A provider's word on who signed in; only `subject` identifies them (docs/auth.md "Sign-in providers"). */
-export interface IdentityRecord {
-  readonly provider: string;
-  readonly subject: string;
-  readonly login: string;
-  readonly name: string;
-  /** Only a verified email; null otherwise. */
-  readonly email: string | null;
-  readonly avatar: string | null;
-}
-
-/** One sign-in: the identity, and the session it opens, kept by the SHA-256 (hex) of its cookie value. */
-export interface SignInRecord {
-  readonly identity: IdentityRecord;
-  /** Whether an identity no person holds yet makes a new person (sign-up), with the ID `newPersonId`. */
-  readonly admitNew: boolean;
-  /** An invitation to redeem atomically if sign-in creates a person, even when unconditional admission is off. */
-  readonly invitationHash?: Uint8Array;
-  readonly newPersonId: string;
-  readonly session: { readonly idHash: string; readonly csrf: string; readonly expiresAt: number };
-  readonly now: number;
-}
-
-/** A session that is not revoked, of a person who is not disabled; its times are checked by the caller. */
-export interface SessionRecord {
-  readonly person: PersonRecord;
-  readonly csrf: string;
-  readonly seenAt: number;
-  readonly expiresAt: number;
 }
 
 /** A new organization, as core decided it, created by the person `personId` (`u_…`) at `now`. */
@@ -162,9 +126,12 @@ export interface OrgView {
    * In one transaction, under the organization's row and the creator's admin membership locked: the board, its grant
    * IDs g1 to g3 kept for the seeded grants as every board's are, and its event at the organization's next event ID.
    * Nothing is written when the person `personId` (`u_…`) is no longer an owner or admin (`not_admin`) or a board of
-   * the organization, deleted or not, already has the slug (`slug_taken`).
+   * the organization, deleted or not, already has the slug (`slug_taken`), or the board quota is exhausted.
    */
-  createBoard(creation: BoardCreation, personId: string): Promise<"created" | "not_admin" | "slug_taken">;
+  createBoard(
+    creation: BoardCreation,
+    personId: string,
+  ): Promise<"created" | "not_admin" | "slug_taken" | QuotaOutcome>;
 }
 
 interface DeviceTokenIssue {
@@ -209,16 +176,23 @@ export interface PlatformView {
    * organization, the person's owner membership, the board and the organization's events.
    */
   createOrg(record: CreateOrgRecord): Promise<void>;
+  /** Replaces the count quota overrides for one organization; false when the organization is absent. */
+  setOrgQuotas(orgId: number, overrides: Partial<CountQuotas>): Promise<boolean>;
   /** The person's memberships of organizations that are not deleted, by organization slug. */
   memberships(personId: string): Promise<MembershipRecord[]>;
   /** The tenant resolver checks the signed-in person's membership before minting an organization scope. */
   orgMembership(slug: string, personId: string): Promise<{ orgId: number; role: Role } | null>;
   /**
-   * Redeems the exact token hash and records the membership and audit event in one transaction.
+   * Redeems the exact token hash and records the membership and audit event in one transaction. An exhausted member
+   * quota leaves the invitation unconsumed.
    * Throws `already_in_org` when the person already belongs to an organization (v1 allows one, D34), and
    * `invitation_used` when the invitation was already accepted, revoked, or expired at `at` (single use, 7 days).
    */
-  acceptInvitation(tokenHash: Uint8Array, personId: string, at: number): Promise<MembershipRecord | null>;
+  acceptInvitation(
+    tokenHash: Uint8Array,
+    personId: string,
+    at: number,
+  ): Promise<MembershipRecord | QuotaOutcome | null>;
   /** A capability lookup: only the exact token hash selects an invitation, returning preview fields. */
   invitationPreview(tokenHash: Uint8Array): Promise<{
     orgName: string;
@@ -249,6 +223,8 @@ export interface BoardWriter extends BoardTaskWriter, BoardGrantWriter {
   clientPost(clientId: string): Promise<Message | null>;
   /** Whether a connection of this board, revoked or not, has the name. */
   connectionNamed(name: string): Promise<boolean>;
+  /** An exhausted connection quota under this board write lock, or null when capacity remains. */
+  connectionQuota(): Promise<QuotaOutcome | null>;
   /** The unrevoked connection of this board with the ID, read under the lock, or null when the board has none with it. */
   connection(id: string): Promise<ConnectionRecord | null>;
   /** The unrevoked agent of this board with the ID, read under the lock, or null when the board has none with it. */

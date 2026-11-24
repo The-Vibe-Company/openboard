@@ -17,11 +17,24 @@ writes:
   - packages/server/src/operations/invitations.ts
   - packages/server/src/operations/connections.ts
   - packages/server/test/quotas.test.ts
+  - docs/protocol.md
+  - packages/contract/src/operations/boards.ts
+  - packages/contract/src/operations/connections.ts
+  - packages/contract/src/operations/invitations.ts
+  - packages/driver-sql/src/views/accounts.ts
+  - packages/driver-sql/src/views/boards.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/ports/src/account-records.ts
+  - packages/ports/src/index.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/server/openapi.json
+  - packages/server/test/support/browser-session.ts
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [170, 195]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 357
 ---
 
@@ -29,8 +42,8 @@ issue: 357
 As an organization admin on a shared instance, I get a clear `quota_exceeded` answer when I try to create a board, a member or a connection past my organization's limit, and nothing is created.
 
 ## Done when
-- [ ] `bun test packages/server/test/quotas.test.ts` passes: creating the 11th board answers 429 `quota_exceeded` with reason `boards`, accepting an invitation that would make the 51st member answers it with reason `members` without consuming the link, and creating the 101st connection on a board answers it with reason `connections`; in each case nothing is written, and an organization whose overrides raise `boards` to 12 creates its 11th and 12th
-- [ ] the same file passes on Postgres (`OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/quotas.test.ts`), and `bun test packages/core/test/orgs/quotas.test.ts` passes: the defaults are boards 10, members 50, connections per board 100, and overrides from `orgs.quotas` replace only the keys they name
+- [x] `bun test packages/server/test/quotas.test.ts` passes: creating the 11th board answers 429 `quota_exceeded` with reason `boards`, accepting an invitation that would make the 51st member answers it with reason `members` without consuming the link, and creating the 101st connection on a board answers it with reason `connections`; in each case nothing is written, and an organization whose overrides raise `boards` to 12 creates its 11th and 12th
+- [x] the same file passes on Postgres (`OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/quotas.test.ts`), and `bun test packages/core/test/orgs/quotas.test.ts` passes: the defaults are boards 10, members 50, connections per board 100, and overrides from `orgs.quotas` replace only the keys they name
 
 ## Out of scope
 - Stored bytes (197) and events per board per day (198).

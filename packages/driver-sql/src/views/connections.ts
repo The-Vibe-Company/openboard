@@ -15,6 +15,7 @@ import type { Db, Dialect, Row } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
 import { codePointOrder } from "./channels.ts";
 import { connectionGrantCans, grantCanArray, grantStatements } from "./grants.ts";
+import { exhaustedQuota } from "./orgs.ts";
 
 /** A claimed token's lifetime and hard cap until the connection names its own (docs/auth.md "Connections"). */
 const TOKEN_TTL_S = 3600;
@@ -29,6 +30,9 @@ const byConnectionIndex: Fragment = Object.freeze({
 });
 
 export const connectionStatements = {
+  connectionCount: sql`SELECT o.quotas, (SELECT COUNT(*) FROM connections
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND revoked_at IS NULL) AS count
+    FROM boards b JOIN orgs o ON o.id = b.org_id WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"}`,
   connectionNamed: sql`SELECT id FROM connections WHERE board_id = ${"boardId"} AND name = ${"name"}`,
   insertConnection: sql`INSERT INTO connections (id, org_id, board_id, name, secret_hash, secret_hint, direct,
     claims_max, profiles, token_ttl_s, token_max_s, created_by, created_at) VALUES (${"id"}, ${"orgId"},
@@ -89,6 +93,11 @@ export async function nextGrant(tx: Db, dialect: Dialect, keys: BoardKeys): Prom
   const [row] = await query(tx, dialect, grantStatements.nextGrant, keys);
   if (!row) throw new Error(`board ${keys.boardId} of organization ${keys.orgId} is missing`);
   return Number(row.next_grant);
+}
+
+export async function connectionQuota(tx: Db, dialect: Dialect, keys: BoardKeys) {
+  const [usage] = await query(tx, dialect, connectionStatements.connectionCount, keys);
+  return exhaustedQuota("connections", usage?.quotas, usage?.count);
 }
 
 export async function connectionNamed(tx: Db, dialect: Dialect, keys: BoardKeys, name: string): Promise<boolean> {

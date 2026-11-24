@@ -85,7 +85,7 @@ Options:
 - `--claims`: How many claims the secret makes before it is spent; absent, no limit.
 - `--secret-file`: Where the new secret is written, created with mode 0600; the secret is never printed.
 
-Errors: `error: forbidden`, `error: grant_empty`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: slug_taken`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: grant_empty`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: slug_taken`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: none.
 

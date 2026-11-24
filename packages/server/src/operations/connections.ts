@@ -9,7 +9,7 @@ import {
   type revokeConnection,
   type rotateConnection,
 } from "@openboard/contract";
-import { agents, connections, grants, isoTime } from "@openboard/core";
+import { agents, connections, countQuotaError, grants, isoTime } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
 import { reissueSecret, SECRET_PART_BYTES } from "../auth/connections.ts";
 import { mintSecret, SECRET_BYTES } from "../auth/secrets.ts";
@@ -51,6 +51,8 @@ export const createConnectionHandler: Handler<typeof createConnection> = async (
       nameTaken: await writer.connectionNamed(input.name),
     };
     const { events, ...decided } = connections.decideCreate(state, input, { by: ctx.by, now: ctx.now(), secret });
+    const quota = await writer.connectionQuota();
+    if (quota) throw countQuotaError("connections", quota.quota);
     await writer.append(events);
     return decided.connection;
   });

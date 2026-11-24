@@ -1,5 +1,5 @@
 import { BoardError, type createBoard, type listBoards } from "@openboard/contract";
-import { boards } from "@openboard/core";
+import { boards, countQuotaError } from "@openboard/core";
 import type { Handler } from "./index.ts";
 
 /** The organization's boards, by slug: what a member may open at `/api/<org>/<board>`. */
@@ -15,5 +15,6 @@ export const createBoardHandler: Handler<typeof createBoard> = async (ctx, input
       hint: "Pick another slug; a deleted board keeps its slug.",
     });
   }
+  if (typeof outcome === "object") throw countQuotaError("boards", outcome.quota);
   return { board: creation.board };
 };
