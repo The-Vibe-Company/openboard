@@ -16,6 +16,7 @@ import {
   type PublicOperation,
 } from "../operations/index.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
+import { healthProbe } from "./health.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
 import { type BoardPath, boardPath, notFound, type Tenants } from "./scope.ts";
@@ -25,6 +26,7 @@ type Params = Readonly<Record<string, string>>;
 
 export interface Pipeline {
   readonly shutdown: AbortSignal;
+  readonly schemaReady: () => Promise<boolean>;
   readonly track: <T>(work: Promise<T>) => Promise<T>;
   readonly config: ServerConfig;
   readonly deps: Deps;
@@ -263,10 +265,9 @@ export async function handle(request: Request, pipeline: Pipeline): Promise<Resp
   };
   let response: Response;
   try {
-    if (pipeline.shutdown.aborted && url.pathname !== "/healthz" && url.pathname !== "/readyz") {
-      throw new BoardError("unavailable", "the instance is draining");
-    }
-    response = await run(request, url, pipeline, logged);
+    const probe = request.method === "GET" ? healthProbe(url.pathname, pipeline) : undefined;
+    if (!probe && pipeline.shutdown.aborted) throw new BoardError("unavailable", "the instance is draining");
+    response = await (probe ?? run(request, url, pipeline, logged));
   } catch (error) {
     response = errorResponse(error, log);
   }

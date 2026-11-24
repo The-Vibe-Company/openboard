@@ -116,3 +116,9 @@ async function terminate(sql: SQL, pid: number): Promise<void> {
   `;
   if (!result?.terminated) throw new Error(`Could not terminate test backend ${pid}`);
 }
+
+/** Removes the latest migration marker in an isolated test database to emulate an older schema. */
+export async function removeLatestTestMigration(url: string): Promise<void> {
+  await using sql = new SQL(url);
+  await sql`DELETE FROM schema_migrations WHERE version = (SELECT MAX(version) FROM schema_migrations)`;
+}

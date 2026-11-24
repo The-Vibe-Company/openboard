@@ -2,6 +2,7 @@ import { operations } from "@openboard/contract";
 import type { Jobs, Store } from "@openboard/ports";
 import { loginProviders } from "./auth/providers/index.ts";
 import type { Deps, ServerConfig } from "./deps.ts";
+import { readinessCheck } from "./http/health.ts";
 import { handle, type Pipeline } from "./http/pipeline.ts";
 import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
@@ -30,6 +31,7 @@ export function createApp(
   };
   const pipeline: Pipeline = {
     shutdown: shutdown.signal,
+    schemaReady: readinessCheck(() => ports.store.schemaReady()),
     track,
     config,
     deps,
