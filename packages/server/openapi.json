@@ -2413,6 +2413,16 @@
             "schema": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } }
           },
           {
+            "name": "text",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxLength": 4096,
+              "description": "Only threads whose root or a reply now says this, in any case; `%` and `_` match only themselves.",
+              "type": "string"
+            }
+          },
+          {
             "name": "after",
             "in": "query",
             "required": false,
@@ -2457,6 +2467,11 @@
               "type": "string"
             },
             "label": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } },
+            "text": {
+              "maxLength": 4096,
+              "description": "Only threads whose root or a reply now says this, in any case; `%` and `_` match only themselves.",
+              "type": "string"
+            },
             "after": {
               "minLength": 1,
               "maxLength": 128,

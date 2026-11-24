@@ -152,3 +152,27 @@ describe("paging threads one way at a time", () => {
     expect(await read.json()).toMatchObject({ error: { code: "invalid_cursor" } });
   });
 });
+
+describe("searching a channel's threads by text", () => {
+  async function found(text: string): Promise<unknown[]> {
+    const read = await call(app, "GET", `/threads?channel=dev&text=${encodeURIComponent(text)}`);
+    expect(read.status).toBe(200);
+    return ((await read.json()) as { threads: Thread[] }).threads.map(({ message }) => message.id);
+  }
+
+  test("GET /threads?text= finds a thread by a root or a reply as it reads now, in any case", async () => {
+    app = makeApp();
+    const literal = (
+      (await (await call(app, "POST", "/messages", { channel: "dev", text: "Deploy FAILED 100%" })).json()) as Thread
+    ).message.id;
+    const posted = await call(app, "POST", "/messages", { channel: "dev", text: "deploy failed at 1000" });
+    const lookalike = ((await posted.json()) as Thread).message.id;
+    await call(app, "POST", "/messages", { re: lookalike, text: "the reply says Crème" });
+    expect(await found("DEPLOY failed")).toEqual([literal, lookalike]);
+    expect(await found("100%")).toEqual([literal]);
+    expect(await found("CRÈME")).toEqual([lookalike]);
+    await call(app, "POST", `/messages/${lookalike}/edit`, { text: "deploy fixed" });
+    expect(await found("1000")).toEqual([]);
+    expect(await found("deploy fixed")).toEqual([lookalike]);
+  });
+});

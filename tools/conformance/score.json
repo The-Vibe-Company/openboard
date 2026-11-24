@@ -23,6 +23,7 @@
     "core/takes a profile and its avatar as one x-board-profile header, and shows both on what it writes",
     "paging/pages back through a channel's threads by their `older`, each thread once",
     "paging/refuses to page threads back and forward at once",
+    "search/finds threads by text anywhere in a message of theirs, in any case, as it reads now",
     "sync/keeps noSync on a post and a reply, so sync sends neither"
   ],
   "hosted": []

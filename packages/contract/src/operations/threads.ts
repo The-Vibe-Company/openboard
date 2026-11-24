@@ -48,6 +48,13 @@ export const listThreads = defineOperation({
       {
         channel: ChannelPath,
         label: Type.Optional(Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }))),
+        text: Type.Optional(
+          Type.String({
+            maxLength: 4096,
+            description:
+              "Only threads whose root or a reply now says this, in any case; `%` and `_` match only themselves.",
+          }),
+        ),
         after: Type.Optional(
           Type.String({
             minLength: 1,

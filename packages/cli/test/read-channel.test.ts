@@ -48,3 +48,21 @@ test.each([
   expect(await code).toBe(2);
   expect(urls).toEqual([]);
 });
+
+test("ob read <channel> --text sends the text and keeps it in the command for older threads", async () => {
+  const thread = { message: message("2", "Deploy failed"), replies: 0, last: null };
+  const { code, lines, urls } = run(["read", "dev", "--text", "deploy failed", "--limit", "1"], {
+    threads: [thread],
+    cursor: "3",
+    older: "2.2",
+  });
+  expect(await code).toBe(0);
+  expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&text=deploy+failed&limit=1`]);
+  expect(lines.out.at(-1)).toBe("older: ob read dev --text 'deploy failed' --before 2.2 --limit 1");
+});
+
+test("ob read <id> --text exits 2 without calling the board, since only a channel is searched", async () => {
+  const { code, urls } = run(["read", "2", "--text", "deploy"], {});
+  expect(await code).toBe(2);
+  expect(urls).toEqual([]);
+});

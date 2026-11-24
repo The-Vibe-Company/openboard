@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { messages } from "@openboard/core";
+import { decideEdit, messages, textPattern } from "@openboard/core";
 import type { BoardView, Store } from "../../src/index.ts";
 import { type OpenStore, testScope } from "../index.ts";
 
@@ -29,6 +29,32 @@ function reply(board: BoardView, id: number, text: string) {
     await writer.append(events);
     return message;
   });
+}
+
+function edit(board: BoardView, id: number, text: string) {
+  return board.write(async (writer) => {
+    const target = await writer.message(id);
+    if (!target) throw new Error(`message #${id} is missing`);
+    await writer.append([decideEdit({ head: writer.head, target }, { id: String(id), text }, { by, now: at + 1 })]);
+  });
+}
+
+/** Threads found by a root's or a reply's current text, in any case, with `%` and `_` as plain characters. */
+async function checkTextSearch(board: BoardView): Promise<void> {
+  const literal = await post(board, "dev", "Deploy FAILED at 100% on a_b");
+  const lookalike = await post(board, "dev", "deploy failed at 1000 on axb");
+  await reply(board, Number(lookalike.id), "a reply that says Crème Brûlée");
+  await post(board, "ops", "deploy failed elsewhere");
+  const found = async (text: string) =>
+    (await board.listThreads("dev", [], { text: textPattern(text) })).threads.map(({ message }) => message.id);
+  expect(await found("DEPLOY failed")).toEqual([literal.id, lookalike.id]);
+  expect(await found("100%")).toEqual([literal.id]);
+  expect(await found("a_b")).toEqual([literal.id]);
+  expect(await found("crème BRÛLÉE")).toEqual([lookalike.id]);
+  expect(await found("\\")).toEqual([]);
+  await edit(board, Number(lookalike.id), "deploy fixed");
+  expect(await found("1000")).toEqual([]);
+  expect(await found("deploy fixed")).toEqual([lookalike.id]);
 }
 
 async function checkReplyPages(board: BoardView): Promise<void> {
@@ -169,6 +195,10 @@ export function threadsSuite(driver: string, open: OpenStore): void {
     });
 
     pagingTests(localBoard);
+
+    test("finds threads by the current text of their root or a reply, in any case, wildcards as characters", async () => {
+      await checkTextSearch(await localBoard());
+    });
 
     test("reads no thread for a position no message holds", async () => {
       const board = await localBoard();

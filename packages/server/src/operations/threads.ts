@@ -1,5 +1,5 @@
 import { BoardError, type listThreads, type readThread } from "@openboard/contract";
-import { formatId, parseId } from "@openboard/core";
+import { formatId, parseId, textPattern } from "@openboard/core";
 import { canListMentionActors, withoutMentionDetails } from "../auth/access.ts";
 import type { Handler } from "./index.ts";
 
@@ -26,7 +26,7 @@ function parseOlder(text: string): { active: number; root: number } | null {
  * the first threads active after the cursor `after`, without one. Asking both ways is refused before either is read.
  */
 export const listThreadsHandler: Handler<typeof listThreads> = async ({ board, by }, input) => {
-  const { channel, label, limit } = input;
+  const { channel, label, limit, text } = input;
   if (input.before !== undefined && input.after !== undefined) {
     throw new BoardError("invalid_request", "before pages back from a page's older, and after reads forward: pass one");
   }
@@ -44,7 +44,12 @@ export const listThreadsHandler: Handler<typeof listThreads> = async ({ board, b
   if (before === null) throw new BoardError("invalid_cursor", "before: pass a page's older as it came");
   const after = input.after === undefined ? undefined : parseId(input.after);
   if (after === null) throw new BoardError("invalid_cursor", "after: expected a decimal board cursor or message ID");
-  const { threads: page, head, older } = await board.listThreads(channel, labels, { before, after, limit });
+  const { threads: page, head, older } = await board.listThreads(channel, labels, {
+    before,
+    after,
+    limit,
+    text: text === undefined ? undefined : textPattern(text),
+  });
   if ((before?.active ?? after ?? 0) > head) {
     throw new BoardError("invalid_cursor", `${before ? "before" : "after"}: cursor is ahead of the board`);
   }

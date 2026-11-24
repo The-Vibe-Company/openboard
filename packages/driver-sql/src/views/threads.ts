@@ -49,6 +49,10 @@ function threadList(order: "ASC" | "DESC") {
       WHERE root.board_id = ${"boardId"} AND root.channel = ${"channel"} AND root.re IS NULL
         AND (root.active, root.id) < (CAST(${"beforeActive"} AS BIGINT), CAST(${"beforeRoot"} AS BIGINT))
         AND root.active > CAST(${"after"} AS BIGINT)
+        AND (CAST(${"text"} AS TEXT) IS NULL OR root.text_lower LIKE CAST(${"text"} AS TEXT) ESCAPE '\\' OR EXISTS (
+          SELECT 1 FROM messages AS hit WHERE hit.board_id = ${"boardId"} AND hit.re = root.id
+            AND hit.text_lower LIKE CAST(${"text"} AS TEXT) ESCAPE '\\'
+        ))
         AND (CAST(${"labels"} AS TEXT) = '[]' OR EXISTS (
           SELECT 1 FROM (SELECT 1) AS thread
           LEFT JOIN messages AS reply ON reply.board_id = root.board_id AND reply.re = root.id AND reply.deleted = 0
@@ -85,13 +89,14 @@ export const threadStatements = {
 /** The thread reads of one board's view: one statement reads the message and its replies together. */
 export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "thread" | "listThreads"> {
   return {
-    async listThreads(channel, labels = [], { before, after, limit = 50 } = {}) {
+    async listThreads(channel, labels = [], { before, after, limit = 50, text } = {}) {
       const statement = after === undefined ? threadStatements.listThreads : threadStatements.listThreadsAfter;
       const rows = await query(db, dialect, statement, {
         boardId: scope.boardId,
         orgId: scope.orgId,
         channel,
         labels: JSON.stringify(labels),
+        text: text ?? null,
         // Past every log position, so the first page reads through the same index range as the older ones.
         beforeActive: before?.active ?? Number.MAX_SAFE_INTEGER,
         beforeRoot: before?.root ?? Number.MAX_SAFE_INTEGER,

@@ -369,12 +369,18 @@ export interface BoardView {
    * The channel's latest `limit` (50 by default) threads last active before `before`, or the latest overall, in
    * ascending activity order, with the same snapshot's board head. `older` is the position of the page's oldest
    * thread when an older one matches, else null. With `after`, a log position, the first `limit` threads last active
-   * after it instead, and `older` is null. Pass `before` or `after`, not both.
+   * after it instead, and `older` is null. Pass `before` or `after`, not both. With `text`, a `LIKE` operand from
+   * core's `textPattern`, only threads whose root or a reply currently has a lowercased text it matches.
    */
   listThreads(
     channel: string,
     labels?: readonly (readonly [key: string, values?: readonly string[]])[],
-    page?: { readonly before?: ThreadPosition; readonly after?: number; readonly limit?: number },
+    page?: {
+      readonly before?: ThreadPosition;
+      readonly after?: number;
+      readonly limit?: number;
+      readonly text?: string;
+    },
   ): Promise<{ threads: ThreadSummary[]; head: number; older: ThreadPosition | null }>;
   /** The person's membership of this board's organization, or null when they are not a member or are disabled. */
   member(personId: string): Promise<BoardMemberRecord | null>;
