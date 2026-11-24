@@ -22,8 +22,8 @@ export async function seedCase(method: string, a: StoreTenant, b: StoreTenant) {
   if (["webhooks", "webhook", "removeWebhookSecret", "beginWebhookPing", "webhookSecret"].includes(method)) {
     await seedWebhook(b.board, b.marker, b.actor);
   }
-  if (method === "webhookDeliveryChannels") {
-    await seedWebhook(b.board, b.marker, b.actor, true);
+  if (method === "webhookDeliveryChannels" || method === "countRecentDeadWebhookDeliveries") {
+    const { webhook } = await seedWebhook(b.board, b.marker, b.actor, true);
     await b.board.write((writer) =>
       writer.append(
         messages.decidePost(
@@ -33,6 +33,14 @@ export async function seedCase(method: string, a: StoreTenant, b: StoreTenant) {
         ).events,
       ),
     );
+    if (method === "countRecentDeadWebhookDeliveries") {
+      const [delivery] = await b.board.webhookDeliveries(webhook.id, { limit: 1 });
+      if (!delivery) throw new Error("missing foreign delivery");
+      await b.board.write(async (writer) => {
+        await writer.beginWebhookAttempt(delivery.id, "fixture", at);
+        await writer.finishWebhookAttempt(delivery.id, 1, { state: "dead", status: 422, error: "status", now: at });
+      });
+    }
   }
   if (["webhookDeliveries", "retryWebhookDelivery", "waitingWebhookDeliveries"].includes(method)) {
     const foreign = await seedWebhook(b.board, b.marker, b.actor);

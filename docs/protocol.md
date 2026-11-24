@@ -862,7 +862,9 @@ response. `ob webhooks disable <id>` pauses dispatch and `ob webhooks enable
   `enabled: false` and `disabledReason: "gone"`, and board audit records
   `ob.webhook.disabled`. Queued deliveries wait for re-enablement and
   events posted while the subscription is off create no deliveries for it.
-  More than 100 dead in 24 h disables it.
+  The 101st dead event delivery in a rolling 24-hour window disables the
+  subscription with `disabledReason: "dead_deliveries"` and records
+  `ob.webhook.disabled` in board audit. Test pings do not count.
 - **Dead letters:** a delivery that still fails on its tenth attempt is marked
   `dead`. List delivery history with `GET /x/webhooks/:id/deliveries` or
   `ob webhooks deliveries <id> --state dead`. The response is

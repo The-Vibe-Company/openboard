@@ -64,6 +64,13 @@ export const webhookWriterCases: Record<keyof BoardWebhookWriter, WebhookCase> =
   },
   beginWebhookAttempt: async (a) =>
     expect(await a.board.write((writer) => writer.beginWebhookAttempt("missing", "fixture", at))).toBeNull(),
+  countRecentDeadWebhookDeliveries: async (a, b) => {
+    const [foreign] = await b.board.webhooks();
+    if (!foreign) throw new Error("missing foreign webhook");
+    const id = foreign.webhook.id;
+    expect(await b.board.write((writer) => writer.countRecentDeadWebhookDeliveries(id, at - 1))).toBe(1);
+    expect(await a.board.write((writer) => writer.countRecentDeadWebhookDeliveries(id, at - 1))).toBe(0);
+  },
   finishWebhookAttempt: (a) =>
     a.board.write((writer) =>
       writer.finishWebhookAttempt("missing", 1, { state: "dead", status: 400, error: null, now: at }),

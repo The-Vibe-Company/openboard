@@ -22,7 +22,10 @@ interface WebhookChange extends Audit {
 
 export type WebhookUpdated =
   | (WebhookChange & { readonly type: "ob.webhook.updated" })
-  | (WebhookChange & { readonly type: "ob.webhook.disabled" });
+  | (WebhookChange & {
+      readonly type: "ob.webhook.disabled";
+      readonly payload: { readonly webhook: Webhook & { readonly disabledReason: "gone" | "dead_deliveries" } };
+    });
 
 export interface WebhookDeleted extends Audit {
   readonly type: "ob.webhook.deleted";

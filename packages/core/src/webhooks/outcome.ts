@@ -6,6 +6,12 @@ export function webhookOutcome(status: number | null) {
   } as const;
 }
 
+export const webhookDeadDeliveryLimit = 100;
+
+export function webhookDeadDeliveryCutoff(now: number): number {
+  return now - 24 * 60 * 60 * 1_000;
+}
+
 const retrySeconds = [10, 30, 120, 600, 1_800, 3_600, 10_800, 21_600, 43_200];
 
 export const webhookMaxAttempts = retrySeconds.length + 1;

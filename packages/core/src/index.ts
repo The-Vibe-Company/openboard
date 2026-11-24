@@ -133,6 +133,7 @@ export {
   type SchemaRegistered,
   schemaRegistration,
 } from "./schemas/register.ts";
+export { checkNeeds, needPositions, type TaskNeeds } from "./tasks/needs.ts";
 export {
   channelFilter,
   type EventFilters,
@@ -153,9 +154,14 @@ export {
 } from "./watchers/ack.ts";
 export { validateWatchers, type WatchersRegistered } from "./watchers/register.ts";
 export { matchesWebhookFilter } from "./webhooks/filter.ts";
-export { webhookMaxAttempts, webhookOutcome, webhookRetryAt } from "./webhooks/outcome.ts";
+export {
+  webhookDeadDeliveryCutoff,
+  webhookDeadDeliveryLimit,
+  webhookMaxAttempts,
+  webhookOutcome,
+  webhookRetryAt,
+} from "./webhooks/outcome.ts";
 export { webhookPayload, webhookPing } from "./webhooks/payload.ts";
 export { validateWebhookSigning } from "./webhooks/signing.ts";
 export { validateWebhook, validateWebhookContent } from "./webhooks/validate.ts";
 export type { InboundEvent, WebhookCreated, WebhookDeleted, WebhookUpdated };
-export { checkNeeds, needPositions, type TaskNeeds } from "./tasks/needs.ts";

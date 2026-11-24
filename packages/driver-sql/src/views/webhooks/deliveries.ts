@@ -52,7 +52,11 @@ export const deliveryStatements = {
       AND NOT EXISTS (
         SELECT 1 FROM webhooks w WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"}
           AND w.id = webhook_deliveries.webhook AND w.enabled = 0
-      )`,
+      )
+    RETURNING webhook, event`,
+  recentDeadDeliveries: sql`SELECT COUNT(*) AS total FROM webhook_deliveries
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook = ${"webhook"}
+      AND state = 'dead' AND event IS NOT NULL AND done_at > ${"cutoff"}`,
   deliveryInput: sql`SELECT w.config, w.secret_id, w.owner_actor, w.owner, w.directory, s.ciphertext, s.key_version, d.root_view,
       d.attempt, d.event, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal, e.payload
     FROM webhook_deliveries d
@@ -81,7 +85,11 @@ export function deliveryWriter(
   keys: BoardKeys,
 ): Pick<
   BoardWebhookWriter,
-  "beginWebhookPing" | "retryWebhookDelivery" | "beginWebhookAttempt" | "finishWebhookAttempt"
+  | "beginWebhookPing"
+  | "retryWebhookDelivery"
+  | "beginWebhookAttempt"
+  | "finishWebhookAttempt"
+  | "countRecentDeadWebhookDeliveries"
 > {
   return {
     async beginWebhookPing(record, id, now) {
@@ -101,8 +109,8 @@ export function deliveryWriter(
     async beginWebhookAttempt(id, instance, now) {
       const params = { ...keys, id, instance, now, maxAttempts: webhookMaxAttempts };
       if (!(await query(db, dialect, deliveryStatements.beginDelivery, params)).length) {
-        await query(db, dialect, deliveryStatements.expireFinalDelivery, params);
-        return null;
+        const [expired] = await query(db, dialect, deliveryStatements.expireFinalDelivery, params);
+        return expired && expired.event !== null ? { expiredWebhookId: String(expired.webhook) } : null;
       }
       const [row] = await query(db, dialect, deliveryStatements.deliveryInput, params);
       if (!row) {
@@ -123,6 +131,10 @@ export function deliveryWriter(
             ? { ciphertext: row.ciphertext, keyVersion: Number(row.key_version) }
             : null,
       };
+    },
+    async countRecentDeadWebhookDeliveries(webhook, cutoff) {
+      const [row] = await query(db, dialect, deliveryStatements.recentDeadDeliveries, { ...keys, webhook, cutoff });
+      return Number(row?.total);
     },
     async finishWebhookAttempt(id, attempt, outcome) {
       const rows = await query(db, dialect, deliveryStatements.finishDelivery, {

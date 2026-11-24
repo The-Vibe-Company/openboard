@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { webhookOutcome, webhookRetryAt } from "@openboard/core";
+import { webhookDeadDeliveryCutoff, webhookDeadDeliveryLimit, webhookOutcome, webhookRetryAt } from "@openboard/core";
 
 const now = 1_700_000_000_000;
 
@@ -41,4 +41,9 @@ test("treats other 4xx and request construction failures as terminal and 2xx as 
     expect(webhookRetryAt({ status, error: null, attempt: 1, now })).toBeNull();
     expect(webhookOutcome(status)).toEqual({ state: "done", status, gone: false });
   }
+});
+
+test("uses a rolling 24-hour window and allows up to 100 dead event deliveries", () => {
+  expect(webhookDeadDeliveryCutoff(now)).toBe(now - 86_400_000);
+  expect(webhookDeadDeliveryLimit).toBe(100);
 });

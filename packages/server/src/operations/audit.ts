@@ -51,7 +51,11 @@ function auditEntry(event: AuditRecord): AuditEvent {
         payload: { id: event.payload.webhook.id, name: event.payload.webhook.name },
       };
     case "ob.webhook.disabled":
-      return { ...common, type: event.type, payload: { id: event.payload.webhook.id, reason: "gone" } };
+      return {
+        ...common,
+        type: event.type,
+        payload: { id: event.payload.webhook.id, reason: event.payload.webhook.disabledReason },
+      };
     case "ob.webhook.updated": {
       const { id, name, enabled } = event.payload.webhook;
       return { ...common, type: event.type, payload: { id, name, enabled } };

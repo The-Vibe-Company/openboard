@@ -9,7 +9,7 @@ import {
   PURGE_ORG_JOB,
 } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
-import { type Fragment, query, sql } from "../../sql.ts";
+import { type Fragment, forUpdate, query, sql } from "../../sql.ts";
 
 import { backfillBoardOrgIds, backfillPlatformStatements, backfillStatements } from "./backfill-board-org.ts";
 import { claimLegacyPurge, unqueued } from "./legacy-purge.ts";
@@ -60,8 +60,9 @@ export const jobPlatformStatements = {
 export const jobStatements = {
   enqueueJob: sql`INSERT INTO jobs (org_id, board_id, kind, available_at, payload)
     VALUES (${"orgId"}, ${"boardId"}, ${"kind"}, ${"dueAt"}, ${"payload"})`,
+  // Keep the lease fenced through any state change made before takeJob in the same transaction.
   readLeasedJob: sql`SELECT payload FROM jobs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
-    AND instance_id = ${"instanceId"} AND available_at = ${"until"} AND available_at > ${"now"}`,
+    AND instance_id = ${"instanceId"} AND available_at = ${"until"} AND available_at > ${"now"}${forUpdate}`,
   extendJob: sql`UPDATE jobs SET available_at = ${"extendedUntil"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
     AND instance_id = ${"instanceId"} AND available_at = ${"until"} AND available_at > ${"now"} RETURNING payload`,
