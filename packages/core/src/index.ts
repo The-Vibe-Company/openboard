@@ -137,7 +137,15 @@ export {
   type SchemaRegistered,
   schemaRegistration,
 } from "./schemas/register.ts";
-export { checkNeeds, decideTaskNeedsChange, needPositions, taskForNeedsChange, type TaskNeeds } from "./tasks/needs.ts";
+export {
+  advanceNeedsWalk,
+  checkNeeds,
+  decideTaskNeedsChange,
+  needPositions,
+  startNeedsWalk,
+  type TaskNeeds,
+  taskForNeedsChange,
+} from "./tasks/needs.ts";
 export {
   channelFilter,
   type EventFilters,

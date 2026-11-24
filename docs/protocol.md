@@ -370,7 +370,9 @@ with only `task.created` and any requested claim. Forward reads of the event fee
 after each event in its `message` field. Failure and cancellation leave dependants waiting.
 
 `POST /tasks/:id/needs` takes `{ needs }` and returns `{ task }`. It replaces the
-prerequisites using the same validation as creation. The caller needs channel
+prerequisites using the same validation as creation. Adding a prerequisite that
+would make the task depend on itself returns 400 `invalid_needs`. The same error
+applies if the dependency walk would visit more than 500 tasks. The caller needs channel
 read access and must be the task's owner acting as itself, the profile that
 created the task (with `post` or `label`), or have `manage` in the task's channel.
 A caller who can read the task but cannot change it receives 403

@@ -31,8 +31,15 @@ export interface BoardTaskReads {
   listTasks(query: TaskListQuery): Promise<{ tasks: ThreadSummary[]; head: number }>;
 }
 
+export interface TaskNeedEdge {
+  readonly needs: number;
+  readonly channel: string;
+  readonly completed: boolean;
+}
+
 /** What a write reads of tasks under the board's lock. */
 export interface BoardTaskWriter extends Pick<BoardTaskReads, "taskRoot"> {
+  taskNeedEdges(ids: readonly number[]): Promise<TaskNeedEdge[]>;
   taskNeeds(ids: readonly number[]): Promise<Message[]>;
   taskDependants(id: number): Promise<{ any: boolean; ready: Message[] }>;
   /** The private token hash for the current claim, read under the board lock. */
