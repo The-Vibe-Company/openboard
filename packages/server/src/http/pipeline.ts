@@ -1,7 +1,7 @@
 import { BoardError, decodeInput, type operations, type previewInvitation, type RawInput } from "@openboard/contract";
 import type { PlatformView, RateLimits } from "@openboard/ports";
 import { keepInsideCan } from "../auth/access.ts";
-import { authenticate, verifiers } from "../auth/chain.ts";
+import { authenticate, limitAuthentication, verifiers } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
 import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
@@ -247,10 +247,11 @@ async function runBoard(
     return runPublic(url, path, operation, matched.params, pipeline);
   }
   if (operation.scope !== "board") throw notFound();
-  const board = await pipeline.tenants.board(path);
   const chain = verifiers(pipeline.config, pipeline.platform, pipeline.deps.now);
-  const verify = () => authenticate(request, chain, board, operation.name);
-  const by = await verify();
+  const { board, by } = await limitAuthentication(pipeline, async () => {
+    const board = await pipeline.tenants.board(path);
+    return { board, by: await authenticate(request, chain, board, operation.name) };
+  });
   logged.actor = by.actor;
   refuseClaimedConfiguration(request, operation);
   const raw = {
@@ -263,7 +264,7 @@ async function runBoard(
   const context = async (input: unknown) => {
     await keepInsideCan(operation, input, by, board);
     const reauthorize = async () => {
-      const current = await verify();
+      const current = await authenticate(request, chain, board, operation.name);
       await keepInsideCan(operation, input, current, board);
       return current;
     };

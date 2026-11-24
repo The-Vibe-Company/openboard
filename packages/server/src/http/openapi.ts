@@ -26,6 +26,7 @@ function errorResponses(operation: Operation) {
     codes.add("invalid_profile");
     codes.add("forbidden");
   }
+  if (operation.scope === "board") codes.add("rate_limited");
   const retryAfter = (operation.scope === "board" || operation.scope === "org") && codes.has("rate_limited");
   const responses: Record<number, { description: string; content: object; headers?: object }> = {};
   for (const code of codes) {
@@ -37,7 +38,7 @@ function errorResponses(operation: Operation) {
         ...(status === 429 &&
           retryAfter && {
             headers: {
-              "retry-after": { description: "Seconds until the write may be retried.", schema: { type: "integer" } },
+              "retry-after": { description: "Seconds until the request may be retried.", schema: { type: "integer" } },
             },
           }),
       };

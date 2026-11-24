@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import { type App, DRAIN_TIMEOUT_MS, mintLocalOwnerToken } from "@openboard/server";
+import { clientIp } from "./client-ip.ts";
 import { compose } from "./compose.ts";
 import type { Config } from "./config.ts";
 
@@ -32,7 +33,9 @@ export async function serve(config: Config): Promise<void> {
       port: config.port,
       fetch(request, server) {
         if (request.method === "GET" && /\/events\/*$/.test(new URL(request.url).pathname)) server.timeout(request, 0);
-        return app.fetch(request, { ip: server.requestIP(request)?.address });
+        return app.fetch(request, {
+          ip: clientIp(request.headers, server.requestIP(request)?.address, config.trustedProxies),
+        });
       },
     });
     try {

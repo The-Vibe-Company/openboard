@@ -61,7 +61,7 @@ test("publishes the board's OpenAPI description without credentials or a tenant 
       },
     });
 
-    expect(document).not.toHaveProperty("paths./channels.get.responses.429");
+    expect(document).toHaveProperty("paths./channels.get.responses.429.headers.retry-after.schema.type", "integer");
 
     expect(document).not.toHaveProperty("paths./api/x/auth/device/token.post.responses.429.headers");
 

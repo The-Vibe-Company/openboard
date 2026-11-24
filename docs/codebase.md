@@ -382,6 +382,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 | `OPENBOARD_DEPLOYMENT_TAG` | Optional deployment tag reported by `/healthz` alongside the instance ID, when configured. |
 | `OPENBOARD_GITHUB_CLIENT_ID`, `OPENBOARD_GITHUB_CLIENT_SECRET` | GitHub sign-in |
 | `OPENBOARD_LOG_LEVEL` | log level |
+| `OPENBOARD_TRUSTED_PROXIES` | Optional trusted reverse proxy hop count for client IP selection (docs/auth.md "Rate limits"). |
 | `PORT` | listening port (Railway sets it), default `8787`; the only unprefixed variable |
 
 - Pattern: `OPENBOARD_<AREA>_<NAME>`. Any secret may instead be given as `OPENBOARD_<NAME>_FILE` (a path); setting both is an error. Secrets never come from argv.

@@ -2,6 +2,7 @@ import { BoardError, PROFILE_HEADER, parseProfileHeader } from "@openboard/contr
 import { connections } from "@openboard/core";
 import type { BoardView, PlatformView } from "@openboard/ports";
 import { connectionOf, type Principal, profileAvatar, profileName, type ServerConfig } from "../deps.ts";
+import type { RequestLimits } from "../http/limits.ts";
 import { connectionVerifier } from "./connections.ts";
 import { localOwnerVerifier } from "./local-owner.ts";
 import { personalTokenVerifier } from "./personal-tokens.ts";
@@ -66,6 +67,26 @@ function withProfile(request: Request, principal: Principal): Principal {
     [profileName]: name,
     [profileAvatar]: avatar,
   };
+}
+
+/** Admit an authentication attempt before it resolves the board or checks any credential. */
+export async function limitAuthentication<T>({ rateLimits, ip }: RequestLimits, verify: () => Promise<T>): Promise<T> {
+  if (ip === undefined) return verify();
+  const finish = await rateLimits.admitAuth(ip);
+  if (typeof finish === "number") {
+    throw new BoardError("rate_limited", "too many failed authentication attempts", {
+      next: [{ kind: "wait", seconds: finish }],
+    });
+  }
+  let failed = false;
+  try {
+    return await verify();
+  } catch (error) {
+    failed = error instanceof BoardError && error.code === "unauthorized";
+    throw error;
+  } finally {
+    finish(failed);
+  }
 }
 
 /**
