@@ -44,7 +44,11 @@ export const listThreadsHandler: Handler<typeof listThreads> = async ({ board, b
   if (before === null) throw new BoardError("invalid_cursor", "before: pass a page's older as it came");
   const after = input.after === undefined ? undefined : parseId(input.after);
   if (after === null) throw new BoardError("invalid_cursor", "after: expected a decimal board cursor or message ID");
-  const { threads: page, head, older } = await board.listThreads(channel, labels, {
+  const {
+    threads: page,
+    head,
+    older,
+  } = await board.listThreads(channel, labels, {
     before,
     after,
     limit,
