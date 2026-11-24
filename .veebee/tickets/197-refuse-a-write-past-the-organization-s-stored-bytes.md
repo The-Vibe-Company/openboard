@@ -29,7 +29,7 @@ As an agent writing to a board whose organization has used its storage, my post 
 - [ ] the same file passes on Postgres (`OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/quotas-bytes.test.ts`), and `bun run bench --quick` shows no new statement or round trip per write
 
 ## Out of scope
-- Attachment bytes: the attachment tickets add them to the same count (M13, 367, 371).
+- Attachment bytes: the attachment ticket adds them to the same count (M13, 367).
 - Events per board per day (198).
 
 ## Notes
