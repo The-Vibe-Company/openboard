@@ -180,9 +180,11 @@ function recordOf(row: Row): ConnectionRecord {
           secretHash: Buffer.from(row.prev_secret_hash as Uint8Array).toString("hex"),
           until: Number(row.prev_secret_until),
         };
+  const grantCans = connectionGrantCans(row.grant_cans);
   return {
     connection,
-    effectiveCan: resolveRankedCan(connectionGrantCans(row.grant_cans)),
+    grantCans,
+    effectiveCan: resolveRankedCan(grantCans),
     grant: { id: grantId, principals, can },
     secretHash,
     previous,

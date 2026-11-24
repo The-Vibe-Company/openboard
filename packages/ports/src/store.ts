@@ -278,6 +278,8 @@ export interface ThreadPosition {
 export interface ConnectionRecord {
   readonly connection: Connection;
   readonly grant: Grant;
+  /** The active grants used to resolve effectiveCan, with their closest rank for this connection. */
+  readonly grantCans: AgentRecord["grantCans"];
   readonly effectiveCan: Can;
   readonly secretHash: string;
   /** The secret the last rotation replaced: its SHA-256 (hex), and the epoch milliseconds it works until; or null. */
