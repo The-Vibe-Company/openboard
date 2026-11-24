@@ -39,6 +39,7 @@ export interface TaskNeedEdge {
 }
 
 export interface ReadyTaskQuery {
+  readonly labels?: TaskListQuery["labels"];
   readonly channel: string;
   readonly under?: string;
   readonly actor: string;

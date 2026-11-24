@@ -42,15 +42,19 @@ export function mentionFilter(
 
 export type LabelFilter = readonly [key: string, values?: readonly string[]];
 
+/** Label writes reject NUL and lone surrogates, which Postgres also cannot decode as JSONB. */
+function storableLabelValue(value: string): boolean {
+  return !value.includes("\0") && value.isWellFormed();
+}
+
 export function labelFilters(label: readonly string[] | undefined): LabelFilter[] | undefined {
-  return label?.map((filter): readonly [string, (readonly string[])?] => {
+  return label?.map((filter): LabelFilter => {
     const equals = filter.indexOf("=");
     if (equals < 0) return [filter];
-    // Label writes reject NUL, which the Postgres JSON decoder also cannot represent.
     const values = filter
       .slice(equals + 1)
       .split("|")
-      .filter((value) => !value.includes("\0"));
+      .filter(storableLabelValue);
     return [filter.slice(0, equals), values];
   });
 }

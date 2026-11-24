@@ -444,6 +444,10 @@ and the MCP tool `list_tasks`.
 `POST /tasks/claim` takes a `channel` and optional `lease`. It claims the oldest ready task assigned
 to the caller’s actor, or the oldest unassigned ready task owned by the caller’s principal.
 A trailing slash includes the named channel and its descendants and requires `label` throughout.
+The optional upstream `label` map, such as `{"step":"review"}`, requires every exact value on
+the task root. OpenBoard also accepts an array of thread-style filters, such as
+`["step=fix|review","repo"]`. A bare key checks presence, a pipe separates alternatives,
+and every filter must match. Pass each filter with a separate `--label` option.
 The response is `{ task, claim }`, or `{ task: null }` when no task qualifies. Use
 `ob tasks claim --next --channel dev` or `ob tasks claim --channel dev`.
 

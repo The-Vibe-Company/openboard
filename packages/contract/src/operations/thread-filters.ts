@@ -9,6 +9,8 @@ export const ChannelFilter = channelString({
   description: "A channel by its whole name, or `dev/` for `dev` and every channel under it.",
 });
 
+export const labelFilter = Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }));
+
 export const messageFilters = {
   by: Type.Optional(
     Type.String({
@@ -23,7 +25,7 @@ export const messageFilters = {
         "A message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
     }),
   ),
-  label: Type.Optional(Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }))),
+  label: Type.Optional(labelFilter),
   text: Type.Optional(
     Type.String({
       minLength: 1,

@@ -334,3 +334,21 @@ test.each([
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test("ob tasks claim --next sends every label as a separate thread-style filter", async () => {
+  const home = mkdtempSync(join(tmpdir(), "ob-claim-next-"));
+  try {
+    const fetch = async (request: Request) => {
+      expect(`${request.method} ${request.url}`).toBe(`POST ${ENV.BOARD_URL}/tasks/claim`);
+      expect(await request.json()).toEqual({ channel: "dev", label: ["repo", "step=fix|review"] });
+      return Response.json({ task: null });
+    };
+    const lines: string[] = [];
+    const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+    const args = ["tasks", "claim", "--next", "--label", "repo", "--channel", "dev", "--label", "step=fix|review"];
+    expect(await runCli(args, { ...ENV, HOME: home }, { fetch, output })).toBe(0);
+    expect(lines).toEqual(["no ready task in dev"]);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});

@@ -3,6 +3,7 @@ import type { BoardKeys, BoardTaskReads, BoardTaskWriter } from "@openboard/port
 import type { Db, Dialect, Row } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
 import { splice } from "../threads.ts";
+import { matchesTaskLabels, TASK_LABELS } from "./list.ts";
 
 export const needIds = {
   fragment: ({ name }: Dialect) =>
@@ -10,13 +11,17 @@ export const needIds = {
 };
 
 const CHANNELS: Fragment = { fragment: () => "" };
-const readyTask = sql`SELECT m.view FROM tasks t
-  JOIN messages m ON m.org_id = t.org_id AND m.board_id = t.board_id AND m.id = t.id
-  WHERE t.org_id = ${"orgId"} AND t.board_id = ${"boardId"} AND m.deleted = 0
+const readyTask = splice(
+  sql`SELECT root.view FROM tasks t
+  JOIN messages AS root ON root.org_id = t.org_id AND root.board_id = t.board_id AND root.id = t.id
+  WHERE t.org_id = ${"orgId"} AND t.board_id = ${"boardId"} AND root.deleted = 0 AND ${TASK_LABELS}
     AND ${CHANNELS} AND t.state IN ('ready', 'claimed')
     AND (t.state = 'ready' OR (t.claim_until <= CAST(${"now"} AS BIGINT) AND t.blocked_reason IS NULL))
     AND t.owner = ${"principal"} AND (t.for_actor = ${"actor"} OR t.for_actor IS NULL)
-  ORDER BY CASE WHEN t.for_actor IS NULL THEN 1 ELSE 0 END, t.id LIMIT 1`;
+  ORDER BY CASE WHEN t.for_actor IS NULL THEN 1 ELSE 0 END, t.id LIMIT 1`,
+  TASK_LABELS,
+  matchesTaskLabels,
+);
 
 export const taskReadStatements = {
   nextReadyTask: splice(readyTask, CHANNELS, sql`t.channel = ${"channel"}`),
@@ -86,10 +91,15 @@ export function taskWriter(
 ): BoardTaskWriter {
   return {
     ...taskReads(db, dialect, keys),
-    async nextReadyTask({ under, ...input }) {
+    async nextReadyTask({ under, labels = [], ...input }) {
       const statement =
         under === undefined ? taskReadStatements.nextReadyTask : taskReadStatements.nextReadySubtreeTask;
-      const [row] = await query(db, dialect, statement, { ...keys, ...input, under: under ?? null });
+      const [row] = await query(db, dialect, statement, {
+        ...keys,
+        ...input,
+        under: under ?? null,
+        labels: JSON.stringify(labels),
+      });
       return row ? (JSON.parse(String(row.view)) as Message) : null;
     },
     async taskNeeds(ids) {
