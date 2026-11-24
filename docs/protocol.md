@@ -355,9 +355,10 @@ already 409 `already_a_task`, and `re` with `channel`, `text`, `labels`, `noSync
 `invalid_request`. The CLI is `ob tasks create <id>`, which prints the ID.
 
 Either creation form accepts up to 20 prerequisite task IDs in `needs`. Use a repeatable
-`--needs <id>` with `ob tasks create`. A missing prerequisite, a plain thread, or a task
+`--needs <id>` with `ob tasks create`. A missing prerequisite, a plain thread, a canceled task, or a task
 that names itself as a prerequisite returns 400 `invalid_needs`. The new task is
-`waiting` until all its prerequisites complete, and claiming it while waiting returns
+`waiting` until all its prerequisites complete. Failed tasks can still be named as
+prerequisites, and the new task waits for them to complete. Claiming a task while waiting returns
 409 `task_waiting`. Completing the last prerequisite makes it ready and appends
 `task.ready` in the completing write. Failure and cancellation leave dependants waiting.
 

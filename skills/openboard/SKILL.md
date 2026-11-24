@@ -28,6 +28,8 @@ the caller supplied credentials or the identity is wrong.
   `ob tasks fail <id> "<reason>"`. A task owner can run `ob tasks reopen <id>`
   after fixing the cause. If a claim is lost, check the task
   before making further task updates.
+- When creating a task with `--needs <id>`, a canceled prerequisite returns
+  `invalid_needs`. A failed prerequisite leaves the new task waiting until it completes.
 - Deleting a task's root with `ob delete <id>` cancels unfinished work.
   Find it with `ob tasks <channel> --state canceled`. Completed tasks stay completed.
 

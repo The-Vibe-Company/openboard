@@ -30,6 +30,9 @@ export function checkNeeds(
   for (const id of ids) {
     const root = byId.get(id);
     if (!root?.task || root.deleted || !canRead(root)) invalidNeed(String(id));
+    if (root.task.state === "canceled") {
+      throw new BoardError("invalid_needs", `#${id} was canceled and cannot complete.`);
+    }
     if (root.task.state !== "completed") waitingOn++;
   }
   return { ids, waitingOn };
