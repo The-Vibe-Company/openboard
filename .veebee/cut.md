@@ -275,7 +275,7 @@ Legend.
 
 ## M9 Tasks (38)
 
-238  Start a thread as a task   ← 99, 198
+238  Start a thread as a task   ← 99
 239  List a channel's tasks   ← 238
 240  Make a task of a thread that was there   ← 239
 241  Make a task once for a client ID [c]   ← 240
