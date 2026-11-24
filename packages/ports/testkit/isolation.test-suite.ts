@@ -153,6 +153,17 @@ const writerCases: Cases<BoardWriter> = {
     expect(await inWrite(b, (writer) => writer.inboundSecret(inboundId))).toEqual(inboundCipher);
     expectNull(await inWrite(a, (writer) => writer.inboundSecret(inboundId)));
   },
+  inboundSeen: async (a, b) => {
+    const eventId = "delivery-fixture";
+    expect(await inWrite(b, (writer) => writer.inboundSeen(inboundId, eventId))).toBe("{}");
+    expectNull(await inWrite(a, (writer) => writer.inboundSeen(inboundId, eventId)));
+  },
+  recordInboundSeen: async (a, b) => {
+    await expect(
+      inWrite(a, (writer) => writer.recordInboundSeen(inboundId, "delivery-fixture", at, "foreign")),
+    ).rejects.toMatchObject({ code: "not_found" });
+    expect(await inWrite(b, (writer) => writer.inboundSeen(inboundId, "delivery-fixture"))).toBe("{}");
+  },
   storeInboundSecret: (a) => inWrite(a, (writer) => writer.storeInboundSecret("ib_local", inboundCipher)),
   ...webhookWriterCases,
 

@@ -65,7 +65,7 @@ test("creates, lists, updates and deletes an endpoint and its exact grant withou
     expect(await (await call(app, "GET", "/x/inbound")).json()).toEqual({ inbound: [inbound] });
     expect(await (await call(app, "GET", path)).json()).toEqual(inbound);
 
-    const nextRules = [{ when: {}, do: [{ "task.expire": {} }] }];
+    const nextRules = [{ when: {}, do: [{ reply: "Updated: {{body.summary}}" }] }];
     const update = await call(app, "POST", path, { rules: nextRules });
     expect(update.status).toBe(200);
     expect(await update.json()).toEqual({ ...inbound, rules: nextRules });
@@ -92,7 +92,10 @@ test("creates, lists, updates and deletes an endpoint and its exact grant withou
 test("rejects unsupported actions and a creator without manage throughout the grant", async () => {
   const app = makeApp({ secretKey: key });
   try {
-    const invalid = await call(app, "POST", "/x/inbound", { ...spec, rules: [{ when: {}, do: [{ post: "no" }] }] });
+    const invalid = await call(app, "POST", "/x/inbound", {
+      ...spec,
+      rules: [{ when: {}, do: [{ "task.expire": {} }] }],
+    });
     expect(invalid.status).toBe(400);
     expect(await invalid.json()).toMatchObject({ error: { code: "invalid_rule" } });
     const connection = await call(app, "POST", "/x/connections", {

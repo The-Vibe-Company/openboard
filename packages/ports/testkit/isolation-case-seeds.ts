@@ -7,7 +7,12 @@ import { seedWatcher } from "./store/watchers.test-suite.ts";
 import { seedWebhook } from "./store/webhooks.test-suite.ts";
 
 export async function seedCase(method: string, a: StoreTenant, b: StoreTenant) {
-  if (method.startsWith("inbound") || method === "storeInboundSecret") await seedInbound(b.board, b.marker, b.actor);
+  if (method.startsWith("inbound") || method === "storeInboundSecret" || method === "recordInboundSeen") {
+    const inbound = await seedInbound(b.board, b.marker, b.actor);
+    if (method === "inboundSeen" || method === "recordInboundSeen") {
+      await b.board.write((writer) => writer.recordInboundSeen(inbound.id, "delivery-fixture", at, "{}"));
+    }
+  }
   if (["watcherRegistrations", "watcherRegistrationHash", "pullWatcherMatches", "ackWatcherMatch"].includes(method)) {
     await seedWatcher(a.board, a.actor, a.channel, at);
     await seedWatcher(b.board, b.actor, b.channel, at);

@@ -618,6 +618,7 @@ CREATE INDEX deliveries_history ON webhook_deliveries (org_id, board_id, webhook
 CREATE INDEX deliveries_history_state ON webhook_deliveries (org_id, board_id, webhook, state, created_at DESC, id DESC);
 
 CREATE TABLE inbound_seen (
+  org_id BIGINT NOT NULL,
   board_id BIGINT NOT NULL, endpoint TEXT NOT NULL, event_id TEXT NOT NULL, at BIGINT NOT NULL, result TEXT NOT NULL,
   PRIMARY KEY (endpoint, event_id)
 );

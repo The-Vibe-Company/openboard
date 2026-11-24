@@ -55,7 +55,7 @@ Unix seconds and the `dl_…` delivery ID.
 The agent can reply and complete the task using the
 [command reference](commands.md). To report runner lifecycle events, an
 administrator runs `ob inbound create --file runner-status.json --secret-file inbound.secret` and registers the URL it prints.
-Give it only the permissions needed for its actions on the relevant channels.
+Give the endpoint `read` and `post` on the channels where it should reply.
 For example, configure `thread.from` as `{{body.externalRef}}` and
 `thread.pattern` as `^ob:(\d+)$`. Map `turn.finished` to a reply with
 `{{body.summary}}`. Send the signed event to the endpoint's returned URL

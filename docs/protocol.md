@@ -978,14 +978,22 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   endpoint's configured signing headers and the original body bytes. The
   timestamp, when the scheme signs one, must be within `tolerance` seconds
   of the server clock (300 by default). The GitHub preset signs the body
-  alone. Standard Webhooks and `ts-id-body` delivery IDs cannot contain a
+  alone. A signature authenticates only the fields in its signing scheme.
+  Use signed body fields for rule conditions that require sender integrity. Standard Webhooks and `ts-id-body` delivery IDs cannot contain a
   period, which separates signed fields. The receiver generates its own
   request ID. Board bearer credentials are ignored. SDK clients send a pre-signed
   request with `receiveInboundEvent({ id }, { signed: { headers, body } })`.
   Dedupe uses the sender's
   event ID, and a duplicate answers 200 with the first result.
+- **Reply rules** evaluate all `when` conditions against the JSON body and request headers. Each
+  condition matches one value or any value in its list. Matching rules and
+  their actions run in order. A reply renders its text with `body` and the
+  thread root and requires both `read` and `post` there. An unreadable thread
+  answers 404. A readable thread without permission to post answers 403
+  `forbidden`. Stripe supplies its
+  delivery ID in the signed body's `id` field. Delivery IDs are limited to 1024 bytes.
 - **Effects** run in one board transaction together with the dedupe insert, so
-  they happen exactly once even with retries and several instances.
+  they happen at most once per endpoint and delivery ID, including across instances.
 - **Principal** `ob:hook:ib_…` with its own grant (created under grant-change
   rules).
 - **Actions** (closed list): `reply`, `label`, `react`, `task.block`,
