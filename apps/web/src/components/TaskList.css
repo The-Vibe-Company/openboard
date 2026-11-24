@@ -1,12 +1,12 @@
 .channel-tasks ol {
-  padding-inline-start: 1.5rem;
+  padding-inline-start: calc(6 * var(--space));
 }
 
 .channel-tasks li {
   overflow-wrap: anywhere;
-  margin-block: 0.375rem;
+  margin-block: calc(2 * var(--space));
 }
 
-.channel-tasks li span {
-  display: block;
+.channel-tasks .task-state-badge {
+  display: table;
 }

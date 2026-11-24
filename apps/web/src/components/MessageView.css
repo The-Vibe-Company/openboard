@@ -1,9 +1,36 @@
-.thread-message-text {
+.thread-message {
+  padding-block: calc(4 * var(--space));
+  border-block-start: var(--stroke) solid var(--border);
   overflow-wrap: anywhere;
 }
 
-.thread-message-text pre {
-  overflow-x: auto;
-  white-space: pre;
-  overflow-wrap: normal;
+.thread-message > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(2 * var(--space));
+}
+
+.thread-message > header :is(time, .message-edited) {
+  color: var(--muted);
+  font-size: var(--type-small);
+}
+
+.thread-message time {
+  font-family: var(--font-mono);
+}
+
+.thread-message .thread-message-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(2 * var(--space));
+  margin: calc(2 * var(--space)) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thread-message .thread-message-metadata li {
+  padding-inline: calc(2 * var(--space));
+  border-radius: var(--radius-control);
+  background: var(--surface);
 }

@@ -1,0 +1,9 @@
+.thread-page {
+  min-inline-size: 0;
+}
+
+.thread-page .thread-messages {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

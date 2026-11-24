@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type Task, type TaskActor, taskActorsQuery } from "../api/tasks.ts";
+import { Badge } from "../ui/index.ts";
 import "./TaskState.css";
 
 export function claimHolderText(id: string, actor?: TaskActor) {
@@ -12,7 +13,33 @@ export function taskStateText(task: Pick<Task, "state" | "claim">, holder?: Task
   return `claimed by ${claimHolderText(task.claim.actor, holder)}`;
 }
 
-export function TaskState({ board, task }: { board: { org: string; board: string }; task: Task }) {
+export function TaskStateBadge({
+  task,
+  holder,
+  recordedState,
+}: {
+  task: Pick<Task, "state" | "claim">;
+  holder?: TaskActor;
+  recordedState?: string;
+}) {
+  // Reads clear a dead lease before task.expired updates the reserved label.
+  const state = task.state === "ready" && recordedState === "claimed" ? "expired" : task.state;
+  return (
+    <Badge className="task-state-badge" data-state={state}>
+      {state === "expired" ? "expired" : taskStateText(task, holder)}
+    </Badge>
+  );
+}
+
+export function TaskState({
+  board,
+  task,
+  recordedState,
+}: {
+  board: { org: string; board: string };
+  task: Task;
+  recordedState?: string;
+}) {
   const { data: actors } = useQuery(taskActorsQuery(board, true));
   const maker = task.by.startsWith(`${task.owner}+`) ? actors?.get(task.by) : undefined;
   const owner = actors?.get(task.owner)?.name ?? maker?.via?.name ?? task.owner;
@@ -23,7 +50,9 @@ export function TaskState({ board, task }: { board: { org: string; board: string
       <h2>Task</h2>
       <dl>
         <dt>State</dt>
-        <dd>{taskStateText(task, holder)}</dd>
+        <dd>
+          <TaskStateBadge task={task} holder={holder} recordedState={recordedState} />
+        </dd>
         <dt>Owner</dt>
         <dd>{owner}</dd>
         {claim && (

@@ -91,3 +91,23 @@ test.each([
 ])("converts the first line of %j to a plain thread preview", (text, expected) => {
   expect(markdownPreview(text)).toBe(expected);
 });
+
+test("renders six heading levels and keeps HTML inside headings as text", () => {
+  const html = "<img src=x onerror=alert(1)>";
+  expect(
+    renderMarkdown(
+      ["Before", `# ${html}`, "## **Two**", "### Three ###", "#### Four", "##### Five", "###### Six", "#literal"].join(
+        "\n",
+      ),
+    ),
+  ).toMatchObject([
+    element("p", ["Before"]),
+    element("h1", [html]),
+    element("h2", [element("strong", ["Two"])]),
+    element("h3", ["Three"]),
+    element("h4", ["Four"]),
+    element("h5", ["Five"]),
+    element("h6", ["Six"]),
+    element("p", ["#literal"]),
+  ]);
+});

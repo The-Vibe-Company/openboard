@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { browserClient } from "../src/api/client.ts";
 import { serve } from "./support/serve.ts";
 import { signIn } from "./support/sign-in.ts";
@@ -58,6 +58,7 @@ test("the channel lists open tasks oldest first and the thread shows public clai
         "href",
         `/acme/main/t/${claimed.id}?channel=dev`,
       );
+      await expectTaskLayout(page, tasks.locator(".ui-badge"), "channel");
       await tasks.getByRole("link", { name: "Claimed work" }).click();
     });
 
@@ -71,6 +72,7 @@ test("the channel lists open tasks oldest first and the thread shows public clai
       await expect(details.locator("time")).toHaveAttribute("datetime", claim.until);
       await expect(details.locator("time")).toBeVisible();
       expect((await page.content()).includes(claim.token)).toBe(false);
+      await expectTaskLayout(page, details.locator(".ui-badge"), "thread");
     });
 
     await test.step("a profile-created task shows its connection as owner", async () => {
@@ -83,3 +85,81 @@ test("the channel lists open tasks oldest first and the thread shows public clai
     await app.stop();
   }
 });
+
+test("the thread renders distinct task badges and places the reply composer after the messages", async ({ page }) => {
+  let now = Date.now();
+  const app = await serve({ now: () => now });
+  try {
+    await signIn(page, app.url, "ada");
+    const owner = sessionClient(page, app.url);
+    await owner.createOrg({ slug: "acme", name: "Acme" });
+    const { task: ready } = await owner.createTask({ channel: "dev", text: "Ready work" });
+    const { task: canceled } = await owner.createTask({ channel: "dev", text: "Canceled work" });
+    await owner.cancelTask({ id: canceled.id, reason: "No longer needed" });
+    const { task: completed, claim: completion } = await owner.createTask({
+      channel: "dev",
+      text: "Completed work",
+      claim: true,
+    });
+    const { task: failed, claim: failure } = await owner.createTask({
+      channel: "dev",
+      text: "Failed work",
+      claim: true,
+    });
+    if (!completion || !failure) throw new Error("Expected claims for the terminal tasks");
+    await owner.completeTask({ id: completed.id, epoch: completion.epoch, token: completion.token });
+    await owner.failTask({ id: failed.id, epoch: failure.epoch, token: failure.token, reason: "Fixture failure" });
+    const { task: expiring, claim } = await owner.createTask({ channel: "dev", text: "Claimed work", claim: true });
+    if (!claim) throw new Error("Expected a claim for the expiring task");
+
+    const colors = new Set<string>();
+    for (const [id, state, label] of [
+      [ready.id, "ready", "ready"],
+      [expiring.id, "claimed", "claimed by ada"],
+      [completed.id, "completed", "completed"],
+      [failed.id, "failed", "failed"],
+      [canceled.id, "canceled", "canceled"],
+      [expiring.id, "expired", "expired"],
+    ] as const) {
+      if (state === "expired") now = Date.parse(claim.until);
+      await page.goto(`${app.url}/acme/main/t/${id}`);
+      const badge = page.getByRole("region", { name: "Task details" }).locator(".ui-badge");
+      await expect(badge).toHaveText(label);
+      const color = await badge.evaluate((element) => getComputedStyle(element).borderInlineStartColor);
+      colors.add(color);
+      process.stdout.write(`Task #${id} ${state}: ${label}, ${color}\n`);
+    }
+    expect(colors.size).toBe(6);
+    await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible();
+  } finally {
+    await app.stop();
+  }
+});
+
+async function expectTaskLayout(page: Page, badges: Locator, screen: string) {
+  const originalViewport = page.viewportSize();
+  for (const width of [1280, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      const metrics = await badges.evaluateAll((elements) => ({
+        pageWidth: document.documentElement.scrollWidth,
+        scheme: getComputedStyle(document.documentElement).colorScheme,
+        badgesFit:
+          elements.length > 0 &&
+          elements.every((badge) => {
+            const rect = badge.getBoundingClientRect();
+            return rect.width > 0 && rect.left >= 0 && rect.right <= document.documentElement.clientWidth;
+          }),
+      }));
+      expect(metrics).toEqual({ pageWidth: width, scheme, badgesFit: true });
+      process.stdout.write(`Task ${screen} ${width}px ${scheme}: ${JSON.stringify(metrics)}\n`);
+      await test.info().attach(`task-${screen}-${width}-${scheme}`, {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: "image/png",
+      });
+    }
+  }
+  if (originalViewport) await page.setViewportSize(originalViewport);
+  await page.emulateMedia({ colorScheme: null });
+}

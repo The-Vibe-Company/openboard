@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { taskActorsQuery, tasksQuery } from "../api/tasks.ts";
-import { taskStateText } from "./TaskState.tsx";
+import { TaskStateBadge } from "./TaskState.tsx";
 import "./TaskList.css";
 
 export function TaskList({ board, channel }: { board: { org: string; board: string }; channel: string }) {
@@ -29,7 +29,11 @@ export function TaskList({ board, channel }: { board: { org: string; board: stri
                 <Link to="/$org/$board/t/$id" params={{ ...board, id: message.id }} search={true}>
                   {title}
                 </Link>
-                <span>{taskStateText(task, task.claim ? actors?.get(task.claim.actor) : undefined)}</span>
+                <TaskStateBadge
+                  task={task}
+                  holder={task.claim ? actors?.get(task.claim.actor) : undefined}
+                  recordedState={message.labels["board.task"]}
+                />
               </li>
             );
           })}

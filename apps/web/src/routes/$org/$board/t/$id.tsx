@@ -10,6 +10,8 @@ import { Composer } from "../../../../components/Composer.tsx";
 import { MessageView } from "../../../../components/MessageView.tsx";
 import { TaskState } from "../../../../components/TaskState.tsx";
 
+import "./thread.css";
+
 export const Route = createFileRoute("/$org/$board/t/$id")({
   beforeLoad: ({ params }) => {
     if (!/^\d{1,128}$/.test(params.id)) throw notFound();
@@ -58,14 +60,16 @@ function ThreadPage() {
   if (title === null) return <p role="status">Loading thread…</p>;
 
   return (
-    <>
+    <section className="thread-page">
       <h1 ref={heading} tabIndex={-1}>
         {title}
       </h1>
       {data && (
         <>
-          {!data.message.deleted && data.message.task && <TaskState board={params} task={data.message.task} />}
-          <ol className="board-threads" aria-label="Thread messages">
+          {!data.message.deleted && data.message.task && (
+            <TaskState board={params} task={data.message.task} recordedState={data.message.labels["board.task"]} />
+          )}
+          <ol className="thread-messages" aria-label="Thread messages">
             {[data.message, ...data.replies].map((item) => (
               <li key={item.id}>
                 <MessageView message={item} />
@@ -81,6 +85,6 @@ function ThreadPage() {
           )}
         </>
       )}
-    </>
+    </section>
   );
 }

@@ -92,6 +92,10 @@ function fence(line: string) {
   return /^ {0,3}(`{3,})([^`]*)$/.exec(line);
 }
 
+function heading(line: string) {
+  return /^ {0,3}(#{1,6})(?:[ \t]+(.*)|$)/.exec(line);
+}
+
 function listItem(line: string) {
   return /^ {0,3}(?:[-*+]|(\d{1,9})\.)[ \t]+(.+)$/.exec(line);
 }
@@ -115,6 +119,13 @@ export function renderMarkdown(text: string, mentions: readonly Mention[] = []):
       continue;
     }
 
+    const [, hashes, title] = heading(line) ?? [];
+    if (hashes) {
+      const text = (title ?? "").replace(/(?:^|[ \t]+)#+[ \t]*$/, "").trim();
+      blocks.push(createElement(`h${hashes.length}`, { key }, inline(text, handles)));
+      continue;
+    }
+
     const first = listItem(line);
     if (first) {
       const ordered = first[1] !== undefined;
@@ -130,7 +141,7 @@ export function renderMarkdown(text: string, mentions: readonly Mention[] = []):
 
     while (index < lines.length) {
       const next = lines[index] ?? "";
-      if (!next.trim() || fence(next) || listItem(next)) break;
+      if (!next.trim() || fence(next) || heading(next) || listItem(next)) break;
       index++;
     }
     blocks.push(createElement("p", { key }, inline(lines.slice(key, index).join("\n"), handles)));
