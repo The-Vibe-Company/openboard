@@ -26,18 +26,18 @@ export function webhookRequest(
   const template = input.webhook.body as object | null;
   const body = webhookPayload(config.publicUrl, org, board, delivery, event, input.root ?? event.message, template);
   if (body === null) return null;
-  return signedWebhookRequest(input.webhook.signing.preset, id, now, credentials, body);
+  return signedWebhookRequest(input.webhook.signing, id, now, credentials, body);
 }
 
 export function signedWebhookRequest(
-  preset: Webhook["signing"]["preset"],
+  signing: Webhook["signing"],
   id: string,
   now: number,
   credentials: WebhookCredentials,
   body: string,
 ): SignedWebhookRequest {
   const headers = new Headers(credentials.headers);
-  const scheme = webhookSigningScheme(preset);
+  const scheme = webhookSigningScheme(signing);
   for (const [key, value] of signWebhook(scheme, id, now, body, credentials.secret)) headers.set(key, value);
   return { headers, body };
 }

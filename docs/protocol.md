@@ -799,6 +799,13 @@ delivery is dead with `lastError: "too_large"`.
 | `ts-id-body` | `v1=<hex HMAC-SHA256 of "{ts}.{id}.{body}">`; header names supplied by the receiver (the shape Armada signs its own webhooks with) |
 | `none` | no signature; static `headers` (for example a bearer) |
 
+For `ts-id-body`, supply `signatureHeader`, `timestampHeader`, and `idHeader`.
+The timestamp is Unix seconds at the time of the attempt, and the ID is the
+`dl_…` delivery ID. The three names must be valid HTTP header tokens and
+distinct regardless of case. Names set by OpenBoard (`accept-encoding`,
+`content-type`, `content-length`, `host`, and `user-agent`) are reserved.
+Invalid names return HTTP 400 `invalid_signing` and identify the field.
+
 ### Delivery semantics
 
 - **Outbox:** rows inserted in the writing transaction; at-least-once.

@@ -7,7 +7,13 @@ import { call, makeApp, NOW } from "../support/app.ts";
 
 test("matches the published GitHub signature and sends the delivery ID", () => {
   const id = "dl_aaaaaaaaaaaaaaaa";
-  const headers = signWebhook(webhookSigningScheme("github"), id, NOW, "Hello, World!", "It's a Secret to Everybody");
+  const headers = signWebhook(
+    webhookSigningScheme({ preset: "github" }),
+    id,
+    NOW,
+    "Hello, World!",
+    "It's a Secret to Everybody",
+  );
 
   expect(headers.get("x-hub-signature-256")).toBe(
     "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17",
