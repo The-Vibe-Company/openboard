@@ -376,6 +376,12 @@ and prints the updated claim. The feed includes `task.renewed` with `all=true`.
 `task.released` and clears the claim, leaving the epoch on the ready task so the
 next claim increments it. `ob tasks release <id>` uses the saved credential.
 
+`POST /tasks/:id/fail` takes `{ epoch, token, reason }` and returns `{ task }`.
+The reason must contain 1–1,000 characters of text. The caller needs channel
+read access and a live claim. Failure clears the claim, records the reason,
+sets `board.task=failed`, and emits `task.failed` with `{ id, thread, epoch, reason, by }`.
+`ob tasks fail <id> "<reason>"` uses the saved claim.
+
 At the lease deadline, the thread's task state reads `ready` and
 `GET /tasks?state=ready` includes it. A background job or the next successful
 claim appends `task.expired` with `{ id, epoch }` and updates the reserved

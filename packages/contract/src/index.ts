@@ -68,6 +68,7 @@ export {
   discoverBoard,
   editMessage,
   explainGrants,
+  failTask,
   findLinkedThread,
   findSync,
   getAccount,
