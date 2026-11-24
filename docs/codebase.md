@@ -185,9 +185,11 @@ The web build configuration may import Vite and its React and TanStack Router pl
 The web Playwright configuration and browser tests may import Playwright. Browser tests may also use the SDK to exercise agent journeys.
 Only the web E2E support directory may import the server for browser tests. Only `apps/web/e2e/support/serve.ts` may import the SQLite and Postgres drivers to compose the local and hosted browser projects.
 
+Within `examples/`, only `examples/webhook-receiver/test/**` may import `@openboard/server` and `@openboard/driver-sqlite` to test a real in-process board. Driver imports remain limited to the composition root listed below.
+
 Universal rules:
 - **`driver-sql` is imported only by `driver-sqlite` and `driver-postgres`.**
-- **Drivers are imported only by composition roots**: `apps/openboard/src/compose.ts`, `apps/web/e2e/support/serve.ts`, `packages/server/test/support/drivers.ts`, `tools/conformance/src/drivers.ts`, `tools/bench/src/drivers.ts`, and each driver's own tests. Any other file importing `@openboard/driver-*` fails CI.
+- **Drivers are imported only by composition roots**: `apps/openboard/src/compose.ts`, `apps/web/e2e/support/serve.ts`, `packages/server/test/support/drivers.ts`, `tools/conformance/src/drivers.ts`, `tools/bench/src/drivers.ts`, `examples/webhook-receiver/test/receiver.test.ts`, and each driver's own tests. Any other file importing `@openboard/driver-*` fails CI.
 - **CI renderer exception:** `scripts/ci/migrations.ts` can import the pure `@openboard/driver-sqlite/ddl` subpath.
 - **No SQL outside a driver** (section 3.2).
 - Nothing imports `examples/*`. Only `tools/conformance` imports `@vercel/board`, never at runtime.
