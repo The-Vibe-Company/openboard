@@ -5,10 +5,11 @@
 }
 
 .connection-banner p {
-  margin: 0 0 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  background: #f5f5f5;
-  color: #404040;
-  font-size: 0.875rem;
+  margin: 0 0 calc(2 * var(--space));
+  padding: var(--space) calc(3 * var(--space));
+  border: var(--stroke) solid var(--warning);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--warning) 12%, var(--background));
+  color: var(--text);
+  font-size: var(--type-small);
 }

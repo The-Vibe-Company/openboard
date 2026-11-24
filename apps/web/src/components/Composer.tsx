@@ -1,12 +1,15 @@
 import { BoardError } from "@the-vibe-company/openboard";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, type Ref, useId, useRef, useState } from "react";
+import { Button, Textarea } from "../ui/index.ts";
 import "./Composer.css";
 
 type ComposerProps = {
+  ref?: Ref<HTMLFormElement>;
   onPost: (draft: { text: string; id: string }) => Promise<void>;
 };
 
-export function Composer({ onPost }: ComposerProps) {
+export function Composer({ ref, onPost }: ComposerProps) {
+  const messageId = useId();
   const [text, setText] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -37,10 +40,11 @@ export function Composer({ onPost }: ComposerProps) {
   }
 
   return (
-    <form className="composer" onSubmit={submit}>
-      <label>
+    <form ref={ref} className="composer" onSubmit={submit}>
+      <label htmlFor={messageId}>
         Message
-        <textarea
+        <Textarea
+          id={messageId}
           rows={3}
           value={text}
           readOnly={pending}
@@ -56,9 +60,9 @@ export function Composer({ onPost }: ComposerProps) {
           }}
         />
       </label>
-      <button type="submit" disabled={pending || !text.trim()}>
+      <Button type="submit" pending={pending} disabled={!text.trim()}>
         {pending ? "Posting…" : "Post"}
-      </button>
+      </Button>
       {error && (
         <div role="alert">
           <div>{error.message}</div>

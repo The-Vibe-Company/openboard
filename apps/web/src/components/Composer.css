@@ -1,15 +1,11 @@
 .composer {
   display: grid;
-  gap: 0.5rem;
-  margin-block-end: 1rem;
+  gap: calc(2 * var(--space));
+  margin-block-end: calc(4 * var(--space));
 }
 
 .composer textarea {
-  box-sizing: border-box;
   display: block;
-  width: 100%;
-  font: inherit;
-  resize: vertical;
 }
 
 .composer button {
