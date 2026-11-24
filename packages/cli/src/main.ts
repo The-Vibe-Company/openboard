@@ -1,22 +1,7 @@
 import process from "node:process";
 import { BoardError, type ClientOptions, createClient, tail } from "@the-vibe-company/openboard";
-import {
-  type Command,
-  connectCommand,
-  createConnectionCommand,
-  derivedCommands,
-  loginCommand,
-  Misuse,
-  messagesCommand,
-  readCommand,
-  replyCommand,
-  rotateConnectionCommand,
-  type StandaloneContext,
-  tailCommand,
-  useCommand,
-  waitCommand,
-  whoamiCommand,
-} from "./commands/index.ts";
+import { Misuse, type StandaloneContext } from "./commands/index.ts";
+import { type AnyCommand, commands } from "./commands/usage.ts";
 import { clientConfig } from "./config.ts";
 import { consoleOutput, type Output, printError } from "./output.ts";
 
@@ -30,23 +15,6 @@ export interface CliOptions {
   /** Aborted on Ctrl-C; by default, the process's next SIGINT. */
   readonly interrupt?: AbortSignal;
 }
-
-type AnyCommand = Command | typeof connectCommand | typeof loginCommand | typeof useCommand;
-
-const commands: readonly AnyCommand[] = [
-  connectCommand,
-  loginCommand,
-  useCommand,
-  createConnectionCommand,
-  rotateConnectionCommand,
-  readCommand,
-  messagesCommand,
-  replyCommand,
-  waitCommand,
-  tailCommand,
-  whoamiCommand,
-  ...derivedCommands,
-];
 
 function find(words: readonly string[]): AnyCommand | undefined {
   return commands
