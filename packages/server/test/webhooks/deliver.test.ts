@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { createHmac } from "node:crypto";
-import type { createWebhook, OutputOf } from "@openboard/contract";
+import type { claimTask, createTask, createWebhook, OutputOf } from "@openboard/contract";
 import type { Jobs } from "@openboard/ports";
 import { signIn } from "../isolation/seed.ts";
 import { BOARD_URL, call, makeApp, NOW, PUBLIC_URL } from "../support/app.ts";
@@ -192,4 +192,24 @@ test("requires manage throughout the tail, including the member role cap and nar
   expect(await answer(send(route, narrow, { ...spec, filter: { tail: "dev/" } }), 403)).toMatchObject({
     error: { code: "forbidden" },
   });
+});
+
+test("reopen leaves the shared webhook outbox untouched during mixed-version deployments", async () => {
+  const { runner, deliveries } = setup(204);
+  await answer(
+    call(runner, "POST", "/x/webhooks", { ...spec, filter: { tail: "dev", types: ["task.reopened"] } }),
+    201,
+  );
+  const { task } = await answer<OutputOf<typeof createTask>>(
+    call(runner, "POST", "/tasks", { channel: "dev", text: "work" }),
+    201,
+  );
+  const path = `/tasks/${task.id}`;
+  const { claim } = await answer<OutputOf<typeof claimTask>>(call(runner, "POST", `${path}/claim`), 200);
+  await answer(
+    call(runner, "POST", `${path}/fail`, { epoch: claim.epoch, token: claim.token, reason: "no access" }),
+    200,
+  );
+  await answer(call(runner, "POST", `${path}/reopen`), 200);
+  expect(await deliveries()).toEqual([]);
 });

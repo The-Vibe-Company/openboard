@@ -75,6 +75,7 @@ import { failTask } from "./tasks/fail.ts";
 import { listTasks } from "./tasks/list.ts";
 import { releaseTask } from "./tasks/release.ts";
 import { renewTask } from "./tasks/renew.ts";
+import { reopenTask } from "./tasks/reopen.ts";
 import { listThreads, readThread } from "./threads.ts";
 import { ackWatcherMatch, listWatchers, pullWatcherMatches, registerWatchers } from "./watchers/index.ts";
 
@@ -165,6 +166,7 @@ export const operations = [
   releaseTask,
   removeMember,
   renewTask,
+  reopenTask,
   requestOrgExport,
   revokeAgent,
   revokeAllSessions,
@@ -261,6 +263,7 @@ export {
   releaseTask,
   removeMember,
   renewTask,
+  reopenTask,
   requestOrgExport,
   revokeAgent,
   revokeAllSessions,

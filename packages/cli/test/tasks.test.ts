@@ -231,3 +231,21 @@ test("ob tasks cancel succeeds when the local claim cache cannot be opened", asy
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test.each([
+  ["reopened", "reopened 2"],
+  ["unchanged", "unchanged"],
+])("ob tasks reopen prints %s outcomes", async (outcome, expected) => {
+  const result = { task: { id: "2" }, outcome };
+  const lines: string[] = [];
+  const fetch = async (request: Request) => {
+    expect(`${request.method} ${request.url}`).toBe(`POST ${ENV.BOARD_URL}/tasks/2/reopen`);
+    expect(request.body).toBeNull();
+    return Response.json(result);
+  };
+  const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  expect(await runCli(["tasks", "reopen", "2"], ENV, { fetch, output })).toBe(0);
+  expect(await runCli(["tasks", "reopen", "2", "--json"], ENV, { fetch, output })).toBe(0);
+  expect(lines[0]).toBe(expected);
+  expect(JSON.parse(lines[1] ?? "")).toEqual(result);
+});

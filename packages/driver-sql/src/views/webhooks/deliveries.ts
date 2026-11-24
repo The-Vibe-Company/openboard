@@ -99,7 +99,8 @@ export async function matchWebhooks(
   event: BoardEvent,
   now: number,
 ) {
-  if (!isTailMessageEvent(event)) return;
+  // Older replicas can lease delivery jobs before they know how to decode this event.
+  if (event.type === "task.reopened" || !isTailMessageEvent(event)) return;
   const subscriptions = (await webhookReads(db, dialect, keys).webhooks()).filter(({ webhook }) => webhook.enabled);
   if (!subscriptions.length) return;
   const read = async (id: number) => {

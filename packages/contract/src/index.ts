@@ -127,6 +127,7 @@ export {
   releaseTask,
   removeMember,
   renewTask,
+  reopenTask,
   requestOrgExport,
   revokeAgent,
   revokeAllSessions,

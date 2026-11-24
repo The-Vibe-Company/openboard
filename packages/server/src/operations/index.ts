@@ -90,6 +90,7 @@ import { claimTaskHandler } from "./tasks/claim.ts";
 import { completeTaskHandler, failTaskHandler } from "./tasks/complete.ts";
 import { releaseTaskHandler } from "./tasks/release.ts";
 import { renewTaskHandler } from "./tasks/renew.ts";
+import { reopenTaskHandler } from "./tasks/reopen.ts";
 import { createTaskHandler, listTasksHandler } from "./tasks.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 import {
@@ -281,6 +282,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   releaseTask: releaseTaskHandler,
   removeMember: removeMemberHandler,
   renewTask: renewTaskHandler,
+  reopenTask: reopenTaskHandler,
   requestOrgExport: requestOrgExportHandler,
   revokeAgent: revokeAgentHandler,
   revokeAllSessions: revokeAllSessionsHandler,

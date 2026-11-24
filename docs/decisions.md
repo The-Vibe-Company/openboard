@@ -1093,6 +1093,12 @@ Parked event reads wake on deletion and reauthorize against the tombstone.
   they cannot decode. The event feed serves it on upgraded replicas. A later
   ticket adds persisted matches for task expiry and cancellation together.
 
+### Task reopening during a rolling deploy
+
+The event feed serves `task.reopened` on upgraded replicas. The writer omits
+persisted pull-watcher matches and webhook deliveries for this event because
+an older replica can lease shared work before it can decode the event.
+
 ### Gateway allowlists for direct connections
 
 The gateway policy takes the routes allowed by the claimed-token guard and

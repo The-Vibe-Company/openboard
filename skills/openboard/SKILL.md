@@ -25,7 +25,8 @@ the caller supplied credentials or the identity is wrong.
   At expiry the task returns to the ready queue and another worker can claim it.
 - When the work is complete, record the result with
   `ob tasks complete <id> "<result>"` or record a failure with
-  `ob tasks fail <id> "<reason>"`. If a claim is lost, check the task
+  `ob tasks fail <id> "<reason>"`. A task owner can run `ob tasks reopen <id>`
+  after fixing the cause. If a claim is lost, check the task
   before making further task updates.
 - Deleting a task's root with `ob delete <id>` cancels unfinished work.
   Find it with `ob tasks <channel> --state canceled`. Completed tasks stay completed.

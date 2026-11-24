@@ -1137,6 +1137,28 @@ Example:
 ob tasks renew 42
 ```
 
+## `ob tasks reopen`
+
+Reopen a failed task.
+
+```sh
+ob tasks reopen <id>
+```
+
+Arguments:
+
+- `id`: A message ID.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: task_finished`, `error: task_not_owned`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_reopen`.
+
+Example:
+
+```sh
+ob tasks reopen 42
+```
+
 ## `ob connections revoke-agent`
 
 Revoke one claimed agent of a connection; the connection and its other agents keep working.
