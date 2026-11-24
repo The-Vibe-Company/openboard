@@ -23,7 +23,10 @@ export const AuditEvent = Type.Union([
   entry("ob.inbound.created", { id: Type.String(), name: Type.String() }),
   entry("ob.inbound.updated", { id: Type.String() }),
   entry("ob.inbound.deleted", { id: Type.String() }),
-  entry("ob.webhook.disabled", { id: Type.String(), reason: Type.Literal("gone") }),
+  entry("ob.webhook.disabled", {
+    id: Type.String(),
+    reason: Type.Union([Type.Literal("gone"), Type.Literal("dead_deliveries")]),
+  }),
   entry("ob.webhook.updated", { id: Type.String(), name: Type.String(), enabled: Type.Boolean() }),
   entry("ob.webhook.created", { id: Type.String(), name: Type.String() }),
   entry("ob.webhook.deleted", { id: Type.String() }),

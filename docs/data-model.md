@@ -610,6 +610,8 @@ CREATE TABLE webhook_deliveries (                 -- transactional outbox
   root_view TEXT,                                  -- subject snapshot at the event
   UNIQUE (webhook, event)
 );
+CREATE INDEX deliveries_recent_dead ON webhook_deliveries (org_id, board_id, webhook, state, done_at)
+  WHERE state = 'dead' AND event IS NOT NULL;
 CREATE INDEX deliveries_due  ON webhook_deliveries (next_at) WHERE state IN ('pending', 'sending');
 CREATE INDEX deliveries_lane ON webhook_deliveries (webhook, thread, event);
 CREATE INDEX deliveries_history ON webhook_deliveries (org_id, board_id, webhook, created_at DESC, id DESC);

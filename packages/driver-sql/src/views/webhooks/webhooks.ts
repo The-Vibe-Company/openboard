@@ -4,9 +4,9 @@ import {
   type BoardKeys,
   type BoardWebhookReads,
   type BoardWebhookWriter,
-  type WebhookRecord,
   WEBHOOK_DELIVERY_JOB,
   WEBHOOK_RESEND_JOB,
+  type WebhookRecord,
 } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../../db.ts";
 import { query, sql } from "../../sql.ts";
@@ -136,7 +136,11 @@ export function webhookWriter(
   keys: BoardKeys,
 ): Omit<
   BoardWebhookWriter,
-  "beginWebhookPing" | "retryWebhookDelivery" | "beginWebhookAttempt" | "finishWebhookAttempt"
+  | "beginWebhookPing"
+  | "retryWebhookDelivery"
+  | "beginWebhookAttempt"
+  | "finishWebhookAttempt"
+  | "countRecentDeadWebhookDeliveries"
 > {
   return {
     ...webhookReads(db, dialect, keys),

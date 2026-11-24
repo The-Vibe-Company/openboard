@@ -41,7 +41,12 @@ export interface BoardWebhookWriter extends BoardWebhookReads {
   removeWebhookSecret(record: WebhookRecord): Promise<void>;
   beginWebhookPing(record: WebhookRecord, id: string, now: number): Promise<WebhookSecret | null>;
   retryWebhookDelivery(webhook: string, id: string, now: number): Promise<"queued" | "missing" | "not_dead">;
-  beginWebhookAttempt(id: string, instance: string, now: number): Promise<WebhookAttempt | null>;
+  beginWebhookAttempt(
+    id: string,
+    instance: string,
+    now: number,
+  ): Promise<WebhookAttempt | { expiredWebhookId: string } | null>;
+  countRecentDeadWebhookDeliveries(webhook: string, cutoff: number): Promise<number>;
   finishWebhookAttempt(
     id: string,
     attempt: number,

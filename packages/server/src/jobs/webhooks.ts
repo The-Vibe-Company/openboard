@@ -1,5 +1,5 @@
-import { webhookOutcome, webhookRetryAt } from "@openboard/core";
-import { WEBHOOK_DELIVERY_JOB, type BoardWriter, type WebhookRecord, type WebhookSecret } from "@openboard/ports";
+import { webhookDeadDeliveryCutoff, webhookDeadDeliveryLimit, webhookOutcome, webhookRetryAt } from "@openboard/core";
+import { type BoardWriter, WEBHOOK_DELIVERY_JOB, type WebhookRecord, type WebhookSecret } from "@openboard/ports";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { type SignedWebhookRequest, webhookRequest } from "../webhooks/request.ts";
 import { openWebhookSecret } from "../webhooks/secret-box.ts";
@@ -24,11 +24,17 @@ export async function deliverWebhook(
   return sendWebhook(webhook.url, config, deps, payload);
 }
 
-async function disableGoneWebhook(writer: BoardWriter, sent: WebhookRecord, now: number) {
-  const current = await writer.webhook(sent.webhook.id);
-  if (!current?.webhook.enabled || current.webhook.url !== sent.webhook.url || current.secretId !== sent.secretId)
-    return;
-  const webhook = { ...current.webhook, enabled: false, disabledReason: "gone" };
+async function disableWebhook(
+  writer: BoardWriter,
+  id: string,
+  now: number,
+  reason: "gone" | "dead_deliveries",
+  sent?: WebhookRecord,
+) {
+  const current = await writer.webhook(id);
+  if (!current?.webhook.enabled) return false;
+  if (sent && (current.webhook.url !== sent.webhook.url || current.secretId !== sent.secretId)) return false;
+  const webhook = { ...current.webhook, enabled: false, disabledReason: reason };
   await writer.append([
     {
       id: writer.head + 1,
@@ -43,6 +49,12 @@ async function disableGoneWebhook(writer: BoardWriter, sent: WebhookRecord, now:
       payload: { webhook, secretId: current.secretId },
     },
   ]);
+  return true;
+}
+
+async function checkDeadDeliveries(writer: BoardWriter, id: string, now: number) {
+  const count = await writer.countRecentDeadWebhookDeliveries(id, webhookDeadDeliveryCutoff(now));
+  if (count > webhookDeadDeliveryLimit) await disableWebhook(writer, id, now, "dead_deliveries");
 }
 
 export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHandler {
@@ -54,8 +66,9 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
         const payload = await writer.readJob(job.id, lease, now);
         if (typeof payload?.id !== "string") return null;
         const input = await writer.beginWebhookAttempt(payload.id, lease.instanceId, now);
-        if (!input) {
+        if (!input || "expiredWebhookId" in input) {
           await writer.takeJob(job.id, lease, now);
+          if (input) await checkDeadDeliveries(writer, input.expiredWebhookId, now);
           return null;
         }
         return { input, id: payload.id };
@@ -80,12 +93,17 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
         if (nextAt === null) {
           // A pause can remove this job during the send. Keep a terminal result for the same attempt,
           // while requiring a live lease to change the subscription or to schedule a retry.
+          const terminal = error === "timeout" ? "dead" : state;
           const settled = await writer.finishWebhookAttempt(id, input.attempt, {
             ...result,
-            state: error === "timeout" ? "dead" : state,
+            state: terminal,
             ...(!taken && { revokedLease: { jobId: job.id, instanceId: lease.instanceId } }),
           });
-          if (settled && taken && gone && input.event !== null) await disableGoneWebhook(writer, input.record, now);
+          if (settled && taken && terminal === "dead" && input.event !== null) {
+            const webhookId = input.record.webhook.id;
+            const paused = gone && (await disableWebhook(writer, webhookId, now, "gone", input.record));
+            if (!paused) await checkDeadDeliveries(writer, webhookId, now);
+          }
           return settled;
         }
         if (!taken) return false;

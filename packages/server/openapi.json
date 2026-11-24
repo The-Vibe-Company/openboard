@@ -15256,7 +15256,12 @@
                                 "required": ["id", "reason"],
                                 "properties": {
                                   "id": { "type": "string" },
-                                  "reason": { "const": "gone", "type": "string" }
+                                  "reason": {
+                                    "anyOf": [
+                                      { "const": "gone", "type": "string" },
+                                      { "const": "dead_deliveries", "type": "string" }
+                                    ]
+                                  }
                                 }
                               }
                             }

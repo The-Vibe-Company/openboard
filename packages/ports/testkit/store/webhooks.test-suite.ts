@@ -90,7 +90,7 @@ export function webhooksSuite(driver: string, open: OpenStore) {
       for (let attempt = 1; attempt <= 10; attempt++) {
         expect(await begin(createdAt)).toMatchObject({ attempt });
       }
-      expect(await begin(createdAt + 60_000)).toBeNull();
+      expect(await begin(createdAt + 60_000)).toEqual({ expiredWebhookId: webhook.id });
       expect(await board.webhookDeliveries(webhook.id, { state: "dead", limit: 1 })).toEqual([
         { ...delivery, attempt: 10, state: "dead", doneAt: isoTime(createdAt + 60_000), lastError: "unreachable" },
       ]);
