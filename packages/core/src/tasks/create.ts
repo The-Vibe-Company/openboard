@@ -1,6 +1,13 @@
 import { type Actor, type Author, BoardError, type Message, type Task } from "@openboard/contract";
 import { parseId } from "../ids.ts";
-import { actorSeen, decidePost, type PostCommand, type PostContext, type PostState } from "../messages/post.ts";
+import {
+  actorSeen,
+  decidePost,
+  type PostCommand,
+  type PostContext,
+  type PostState,
+  replayPost,
+} from "../messages/post.ts";
 import type { TaskCreated } from "./events.ts";
 import { withTask } from "./view.ts";
 
@@ -20,10 +27,22 @@ function readyTask(by: Author): Task {
   };
 }
 
+type CreateTaskCommand = Pick<PostCommand, "text" | "labels" | "noSync" | "id"> & { channel: string };
+
+/** A client key can replay a task root using the same author and placement rules as a post. */
+export function replayTask(state: PostState, command: CreateTaskCommand, context: PostContext) {
+  const landed = replayPost(state, command, context);
+  if (!landed) return null;
+  if (!landed.task) {
+    throw new BoardError("duplicate_id", `id: ${command.id} was already used for a post that is not a task`);
+  }
+  return { ...landed, task: landed.task };
+}
+
 export function decideCreateTask(
   state: Pick<PostState, "head" | "actor">,
-  command: Pick<PostCommand, "text" | "labels" | "noSync"> & { channel: string },
-  context: PostContext,
+  command: CreateTaskCommand,
+  context: PostContext & { readonly blind?: boolean },
   mentions?: Parameters<typeof decidePost>[3],
 ) {
   const { events, message } = decidePost(state, command, context, mentions);
@@ -41,7 +60,15 @@ export function decideCreateTask(
     actor: post.actor,
     principal: post.principal,
     visibility: 0,
-    payload: { id: post.message, thread: message.thread, needs: [], for: null, by: context.by, view: task },
+    payload: {
+      id: post.message,
+      thread: message.thread,
+      needs: [],
+      for: null,
+      by: context.by,
+      view: task,
+      ...(command.id === undefined ? {} : { blind: context.blind ?? false }),
+    },
   };
   return { events: [...events, created], task };
 }

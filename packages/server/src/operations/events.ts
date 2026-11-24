@@ -239,7 +239,7 @@ function projectTaskCreated(
   event: Extract<FeedEvent, { type: "task.created" }>,
   message: ReturnType<typeof messages.messageView>,
 ) {
-  const { view: _view, id, needs, ...payload } = event.payload;
+  const { view: _view, blind: _blind, id, needs, ...payload } = event.payload;
   return {
     cursor: formatId(event.id),
     type: event.type,

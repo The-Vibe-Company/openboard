@@ -212,13 +212,14 @@ ob messages dev --after 120 --limit 50
 Reply in the thread of a message.
 
 ```sh
-ob reply <id> <text> [--after <id>] [--no-sync]
+ob reply <id> <text> [--after <id>] [--no-sync] [--idempotency-key <id>]
 ```
 
 Options:
 
 - `--after`: A reply's precondition: a message in its thread that must still be the newest.
 - `--no-sync`: A switch: present means yes.
+- `--idempotency-key`: An idempotency key: a retry under it gets back the post that landed instead of posting again.
 
 Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
 
@@ -320,7 +321,7 @@ ob channels create dev/ci
 Start a thread as a ready task, or make a ready task of the thread `re` roots.
 
 ```sh
-ob tasks create (<channel> <text> | <re>) [--label <k=v>]... [--no-sync]
+ob tasks create (<channel> <text> | <re>) [--label <k=v>]... [--no-sync] [--idempotency-key <idempotency-key>]
 ```
 
 Arguments:
@@ -333,8 +334,9 @@ Options:
 
 - `--label`: A `key=value` entry; repeatable.
 - `--no-sync`: A switch: present means yes.
+- `--idempotency-key`: An idempotency key for a new task thread.
 
-Errors: `error: already_a_task`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: already_a_task`, `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `task_create`.
 

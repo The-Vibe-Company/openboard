@@ -7,6 +7,8 @@ export interface TaskCreated extends Omit<MessagePosted, "type" | "payload"> {
     readonly id: number;
     readonly needs: readonly number[];
     readonly view: Message;
+    /** On a keyed task start, whether the author created it without channel read access. Absent on adoption. */
+    readonly blind?: boolean;
   };
 }
 

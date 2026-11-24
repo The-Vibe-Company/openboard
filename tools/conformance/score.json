@@ -33,7 +33,8 @@
     "search/finds threads by text anywhere in a message of theirs, in any case, as it reads now",
     "search/lists the threads of every channel under a pattern at once",
     "sync/keeps noSync on a post and a reply, so sync sends neither",
-    "tasks/keeps labels under board. its own: a label write or a post that sets one is refused"
+    "tasks/keeps labels under board. its own: a label write or a post that sets one is refused",
+    "tasks/makes a task once for a client ID, and none under an ID a reply or a plain thread landed with"
   ],
   "hosted": [
     "core/answers 400 for a request that does not validate",
@@ -69,6 +70,7 @@
     "search/finds threads by text anywhere in a message of theirs, in any case, as it reads now",
     "search/lists the threads of every channel under a pattern at once",
     "sync/keeps noSync on a post and a reply, so sync sends neither",
-    "tasks/keeps labels under board. its own: a label write or a post that sets one is refused"
+    "tasks/keeps labels under board. its own: a label write or a post that sets one is refused",
+    "tasks/makes a task once for a client ID, and none under an ID a reply or a plain thread landed with"
   ]
 }

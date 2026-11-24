@@ -4,17 +4,28 @@ title: Make a task once for a client ID
 milestone: M9-tasks
 package: server
 writes:
-  - packages/contract/src/operations/tasks.ts
+  - .veebee/tickets/241-make-a-task-once-for-a-client-id.md
+  - packages/contract/src/operations/tasks/create.ts
+  - packages/core/src/index.ts
+  - packages/server/src/operations/messages.ts
+  - packages/server/src/operations/events.ts
+  - packages/core/src/tasks/events.ts
+  - docs/protocol.md
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
   - packages/core/src/tasks/create.ts
   - packages/core/test/tasks/create.test.ts
   - packages/server/src/operations/tasks.ts
   - packages/server/test/tasks/client-id.test.ts
   - packages/cli/test/tasks.test.ts
+  - packages/cli/src/commands/reply.ts
+  - packages/cli/test/read-thread.test.ts
+  - tools/conformance/score.json
 conformance: ["tasks/makes a task once for a client ID, and none under an ID a reply or a plain thread landed with"]
 modes: [local, hosted]
 depends_on: [240]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 414
 ---
 
