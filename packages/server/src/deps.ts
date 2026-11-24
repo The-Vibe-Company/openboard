@@ -67,8 +67,8 @@ export type Principal = Author & {
   /**
    * The `can` the caller acts under, which every request it makes stays inside: an `obt_` token's pinned can
    * (docs/auth.md "Pinned narrowing"), an `obc_` connection's grant, a member's role-capped `*` grant (session or
-   * `obp_` personal token). Only the local owner carries none, and may do everything; any other caller without one
-   * may do nothing.
+   * `obp_` personal token). The request header intersects that access. A local owner without a header has implicit full
+   * access; any other caller without a can may do nothing.
    */
   readonly [callerCan]?: Can;
   /** A profile's name as the caller spelled it, which is how it is shown; `profile` is its lowercase. */

@@ -29,10 +29,11 @@ export type {
   MintedSecret,
 } from "./access/connections.ts";
 export * as connections from "./access/connections.ts";
+export { explainAccess, explainSubject, type GrantSubject } from "./access/explain.ts";
 export type { Grant, GrantPrincipal } from "./access/grants.ts";
 export * as grants from "./access/grants.ts";
+export { narrowCan, parseCanHeader } from "./access/narrow.ts";
 export { changeGrantPrincipals, grantPrincipals } from "./access/principals.ts";
-export { explainAccess, explainSubject, type GrantSubject } from "./access/explain.ts";
 export { resolveCan, resolveRankedCan, withinPin } from "./access/resolve.ts";
 export { matchesWorkload, type RepositoryPrincipal } from "./access/workloads.ts";
 export * as channels from "./channels/create.ts";

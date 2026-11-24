@@ -1,7 +1,19 @@
-import { BoardError, type Can, type Message, type Operation, type Role } from "@openboard/contract";
-import { agents, grants, parseId, resolveRankedCan } from "@openboard/core";
+import { BoardError, CAN_HEADER, type Can, type Message, type Operation, type Role } from "@openboard/contract";
+import { agents, grants, narrowCan, parseCanHeader, parseId, resolveRankedCan } from "@openboard/core";
 import type { BoardView, PersonGrant } from "@openboard/ports";
 import { callerCan, credentialKind, memberOf, type Principal } from "../deps.ts";
+
+/** Only the local owner has implicit unrestricted access. */
+export function unrestrictedLocalOwner(by: Principal): boolean {
+  return by[credentialKind] === "local" && by[callerCan] === undefined;
+}
+
+export function narrowCaller(request: Request, by: Principal): Principal {
+  const header = request.headers.get(CAN_HEADER);
+  if (header === null) return by;
+  const base = unrestrictedLocalOwner(by) ? { "*": [...grants.PERMISSIONS] } : (by[callerCan] ?? {});
+  return { ...by, [callerCan]: narrowCan(base, parseCanHeader(header)) };
+}
 
 type Permission = NonNullable<Operation["access"]>["permission"] | "label";
 type Access = { readonly permission: Permission; readonly channel: NonNullable<Operation["access"]>["channel"] };
@@ -68,7 +80,7 @@ export async function keepInsideCan(
   board: BoardView,
 ): Promise<void> {
   const { access } = operation;
-  if (access === null || by[credentialKind] === "local") return;
+  if (access === null || unrestrictedLocalOwner(by)) return;
   const can: Can = by[callerCan] ?? {};
   // A call naming `re` may need another permission there, as making a task of a thread needs `label` (upstream).
   const named = (input as { re?: unknown }).re !== undefined ? (access.re ?? access.permission) : access.permission;
@@ -100,11 +112,11 @@ function allowedThroughout(can: Can, channel: string, permission: Permission): b
 
 /** Mention candidates come from the board-wide actor directory. */
 export function canListMentionActors(by: Principal): boolean {
-  return by[credentialKind] === "local" || allowedEverywhere(by[callerCan] ?? {}, "read");
+  return unrestrictedLocalOwner(by) || allowedEverywhere(by[callerCan] ?? {}, "read");
 }
 
 export function canReadChannel(by: Principal, channel: string): boolean {
-  return by[credentialKind] === "local" || agents.allowedAt(by[callerCan] ?? {}, channel).includes("read");
+  return unrestrictedLocalOwner(by) || agents.allowedAt(by[callerCan] ?? {}, channel).includes("read");
 }
 
 export function withoutMentionDetails(message: Message): Message {

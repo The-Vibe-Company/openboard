@@ -1,5 +1,5 @@
 import { BoardError, type getMe, type listActors, type OutputOf } from "@openboard/contract";
-import { formatId } from "@openboard/core";
+import { formatId, grants } from "@openboard/core";
 import { authorOf } from "../auth/author.ts";
 import {
   callerCan,
@@ -88,7 +88,7 @@ export const getMeHandler: Handler<typeof getMe> = async (ctx) => {
     avatar,
     profile,
     expiresAt: null,
-    can: { "*": ["read", "post", "react", "label", "sync", "manage"] },
+    can: by[callerCan] ?? { "*": [...grants.PERMISSIONS] },
     openboard: { ...BOARD, role: "owner", credential },
   };
 };
