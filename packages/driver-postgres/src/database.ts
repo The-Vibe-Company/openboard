@@ -63,8 +63,23 @@ export async function terminateTestConnection(url: string, name: string): Promis
   if (connections.length !== 1 || !connection) {
     throw new Error(`Expected one connection named ${name}, found ${connections.length}`);
   }
-  const [result] = await sql<{ terminated: boolean }[]>`
-    SELECT pg_terminate_backend(${connection.pid}, 500) AS terminated
+  await terminate(sql, connection.pid);
+}
+
+/** Simulates a restart by ending every connection to the isolated test database. */
+export async function terminateTestConnections(url: string): Promise<number> {
+  await using sql = new SQL(url, { max: 1 });
+  const connections = await sql<{ pid: number }[]>`
+    SELECT pid FROM pg_stat_activity
+    WHERE datname = current_database() AND pid <> pg_backend_pid()
   `;
-  if (!result?.terminated) throw new Error(`Could not terminate connection named ${name}`);
+  for (const { pid } of connections) await terminate(sql, pid);
+  return connections.length;
+}
+
+async function terminate(sql: SQL, pid: number): Promise<void> {
+  const [result] = await sql<{ terminated: boolean }[]>`
+    SELECT pg_terminate_backend(${pid}, 500) AS terminated
+  `;
+  if (!result?.terminated) throw new Error(`Could not terminate test backend ${pid}`);
 }
