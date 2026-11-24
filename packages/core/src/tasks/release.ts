@@ -1,11 +1,11 @@
 import { parseId } from "../ids.ts";
 import { actorSeen, type PostContext } from "../messages/post.ts";
 import type { TaskReleased } from "./events.ts";
-import { requireHeldTask, type SettlementState } from "./settle.ts";
+import { type HeldTaskState, requireHeldTask } from "./fence.ts";
 import { withTask } from "./view.ts";
 
 export function decideReleaseTask(
-  { head, target: stored, actor, proof }: SettlementState,
+  { head, target: stored, actor, proof }: HeldTaskState,
   { id, epoch }: { id: string; epoch: number },
   context: PostContext,
 ) {

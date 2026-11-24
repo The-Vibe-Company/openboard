@@ -385,8 +385,10 @@ sets `board.task=failed`, and emits `task.failed` with `{ id, thread, epoch, rea
 At the lease deadline, the thread's task state reads `ready` and
 `GET /tasks?state=ready` includes it. A background job or the next successful
 claim appends `task.expired` with `{ id, epoch }` and updates the reserved
-`board.task` label. The next claim increments the epoch. Completing an expired
-claim answers 409 `claim_lost` without writing an event.
+`board.task` label. The next claim increments the epoch. Renew, release,
+complete, and fail require a live claim with the current epoch and matching
+token. A lost claim answers 409 `claim_lost` and leaves the task, labels, and
+event feed unchanged.
 
 `POST /grants` returns 200 with `{ grant }` in the upstream grant view.
 OpenBoard accepts `connection` (a board connection ID) and `all-connections`.

@@ -1,33 +1,16 @@
-import { type Actor, BoardError, type Message } from "@openboard/contract";
 import { isoTime, parseId } from "../ids.ts";
 import { actorSeen, type PostContext } from "../messages/post.ts";
 import type { TaskRenewed } from "./events.ts";
+import { type HeldTaskState, requireHeldTask } from "./fence.ts";
 import { withTask } from "./view.ts";
 
-interface RenewalState {
-  readonly head: number;
-  readonly target: Message | null;
-  readonly actor: Actor | null;
-  readonly proof: { readonly tokenMatches: boolean; readonly until: number } | null;
-}
-
 export function decideRenewTask(
-  { head, target, actor, proof }: RenewalState,
+  { head, target: stored, actor, proof }: HeldTaskState,
   { id, epoch, lease = 900 }: { id: string; epoch: number; lease?: number },
   context: PostContext,
 ) {
-  if (!target) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
+  const target = requireHeldTask(stored, proof, id, epoch, context.now);
   const { task } = target;
-  if (!task || target.deleted) throw new BoardError("not_a_task", `#${id} is not a task.`);
-  if (
-    task.state !== "claimed" ||
-    task.epoch !== epoch ||
-    !task.claim ||
-    !proof?.tokenMatches ||
-    !(proof.until > context.now)
-  ) {
-    throw new BoardError("claim_lost", `This claim on #${id} is over: claim it again.`);
-  }
   const message = parseId(target.id);
   if (message === null) throw new Error("invalid stored task position");
   const seen = actorSeen(actor, context, head + 1);
