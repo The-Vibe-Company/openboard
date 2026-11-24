@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
-export function waitForThreadHead(page: Page, api: string) {
+function waitForThreadHead(page: Page, api: string) {
   const path = new URL(`${api}/threads`).pathname;
   return page.waitForResponse((response) => {
     const url = new URL(response.url());

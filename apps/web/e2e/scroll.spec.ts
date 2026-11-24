@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { browserClient } from "../src/api/client.ts";
-import { openLiveBoard, waitForThreadHead } from "./support/board-live.ts";
+import { openLiveBoard } from "./support/board-live.ts";
 import { serve } from "./support/serve.ts";
 import { signIn } from "./support/sign-in.ts";
 
@@ -47,13 +47,21 @@ async function observeRowCount(page: Page) {
 }
 
 async function postAfterPaging(page: Page, list: Locator, api: string, cursors: ReadonlyMap<string | null, number>) {
-  const refreshed = waitForThreadHead(page, api);
+  // Give the optimistic row distinct text so the real text proves the entire live refetch settled.
+  await page.route(
+    `${api}/messages`,
+    async (route) => {
+      const response = await route.fetch();
+      expect(response.status()).toBe(201);
+      const body = await response.json();
+      body.message.text = "Waiting for the live refresh";
+      await route.fulfill({ response, json: body });
+    },
+    { times: 1 },
+  );
   await page.getByRole("textbox", { name: "Message" }).fill("Posted after reading history");
   await page.getByRole("button", { name: "Post", exact: true }).click();
   await expect(list.getByRole("listitem").first()).toContainText("Posted after reading history");
-  const head = await refreshed;
-  expect(head.ok()).toBe(true);
-  expect(await head.finished()).toBeNull();
   const history = [...cursors].filter(([cursor]) => cursor !== null);
   expect(history.map(([, count]) => count)).toEqual(Array(threadCount / pageSize - 1).fill(1));
 }
