@@ -1,3 +1,4 @@
+export type { Broadcaster } from "./broadcaster.ts";
 export type {
   AgentRecord,
   BoardKeys,

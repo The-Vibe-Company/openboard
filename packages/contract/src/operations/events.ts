@@ -25,7 +25,7 @@ export const readEvents = defineOperation({
           Type.Number({
             minimum: 0,
             maximum: 300,
-            description: "Long-poll timeout in seconds. Currently returns immediately for every value.",
+            description: "Long-poll timeout in seconds. The server may return early and waits at most 120 seconds.",
           }),
         ),
         channel: Type.Optional(ChannelFilter),

@@ -37,6 +37,18 @@ const boardCases: Cases<BoardView> = {
   listConnections: (a) => a.board.listConnections(at),
   managedConnection: async (a, b) => expectNull(await a.board.managedConnection(b.connection, at)),
   listChannels: (a) => a.board.listChannels({ limit: 500 }),
+  subscribeEvents: async (a, b) => {
+    let wakes = 0;
+    const unsubscribe = a.board.subscribeEvents(0, () => {
+      wakes++;
+    });
+    try {
+      await writerCases.append(a, b);
+      expect(wakes).toBe(1);
+    } finally {
+      unsubscribe();
+    }
+  },
   readEvents: (a) => a.board.readEvents(0),
   thread: async (a, b) => {
     expectNull(await a.board.thread(b.message));

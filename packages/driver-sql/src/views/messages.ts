@@ -1,6 +1,6 @@
 import type { Actor, Message } from "@openboard/contract";
 import { type BoardEvent, type MessageDeleted, type MessagePosted, messages, parseId } from "@openboard/core";
-import type { BoardKeys, BoardScope, BoardView, BoardWriter } from "@openboard/ports";
+import type { BoardKeys, BoardScope, BoardView, BoardWriter, Broadcaster } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
@@ -290,15 +290,23 @@ export function boardView(
   db: Db,
   dialect: Dialect,
   scope: BoardScope,
+  broadcaster: Broadcaster,
 ): Pick<BoardView, "write" | "channelMessages" | "ownClientPost" | "mentionEvidence"> {
   const keys: BoardKeys = { orgId: scope.orgId, boardId: scope.boardId };
   return {
-    write: (fn, as) =>
-      db.transaction(async (tx) => {
-        if (as === undefined) return fn(writer(tx, dialect, keys, await lockBoard(tx, dialect, keys), null));
-        const { head, actor } = await lockBoardAs(tx, dialect, keys, as);
-        return fn(writer(tx, dialect, keys, head, actor));
-      }),
+    async write(fn, as) {
+      const { result, position } = await db.transaction(async (tx) => {
+        const { head, actor } =
+          as === undefined
+            ? { head: await lockBoard(tx, dialect, keys), actor: null }
+            : await lockBoardAs(tx, dialect, keys, as);
+        const boardWriter = writer(tx, dialect, keys, head, actor);
+        const result = await fn(boardWriter);
+        return { result, position: boardWriter.head > head ? boardWriter.head : undefined };
+      });
+      if (position !== undefined) broadcaster.publish(scope, position);
+      return result;
+    },
     async mentionEvidence(handles) {
       const rows = await query(db, dialect, messageStatements.mentionEvidence, {
         ...keys,

@@ -1,6 +1,7 @@
-import { SQL } from "bun";
 import { createViews, postgresText } from "@openboard/driver-sql";
 import type { Store } from "@openboard/ports";
+import { SQL } from "bun";
+import { postgresBroadcaster } from "./broadcaster.ts";
 import { migrateLocked } from "./migrate.ts";
 import { connection, openPool } from "./pool.ts";
 
@@ -28,7 +29,7 @@ export async function postgresDriver(options: { readonly url: string }, now: () 
   await migratePostgres(options, now);
   const sql = openPool(options.url);
   return {
-    ...createViews(connection(sql), postgresText),
+    ...createViews(connection(sql), postgresText, postgresBroadcaster()),
     close: () => sql.close(),
   };
 }

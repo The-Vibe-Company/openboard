@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createApp, mintLocalOwnerToken } from "../../src/index.ts";
-import { BOARD_URL, LOCAL_OWNER, NOW, PUBLIC_URL } from "../support/app.ts";
+import { BOARD_URL, LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "../support/app.ts";
 import { openStore } from "../support/drivers.ts";
 
 /** Fixed bytes, so no token-shaped string is written in this file (docs/codebase.md 6.1). */
@@ -19,6 +19,7 @@ function localApp() {
       now,
       log: { info: () => {}, error: () => {} },
       requestId: () => "req-test",
+      schedule: unexpectedTimer,
       randomBytes: (length) => new Uint8Array(length),
     },
   );

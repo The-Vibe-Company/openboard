@@ -11,7 +11,7 @@ import {
 import type { Store } from "@openboard/ports";
 import { sessionOf } from "../src/auth/sessions.ts";
 import { type App, createApp, type ServerConfig } from "../src/index.ts";
-import { LOCAL_OWNER, NOW, PUBLIC_URL } from "./support/app.ts";
+import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
 import { openStore } from "./support/drivers.ts";
 
 const DAY = 86_400_000;
@@ -56,7 +56,13 @@ function start(options: { signup?: "open" | "closed"; clock?: { now: number }; g
   };
   let drawn = 0;
   const randomBytes = (length: number) => new Uint8Array(length).fill(++drawn);
-  const deps = { now: () => clock.now, requestId: () => "req-1", randomBytes, log: { info() {}, error() {} } };
+  const deps = {
+    schedule: unexpectedTimer,
+    now: () => clock.now,
+    requestId: () => "req-1",
+    randomBytes,
+    log: { info() {}, error() {} },
+  };
   app = createApp(config, { store: openStore(() => clock.now) }, { ...deps, fetch: github.fetch });
   return { app, github };
 }

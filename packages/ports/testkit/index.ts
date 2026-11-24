@@ -1,3 +1,5 @@
+export { runBroadcasterSuite } from "./broadcaster.test-suite.ts";
+
 import type { BoardKeys, BoardScope, OrgScope, Store } from "../src/index.ts";
 import { isolationSuite } from "./isolation.test-suite.ts";
 import { accountsSuite } from "./store/accounts.test-suite.ts";

@@ -312,6 +312,8 @@ export interface MentionEvidence {
 
 /** One board's storage; every statement it runs is bound to its scope. */
 export interface BoardView extends BoardMessageReads {
+  /** Wake when a write advances this board past the cursor. Returns an unsubscribe function. */
+  subscribeEvents(fromPosition: number, wake: () => void): () => void;
   /** Look up a personal credential in scope. A known but unusable token returns "inactive"; a scope miss returns null. */
   personalToken(
     tokenHash: string,

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import type { ErrorBody } from "@openboard/contract";
 import type { Store } from "@openboard/ports";
 import { type App, createApp } from "../../src/index.ts";
-import { BOARD_URL, LOCAL_OWNER, NOW, OWNER, PUBLIC_URL } from "../support/app.ts";
+import { BOARD_URL, LOCAL_OWNER, NOW, OWNER, PUBLIC_URL, unexpectedTimer } from "../support/app.ts";
 import { openStore } from "../support/drivers.ts";
 
 const DAY = 86_400_000;
@@ -32,7 +32,13 @@ async function start() {
     signup: "open" as const,
   };
   const randomBytes = (length: number) => new Uint8Array(length).fill(9);
-  const deps = { now: () => clock.now, requestId: () => "req-1", randomBytes, log: { info() {}, error() {} } };
+  const deps = {
+    schedule: unexpectedTimer,
+    now: () => clock.now,
+    requestId: () => "req-1",
+    randomBytes,
+    log: { info() {}, error() {} },
+  };
   app = createApp(config, { store }, deps);
   return { app, clock, cookie: `__Host-ob_session=${value}`, csrf };
 }

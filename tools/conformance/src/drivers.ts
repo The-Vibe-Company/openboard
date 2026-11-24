@@ -20,6 +20,10 @@ function bootApp(mode: "local" | "hosted", publicUrl: string, localOwnerTokenHas
       now,
       log,
       requestId: () => crypto.randomUUID(),
+      schedule: (delayMs, run) => {
+        const timer = setTimeout(run, delayMs);
+        return () => clearTimeout(timer);
+      },
       randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
     },
   );
@@ -42,7 +46,10 @@ export async function boot(driver: "sqlite" | "postgres", instances: number) {
   try {
     // Ports first: each app is told the public URL the kit will use, which exists only once something listens.
     for (let at = 0; at < instances; at++) {
-      const fetch = (request: Request) => apps[at]?.fetch(request) ?? new Response(null, { status: 503 });
+      const fetch = (request: Request, server: Bun.Server<undefined>) => {
+        if (request.method === "GET" && /\/events\/*$/.test(new URL(request.url).pathname)) server.timeout(request, 0);
+        return apps[at]?.fetch(request) ?? new Response(null, { status: 503 });
+      };
       servers.push(Bun.serve({ hostname, port: 0, fetch }));
     }
 
@@ -53,8 +60,9 @@ export async function boot(driver: "sqlite" | "postgres", instances: number) {
       proxy = Bun.serve({
         hostname,
         port: 0,
-        fetch(request) {
+        fetch(request, proxyServer) {
           const incoming = new URL(request.url);
+          if (request.method === "GET" && /\/events\/*$/.test(incoming.pathname)) proxyServer.timeout(request, 0);
           const target = new URL(next.url);
           target.pathname = incoming.pathname;
           target.search = incoming.search;

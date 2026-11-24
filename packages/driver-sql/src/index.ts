@@ -1,4 +1,4 @@
-import type { BoardScope, BoardView, OrgScope, OrgView, PlatformView } from "@openboard/ports";
+import type { BoardScope, BoardView, Broadcaster, OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import init from "../migrations/0001-init.sql" with { type: "text" };
 import connectionsDdl from "../migrations/0002-connections.sql" with { type: "text" };
 import actors from "../migrations/0003-actors.sql" with { type: "text" };
@@ -27,6 +27,7 @@ import { threadReads } from "./views/threads.ts";
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
 export { postgresText } from "./db.ts";
 export { splitStatements } from "./ddl.ts";
+export { localBroadcaster } from "./local-broadcaster.ts";
 export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
 
 /** A migration of the one DDL source, in Postgres syntax (docs/data-model.md "DDL"). */
@@ -54,6 +55,7 @@ export const migrations: readonly Migration[] = Object.freeze([
 export function createViews(
   db: Db,
   dialect: Dialect,
+  broadcaster: Broadcaster,
 ): { platform(): PlatformView; board(scope: BoardScope): BoardView; org(scope: OrgScope): OrgView } {
   return {
     platform: () => ({
@@ -69,7 +71,8 @@ export function createViews(
       ...membershipView(db, dialect, scope),
     }),
     board: (scope) => ({
-      ...boardView(db, dialect, scope),
+      ...boardView(db, dialect, scope, broadcaster),
+      subscribeEvents: (fromPosition, wake) => broadcaster.subscribe(scope, fromPosition, wake),
       ...personalTokenView(db, dialect, scope),
       ...agentReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),

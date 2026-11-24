@@ -3,8 +3,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import { mintLocalOwnerToken } from "@openboard/server";
-import type { Config } from "./config.ts";
 import { compose } from "./compose.ts";
+import type { Config } from "./config.ts";
 
 const HOST = "127.0.0.1";
 
@@ -26,7 +26,14 @@ export async function serve(config: Config): Promise<void> {
   const owner = config.mode === "local" ? mintLocalOwnerToken(crypto.getRandomValues(new Uint8Array(42))) : undefined;
   const app = await compose(config, owner?.hash);
   try {
-    const server = Bun.serve({ hostname: HOST, port: config.port, fetch: app.fetch });
+    const server = Bun.serve({
+      hostname: HOST,
+      port: config.port,
+      fetch(request, server) {
+        if (request.method === "GET" && /\/events\/*$/.test(new URL(request.url).pathname)) server.timeout(request, 0);
+        return app.fetch(request);
+      },
+    });
     try {
       if (owner) {
         const url = `http://${HOST}:${server.port}/api/local/main`;
