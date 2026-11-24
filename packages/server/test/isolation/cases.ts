@@ -1,4 +1,11 @@
-import { createGrant, decodeInput, type Operation, operations, type RefKind, refKind } from "@openboard/contract";
+import {
+  decodeInput,
+  GrantPrincipalInput,
+  type Operation,
+  operations,
+  type RefKind,
+  refKind,
+} from "@openboard/contract";
 import type { Headers, Seeded, Tenant } from "./seed.ts";
 
 type Part = "params" | "query" | "body";
@@ -24,6 +31,14 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
     },
   }),
   claimTask: () => ({ body: {} }),
+  updateGrant: (tenant) => ({
+    body: {
+      add: [
+        { kind: "connection", connection: tenant.ids.connection },
+        { kind: "user", userId: tenant.ids.member?.slice("ob:user:".length) },
+      ],
+    },
+  }),
   createTask: (tenant) => ({ body: { channel: "dev", text: `${tenant.marker} task` } }),
   postMessage: (tenant) => ({ body: { re: tenant.ids.message, text: `${tenant.marker} reply` } }),
   editMessage: (tenant) => ({ body: { text: `${tenant.marker} edit` } }),
@@ -59,12 +74,15 @@ export function refFields(operation: Operation): { part: Part; field: string; ki
     for (const [field, property] of Object.entries(schema?.properties ?? {})) {
       const kind = refKind(property);
       if (kind) found.push({ part, field, kind });
-      if (operation.name === "createGrant" && part === "body" && field === "principals") {
-        const { items } = createGrant.input.body.properties.principals;
-        for (const variant of items.anyOf) {
+      if (
+        part === "body" &&
+        ["principals", "add", "remove"].includes(field) &&
+        (operation.name === "createGrant" || operation.name === "updateGrant")
+      ) {
+        for (const variant of GrantPrincipalInput.anyOf) {
           for (const [key, nested] of Object.entries(variant.properties)) {
             const nestedKind = refKind(nested);
-            if (nestedKind) found.push({ part, field: `principals.${key}`, kind: nestedKind });
+            if (nestedKind) found.push({ part, field: `${field}.${key}`, kind: nestedKind });
           }
         }
       }
@@ -118,11 +136,15 @@ export function callOf(
   for (const { part, field, kind } of refFields(operation)) {
     if (part === "params") parts.params[field] = tenant.ids[kind];
   }
-  if (override?.field.startsWith("principals.")) {
-    const key = override.field.slice("principals.".length);
-    parts.body.principals = (parts.body.principals as Fields[]).map((principal) =>
-      key in principal ? { ...principal, [key]: override.value.replace(/^ob:user:/, "") } : principal,
-    );
+  if (override?.field.includes(".")) {
+    const [field, key] = override.field.split(".") as [string, string];
+    const variant = GrantPrincipalInput.anyOf.find((principal) => key in principal.properties);
+    if (!variant) throw new Error(`Missing principal variant for ${key}`);
+    const replacement = { kind: variant.properties.kind.const, [key]: override.value.replace(/^ob:user:/, "") };
+    const principals = parts.body[field] as Fields[] | undefined;
+    parts.body[field] = principals
+      ? principals.map((principal) => (key in principal ? replacement : principal))
+      : [replacement];
   } else if (override) parts[override.part][override.field] = override.value;
   try {
     const org = operation.input.params?.properties.org ? { org: tenant.org } : {};
@@ -132,7 +154,9 @@ export function callOf(
   }
   const query = new URLSearchParams(texts(parts.query));
   const path = pathOf(operation, tenant, board, parts.params) + (query.size ? `?${query}` : "");
-  return operation.route.method === "GET" ? { method: "GET", path } : { method: "POST", path, body: parts.body };
+  return operation.route.method === "GET"
+    ? { method: "GET", path }
+    : { method: operation.route.method, path, body: parts.body };
 }
 
 export interface PathCase {

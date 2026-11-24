@@ -9,12 +9,14 @@ import { canListGrants } from "./list.ts";
 
 type Context = Parameters<Handler<typeof revokeGrant>>[0];
 
-function unreachable(): BoardError {
-  return new BoardError("forbidden", "revoking this grant needs manage wherever it reaches");
+type GrantChange = "updating" | "revoking";
+
+function unreachable(action: GrantChange): BoardError {
+  return new BoardError("forbidden", `${action} this grant needs manage wherever it reaches`);
 }
 
 /** Use the authority that still exists under the same board lock as the grant being revoked. */
-async function currentAuthority(by: Principal, writer: BoardWriter): Promise<Principal> {
+export async function currentAuthority(by: Principal, writer: BoardWriter, action: GrantChange): Promise<Principal> {
   if (by[credentialKind] === "connection") {
     const record = await writer.connection(by.principal.slice("ob:conn:".length));
     return { ...by, [callerCan]: record?.effectiveCan ?? {} };
@@ -22,7 +24,7 @@ async function currentAuthority(by: Principal, writer: BoardWriter): Promise<Pri
   const member = by[memberOf];
   if (!member) return by;
   const current = await writer.grantMember(by.principal.slice("ob:user:".length));
-  if (!current) throw unreachable();
+  if (!current) throw unreachable(action);
   return {
     ...by,
     [memberOf]: { ...member, role: current.role },
@@ -30,26 +32,31 @@ async function currentAuthority(by: Principal, writer: BoardWriter): Promise<Pri
   };
 }
 
-async function authorizeRevoke(ctx: Context, by: Principal, grant: GrantView | null) {
+export async function authorizeExistingGrantChange(
+  ctx: Context,
+  by: Principal,
+  grant: GrantView | null,
+  action: GrantChange,
+) {
   if (by[credentialKind] === "local" || by[memberOf]?.role === "owner") return;
   if (!grant) {
-    if (!canListGrants(by)) throw unreachable();
+    if (!canListGrants(by)) throw unreachable(action);
     return;
   }
   try {
     await requireGrantManage({ ...ctx, by }, Object.keys(grant.can), false);
   } catch (error) {
     if (!(error instanceof BoardError) || error.code !== "forbidden") throw error;
-    throw unreachable();
+    throw unreachable(action);
   }
 }
 
 export const revokeGrantHandler: Handler<typeof revokeGrant> = (ctx, { id }) =>
   ctx.board.write(async (writer) => {
-    const by = await currentAuthority(ctx.by, writer);
+    const by = await currentAuthority(ctx.by, writer, "revoking");
     const position = /^g[1-9]\d*$/.test(id) ? Number(id.slice(1)) : NaN;
     const grant = Number.isSafeInteger(position) ? await writer.activeGrant(position) : null;
-    await authorizeRevoke(ctx, by, grant);
+    await authorizeExistingGrantChange(ctx, by, grant, "revoking");
     if (!grant) return { revoked: false };
     const { actor, principal } = by;
     const event: GrantRevoked = {

@@ -1,4 +1,9 @@
-import { BoardError, type GrantPrincipal, type GrantPrincipalInput } from "@openboard/contract";
+import {
+  BoardError,
+  type GrantPrincipal,
+  type GrantPrincipalInput,
+  type GrantRemovalPrincipal,
+} from "@openboard/contract";
 
 const ENVIRONMENTS: readonly string[] = Object.freeze(["production", "preview", "development"]);
 
@@ -57,7 +62,7 @@ function oidcPrincipal(input: Extract<GrantPrincipalInput, { kind: "oidc" }>): G
   return { kind: "oidc", issuer: input.issuer, claims };
 }
 
-export function grantPrincipal(input: GrantPrincipalInput): GrantPrincipal {
+export function grantPrincipal(input: GrantRemovalPrincipal, removing = false): GrantPrincipal {
   switch (input.kind) {
     case "user":
       if (!/^u_[a-z2-7]{16}$/.test(input.userId)) invalidGrant("userId must be an OpenBoard person ID");
@@ -68,14 +73,14 @@ export function grantPrincipal(input: GrantPrincipalInput): GrantPrincipal {
         kind: input.kind,
         projectId: input.project,
         name: null,
-        environments: sortedEnvironments(input.environments),
+        environments: sortedEnvironments(removing ? [] : (input.environments ?? [])),
         teamId: null,
       };
     case "all-projects":
-      if (input.environments.some((environment) => !ENVIRONMENTS.includes(environment))) {
+      if (!removing && input.environments?.some((environment) => !ENVIRONMENTS.includes(environment))) {
         invalidGrant("all-projects takes production, preview or development environments");
       }
-      return { kind: input.kind, environments: sortedEnvironments(input.environments) };
+      return { kind: input.kind, environments: sortedEnvironments(removing ? [] : (input.environments ?? [])) };
     case "github":
       return githubPrincipal(input);
     case "app":
@@ -95,4 +100,67 @@ export function grantPrincipals(inputs: readonly GrantPrincipalInput[]): GrantPr
     distinct.set(JSON.stringify(principal), principal);
   }
   return [...distinct.values()];
+}
+
+function matchesPrincipal(named: GrantPrincipal, existing: GrantPrincipal, removing: boolean): boolean {
+  if (named.kind !== existing.kind) return false;
+  switch (named.kind) {
+    case "user":
+      return existing.kind === named.kind && existing.userId === named.userId;
+    case "project":
+      return existing.kind === named.kind && existing.projectId === named.projectId;
+    case "app":
+      return existing.kind === named.kind && existing.clientId === named.clientId;
+    case "connection":
+      return existing.kind === named.kind && existing.connection === named.connection;
+    case "github":
+      return (
+        existing.kind === named.kind &&
+        existing.repository === named.repository &&
+        (existing.workflow === named.workflow || (removing && named.workflow === undefined)) &&
+        (existing.branch === named.branch || (removing && named.branch === undefined)) &&
+        (existing.event === named.event || (removing && named.event === undefined))
+      );
+    case "oidc":
+      return (
+        existing.kind === named.kind &&
+        existing.issuer === named.issuer &&
+        JSON.stringify(existing.claims) === JSON.stringify(named.claims)
+      );
+    default:
+      return true;
+  }
+}
+
+export function changeGrantPrincipals(
+  grant: { id: string; principals: readonly GrantPrincipal[] },
+  add: readonly GrantPrincipal[],
+  remove: readonly GrantRemovalPrincipal[],
+): GrantPrincipal[] {
+  let principals = [...grant.principals];
+  for (const input of remove) {
+    const removal = grantPrincipal(input, true);
+    const kept = principals.filter((principal) => !matchesPrincipal(removal, principal, true));
+    if (kept.length === principals.length) {
+      throw new BoardError("not_in_grant", `${grant.id} doesn't name that ${removal.kind} principal`);
+    }
+    principals = kept;
+  }
+  for (const added of add) {
+    const index = principals.findIndex((principal) => matchesPrincipal(added, principal, false));
+    const existing = principals[index];
+    if (!existing) principals.push(added);
+    else if (
+      (existing.kind === "project" && added.kind === "project") ||
+      (existing.kind === "all-projects" && added.kind === "all-projects")
+    ) {
+      principals[index] = {
+        ...existing,
+        environments: sortedEnvironments([...existing.environments, ...added.environments]),
+      };
+    }
+  }
+  if (principals.length === 0) throw new BoardError("grant_empty", `that leaves ${grant.id} naming no one`);
+  if (principals.length > 32) throw new BoardError("invalid_grant", "a grant names at most 32 principals");
+  return principals;
 }

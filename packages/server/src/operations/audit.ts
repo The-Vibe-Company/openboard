@@ -37,6 +37,7 @@ function auditEntry(event: AuditRecord): AuditEvent {
     case "ob.grant.revoked":
       return { ...common, type: event.type, payload: { grant: event.payload.grant } };
     case "ob.grant.created":
+    case "ob.grant.updated":
       return { ...common, type: event.type, payload: { grant: event.payload.grant } };
     case "ob.connection.created": {
       const { connection, claims, by } = event.payload;

@@ -1,4 +1,4 @@
-import type { Can, Connection, ConnectionAgent, ManagedConnection } from "@openboard/contract";
+import type { Can, CanInput, Connection, ConnectionAgent, ManagedConnection } from "@openboard/contract";
 import {
   type AgentRevoked,
   type ConnectionCreated,
@@ -35,9 +35,9 @@ export const connectionStatements = {
     FROM boards b JOIN orgs o ON o.id = b.org_id WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"}`,
   connectionNamed: sql`SELECT id FROM connections WHERE board_id = ${"boardId"} AND name = ${"name"}`,
   insertConnection: sql`INSERT INTO connections (id, org_id, board_id, name, secret_hash, secret_hint, direct,
-    claims_max, profiles, token_ttl_s, token_max_s, created_by, created_at) VALUES (${"id"}, ${"orgId"},
+    claims_max, profiles, token_ttl_s, token_max_s, created_by, created_at, origin_grant) VALUES (${"id"}, ${"orgId"},
     ${"boardId"}, ${"name"}, ${"secretHash"}, ${"secretHint"}, ${"direct"}, ${"claimsMax"}, ${"profiles"},
-    ${"tokenTtl"}, ${"tokenMax"}, ${"createdBy"}, ${"at"})`,
+    ${"tokenTtl"}, ${"tokenMax"}, ${"createdBy"}, ${"at"}, ${"grant"})`,
   /** One more claim made with the connection's secret, in the claim's transaction. */
   spendClaim: sql`UPDATE connections SET claims_used = claims_used + 1
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
@@ -57,26 +57,28 @@ export const connectionStatements = {
   rotateSecret: sql`UPDATE connections SET prev_secret_hash = secret_hash, prev_secret_until = ${"until"},
     secret_hash = ${"secretHash"}, secret_hint = ${"secretHint"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND revoked_at IS NULL`,
-  /** The active connection with the first grant naming it: the one created with it. */
+  /** The active connection with its original and effective grants. Legacy rows infer the original until first edit. */
   connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.prev_secret_hash, c.prev_secret_until, c.direct, c.claims_max, c.claims_used,
     c.profiles, c.token_ttl_s, c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can,
     (SELECT ${grantCanArray} FROM grants g
       WHERE g.org_id = ${"orgId"} AND g.board_id = ${"boardId"} AND g.revoked = 0
         AND g.id IN (SELECT p.grant_id FROM grant_principals p WHERE p.board_id = ${"boardId"}
           AND ((p.kind = 'connection' AND p.key = c.id) OR (p.kind = 'all-connections' AND p.key = '')))) AS grant_cans
-    FROM connections c JOIN grant_principals p ON p.board_id = c.board_id AND p.kind = 'connection' AND p.key = c.id
-      JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
-    WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.id = ${"id"} AND c.revoked_at IS NULL ORDER BY g.id LIMIT 1`,
+    FROM connections c JOIN grants g ON g.org_id = c.org_id AND g.board_id = c.board_id AND g.id = COALESCE(c.origin_grant, (
+      SELECT MIN(p.grant_id) FROM grant_principals p
+      WHERE p.board_id = ${"boardId"} AND p.kind = 'connection' AND p.key = c.id))
+    WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.id = ${"id"} AND c.revoked_at IS NULL`,
   /**
-   * The board's active connections by name, each with the first grant naming it and the time of its latest event,
+   * The board's active connections by name, each with its original grant and the time of its latest event,
    * found through the partial index `events_connection`, which the `LIKE` term, the index's own predicate, unlocks.
    */
   managedConnections: sql`SELECT c.id, c.name, c.secret_hint, c.direct, c.profiles, c.created_by, c.created_at,
     g.id AS grant_id, g.can, (SELECT e.at FROM events e${byConnectionIndex} WHERE e.org_id = ${"orgId"} AND e.board_id = ${"boardId"}
       AND e.principal LIKE 'ob:conn:%' AND e.principal = 'ob:conn:' || c.id ORDER BY e.id DESC LIMIT 1) AS last_used
     FROM connections c JOIN grants g ON g.org_id = c.org_id AND g.board_id = c.board_id
-      AND g.id = (SELECT MIN(p.grant_id) FROM grant_principals p
-        WHERE p.board_id = ${"boardId"} AND p.kind = 'connection' AND p.key = c.id)
+      AND g.id = COALESCE(c.origin_grant, (
+      SELECT MIN(p.grant_id) FROM grant_principals p
+      WHERE p.board_id = ${"boardId"} AND p.kind = 'connection' AND p.key = c.id))
     WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.revoked_at IS NULL
       AND (c.id = ${"id"} OR ${"all"} = 1)
     ORDER BY c.name${codePointOrder}`,
@@ -134,6 +136,7 @@ export async function foldConnectionCreated(tx: Db, dialect: Dialect, keys: Boar
     secretHint: connection.secretHint,
     direct: connection.direct ? 1 : 0,
     claimsMax: claims,
+    grant: grant.id,
     profiles: JSON.stringify(connection.profiles),
     tokenTtl: TOKEN_TTL_S,
     tokenMax: TOKEN_MAX_S,
@@ -150,7 +153,7 @@ function hintOf(row: Row): string {
 function recordOf(row: Row): ConnectionRecord {
   const id = String(row.id);
   const grantId = Number(row.grant_id);
-  const can = JSON.parse(String(row.can)) as Can;
+  const can = grants.compileCan(JSON.parse(String(row.can)) as CanInput);
   const connection: Connection = {
     id,
     principal: connections.connectionPrincipal(id),
@@ -225,7 +228,7 @@ function managedOf(row: Row, agents: readonly ConnectionAgent[]): ManagedConnect
     principal: connections.connectionPrincipal(id),
     name: String(row.name),
     grant: grants.formatGrantId(Number(row.grant_id)),
-    can: JSON.parse(String(row.can)) as Can,
+    can: grants.compileCan(JSON.parse(String(row.can)) as CanInput),
     direct: Number(row.direct) === 1,
     profiles: JSON.parse(String(row.profiles)) as string[],
     secretHint: hintOf(row),

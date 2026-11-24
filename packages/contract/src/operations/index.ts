@@ -27,6 +27,7 @@ import { readEvents } from "./events.ts";
 import { createGrant } from "./grants/create.ts";
 import { listGrants } from "./grants/list.ts";
 import { revokeGrant } from "./grants/revoke.ts";
+import { updateGrant } from "./grants/update.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
 import { changeMemberRole, removeMember } from "./memberships.ts";
 import {
@@ -132,6 +133,7 @@ export const operations = [
   rotateConnection,
   showTyping,
   startDeviceSignIn,
+  updateGrant,
 ] as const;
 
 export {
@@ -201,4 +203,5 @@ export {
   rotateConnection,
   showTyping,
   startDeviceSignIn,
+  updateGrant,
 };

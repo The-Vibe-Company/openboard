@@ -156,3 +156,76 @@ test("grants revoke prints the result and projects --lock-me-out into the reques
   expect(await run(true)).toEqual(["revoked g5"]);
   expect(await run(false, "--lock-me-out", "--json")).toEqual(['{\n  "revoked": false\n}']);
 });
+
+test("grants update sends add and remove flags and prints the returned principals", async () => {
+  const boardUrl = "http://127.0.0.1:8787/api/local/main";
+  const connection = `cn_${"a".repeat(16)}`;
+  const out: string[] = [];
+  const status = await runCli(
+    [
+      "grants",
+      "update",
+      "g5",
+      "--add-connection",
+      connection,
+      "--add-project",
+      "prj_x",
+      "--environment",
+      "production",
+      "--remove-all-users",
+      "--can",
+      "deploys/=read",
+    ],
+    { BOARD_URL: boardUrl },
+    {
+      fetch: async (request) => {
+        expect(request.method).toBe("PATCH");
+        expect(request.url).toBe(`${boardUrl}/grants/g5`);
+        expect(await request.json()).toEqual({
+          add: [
+            { kind: "connection", connection },
+            { kind: "project", project: "prj_x", environments: ["production"] },
+          ],
+          remove: [{ kind: "all-users" }],
+          can: { "deploys/": ["read"] },
+        });
+        return Response.json({
+          grant: {
+            id: "g5",
+            principals: [
+              { kind: "project", projectId: "prj_x", environments: ["production", "preview"] },
+              { kind: "connection", connection },
+            ],
+            can: { "deploys/": ["read"] },
+          },
+        });
+      },
+      output: {
+        out: (line) => out.push(line),
+        err: (line) => {
+          throw new Error(line);
+        },
+      },
+    },
+  );
+  expect(status).toBe(0);
+  expect(out).toEqual([
+    `updated g5  --project prj_x --environment production,preview --connection ${connection}  deploys/=read`,
+  ]);
+});
+
+test("grants update refuses environment modifiers on project removals before sending a request", async () => {
+  const errors: string[] = [];
+  const status = await runCli(
+    ["grants", "update", "g5", "--remove-project", "prj_x", "--environment", "preview"],
+    { BOARD_URL: "http://127.0.0.1:8787/api/local/main" },
+    {
+      fetch: async () => {
+        throw new Error("unexpected request");
+      },
+      output: { out: () => {}, err: (line) => errors.push(line) },
+    },
+  );
+  expect(status).toBe(2);
+  expect(errors[0]).toContain("re-add it with the environments to keep");
+});

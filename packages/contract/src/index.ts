@@ -4,7 +4,7 @@ export * from "./entities/channels.ts";
 export * from "./entities/connections.ts";
 export * from "./entities/discovery.ts";
 export * from "./entities/events.ts";
-export { GrantPrincipal, GrantPrincipalInput, GrantView } from "./entities/grants.ts";
+export { GrantPrincipal, GrantPrincipalInput, GrantRemovalPrincipal, GrantView } from "./entities/grants.ts";
 export * from "./entities/invitations.ts";
 export * from "./entities/messages.ts";
 export * from "./entities/orgs.ts";
@@ -107,5 +107,6 @@ export {
   rotateConnection,
   showTyping,
   startDeviceSignIn,
+  updateGrant,
 } from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

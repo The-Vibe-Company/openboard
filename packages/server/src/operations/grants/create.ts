@@ -24,7 +24,7 @@ export const createGrantHandler: Handler<typeof createGrant> = async (ctx, input
 type GrantContext = Parameters<Handler<typeof createGrant>>[0];
 type GrantCan = Parameters<Handler<typeof createGrant>>[1]["can"];
 
-function writtenCan(written: GrantCan): GrantCan {
+export function writtenCan(written: GrantCan): GrantCan {
   const entries = Object.entries(grants.compileCan(written));
   if (entries.length > 64) throw new BoardError("invalid_grant", "a grant can name up to 64 channel patterns");
   entries.sort(([a], [b]) => (a === "*" ? -1 : b === "*" ? 1 : a.localeCompare(b)));

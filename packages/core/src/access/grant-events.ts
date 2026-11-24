@@ -17,3 +17,7 @@ export interface GrantRevoked extends Omit<GrantCreated, "type" | "payload"> {
   readonly type: "ob.grant.revoked";
   readonly payload: { readonly grant: string };
 }
+
+export interface GrantUpdated extends Omit<GrantCreated, "type"> {
+  readonly type: "ob.grant.updated";
+}

@@ -302,6 +302,13 @@ request and records `ob.grant.revoked` in the board audit. For a starting grant,
 a revocation marker. A repeat by a board owner or a caller with `manage` at `*` returns `{ revoked: false }`.
 The CLI is `ob grants revoke <id>` and the MCP tool is `revoke_grant`.
 
+`PATCH /grants/:id` accepts `{ add?, remove?, can?, lockMeOut? }` and returns `{ grant }`. A
+removal matches by principal identity. Adding a project already named joins its environments.
+Providing `can` replaces the permission map. Removing an absent principal returns 400
+`not_in_grant`, leaving no principal returns 400 `grant_empty`, and an absent grant returns
+404 `grant_not_found`. An update keeps the grant ID and appears as `ob.grant.updated` in the
+board audit. The CLI is `ob grants update <id>` and the MCP tool is `update_grant`.
+
 ### Watchers (the pull/ack variant)
 
 | Method | Path | | Notes |

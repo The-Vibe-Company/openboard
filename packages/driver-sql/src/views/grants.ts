@@ -1,5 +1,5 @@
 import type { CanInput, GrantPrincipal, GrantView } from "@openboard/contract";
-import { type GrantCreated, type GrantRevoked, grants, isoTime } from "@openboard/core";
+import { type GrantCreated, type GrantRevoked, type GrantUpdated, grants, isoTime } from "@openboard/core";
 import type { BoardGrantReads, BoardKeys } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
@@ -20,6 +20,19 @@ export const grantStatements = {
   setNextGrant: sql`UPDATE boards SET next_grant = ${"nextGrant"} WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
   insertGrant: sql`INSERT INTO grants (org_id, board_id, id, principals, can, capped, by, at)
     VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"principals"}, ${"can"}, 0, ${"by"}, ${"at"})`,
+  updateGrant: sql`INSERT INTO grants (org_id, board_id, id, principals, can, capped, by, at)
+    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"principals"}, ${"can"}, ${"capped"}, ${"by"}, ${"at"})
+    ON CONFLICT (board_id, id) DO UPDATE SET principals = excluded.principals, can = excluded.can,
+      by = excluded.by, at = excluded.at
+    WHERE grants.org_id = ${"orgId"} AND grants.board_id = ${"boardId"} AND grants.revoked = 0`,
+  // Legacy connections infer their original grant from the index until an edit can change that answer.
+  pinConnectionGrant: sql`UPDATE connections SET origin_grant = (
+      SELECT MIN(p.grant_id) FROM grant_principals p
+      WHERE p.board_id = ${"boardId"} AND p.kind = 'connection' AND p.key = connections.id)
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND origin_grant IS NULL
+      AND (id = ${"connection"} OR id IN (SELECT p.key FROM grant_principals p
+        WHERE p.board_id = ${"boardId"} AND p.grant_id = ${"grantId"} AND p.kind = 'connection'))`,
+  deleteGrantPrincipals: sql`DELETE FROM grant_principals WHERE board_id = ${"boardId"} AND grant_id = ${"grantId"}`,
   insertGrantPrincipal: sql`INSERT INTO grant_principals (board_id, grant_id, kind, key, detail)
     VALUES (${"boardId"}, ${"grantId"}, ${"kind"}, ${"key"}, ${"detail"})`,
   personGrants: sql`SELECT DISTINCT g.id, g.can, g.capped
@@ -43,13 +56,14 @@ export const grantStatements = {
   revokeGrant: sql`UPDATE grants SET revoked = 1
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND revoked = 0`,
   revokeStartingGrant: sql`INSERT INTO grants (org_id, board_id, id, principals, can, capped, revoked)
-    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, '[]', '{}', 0, 1)`,
+    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, '[]', '{}', 0, 1) ON CONFLICT (board_id, id) DO UPDATE SET revoked = 1
+    WHERE grants.org_id = ${"orgId"} AND grants.board_id = ${"boardId"} AND grants.revoked = 0`,
   listGrants: sql`SELECT id, principals, can, capped, by, at, revoked FROM grants
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND (revoked = 0 OR id <= 3) ORDER BY id`,
 };
 
 /**
- * The grants every board starts with, as upstream's `STARTING_GRANTS`. Rows for these IDs record revocation only.
+ * The grants every board starts with, as upstream's `STARTING_GRANTS`. A stored row replaces the starting grant.
  * g1 names every member of the organization, capped by role (docs/auth.md); g2 and g3 are kept for upstream parity
  * and let no one in, since OpenBoard has no projects or apps.
  */
@@ -95,9 +109,11 @@ export function grantReads(db: Db, dialect: Dialect, keys: BoardKeys): BoardGran
     },
     async listGrants() {
       const rows = await query(db, dialect, grantStatements.listGrants, keys);
-      const revoked = new Set(rows.filter(({ revoked }) => Number(revoked) === 1).map(({ id }) => Number(id)));
-      const starting = STARTING_GRANTS.filter((_, index) => !revoked.has(index + 1));
-      return [...structuredClone(starting), ...rows.filter(({ revoked }) => Number(revoked) === 0).map(grantView)];
+      const stored = new Set(rows.map(({ id }) => Number(id)));
+      const starting = STARTING_GRANTS.filter((_, index) => !stored.has(index + 1));
+      return [...structuredClone(starting), ...rows.filter(({ revoked }) => Number(revoked) === 0).map(grantView)].sort(
+        (a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)),
+      );
     },
   };
 }
@@ -129,29 +145,61 @@ export async function activeGrant(db: Db, dialect: Dialect, keys: BoardKeys, id:
   return structuredClone(STARTING_GRANTS[id - 1] ?? null);
 }
 
-export async function foldGrantEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: GrantCreated | GrantRevoked) {
+export async function foldGrantEvent(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  event: GrantCreated | GrantRevoked | GrantUpdated,
+) {
   if (event.type === "ob.grant.revoked") {
     const id = Number(event.payload.grant.slice(1));
     const statement = id <= STARTING_GRANTS.length ? grantStatements.revokeStartingGrant : grantStatements.revokeGrant;
     await query(tx, dialect, statement, { ...keys, id });
     return;
   }
-  await foldGrantCreated(tx, dialect, keys, event);
+  await foldGrantWritten(tx, dialect, keys, event);
 }
 
-async function foldGrantCreated(tx: Db, dialect: Dialect, keys: BoardKeys, event: GrantCreated) {
+async function foldGrantWritten(tx: Db, dialect: Dialect, keys: BoardKeys, event: GrantCreated | GrantUpdated) {
   const { grant } = event.payload;
   const id = Number(grant.id.slice(1));
-  await query(tx, dialect, grantStatements.insertGrant, {
+  const updated = event.type === "ob.grant.updated";
+  const statement = updated ? grantStatements.updateGrant : grantStatements.insertGrant;
+  await query(tx, dialect, statement, {
     ...keys,
     id,
     principals: JSON.stringify(grant.principals),
     can: JSON.stringify(grant.can),
+    capped: grant.capped ? 1 : 0,
     by: event.actor,
     at: event.at,
   });
+  if (updated) {
+    await query(tx, dialect, grantStatements.pinConnectionGrant, { ...keys, grantId: id, connection: null });
+    for (const named of grant.principals) {
+      if (named.kind === "connection") {
+        await query(tx, dialect, grantStatements.pinConnectionGrant, {
+          ...keys,
+          grantId: id,
+          connection: named.connection,
+        });
+      }
+    }
+    await query(tx, dialect, grantStatements.deleteGrantPrincipals, { ...keys, grantId: id });
+  }
+  await indexGrantPrincipals(tx, dialect, keys, id, grant.principals);
+  if (!updated) await query(tx, dialect, grantStatements.setNextGrant, { ...keys, nextGrant: id + 1 });
+}
+
+async function indexGrantPrincipals(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  id: number,
+  principals: GrantPrincipal[],
+) {
   const stored = new Set<string>();
-  for (const [position, principal] of grant.principals.entries()) {
+  for (const [position, principal] of principals.entries()) {
     const detail = JSON.stringify(principal);
     const key = principalKey(principal, position);
     const indexKey = JSON.stringify([principal.kind, key]);
@@ -165,5 +213,4 @@ async function foldGrantCreated(tx: Db, dialect: Dialect, keys: BoardKeys, event
       detail,
     });
   }
-  await query(tx, dialect, grantStatements.setNextGrant, { ...keys, nextGrant: id + 1 });
 }

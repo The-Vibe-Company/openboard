@@ -191,7 +191,11 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
     payload: JSON.stringify(event.payload),
   });
   if (event.type === "channel.created") await foldChannelCreated(tx, dialect, keys, event);
-  else if (event.type === "ob.grant.created" || event.type === "ob.grant.revoked") {
+  else if (
+    event.type === "ob.grant.created" ||
+    event.type === "ob.grant.revoked" ||
+    event.type === "ob.grant.updated"
+  ) {
     await foldGrantEvent(tx, dialect, keys, event);
   } else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
   else if (event.type === "ob.connection.revoked") await foldConnectionRevoked(tx, dialect, keys, event);
