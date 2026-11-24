@@ -78,6 +78,33 @@ async function checkFilteredThreadPages(board: BoardView): Promise<void> {
   expect(last).toMatchObject({ threads: [{ message: kept[0] }], older: null });
 }
 
+/** Four threads, the first bumped to the newest: `after` a position lists the first active past it, oldest first. */
+async function checkThreadsAfter(board: BoardView): Promise<void> {
+  const roots = [];
+  for (let index = 1; index <= 4; index++) roots.push(await post(board, "dev", String(index)));
+  const bump = await reply(board, Number(roots[0]?.id), "bump");
+  const page = await board.listThreads("dev", [], { after: Number(roots[1]?.id), limit: 2 });
+  expect(page).toMatchObject({ head: Number(bump.id), older: null });
+  expect(page.threads.map(({ message }) => message.text)).toEqual(["3", "4"]);
+  const rest = await board.listThreads("dev", [], { after: Number(roots[3]?.id) });
+  expect(rest.threads.map(({ message }) => message.text)).toEqual(["1"]);
+}
+
+/** The thread list's pages: back by `older`, with and without a filter, and forward `after` a position. */
+function pagingTests(localBoard: () => Promise<BoardView>): void {
+  test("pages back from each page's oldest thread, listing every thread once", async () => {
+    await checkThreadPages(await localBoard());
+  });
+
+  test("pages back through only the threads a label filter keeps", async () => {
+    await checkFilteredThreadPages(await localBoard());
+  });
+
+  test("lists the first threads active after a position, oldest first, with no older", async () => {
+    await checkThreadsAfter(await localBoard());
+  });
+}
+
 export function threadsSuite(driver: string, open: OpenStore): void {
   describe(`${driver}: threads`, () => {
     let store: Store | undefined;
@@ -141,13 +168,7 @@ export function threadsSuite(driver: string, open: OpenStore): void {
       });
     });
 
-    test("pages back from each page's oldest thread, listing every thread once", async () => {
-      await checkThreadPages(await localBoard());
-    });
-
-    test("pages back through only the threads a label filter keeps", async () => {
-      await checkFilteredThreadPages(await localBoard());
-    });
+    pagingTests(localBoard);
 
     test("reads no thread for a position no message holds", async () => {
       const board = await localBoard();

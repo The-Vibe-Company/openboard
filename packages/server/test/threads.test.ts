@@ -117,3 +117,38 @@ describe("paging back through a channel's threads", () => {
     },
   );
 });
+
+describe("paging threads one way at a time", () => {
+  test.each([
+    ["older", "4.4"],
+    ["unreadable", "x"],
+  ])("GET /threads answers 400 invalid_request for an %s before with after", async (_, before) => {
+    app = makeApp();
+    for (const text of ["one", "two", "three"]) await call(app, "POST", "/messages", { channel: "dev", text });
+    const read = await call(app, "GET", `/threads?channel=dev&before=${before}&after=1`);
+    expect(read.status).toBe(400);
+    expect(await read.json()).toMatchObject({ error: { code: "invalid_request" } });
+  });
+
+  test("GET /threads?after= lists the threads active after the cursor, oldest first, without older", async () => {
+    app = makeApp();
+    const ids: string[] = [];
+    for (const text of ["one", "two", "three"]) {
+      const posted = await call(app, "POST", "/messages", { channel: "dev", text });
+      ids.push(((await posted.json()) as Thread).message.id as string);
+    }
+    const read = await call(app, "GET", `/threads?channel=dev&after=${ids[0]}&limit=1`);
+    expect(read.status).toBe(200);
+    const page = (await read.json()) as { threads: Thread[]; cursor: string };
+    expect(page.threads.map(({ message }) => message.id)).toEqual([ids[1]]);
+    expect(page).toEqual({ threads: page.threads, cursor: ids[2] as string });
+  });
+
+  test.each([["x"], ["99"]])("GET /threads answers 400 invalid_cursor for after=%s", async (after) => {
+    app = makeApp();
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const read = await call(app, "GET", `/threads?channel=dev&after=${after}`);
+    expect(read.status).toBe(400);
+    expect(await read.json()).toMatchObject({ error: { code: "invalid_cursor" } });
+  });
+});

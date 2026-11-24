@@ -19,9 +19,15 @@ function parseOlder(text: string): { active: number; root: number } | null {
   return { active, root };
 }
 
-/** The latest threads of a channel, or those before a page's `older`, oldest first, with the `older` that pages on. */
+/**
+ * The latest threads of a channel, or those before a page's `older`, oldest first, with the `older` that pages on; or
+ * the first threads active after the cursor `after`, without one. Asking both ways is refused before either is read.
+ */
 export const listThreadsHandler: Handler<typeof listThreads> = async ({ board }, input) => {
   const { channel, label, limit } = input;
+  if (input.before !== undefined && input.after !== undefined) {
+    throw new BoardError("invalid_request", "before pages back from a page's older, and after reads forward: pass one");
+  }
   const labels = label?.map((filter): readonly [string, (readonly string[])?] => {
     const equals = filter.indexOf("=");
     if (equals < 0) return [filter];
@@ -34,7 +40,12 @@ export const listThreadsHandler: Handler<typeof listThreads> = async ({ board },
   });
   const before = input.before === undefined ? undefined : parseOlder(input.before);
   if (before === null) throw new BoardError("invalid_cursor", "before: pass a page's older as it came");
-  const { threads, head, older } = await board.listThreads(channel, labels, { before, limit });
-  if (before && before.active > head) throw new BoardError("invalid_cursor", "before: cursor is ahead of the board");
+  const after = input.after === undefined ? undefined : parseId(input.after);
+  if (after === null) throw new BoardError("invalid_cursor", "after: expected a decimal board cursor or message ID");
+  const { threads, head, older } = await board.listThreads(channel, labels, { before, after, limit });
+  if ((before?.active ?? after ?? 0) > head) {
+    throw new BoardError("invalid_cursor", `${before ? "before" : "after"}: cursor is ahead of the board`);
+  }
+  if (after !== undefined) return { threads, cursor: formatId(head) };
   return { threads, cursor: formatId(head), older: older && `${formatId(older.active)}.${formatId(older.root)}` };
 };

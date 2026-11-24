@@ -39,13 +39,16 @@ function threadPage(order: "ASC" | "DESC") {
     ORDER BY id`;
 }
 
-export const threadStatements = {
-  listThreads: sql`WITH filters AS (SELECT CAST(${"labels"} AS TEXT) AS data),
+/** A channel's threads by activity between two bounds: the latest of them (`DESC`), or the first (`ASC`). */
+function threadList(order: "ASC" | "DESC") {
+  const direction: Fragment = { fragment: () => order };
+  return sql`WITH filters AS (SELECT CAST(${"labels"} AS TEXT) AS data),
     recent AS (
       SELECT root.board_id, root.id, root.active, root.view, root.replies, root.last_reply
       FROM messages AS root
       WHERE root.board_id = ${"boardId"} AND root.channel = ${"channel"} AND root.re IS NULL
         AND (root.active, root.id) < (CAST(${"beforeActive"} AS BIGINT), CAST(${"beforeRoot"} AS BIGINT))
+        AND root.active > CAST(${"after"} AS BIGINT)
         AND (CAST(${"labels"} AS TEXT) = '[]' OR EXISTS (
           SELECT 1 FROM (SELECT 1) AS thread
           LEFT JOIN messages AS reply ON reply.board_id = root.board_id AND reply.re = root.id AND reply.deleted = 0
@@ -63,13 +66,18 @@ export const threadStatements = {
             )
           )
         ))
-      ORDER BY root.active DESC, root.id DESC LIMIT CAST(${"limit"} AS BIGINT)
+      ORDER BY root.active ${direction}, root.id ${direction} LIMIT CAST(${"limit"} AS BIGINT)
     )
     SELECT boards.head, recent.active, recent.id, recent.view, recent.replies, reply.view AS last_view
     FROM boards LEFT JOIN recent ON recent.board_id = boards.id
     LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = recent.last_reply
     WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"}
-    ORDER BY recent.active, recent.id`,
+    ORDER BY recent.active, recent.id`;
+}
+
+export const threadStatements = {
+  listThreads: threadList("DESC"),
+  listThreadsAfter: threadList("ASC"),
   thread: threadPage("DESC"),
   threadAfter: threadPage("ASC"),
 };
@@ -77,8 +85,9 @@ export const threadStatements = {
 /** The thread reads of one board's view: one statement reads the message and its replies together. */
 export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "thread" | "listThreads"> {
   return {
-    async listThreads(channel, labels = [], { before, limit = 50 } = {}) {
-      const rows = await query(db, dialect, threadStatements.listThreads, {
+    async listThreads(channel, labels = [], { before, after, limit = 50 } = {}) {
+      const statement = after === undefined ? threadStatements.listThreads : threadStatements.listThreadsAfter;
+      const rows = await query(db, dialect, statement, {
         boardId: scope.boardId,
         orgId: scope.orgId,
         channel,
@@ -86,12 +95,14 @@ export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<B
         // Past every log position, so the first page reads through the same index range as the older ones.
         beforeActive: before?.active ?? Number.MAX_SAFE_INTEGER,
         beforeRoot: before?.root ?? Number.MAX_SAFE_INTEGER,
-        // One row past the page says whether an older thread exists without a second read.
-        limit: limit + 1,
+        // Every thread is active at a position past zero, the lowest cursor.
+        after: after ?? 0,
+        // One row past the latest page says whether an older thread exists without a second read.
+        limit: after === undefined ? limit + 1 : limit,
       });
       const head = Number(rows[0]?.head ?? 0);
       const listed = rows.filter((row) => row.view != null);
-      const extra = listed.length > limit;
+      const extra = after === undefined && listed.length > limit;
       const page = extra ? listed.slice(1) : listed;
       const oldest = page[0];
       const older = extra && oldest ? { active: Number(oldest.active), root: Number(oldest.id) } : null;

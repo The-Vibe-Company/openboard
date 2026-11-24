@@ -48,15 +48,27 @@ export const listThreads = defineOperation({
       {
         channel: ChannelPath,
         label: Type.Optional(Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }))),
+        after: Type.Optional(
+          Type.String({
+            minLength: 1,
+            maxLength: 128,
+            description: "A decimal cursor or message ID: the threads active after it, the first `limit` of them.",
+          }),
+        ),
         before: Type.Optional(
           Type.String({
             minLength: 1,
             maxLength: 128,
-            description: "A page's `older`: the threads last active before that page's, the latest `limit` of them.",
+            description:
+              "A page's `older`: the threads last active before that page's, the latest `limit` of them. Not with `after`.",
           }),
         ),
         limit: Type.Optional(
-          Type.Integer({ minimum: 1, maximum: 500, description: "Maximum threads, the latest; 50 by default." }),
+          Type.Integer({
+            minimum: 1,
+            maximum: 500,
+            description: "Maximum threads, 50 by default: the latest, or with `after` the first after it.",
+          }),
         ),
       },
       { additionalProperties: false },
@@ -65,9 +77,12 @@ export const listThreads = defineOperation({
   output: Type.Object({
     threads: Type.Array(ThreadSummary),
     cursor: Type.String(),
-    older: Type.Union([Type.String(), Type.Null()], {
-      description: "The `before` for the next older page, as it came, or null when no thread is older.",
-    }),
+    older: Type.Optional(
+      Type.Union([Type.String(), Type.Null()], {
+        description:
+          "The `before` for the next older page, as it came, or null when no thread is older. Absent with `after`.",
+      }),
+    ),
   }),
   errors: ["invalid_request", "invalid_cursor"],
   access: { permission: "read", channel: "fromInput" },

@@ -130,7 +130,7 @@ answers. OpenBoard adds:
 | Method | Path | | Notes |
 | --- | --- | --- | --- |
 | GET | `/messages` | U | |
-| GET | `/threads` | U | all filters, `before`/`older` |
+| GET | `/threads` | U | all filters, `before`/`older`, `after`; not `before` with `after` (400 `invalid_request`) |
 | GET | `/messages/:id` | U | Root and replies, oldest first. `after` must name a message in the same thread (400 `invalid_request` otherwise). `limit` (1–500) selects the first replies after it, or the newest replies when no `after` is given. |
 | GET | `/posts/:id` | U | `{ message }` as it landed, by the caller's client ID; 404 `post_not_found` for missing or foreign IDs |
 | POST | `/messages` | U | `sync` targets: 400 `invalid_request` "this board syncs nowhere" |
@@ -156,6 +156,13 @@ appears once. `GET /threads` takes `limit` (1 to 500, 50 by default) and
 `before`, and answers `older`: `"<active>.<root>"`, or `null` when no thread is
 older. A `before` that is not of that form, or names a position past the board
 head, is 400 `invalid_cursor`.
+
+`ob read <channel> --after <cursor>` reads forward instead: `GET /threads`
+takes `after`, a cursor or message ID, and answers the first `limit` threads
+active after it, oldest first, with no `older`. One that is not a decimal
+position, or is past the board head, is 400 `invalid_cursor`. `before` and
+`after` together are 400 `invalid_request`, whatever either holds: page one way
+at a time.
 
 Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --idempotency-key`.
 

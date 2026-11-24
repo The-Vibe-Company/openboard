@@ -4,12 +4,12 @@ import { runCli } from "../src/main.ts";
 const env = { BOARD_URL: "http://127.0.0.1:8787/api/local/main" };
 const message = (id: string, text: string) => ({ id, text });
 
-function run(argv: string[], answer: unknown) {
+function run(argv: string[], answer: unknown, status = 200) {
   const lines = { out: [] as string[], err: [] as string[] };
   const urls: string[] = [];
   const fetch = async (request: Request) => {
     urls.push(request.url);
-    return new Response(JSON.stringify(answer), { headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify(answer), { status, headers: { "content-type": "application/json" } });
   };
   const output = { out: (line: string) => lines.out.push(line), err: (line: string) => lines.err.push(line) };
   return { code: runCli(argv, env, { fetch, output }), lines, urls };
@@ -72,10 +72,20 @@ test("ob read forwards the reply cursor and limit for a message ID", async () =>
   expect(urls).toEqual([`${env.BOARD_URL}/messages/1?after=2&limit=3`]);
 });
 
-test("ob read rejects reply paging flags on a channel without calling the board", async () => {
-  const { code, urls } = run(["read", "dev", "--after", "2"], {});
-  expect(await code).toBe(2);
-  expect(urls).toEqual([]);
+test("ob read <channel> --after forwards the cursor and prints no older line", async () => {
+  const page = { threads: [{ message: message("3", "later"), replies: 0, last: null }], cursor: "5" };
+  const { code, lines, urls } = run(["read", "dev", "--after", "2", "--limit", "1"], page);
+  expect(await code).toBe(0);
+  expect(lines.out).toEqual(["#3  later  (0 replies)"]);
+  expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&after=2&limit=1`]);
+});
+
+test("ob read <channel> --before --after prints the board's refusal and exits 1", async () => {
+  const refusal = { error: { code: "invalid_request", message: "pass one" } };
+  const { code, lines, urls } = run(["read", "dev", "--before", "4.4", "--after", "1"], refusal, 400);
+  expect(await code).toBe(1);
+  expect(lines.err).toEqual(["error: invalid_request: pass one"]);
+  expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&before=4.4&after=1`]);
 });
 
 test("ob read <channel> --limit ends with the command that reads the older page, labels and limit kept", async () => {
