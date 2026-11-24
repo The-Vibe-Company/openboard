@@ -11,8 +11,9 @@ export const NOW = 1_700_000_000_000;
 export const OWNER = mintLocalOwnerToken(new Uint8Array(42).fill(7));
 
 /**
- * One app on in-memory SQLite, with a fixed clock unless one is given, a logger that keeps the errors it is told
- * unless one is given, request IDs `req-1`, `req-2`, … in the order requests arrive, and random bytes all 1, then all 2, ….
+ * One app on the test store (in-memory SQLite, or a fresh Postgres database with `OPENBOARD_TEST_DRIVER=postgres`),
+ * with a fixed clock unless one is given, a logger that keeps the errors it is told unless one is given, request IDs
+ * `req-1`, `req-2`, … in the order requests arrive, and random bytes all 1, then all 2, ….
  */
 export function makeApp(options: { readonly now?: () => number; readonly log?: Logger } = {}) {
   const logged: Readonly<Record<string, unknown>>[] = [];
