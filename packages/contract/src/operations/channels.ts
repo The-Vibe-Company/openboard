@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import { Channel } from "../entities/channels.ts";
-import { ChannelPath } from "../entities/messages.ts";
+import { CHANNEL_PATH_MAX, ChannelPath } from "../entities/messages.ts";
 import { defineOperation } from "../operation.ts";
 
 /** Upstream's page size when a list of channels names none. */
@@ -16,7 +16,7 @@ export const listChannels = defineOperation({
     query: Type.Object(
       {
         prefix: Type.Optional(Type.String({ minLength: 1, maxLength: 501 })),
-        after: Type.Optional(Type.String({ minLength: 1, maxLength: 1024 })),
+        after: Type.Optional(Type.String({ minLength: 1, maxLength: CHANNEL_PATH_MAX })),
         limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 500, default: CHANNELS_PAGE_DEFAULT })),
       },
       { additionalProperties: false },

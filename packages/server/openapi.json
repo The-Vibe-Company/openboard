@@ -1585,7 +1585,7 @@
             "name": "after",
             "in": "query",
             "required": false,
-            "schema": { "minLength": 1, "maxLength": 1024, "type": "string" }
+            "schema": { "minLength": 1, "maxLength": 2048, "type": "string" }
           },
           {
             "name": "limit",
@@ -1599,7 +1599,7 @@
           "type": "object",
           "properties": {
             "prefix": { "minLength": 1, "maxLength": 501, "type": "string" },
-            "after": { "minLength": 1, "maxLength": 1024, "type": "string" },
+            "after": { "minLength": 1, "maxLength": 2048, "type": "string" },
             "limit": { "minimum": 1, "maximum": 500, "default": 100, "type": "integer" }
           }
         },

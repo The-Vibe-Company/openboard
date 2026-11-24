@@ -12,11 +12,16 @@ writes:
   - apps/web/src/components/ThreadRow.tsx
   - apps/web/src/api/board.ts
   - apps/web/e2e/board.spec.ts
+  - apps/web/src/styles.css
+  - docs/architecture.md
+  - packages/contract/src/operations/channels.ts
+  - packages/server/test/channels.test.ts
+  - packages/server/openapi.json
 conformance: []
 modes: [local, hosted]
 depends_on: [216]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 383
 ---
 
