@@ -22,7 +22,7 @@ const notifyDeletion: Fragment = Object.freeze({
   fragment: ({ name }: Dialect) =>
     name === "postgres" ? ", (SELECT pg_notify('ob_events', boards.id::text || ':deleted'))" : "",
 });
-const messageBytes: Fragment = Object.freeze({
+export const messageBytes: Fragment = Object.freeze({
   fragment: ({ name }: Dialect) =>
     name === "postgres"
       ? "octet_length(convert_to(m.text, 'UTF8')) + COALESCE(octet_length(convert_to(CAST(CAST(m.view AS JSON) -> 'blocks' AS TEXT), 'UTF8')), 0)"

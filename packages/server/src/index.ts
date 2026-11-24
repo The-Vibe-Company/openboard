@@ -5,4 +5,4 @@ export { createOpenApi } from "./http/openapi.ts";
 export { maintenanceJobs } from "./jobs/purge-org.ts";
 export type { JobHandler } from "./jobs/registry.ts";
 export { type JsonLoggerOptions, jsonLogger } from "./log.ts";
-export { recordOperatorAction, setOperatorQuota } from "./operator.ts";
+export { recordOperatorAction, setOperatorDeletion, setOperatorQuota, showOperatorOrg } from "./operator.ts";

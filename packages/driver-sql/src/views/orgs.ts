@@ -1,14 +1,11 @@
 import { BoardError, type Role } from "@openboard/contract";
-import { type CountQuota, type CountQuotas, countQuotas, type OrgQuotaOverrides } from "@openboard/core";
+import { type CountQuota, type CountQuotas, countQuotas } from "@openboard/core";
 import type { BoardMemberRecord, BoardScope, BoardView, CreateOrgRecord, PlatformView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
 import { forUpdate, query, sql } from "../sql.ts";
 
-import { auditStatements } from "./audit.ts";
-
 /** Organizations, their memberships and their events. */
 export const orgStatements = {
-  lockOperatorOrg: sql`SELECT id, quotas FROM orgs WHERE slug = ${"slug"} AND deleted_at IS NULL${forUpdate}`,
   setOrgQuotas: sql`UPDATE orgs SET quotas = ${"quotas"} WHERE id = ${"orgId"} RETURNING id`,
   lockPerson: sql`SELECT id, email FROM users WHERE public_id = ${"personId"}${forUpdate}`,
   insertOrg: sql`INSERT INTO orgs (slug, name, created_by, created_at)
@@ -30,7 +27,6 @@ export const orgStatements = {
 /** Platform statements for account operations and operator quota overrides. */
 export const orgPlatformStatements: readonly (keyof typeof orgStatements)[] = Object.freeze([
   "lockPerson",
-  "lockOperatorOrg",
   "setOrgQuotas",
   "insertOrg",
   "personMemberships",
@@ -52,10 +48,7 @@ export function exhaustedQuota(reason: CountQuota, stored: unknown, count: unkno
 }
 
 /** The platform's organization methods, written once for both engines. */
-export function orgView(
-  db: Db,
-  dialect: Dialect,
-): Pick<PlatformView, "createOrg" | "memberships" | "setOrgQuotas" | "writeOperatorAction"> {
+export function orgView(db: Db, dialect: Dialect): Pick<PlatformView, "createOrg" | "memberships" | "setOrgQuotas"> {
   return {
     createOrg: (record: CreateOrgRecord) =>
       db.transaction(async (tx) => {
@@ -82,28 +75,6 @@ export function orgView(
       const [org] = await query(db, dialect, orgStatements.setOrgQuotas, { orgId, quotas: JSON.stringify(overrides) });
       return org !== undefined;
     },
-    writeOperatorAction: (slug, actor, at, action) =>
-      db.transaction(async (tx) => {
-        const [org] = await query(tx, dialect, orgStatements.lockOperatorOrg, { slug });
-        if (!org) return null;
-        const orgId = Number(org.id);
-        const { result, event } = await action({
-          quotas: typeof org.quotas === "string" ? ((JSON.parse(org.quotas) as OrgQuotaOverrides | null) ?? {}) : {},
-          async setQuotas(overrides) {
-            await query(tx, dialect, orgStatements.setOrgQuotas, { orgId, quotas: JSON.stringify(overrides) });
-          },
-        });
-        const [head] = await query(tx, dialect, auditStatements.orgAuditHead, { orgId });
-        await query(tx, dialect, orgStatements.insertOrgEvent, {
-          orgId,
-          id: Number(head?.head ?? 0) + 1,
-          at,
-          actor,
-          type: event.type,
-          payload: JSON.stringify(event.payload),
-        });
-        return { result };
-      }),
     async memberships(personId) {
       const rows = await query(db, dialect, orgStatements.personMemberships, { personId });
       return rows.map((row) => ({ org: { slug: String(row.slug), name: String(row.name) }, role: role(row) }));

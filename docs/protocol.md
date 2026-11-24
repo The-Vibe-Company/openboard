@@ -509,7 +509,8 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 `ob.operator.quota_changed` event with actor `ob:operator:<name>` and payload
 `{ quota, previousLimit, limit, reason }`. The limits are the effective values
 before and after the command. The quota is `boards`, `members` or
-`connections`.
+`connections`. The audit also returns `ob.operator.deleted` and
+`ob.operator.undeleted` with the same actor format and payload `{ reason }`.
 
 
 ## Events

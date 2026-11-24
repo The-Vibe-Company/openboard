@@ -77,6 +77,8 @@ export const purgeStatements = {
   purge_lock_boards: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} ORDER BY id${forUpdate}`,
   purge_check_shipping: sql`SELECT 1 FROM shipping WHERE org_id = ${"orgId"} LIMIT 1`,
   purge_boards: deleteBatch("boards", "id", "org"),
+  markPurgeStarted: sql`UPDATE jobs SET payload = ${"payload"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   markPurgeComplete: sql`UPDATE orgs SET purged_at = ${"now"} FROM boards b
     WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"} AND orgs.id = b.org_id`,
 };
@@ -118,7 +120,14 @@ export function purgeOrgView(
           const [org] = await query(tx, dialect, purgeStatements.purge_lock_org, keys);
           if (org?.deleted_at == null || Number(org.deleted_at) + ORG_PURGE_RETENTION_MS > now) return false;
           const payload = await readLeasedJob(tx, dialect, keys, id, lease, now);
-          return payload?.deletedAt === Number(org.deleted_at);
+          if (payload?.deletedAt !== Number(org.deleted_at)) return false;
+          // Persist the fence before touching external storage. A released lease must not allow restoration.
+          await query(tx, dialect, purgeStatements.markPurgeStarted, {
+            ...keys,
+            id,
+            payload: JSON.stringify({ ...payload, purgeStarted: true }),
+          });
+          return true;
         });
         if (!eligible) return false;
         // The archived organization is fenced against new uploads before this job is due.

@@ -97,6 +97,8 @@ export const OrgAuditEvent = Type.Union([
     limit: Type.Integer({ minimum: 0 }),
     reason: Type.String({ minLength: 1 }),
   }),
+  orgEntry("ob.operator.deleted", { reason: Type.String({ minLength: 1 }) }),
+  orgEntry("ob.operator.undeleted", { reason: Type.String({ minLength: 1 }) }),
   orgEntry("ob.org.created", { org: Named, owner: Type.String() }),
   orgEntry("ob.org.deleted", DeletedOrg.properties),
   orgEntry("ob.board.created", { board: Named }),
