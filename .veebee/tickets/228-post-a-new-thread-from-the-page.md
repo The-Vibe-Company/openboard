@@ -5,13 +5,14 @@ milestone: M8-front
 package: web
 writes:
   - apps/web/src/components/Composer.tsx
+  - apps/web/src/components/Composer.css
   - apps/web/src/routes/$org/$board/index.tsx
   - apps/web/e2e/post.spec.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [222]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 389
 ---
 
