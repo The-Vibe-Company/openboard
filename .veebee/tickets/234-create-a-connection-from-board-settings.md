@@ -7,11 +7,13 @@ writes:
   - apps/web/src/routes/$org/$board/settings/connections.tsx
   - apps/web/src/components/SecretOnce.tsx
   - apps/web/e2e/connections.spec.ts
+  - apps/web/e2e/support/connect-and-post.ts
+  - docs/auth.md
 conformance: []
 modes: [local, hosted]
 depends_on: [216]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 395
 ---
 
@@ -19,8 +21,8 @@ issue: 395
 As a board admin, I create a connection for an agent, copy its secret once together with the lines that connect it, and see my connections listed afterwards without their secrets.
 
 ## Done when
-- [ ] `bun run e2e apps/web/e2e/connections.spec.ts` passes: on `/acme/main/settings/connections`, creating `fixer` with access `dev/=read,post` shows the secret once with "Copy" and the `BOARD_URL`, `ob connect <BOARD_URL> --as fixer` and `env` lines; `ob connect` run with that secret on stdin then posts to `dev`; after closing the dialog, the list shows `fixer` with its hint `…<last four>` and never the secret again
-- [ ] in the same spec, a member who is not an admin of the board sees "Only board owners and organization admins manage connections" (403 `forbidden`), and the 101st connection shows the quota's message (196)
+- [x] `bun run e2e apps/web/e2e/connections.spec.ts` passes: on `/acme/main/settings/connections`, creating `fixer` with access `dev/=read,post` shows the secret once with "Copy" and the `BOARD_URL`, `ob connect <BOARD_URL> --as fixer` and `env` lines; `ob connect` run with that secret on stdin then posts to `dev`; after closing the dialog, the list shows `fixer` with its hint `…<last four>` and never the secret again
+- [x] in the same spec, a member who is not an admin of the board sees "Only board owners and organization admins manage connections" (403 `forbidden`), and the 101st connection shows the quota's message (196)
 
 ## Out of scope
 - Revoking (235); rotating a secret and revoking one agent (the routes exist, 129, 130; their controls are not planned in the cut).
