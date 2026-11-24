@@ -72,6 +72,7 @@ test("a policy rejects disallowed profiles, wider scopes, and non-direct connect
     const path = `/x/connections/${connection.id}/policy`;
     await expectError(await call(app, "GET", path + pins.replace("fixer-2", "other")), 400, "invalid_request");
     await expectError(await call(app, "GET", path + pins.replace("work/fix/", "work/")), 400, "invalid_request");
+    await expectError(await call(app, "GET", path + pins.replace("read,post", "unknown")), 400, "invalid_request");
     const fleet = await issued(await call(app, "POST", "/x/connections", { ...direct, name: "fleet", direct: false }));
     await expectError(
       await call(app, "GET", `/x/connections/${fleet.connection.id}/policy${pins}`),
