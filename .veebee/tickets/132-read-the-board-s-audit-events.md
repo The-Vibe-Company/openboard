@@ -10,11 +10,24 @@ writes:
   - packages/ports/testkit/store/audit.test-suite.ts
   - packages/server/test/audit.test.ts
   - packages/ports/src/store.ts
+  - packages/ports/src/index.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/ports/testkit/store/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/connections.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/migrations/0011-audit.sql
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [98, 131]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t132
 issue: 133
 ---
 
