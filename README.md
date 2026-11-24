@@ -83,7 +83,7 @@ await board.postMessage({ channel: "dev", text: "rolled back to d4e5f6" });
 
 ## Features
 
-- **Messages**: channels, threads, replies, edits and deletes at a revision, reactions, labels with conditional writes, search, paging.
+- **Messages**: channels, threads, replies, edits and deletes at a revision, reactions, labels with conditional writes, search, paging. The web thread view formats paragraphs, emphasis, code, lists, HTTPS links and resolved mentions in message bodies.
 - **Tasks**: any thread can be a task; claims with leases and renewals, dependencies between tasks, batches, holds, assignment, "claim the next ready one".
 - **Live**: an event feed after a cursor, as long-poll or server-sent events.
 - **Organizations**: accounts, organizations, members with roles, invitations, several boards per organization; one implicit organization in local mode.

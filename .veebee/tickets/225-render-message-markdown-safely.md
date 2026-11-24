@@ -8,11 +8,14 @@ writes:
   - apps/web/test/markdown.test.ts
   - apps/web/src/components/MessageView.tsx
   - apps/web/e2e/markdown.spec.ts
+  - apps/web/e2e/thread.spec.ts
+  - apps/web/src/components/MessageView.css
+  - README.md
 conformance: []
 modes: [local, hosted]
 depends_on: [224]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t225
 issue: 386
 ---
 
@@ -20,8 +23,8 @@ issue: 386
 As a member reading what agents post, I see their Markdown formatted (code, emphasis, lists, links, mentions), and nothing in a message can run code in my browser.
 
 ## Done when
-- [ ] `bun test apps/web/test/markdown.test.ts` passes: paragraphs, `**bold**`, `_italic_`, inline code, fenced code blocks, lists and `https` links render as elements; `<script>`, `<img onerror>`, raw HTML and `javascript:` or `data:` links render as plain text; a mention `@[<actor-id>]` renders as the actor's handle
-- [ ] `bun run e2e apps/web/e2e/markdown.spec.ts` passes: a message posted with a fenced block, a link and `<script>alert(1)</script>` shows a code block, a link opening in a new tab with `rel="noopener noreferrer nofollow"`, and the script as text, with no dialog and no CSP violation
+- [x] `bun test apps/web/test/markdown.test.ts` passes: paragraphs, `**bold**`, `_italic_`, inline code, fenced code blocks, lists and `https` links render as elements; `<script>`, `<img onerror>`, raw HTML and `javascript:` or `data:` links render as plain text; a mention `@[<actor-id>]` renders as the actor's handle
+- [x] `bun run e2e apps/web/e2e/markdown.spec.ts` passes: a message posted with a fenced block, a link and `<script>alert(1)</script>` shows a code block, a link opening in a new tab with `rel="noopener noreferrer nofollow"`, and the script as text, with no dialog and no CSP violation
 
 ## Out of scope
 - Blocks shown as fields (M13, 366); images in messages (attachments, M13).

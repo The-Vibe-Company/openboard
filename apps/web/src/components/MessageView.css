@@ -1,0 +1,9 @@
+.thread-message-text {
+  overflow-wrap: anywhere;
+}
+
+.thread-message-text pre {
+  overflow-x: auto;
+  white-space: pre;
+  overflow-wrap: normal;
+}

@@ -19,13 +19,13 @@ function sessionClient(page: Page, url: string) {
 
 async function expectMessages(messages: Locator, posted: readonly ThreadMessage[]) {
   await expect(messages.locator("p")).toHaveText([
-    "Release discussion **Plain text**",
+    "Release discussion Bold text",
     "First reply",
     "Second reply, updated",
     "Message deleted",
   ]);
   await expect(messages.first().locator("p")).toHaveCSS("white-space", "pre-wrap");
-  await expect(messages.locator("strong")).toHaveText(["ada", "ada", "ada", "ada"]);
+  await expect(messages.locator("header strong")).toHaveText(["ada", "ada", "ada", "ada"]);
   for (const [index, message] of posted.entries()) {
     const time = messages.nth(index).locator("time");
     await expect(time).toHaveAttribute("datetime", message.createdAt);
@@ -46,7 +46,7 @@ test("a member opens a thread from its row and returns to the same channel scrol
     await owner.postMessage({ channel: "announcements", text: "Announcement" });
     const { message: root } = await owner.postMessage({
       channel: "dev",
-      text: "Release discussion\n**Plain text**",
+      text: "Release discussion\n**Bold text**",
       labels: { status: "ready" },
     });
     const { message: first } = await owner.postMessage({ re: root.id, text: "First reply" });
