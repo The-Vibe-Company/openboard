@@ -1,5 +1,6 @@
 import { expect, type Page, test as base } from "@playwright/test";
 import { browserClient } from "../src/api/client.ts";
+import { openLiveBoard } from "./support/board-live.ts";
 import { serve } from "./support/serve.ts";
 import { signIn } from "./support/sign-in.ts";
 
@@ -96,37 +97,55 @@ test("a newer agent reply refreshes the thread and the member can retry the reta
   release,
 }) => {
   const first = await release.agentReply("Build started");
-  await page.goto(`${release.url}/t/${release.root}`);
+  const api = new URL("/api/acme/main", release.url).href;
+  const read = `${api}/messages/${release.root}`;
   const messages = threadMessages(page);
-  await expect(messages.last()).toContainText("Build started");
+  await openLiveBoard(
+    page,
+    api,
+    async () => {
+      await page.goto(`${release.url}/t/${release.root}`);
+      await expect(messages.last()).toContainText("Build started");
+    },
+    read,
+  );
   const draft = page.getByRole("textbox", { name: "Message" });
   await draft.fill("I'll check the release");
 
-  const newer = await release.agentReply("Build passed");
   const post = () =>
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" && new URL(response.url()).pathname === "/api/acme/main/messages",
-    );
-  const rejected = post();
-  await draft.press("Meta+Enter");
-  const conflict = await rejected;
-  expect(conflict.request().postDataJSON()).toMatchObject({ re: release.root, after: first.id });
-  expect(conflict.status()).toBe(409);
-  expect(await conflict.json()).toMatchObject({ error: { code: "newer_message" } });
-  await expect(messages).toHaveCount(3);
-  await expect(messages.last()).toContainText("Build passed");
-  await expect(page.getByRole("alert")).toBeVisible();
-  await expect(draft).toHaveValue("I'll check the release");
+    page.waitForResponse((response) => response.request().method() === "POST" && response.url() === `${api}/messages`);
+  // Let the stale reply reach the server before the live refresh replaces the browser's snapshot.
+  const refresh = Promise.withResolvers<void>();
+  await page.route(read, async (route) => {
+    await refresh.promise;
+    await route.continue();
+  });
+  try {
+    const newer = await release.agentReply("Build passed");
+    const rejected = post();
+    await draft.press("Meta+Enter");
+    const conflict = await rejected;
+    refresh.resolve();
+    expect(conflict.request().postDataJSON()).toMatchObject({ re: release.root, after: first.id });
+    expect(conflict.status()).toBe(409);
+    expect(await conflict.json()).toMatchObject({ error: { code: "newer_message" } });
+    await expect(messages).toHaveCount(3);
+    await expect(messages.last()).toContainText("Build passed");
+    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(draft).toHaveValue("I'll check the release");
 
-  const accepted = post();
-  await draft.press("Meta+Enter");
-  const reply = await accepted;
-  expect(reply.status()).toBe(201);
-  expect(reply.request().postDataJSON()).toMatchObject({ re: release.root, after: newer.id });
-  await expect(messages).toHaveCount(4);
-  await expect(messages.last()).toContainText("I'll check the release");
-  await expect(draft).toHaveValue("");
+    const accepted = post();
+    await draft.press("Meta+Enter");
+    const reply = await accepted;
+    expect(reply.status()).toBe(201);
+    expect(reply.request().postDataJSON()).toMatchObject({ re: release.root, after: newer.id });
+    await expect(messages).toHaveCount(4);
+    await expect(messages.last()).toContainText("I'll check the release");
+    await expect(draft).toHaveValue("");
+  } finally {
+    refresh.resolve();
+    await page.unroute(read);
+  }
 });
 
 test("changing the session in another tab cannot post a member's draft as the owner", async ({ page, release }) => {

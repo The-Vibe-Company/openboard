@@ -119,3 +119,16 @@ jobs:
           OPENBOARD_TEST_DRIVER: postgres
         run: timeout --kill-after=30s 8m bun test --rerun-each 3 packages/driver-postgres packages/server tools/bench
       - *report-failure
+
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env: *postgres-env
+    services: *postgres-service
+    steps:
+      - *checkout
+      - *setup-bun
+      - run: bun install --frozen-lockfile
+      - run: bun run --cwd apps/web --bun playwright install --with-deps chromium
+      - run: bun run e2e --project local --project hosted
+      - *report-failure

@@ -182,8 +182,8 @@ An entry means "may import". Anything not listed is forbidden. The table lists d
 | `scripts/*` | any workspace except `examples/*` | root dev dependencies |
 
 The web build configuration may import Vite and its React and TanStack Router plugins.
-The web Playwright configuration and browser tests may import Playwright.
-Only the web E2E support directory may import the server and SQLite driver for browser tests, with driver composition confined to `apps/web/e2e/support/serve.ts`.
+The web Playwright configuration and browser tests may import Playwright. Browser tests may also use the SDK to exercise agent journeys.
+Only the web E2E support directory may import the server for browser tests. Only `apps/web/e2e/support/serve.ts` may import the SQLite and Postgres drivers to compose the local and hosted browser projects.
 
 Universal rules:
 - **`driver-sql` is imported only by `driver-sqlite` and `driver-postgres`.**
@@ -202,7 +202,7 @@ Universal rules:
 | SQL only in the `packages/driver-*` workspaces (`driver-sql`, `driver-sqlite`, `driver-postgres`): no `.sql` file elsewhere, and no string or template literal elsewhere starting with an uppercase SQL statement head (`SELECT … FROM`, `INSERT INTO`, `UPDATE … SET`, `DELETE FROM`, `CREATE `, `ALTER `, `DROP `, `BEGIN`, `LISTEN`, `NOTIFY`, `PRAGMA`) | all workspaces except `driver-*` and `scripts/ci` fixtures |
 | `bun:sqlite` only in `driver-sqlite`; `SQL` from `bun` only in `driver-postgres`; `driver-sql` imports neither | everywhere |
 | Every registered statement filters on `board_id` or `org_id`, except those listed as platform statements (accounts, sign-in) | `driver-sql` (statement registry test) |
-| `process.env` / `Bun.env` only in `apps/openboard/src/config.ts` and `packages/cli/src/config.ts` | `packages/` and `apps/` (CI scripts and tools read their own environment) |
+| `process.env` / `Bun.env` only in `apps/openboard/src/config.ts` and `packages/cli/src/config.ts` | `packages/` and `apps/` in application code (CI scripts, tools and the Playwright config read their own environment) |
 | No `setTimeout`, `setInterval`, `queueMicrotask`, `Date`, `Math.random`, `crypto.randomUUID` (time, timers and IDs come from `deps`) | `contract`, `core`, `ports`, `server` |
 | No module-level `let`/`var`, no module-level mutable object (`new Map()`, `new Set()`, `[]`, `{}` assigned and later mutated), no `static` mutable class fields | all `packages/*/src`, `apps/openboard/src` |
 | `server/src/auth/providers/<name>/**` imported only by `server/src/auth/providers/index.ts` | server |
@@ -420,7 +420,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 | Client | SDK and CLI against an in-process app via injected `fetch` | `packages/sdk/test/**`, `packages/cli/test/**` | SQLite | < 50 ms |
 | Web unit | pure view state | `apps/web/test/**` | none | < 20 ms |
 | Conformance | upstream's kit (6.3) | `tools/conformance` | SQLite one instance; Postgres two instances | < 60 s per run |
-| Browser | Playwright journeys | `apps/web/e2e/**` | SQLite multi-tenant | < 3 min |
+| Browser | Playwright journeys | `apps/web/e2e/**` | SQLite one instance; Postgres two instances | < 3 min |
 | Benchmark | workloads and budgets (6.6) | `tools/bench` | both | quick < 60 s per mode |
 
 `packages/server/test/support/app.ts` exposes `makeApp()`. With `OPENBOARD_TEST_DRIVER` unset it returns one app on in-memory SQLite. With `OPENBOARD_TEST_DRIVER=postgres` it returns a two-instance cluster on a fresh Postgres database whose `fetch` alternates requests between the instances. Every HTTP and isolation test runs unchanged in both.
@@ -484,11 +484,11 @@ Raising a budget is the owner's decision. `--quick` runs counters and reduced wo
 | Gate | Runs | Required |
 |---|---|---|
 | `Verify` (`.github/workflows/ci.yml`), every PR and the merge queue | six parallel jobs, then an aggregate job named `Verify` that fails unless all succeeded: **`static`** (Biome, oxlint, boundaries, sizes, migrations check, module state, agents guard, typecheck, `gen:check`, PR size); **`unit-sqlite`** (`bun test`: core, contract, SQLite testkit, HTTP, isolation, clients, web unit); **`conformance-sqlite`**; **`postgres`** (Postgres service container; Postgres testkit, HTTP, isolation and HA tests with two instances); **`conformance-postgres`** (service container; two instances); **`bench`** (`--quick`, both modes' counters, local measured values) | yes, the only one |
-| `web.yml`, PRs touching `apps/web/**`, `packages/sdk/**`, `packages/contract/**` | Vite build, Playwright on Chromium | no |
-| `nightly.yml` | full bench both modes, conformance against staging when configured, `bun test --rerun-each 3` on both drivers to surface flakes | no; failing steps open an issue naming the job and linking the run |
+| `web.yml`, PRs touching `apps/web/**`, `packages/sdk/**`, `packages/contract/**` | Vite build, full Playwright suite on Chromium in local and hosted projects | no |
+| `nightly.yml` | full bench both modes, conformance against staging when configured, full Playwright suite in both modes, `bun test --rerun-each 3` on both drivers to surface flakes | no; failing steps open an issue naming the job and linking the run |
 | `release.yml` | binaries, image, npm, deploys, rolling check | not a PR gate |
 
-Nightly staging conformance uses the repository variable `STAGING_URL` for the HTTPS origin and the `staging` environment secret `STAGING_CONFORMANCE_SECRET` for a direct connection to `conformance-ci/main`. With no URL GitHub skips the job. With a URL and no secret the job succeeds after reporting that it skipped conformance before checkout. Any protection rules on the `staging` environment apply before this check. Playwright and posting results to the board are separate milestones.
+Nightly staging conformance uses the repository variable `STAGING_URL` for the HTTPS origin and the `staging` environment secret `STAGING_CONFORMANCE_SECRET` for a direct connection to `conformance-ci/main`. With no URL GitHub skips the job. With a URL and no secret the job succeeds after reporting that it skipped conformance before checkout. Any protection rules on the `staging` environment apply before this check. Posting results to the board is a separate milestone.
 
 Keeping `Verify` under two minutes (armada: `docs/ci-budget.md`): the six jobs run in parallel; each caches Bun's install; each targets 90 s wall time including setup. The Postgres service container starts while dependencies install, and the template database makes per-file databases cheap. SQLite and Postgres work are in separate jobs, so Postgres adds no time to the critical path unless it is the slowest job. When `unit-sqlite` or `postgres` passes 60 s of test time it is sharded with a balance file (armada: `scripts/ci/unit-shards.ts`). CI never builds binaries or images, never runs a browser, never calls the internet, never retries. Going over two minutes is a defect with its own ticket. Adding a job, a required check or a gate is the owner's decision.
 
@@ -501,7 +501,7 @@ Keeping `Verify` under two minutes (armada: `docs/ci-budget.md`): the six jobs r
 2. `bun build --compile --minify apps/openboard/src/main.ts` with every file of `apps/web/dist/` as an extra entrypoint, embedded in the executable. `packages/server/src/web/assets.ts` serves them from `Bun.embeddedFiles` when compiled and from disk in development. A build test runs the binary and fetches `/` and one hashed asset.
    For source development, `bun run dev` starts Vite on localhost:5173 and proxies `/api` and `/auth` to port 8787.
    `apps/web/src/routeTree.gen.ts` is generated from `apps/web/src/routes/` and not committed: the Vite plugin writes it on `dev` and `build`, and `apps/web/scripts/routes.ts` writes it before `typecheck`, both from `apps/web/router.options.ts`.
-   Run `bun run e2e` to build the front and exercise it in Chromium with a SQLite-backed app and a fake sign-in provider.
+   Run `bun run e2e` to build the front and exercise it in Chromium with a SQLite-backed app and a fake sign-in provider. Set `OPENBOARD_TEST_DATABASE_URL` to include the hosted project, which alternates requests across two app instances on an isolated Postgres database.
    Install Chromium first with `bun run --cwd apps/web --bun playwright install chromium`.
 3. Targets `bun-linux-x64`, `bun-linux-arm64`, `bun-darwin-arm64`, `bun-darwin-x64` -> `dist/openboard-<target>`, copied as `dist/ob-<target>` (same bytes; the name only changes the default help). Both drivers are in every binary; `OPENBOARD_DATABASE_URL` selects one at startup.
 4. `packages/cli` is also bundled for npm (`bun build --target=node`) as a client-only `ob`: `ob serve` there answers with a `next` hint to install the executable or run the image.
