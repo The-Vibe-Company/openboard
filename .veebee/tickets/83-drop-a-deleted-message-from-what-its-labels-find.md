@@ -15,8 +15,8 @@ writes:
 conformance: ["core/drops a deleted message from what its labels find"]
 modes: [local]
 depends_on: [80, 82]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 83
 ---
 
