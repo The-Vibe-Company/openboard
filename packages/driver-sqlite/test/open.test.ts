@@ -72,6 +72,7 @@ test("keeps a posted message and the migration records on reopen", async () => {
         { version: 9, applied_at: 100 },
         { version: 10, applied_at: 100 },
         { version: 11, applied_at: 100 },
+        { version: 12, applied_at: 100 },
       ]);
     } finally {
       database.close();

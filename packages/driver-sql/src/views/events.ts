@@ -11,6 +11,7 @@ import {
   matchesEventChannel,
   matchesEventMessage,
   messages,
+  type TaskEvent,
 } from "@openboard/core";
 import type { BoardScope, BoardView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
@@ -19,7 +20,7 @@ import { type Fragment, query, sql } from "../sql.ts";
 const NEWEST_LOOKBACK = 2000;
 
 const feedTypes: Fragment = {
-  fragment: () => "('message.posted', 'message.edited', 'message.deleted', 'labels.changed')",
+  fragment: () => "('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created')",
 };
 
 /** Bookkeeping: events that concern no message, served only with `all` (docs/data-model.md, `visibility` 1). */
@@ -36,19 +37,19 @@ function eventPage(newest: boolean) {
   const start: Fragment = { fragment: () => (newest ? `b.head - ${NEWEST_LOOKBACK}` : "b.head") };
   return sql`SELECT b.head, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal,
     e.visibility, e.payload,
-    CASE WHEN ${"history"} = 1 AND e.visibility = 0 AND e.type IN ('message.edited', 'message.deleted', 'labels.changed') THEN (
+    CASE WHEN ${"history"} = 1 AND e.visibility = 0 AND e.type IN ('message.edited', 'message.deleted', 'labels.changed', 'task.created') THEN (
       SELECT p.payload FROM events p
       WHERE p.org_id = ${"orgId"} AND p.board_id = ${"boardId"} AND p.thread = e.thread
         AND p.message = e.message AND p.id < e.id AND p.visibility = 0
-        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed')
+        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created')
       ORDER BY p.id DESC LIMIT 1
     ) END AS previous,
     CASE WHEN ${"rootLabels"} = 1 AND e.message <> e.thread AND e.visibility = 0
-      AND e.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed') THEN (
+      AND e.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created') THEN (
       SELECT p.payload FROM events p
       WHERE p.org_id = ${"orgId"} AND p.board_id = ${"boardId"} AND p.thread = e.thread
         AND p.message = e.thread AND p.id < e.id AND p.visibility = 0
-        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed')
+        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created')
       ORDER BY p.id DESC LIMIT 1
     ) END AS root${projectedView}
     FROM boards b LEFT JOIN events e ON e.org_id = b.org_id AND e.board_id = b.id
@@ -69,7 +70,7 @@ export const eventStatements = {
   newestEvents: eventPage(true),
 };
 
-type FeedEvent = MessagePosted | MessageEdited | MessageDeleted | LabelsChanged;
+type FeedEvent = MessagePosted | MessageEdited | MessageDeleted | LabelsChanged | TaskEvent;
 
 function messageEvent(row: Row): FeedEvent {
   const common = {
@@ -83,6 +84,7 @@ function messageEvent(row: Row): FeedEvent {
     visibility: 0 as const,
   };
   const payload = JSON.parse(String(row.payload)) as unknown;
+  if (row.type === "task.created") return { ...common, type: "task.created", payload: payload as TaskEvent["payload"] };
   if (row.type === "labels.changed")
     return { ...common, type: "labels.changed", payload: payload as LabelsChanged["payload"] };
   if (row.type === "message.deleted")
@@ -134,7 +136,8 @@ function filteredEvent(
     (row.type !== "message.posted" &&
       row.type !== "message.edited" &&
       row.type !== "message.deleted" &&
-      row.type !== "labels.changed") ||
+      row.type !== "labels.changed" &&
+      row.type !== "task.created") ||
     !matchesEventChannel(String(row.channel), filters.channel)
   )
     return [];
