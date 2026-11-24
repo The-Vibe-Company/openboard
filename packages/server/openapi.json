@@ -22628,6 +22628,10 @@
             "description": "message_not_found, not_a_task, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
+          "409": {
+            "description": "task_claimed, task_finished",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
           "429": {
             "description": "quota_exceeded, rate_limited",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },

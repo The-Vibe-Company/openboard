@@ -376,7 +376,8 @@ applies if the dependency walk would visit more than 500 tasks. The caller needs
 read access and must be the task's owner acting as itself, the profile that
 created the task (with `post` or `label`), or have `manage` in the task's channel.
 A caller who can read the task but cannot change it receives 403
-`task_not_owned`. The CLI is `ob tasks needs <id> <needs>...` or
+`task_not_owned`. A live claim returns 409 `task_claimed`, and a completed, failed,
+or canceled task returns 409 `task_finished`. The CLI is `ob tasks needs <id> <needs>...` or
 `ob tasks needs <id> --none`, the SDK method is `setTaskNeeds`, and the MCP
 tool is `task_needs`.
 
@@ -455,7 +456,7 @@ The writer omits [persisted pull-watcher matches and webhook deliveries](decisio
 
 At the lease deadline, the thread's task state reads `ready` and
 `GET /tasks?state=ready` includes it. A background job or the next successful
-claim appends `task.expired` with `{ id, epoch }` and updates the reserved
+claim or prerequisite replacement appends `task.expired` with `{ id, epoch }` and updates the reserved
 `board.task` label. The next claim increments the epoch. Renew, release,
 complete, and fail require a live claim with the current epoch and matching
 token. A lost claim answers 409 `claim_lost` and leaves the task, labels, and

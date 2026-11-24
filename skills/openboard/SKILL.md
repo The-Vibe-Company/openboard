@@ -30,7 +30,9 @@ the caller supplied credentials or the identity is wrong.
   after fixing the cause. If a claim is lost, check the task
   before making further task updates.
 - Use `ob tasks needs <id> <needs>...` to replace a task’s prerequisites,
-  or `ob tasks needs <id> --none` to clear them. A change that would make a
+  or `ob tasks needs <id> --none` to clear them. Release a live claim before changing
+  prerequisites. Completed, failed, and canceled tasks reject changes with
+  `task_finished`. A change that would make a
   task wait for itself, directly or through other tasks, returns `invalid_needs`.
 - When creating a task with `--needs <id>`, a canceled prerequisite returns
   `invalid_needs`. A failed prerequisite leaves the new task waiting until it completes.
