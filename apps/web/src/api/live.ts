@@ -1,6 +1,6 @@
 import { type QueryClient, type QueryKey, useQueryClient } from "@tanstack/react-query";
 import type { BoardEvent, Client } from "@the-vibe-company/openboard";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { boardKeys, threadsQuery } from "./board.ts";
 import { threadKeys } from "./thread.ts";
 
@@ -94,21 +94,37 @@ export function followBoard(
     const timer = setTimeout(run, delay);
     return () => clearTimeout(timer);
   },
+  onReconnecting?: (reconnecting: boolean) => void,
 ) {
   const path = `/api/${encodeURIComponent(board.org)}/${encodeURIComponent(board.board)}/events`;
   const refresh = boardRefreshes(board, queries, schedule);
   let retryDelay = 1000;
   let disconnect = () => {};
   let cancelRetry: (() => void) | undefined;
+  let cancelGrace: (() => void) | undefined;
+  let reconnecting = false;
 
   function start() {
     cancelRetry = undefined;
     const source = connect(path);
     function onOpen() {
+      cancelGrace?.();
+      cancelGrace = undefined;
+      if (reconnecting) {
+        reconnecting = false;
+        onReconnecting?.(false);
+      }
       retryDelay = 1000;
       refresh.onOpen();
     }
     function onError() {
+      if (onReconnecting && !reconnecting) {
+        cancelGrace ??= schedule(() => {
+          cancelGrace = undefined;
+          reconnecting = true;
+          onReconnecting(true);
+        }, 1000);
+      }
       // EventSource handles transient errors and retains Last-Event-ID on its own reconnects.
       // A rejected handshake can close it permanently, so reopen and reconcile on success.
       if (source.readyState !== source.CLOSED) return;
@@ -131,13 +147,21 @@ export function followBoard(
   return () => {
     if (cancelRetry) cancelRetry();
     else disconnect();
+    cancelGrace?.();
     refresh.stop();
   };
 }
 
 export function useBoardLive({ org, board }: Board, enabled: boolean) {
   const queries = useQueryClient();
+  const [reconnecting, setReconnecting] = useState(false);
   useEffect(() => {
-    if (enabled) return followBoard({ org, board }, queries);
+    if (!enabled) return;
+    const stop = followBoard({ org, board }, queries, undefined, undefined, setReconnecting);
+    return () => {
+      stop();
+      setReconnecting(false);
+    };
   }, [org, board, enabled, queries]);
+  return reconnecting;
 }

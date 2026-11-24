@@ -6,7 +6,10 @@ import { threadKeys } from "../src/api/thread.ts";
 const board = { org: "acme", board: "main" };
 const aliasKey = [...threadKeys.all(board), "11"];
 
-function fixture() {
+function fixture(
+  scheduleTask?: ReturnType<typeof fakeClock>["schedule"],
+  onReconnecting?: (reconnecting: boolean) => void,
+) {
   const source = Object.assign(new EventTarget(), { close: mock(() => {}), readyState: 0, CLOSED: 2 });
   const connect = mock((_path: string) => source as unknown as EventSource);
   const queries = {
@@ -16,8 +19,8 @@ function fixture() {
     getQueryState: () => undefined,
   };
   const clear = mock(() => {});
-  const schedule = mock((_run: () => void, _delay: number) => clear);
-  const stop = followBoard(board, queries, connect, schedule);
+  const schedule = mock((run: () => void, delay: number) => scheduleTask?.(run, delay) ?? clear);
+  const stop = followBoard(board, queries, connect, schedule, onReconnecting);
   return {
     source,
     connect,
@@ -119,4 +122,67 @@ test("a terminal error retries with capped backoff and a successful open reconci
   live.schedule.mock.calls.at(-1)?.[0]();
   expect(live.invalidate.mock.calls.flat()).toEqual([{ queryKey: aliasKey, exact: true }]);
   live.stop();
+});
+
+function fakeClock() {
+  let now = 0;
+  const timers = new Map<() => void, number>();
+  return {
+    schedule(run: () => void, delay: number) {
+      timers.set(run, now + delay);
+      return () => {
+        timers.delete(run);
+      };
+    },
+    advance(ms: number) {
+      now += ms;
+      for (const [run, due] of timers) {
+        if (due > now) continue;
+        timers.delete(run);
+        run();
+      }
+    },
+  };
+}
+
+test("reconnecting within a second keeps the banner hidden", () => {
+  const clock = fakeClock();
+  const status = mock((_reconnecting: boolean) => {});
+  const live = fixture(clock.schedule, status);
+  live.source.dispatchEvent(new Event("open"));
+  live.source.dispatchEvent(new Event("error"));
+  clock.advance(999);
+  live.source.dispatchEvent(new Event("open"));
+  clock.advance(1000);
+  expect(status.mock.calls).toEqual([]);
+  live.stop();
+});
+
+test("a longer outage shows the banner once, then clears it when the stream opens", () => {
+  const clock = fakeClock();
+  const status = mock((_reconnecting: boolean) => {});
+  const live = fixture(clock.schedule, status);
+  live.source.dispatchEvent(new Event("open"));
+  live.source.dispatchEvent(new Event("error"));
+  clock.advance(999);
+  live.source.dispatchEvent(new Event("error"));
+  expect(status.mock.calls).toEqual([]);
+  clock.advance(1);
+  expect(status.mock.calls).toEqual([[true]]);
+  live.source.dispatchEvent(new Event("error"));
+  clock.advance(1000);
+  expect(status.mock.calls).toEqual([[true]]);
+  live.source.dispatchEvent(new Event("open"));
+  expect(status.mock.calls).toEqual([[true], [false]]);
+  live.stop();
+});
+
+test("stopping the stream cancels a pending banner", () => {
+  const clock = fakeClock();
+  const status = mock((_reconnecting: boolean) => {});
+  const live = fixture(clock.schedule, status);
+  live.source.dispatchEvent(new Event("error"));
+  live.stop();
+  clock.advance(1000);
+  expect(status.mock.calls).toEqual([]);
 });

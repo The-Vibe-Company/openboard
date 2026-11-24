@@ -313,7 +313,8 @@ test("ends a stream after about 280 seconds and resumes from its last id without
     const waiting = reader.read();
     expect(timers.delays()).toEqual([PING_INTERVAL_MS, STREAM_MAX_MS]);
     timers.fire(STREAM_MAX_MS);
-    expect(await waiting).toEqual({ done: true, value: undefined });
+    expect(decoder.decode((await waiting).value)).toBe("retry: 100\n\n");
+    expect(await reader.read()).toEqual({ done: true, value: undefined });
     expect(timers.pending.size).toBe(0);
 
     expect((await call(app, "POST", "/messages", { channel: "dev", text: "while away" })).status).toBe(201);
