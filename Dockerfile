@@ -15,11 +15,14 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client-17 \
     && rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/postgresql.list /usr/share/keyrings/postgresql.asc
-RUN useradd --uid 10001 --user-group --create-home openboard \
+RUN useradd --uid 10001 --user-group --home-dir /data --no-create-home openboard \
     && install -d -o openboard -g openboard /data
 COPY --from=build /build/dist/openboard-linux-* /usr/local/bin/openboard
 USER openboard
-ENV OPENBOARD_DATA_DIR=/data
+ENV OPENBOARD_DATA_DIR=/data \
+    OPENBOARD_HOST=0.0.0.0 \
+    BOARD_URL=http://127.0.0.1:8787/api/local/main
+VOLUME /data
 EXPOSE 8787
 ENTRYPOINT ["openboard"]
 CMD ["serve"]

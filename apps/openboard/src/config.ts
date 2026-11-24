@@ -9,6 +9,7 @@ type Signup = (typeof SIGNUP_MODES)[number];
 
 /** The server's configuration, parsed once at startup (docs/codebase.md 5.5). */
 interface CommonConfig {
+  readonly host: string;
   readonly port: number;
   /** Number of trusted reverse proxy hops in front of this listener. */
   readonly trustedProxies: number;
@@ -144,6 +145,8 @@ export function loadConfig(env: Env = process.env): Config {
       env.OPENBOARD_DATABASE_URL_FILE === undefined ? "OPENBOARD_DATABASE_URL" : "OPENBOARD_DATABASE_URL_FILE";
     problems.push(`${name}: expected a postgres or postgresql URL with a host`);
   }
+  const host = env.OPENBOARD_HOST ?? (databaseUrl === undefined ? "127.0.0.1" : "0.0.0.0");
+  if (!host || /\s/.test(host)) problems.push("OPENBOARD_HOST: expected a hostname or IP address");
   const publicUrl = publicOrigin(env.OPENBOARD_PUBLIC_URL ?? `http://127.0.0.1:${port}`);
   // Unset, it follows PORT, so a bad PORT is reported once, as itself.
   if (!publicUrl && env.OPENBOARD_PUBLIC_URL !== undefined)
@@ -165,6 +168,7 @@ export function loadConfig(env: Env = process.env): Config {
   if (problems.length > 0 || !publicUrl) throw new ConfigError(problems.join("\n"));
   return Object.freeze({
     ...(databaseUrl === undefined ? { mode: "local" as const } : { mode: "hosted" as const, databaseUrl }),
+    host,
     port,
     trustedProxies,
     ...(env.OPENBOARD_INSTANCE_ID && { instanceId: env.OPENBOARD_INSTANCE_ID }),

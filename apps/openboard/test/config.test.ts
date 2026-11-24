@@ -18,6 +18,26 @@ test("refuses a secret key set through both environment variables, even when one
   }
 });
 
+describe("the listener host", () => {
+  const hosted = { OPENBOARD_DATABASE_URL: "postgres://board@db.example/openboard" };
+
+  test("defaults to loopback in local mode and all IPv4 interfaces in hosted mode", () => {
+    expect(load({}).host).toBe("127.0.0.1");
+    expect(load(hosted).host).toBe("0.0.0.0");
+  });
+
+  test("uses an explicit bind address in either mode", () => {
+    expect(load({ OPENBOARD_HOST: "0.0.0.0" }).host).toBe("0.0.0.0");
+    expect(load({ ...hosted, OPENBOARD_HOST: "::1" }).host).toBe("::1");
+  });
+
+  test("rejects an empty or whitespace-containing host", () => {
+    for (const host of ["", " ", "board example"]) {
+      expect(() => load({ OPENBOARD_HOST: host })).toThrow(/^OPENBOARD_HOST: expected a hostname or IP address$/);
+    }
+  });
+});
+
 describe("the public URL board URLs are built on", () => {
   test("defaults to the loopback origin on the configured port", () => {
     expect(load({ PORT: "9000" }).publicUrl).toBe("http://127.0.0.1:9000");

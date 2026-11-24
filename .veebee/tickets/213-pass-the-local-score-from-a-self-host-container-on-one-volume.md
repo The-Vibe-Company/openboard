@@ -9,12 +9,13 @@ writes:
   - apps/openboard/src/config.ts
   - apps/openboard/test/config.test.ts
   - docs/codebase.md
+  - docs/auth.md
   - docs/decisions.md
 conformance: []
 modes: [local]
 depends_on: [188, 192, 199, 211, 212]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 374
 ---
 

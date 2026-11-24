@@ -1034,3 +1034,13 @@ Parked event reads wake on deletion and reauthorize against the tombstone.
   account for any remaining NULLs before enforcing `NOT NULL` and using both
   keys in grant principal predicates.
   ([Issue #724](https://github.com/The-Vibe-Company/openboard/issues/724#issuecomment-7131785387))
+
+### D65. Local container listening address
+
+- **Context.** Docker port publishing reaches the container over its network
+  interface. A loopback-only listener inside the container is unreachable there.
+- **Decision.** `OPENBOARD_HOST` defaults to `127.0.0.1` in local mode and
+  `0.0.0.0` in hosted mode. The image explicitly sets `0.0.0.0`.
+- **Consequence.** The local container accepts requests on the published port
+  and uses the same authentication as a loopback deployment. Its owner
+  credential is stored on the data volume.
