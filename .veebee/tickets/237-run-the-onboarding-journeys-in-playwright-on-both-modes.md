@@ -7,6 +7,7 @@ writes:
   - apps/web/e2e/onboarding.spec.ts
   - apps/web/e2e/board.spec.ts
   - apps/web/e2e/empty-channel.spec.ts
+  - apps/web/e2e/invite.spec.ts
   - apps/web/e2e/post.spec.ts
   - apps/web/e2e/reply.spec.ts
   - apps/web/e2e/scroll.spec.ts

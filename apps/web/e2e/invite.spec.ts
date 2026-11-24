@@ -3,11 +3,13 @@ import { serve, temporaryDataDir } from "./support/serve.ts";
 import { signIn } from "./support/sign-in.ts";
 
 async function post(page: Page, url: string, path: string, data: object, status: number) {
-  const session = await page.request.get(`${url}/api/x/session`);
+  // The fixture stops and rebinds this origin between sign-up modes.
+  const connection = "close";
+  const session = await page.request.get(`${url}/api/x/session`, { headers: { connection } });
   expect(session.ok()).toBe(true);
   const { csrf } = await session.json();
   const response = await page.request.post(`${url}/api/x${path}`, {
-    headers: { origin: url, "x-ob-csrf": csrf },
+    headers: { origin: url, "x-ob-csrf": csrf, connection },
     data,
   });
   expect(response.status()).toBe(status);
@@ -26,11 +28,13 @@ const test = base.extend<{
   orgName: [organization.name, { option: true }],
   board: async ({ browser, signup, orgName }, use) => {
     const dir = await temporaryDataDir();
-    const owner = await browser.newPage();
-    const existing = await browser.newPage();
+    let owner: Page | undefined;
+    let existing: Page | undefined;
     let now = Date.UTC(2026, 0, 1);
     const options = { dataDir: dir.path, now: () => now };
     try {
+      owner = await browser.newPage();
+      existing = await browser.newPage();
       // Create the owner and an existing account before switching to invite-only sign-up.
       const bootstrap = await serve(options);
       try {
@@ -58,7 +62,7 @@ const test = base.extend<{
         await app.stop();
       }
     } finally {
-      await Promise.all([owner.context().close(), existing.context().close(), dir.remove()]);
+      await Promise.all([owner?.context().close(), existing?.context().close(), dir.remove()]);
     }
   },
 });
