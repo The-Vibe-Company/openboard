@@ -149,7 +149,7 @@ jobs:
           key: bun-${{ runner.os }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
           restore-keys: bun-${{ runner.os }}-${{ env.BUN_VERSION }}-
       - run: bun install --frozen-lockfile
-      - run: bun run conformance --driver postgres --instances 1
+      - run: bun run conformance --driver postgres --instances 2
 
   bench:
     runs-on: ubuntu-latest

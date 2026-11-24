@@ -10,8 +10,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [177, 181]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 266
 ---
 
@@ -19,8 +19,8 @@ issue: 266
 As a contributor, upstream's kit passes the same checks on two hosted instances sharing one Postgres, with consecutive requests landing on different instances.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun run conformance --driver postgres --instances 2` boots two instances on one fresh database behind the local round-robin proxy and exits 0 with no lost check: `hosted` stays equal to `local`
-- [ ] the `conformance-postgres` CI job and `bun run verify:pg` run it with `--instances 2` again
+- [x] `OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun run conformance --driver postgres --instances 2` boots two instances on one fresh database behind the local round-robin proxy and exits 0 with no lost check: `hosted` stays equal to `local`
+- [x] the `conformance-postgres` CI job and `bun run verify:pg` run it with `--instances 2` again
 
 ## Out of scope
 - Running the kit against a deployed instance with `--url` (192).
