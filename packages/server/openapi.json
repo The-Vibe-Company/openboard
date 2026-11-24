@@ -3063,6 +3063,285 @@
         }
       }
     },
+    "/x/audit": {
+      "get": {
+        "operationId": "readBoardAudit",
+        "summary": "Read the board's audit events (connections, agents) after a cursor, oldest first; never a secret.",
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": { "description": "A cursor this route answered; absent, from the start.", "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "minimum": 1, "maximum": 200, "default": 100, "type": "integer" }
+          }
+        ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "after": { "description": "A cursor this route answered; absent, from the start.", "type": "string" },
+            "limit": { "minimum": 1, "maximum": 200, "default": 100, "type": "integer" }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["events", "cursor"],
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.connection.created", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["connection", "claims", "by"],
+                                "properties": {
+                                  "connection": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "principal",
+                                      "name",
+                                      "grant",
+                                      "can",
+                                      "direct",
+                                      "profiles",
+                                      "secretHint",
+                                      "createdBy",
+                                      "createdAt"
+                                    ],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "name": { "pattern": "^[a-z0-9][a-z0-9-]{0,62}$", "type": "string" },
+                                      "grant": { "type": "string" },
+                                      "can": {
+                                        "type": "object",
+                                        "patternProperties": {
+                                          "^(.*)$": {
+                                            "type": "array",
+                                            "items": {
+                                              "anyOf": [
+                                                { "const": "read", "type": "string" },
+                                                { "const": "post", "type": "string" },
+                                                { "const": "react", "type": "string" },
+                                                { "const": "label", "type": "string" },
+                                                { "const": "sync", "type": "string" },
+                                                { "const": "manage", "type": "string" }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "direct": { "type": "boolean" },
+                                      "profiles": { "type": "array", "items": { "type": "string" } },
+                                      "secretHint": { "type": "string" },
+                                      "createdBy": { "type": "string" },
+                                      "createdAt": { "type": "string" }
+                                    }
+                                  },
+                                  "claims": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.connection.revoked", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["connection", "grant"],
+                                "properties": { "connection": { "type": "string" }, "grant": { "type": "string" } }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.connection.rotated", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["connection", "secretHint", "previousUntil"],
+                                "properties": {
+                                  "connection": { "type": "string" },
+                                  "secretHint": { "type": "string" },
+                                  "previousUntil": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.agent.claimed", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["agent", "connection", "profile", "by"],
+                                "properties": {
+                                  "agent": {
+                                    "type": "object",
+                                    "required": ["id", "actor", "can", "expiresAt", "hardExpiresAt"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "actor": { "type": "string" },
+                                      "can": {
+                                        "type": "object",
+                                        "patternProperties": {
+                                          "^(.*)$": {
+                                            "type": "array",
+                                            "items": {
+                                              "anyOf": [
+                                                { "const": "read", "type": "string" },
+                                                { "const": "post", "type": "string" },
+                                                { "const": "react", "type": "string" },
+                                                { "const": "label", "type": "string" },
+                                                { "const": "sync", "type": "string" },
+                                                { "const": "manage", "type": "string" }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "expiresAt": { "type": "string" },
+                                      "hardExpiresAt": { "type": "string" }
+                                    }
+                                  },
+                                  "connection": { "type": "string" },
+                                  "profile": { "type": "string" },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.agent.refreshed", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["agent", "expiresAt", "previousUntil", "by"],
+                                "properties": {
+                                  "agent": { "type": "string" },
+                                  "expiresAt": { "type": "string" },
+                                  "previousUntil": { "type": "string" },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.agent.revoked", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["connection", "agent"],
+                                "properties": { "connection": { "type": "string" }, "agent": { "type": "string" } }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_cursor, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/events": {
       "get": {
         "operationId": "events",

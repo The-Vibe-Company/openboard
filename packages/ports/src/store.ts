@@ -17,6 +17,9 @@ import type { BoardCreation, BoardEvent, Grant, messages, OrgCreation } from "@o
 
 import type { BoardMessageReads } from "./board-message-reads.ts";
 
+/** A board configuration event (`ob.*`, visibility 2), as stored: its payload may hold hashes the audit strips. */
+export type AuditRecord = Extract<BoardEvent, { readonly visibility: 2 }>;
+
 declare const minted: unique symbol;
 
 /**
@@ -354,6 +357,11 @@ export interface BoardView extends BoardMessageReads {
   managedConnection(id: string, now: number): Promise<ManagedConnection | null>;
   /** The first `limit` channels the query selects, by path, with their counts and the board head at the time of the read. */
   listChannels(query: ChannelsQuery): Promise<{ channels: Channel[]; head: number }>;
+  /**
+   * The board's first `limit` configuration events (`ob.*`) after log position `after`, oldest first, and the head read
+   * with them.
+   */
+  auditEvents(after: number, limit: number): Promise<{ events: AuditRecord[]; head: number }>;
   /** The person's membership of this board's organization, or null when they are not a member or are disabled. */
   member(personId: string): Promise<BoardMemberRecord | null>;
 }

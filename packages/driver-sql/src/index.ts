@@ -9,10 +9,12 @@ import invitationsDdl from "../migrations/0007-invitations.sql" with { type: "te
 import deviceDdl from "../migrations/0008-device.sql" with { type: "text" };
 import connectionUseDdl from "../migrations/0009-connection-use.sql" with { type: "text" };
 import eventMessageHistoryDdl from "../migrations/0010-event-message-history.sql" with { type: "text" };
+import auditDdl from "../migrations/0011-audit.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
 import { agentReads } from "./views/agents.ts";
+import { auditReads } from "./views/audit.ts";
 import { orgBoardsView, platformView } from "./views/boards.ts";
 import { channelReads } from "./views/channels.ts";
 import { connectionReads } from "./views/connections.ts";
@@ -49,6 +51,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 8, name: "0008-device", sql: deviceDdl },
   { version: 9, name: "0009-connection-use", sql: connectionUseDdl },
   { version: 10, name: "0010-event-message-history", sql: eventMessageHistoryDdl },
+  { version: 11, name: "0011-audit", sql: auditDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -75,6 +78,7 @@ export function createViews(
       subscribeEvents: (fromPosition, wake) => broadcaster.subscribe(scope, fromPosition, wake),
       ...personalTokenView(db, dialect, scope),
       ...agentReads(db, dialect, scope),
+      ...auditReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),
       ...channelReads(db, dialect, scope),
       ...connectionReads(db, dialect, scope),

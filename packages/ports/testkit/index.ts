@@ -4,6 +4,7 @@ import type { BoardKeys, BoardScope, OrgScope, Store } from "../src/index.ts";
 import { isolationSuite } from "./isolation.test-suite.ts";
 import { accountsSuite } from "./store/accounts.test-suite.ts";
 import { actorsSuite } from "./store/actors.test-suite.ts";
+import { auditSuite } from "./store/audit.test-suite.ts";
 import { boardsSuite } from "./store/boards.test-suite.ts";
 import { channelsSuite } from "./store/channels.test-suite.ts";
 import { connectionsSuite } from "./store/connections.test-suite.ts";
@@ -17,6 +18,7 @@ import { threadsSuite } from "./store/threads.test-suite.ts";
 export {
   accountsSuite,
   actorsSuite,
+  auditSuite,
   boardsSuite,
   channelsSuite,
   connectionsSuite,
@@ -45,6 +47,7 @@ export function testOrgScope(orgId: number): OrgScope {
 export function runStoreSuite(driver: string, open: OpenStore): void {
   accountsSuite(driver, open);
   actorsSuite(driver, open);
+  auditSuite(driver, open);
   boardsSuite(driver, open);
   channelsSuite(driver, open);
   connectionsSuite(driver, open);

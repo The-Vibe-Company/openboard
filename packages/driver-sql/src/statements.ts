@@ -3,6 +3,7 @@ import { render, type Statement } from "./sql.ts";
 import { accountPlatformStatements, accountStatements } from "./views/accounts.ts";
 import { actorStatements } from "./views/actors.ts";
 import { agentStatements } from "./views/agents.ts";
+import { auditStatements } from "./views/audit.ts";
 import { boardPlatformStatements, boardStatements } from "./views/boards.ts";
 import { channelStatements } from "./views/channels.ts";
 import { connectionStatements } from "./views/connections.ts";
@@ -19,6 +20,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...accountStatements,
   ...actorStatements,
   ...agentStatements,
+  ...auditStatements,
   ...boardStatements,
   ...channelStatements,
   ...connectionStatements,

@@ -67,6 +67,7 @@ export {
   postMessage,
   previewInvitation,
   reactToMessage,
+  readBoardAudit,
   readEvents,
   readPost,
   readThread,
@@ -80,4 +81,5 @@ export {
   rotateConnection,
   startDeviceSignIn,
 } from "./operations/index.ts";
+export { AuditEvent } from "./operations/audit.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

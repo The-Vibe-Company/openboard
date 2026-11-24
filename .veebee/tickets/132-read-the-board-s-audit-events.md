@@ -10,11 +10,25 @@ writes:
   - packages/ports/testkit/store/audit.test-suite.ts
   - packages/server/test/audit.test.ts
   - packages/ports/src/store.ts
+  - packages/ports/src/index.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/ports/testkit/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/connections.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/migrations/0011-audit.sql
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/cli/src/commands/wait.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [98, 131]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t132
 issue: 133
 ---
 
@@ -22,7 +36,7 @@ issue: 133
 As an owner, I see who changed my board's configuration and when.
 
 ## Done when
-- [ ] `curl http://127.0.0.1:8787/api/local/main/x/audit` as the owner lists `ob.connection.created`, `ob.agent.claimed` and `ob.connection.revoked` with their actors and no secret, while `GET /events` shows none of them
+- [x] `curl http://127.0.0.1:8787/api/local/main/x/audit` as the owner lists `ob.connection.created`, `ob.agent.claimed` and `ob.connection.revoked` with their actors and no secret, while `GET /events` shows none of them
 
 ## Out of scope
 - Organization audit (161).

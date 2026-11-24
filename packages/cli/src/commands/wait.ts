@@ -35,7 +35,8 @@ export const waitCommand: Command = {
     while (true) {
       const page = await ctx.client.readEvents({ re: message.thread, after: cursor, wait: 120 });
       const [event] = page.events;
-      if (event === undefined) {
+      // Bookkeeping events concern no message and never match `re`; narrowing keeps the type honest.
+      if (event === undefined || !("message" in event)) {
         cursor = page.cursor;
         continue;
       }

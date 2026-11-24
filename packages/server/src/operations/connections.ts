@@ -165,7 +165,7 @@ export const refreshAgentTokenHandler: Handler<typeof refreshAgentToken> = async
  * Only the local owner on the local board, or a board owner or organization admin, manages connections: lists, reads,
  * revokes or rotates them (docs/auth.md "Revoke", "Rotate", "List").
  */
-function requireManager(ctx: Parameters<Handler<typeof revokeConnection>>[0], what: string): void {
+export function requireManager(ctx: Parameters<Handler<typeof revokeConnection>>[0], what: string): void {
   const role = ctx.by[memberOf]?.role;
   if (ctx.by[credentialKind] === "local") {
     if (new URL(ctx.boardUrl).pathname !== "/api/local/main") {

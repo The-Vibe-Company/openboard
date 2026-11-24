@@ -291,7 +291,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST, GET | `/x/inbound`; GET, POST `/x/inbound/:id`; POST `/x/inbound/:id/delete` | X | |
 | POST | `/x/inbound/:id/events` | X | the receiving route; signature, no bearer |
 | GET | `/x/inbound/:id/received` | X | |
-| GET | `/x/audit` | X | board `ob.*` events; `manage` at `*` |
+| GET | `/x/audit` | X | board `ob.*` events, oldest first. Board owner or organization admin (403 `forbidden` otherwise, connections and agents included). Query `after` (a cursor it answered) and `limit` (1 to 200, default 100). Returns `{ events, cursor }`, each event `{ cursor, type, createdAt, actor, principal, payload }`; pass `cursor` back as `after` for the next page. Payloads carry no secret, hash or claim key. A cursor past the board's head or not decimal answers 400 `invalid_cursor`. CLI: `ob audit [--after] [--limit]`. |
 
 ### MCP
 
