@@ -1,24 +1,29 @@
 /**
- * Counts the statements one Postgres store sends, transaction control included (`BEGIN`, `COMMIT`, `ROLLBACK`), as
- * the SQLite driver's counter does; migrating is not counted. The bench and tests read it before and after one
- * request to learn the statements that operation costs.
+ * Counts statements and round trips for one Postgres store, including transaction control and excluding migrations.
  */
 export interface StatementCounter {
   /** Statements sent since the counter was created. */
   readonly statements: number;
-  /** Records one statement; only the driver calls this. */
-  count(): void;
+  /** Round trips since the counter was created. */
+  readonly roundTrips: number;
+  /** Records one statement and whether it starts a new round trip. */
+  count(roundTrip: boolean): void;
 }
 
 /** A counter at zero, to hand to `postgresDriver`. */
 export function statementCounter(): StatementCounter {
   let statements = 0;
+  let roundTrips = 0;
   return {
     get statements() {
       return statements;
     },
-    count() {
+    get roundTrips() {
+      return roundTrips;
+    },
+    count(roundTrip) {
       statements += 1;
+      if (roundTrip) roundTrips += 1;
     },
   };
 }

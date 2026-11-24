@@ -13,8 +13,8 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [173]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 254
 ---
 
@@ -22,8 +22,8 @@ issue: 254
 As a contributor, an extra database round trip in a hosted write fails the bench before it ships.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun run bench --quick --mode hosted` prints round trips per operation next to statements, and `tools/bench/budgets.json` holds them under `hosted.counters`
-- [ ] on a scratch branch, one more awaited statement in the post path (`packages/driver-sql/src/views/messages.ts`) makes the same command exit 1 naming `post` and both counts
+- [x] `OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun run bench --quick --mode hosted` prints round trips per operation next to statements, and `tools/bench/budgets.json` holds them under `hosted.counters`
+- [x] on a scratch branch, one more awaited statement in the post path (`packages/driver-sql/src/views/messages.ts`) makes the same command exit 1 naming `post` and both counts
 
 ## Out of scope
 - Lowering the count by pipelining a write's statements: no ticket in the cut yet (see the PR that wrote this ticket).

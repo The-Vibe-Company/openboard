@@ -31,11 +31,18 @@ export function compareBudgets(report: ModeReport, { latency }: { readonly laten
   const budget = modeBudgets[report.mode];
 
   const failures: string[] = [];
-  for (const { workload, operation, statements, p50, p99 } of report.workloads) {
+  for (const { workload, operation, statements, roundTrips, p50, p99 } of report.workloads) {
     const name = `${report.mode} ${operation} (${workload})`;
     const previous = budget.counters.statements[workload];
     if (statements > previous) {
       failures.push(`${name} statements: ${previous} -> ${statements}`);
+    }
+
+    if (report.mode === "hosted") {
+      const previousTrips = budgets.hosted.counters.roundTrips[workload];
+      if (roundTrips > previousTrips) {
+        failures.push(`${name} round trips: ${previousTrips} -> ${roundTrips}`);
+      }
     }
 
     if (!latency) continue;
