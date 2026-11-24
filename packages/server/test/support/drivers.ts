@@ -92,11 +92,30 @@ function postgresStore(url: string, now: () => number): Store {
 }
 
 /** A view whose every method waits for `view`, then calls it: every store view method is asynchronous. */
+/** A synchronous subscription on a view that may not be open yet: registered once it is, cancelled whenever asked. */
+function subscribeLater(view: () => Promise<object>, method: string) {
+  return (...args: unknown[]) => {
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    void view().then((target) => {
+      const call = (target as Record<string, (...args: unknown[]) => unknown>)[method];
+      if (cancelled || typeof call !== "function") return;
+      unsubscribe = Reflect.apply(call, target, args) as () => void;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  };
+}
+
 function deferred<View extends object>(view: () => Promise<View>): View {
   return new Proxy({} as View, {
     get(_, method) {
       // Not a thenable: awaiting a view must not call `then` on the store.
       if (typeof method !== "string" || method === "then") return undefined;
+      // `subscribeEvents` answers its unsubscribe at once: register when the view resolves, unsubscribe either way.
+      if (method === "subscribeEvents") return subscribeLater(view, method);
       return async (...args: unknown[]) => {
         const target = (await view()) as unknown as Record<string, (...args: unknown[]) => unknown>;
         const call = target[method];
