@@ -6,7 +6,7 @@
     "outDir": "../../.tsbuild/packages/driver-postgres",
     "types": ["bun"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx", "bench/**/*.ts"],
   "references": [
     {
       "path": "../contract"
