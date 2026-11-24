@@ -1,8 +1,8 @@
 import { BoardError, type explainGrants, type GrantView, type InputOf } from "@openboard/contract";
 import { agents, explainAccess, explainSubject, type GrantSubject, grants } from "@openboard/core";
 import { callerCan, credentialKind, memberOf, workloadOf } from "../../deps.ts";
-import { canListGrants } from "./list.ts";
 import type { Handler } from "../index.ts";
+import { canListGrants } from "./list.ts";
 
 type Query = InputOf<typeof explainGrants>;
 type Context = Parameters<Handler<typeof explainGrants>>[0];
@@ -50,15 +50,22 @@ async function explainPerson(ctx: Context, channel: string, person: string, view
 
 export const explainGrantsHandler: Handler<typeof explainGrants> = async (ctx, query) => {
   const { by } = ctx;
-  const { channel, user } = query;
+  const { channel, connection, user } = query;
   const person = by[memberOf] && by.principal.slice("ob:user:".length);
   const kind = by[credentialKind];
   const canList = kind !== "agent" && canListGrants(by);
-  const selectors = [user, query.project, query.github, query.oidc, query.app].filter(Boolean);
+  const selectors = [user, query.project, query.github, query.oidc, query.app, connection].filter(Boolean);
   const self = selectors.length === 0 || (selectors.length === 1 && user !== undefined && user === person);
   if (!self && !canList) throw new BoardError("forbidden", "explaining someone else needs manage at *");
   if (selectors.length > 1) throw new BoardError("invalid_request", "explain takes one principal");
   const named = subjectOf(query);
+  if (connection !== undefined) {
+    if (!(await ctx.board.connection(connection))) return explainAccess(channel, []);
+    const views = await ctx.board.listGrants();
+    // Revocation can commit between the initial lookup and the grant read.
+    if (!(await ctx.board.connection(connection))) return explainAccess(channel, []);
+    return explainSubject(channel, views, { kind: "connection", id: connection }, true);
+  }
   if (self && kind === "local") {
     return { ...explainAccess(channel, []), can: [...grants.PERMISSIONS] };
   }

@@ -11,11 +11,18 @@ writes:
   - packages/server/test/grants/explain-connection.test.ts
   - packages/cli/src/commands/explain.ts
   - packages/cli/test/explain.test.ts
+  - packages/contract/src/operations/grants/explain.ts
+  - packages/server/src/operations/grants/explain.ts
+  - packages/cli/src/commands/grants/explain.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [281]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 470
 ---
 

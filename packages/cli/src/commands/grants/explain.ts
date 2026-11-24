@@ -26,12 +26,14 @@ function selector(principal: GrantPrincipalInput, channel: string): [Query, stri
     }
     case "app":
       return [{ channel, app: principal.app }, principal.app];
+    case "connection":
+      return [{ channel, connection: principal.connection }, principal.connection];
     default:
-      throw new Misuse("explain takes --user, --project, --github, --oidc, or --app");
+      throw new Misuse("explain takes --user, --project, --github, --oidc, --app, or --connection");
   }
 }
 
-function sentence(answer: Explanation, whom: string) {
+function sentence(answer: Explanation, whom: string, connectionSelected: boolean) {
   const { can, capped, pattern, over, level, grants } = answer;
   const given =
     (can.length === 6 ? "all" : can.join(", ") || "none") + (capped ? `, capped by the ${capped} role` : "");
@@ -42,7 +44,9 @@ function sentence(answer: Explanation, whom: string) {
   const wins = over.length ? `${pattern} wins over ${over.join(", ")}.` : `${pattern} wins.`;
   const kinds = [...new Set(grants.flatMap((grant) => grant.principals.map(({ kind }) => kind)))];
   const [kind, ...other] = kinds.filter((kind) => kind !== "everyone" && groups.has(kind) === (level === "group"));
-  const flag = level === "everyone" ? " (--everyone)" : kind && !other.length ? ` (--${kind})` : "";
+  const connectionKind = level === "group" ? "all-connections" : "connection";
+  const decidingKind = connectionSelected ? connectionKind : other.length ? undefined : kind;
+  const flag = level === "everyone" ? " (--everyone)" : decidingKind ? ` (--${decidingKind})` : "";
   const closest = grants.map(({ id }) => id + flag).join(", ") || "one you can't list";
   return `${wins} Closest ${grants.length > 1 ? "grants" : "grant"} for ${whom}: ${closest}: ${given}.`;
 }
@@ -50,7 +54,7 @@ function sentence(answer: Explanation, whom: string) {
 export const explainGrantsCommand: Command = {
   words: ["grants", "explain"],
   usage:
-    "ob grants explain <channel> [--user <id> | --project <id> [--environment <name>] | --github <repository> [--workflow <file>] [--git-branch <branch>] [--event <event>] | --oidc <issuer> [--claim <name=value>]… | --app <id>]",
+    "ob grants explain <channel> [--user <id> | --project <id> [--environment <name>] | --github <repository> [--workflow <file>] [--git-branch <branch>] [--event <event>] | --oidc <issuer> [--claim <name=value>]… | --app <id> | --connection <id>]",
   async run(ctx) {
     let principal: GrantPrincipalInput | undefined;
     let channel: string | undefined;
@@ -71,7 +75,9 @@ export const explainGrantsCommand: Command = {
     if (!channel) throw new Misuse("give a channel");
     const [query, whom] = principal ? selector(principal, channel) : [{ channel }, "you"];
     const explanation = await ctx.client.explainGrants(query);
-    ctx.output.out(ctx.json ? JSON.stringify({ explanation }, null, 2) : sentence(explanation, whom));
+    ctx.output.out(
+      ctx.json ? JSON.stringify({ explanation }, null, 2) : sentence(explanation, whom, query.connection !== undefined),
+    );
     return 0;
   },
 };

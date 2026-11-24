@@ -38,6 +38,7 @@ export const explainGrants = defineOperation({
         oidc: selector,
         claim: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 1200 }))),
         app: selector,
+        connection: Type.Optional(Ref("connection")),
       },
       { additionalProperties: false },
     ),

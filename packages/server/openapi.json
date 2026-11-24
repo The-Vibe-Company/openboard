@@ -5510,6 +5510,12 @@
             "in": "query",
             "required": false,
             "schema": { "minLength": 1, "maxLength": 1000, "type": "string" }
+          },
+          {
+            "name": "connection",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "connection", "type": "string" }
           }
         ],
         "x-query-schema": {
@@ -5531,7 +5537,8 @@
             "event": { "minLength": 1, "maxLength": 1000, "type": "string" },
             "oidc": { "minLength": 1, "maxLength": 1000, "type": "string" },
             "claim": { "type": "array", "items": { "minLength": 1, "maxLength": 1200, "type": "string" } },
-            "app": { "minLength": 1, "maxLength": 1000, "type": "string" }
+            "app": { "minLength": 1, "maxLength": 1000, "type": "string" },
+            "connection": { "minLength": 1, "maxLength": 128, "x-ref": "connection", "type": "string" }
           }
         },
         "responses": {
