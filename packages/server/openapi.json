@@ -21266,7 +21266,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, invalid_rule",
+            "description": "invalid_request, invalid_rule, reserved_label",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
@@ -21279,6 +21279,10 @@
           },
           "404": {
             "description": "not_found, thread_not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "label_conflict",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "413": {

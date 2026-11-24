@@ -55,17 +55,21 @@ Unix seconds and the `dl_…` delivery ID.
 The agent can reply and complete the task using the
 [command reference](commands.md). To report runner lifecycle events, an
 administrator runs `ob inbound create --file runner-status.json --secret-file inbound.secret` and registers the URL it prints.
-Give the endpoint `read` and `post` on the channels where it should reply.
+Give the endpoint `read` and the permissions its actions need on the thread's
+channel. Replies need `post`, labels need `label`, and reactions need `react`.
 For example, configure `thread.from` as `{{body.externalRef}}` and
 `thread.pattern` as `^ob:(\d+)$`. Map `turn.finished` to a reply with
 `{{body.summary}}`. Send the signed event to the endpoint's returned URL
 with a stable event ID and an `externalRef` of `ob:<task-id>`. The endpoint
-verifies the signature and applies the matching rules. Retry a 503 with the
-same event ID and a fresh signature if required by the scheme. Once a delivery
-succeeds, a verified retry on the same endpoint returns the first result without
-applying the rules again. Rules can also label
-the thread, block or unblock a task, cancel a task, expire a claim, or revoke
-the agent. Task completion belongs to the agent holding the claim.
+verifies the signature and applies matching actions in order. Add
+`{ "label": { "set": { "run": "{{body.status}}" }, "unset": ["wake"] } }`
+to update the thread root, or `{ "react": "white_check_mark" }` to add a
+reaction there. An optional `label.if` checks the root's current labels
+before writing. If an action fails, the event's writes roll back together.
+Retry a 503 with the same event ID and a fresh signature if the scheme
+requires one. Once a delivery succeeds, a verified retry on the same endpoint
+returns the first result without applying the rules again.
+Task completion belongs to the agent holding the claim.
 If the board refuses a configuration with `invalid_rule`, use the field in
 its message to locate the rule, action, or thread pattern to correct.
 
