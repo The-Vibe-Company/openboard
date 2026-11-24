@@ -4,19 +4,22 @@ title: Run a platform bridge recipe against staging
 milestone: M14-external-sync
 package: tools
 writes:
+  - bun.lock
   - examples/chat-bridge/package.json
   - examples/chat-bridge/tsconfig.json
   - examples/chat-bridge/README.md
   - examples/chat-bridge/src/main.ts
   - examples/chat-bridge/src/outbound.ts
   - examples/chat-bridge/src/inbound.ts
+  - examples/chat-bridge/src/verify.ts
   - examples/chat-bridge/test/bridge.test.ts
+  - examples/chat-bridge/test/support/fake-platform.ts
   - scripts/ci/boundaries.json
 conformance: []
 modes: [local, hosted]
 depends_on: [304, 347]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 582
 ---
 
