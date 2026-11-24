@@ -53,11 +53,13 @@ test("a board owner creates fixer, copies its secret, and posts through ob conne
     await page.keyboard.press("Escape");
     await expect(modal).toHaveCount(0);
     const row = page.getByRole("list", { name: "Active connections" }).getByRole("listitem");
-    const expected = `fixer …${secret.slice(-4)}`;
-    await expect(row).toHaveText(expected);
+    const hint = `…${secret.slice(-4)}`;
+    await expect(row.getByText("fixer", { exact: true })).toBeVisible();
+    await expect(row.locator("code")).toHaveText(hint);
     expect((await page.content()).includes(secret)).toBe(false);
     await page.reload();
-    await expect(row).toHaveText(expected);
+    await expect(row.getByText("fixer", { exact: true })).toBeVisible();
+    await expect(row.locator("code")).toHaveText(hint);
     expect((await page.content()).includes(secret)).toBe(false);
     const listed = await page.request.get(app.url + endpoint);
     expect(listed.status()).toBe(200);

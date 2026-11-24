@@ -43,6 +43,7 @@ function Connections({ org, board }: { org: string; board: string }) {
   const [created, setCreated] = useState<Created>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [revokeError, setRevokeError] = useState("");
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -73,26 +74,18 @@ function Connections({ org, board }: { org: string; board: string }) {
     <section style={{ maxWidth: "42rem", margin: "2rem auto", padding: "0 1rem" }} aria-labelledby="connections">
       <h2 id="connections">Connections</h2>
       {list.isPending && <p role="status">Loading connections…</p>}
-      {list.isError && <p role="alert">{errorMessage(list.error, "Could not load connections.")}</p>}
+      {revokeError && <p role="alert">{revokeError}</p>}
+      {list.isError && <ListLoadError error={list.error} retry={list.refetch} retrying={list.isFetching} />}
       {list.isSuccess && (
         <>
-          <form onSubmit={create}>
-            <p>
-              <label>
-                Name <input name="name" required pattern={"[a-z0-9][a-z0-9\\-]{0,62}"} />
-              </label>
-            </p>
-            <p>
-              <label>
-                Access <input name="access" required placeholder="dev/=read,post" />
-              </label>
-            </p>
-            <button type="submit" disabled={busy}>
-              Create connection
-            </button>
-          </form>
+          <CreateConnectionForm onSubmit={create} busy={busy} />
           {error && <p role="alert">{error}</p>}
-          <ConnectionList connections={list.data.connections} />
+          <ConnectionList
+            connections={list.data.connections}
+            client={client}
+            refresh={list.refetch}
+            reportError={setRevokeError}
+          />
         </>
       )}
       {created && (
@@ -108,15 +101,111 @@ function Connections({ org, board }: { org: string; board: string }) {
   );
 }
 
+function CreateConnectionForm({
+  onSubmit,
+  busy,
+}: {
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  busy: boolean;
+}) {
+  return (
+    <form onSubmit={onSubmit}>
+      <p>
+        <label>
+          Name <input name="name" required pattern={"[a-z0-9][a-z0-9\\-]{0,62}"} />
+        </label>
+      </p>
+      <p>
+        <label>
+          Access <input name="access" required placeholder="dev/=read,post" />
+        </label>
+      </p>
+      <button type="submit" disabled={busy}>
+        Create connection
+      </button>
+    </form>
+  );
+}
+
+function ListLoadError({
+  error,
+  retry,
+  retrying,
+}: {
+  error: unknown;
+  retry: () => Promise<unknown>;
+  retrying: boolean;
+}) {
+  return (
+    <>
+      <p role="alert">{errorMessage(error, "Could not load connections.")}</p>
+      <button type="button" disabled={retrying} onClick={() => void retry()}>
+        Retry loading connections
+      </button>
+    </>
+  );
+}
+
 type Listed = Awaited<ReturnType<Client["listConnections"]>>["connections"];
 
-function ConnectionList({ connections }: { connections: Listed }) {
+function ConnectionList({
+  connections,
+  client,
+  refresh,
+  reportError,
+}: {
+  connections: Listed;
+  client: Client;
+  refresh: () => Promise<unknown>;
+  reportError: (message: string) => void;
+}) {
+  const [revoking, setRevoking] = useState(false);
+
+  async function revoke({ id, name }: Listed[number]) {
+    if (revoking || !window.confirm(`Revoke "${name}" and all its claimed agents?`)) return;
+    reportError("");
+    setRevoking(true);
+    try {
+      try {
+        await client.revokeConnection({ id });
+      } catch (error) {
+        if (!(error instanceof BoardError) || error.code !== "not_found") throw error;
+        reportError("This connection no longer exists");
+      }
+      await refresh();
+    } catch (error) {
+      reportError(errorMessage(error, "Could not revoke the connection."));
+    } finally {
+      setRevoking(false);
+    }
+  }
+
   if (connections.length === 0) return <p>No connections yet.</p>;
   return (
     <ul aria-label="Active connections">
-      {connections.map(({ id, name, secretHint }) => (
-        <li key={id} style={{ overflowWrap: "anywhere" }}>
-          {name} <code>{secretHint}</code>
+      {connections.map((connection) => (
+        <li key={connection.id} style={{ overflowWrap: "anywhere" }}>
+          <span>{connection.name}</span> <code>{connection.secretHint}</code>
+          <p>
+            Last used:{" "}
+            {connection.lastUsedAt ? (
+              <time dateTime={connection.lastUsedAt}>{new Date(connection.lastUsedAt).toLocaleString()}</time>
+            ) : (
+              "Never"
+            )}
+          </p>
+          <p>
+            Live agents:{" "}
+            {connection.agents.length ? connection.agents.map((agent) => agent.profile).join(", ") : "None"}
+          </p>
+          <button
+            type="button"
+            aria-label={`Revoke ${connection.name}`}
+            disabled={revoking}
+            onClick={() => void revoke(connection)}
+          >
+            Revoke
+          </button>
         </li>
       ))}
     </ul>
