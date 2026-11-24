@@ -1,0 +1,11 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "types": ["bun"],
+    "paths": {
+      "@openboard/contract": ["../../contract/src/index.ts"]
+    }
+  },
+  "include": ["../src/**/*.ts"]
+}

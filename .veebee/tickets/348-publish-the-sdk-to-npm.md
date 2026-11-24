@@ -4,6 +4,12 @@ title: Publish the SDK to npm
 milestone: M12-mcp-sdk-skill
 package: sdk
 writes:
+  - .veebee/tickets/348-publish-the-sdk-to-npm.md
+  - package.json
+  - bun.lock
+  - packages/sdk/LICENSE
+  - packages/sdk/README.md
+  - packages/sdk/scripts/tsconfig.json
   - packages/sdk/package.json
   - packages/sdk/scripts/build.ts
   - packages/sdk/test/package.test.ts
@@ -13,8 +19,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [194, 347]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 533
 ---
 
