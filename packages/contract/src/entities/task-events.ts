@@ -66,6 +66,17 @@ export const TaskCompletedEvent = Type.Object({
   message: Message,
 });
 
+export const TaskReleasedPayload = Type.Omit(TaskCompletedPayload, ["result"]);
+export type TaskReleasedPayload = Static<typeof TaskReleasedPayload>;
+
+export const TaskReleasedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("task.released"),
+  createdAt: Type.String(),
+  payload: TaskReleasedPayload,
+  message: Message,
+});
+
 export const TaskExpiredPayload = Type.Object({
   id: Type.String(),
   epoch: Type.Integer({ minimum: 1 }),

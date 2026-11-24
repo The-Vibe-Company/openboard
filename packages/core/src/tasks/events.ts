@@ -4,6 +4,7 @@ import type {
   TaskCompletedPayload,
   TaskCreatedPayload,
   TaskExpiredPayload,
+  TaskReleasedPayload,
   TaskRenewedPayload,
 } from "@openboard/contract";
 import type { MessagePosted } from "../messages/post.ts";
@@ -54,4 +55,12 @@ export interface TaskExpired extends Omit<MessagePosted, "type" | "payload"> {
   };
 }
 
-export type TaskEvent = TaskExpired | TaskCreated | TaskClaimed | TaskCompleted | TaskRenewed;
+export interface TaskReleased extends Omit<MessagePosted, "type" | "payload"> {
+  readonly type: "task.released";
+  readonly payload: Omit<TaskReleasedPayload, "id"> & {
+    readonly id: number;
+    readonly view: Message;
+  };
+}
+
+export type TaskEvent = TaskExpired | TaskCreated | TaskClaimed | TaskCompleted | TaskRenewed | TaskReleased;

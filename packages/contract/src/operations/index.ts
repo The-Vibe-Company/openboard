@@ -68,6 +68,7 @@ import { claimTask } from "./tasks/claim.ts";
 import { completeTask } from "./tasks/complete.ts";
 import { createTask } from "./tasks/create.ts";
 import { listTasks } from "./tasks/list.ts";
+import { releaseTask } from "./tasks/release.ts";
 import { renewTask } from "./tasks/renew.ts";
 import { listThreads, readThread } from "./threads.ts";
 import { ackWatcherMatch, listWatchers, pullWatcherMatches, registerWatchers } from "./watchers/index.ts";
@@ -144,6 +145,7 @@ export const operations = [
   refreshAgentToken,
   registerWatchers,
   removeMember,
+  releaseTask,
   renewTask,
   revokeAgent,
   revokeAllSessions,
@@ -180,6 +182,7 @@ export {
   deleteOrg,
   discoverBoard,
   editMessage,
+  explainGrants,
   findLinkedThread,
   findSync,
   getAccount,
@@ -198,7 +201,6 @@ export {
   listChannels,
   listConnections,
   listGrants,
-  explainGrants,
   listMembers,
   listMessages,
   listPersonalTokens,
@@ -227,6 +229,7 @@ export {
   recordSyncReceipt,
   refreshAgentToken,
   registerWatchers,
+  releaseTask,
   removeMember,
   renewTask,
   revokeAgent,

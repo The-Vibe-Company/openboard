@@ -839,6 +839,28 @@ Example:
 ob schemas inspect git-commit@1
 ```
 
+## `ob tasks release`
+
+Release a claimed task back to the queue.
+
+```sh
+ob tasks release <id>
+```
+
+Arguments:
+
+- `id`: A message ID.
+
+Errors: `error: claim_lost`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_release`.
+
+Example:
+
+```sh
+ob tasks release 42
+```
+
 ## `ob tasks renew`
 
 Renew a task claim from the current time.

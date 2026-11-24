@@ -11,7 +11,7 @@ export const taskFoldStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   renewTask: sql`UPDATE tasks SET claim_until = ${"until"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
-  expireTask: sql`UPDATE tasks SET state = 'ready', claim_actor = NULL, claim_until = NULL, claim_token = NULL
+  readyTask: sql`UPDATE tasks SET state = 'ready', claim_actor = NULL, claim_until = NULL, claim_token = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   completeTask: sql`UPDATE tasks SET state = 'completed', result = ${"result"},
     claim_actor = NULL, claim_until = NULL, claim_token = NULL
@@ -21,8 +21,8 @@ export const taskFoldStatements = {
 };
 
 function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: TaskEvent) {
-  if (event.type === "task.expired") {
-    return query(tx, dialect, taskFoldStatements.expireTask, { ...keys, id: event.message });
+  if (event.type === "task.expired" || event.type === "task.released") {
+    return query(tx, dialect, taskFoldStatements.readyTask, { ...keys, id: event.message });
   }
   const { by } = event.payload;
   if (event.type === "task.created") {

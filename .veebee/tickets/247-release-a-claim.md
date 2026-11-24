@@ -16,11 +16,32 @@ writes:
   - packages/cli/src/commands/tasks.ts
   - packages/cli/src/claims.ts
   - packages/cli/test/tasks.test.ts
+  - docs/protocol.md
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/src/commands/tasks/complete.ts
+  - packages/contract/src/entities/events.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/operations/tasks/release.ts
+  - packages/core/src/events/tail.ts
+  - packages/core/src/index.ts
+  - packages/core/src/tasks/settle.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/tasks/release.ts
+  - packages/server/test/isolation/cases.ts
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
+  - packages/driver-sql/src/views/watchers/index.ts
 conformance: ["tasks/gives a claim the lease it asks for, up to 5 minutes, and says when it ends"]
 modes: [local, hosted]
 depends_on: [245]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 420
 ---
 
@@ -28,8 +49,8 @@ issue: 420
 As an agent that cannot finish, I give a task back with `ob tasks release 2`, ready for someone else at once.
 
 ## Done when
-- [ ] after `ob tasks claim 2`, `ob tasks release 2` prints `released 2`; `ob read 2 --json` shows `ready`, `claim: null` and `epoch: 1`; `ob tasks claim 2` then takes it with `epoch: 2`
-- [ ] `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `tasks/gives a claim the lease it asks for, up to 5 minutes, and says when it ends`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
+- [x] after `ob tasks claim 2`, `ob tasks release 2` prints `released 2`; `ob read 2 --json` shows `ready`, `claim: null` and `epoch: 1`; `ob tasks claim 2` then takes it with `epoch: 2`
+- [x] `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `tasks/gives a claim the lease it asks for, up to 5 minutes, and says when it ends`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
 
 ## Out of scope
 - Failing instead (248); refusing a release by a lost claim (249).

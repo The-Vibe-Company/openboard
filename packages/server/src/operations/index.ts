@@ -84,6 +84,7 @@ import {
 } from "./sync/stubs.ts";
 import { claimTaskHandler } from "./tasks/claim.ts";
 import { completeTaskHandler } from "./tasks/complete.ts";
+import { releaseTaskHandler } from "./tasks/release.ts";
 import { renewTaskHandler } from "./tasks/renew.ts";
 import { createTaskHandler, listTasksHandler } from "./tasks.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
@@ -250,6 +251,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   refreshAgentToken: refreshAgentTokenHandler,
   registerWatchers: registerWatchersHandler,
   removeMember: removeMemberHandler,
+  releaseTask: releaseTaskHandler,
   renewTask: renewTaskHandler,
   revokeAgent: revokeAgentHandler,
   revokeAllSessions: revokeAllSessionsHandler,
