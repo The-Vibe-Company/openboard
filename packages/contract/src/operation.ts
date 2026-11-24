@@ -17,6 +17,7 @@ export type RefKind =
   | "export"
   | "schedule"
   | "webhook"
+  | "inbound"
   | "delivery"
   | "watcherMatch"
   | "connection"

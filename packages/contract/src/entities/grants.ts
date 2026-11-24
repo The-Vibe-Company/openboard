@@ -62,6 +62,7 @@ export const GrantPrincipal = Type.Union([
   Oidc,
   principal("app", { clientId: Name, name: NullableName }),
   principal("connection", { connection: Type.String() }),
+  principal("hook", { inbound: Type.String() }),
   ...Groups,
 ]);
 export type GrantPrincipal = Static<typeof GrantPrincipal>;

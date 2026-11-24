@@ -2,6 +2,7 @@ import type { AgentClaimed, AgentRefreshed } from "./access/agents.ts";
 import type { AgentRevoked, ConnectionCreated, ConnectionRevoked, ConnectionRotated } from "./access/connections.ts";
 import type { GrantCreated, GrantRevoked, GrantUpdated } from "./access/grant-events.ts";
 import type { ChannelCreated } from "./channels/create.ts";
+import type { InboundEvent } from "./inbound/events.ts";
 import type { MessageDeleted } from "./messages/delete.ts";
 import type { MessageEdited } from "./messages/edit.ts";
 import type { LabelsChanged } from "./messages/labels.ts";
@@ -45,7 +46,6 @@ export type { GrantCreated, GrantRevoked, GrantUpdated };
 import type { TaskEvent } from "./tasks/events.ts";
 
 export { decideCancelTask } from "./tasks/cancel.ts";
-export { decideReopenTask } from "./tasks/reopen.ts";
 export { decideClaimTask } from "./tasks/claim.ts";
 export { decideCreateTask, decideMakeTask, type MakeTaskState, replayTask } from "./tasks/create.ts";
 export type { TaskClaimed, TaskCreated, TaskEvent, TaskExpired } from "./tasks/events.ts";
@@ -53,6 +53,7 @@ export { effectiveTask, expireTask } from "./tasks/expire.ts";
 export { OPEN_TASK_STATES, taskCursor, taskStates } from "./tasks/filters.ts";
 export { decideReleaseTask } from "./tasks/release.ts";
 export { decideRenewTask } from "./tasks/renew.ts";
+export { decideReopenTask } from "./tasks/reopen.ts";
 export { decideCompleteTask, decideSettlement } from "./tasks/settle.ts";
 export type { ChannelCreated };
 export type BoardEvent =
@@ -77,6 +78,7 @@ export type BoardEvent =
   | TaskEvent
   | WatchersRegistered
   | WatchFailed
+  | InboundEvent
   | WebhookCreated
   | WebhookDeleted;
 
@@ -84,6 +86,8 @@ export { matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";
 export { channelInputError, correctedChannel, InvalidGrantPattern } from "./channels/path.ts";
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail, type TailMessage } from "./events/tail.ts";
 export { base32, formatId, isoTime, parseId } from "./ids.ts";
+export type { InboundConfig } from "./inbound/events.ts";
+export { parseInboundRules } from "./inbound/rules.ts";
 export { decideDelete, type MessageDeleted } from "./messages/delete.ts";
 export { decideEdit, type MessageEdited } from "./messages/edit.ts";
 export { decideLabels, type LabelState, type LabelsChanged } from "./messages/labels.ts";
@@ -150,6 +154,7 @@ export { validateWatchers, type WatchersRegistered } from "./watchers/register.t
 export { matchesWebhookFilter } from "./webhooks/filter.ts";
 export { webhookMaxAttempts, webhookOutcome, webhookRetryAt } from "./webhooks/outcome.ts";
 export { webhookPayload, webhookPing } from "./webhooks/payload.ts";
+export { validateWebhookSigning } from "./webhooks/signing.ts";
 export { validateWebhook } from "./webhooks/validate.ts";
-export type { WebhookCreated, WebhookDeleted };
+export type { InboundEvent, WebhookCreated, WebhookDeleted };
 export { checkNeeds, needPositions, type TaskNeeds } from "./tasks/needs.ts";

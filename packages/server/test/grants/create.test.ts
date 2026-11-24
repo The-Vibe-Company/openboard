@@ -27,7 +27,7 @@ test("POST /grants stores and shows every supported principal in the upstream vi
     expect(response.status).toBe(200);
     const { grant } = (await response.json()) as { grant: GrantView };
     expect(grant).toEqual({
-      id: "g7",
+      id: "g8",
       by: a.ids.member ?? "",
       at: "2023-11-14T22:13:20.000Z",
       capped: false,

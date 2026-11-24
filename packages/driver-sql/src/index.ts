@@ -35,6 +35,7 @@ import deviceCanDdl from "../migrations/0033-device-can.sql" with { type: "text"
 import webhookPingsDdl from "../migrations/0034-webhook-pings.sql" with { type: "text" };
 import webhookDeliveryHistoryDdl from "../migrations/0035-webhook-delivery-history.sql" with { type: "text" };
 import dependencyCompletionDdl from "../migrations/0036-task-dependency-completion.sql" with { type: "text" };
+import inboundDdl from "../migrations/0037-inbound.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -47,6 +48,7 @@ import { channelReads } from "./views/channels.ts";
 import { connectionReads } from "./views/connections.ts";
 import { deviceView, personalTokenView } from "./views/device.ts";
 import { committedEvents, eventReads } from "./views/events.ts";
+import { inboundReads } from "./views/inbound/index.ts";
 import { invitationPlatform, invitationView } from "./views/invitations.ts";
 import { exportsView } from "./views/jobs/exports.ts";
 import { type JobWrites, queueBoardOrgBackfill, runBoardOrgBackfill } from "./views/jobs/index.ts";
@@ -117,6 +119,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 34, name: "0034-webhook-pings", sql: webhookPingsDdl },
   { version: 35, name: "0035-webhook-delivery-history", sql: webhookDeliveryHistoryDdl },
   { version: 36, name: "0036-task-dependency-completion", sql: dependencyCompletionDdl },
+  { version: 37, name: "0037-inbound", sql: inboundDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -167,6 +170,7 @@ export function createViews(
       ...auditReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),
       ...watcherReads(db, dialect, scope),
+      ...inboundReads(db, dialect, scope),
       ...webhookReads(db, dialect, scope),
       ...schemaReads(db, dialect, scope),
       ...taskListReads(db, dialect, scope, jobs.now),

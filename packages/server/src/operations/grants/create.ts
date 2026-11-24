@@ -1,4 +1,4 @@
-import { BoardError, type createGrant } from "@openboard/contract";
+import { BoardError, type createGrant, type GrantPrincipal } from "@openboard/contract";
 import { type GrantCreated, grantPrincipals, grants, isoTime } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
 import type { Handler } from "../index.ts";
@@ -40,7 +40,7 @@ export function writtenCan(written: GrantCan): GrantCan {
 export async function appendGrant(
   ctx: GrantContext,
   writer: BoardWriter,
-  { can, principals }: Awaited<ReturnType<typeof prepareGrant>>,
+  { can, principals }: { can: GrantCan; principals: GrantPrincipal[] },
 ) {
   for (const principal of principals) {
     if (principal.kind === "user" && !(await writer.grantMember(principal.userId))) {

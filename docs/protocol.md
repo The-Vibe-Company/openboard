@@ -873,8 +873,21 @@ POST {BOARD_URL}/x/inbound
               { "reply": "Sandbox {{body.event}}; the task is claimable again." } ] },
     { "when": { "body.event": "agent.report.blocked" },
       "do": [ { "task.block": { "kind": "agent", "reason": "{{body.reason}}" } } ] } ] }
-→ 201 { "inbound": { "id": "ib_…", "url": "https://openboard.example/api/acme/main/x/inbound/ib_…/events" } }
+→ 201 { "inbound": { "id": "ib_…", "principal": "ob:hook:ib_…",
+                    "url": "https://openboard.example/api/acme/main/x/inbound/ib_…/events", … } }
 ```
+
+Create returns a top-level `secret` only when the board generates it. List
+returns `{ inbound: [...] }` and show returns the endpoint directly. Both omit
+the verify secret. Post `{ rules }` to `/x/inbound/:id` to replace the rules.
+Delete with `POST /x/inbound/:id/delete` to remove the endpoint and its grant.
+The 21st endpoint on a board returns 429 `quota_exceeded` with reason `inbound`.
+An unsupported rule action returns 400 `invalid_rule`.
+
+`ob inbound create --file runner-status.json --secret-file inbound.secret`
+prints the events URL. The secret file either supplies the verify secret or
+receives the generated secret with mode 0600. Use `ob inbound`,
+`ob inbound show <id>`, and `ob inbound delete <id>` to manage endpoints.
 
 - **Verification** with the same scheme object as outbound signing, over the
   raw body; timestamp within `tolerance`; dedupe on the sender's event ID; a

@@ -7,6 +7,7 @@ export * from "./entities/connections.ts";
 export * from "./entities/discovery.ts";
 export * from "./entities/events.ts";
 export { GrantPrincipal, GrantPrincipalInput, GrantRemovalPrincipal, GrantView } from "./entities/grants.ts";
+export * from "./entities/inbound/index.ts";
 export * from "./entities/invitations.ts";
 export * from "./entities/messages.ts";
 export * from "./entities/org/exports.ts";
@@ -48,6 +49,7 @@ export {
 } from "./operation.ts";
 export { AuditEvent, OrgAuditEvent, OrgExportAuditEvent } from "./operations/audit.ts";
 export type { Explanation, GrantLevel } from "./operations/grants/explain.ts";
+export { createInbound, deleteInbound, getInbound, listInbound, updateInbound } from "./operations/inbound/index.ts";
 export {
   acceptInvitation,
   ackInbox,

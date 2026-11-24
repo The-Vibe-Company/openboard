@@ -4,31 +4,59 @@ title: Create an inbound endpoint
 milestone: M11-webhooks-and-watchers
 package: server
 writes:
-  - packages/contract/src/operations/inbound.ts
-  - packages/contract/src/entities/inbound.ts
+  - docs/data-model.md
+  - docs/protocol.md
+  - packages/cli/src/commands/inbound/index.ts
+  - packages/cli/src/commands/index.ts
+  - packages/cli/src/commands/usage.ts
+  - packages/cli/src/commands/webhooks/create.ts
+  - packages/cli/test/inbound.test.ts
+  - packages/contract/src/entities/grants.ts
+  - packages/contract/src/entities/inbound/index.ts
+  - packages/contract/src/errors.ts
+  - packages/contract/src/grant-display.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/audit.ts
+  - packages/contract/src/operations/inbound/index.ts
   - packages/contract/src/operations/index.ts
+  - packages/core/src/inbound/events.ts
   - packages/core/src/inbound/rules.ts
-  - packages/core/test/inbound/rules.test.ts
-  - packages/core/src/orgs/quotas.ts
   - packages/core/src/index.ts
-  - packages/ports/src/store.ts
-  - packages/ports/testkit/store/inbound.test-suite.ts
-  - packages/ports/testkit/index.ts
+  - packages/core/src/orgs/quotas.ts
+  - packages/core/src/webhooks/signing.ts
+  - packages/core/test/inbound/rules.test.ts
+  - packages/core/test/orgs/quotas.test.ts
+  - packages/core/test/webhooks/signing.test.ts
   - packages/driver-sql/migrations/*-inbound.sql
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
-  - packages/driver-sql/src/views/inbound.ts
-  - packages/server/src/operations/inbound.ts
+  - packages/driver-sql/src/views/inbound/index.ts
+  - packages/driver-sql/src/views/jobs/purge.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/ports/src/inbound/index.ts
+  - packages/ports/src/index.ts
+  - packages/ports/src/store.ts
+  - packages/ports/testkit/index.ts
+  - packages/ports/testkit/isolation-case-seeds.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/ports/testkit/store/inbound.test-suite.ts
+  - packages/server/openapi.json
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/audit.ts
+  - packages/server/src/operations/grants/create.ts
+  - packages/server/src/operations/inbound/index.ts
   - packages/server/src/operations/index.ts
+  - packages/server/test/grants/create.test.ts
   - packages/server/test/inbound/create.test.ts
+  - packages/server/test/isolation/cases.ts
   - packages/server/test/isolation/seed.ts
-  - packages/cli/src/commands/inbound.ts
-  - packages/cli/src/commands/index.ts
-  - packages/cli/test/inbound.test.ts
+  - skills/openboard/references/commands.md
+  - skills/openboard/references/webhooks.md
 conformance: []
 modes: [local, hosted]
 depends_on: [181, 304, 314]
-status: claimed
+status: done
 claimed_by: codex
 issue: 511
 ---
@@ -37,9 +65,9 @@ issue: 511
 As a board admin, I create an inbound endpoint for an external runner's status events with `ob inbound create --file runner-status.json --secret-file inbound.secret`, get its URL to register on the runner, and see it listed without its secret.
 
 ## Done when
-- [ ] `bun test packages/server/test/inbound/create.test.ts` passes: `POST /x/inbound` with the shape of docs/protocol.md "Inbound endpoints" (`name`, `can`, `verify`, `thread`, `rules`) answers 201 `{ inbound: { id: "ib_…", url: "<BOARD_URL>/x/inbound/ib_…/events", principal: "ob:hook:ib_…", … }, secret }` (the secret only when the board generated it); the endpoint's principal gets a grant with exactly that `can`, made under the grant-change rules, so a creator without `manage` where `can` reaches gets 403 `forbidden`; `GET /x/inbound`, `GET /x/inbound/:id` never show the secret; `POST /x/inbound/:id` changes rules, `POST /x/inbound/:id/delete` removes it and its grant; the 21st endpoint on a board answers 429 `quota_exceeded` with reason `inbound`; an action outside the closed list answers 400 `invalid_rule`
-- [ ] in the same file, no column holds the verify secret in clear (D29, the box of 304), and creation, change and deletion append `ob.inbound.*` events without it
-- [ ] `bun test packages/cli/test/inbound.test.ts` passes: `ob inbound create --file <spec.json> --secret-file <path>` behaves as `ob webhooks create` (304) for the secret, and `ob inbound`, `ob inbound show <id>`, `ob inbound delete <id>` print what the board answers
+- [x] `bun test packages/server/test/inbound/create.test.ts` passes: `POST /x/inbound` with the shape of docs/protocol.md "Inbound endpoints" (`name`, `can`, `verify`, `thread`, `rules`) answers 201 `{ inbound: { id: "ib_…", url: "<BOARD_URL>/x/inbound/ib_…/events", principal: "ob:hook:ib_…", … }, secret }` (the secret only when the board generated it); the endpoint's principal gets a grant with exactly that `can`, made under the grant-change rules, so a creator without `manage` where `can` reaches gets 403 `forbidden`; `GET /x/inbound`, `GET /x/inbound/:id` never show the secret; `POST /x/inbound/:id` changes rules, `POST /x/inbound/:id/delete` removes it and its grant; the 21st endpoint on a board answers 429 `quota_exceeded` with reason `inbound`; an action outside the closed list answers 400 `invalid_rule`
+- [x] in the same file, no column holds the verify secret in clear (D29, the box of 304), and creation, change and deletion append `ob.inbound.*` events without it
+- [x] `bun test packages/cli/test/inbound.test.ts` passes: `ob inbound create --file <spec.json> --secret-file <path>` behaves as `ob webhooks create` (304) for the secret, and `ob inbound`, `ob inbound show <id>`, `ob inbound delete <id>` print what the board answers
 
 ## Out of scope
 - Receiving events: signature (327), effects (328-332), duplicates (333), the 422 (334), deeper rule checks (335), the received list (336).
@@ -50,5 +78,3 @@ As a board admin, I create an inbound endpoint for an external runner's status e
 - The endpoint's grant reuses 276's grant creation and 284's lockout rules (`packages/core/src/access/grant-changes.ts`); revoking it with the endpoint is one board write.
 - An inbound endpoint is a new `Ref` kind (`ib_`).
 - Depends on 304 for the secret box and the signing validator, and for `core/orgs/quotas.ts`, which both change.
-
-Waits for 314 (orchestrator, 2026-11-24, #511): the criterion's documented request is signed with `ts-id-body`, whose validator 314 adds. A first draft is on branch `t/326-create-an-inbound-endpoint`.

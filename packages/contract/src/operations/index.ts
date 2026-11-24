@@ -33,6 +33,8 @@ import { explainGrants } from "./grants/explain.ts";
 import { listGrants } from "./grants/list.ts";
 import { revokeGrant } from "./grants/revoke.ts";
 import { updateGrant } from "./grants/update.ts";
+/** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
+import { createInbound, deleteInbound, getInbound, listInbound, updateInbound } from "./inbound/index.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
 import { changeMemberRole, removeMember } from "./memberships.ts";
 import {
@@ -78,11 +80,10 @@ import { renewTask } from "./tasks/renew.ts";
 import { reopenTask } from "./tasks/reopen.ts";
 import { listThreads, readThread } from "./threads.ts";
 import { ackWatcherMatch, listWatchers, pullWatcherMatches, registerWatchers } from "./watchers/index.ts";
-
-/** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
 import { listWebhookDeliveries, retryWebhookDelivery } from "./webhooks/deliveries.ts";
 import { createWebhook, deleteWebhook, getWebhook, listWebhooks, testWebhook } from "./webhooks/index.ts";
 
+/** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
 export const operations = [
   acceptInvitation,
   ackInbox,
@@ -104,6 +105,11 @@ export const operations = [
   createOrg,
   createSchema,
   createTask,
+  createInbound,
+  deleteInbound,
+  getInbound,
+  listInbound,
+  updateInbound,
   createWebhook,
   deleteBoard,
   deleteMessage,
@@ -199,12 +205,14 @@ export {
   createConnection,
   createGrant,
   createGrants,
+  createInbound,
   createInvitation,
   createOrg,
   createSchema,
   createTask,
   createWebhook,
   deleteBoard,
+  deleteInbound,
   deleteMessage,
   deleteOrg,
   deleteWebhook,
@@ -219,6 +227,7 @@ export {
   getAvatar,
   getConnection,
   getConnectionPolicy,
+  getInbound,
   getMe,
   getOpenApi,
   getOrgExport,
@@ -234,6 +243,7 @@ export {
   listChannels,
   listConnections,
   listGrants,
+  listInbound,
   listMembers,
   listMessages,
   listPersonalTokens,
@@ -281,4 +291,5 @@ export {
   startDeviceSignIn,
   testWebhook,
   updateGrant,
+  updateInbound,
 };

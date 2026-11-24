@@ -16,7 +16,7 @@ function validateHeader(field: SigningHeader, name: string | undefined, used: Se
   return name;
 }
 
-export function validateWebhookSigning({ signing = {}, headers }: WebhookSpec) {
+export function validateWebhookSigning({ signing = {}, headers }: Pick<WebhookSpec, "signing" | "headers">) {
   const { preset = "standard-webhooks", secret, ...custom } = signing;
   if (preset === "ts-id-body") {
     const { signatureHeader, timestampHeader, idHeader, ...overrides } = custom;

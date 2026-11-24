@@ -166,6 +166,29 @@ Example:
 ob connections create ci --can 'dev/=read,post' --claims 1 --secret-file ./secret
 ```
 
+## `ob inbound create`
+
+Create an inbound endpoint and store the verify secret privately.
+
+```sh
+ob inbound create --file <spec.json> --secret-file <path>
+```
+
+Options:
+
+- `--file`: JSON inbound endpoint spec.
+- `--secret-file`: Existing verify secret or a new 0600 file.
+
+Errors: `error: forbidden`, `error: grant_lockout`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_rule`, `error: invalid_signing`, `error: not_found`, `error: not_supported`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: slug_taken`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob inbound create --file runner-status.json --secret-file ./inbound.secret
+```
+
 ## `ob webhooks create`
 
 Subscribe to board events and store the signing secret privately.
@@ -598,6 +621,68 @@ Example:
 
 ```sh
 ob tasks create dev "Ship it"
+```
+
+## `ob inbound delete`
+
+Delete an inbound endpoint and its grant.
+
+```sh
+ob inbound delete <id>
+```
+
+Arguments:
+
+- `id`: An inbound ID.
+
+Errors: `error: forbidden`, `error: grant_lockout`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob inbound delete id
+```
+
+## `ob inbound show`
+
+Show an inbound endpoint without its verify secret.
+
+```sh
+ob inbound show <id>
+```
+
+Arguments:
+
+- `id`: An inbound ID.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob inbound show id
+```
+
+## `ob inbound`
+
+List manageable inbound endpoints.
+
+```sh
+ob inbound
+```
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob inbound
 ```
 
 ## `ob delete`
