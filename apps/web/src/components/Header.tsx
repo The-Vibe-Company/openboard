@@ -14,6 +14,7 @@ export function Header() {
         <div className="session-controls">
           {person.avatar && <img src={person.avatar} alt="" width={32} height={32} />}
           <span>{person.handle}</span>
+          <Link to="/account">Account</Link>
           <button type="button" disabled={signOut.isPending} onClick={() => signOut.mutate(csrf)}>
             Sign out
           </button>
