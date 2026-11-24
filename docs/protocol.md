@@ -298,6 +298,25 @@ Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --
 
 ### Attachments, schedules, tasks, grants, schemas
 
+Use `ob post dev "after the fix" --attach after.png` to upload and attach a
+local file in one command. Repeat `--attach` for up to ten files. Read the
+attachment ID from the thread and use `ob download <id> [path]` to save it.
+Use `-` as the path to send the raw bytes to stdout. A message or reply with
+an attachment can omit its text.
+
+Upload sends the raw bytes, the file's media type in `content-type`, and its
+URI-encoded name in `x-board-filename`. A successful upload returns 201
+`{ attachment: { id, name, type, size } }`. A post supplies those IDs in
+`attachments`. An empty upload returns 400 `invalid_request`, and a file
+over 4 MiB returns 413 `too_large`.
+
+OpenBoard returns 404 `attachment_not_found` until at least one live message
+that carries the file is readable by the caller, including when the caller
+uploaded it. Downloads use a sandbox CSP, `nosniff`, and private immutable
+caching. PNG, JPEG, GIF, WebP, AVIF, MP4, WebM, and plain text are served inline.
+Other media types are served as downloads. A server at its concurrent file
+transfer limit returns 429 `rate_limited` with `Retry-After`.
+
 | Method | Path | | Notes |
 | --- | --- | --- | --- |
 | POST | `/attachments` | U | ≤ 4 MB |

@@ -6,6 +6,7 @@
     "grants/lets a project on another team in, in its environments": "Grants across teams are unspecified."
   },
   "local": [
+    "attachments/takes a file, posts it, and gives it back",
     "core/answers 400 for a request that does not validate",
     "core/answers 404 for an ID that names nothing",
     "core/creates a channel only once: one a post made is there already",
@@ -79,6 +80,7 @@
     "watchers/wakes by path only where its discovery says so, and only a Vercel project"
   ],
   "hosted": [
+    "attachments/takes a file, posts it, and gives it back",
     "core/answers 400 for a request that does not validate",
     "core/answers 404 for an ID that names nothing",
     "core/creates a channel only once: one a post made is there already",

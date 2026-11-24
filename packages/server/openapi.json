@@ -659,7 +659,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -926,7 +941,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -1439,7 +1469,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -1722,7 +1767,22 @@
                               "type": "object",
                               "patternProperties": { "^(.*)$": { "type": "string" } }
                             },
-                            "attachments": { "type": "array", "items": {} },
+                            "attachments": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": ["id", "name", "type", "size"],
+                                "properties": {
+                                  "id": {
+                                    "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                    "type": "string"
+                                  },
+                                  "name": { "type": "string" },
+                                  "type": { "type": "string" },
+                                  "size": { "type": "integer" }
+                                }
+                              }
+                            },
                             "links": { "type": "array", "items": {} },
                             "version": { "type": "integer" },
                             "task": {
@@ -1996,7 +2056,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -2262,7 +2337,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -4492,7 +4582,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -4919,7 +5024,22 @@
                                 "type": "object",
                                 "patternProperties": { "^(.*)$": { "type": "string" } }
                               },
-                              "attachments": { "type": "array", "items": {} },
+                              "attachments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["id", "name", "type", "size"],
+                                  "properties": {
+                                    "id": {
+                                      "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                      "type": "string"
+                                    },
+                                    "name": { "type": "string" },
+                                    "type": { "type": "string" },
+                                    "size": { "type": "integer" }
+                                  }
+                                }
+                              },
                               "links": { "type": "array", "items": {} },
                               "version": { "type": "integer" },
                               "task": {
@@ -5117,7 +5237,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -5435,7 +5570,22 @@
                           "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "deleted": { "type": "boolean" },
                           "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                          "attachments": { "type": "array", "items": {} },
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "name", "type", "size"],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                  "type": "string"
+                                },
+                                "name": { "type": "string" },
+                                "type": { "type": "string" },
+                                "size": { "type": "integer" }
+                              }
+                            }
+                          },
                           "links": { "type": "array", "items": {} },
                           "version": { "type": "integer" },
                           "task": {
@@ -8095,6 +8245,56 @@
         }
       }
     },
+    "/attachments/{id}": {
+      "get": {
+        "operationId": "download",
+        "summary": "Download bytes from an attachment carried by a readable message.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "file", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "attachment_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/api/x/orgs/{org}/exports/{id}/download": {
       "get": {
         "operationId": "downloadOrgExport",
@@ -8758,7 +8958,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -8947,7 +9162,22 @@
                           "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "deleted": { "type": "boolean" },
                           "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                          "attachments": { "type": "array", "items": {} },
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "name", "type", "size"],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                  "type": "string"
+                                },
+                                "name": { "type": "string" },
+                                "type": { "type": "string" },
+                                "size": { "type": "integer" }
+                              }
+                            }
+                          },
                           "links": { "type": "array", "items": {} },
                           "version": { "type": "integer" },
                           "task": {
@@ -10738,7 +10968,22 @@
                           "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "deleted": { "type": "boolean" },
                           "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                          "attachments": { "type": "array", "items": {} },
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "name", "type", "size"],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                  "type": "string"
+                                },
+                                "name": { "type": "string" },
+                                "type": { "type": "string" },
+                                "size": { "type": "integer" }
+                              }
+                            }
+                          },
                           "links": { "type": "array", "items": {} },
                           "version": { "type": "integer" },
                           "task": {
@@ -10878,7 +11123,6 @@
               "schema": {
                 "additionalProperties": false,
                 "type": "object",
-                "required": ["text"],
                 "properties": {
                   "channel": {
                     "maxLength": 2048,
@@ -10893,7 +11137,23 @@
                     "x-ref": "message",
                     "type": "string"
                   },
-                  "text": { "maxLength": 10000, "type": "string" },
+                  "text": {
+                    "maxLength": 10000,
+                    "default": "",
+                    "description": "Message text, which may be empty when the message has attachments.",
+                    "type": "string"
+                  },
+                  "attachments": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                      "x-ref": "file",
+                      "type": "string"
+                    }
+                  },
                   "labels": {
                     "additionalProperties": false,
                     "type": "object",
@@ -11037,7 +11297,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -11182,7 +11457,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
-            "description": "schema_not_found, message_not_found, not_found",
+            "description": "attachment_not_found, schema_not_found, message_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "409": {
@@ -11490,7 +11765,22 @@
                           "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "deleted": { "type": "boolean" },
                           "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                          "attachments": { "type": "array", "items": {} },
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "name", "type", "size"],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                  "type": "string"
+                                },
+                                "name": { "type": "string" },
+                                "type": { "type": "string" },
+                                "size": { "type": "integer" }
+                              }
+                            }
+                          },
                           "links": { "type": "array", "items": {} },
                           "version": { "type": "integer" },
                           "task": {
@@ -11875,7 +12165,22 @@
                                 "type": "object",
                                 "patternProperties": { "^(.*)$": { "type": "string" } }
                               },
-                              "attachments": { "type": "array", "items": {} },
+                              "attachments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["id", "name", "type", "size"],
+                                  "properties": {
+                                    "id": {
+                                      "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                      "type": "string"
+                                    },
+                                    "name": { "type": "string" },
+                                    "type": { "type": "string" },
+                                    "size": { "type": "integer" }
+                                  }
+                                }
+                              },
                               "links": { "type": "array", "items": {} },
                               "version": { "type": "integer" },
                               "task": {
@@ -12073,7 +12378,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -12817,7 +13137,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -13083,7 +13418,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -13574,7 +13924,22 @@
                                       },
                                       "origin": { "type": "null" },
                                       "from": { "type": "null" },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} }
                                     }
                                   },
@@ -13679,7 +14044,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -13904,7 +14284,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -14129,7 +14524,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -14361,7 +14771,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -14650,7 +15075,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -14875,7 +15315,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -15110,7 +15565,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -15333,7 +15803,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -15558,7 +16043,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -15782,7 +16282,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -16007,7 +16522,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -16219,7 +16749,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -16445,7 +16990,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -16673,7 +17233,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -16888,7 +17463,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -17114,7 +17704,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -17339,7 +17944,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -17565,7 +18185,22 @@
                                         "type": "object",
                                         "patternProperties": { "^(.*)$": { "type": "string" } }
                                       },
-                                      "attachments": { "type": "array", "items": {} },
+                                      "attachments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["id", "name", "type", "size"],
+                                          "properties": {
+                                            "id": {
+                                              "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                              "type": "string"
+                                            },
+                                            "name": { "type": "string" },
+                                            "type": { "type": "string" },
+                                            "size": { "type": "integer" }
+                                          }
+                                        }
+                                      },
                                       "links": { "type": "array", "items": {} },
                                       "version": { "type": "integer" },
                                       "task": {
@@ -19060,7 +19695,22 @@
                                   },
                                   "origin": { "type": "null" },
                                   "from": { "type": "null" },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} }
                                 }
                               },
@@ -19165,7 +19815,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -19390,7 +20055,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -19615,7 +20295,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -19847,7 +20542,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -20133,7 +20843,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -20358,7 +21083,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -20589,7 +21329,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -20812,7 +21567,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -21037,7 +21807,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -21261,7 +22046,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -21486,7 +22286,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -21698,7 +22513,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -21924,7 +22754,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -22150,7 +22995,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -22365,7 +23225,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -22591,7 +23466,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -22816,7 +23706,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -23042,7 +23947,22 @@
                                     "type": "object",
                                     "patternProperties": { "^(.*)$": { "type": "string" } }
                                   },
-                                  "attachments": { "type": "array", "items": {} },
+                                  "attachments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["id", "name", "type", "size"],
+                                      "properties": {
+                                        "id": {
+                                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                          "type": "string"
+                                        },
+                                        "name": { "type": "string" },
+                                        "type": { "type": "string" },
+                                        "size": { "type": "integer" }
+                                      }
+                                    }
+                                  },
                                   "links": { "type": "array", "items": {} },
                                   "version": { "type": "integer" },
                                   "task": {
@@ -23690,7 +24610,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -24136,7 +25071,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -24325,7 +25275,22 @@
                           "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "deleted": { "type": "boolean" },
                           "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                          "attachments": { "type": "array", "items": {} },
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "name", "type", "size"],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                  "type": "string"
+                                },
+                                "name": { "type": "string" },
+                                "type": { "type": "string" },
+                                "size": { "type": "integer" }
+                              }
+                            }
+                          },
                           "links": { "type": "array", "items": {} },
                           "version": { "type": "integer" },
                           "task": {
@@ -24907,7 +25872,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -25255,7 +26235,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -25505,7 +26500,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -25777,7 +26787,22 @@
                         "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "deleted": { "type": "boolean" },
                         "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
-                        "attachments": { "type": "array", "items": {} },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
                         "links": { "type": "array", "items": {} },
                         "version": { "type": "integer" },
                         "task": {
@@ -27064,6 +28089,88 @@
           },
           "409": {
             "description": "grant_lockout",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "quota_exceeded, rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/attachments": {
+      "post": {
+        "operationId": "upload",
+        "summary": "Upload a file to attach to a message.",
+        "parameters": [
+          {
+            "name": "x-board-filename",
+            "in": "header",
+            "schema": { "type": "string" },
+            "description": "URI-encoded filename."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": { "schema": { "type": "string", "format": "binary", "maxLength": 4194304 } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["attachment"],
+                  "properties": {
+                    "attachment": {
+                      "type": "object",
+                      "required": ["id", "name", "type", "size"],
+                      "properties": {
+                        "id": {
+                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                          "type": "string"
+                        },
+                        "name": { "type": "string" },
+                        "type": { "type": "string" },
+                        "size": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "413": {
+            "description": "too_large",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "429": {

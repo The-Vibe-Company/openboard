@@ -51,6 +51,7 @@ function runner(
     { mode: "local", instanceId, publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER },
     {
       store,
+      blobs: store.blobs,
       jobs: {
         ...store.jobs,
         claim: (kinds, lease) => {
@@ -158,6 +159,11 @@ for (const legacy of [false, true]) {
       const before = await snapshot();
       expect(before.missing).toEqual([]);
       expectSeeded(before.rows, legacy);
+      const deletedBlob = {
+        orgId: deletedKeys.orgId,
+        sha256: createHash("sha256").update(deleted.marker).digest("hex"),
+      };
+      expect(await new Response(await store.blobs.get(deletedBlob)).text()).toBe(deleted.marker);
       const surviving = await otherDigest();
       await clock.armed;
       await clock.advance(NOW + 29 * day);
@@ -173,6 +179,9 @@ for (const legacy of [false, true]) {
       expect(completed).toHaveLength(1);
       const after = await snapshot();
       expect(Object.values(after.rows).flat()).toEqual([]);
+      expect(await store.blobs.get(deletedBlob)).toBeNull();
+      const otherBlob = { orgId: other.orgId, sha256: createHash("sha256").update(b.marker).digest("hex") };
+      expect(await new Response(await store.blobs.get(otherBlob)).text()).toBe(b.marker);
       expect(await otherDigest()).toBe(surviving);
       // The retention sweep can remove the original sessions before the slug-reuse check.
       const newcomer = await signIn(store, "newcomer", "g");

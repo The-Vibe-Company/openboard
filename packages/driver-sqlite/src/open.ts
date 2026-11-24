@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { BoardError } from "@openboard/contract";
 import { createViews, type Db, migrations, type Row, type SqlValue, withWebhookMetrics } from "@openboard/driver-sql";
 import type { Store, StoreMetrics } from "@openboard/ports";
+import { sqliteBlobs } from "./blobs.ts";
 import { sqliteBroadcaster } from "./broadcaster.ts";
 import type { StatementCounter } from "./counters.ts";
 import { sqliteDialect } from "./dialect.ts";
@@ -134,16 +135,26 @@ export function sqliteDriver(options: SqliteOptions, now: () => number = Date.no
     () => metrics,
   );
   const jobs = sqliteJobs(db, now);
+  const blobs = sqliteBlobs("dir" in options ? options.dir : undefined);
   return {
     jobs,
+    blobs,
     observeMetrics(observer) {
       metrics = observer;
     },
-    ...createViews(db, sqliteDialect, sqliteBroadcaster(), { now, committed: jobs.committed }),
+    ...createViews(
+      db,
+      sqliteDialect,
+      sqliteBroadcaster(),
+      { now, committed: jobs.committed },
+      () => blobs,
+      blobs.purgeOrg,
+    ),
     async close() {
       jobs.close();
       await stopSnapshots?.();
       database.close();
+      await blobs.close();
     },
   };
 }

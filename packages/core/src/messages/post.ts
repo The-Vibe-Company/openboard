@@ -1,5 +1,6 @@
 import {
   type Actor,
+  type Attachment,
   type Author,
   BoardError,
   type InputOf,
@@ -24,6 +25,7 @@ export interface PostCommand {
   readonly text: string;
   readonly labels?: Readonly<Record<string, string>>;
   readonly noSync?: boolean;
+  readonly attachments?: readonly string[];
   readonly sync?: Readonly<NonNullable<InputOf<typeof postMessage>["sync"]>>;
   /** The client's idempotency key: a retry under it gets back the post that landed instead of posting again. */
   readonly id?: string;
@@ -52,7 +54,7 @@ export interface MessagePostedPayload {
   readonly clientId?: string;
   readonly origin: null;
   readonly from: null;
-  readonly attachments: readonly never[];
+  readonly attachments: readonly Attachment[];
   readonly links: readonly never[];
 }
 
@@ -127,6 +129,7 @@ export interface PostContext {
   readonly author?: MessageAuthor;
   readonly now: number;
   readonly blocks?: MessageBlock[];
+  readonly attachments?: readonly Attachment[];
 }
 
 /** No board string holds a NUL, which Postgres cannot store, or a lone surrogate (upstream `storable`). */
@@ -145,8 +148,9 @@ export function checkClientId(id: string, principal: string) {
   }
 }
 
-export function checkMessageText(text: string) {
-  if (text.trim().length === 0) throw new BoardError("invalid_request", "text: message text is empty");
+export function checkMessageText(text: string, hasAttachments = false) {
+  if (!hasAttachments && text.trim().length === 0)
+    throw new BoardError("invalid_request", "text: message text is empty");
   if (!storable(text)) {
     throw new BoardError("invalid_request", "text: message text has a NUL character or a lone surrogate");
   }
@@ -161,7 +165,7 @@ export function checkPost(command: PostCommand, by: Author) {
   if (command.after !== undefined && command.re === undefined) {
     throw new BoardError("invalid_after", "after: `after` is for replies");
   }
-  checkMessageText(command.text);
+  checkMessageText(command.text, !!command.attachments?.length);
   checkLabels(command.labels ?? {});
   if (!command.sync?.length) return;
   if (command.re !== undefined) {
@@ -197,7 +201,7 @@ export function messageView(event: MessagePosted): Message {
     editedAt: null,
     deleted: false,
     undelivered: {},
-    attachments: [],
+    attachments: [...payload.attachments],
     links: [],
     version: event.id,
     revision: 1,
@@ -271,7 +275,7 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
       ...(command.id === undefined ? {} : { clientId: command.id }),
       origin: null,
       from: null,
-      attachments: [],
+      attachments: context.attachments ?? [],
       links: [],
     },
   };

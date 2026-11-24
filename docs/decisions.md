@@ -564,6 +564,10 @@ reconcile the timer with the queue, including any outstanding lease expiries.
   storage service for files; blobs share the database's transactions, export,
   deletion, and backups (and make dumps bigger, hence the threshold).
 
+  OpenBoard generates upstream-compatible `att_` UUIDv4 IDs and accepts the
+  legacy 22-character base64url form. A download requires a readable live
+  message carrying the attachment, including for the uploader. See issue #562.
+
 ### D40. SaaS seams with v1 minimums; billing out of scope (N8)
 
 - **Decision.** Designed seams: quotas, per-organization rate limits, usage

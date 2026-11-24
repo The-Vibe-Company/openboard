@@ -100,7 +100,7 @@ function board() {
       localOwnerTokenHash: owner.hash,
       secretKey: new Uint8Array(32).fill(12),
     },
-    { store, jobs: store.jobs },
+    { store, blobs: store.blobs, jobs: store.jobs },
     {
       now,
       requestId: () => `req-${++requests}`,

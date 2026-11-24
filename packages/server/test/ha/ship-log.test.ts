@@ -43,6 +43,7 @@ function runner(store: Store, bucket: Bucket, clock: ReturnType<typeof fakeClock
     { mode: "hosted", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER },
     {
       store,
+      blobs: store.blobs,
       jobs: {
         ...store.jobs,
         claim(kinds, lease) {

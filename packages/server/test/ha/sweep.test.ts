@@ -60,6 +60,7 @@ function runner(
       secretKey: key,
     },
     {
+      blobs: store.blobs,
       store: {
         ...store,
         platform: () =>

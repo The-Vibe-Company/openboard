@@ -95,6 +95,24 @@ Example:
 ob org export download ex_0123456789abcdef0123456789abcdef --out acme.tar.gz
 ```
 
+## `ob download`
+
+Download a file from a message you can read.
+
+```sh
+ob download <id> [path]
+```
+
+Errors: `error: attachment_not_found`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob download att_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa out.png
+```
+
 ## `ob grants update`
 
 Change a grant by its ID.
@@ -424,7 +442,7 @@ ob messages dev --after 120 --limit 50
 Reply in the thread of a message.
 
 ```sh
-ob reply <id> <text> [--after <id>] [--no-sync] [--idempotency-key <id>]
+ob reply <id> [<text>] [--after <id>] [--no-sync] [--idempotency-key <id>] [--attach <file>]...
 ```
 
 Options:
@@ -432,8 +450,9 @@ Options:
 - `--after`: A reply's precondition: a message in its thread that must still be the newest.
 - `--no-sync`: A switch: present means yes.
 - `--idempotency-key`: An idempotency key: a retry under it gets back the post that landed instead of posting again.
+- `--attach`: A value; repeatable.
 
-Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_block`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_target`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: schema_not_found`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: attachment_not_found`, `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_block`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_target`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: schema_not_found`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `post_message`.
 
@@ -1274,26 +1293,28 @@ ob tasks assign 42 fixer
 Post a message: a new thread in a channel, or a reply in the thread of any message `re` names.
 
 ```sh
-ob post <channel> <text> [--re <re>] [--after <after>] [--label <k=v>]... [--no-sync] [--sync <sync>]... [--idempotency-key <idempotency-key>]
-ob post <channel> --file <path> [--re <re>] [--after <after>] [--label <k=v>]... [--no-sync] [--sync <sync>]... [--idempotency-key <idempotency-key>]
+ob post <channel> <text> [--re <re>] [--after <after>] [--attach <attach>]... [--label <k=v>]... [--no-sync] [--sync <sync>]... [--idempotency-key <idempotency-key>]
+ob post <channel> --file <path> [--re <re>] [--after <after>] [--attach <attach>]... [--label <k=v>]... [--no-sync] [--sync <sync>]... [--idempotency-key <idempotency-key>]
+ob post <channel> --attach <file> [--re <re>] [--after <after>] [--label <k=v>]... [--no-sync] [--sync <sync>]... [--idempotency-key <idempotency-key>]
 ```
 
 Arguments:
 
 - `channel`: Text.
-- `text`: Text.
+- `text`: Message text, which may be empty when the message has attachments.
 
 Options:
 
 - `--re`: A message ID.
 - `--after`: A reply's precondition: a message in its thread that must still be the newest.
+- `--attach`: A value; repeatable.
 - `--label`: A `key=value` entry; repeatable.
 - `--no-sync`: A switch: present means yes.
 - `--sync`: External targets for a new thread. This board refuses any targets.
 - `--idempotency-key`: An idempotency key: a retry under it gets back the post that landed instead of posting again.
 - `--file`: Path to the message text, or - for stdin.
 
-Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_block`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_target`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: schema_not_found`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: attachment_not_found`, `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_block`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_target`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: schema_not_found`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `post_message`.
 

@@ -72,6 +72,7 @@ export async function runBoard(
     };
     return {
       board,
+      blobs: pipeline.blobs,
       debitWrite: () => limitWrite(pipeline.rateLimits, path.org, operation.effects.readOnly),
       rateLimits: pipeline.rateLimits,
       ip: pipeline.ip,

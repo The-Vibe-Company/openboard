@@ -10,7 +10,7 @@ import { openStore } from "../support/drivers.ts";
 function instance(store: Store, instanceId: string, schedule: Deps["schedule"], handler?: JobHandler) {
   return createApp(
     { mode: "local", instanceId, publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: OWNER.hash },
-    { store, jobs: store.jobs },
+    { store, blobs: store.blobs, jobs: store.jobs },
     {
       now: () => NOW,
       schedule,

@@ -1,5 +1,5 @@
 import { BoardError, getMe, type Operation, type operations, type previewInvitation } from "@openboard/contract";
-import type { Bucket, Jobs, PlatformView, RateLimits } from "@openboard/ports";
+import type { Blobs, Bucket, Jobs, PlatformView, RateLimits } from "@openboard/ports";
 import { type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
 import { accountPersonalToken, exportTokenPerson } from "../auth/personal-tokens.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
@@ -46,6 +46,7 @@ export interface Pipeline {
   readonly dueMetrics: Jobs["dueMetrics"];
   readonly jobKinds: readonly string[];
   readonly bucket: Bucket | undefined;
+  readonly blobs: Blobs;
   readonly shutdown: AbortSignal;
   readonly staticFiles: (request: Request, path: string) => Promise<Response> | undefined;
   readonly schemaReady: () => Promise<boolean>;
@@ -276,7 +277,15 @@ async function run(
   const readInput = async () => ({
     params: matched.params,
     query: readQuery(operation, url.searchParams),
-    body: request.method === "GET" ? undefined : await readBody(request),
+    ...("binary" in operation.input
+      ? {
+          binary: {
+            stream: request.body,
+            name: request.headers.get("x-board-filename"),
+            type: request.headers.get("content-type"),
+          },
+        }
+      : { body: request.method === "GET" ? undefined : await readBody(request) }),
   });
   const stream = !!operation.eventStream && !!request.headers.get("accept")?.includes(operation.eventStream);
   return runBoard(request, path, operation, pipeline, caller, readInput, stream);

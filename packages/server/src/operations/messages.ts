@@ -27,6 +27,7 @@ import {
 import type { BoardWriter, MentionEvidence } from "@openboard/ports";
 import { canListMentionActors, canReadChannel, withoutMentionDetails } from "../auth/access.ts";
 import { authorOf } from "../auth/author.ts";
+import { resolveAttachments } from "./attachments/index.ts";
 import type { BoardContext, Handler } from "./index.ts";
 
 /**
@@ -34,7 +35,8 @@ import type { BoardContext, Handler } from "./index.ts";
  * its client ID already landed, and the board's record of the writer are read under the board's lock, so of replies
  * racing after one message one lands (D33); a non-ID names no message. A retry appends nothing.
  */
-export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input) => {
+export const postMessageHandler: Handler<typeof postMessage> = async (ctx, request) => {
+  const input = { ...request, text: request.text ?? "" };
   messages.checkPost(input, ctx.by);
   ctx.debitWrite();
   const { message, replay } = await writeWithMentionVisibility(
@@ -58,7 +60,8 @@ export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input
         mentions,
       );
       const blocks = await validateBlocks(writer, settled?.text ?? input.text);
-      const decided = messages.decidePost(state, input, { ...context, blocks }, settled);
+      const attachments = input.attachments?.length ? await resolveAttachments(writer, ctx.by, input.attachments) : [];
+      const decided = messages.decidePost(state, input, { ...context, blocks, attachments }, settled);
       await writer.append(decided.events);
       return { message: decided.message, replay: false };
     },

@@ -188,7 +188,7 @@ and cursors"). Upstream's local board uses decimal log positions (`"812"`).
 | Thread page `older` | `"<active>.<root>"` | per board |
 | Schedule ID | `s<n>`, `<n>` accepted, from `boards.next_schedule` | per board |
 | Grant ID | `g<n>` from `boards.next_grant`; `g1`..`g3` seeded | per board |
-| Attachment ID | `at_` + 26 chars base32 (128 random bits) | global |
+| Attachment ID | `att_` + lowercase UUIDv4 (accepts upstream legacy 22-character base64url IDs) | global |
 | Connection, agent, webhook, delivery, inbound, invitation IDs | `cn_`, `ag_`, `wh_`, `dl_`, `ib_`, `inv_` + 16 chars base32 | global |
 | User, organization, board (internal) | `BIGINT` generated; public as `u_` + base32 for users; slugs for orgs and boards | global |
 | Schema ID | `name@version` | per board; built-ins on every board |
@@ -272,7 +272,8 @@ CREATE TABLE orgs (
   created_by  BIGINT  NOT NULL,
   created_at  BIGINT  NOT NULL,
   deleted_at  BIGINT,                           -- soft delete; hard delete job after 30 days
-  quotas      TEXT                              -- JSON overrides of default quotas
+  quotas      TEXT,                             -- JSON overrides of default quotas
+  attachment_bytes BIGINT                       -- unique attachment bytes, NULL means zero
 );
 CREATE TABLE memberships (                      -- many-to-many; v1 UX enforces one org per person
   org_id      BIGINT  NOT NULL,
@@ -435,7 +436,7 @@ CREATE UNIQUE INDEX messages_sched  ON messages (board_id, schedule_id, schedule
 CREATE INDEX messages_text_trgm     ON messages USING gin (text_lower gin_trgm_ops);
 
 CREATE TABLE terms (                     -- label key, '@' mention, '^' attachment
-  board_id BIGINT NOT NULL, message BIGINT NOT NULL, term TEXT NOT NULL, value TEXT NOT NULL,
+  org_id BIGINT NOT NULL, board_id BIGINT NOT NULL, message BIGINT NOT NULL, term TEXT NOT NULL, value TEXT NOT NULL,
   PRIMARY KEY (board_id, message, term, value)
 );
 CREATE INDEX terms_lookup ON terms (board_id, term, value, message);

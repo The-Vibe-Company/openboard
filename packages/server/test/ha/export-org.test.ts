@@ -25,6 +25,7 @@ function fixture(bucket?: Bucket) {
       { mode: "hosted", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, signup: "open" },
       {
         store: peer,
+        blobs: peer.blobs,
         ...(bucket ? { bucket } : {}),
         jobs: {
           ...peer.jobs,

@@ -83,7 +83,7 @@ async function bootApp(url: string, path: string, mode: ServerConfig["mode"], op
           signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } },
         }),
       },
-      { store, jobs: store.jobs },
+      { store, blobs: store.blobs, jobs: store.jobs },
       {
         now,
         requestId: () => crypto.randomUUID(),

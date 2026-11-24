@@ -1,8 +1,11 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
 import type { BoardView, BoardWriter, Store } from "@openboard/ports";
+import { createViews, localBroadcaster, postgresText } from "@openboard/driver-sql";
 import { testScope } from "@openboard/ports/testkit";
 import { SQL } from "bun";
+import { postgresBlobs } from "../src/blobs.ts";
+import { connection } from "../src/pool.ts";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
 import { postgresTestUrl } from "./support/env.ts";
 
@@ -130,5 +133,53 @@ if (url) {
     const [repaired] = await admin`SELECT head, stored_bytes, stored_bytes_head FROM boards WHERE id = ${sibling.id}`;
     expect(Number(repaired.stored_bytes)).toBe(7);
     expect(Number(repaired.stored_bytes_head)).toBe(Number(repaired.head));
+  });
+
+  test("a message waiting behind an upload sees its byte charge even though the board head did not move", async () => {
+    if (!store || !admin) throw new Error("missing Postgres test store");
+    const platform = store.platform();
+    const keys = await platform.findBoard("local", "main");
+    if (!keys) throw new Error("missing local/main fixture board");
+    expect(await platform.setOrgQuotas(keys.orgId, { storedBytes: 5 })).toBe(true);
+    const held = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const scope = testScope(keys);
+    const board = store.board(scope);
+    const uploader = createViews(connection(admin), postgresText, localBroadcaster(), undefined, (tx) => {
+      const blobs = postgresBlobs(tx);
+      return {
+        ...blobs,
+        async put(...args) {
+          await blobs.put(...args);
+          held.resolve();
+          await release.promise;
+        },
+      };
+    }).board(scope);
+    const uploading = uploader.uploadAttachment(
+      { id: "att_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "quota.txt", type: "text/plain", size: 3 },
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      by.principal,
+      new TextEncoder().encode("abc"),
+      at,
+    );
+    try {
+      await Promise.race([uploading, held.promise]);
+      const posting = board.write((writer) => appendPost(writer, "a")).catch((error: unknown) => error);
+      let waiting = false;
+      for (let attempt = 0; attempt < 100 && !waiting; attempt++) {
+        const [row] = await admin`SELECT EXISTS (
+          SELECT 1 FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE 'SELECT boards.head, boards.timeline%'
+        ) AS waiting`;
+        waiting = Boolean(row.waiting);
+      }
+      release.resolve();
+      expect(waiting).toBe(true);
+      expect(await posting).toMatchObject({ code: "quota_exceeded", reason: "stored_bytes" });
+    } finally {
+      release.resolve();
+      await uploading;
+    }
   });
 }

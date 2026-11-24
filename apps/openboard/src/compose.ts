@@ -94,7 +94,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
       signup,
       ...(github && { signIn: { github } }),
     },
-    { store, jobs: store.jobs, ...(bucket && { bucket }) },
+    { store, blobs: store.blobs, jobs: store.jobs, ...(bucket && { bucket }) },
     deps,
     { ...maintenanceJobs, ...usageJobs },
   );

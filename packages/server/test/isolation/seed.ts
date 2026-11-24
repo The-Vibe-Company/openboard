@@ -97,15 +97,28 @@ async function messages(send: Send, base: string, session: Headers, marker: stri
   return { last, firstThread: root.message.id };
 }
 
+async function attachmentThread(send: Send, base: string, session: Headers, marker: string) {
+  const { attachment } = await ok<{ attachment: { id: string } }>(
+    send("POST", `${base}/attachments`, session, new TextEncoder().encode(marker)),
+    "attachment",
+  );
+  const thread = await ok<{ message: { id: string } }>(
+    send("POST", `${base}/messages`, session, {
+      channel: "dev",
+      text: `${marker} second root`,
+      attachments: [attachment.id],
+    }),
+    "second thread",
+  );
+  return { file: attachment.id, thread: thread.message.id };
+}
+
 /** Messages, two connections, an agent and an invitation on the organization's board `main`. */
 async function resources(send: Send, org: string, session: Headers, marker: string, replies: number) {
   const base = `/api/${org}/main`;
   const { last: message, firstThread } = await messages(send, base, session, marker, replies);
   await ok(send("POST", `${base}/watchers`, session, { watch: { seed: { tail: "dev" } } }), "watcher");
-  const thread = await ok<{ message: { id: string } }>(
-    send("POST", `${base}/messages`, session, { channel: "dev", text: `${marker} second root` }),
-    "second thread",
-  );
+  const { file, thread } = await attachmentThread(send, base, session, marker);
   const {
     tasks: [task],
   } = await ok<{ tasks: [{ id: string }] }>(
@@ -167,7 +180,8 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
     ids: {
       message,
       watcherMatch: match.id,
-      thread: thread.message.id,
+      file,
+      thread,
       task: task.id,
       taskBatch: marker,
       grant: granted.grant.id,
@@ -264,14 +278,19 @@ export async function seed(
       log: { info() {}, error() {} },
     },
   );
-  const send: Send = (method, path, headers, body) =>
-    app.fetch(
+  const send: Send = (method, path, headers, body) => {
+    const binary = body instanceof Uint8Array;
+    return app.fetch(
       new Request(`${PUBLIC_URL}${path}`, {
         method,
-        headers: { ...headers, ...(body === undefined ? {} : { "content-type": "application/json" }) },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        headers: {
+          ...headers,
+          ...(body === undefined ? {} : { "content-type": binary ? "application/octet-stream" : "application/json" }),
+        },
+        ...(body === undefined ? {} : { body: binary ? Uint8Array.from(body) : JSON.stringify(body) }),
       }),
     );
+  };
   const a = await tenant(send, store, "alpha", "a", 1);
   const aOther = "other";
   await ok(send("POST", "/api/x/orgs/alpha/boards", a.session, { slug: aOther, name: aOther }), "board");

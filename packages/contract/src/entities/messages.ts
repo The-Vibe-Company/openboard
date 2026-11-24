@@ -1,3 +1,4 @@
+import { Attachment } from "./attachments/index.ts";
 import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import { channelString } from "../channel-input.ts";
@@ -72,7 +73,7 @@ export const Message = Type.Object({
   editedAt: Type.Union([Type.String(), Type.Null()]),
   deleted: Type.Boolean(),
   undelivered: Type.Record(Type.String(), Type.String()),
-  attachments: Type.Array(Type.Unknown()),
+  attachments: Type.Array(Attachment),
   links: Type.Array(Type.Unknown()),
   version: Type.Integer(),
   task: Type.Optional(Task),

@@ -48,13 +48,16 @@ function errorResponses(operation: Operation) {
 }
 
 function describeOperation(operation: Operation) {
-  const { params, query, body } = operation.input;
+  const { params, query, body, binary } = operation.input;
   const sessionAuth = operation.scope === "org" || operation.scope === "account";
   const personalBearer = operation.orgPersonalToken || operation.accountBearer === "personal";
   const needsCsrf = sessionAuth && operation.route.method !== "GET";
   const fields = [
     ...parameters(params, "path"),
     ...parameters(query, "query"),
+    ...(binary
+      ? [{ name: "x-board-filename", in: "header", schema: { type: "string" }, description: "URI-encoded filename." }]
+      : []),
     ...(needsCsrf
       ? [
           {
@@ -106,6 +109,14 @@ function describeOperation(operation: Operation) {
     ...(operation.route.mount && { servers: [{ url: "/" }] }),
     ...(fields.length > 0 && { parameters: fields }),
     ...(query && { "x-query-schema": query }),
+    ...(binary && {
+      requestBody: {
+        required: true,
+        content: {
+          "application/octet-stream": { schema: { type: "string", format: "binary", maxLength: binary.maxBytes } },
+        },
+      },
+    }),
     ...(body && {
       requestBody: { required: !operation.bodyOptional, content: { "application/json": { schema: body } } },
     }),

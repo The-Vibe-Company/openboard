@@ -39,3 +39,4 @@ export type {
 } from "./store.ts";
 export type { BoardTaskReads, BoardTaskWriter, TaskListQuery } from "./tasks.ts";
 export * from "./webhooks/index.ts";
+export type { AttachmentReads, AttachmentRecord, AttachmentWrites, BlobKey, Blobs } from "./attachments/blobs.ts";

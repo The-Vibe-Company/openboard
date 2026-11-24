@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { BoardError, type CliSpec, claimNextTask, createTaskBatch, operations } from "@openboard/contract";
 import { formats } from "../output.ts";
+import { uploadFiles } from "./attachments/attach.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 import { profileActor, taskAssignCommand } from "./tasks/assign.ts";
 import { runCancelTask } from "./tasks/cancel.ts";
@@ -191,12 +192,24 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   const derived: Command = {
     words: command,
     ...(operation.name === "listWebhookDeliveries" && { help: operation.summary }),
-    usage: post ? `${usage}\nob ${[...command, "<channel>", "--file <path>", ...options].join(" ")}` : usage,
+    usage: post
+      ? [
+          `ob post <channel> <text> ${options.join(" ")}`,
+          `ob post <channel> --file <path> ${options.join(" ")}`,
+          `ob post <channel> --attach <file> ${options.filter((option) => !option.startsWith("[--attach")).join(" ")}`,
+        ].join("\n")
+      : usage,
     async run(ctx) {
       const input =
         post && hasOption("--file", ctx, flags, fields)
           ? postFileInput(ctx, fields, flags, nullEntries)
           : inputOf(ctx, args, fields, flags, nullEntries, alternative);
+      if (post) {
+        if ((typeof input.channel === "string") === (typeof input.re === "string"))
+          throw new Misuse("expected a channel or --re with one message ID");
+        if (Array.isArray(input.attachments)) input.attachments = await uploadFiles(ctx, input.attachments);
+        else if (input.text === undefined) throw new Misuse("expected a channel and the message's text");
+      }
       return runDerived(ctx, operation.name, input);
     },
   };

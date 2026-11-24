@@ -145,7 +145,7 @@ function pathOf(operation: Operation, tenant: Tenant, board: string, params: Fie
 export interface Call {
   readonly method: string;
   readonly path: string;
-  readonly body?: Fields;
+  readonly body?: Fields | Uint8Array<ArrayBuffer>;
 }
 
 /** Fields as a path or query string carries them. */
@@ -196,9 +196,16 @@ export function callOf(
     const ref = refFields(operation).find(({ part, field }) => part === override.part && field === override.field);
     parts[override.part][override.field] = ref?.array ? [override.value] : override.value;
   }
+  const bytes = operation.input.binary ? new TextEncoder().encode(tenant.marker) : undefined;
+  const binary = bytes ? { stream: new Blob([bytes]).stream(), name: null, type: null } : undefined;
   try {
     const org = operation.input.params?.properties.org ? { org: tenant.org } : {};
-    decodeInput(operation, { params: texts({ ...org, ...parts.params }), query: texts(parts.query), body: parts.body });
+    decodeInput(operation, {
+      params: texts({ ...org, ...parts.params }),
+      query: texts(parts.query),
+      body: parts.body,
+      binary,
+    });
   } catch (error) {
     throw new Error(`${operation.name}: give it a valid sample in SAMPLES (${error})`);
   }
@@ -206,7 +213,7 @@ export function callOf(
   const path = pathOf(operation, tenant, board, parts.params) + (query.size ? `?${query}` : "");
   return operation.route.method === "GET"
     ? { method: "GET", path }
-    : { method: operation.route.method, path, body: parts.body };
+    : { method: operation.route.method, path, body: bytes ?? parts.body };
 }
 
 export interface PathCase {

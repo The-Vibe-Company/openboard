@@ -2,10 +2,11 @@ import { type Operation, type OperationInput, operations } from "@openboard/cont
 
 /** Tool arguments use the same flat shape as the SDK's InputOf. */
 function inputSchema({ params, query, body }: OperationInput) {
+  const required = [...(params?.required ?? []), ...(query?.required ?? []), ...(body?.required ?? [])];
   return {
     type: "object",
     properties: { ...params?.properties, ...query?.properties, ...body?.properties },
-    required: [...(params?.required ?? []), ...(query?.required ?? []), ...(body?.required ?? [])],
+    ...(required.length ? { required } : {}),
     additionalProperties: false,
   };
 }

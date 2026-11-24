@@ -1,4 +1,4 @@
-import type { Broadcaster, Store } from "@openboard/ports";
+import type { Blobs, Broadcaster, Store } from "@openboard/ports";
 import init from "../migrations/0001-init.sql" with { type: "text" };
 import connectionsDdl from "../migrations/0002-connections.sql" with { type: "text" };
 import actors from "../migrations/0003-actors.sql" with { type: "text" };
@@ -47,11 +47,13 @@ import usageIndexesDdl from "../migrations/0045-usage.sql" with { type: "text" }
 import usageDeliveryDdl from "../migrations/0046-usage.sql" with { type: "text" };
 import usagePurgeDdl from "../migrations/0047-usage.sql" with { type: "text" };
 import webhookJobIndexesDdl from "../migrations/0048-webhook-job-indexes.sql" with { type: "text" };
+import attachmentDdl from "../migrations/0049-attachments.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
 import { agentReads } from "./views/agents.ts";
+import { attachmentReads, attachmentWrites } from "./views/attachments/index.ts";
 import { auditReads, orgAuditReads } from "./views/audit.ts";
 import { oidcKeysView } from "./views/auth/oidc.ts";
 import { orgBoardsView, platformView } from "./views/boards.ts";
@@ -79,6 +81,8 @@ import { watcherReads } from "./views/watchers/index.ts";
 import { webhookReads } from "./views/webhooks/webhooks.ts";
 
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
+export { query } from "./sql.ts";
+export { attachmentStatements } from "./views/attachments/index.ts";
 export { postgresText, withWebhookMetrics } from "./db.ts";
 export { splitStatements } from "./ddl.ts";
 export { localBroadcaster } from "./local-broadcaster.ts";
@@ -145,6 +149,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 46, name: "0046-usage", sql: usageDeliveryDdl },
   { version: 47, name: "0047-usage", sql: usagePurgeDdl },
   { version: 48, name: "0048-webhook-job-indexes", sql: webhookJobIndexesDdl },
+  { version: 49, name: "0049-attachments", sql: attachmentDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -153,6 +158,10 @@ export function createViews(
   dialect: Dialect,
   broadcaster: Broadcaster,
   jobs: JobWrites = { now: () => Number.NEGATIVE_INFINITY, committed() {} },
+  blobs: (tx: Db) => Blobs = () => {
+    throw new Error("blob driver is missing");
+  },
+  purgeBlobs?: (orgId: number) => Promise<void>,
 ): Pick<Store, "platform" | "board" | "org" | "schemaReady"> {
   return {
     schemaReady: () => checkSchema(db, dialect, migrations.at(-1)?.version ?? 0),
@@ -174,7 +183,7 @@ export function createViews(
       ...orgBoardsView(db, dialect, scope, broadcaster),
       ...rateView(db, dialect, `org:${scope.orgId}:`),
       ...membershipView(db, dialect, scope, jobs),
-      ...purgeOrgView(db, dialect, scope, jobs),
+      ...purgeOrgView(db, dialect, scope, jobs, purgeBlobs),
       ...usageView(db, dialect, scope, jobs),
       ...shippingView(db, dialect, scope),
       ...exportsView(db, dialect, scope, jobs),
@@ -196,6 +205,8 @@ export function createViews(
       ...agentReads(db, dialect, scope),
       ...auditReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),
+      ...attachmentReads(db, dialect, scope),
+      ...attachmentWrites(db, dialect, scope, blobs),
       ...watcherReads(db, dialect, scope),
       ...inboundReads(db, dialect, scope),
       ...webhookReads(db, dialect, scope),

@@ -10,6 +10,7 @@ import {
   startDeviceSignIn,
 } from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
+import { download, upload } from "./attachments/index.ts";
 import { readBoardAudit, readOrgAudit } from "./audit.ts";
 import { getAvatar } from "./avatars/get.ts";
 import { createBoard, deleteBoard, listBoards } from "./boards.ts";
@@ -141,6 +142,7 @@ export const operations = [
   deleteOrg,
   deleteWebhook,
   discoverBoard,
+  download,
   downloadOrgExport,
   editMessage,
   explainGrants,
@@ -219,6 +221,7 @@ export const operations = [
   startDeviceSignIn,
   updateGrant,
   updateWebhook,
+  upload,
 ] as const;
 
 export {

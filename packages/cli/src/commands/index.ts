@@ -60,3 +60,4 @@ export { waitCommand } from "./wait.ts";
 export { createWebhookCommand } from "./webhooks/create.ts";
 export { whoamiCommand } from "./whoami.ts";
 export { disableWebhookCommand, enableWebhookCommand } from "./webhooks/state.ts";
+export { downloadCommand } from "./attachments/attach.ts";

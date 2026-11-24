@@ -3,6 +3,7 @@ import {
   BACKFILL_BOARD_ORG_JOB,
   EXPORT_ORG_JOB,
   TASK_EXPIRY_JOB,
+  type Blobs,
   type Bucket,
   type Jobs,
   type Store,
@@ -34,6 +35,7 @@ export interface Ports {
   readonly store: Store;
   readonly jobs: Jobs;
   readonly bucket?: Bucket;
+  readonly blobs: Blobs;
 }
 
 /** One server instance: everything hangs off it, so two apps in one process share nothing (5.6). */
@@ -64,6 +66,7 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
       ]),
     ].sort(),
     bucket,
+    blobs: ports.blobs,
     shutdown: shutdown.signal,
     staticFiles: staticFiles(config.publicUrl, config.webDir),
     schemaReady: readinessCheck(() => ports.store.schemaReady()),

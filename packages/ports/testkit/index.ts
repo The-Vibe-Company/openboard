@@ -84,3 +84,4 @@ export function runIsolationSuite(driver: string, open: OpenStore): void {
 export { fakeBucket } from "./backup-bucket.ts";
 export { assertArchiveCredentialsAbsent, seedExportCredentials } from "./export-credentials.ts";
 export { runJobsSuite, runJobWakeSuite, type WithJobStores } from "./jobs.test-suite.ts";
+export { runBlobsSuite } from "./blobs.test-suite.ts";

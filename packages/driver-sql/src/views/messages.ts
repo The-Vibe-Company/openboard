@@ -13,6 +13,7 @@ import type { Db, Dialect } from "../db.ts";
 import { query } from "../sql.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
 import { findAgent, findAgentByClaimKey, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
+import { attachmentReads, foldAttachments } from "./attachments/index.ts";
 import { boardIdentity, repairStoredBytes, setHead } from "./boards.ts";
 import { findChannel, foldChannelCreated } from "./channels.ts";
 import {
@@ -66,6 +67,7 @@ async function foldMessagePosted(tx: Db, dialect: Dialect, keys: BoardKeys, even
     at: event.at,
     view: JSON.stringify(messages.messageView(event)),
   });
+  if (payload.attachments.length) await foldAttachments(tx, dialect, keys, event.id, payload.attachments);
   if (reply)
     await query(tx, dialect, messageStatements.bumpRoot, { boardId: keys.boardId, id: event.id, root: event.thread });
   await query(tx, dialect, messageStatements.upsertChannel, {
@@ -233,12 +235,12 @@ function writer(
   taskId: number | null,
   enqueued: JobWrites["committed"],
 ): BoardWriter {
-  const { actor, storage } = locked;
   // Once a callback appends events, later reads must see its folds.
   const preloaded = (id: number) => (id === taskId && committed.length === 0 ? locked.row : undefined);
-  const usage = messageStorage(tx, dialect, keys, storage, preloaded);
+  const usage = messageStorage(tx, dialect, keys, locked.storage, preloaded);
   const events = eventWriter(tx, dialect, keys, locked, committed, usage, now, jobs, enqueued);
   return {
+    ...attachmentReads(tx, dialect, keys),
     ...taskWriter(tx, dialect, keys, preloaded),
     ...jobs,
     ...watcherWriter(tx, dialect, keys),
@@ -251,7 +253,7 @@ function writer(
       return events.head;
     },
     channel: (path) => findChannel(tx, dialect, keys, path),
-    actor,
+    actor: locked.actor,
     async mentionActors(handles) {
       const rows = await query(tx, dialect, messageStatements.mentionActors, {
         ...keys,

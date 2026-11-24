@@ -1,6 +1,7 @@
 import { createViews, postgresText, withWebhookMetrics } from "@openboard/driver-sql";
 import type { Store, StoreMetrics } from "@openboard/ports";
 import { SQL } from "bun";
+import { postgresBlobs } from "./blobs.ts";
 import { postgresBroadcaster } from "./broadcaster.ts";
 import type { StatementCounter } from "./counters.ts";
 import { postgresDump } from "./dump.ts";
@@ -48,9 +49,10 @@ export async function postgresDriver(
       observeMetrics(observer) {
         metrics = observer;
       },
+      blobs: postgresBlobs(db),
       jobs: postgresJobs(sql, db, now),
       dumpIfMissing: postgresDump(options.url),
-      ...createViews(db, postgresText, broadcaster, { now, committed() {} }),
+      ...createViews(db, postgresText, broadcaster, { now, committed() {} }, postgresBlobs),
       async close() {
         try {
           await broadcaster.close();
