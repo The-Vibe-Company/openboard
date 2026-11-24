@@ -1216,6 +1216,28 @@ Example:
 ob webhooks test id
 ```
 
+## `ob tasks unblock`
+
+Lift a task hold and resume normal prerequisite checks.
+
+```sh
+ob tasks unblock <id>
+```
+
+Arguments:
+
+- `id`: A task ID.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: task_not_owned`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_unblock`.
+
+Example:
+
+```sh
+ob tasks unblock 42
+```
+
 ## `ob post`
 
 Post a message: a new thread in a channel, or a reply in the thread of any message `re` names.

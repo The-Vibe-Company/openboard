@@ -34,6 +34,8 @@ export const taskFoldStatements = {
   blockTask: sql`UPDATE tasks SET state = 'blocked', blocked_kind = ${"kind"}, blocked_reason = ${"reason"},
     claim_actor = NULL, claim_until = NULL, claim_token = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  unblockTask: sql`UPDATE tasks SET state = ${"state"}, blocked_kind = NULL, blocked_reason = NULL
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   releaseTask: sql`UPDATE tasks SET state = ${"state"}, reason = NULL, claim_actor = NULL, claim_until = NULL, claim_token = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   completeTask: sql`UPDATE tasks SET state = 'completed', result = ${"result"},
@@ -115,6 +117,13 @@ async function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: Tas
     });
   }
   if (event.type === "task.needs_changed") return replaceTaskNeeds(tx, dialect, keys, event);
+  if (event.type === "task.unblocked") {
+    return query(tx, dialect, taskFoldStatements.unblockTask, {
+      ...keys,
+      id: event.message,
+      state: event.payload.view.task.state,
+    });
+  }
   if (event.type === "task.blocked") {
     const { kind, reason } = event.payload;
     return query(tx, dialect, taskFoldStatements.blockTask, { ...keys, id: event.message, kind, reason });

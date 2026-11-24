@@ -672,6 +672,7 @@ decide and may append several events; folds never append.
 | `task.claimed` | `claimed`, `epoch + 1`, claim columns |
 | `task.completed` | state; decrement `waiting_on` of dependants (the command appended their `task.ready`) |
 | `task.blocked` | set hold kind and reason, clear claim, set state and `board.task` to `blocked` |
+| `task.unblocked` | clear the hold and set state and `board.task` to `waiting` with prerequisites or `ready` without them |
 | `task.expired` | clear claim; `ready` (or `blocked` if held) |
 | `ob.connection.created` | insert `connections` and its grant |
 | `ob.schema.registered` | insert the schema version, its canonical definition, and registration metadata |

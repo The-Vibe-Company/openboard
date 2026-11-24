@@ -14,6 +14,7 @@ import {
   TaskReleasedEvent,
   TaskRenewedEvent,
   TaskReopenedEvent,
+  TaskUnblockedEvent,
 } from "./task-events.ts";
 
 const MessagePostedPayload = Type.Object({
@@ -118,6 +119,7 @@ export const Event = Type.Union([
   TaskCreatedEvent,
   TaskCanceledEvent,
   TaskBlockedEvent,
+  TaskUnblockedEvent,
   TaskReopenedEvent,
   TaskNeedsChangedEvent,
   TaskReadyEvent,

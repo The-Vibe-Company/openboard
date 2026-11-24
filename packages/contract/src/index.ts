@@ -147,6 +147,7 @@ export {
   setTaskNeeds,
   showTyping,
   startDeviceSignIn,
+  unblockTask,
   updateGrant,
 } from "./operations/index.ts";
 export { listWebhookDeliveries, retryWebhookDelivery } from "./operations/webhooks/deliveries.ts";

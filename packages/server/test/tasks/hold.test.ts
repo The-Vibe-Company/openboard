@@ -12,7 +12,7 @@ test("a hold ends its claim, changes task readiness, and appears in the feed", a
     });
     expect(connection.status).toBe(201);
     const { secret } = (await connection.json()) as OutputOf<typeof createConnection>;
-    const worker = (path: string, body: object, profile = "holder") =>
+    const worker = (path: string, body?: object, profile = "holder") =>
       app.fetch(
         new Request(`${BOARD_URL}${path}`, {
           method: "POST",
@@ -62,6 +62,13 @@ test("a hold ends its claim, changes task readiness, and appears in the feed", a
     expect(feed.status).toBe(200);
     expect(await feed.json()).toMatchObject({
       events: [{ type: "task.blocked", payload: { id: task.id, ...blocked }, message: projection }],
+    });
+    await reject(await worker(`${path}/unblock`), 403, "task_not_owned");
+    const lifted = await call(app, "POST", `${path}/unblock`);
+    expect(lifted.status).toBe(200);
+    expect(await lifted.json()).toMatchObject({
+      outcome: "unblocked",
+      task: { task: { state: "ready", blocked: null, claim: null, epoch } },
     });
   } finally {
     await app.close();

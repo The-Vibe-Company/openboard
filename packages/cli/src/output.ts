@@ -14,6 +14,7 @@ import type {
   retryWebhookDelivery,
   revokeGrant,
   testWebhook,
+  unblockTask,
   Webhook,
 } from "@openboard/contract";
 import { BoardError } from "@the-vibe-company/openboard";
@@ -205,6 +206,11 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
         )
         .join("\n"),
     listTasks: tasksText,
+    unblockTask: (output) => {
+      const { task, outcome } = output as OutputOf<typeof unblockTask>;
+      if (outcome === "unblocked") return `unblocked ${task.id}`;
+      return outcome === "unchanged" ? "unchanged" : task.id;
+    },
     reopenTask: (output) => {
       const { task, outcome } = output as OutputOf<typeof reopenTask>;
       return outcome === "reopened" ? `reopened ${task.id}` : "unchanged";
