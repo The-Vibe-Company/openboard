@@ -29,6 +29,8 @@ export interface BoardTaskReads {
 
 /** What a write reads of tasks under the board's lock. */
 export interface BoardTaskWriter extends Pick<BoardTaskReads, "taskRoot"> {
+  taskNeeds(ids: readonly number[]): Promise<Message[]>;
+  taskDependants(id: number): Promise<{ any: boolean; ready: Message[] }>;
   /** The private token hash for the current claim, read under the board lock. */
   taskClaimProof(id: number): Promise<{ hash: Uint8Array; until: number } | null>;
 }

@@ -26,6 +26,7 @@ test("signs in with a configured provider, shows the shared header, and signs ou
     await page.goto(`${app.url}/`);
     await expectSignedInHeader(page);
 
+    await page.getByRole("button", { name: "User menu" }).click();
     const [logout] = await Promise.all([
       page.waitForResponse(
         (response) => response.url() === `${app.url}/auth/logout` && response.request().method() === "POST",

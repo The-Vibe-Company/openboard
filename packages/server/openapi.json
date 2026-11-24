@@ -3758,7 +3758,7 @@
     "/tasks": {
       "post": {
         "operationId": "createTask",
-        "summary": "Start a thread as a ready task, or make a ready task of the thread `re` roots.",
+        "summary": "Start a thread as a task, or make a task of the thread `re` roots.",
         "requestBody": {
           "required": true,
           "content": {
@@ -3779,6 +3779,11 @@
                     "description": "The root of a thread to make a task of as it is, instead of a new thread.",
                     "x-ref": "message",
                     "type": "string"
+                  },
+                  "needs": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": { "minLength": 1, "maxLength": 128, "x-ref": "task", "type": "string" }
                   },
                   "labels": {
                     "additionalProperties": false,
@@ -4008,7 +4013,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, reserved_label, message_deleted, invalid_profile",
+            "description": "invalid_request, invalid_needs, reserved_label, message_deleted, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
@@ -4024,7 +4029,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "409": {
-            "description": "already_a_task, duplicate_id",
+            "description": "task_waiting, already_a_task, duplicate_id",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "429": {
@@ -11319,6 +11324,218 @@
                                 "required": ["cursor", "type", "createdAt", "payload", "message"],
                                 "properties": {
                                   "cursor": { "type": "string" },
+                                  "type": { "const": "task.ready", "type": "string" },
+                                  "createdAt": { "type": "string" },
+                                  "payload": {
+                                    "type": "object",
+                                    "required": ["id"],
+                                    "properties": { "id": { "type": "string" } }
+                                  },
+                                  "message": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "channel",
+                                      "text",
+                                      "re",
+                                      "replyTo",
+                                      "thread",
+                                      "labels",
+                                      "reactions",
+                                      "by",
+                                      "noSync",
+                                      "origin",
+                                      "from",
+                                      "createdAt",
+                                      "editedAt",
+                                      "deleted",
+                                      "undelivered",
+                                      "attachments",
+                                      "links",
+                                      "version",
+                                      "revision",
+                                      "author",
+                                      "blocks"
+                                    ],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "channel": { "type": "string" },
+                                      "text": { "type": "string" },
+                                      "mentions": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": ["written", "actor", "candidates"],
+                                          "properties": {
+                                            "written": { "type": "string" },
+                                            "actor": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "object",
+                                                  "required": ["id", "handle", "name"],
+                                                  "properties": {
+                                                    "id": { "type": "string" },
+                                                    "handle": { "type": "string" },
+                                                    "name": { "type": "string" }
+                                                  }
+                                                },
+                                                { "type": "null" }
+                                              ]
+                                            },
+                                            "candidates": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "object",
+                                                "required": ["id", "handle", "name"],
+                                                "properties": {
+                                                  "id": { "type": "string" },
+                                                  "handle": { "type": "string" },
+                                                  "name": { "type": "string" }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "thread": { "type": "string" },
+                                      "labels": {
+                                        "additionalProperties": false,
+                                        "type": "object",
+                                        "patternProperties": {
+                                          "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                                        }
+                                      },
+                                      "reactions": {
+                                        "type": "object",
+                                        "patternProperties": {
+                                          "^(.*)$": { "type": "array", "items": { "type": "string" } }
+                                        }
+                                      },
+                                      "by": {
+                                        "type": "object",
+                                        "required": ["actor", "principal", "profile"],
+                                        "properties": {
+                                          "actor": { "type": "string" },
+                                          "principal": { "type": "string" },
+                                          "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                        }
+                                      },
+                                      "noSync": { "type": "boolean" },
+                                      "origin": { "type": "null" },
+                                      "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "createdAt": { "type": "string" },
+                                      "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "deleted": { "type": "boolean" },
+                                      "undelivered": {
+                                        "type": "object",
+                                        "patternProperties": { "^(.*)$": { "type": "string" } }
+                                      },
+                                      "attachments": { "type": "array", "items": {} },
+                                      "links": { "type": "array", "items": {} },
+                                      "version": { "type": "integer" },
+                                      "task": {
+                                        "type": "object",
+                                        "required": [
+                                          "state",
+                                          "owner",
+                                          "by",
+                                          "for",
+                                          "needs",
+                                          "epoch",
+                                          "claim",
+                                          "blocked",
+                                          "result",
+                                          "reason"
+                                        ],
+                                        "properties": {
+                                          "state": {
+                                            "anyOf": [
+                                              { "const": "blocked", "type": "string" },
+                                              { "const": "canceled", "type": "string" },
+                                              { "const": "claimed", "type": "string" },
+                                              { "const": "completed", "type": "string" },
+                                              { "const": "failed", "type": "string" },
+                                              { "const": "ready", "type": "string" },
+                                              { "const": "waiting", "type": "string" }
+                                            ]
+                                          },
+                                          "owner": { "type": "string" },
+                                          "by": { "type": "string" },
+                                          "for": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                          "needs": { "type": "array", "items": { "type": "string" } },
+                                          "epoch": { "minimum": 0, "type": "integer" },
+                                          "claim": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "required": ["actor", "until"],
+                                                "properties": {
+                                                  "actor": { "type": "string" },
+                                                  "until": { "type": "string" }
+                                                }
+                                              },
+                                              { "type": "null" }
+                                            ]
+                                          },
+                                          "blocked": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "required": ["kind", "reason"],
+                                                "properties": {
+                                                  "kind": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                                  "reason": { "type": "string" }
+                                                }
+                                              },
+                                              { "type": "null" }
+                                            ]
+                                          },
+                                          "result": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                          "reason": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                        }
+                                      },
+                                      "revision": { "type": "integer" },
+                                      "author": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "required": ["kind", "handle", "name", "avatar"],
+                                            "properties": {
+                                              "kind": {
+                                                "anyOf": [
+                                                  { "const": "person", "type": "string" },
+                                                  { "const": "workflow", "type": "string" },
+                                                  { "const": "agent", "type": "string" }
+                                                ]
+                                              },
+                                              "handle": { "type": "string" },
+                                              "name": { "type": "string" },
+                                              "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                              "via": {
+                                                "type": "object",
+                                                "required": ["name", "environment"],
+                                                "properties": {
+                                                  "name": { "type": "string" },
+                                                  "environment": { "type": "null" }
+                                                }
+                                              }
+                                            }
+                                          },
+                                          { "type": "null" }
+                                        ]
+                                      },
+                                      "blocks": { "type": "array", "items": {} }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "required": ["cursor", "type", "createdAt", "payload", "message"],
+                                "properties": {
+                                  "cursor": { "type": "string" },
                                   "type": { "const": "task.claimed", "type": "string" },
                                   "createdAt": { "type": "string" },
                                   "payload": {
@@ -15363,6 +15580,218 @@
                                     }
                                   }
                                 }
+                              },
+                              "message": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "channel",
+                                  "text",
+                                  "re",
+                                  "replyTo",
+                                  "thread",
+                                  "labels",
+                                  "reactions",
+                                  "by",
+                                  "noSync",
+                                  "origin",
+                                  "from",
+                                  "createdAt",
+                                  "editedAt",
+                                  "deleted",
+                                  "undelivered",
+                                  "attachments",
+                                  "links",
+                                  "version",
+                                  "revision",
+                                  "author",
+                                  "blocks"
+                                ],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "channel": { "type": "string" },
+                                  "text": { "type": "string" },
+                                  "mentions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["written", "actor", "candidates"],
+                                      "properties": {
+                                        "written": { "type": "string" },
+                                        "actor": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "required": ["id", "handle", "name"],
+                                              "properties": {
+                                                "id": { "type": "string" },
+                                                "handle": { "type": "string" },
+                                                "name": { "type": "string" }
+                                              }
+                                            },
+                                            { "type": "null" }
+                                          ]
+                                        },
+                                        "candidates": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "required": ["id", "handle", "name"],
+                                            "properties": {
+                                              "id": { "type": "string" },
+                                              "handle": { "type": "string" },
+                                              "name": { "type": "string" }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "thread": { "type": "string" },
+                                  "labels": {
+                                    "additionalProperties": false,
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                                    }
+                                  },
+                                  "reactions": {
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^(.*)$": { "type": "array", "items": { "type": "string" } }
+                                    }
+                                  },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "noSync": { "type": "boolean" },
+                                  "origin": { "type": "null" },
+                                  "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "createdAt": { "type": "string" },
+                                  "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "deleted": { "type": "boolean" },
+                                  "undelivered": {
+                                    "type": "object",
+                                    "patternProperties": { "^(.*)$": { "type": "string" } }
+                                  },
+                                  "attachments": { "type": "array", "items": {} },
+                                  "links": { "type": "array", "items": {} },
+                                  "version": { "type": "integer" },
+                                  "task": {
+                                    "type": "object",
+                                    "required": [
+                                      "state",
+                                      "owner",
+                                      "by",
+                                      "for",
+                                      "needs",
+                                      "epoch",
+                                      "claim",
+                                      "blocked",
+                                      "result",
+                                      "reason"
+                                    ],
+                                    "properties": {
+                                      "state": {
+                                        "anyOf": [
+                                          { "const": "blocked", "type": "string" },
+                                          { "const": "canceled", "type": "string" },
+                                          { "const": "claimed", "type": "string" },
+                                          { "const": "completed", "type": "string" },
+                                          { "const": "failed", "type": "string" },
+                                          { "const": "ready", "type": "string" },
+                                          { "const": "waiting", "type": "string" }
+                                        ]
+                                      },
+                                      "owner": { "type": "string" },
+                                      "by": { "type": "string" },
+                                      "for": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "needs": { "type": "array", "items": { "type": "string" } },
+                                      "epoch": { "minimum": 0, "type": "integer" },
+                                      "claim": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "required": ["actor", "until"],
+                                            "properties": {
+                                              "actor": { "type": "string" },
+                                              "until": { "type": "string" }
+                                            }
+                                          },
+                                          { "type": "null" }
+                                        ]
+                                      },
+                                      "blocked": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "required": ["kind", "reason"],
+                                            "properties": {
+                                              "kind": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                              "reason": { "type": "string" }
+                                            }
+                                          },
+                                          { "type": "null" }
+                                        ]
+                                      },
+                                      "result": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "reason": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "revision": { "type": "integer" },
+                                  "author": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": ["kind", "handle", "name", "avatar"],
+                                        "properties": {
+                                          "kind": {
+                                            "anyOf": [
+                                              { "const": "person", "type": "string" },
+                                              { "const": "workflow", "type": "string" },
+                                              { "const": "agent", "type": "string" }
+                                            ]
+                                          },
+                                          "handle": { "type": "string" },
+                                          "name": { "type": "string" },
+                                          "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                          "via": {
+                                            "type": "object",
+                                            "required": ["name", "environment"],
+                                            "properties": {
+                                              "name": { "type": "string" },
+                                              "environment": { "type": "null" }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      { "type": "null" }
+                                    ]
+                                  },
+                                  "blocks": { "type": "array", "items": {} }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "payload", "message"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "task.ready", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id"],
+                                "properties": { "id": { "type": "string" } }
                               },
                               "message": {
                                 "type": "object",

@@ -67,6 +67,8 @@ export const boardStatements = {
     ) END AS event_count,
     actors.id, actors.kind, actors.handle, actors.name, actors.avatar, actors.via,
     target.view, tasks.claim_token, tasks.claim_until,
+    EXISTS (SELECT 1 FROM task_needs n WHERE n.org_id = ${"orgId"}
+      AND n.board_id = ${"boardId"} AND n.needs = tasks.id) AS has_dependants,
     CASE WHEN boards.stored_bytes_head = boards.head THEN boards.stored_bytes ELSE (
       SELECT COALESCE(SUM(${messageBytes}), 0)
       FROM messages m WHERE m.org_id = ${"orgId"} AND m.board_id = ${"boardId"} AND m.deleted = 0

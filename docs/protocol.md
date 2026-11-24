@@ -333,10 +333,10 @@ The list places built-ins before registered versions. Registration writes an
 Schema reads take a `name@version` ID. An invalid ID answers 400 `invalid_schema_id`,
 and an unknown version answers 404 `schema_not_found`.
 
-`POST /tasks` with `{ channel, text, labels?, noSync?, id? }` starts a thread as a ready task.
+`POST /tasks` with `{ channel, text, labels?, noSync?, id?, needs? }` starts a thread as a task.
 It requires `post` in the channel and also `label` when the caller supplies labels.
 The 201 response is `{ task: Message }`. The root's `task` records the writer's
-principal as `owner` and actor as `by`, and the root carries `board.task=ready`.
+principal as `owner` and actor as `by`, and the root carries a `board.task` label with its state.
 Use `ob tasks create <channel> "<text>"` to print the root ID, or use that ID with
 `ob read` or `ob reply`. The SDK method is `createTask` and the MCP tool is `task_create`.
 
@@ -347,12 +347,19 @@ returns 409 `duplicate_id`. A caller who posted without channel read access gets
 original task snapshot while they lack read access. A caller who had read access at creation
 and has since lost it gets 409 `duplicate_id` on retry.
 
-`POST /tasks` with `{ re }` instead makes a ready task of the thread that message roots, as it is:
+`POST /tasks` with `{ re, needs? }` instead makes a task of the thread that message roots, as it is:
 it posts nothing and appends only `task.created`. The root keeps its author and text; its `task`
 records the caller as above. It requires `label` in the thread's channel. A reply is 400
 `invalid_request` (name its root), a deleted root 400 `message_deleted`, a thread that is a task
 already 409 `already_a_task`, and `re` with `channel`, `text`, `labels`, `noSync` or `id` 400
 `invalid_request`. The CLI is `ob tasks create <id>`, which prints the ID.
+
+Either creation form accepts up to 20 prerequisite task IDs in `needs`. Use a repeatable
+`--needs <id>` with `ob tasks create`. A missing prerequisite, a plain thread, or a task
+that names itself as a prerequisite returns 400 `invalid_needs`. The new task is
+`waiting` until all its prerequisites complete, and claiming it while waiting returns
+409 `task_waiting`. Completing the last prerequisite makes it ready and appends
+`task.ready` in the completing write. Failure and cancellation leave dependants waiting.
 
 `GET /tasks` lists tasks oldest first, each as its thread's summary `{ message, replies, last }`,
 in `{ tasks, cursor }`. Its query is upstream's: `channel` (a channel, `dev/` for a subtree, absent

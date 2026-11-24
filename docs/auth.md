@@ -94,8 +94,10 @@ Session ─> /<org>/main if a member, or /new to create an organization
   and per IP.
 
 The browser lists the configured providers on `/signin`. After sign-in, the
-shared header shows your handle and avatar. Use **Sign out** in the header to
-end the current session.
+shared header shows your avatar. Open its menu to go to **Account** or choose
+**Sign out** to end the current session. On a board, use the organization and
+board switchers in the header to navigate. The sidebar lists channels and
+links to board settings. On a narrow screen, open it with **Board menu**.
 
 ### Sign-in providers (a seam)
 

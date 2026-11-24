@@ -86,13 +86,17 @@ function grantDraft(tenant: Tenant) {
 }
 
 /** The `Ref` fields of an operation's input, where each sits and which kind it names. */
-export function refFields(operation: Operation): { part: Part; field: string; kind: RefKind }[] {
-  const found: { part: Part; field: string; kind: RefKind }[] = [];
+export function refFields(operation: Operation): { part: Part; field: string; kind: RefKind; array?: true }[] {
+  const found: ReturnType<typeof refFields> = [];
   for (const part of ["params", "query", "body"] as const) {
     const schema = operation.input[part];
     for (const [field, property] of Object.entries(schema?.properties ?? {})) {
       const kind = refKind(property);
       if (kind) found.push({ part, field, kind });
+      if (part === "body" && property.type === "array" && property.items && !Array.isArray(property.items)) {
+        const itemKind = refKind(property.items);
+        if (itemKind) found.push({ part, field, kind: itemKind, array: true });
+      }
       if (
         part === "body" &&
         ((["principals", "add", "remove"].includes(field) &&
@@ -167,7 +171,10 @@ export function callOf(
     target[field] = principals
       ? principals.map((principal) => (key in principal ? replacement : principal))
       : [replacement];
-  } else if (override) parts[override.part][override.field] = override.value;
+  } else if (override) {
+    const ref = refFields(operation).find(({ part, field }) => part === override.part && field === override.field);
+    parts[override.part][override.field] = ref?.array ? [override.value] : override.value;
+  }
   try {
     const org = operation.input.params?.properties.org ? { org: tenant.org } : {};
     decodeInput(operation, { params: texts({ ...org, ...parts.params }), query: texts(parts.query), body: parts.body });

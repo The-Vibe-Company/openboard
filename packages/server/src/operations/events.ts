@@ -193,6 +193,7 @@ export function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boo
   const visible = (view: ReturnType<typeof messages.messageView>) => (everywhere ? view : withoutMentionDetails(view));
   if (event.type === "task.expired") return [projectTaskExpired(event, visible(current ?? historical))];
   if (event.type === "task.released") return [projectTaskReleased(event, visible(current ?? historical))];
+  if (event.type === "task.ready") return [projectTaskReady(event, visible(current ?? historical))];
   if (event.type === "task.reopened") return [projectTaskReopened(event, visible(current ?? historical))];
   if (event.type === "task.canceled") return [projectTaskCanceled(event, visible(current ?? historical))];
   if (event.type === "task.failed") return [projectTaskFailed(event, visible(current ?? historical))];
@@ -290,7 +291,7 @@ function projectTaskCreated(
   event: Extract<FeedEvent, { type: "task.created" }>,
   message: ReturnType<typeof messages.messageView>,
 ) {
-  const { view: _view, blind: _blind, id, needs, ...payload } = event.payload;
+  const { view: _view, blind: _blind, waitingOn: _waitingOn, id, needs, ...payload } = event.payload;
   return {
     cursor: formatId(event.id),
     type: event.type,
@@ -338,6 +339,19 @@ function projectTaskCanceled(
     type: event.type,
     createdAt: isoTime(event.at),
     payload: { id: formatId(id), thread, reason, by },
+    message,
+  };
+}
+
+function projectTaskReady(
+  event: Extract<FeedEvent, { type: "task.ready" }>,
+  message: ReturnType<typeof messages.messageView>,
+) {
+  return {
+    cursor: formatId(event.id),
+    type: event.type,
+    createdAt: isoTime(event.at),
+    payload: { id: formatId(event.payload.id) },
     message,
   };
 }

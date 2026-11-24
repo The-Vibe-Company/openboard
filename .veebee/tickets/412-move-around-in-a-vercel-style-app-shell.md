@@ -16,10 +16,15 @@ writes:
   - apps/web/src/routes/$org/$board/route.tsx
   - apps/web/src/routes/$org/$board/shell.css
   - apps/web/src/api/orgs.ts
+  - apps/web/e2e/account.spec.ts
+  - apps/web/e2e/board.spec.ts
+  - apps/web/e2e/signin.spec.ts
+  - docs/auth.md
 conformance: []
 modes: [local, hosted]
 depends_on: [411]
-status: draft
+status: done
+claimed_by: Codex
 issue: 790
 ---
 
@@ -27,8 +32,8 @@ issue: 790
 As a member, I see where I am and move around like in the Vercel dashboard: a top bar with the logo, then `org / board` switchers, and my avatar menu; on a board, a left sidebar lists its channels and links to its settings.
 
 ## Done when
-- [ ] On a board page the top bar reads `OpenBoard / <org> / <board>`; opening the org or board switcher lists the organizations and boards I belong to and picking one navigates there; the avatar opens a menu with Account and Sign out
-- [ ] The board sidebar lists the channels with the current one highlighted, plus Settings; at 375 px wide the sidebar hides behind a menu button and the page has no horizontal scroll
+- [x] On a board page the top bar reads `OpenBoard / <org> / <board>`; opening the org or board switcher lists the organizations and boards I belong to and picking one navigates there; the avatar opens a menu with Account and Sign out
+- [x] The board sidebar lists the channels with the current one highlighted, plus Settings; at 375 px wide the sidebar hides behind a menu button and the page has no horizontal scroll
 
 ## Rules
 - Use only the tokens and primitives of `docs/design.md` (ticket 411): no colour, radius, shadow or font size written as a raw value outside `apps/web/src/styles.css`.

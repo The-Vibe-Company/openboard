@@ -3,9 +3,21 @@ import { type BoardKeys, TASK_EXPIRY_JOB } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
 import { query, sql } from "../../sql.ts";
 
+import { needIds } from "./tasks.ts";
+
 export const taskFoldStatements = {
-  insertTask: sql`INSERT INTO tasks (org_id, board_id, id, channel, state, owner, by_actor, by_profile, created_at)
-    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"channel"}, 'ready', ${"owner"}, ${"actor"}, ${"profile"}, ${"at"})`,
+  insertTask: sql`INSERT INTO tasks (org_id, board_id, id, channel, state, owner, by_actor, by_profile, created_at, waiting_on)
+    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"channel"}, ${"state"}, ${"owner"}, ${"actor"}, ${"profile"}, ${"at"}, ${"waitingOn"})`,
+  insertTaskNeeds: sql<"ids" | "orgId" | "boardId" | "id">`WITH input AS (SELECT CAST(${"ids"} AS TEXT) AS ids)
+    INSERT INTO task_needs (org_id, board_id, task, needs)
+    SELECT ${"orgId"}, ${"boardId"}, ${"id"}, CAST(need.value AS BIGINT)
+    FROM input CROSS JOIN ${needIds} AS need
+    JOIN tasks t ON t.id = CAST(need.value AS BIGINT)
+    WHERE t.org_id = ${"orgId"} AND t.board_id = ${"boardId"}`,
+  decrementTaskNeeds: sql`UPDATE tasks SET waiting_on = waiting_on - 1
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND waiting_on > 0 AND id IN (
+      SELECT task FROM task_needs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND needs = ${"id"}
+    )`,
   claimTask: sql`UPDATE tasks SET state = 'claimed', epoch = ${"epoch"}, claim_actor = ${"actor"},
     claim_until = ${"until"}, claim_token = ${"hash"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
@@ -26,13 +38,18 @@ export const taskFoldStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND re IS NULL`,
 };
 
-function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: TaskEvent) {
-  if (event.type === "task.expired" || event.type === "task.released" || event.type === "task.reopened") {
+async function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: TaskEvent) {
+  if (
+    event.type === "task.expired" ||
+    event.type === "task.released" ||
+    event.type === "task.reopened" ||
+    event.type === "task.ready"
+  ) {
     return query(tx, dialect, taskFoldStatements.readyTask, { ...keys, id: event.message });
   }
   const { by } = event.payload;
   if (event.type === "task.created") {
-    return query(tx, dialect, taskFoldStatements.insertTask, {
+    await query(tx, dialect, taskFoldStatements.insertTask, {
       ...keys,
       id: event.message,
       channel: event.channel,
@@ -40,7 +57,17 @@ function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: TaskEvent
       actor: by.actor,
       profile: by.profile,
       at: event.at,
+      state: event.payload.view.task?.state ?? "ready",
+      waitingOn: event.payload.waitingOn ?? 0,
     });
+    if (event.payload.needs.length > 0) {
+      await query(tx, dialect, taskFoldStatements.insertTaskNeeds, {
+        ...keys,
+        id: event.message,
+        ids: JSON.stringify(event.payload.needs),
+      });
+    }
+    return;
   }
   if (event.type === "task.renewed") {
     return query(tx, dialect, taskFoldStatements.renewTask, {
@@ -50,11 +77,15 @@ function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: TaskEvent
     });
   }
   if (event.type === "task.completed") {
-    return query(tx, dialect, taskFoldStatements.completeTask, {
+    await query(tx, dialect, taskFoldStatements.completeTask, {
       ...keys,
       id: event.message,
       result: event.payload.result,
     });
+    if (event.payload.hasDependants) {
+      await query(tx, dialect, taskFoldStatements.decrementTaskNeeds, { ...keys, id: event.message });
+    }
+    return;
   }
   if (event.type === "task.failed" || event.type === "task.canceled") {
     const statement = event.type === "task.failed" ? taskFoldStatements.failTask : taskFoldStatements.cancelTask;

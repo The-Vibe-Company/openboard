@@ -1,0 +1,60 @@
+.auth-page {
+  padding: calc(8 * var(--space)) calc(4 * var(--space));
+}
+
+.auth-page > section {
+  inline-size: min(100%, 28rem);
+  min-inline-size: 0;
+}
+
+.auth-page .auth-card {
+  display: grid;
+  gap: calc(4 * var(--space));
+  padding: clamp(calc(4 * var(--space)), 6vw, calc(8 * var(--space)));
+}
+
+.auth-page .auth-card > header {
+  display: grid;
+  gap: calc(2 * var(--space));
+  text-align: center;
+}
+
+.auth-page .auth-logo {
+  justify-self: center;
+  padding: var(--space) calc(2 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--background);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-block-end: calc(2 * var(--space));
+}
+
+.auth-page :is(h1, h2, p) {
+  margin: 0;
+}
+
+.auth-page .auth-card > header p {
+  color: var(--muted);
+}
+
+.auth-page form,
+.auth-page .auth-actions {
+  display: grid;
+  gap: calc(3 * var(--space));
+}
+
+.auth-page .auth-link {
+  display: grid;
+  place-items: center;
+  min-block-size: var(--control-medium);
+  padding: var(--space) calc(2 * var(--space));
+  border-radius: var(--radius-control);
+  background: var(--text);
+  color: var(--background);
+  text-align: center;
+}
+
+.auth-page [role="alert"] {
+  color: var(--danger-label);
+}

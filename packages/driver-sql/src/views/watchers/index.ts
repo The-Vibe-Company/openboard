@@ -100,6 +100,7 @@ export async function matchWatchers(db: Db, dialect: Dialect, keys: BoardKeys, e
     event.type === "task.failed" ||
     event.type === "task.canceled" ||
     event.type === "task.reopened" ||
+    event.type === "task.ready" ||
     !isTailMessageEvent(event)
   )
     return;

@@ -3,6 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
+import { AuthPage } from "../components/AuthPage.tsx";
+import { Button } from "../ui/index.ts";
 
 export const Route = createFileRoute("/invite/$token")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -54,42 +56,39 @@ function Invitation({ token, signInError }: { token: string; signInError: string
   const invalid = !validToken || [errorCode(preview.error), joinCode].some(invalidInvitation);
 
   return (
-    <main className="sign-in invitation">
-      <section aria-labelledby="invitation-title">
-        <h1 id="invitation-title">Organization invitation</h1>
-        {invalid ? (
-          <p role="alert">This invitation is no longer valid</p>
-        ) : preview.isError || session.isError ? (
-          <>
-            <p role="alert">Could not load the invitation. Try again.</p>
-            <button type="button" onClick={() => void Promise.all([preview.refetch(), session.refetch()])}>
-              Try again
-            </button>
-          </>
-        ) : invite && account ? (
-          <>
-            <h2>{invite.orgName}</h2>
-            <p>Role: {invite.role}</p>
-            <p>
-              Expires: <time dateTime={invite.expiresAt}>{new Date(invite.expiresAt).toLocaleString()}</time>
-            </p>
-            {account.signedIn ? (
-              <button type="button" disabled={join.isPending || join.isSuccess} onClick={() => join.mutate()}>
-                Join {invite.orgName}
-              </button>
-            ) : github ? (
-              <a href={`/auth/github/start?${new URLSearchParams({ invitation: token })}`}>
-                Sign in with GitHub to join
-              </a>
-            ) : (
-              <p>No sign-in is configured on this server</p>
-            )}
-            {(join.isError || returnError) && <p role="alert">{joinError(joinCode ?? returnError)}</p>}
-          </>
-        ) : (
-          <p role="status">Loading invitation…</p>
-        )}
-      </section>
-    </main>
+    <AuthPage title="Organization invitation" description="Review your invitation before joining the organization.">
+      {invalid ? (
+        <p role="alert">This invitation is no longer valid</p>
+      ) : preview.isError || session.isError ? (
+        <>
+          <p role="alert">Could not load the invitation. Try again.</p>
+          <Button type="button" onClick={() => void Promise.all([preview.refetch(), session.refetch()])}>
+            Try again
+          </Button>
+        </>
+      ) : invite && account ? (
+        <>
+          <h2>{invite.orgName}</h2>
+          <p>Role: {invite.role}</p>
+          <p>
+            Expires: <time dateTime={invite.expiresAt}>{new Date(invite.expiresAt).toLocaleString()}</time>
+          </p>
+          {account.signedIn ? (
+            <Button type="button" pending={join.isPending || join.isSuccess} onClick={() => join.mutate()}>
+              Join {invite.orgName}
+            </Button>
+          ) : github ? (
+            <a className="auth-link" href={`/auth/github/start?${new URLSearchParams({ invitation: token })}`}>
+              Sign in with GitHub to join
+            </a>
+          ) : (
+            <p>No sign-in is configured on this server</p>
+          )}
+          {(join.isError || returnError) && <p role="alert">{joinError(joinCode ?? returnError)}</p>}
+        </>
+      ) : (
+        <p role="status">Loading invitation…</p>
+      )}
+    </AuthPage>
   );
 }

@@ -18,7 +18,11 @@ test("upgrades the SQLite delivery table and preserves existing rows and indexes
   const indexes = () => database.query("PRAGMA index_list(webhook_deliveries)").all();
   const previousIndexes = indexes();
 
-  migrate(database, migrations, 10);
+  migrate(
+    database,
+    migrations.filter(({ version }) => version <= 34),
+    10,
+  );
   database.run(`INSERT INTO webhook_deliveries
     (id, org_id, board_id, webhook, event, thread, state, attempt, next_at, created_at, type)
     VALUES ('ping-delivery', 1, 2, 'hook', NULL, NULL, 'done', 1, 10, 10, 'board.ping')`);
@@ -27,4 +31,12 @@ test("upgrades the SQLite delivery table and preserves existing rows and indexes
     { event: null, thread: null, type: "board.ping" },
   ]);
   expect(indexes()).toEqual(previousIndexes);
+
+  migrate(database, migrations, 11);
+  expect(indexes()).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ name: "deliveries_history" }),
+      expect.objectContaining({ name: "deliveries_history_state" }),
+    ]),
+  );
 });

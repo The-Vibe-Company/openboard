@@ -1,0 +1,26 @@
+.shell-channels h2 {
+  margin: 0 0 calc(2 * var(--space));
+  color: var(--muted);
+  font-size: var(--type-base);
+}
+
+.shell-channels ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shell-channels a {
+  display: block;
+  padding: calc(2 * var(--space));
+  border-radius: var(--radius-control);
+}
+
+.shell-channels a:hover,
+.shell-channels a[aria-current="page"] {
+  background: var(--border);
+}
+
+.shell-channels a[aria-current="page"] {
+  font-weight: 650;
+}

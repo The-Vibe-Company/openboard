@@ -1,21 +1,24 @@
-.device-sign-in section {
-  width: min(100%, 40rem);
-  overflow-wrap: anywhere;
+.auth-page .device-code,
+.auth-page .device-details dd:first-of-type {
+  font-family: var(--font-mono);
 }
 
-.device-sign-in form {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
+.auth-page .device-details {
+  margin-block-end: 0;
+  padding: calc(3 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--background);
 }
 
-.device-sign-in input {
-  font: inherit;
-  max-width: 100%;
+.auth-page .device-details dt {
+  color: var(--muted);
 }
 
-.device-sign-in dd {
-  margin: 0 0 0.5rem;
+.auth-page .device-details dd {
+  margin: 0;
+}
+
+.auth-page .device-details dd + dt {
+  margin-block-start: calc(2 * var(--space));
 }

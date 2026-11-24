@@ -4,6 +4,7 @@ import { signIn } from "./support/sign-in.ts";
 
 async function openAccount(page: Page, url: string) {
   await signIn(page, url, "ada");
+  await page.getByRole("button", { name: "User menu" }).click();
   await page.getByRole("link", { name: "Account" }).click();
   await expect(page).toHaveURL(`${url}/account`);
   await expect(page.getByRole("main").getByText("Signed in as ada")).toBeVisible();
@@ -163,6 +164,7 @@ test("refreshes the account when the session changes during a token list request
       },
       { times: 1 },
     );
+    await page.getByRole("button", { name: "User menu" }).click();
     await page.getByRole("link", { name: "Account" }).click();
     await expect(page.getByRole("main").getByText("Signed in as lin")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Laptop" })).toBeVisible();

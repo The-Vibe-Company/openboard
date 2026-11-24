@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useId, useRef, useState } from "react";
 import { boardErrorText, channelsQuery } from "../../../api/board.ts";
 import { useBoardLive } from "../../../api/live.ts";
 import { ChannelList } from "../../../components/ChannelList.tsx";
 import { ConnectionBanner } from "../../../components/ConnectionBanner.tsx";
+import { Button } from "../../../ui/index.ts";
+import "./shell.css";
 
 export const Route = createFileRoute("/$org/$board")({
   validateSearch: (search: Record<string, unknown>): { channel?: string } =>
@@ -29,6 +31,13 @@ function useChannelFromUrl(channels: readonly { path: string }[]) {
 
 function BoardLayout() {
   const params = Route.useParams();
+  const sidebarId = useId();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const closeSidebar = () => {
+    if (sidebarOpen) menuButton.current?.focus();
+    setSidebarOpen(false);
+  };
   const channels = useQuery(channelsQuery(params));
   const { error } = channels;
   const denied = error instanceof BoardError && ["unauthorized", "forbidden", "not_found"].includes(error.code);
@@ -50,9 +59,26 @@ function BoardLayout() {
     );
 
   return (
-    <main className="board-layout">
-      <ChannelList params={params} channels={channels.data} selected={selected} />
-      <section className="board-content">
+    <main className="board-shell">
+      <div className="shell-sidebar-controls">
+        <Button
+          variant="secondary"
+          size="small"
+          ref={menuButton}
+          aria-expanded={sidebarOpen}
+          aria-controls={sidebarId}
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          Board menu
+        </Button>
+      </div>
+      <aside className="shell-sidebar" id={sidebarId} data-expanded={sidebarOpen}>
+        <ChannelList params={params} channels={channels.data} selected={selected} onNavigate={closeSidebar} />
+        <Link className="shell-settings" to="/$org/$board/settings/connections" params={params} onClick={closeSidebar}>
+          Settings
+        </Link>
+      </aside>
+      <section className="shell-content">
         <ConnectionBanner reconnecting={reconnecting} />
         <SelectedChannel.Provider value={selected}>
           <Outlet />
