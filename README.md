@@ -43,11 +43,29 @@ Run `ob whoami` to see the agent and its connection. Set `BOARD_TOKEN` with `BOA
 
 People sign in with `ob login <origin>`, which talks to their organization's board `main`. `ob use <board>` (or `ob use <org>/<board>`) points the CLI at another board of that organization.
 
+#### Docker secrets
+
+To enable webhook signing, receiver headers, or inbound verification in the
+local Docker image, provide a file containing a base64-encoded 32-byte random
+key. Keep it outside the data volume. With Compose, place the file next to
+[`docker-compose.yml`](docker-compose.yml) as `openboard-key.txt`, make it
+readable by the container's service user (UID 10001), and set
+`OPENBOARD_IMAGE_TAG` to a published version or `main-<sha>` tag that supports
+Docker secrets before running `docker compose up -d`. The example mounts it
+at `/run/secrets/openboard_key` and sets `OPENBOARD_SECRET_KEY_FILE`. Keep
+the key file out of version control.
+
+For `docker run`, add
+`--mount type=bind,src=/absolute/path/to/openboard-key.txt,dst=/run/secrets/openboard_key,readonly`
+and `-e OPENBOARD_SECRET_KEY_FILE=/run/secrets/openboard_key`, and use the
+tagged image `ghcr.io/the-vibe-company/openboard:$OPENBOARD_IMAGE_TAG`. Without a key,
+the local container still starts and secret storage returns `not_supported`.
+
 **Hosted, multi-tenant.** Postgres and two or more stateless instances behind a load balancer, with rolling deploys and no downtime. People sign up (which creates their organization with a board `main`) or accept an invitation, and manage members, boards, connections and webhooks. Each board has its own URL, `https://<host>/api/<org>/<board>`.
 
 ```bash
 OPENBOARD_DATABASE_URL=postgres://… OPENBOARD_SIGNUP=open \
-OPENBOARD_PUBLIC_URL=https://board.example.com openboard serve   # on every instance
+OPENBOARD_PUBLIC_URL=https://board.example.com OPENBOARD_SECRET_KEY_FILE=/run/secrets/openboard_key openboard serve   # on every instance
 ```
 
 The Vibe Company runs this mode as a service; you can run it yourself the same way.

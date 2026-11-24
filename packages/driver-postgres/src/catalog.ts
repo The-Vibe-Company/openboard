@@ -1,4 +1,5 @@
 import {
+  databaseRows,
   type Db,
   postgresText,
   seedSweep,
@@ -79,6 +80,8 @@ async function withTestDb<T>(url: string, work: (db: Db, sql: SQL) => Promise<T>
 
 export function postgresPurgeFixture(url: () => Promise<string>) {
   return {
+    databaseRows: async () =>
+      withTestDb(await url(), async (db, sql) => databaseRows(db, (await readCatalog(sql)).tables)),
     tenantRows: async ({ orgId, boardId }: BoardKeys, extraBoards: readonly number[] = []) =>
       withTestDb(await url(), async (db, sql) =>
         tenantRows(db, "$1", (await readCatalog(sql)).tables, orgId, [boardId, ...extraBoards]),

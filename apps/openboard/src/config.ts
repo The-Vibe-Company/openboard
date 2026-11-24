@@ -12,7 +12,9 @@ type Signup = (typeof SIGNUP_MODES)[number];
 interface CommonConfig {
   readonly webhookCustomSigning: boolean;
   readonly webhookTargets: { readonly hosts: readonly string[]; readonly ports: readonly number[] };
+  readonly docker: boolean;
   readonly secretKey?: Uint8Array;
+  readonly secretKeyFile?: string;
   readonly host: string;
   readonly port: number;
   /** Number of trusted reverse proxy hops in front of this listener. */
@@ -170,6 +172,8 @@ export function loadConfig(env: Env = process.env): Config {
     problems.push("OPENBOARD_WEBHOOK_CUSTOM_SIGNING: expected on or off");
   const webhookTargets = webhookTargetsOf(env, problems);
   const secretKey = webhookKeyOf(env, problems);
+  const docker = env.OPENBOARD_DOCKER ?? "off";
+  if (docker !== "on" && docker !== "off") problems.push("OPENBOARD_DOCKER: expected on or off");
   const port = Number(env.PORT ?? "8787");
   if (!Number.isInteger(port) || port < 1 || port > 65_535) problems.push(`PORT: expected 1 to 65535, got ${env.PORT}`);
   const proxyHops = env.OPENBOARD_TRUSTED_PROXIES;
@@ -211,8 +215,10 @@ export function loadConfig(env: Env = process.env): Config {
     ...(databaseUrl === undefined ? { mode: "local" as const } : { mode: "hosted" as const, databaseUrl }),
     host,
     webhookTargets,
+    docker: docker === "on",
     webhookCustomSigning: customSigning === "on",
     ...(secretKey && { secretKey }),
+    ...(env.OPENBOARD_SECRET_KEY_FILE !== undefined && { secretKeyFile: env.OPENBOARD_SECRET_KEY_FILE }),
     port,
     trustedProxies,
     ...(env.OPENBOARD_INSTANCE_ID && { instanceId: env.OPENBOARD_INSTANCE_ID }),

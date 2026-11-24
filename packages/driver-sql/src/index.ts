@@ -76,7 +76,7 @@ export type { Db, Dialect, Row, SqlValue } from "./db.ts";
 export { postgresText } from "./db.ts";
 export { splitStatements } from "./ddl.ts";
 export { localBroadcaster } from "./local-broadcaster.ts";
-export { seedTaskNeed, simulateLegacyDeletion, tenantRows } from "./purge-test-data.ts";
+export { databaseRows, seedTaskNeed, simulateLegacyDeletion, tenantRows } from "./purge-test-data.ts";
 export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
 export { seedSweep, sweepSnapshot } from "./sweep-test-data.ts";
 export { claimJob, nextJob, releaseJobs } from "./views/jobs/index.ts";

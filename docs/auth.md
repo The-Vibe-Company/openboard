@@ -576,7 +576,7 @@ CSRF, XSS), the model covers cross-tenant access.
 | **Noisy neighbours** | Per-organization rate limits and quotas; per-board locks isolate write contention; statement and lock timeouts |
 | **Sign-up abuse** | Sign-in through GitHub only in v1; org creation rate-limited per person and IP; `OPENBOARD_SIGNUP` switch |
 | **Operator access** | The support role acts from a trusted deployment shell only through `openboard admin orgs`, `show`, `delete`, `undelete` and `quota`. The tenant's audit records every change. |
-| **Stolen database or backup** | Bearer credentials hashed; recoverable secrets (webhook signing secrets, receiver headers, inbound verify secrets) AES-256-GCM under `OPENBOARD_SECRET_KEY`, held only in the service environment |
+| **Stolen database or backup** | Bearer credentials hashed; recoverable secrets (webhook signing secrets, receiver headers, inbound verify secrets) AES-256-GCM under `OPENBOARD_SECRET_KEY`, supplied separately from the database or generated in the local config directory |
 | **Data after deletion** | Hard delete 30 days after an organization's deletion request; backups age out within their retention |
 | **CSRF** | Origin check plus CSRF header for cookie writes; no CORS |
 
@@ -614,8 +614,19 @@ A signing secret is returned once on creation. The board stores it in
 Version 1 derives its 256-bit key from `OPENBOARD_SECRET_KEY` with HKDF-SHA256
 and the info string `openboard/webhook-signing/v1`. The webhook and secret IDs
 authenticate the ciphertext. Audit events and organization exports omit
-signing credentials. If a row cannot decrypt, the delivery becomes dead with
-`signing_secret_undecryptable`.
+signing credentials. If a worker cannot read stored credentials with its configured
+key, it marks the delivery dead and disables the subscription with
+`secret_unreadable`. Restore the original key or replace the credentials before
+re-enabling the subscription.
+
+Hosted servers require `OPENBOARD_SECRET_KEY` or `OPENBOARD_SECRET_KEY_FILE`.
+Use the same key on every replica.
+Plain local servers generate a 32-byte key at
+`~/.config/openboard/secret-key` on first startup without a configured key, and
+reuse it on subsequent starts. The config directory is mode 0700 and the key
+file is mode 0600. Keep the key outside the data directory and its backups.
+The Docker image requires a separately supplied key to create signing or
+verification credentials.
 
 ### SSRF on webhook URLs
 
