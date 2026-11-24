@@ -303,6 +303,14 @@ test("the approved device code is exchanged once for a personal credential with 
     openboard: { credential: "personal", org, role: "owner" },
   });
   expect((await me("local")).status).toBe(404);
+  const posted = await app.fetch(
+    new Request(`${PUBLIC_URL}/api/acme/main/messages`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ channel: "dev", text: "hi" }),
+    }),
+  );
+  expect(posted.status).toBe(201);
   clock.now = expiresAt;
   expect((await me("acme")).status).toBe(401);
 });

@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import type { BoardView } from "@openboard/ports";
-import { connectionOf, credentialKind, type Principal } from "../deps.ts";
+import { callerCan, connectionOf, credentialKind, type Principal } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { bearer, hashToken } from "./secrets.ts";
 
@@ -28,13 +28,14 @@ export function connectionVerifier(): CredentialVerifier {
       if (!record || !(record.connection.direct || operation === CLAIM)) return null;
       const presented = Buffer.from(hashToken(secret), "hex");
       if (!timingSafeEqual(presented, Buffer.from(record.secretHash, "hex"))) return null;
-      const { principal, name, profiles } = record.connection;
+      const { principal, name, profiles, can } = record.connection;
       return {
         actor: principal,
         principal,
         profile: null,
         [credentialKind]: "connection",
         [connectionOf]: { name, profiles },
+        [callerCan]: can,
       };
     },
   };

@@ -1,7 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { BoardError } from "@openboard/contract";
 import type { PersonRecord, PlatformView } from "@openboard/ports";
-import { credentialKind, memberOf, type Principal } from "../deps.ts";
+import { grants } from "@openboard/core";
+import { callerCan, credentialKind, memberOf, type Principal } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { hashToken } from "./secrets.ts";
 
@@ -115,7 +116,11 @@ export function sessionVerifier(platform: PlatformView, now: () => number, publi
       if (!member) throw new BoardError("not_found", "no such board or route");
       const principal = `ob:user:${id}`;
       const person: Principal = { actor: principal, principal, profile: null, [credentialKind]: "session" };
-      return { ...person, [memberOf]: { handle, name, avatar, ...member } };
+      return {
+        ...person,
+        [memberOf]: { handle, name, avatar, ...member },
+        [callerCan]: grants.allUsersCan(member.role),
+      };
     },
   };
 }
