@@ -11,6 +11,7 @@ export type {
   OperatorReads,
   OperatorWrites,
 } from "./operator.ts";
+export * from "./org/exports.ts";
 export type { OrgAuditRecord } from "./org-audit-record.ts";
 export type { RateLimits } from "./seams.ts";
 export type {
@@ -34,4 +35,5 @@ export type {
   Store,
 } from "./store.ts";
 export type { BoardTaskReads, BoardTaskWriter, TaskListQuery } from "./tasks.ts";
-export * from "./org/exports.ts";
+
+export * from "./webhooks/index.ts";

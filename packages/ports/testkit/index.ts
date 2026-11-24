@@ -1,3 +1,5 @@
+import { webhooksSuite } from "./store/webhooks.test-suite.ts";
+
 export { runBroadcasterSuite } from "./broadcaster.test-suite.ts";
 export { ratesSuite } from "./store/rates.test-suite.ts";
 
@@ -68,6 +70,7 @@ export function runStoreSuite(driver: string, open: OpenStore): void {
   tasksSuite(driver, open);
   threadsSuite(driver, open);
   watchersSuite(driver, open);
+  webhooksSuite(driver, open);
 }
 
 /** Every scoped store method across two organizations: nothing of B reaches A (docs/codebase.md 6.5). */
@@ -76,5 +79,5 @@ export function runIsolationSuite(driver: string, open: OpenStore): void {
 }
 
 export { fakeBucket } from "./backup-bucket.ts";
-export { runJobsSuite, runJobWakeSuite, type WithJobStores } from "./jobs.test-suite.ts";
 export { assertArchiveCredentialsAbsent, seedExportCredentials } from "./export-credentials.ts";
+export { runJobsSuite, runJobWakeSuite, type WithJobStores } from "./jobs.test-suite.ts";

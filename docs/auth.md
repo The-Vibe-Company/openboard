@@ -595,6 +595,16 @@ The operator's audit identity is `ob:operator:<name>`, where the name comes
 from `OPENBOARD_OPERATOR` or the OS user. The reason is visible to the
 organization's owners and admins in its audit.
 
+### Webhook signing credentials
+
+A signing secret is returned once on creation. The board stores it in
+`webhook_secrets` under AES-256-GCM with a fresh 96-bit nonce for each row.
+Version 1 derives its 256-bit key from `OPENBOARD_SECRET_KEY` with HKDF-SHA256
+and the info string `openboard/webhook-signing/v1`. The webhook and secret IDs
+authenticate the ciphertext. Audit events and organization exports omit
+signing credentials. If a row cannot decrypt, the delivery becomes dead with
+`signing_secret_undecryptable`.
+
 ### SSRF on webhook URLs
 
 - `https` only, port 443 unless `OPENBOARD_WEBHOOK_ALLOWED_PORTS`; no

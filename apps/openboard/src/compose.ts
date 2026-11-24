@@ -80,6 +80,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
   return createApp(
     {
       mode,
+      ...(config.secretKey && { secretKey: config.secretKey }),
       publicUrl,
       localOwner,
       instanceId: config.instanceId,

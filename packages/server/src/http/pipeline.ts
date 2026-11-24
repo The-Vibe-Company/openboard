@@ -296,8 +296,6 @@ async function runBoard(
     query: readQuery(operation, url.searchParams),
     body: request.method === "GET" ? undefined : await readBody(request),
   };
-  const { now, randomBytes, schedule } = pipeline.deps;
-  const boardUrl = `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`;
   const implicitBoard = pipeline.config.mode === "local" && path.org === "local" && path.board === "main";
   const context = async (input: unknown) => {
     await keepInsideCan(operation, input, by, board);
@@ -314,10 +312,9 @@ async function runBoard(
       rateLimits: pipeline.rateLimits,
       ip: pipeline.ip,
       by,
-      now,
-      boardUrl,
-      randomBytes,
-      schedule,
+      ...pipeline.deps,
+      boardUrl: `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`,
+      webhookConfig: pipeline.config,
       reauthorize,
       signal: request.signal,
       shutdown: pipeline.shutdown,
@@ -336,6 +333,7 @@ async function runBoard(
   const input = validate(operation, raw);
   const output = await handlerOf(operation)(await context(input), input).catch(recoverGrant(operation, input));
   const response = operationResponse(operation, output);
+  if (operation.name === "createWebhook") response.headers.set("cache-control", "no-store");
   if (operation.eventStream) response.headers.set("vary", "Accept");
   return response;
 }

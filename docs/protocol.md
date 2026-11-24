@@ -675,6 +675,14 @@ POST {BOARD_URL}/x/webhooks
   mode any instance sends it on time (jobs); in local mode the process must be
   running.
 
+Create shows the signing secret once. Use
+`ob webhooks create --file dev-ready.json --secret-file hook.secret` to keep it
+in a private file. Until hosted target validation ships, local mode accepts
+loopback HTTP or HTTPS URLs and hosted mode returns `invalid_url`.
+A completed attempt records a terminal result in this first implementation.
+Deleting a subscription prevents new attempts. An attempt already claimed by
+a dispatcher may finish.
+
 ### Delivery payload (version 1)
 
 ```json

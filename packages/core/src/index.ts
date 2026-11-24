@@ -10,6 +10,7 @@ import type { ReactionAdded, ReactionRemoved } from "./messages/reactions.ts";
 import type { SchemaRegistered } from "./schemas/register.ts";
 import type { WatchFailed } from "./watchers/ack.ts";
 import type { WatchersRegistered } from "./watchers/register.ts";
+import type { WebhookCreated, WebhookDeleted } from "./webhooks/events.ts";
 
 export type {
   AgentClaimed,
@@ -73,12 +74,14 @@ export type BoardEvent =
   | SchemaRegistered
   | TaskEvent
   | WatchersRegistered
-  | WatchFailed;
+  | WatchFailed
+  | WebhookCreated
+  | WebhookDeleted;
 
 export { matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";
 export { channelInputError, correctedChannel, InvalidGrantPattern } from "./channels/path.ts";
-export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail } from "./events/tail.ts";
-export { formatId, isoTime, parseId } from "./ids.ts";
+export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail, type TailMessage } from "./events/tail.ts";
+export { base32, formatId, isoTime, parseId } from "./ids.ts";
 export { decideDelete, type MessageDeleted } from "./messages/delete.ts";
 export { decideEdit, type MessageEdited } from "./messages/edit.ts";
 export { decideLabels, type LabelState, type LabelsChanged } from "./messages/labels.ts";
@@ -96,6 +99,7 @@ export * as boards from "./orgs/boards.ts";
 export type { CreateOrgCommand, OrgCreation, OrgEvent } from "./orgs/create.ts";
 export * as orgs from "./orgs/create.ts";
 export { ORG_PURGE_RETENTION_MS, orgDeletion, requireOrgOwner } from "./orgs/delete.ts";
+export { exportEvent } from "./orgs/export.ts";
 export { decideInvitation, previewInvite } from "./orgs/invite.ts";
 export {
   type CountQuota,
@@ -141,4 +145,8 @@ export {
   type WatchFailed,
 } from "./watchers/ack.ts";
 export { validateWatchers, type WatchersRegistered } from "./watchers/register.ts";
-export { exportEvent } from "./orgs/export.ts";
+export { matchesWebhookFilter } from "./webhooks/filter.ts";
+export { webhookOutcome } from "./webhooks/outcome.ts";
+export { webhookPayload } from "./webhooks/payload.ts";
+export { validateWebhook } from "./webhooks/validate.ts";
+export type { WebhookCreated, WebhookDeleted };

@@ -10,7 +10,6 @@ import type {
   TaskEvent,
   WatchFailed,
 } from "@openboard/core";
-import type { ThreadPosition } from "./store.ts";
 
 /** Events that concern no message, served only on request (docs/data-model.md, `visibility` 1). */
 export type Bookkeeping = ActorSeen | ChannelCreated;
@@ -61,4 +60,25 @@ export interface BoardMessageReads {
       readonly under?: string;
     },
   ): Promise<{ threads: ThreadSummary[]; head: number; older: ThreadPosition | null }>;
+}
+
+export interface ChannelsQuery {
+  /** Only the channels whose path starts with it. */
+  readonly prefix?: string;
+  /** Only the channels whose path sorts after it. */
+  readonly after?: string;
+  readonly limit: number;
+}
+
+export interface ChannelMessagesQuery {
+  readonly channel: string;
+  /** Only the messages after this log position, the first `limit` of them. */
+  readonly after?: number;
+  readonly limit: number;
+}
+
+/** Where a thread stands in activity order: its latest activity's log position, then its root's ID. */
+export interface ThreadPosition {
+  readonly active: number;
+  readonly root: number;
 }

@@ -162,6 +162,29 @@ Example:
 ob connections create ci --can 'dev/=read,post' --claims 1 --secret-file ./secret
 ```
 
+## `ob webhooks create`
+
+Subscribe to board events and store the signing secret privately.
+
+```sh
+ob webhooks create --file <spec.json> --secret-file <path>
+```
+
+Options:
+
+- `--file`: JSON subscription spec.
+- `--secret-file`: Existing signing secret or a new 0600 file.
+
+Errors: `error: bad_watcher`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_signing`, `error: invalid_url`, `error: not_found`, `error: not_supported`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: slug_taken`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob webhooks create --file dev-ready.json --secret-file ./hook.secret
+```
+
 ## `ob grants create`
 
 Grant channel permissions to one or more principals.
@@ -568,6 +591,28 @@ Example:
 ob delete 42
 ```
 
+## `ob webhooks delete`
+
+Delete a webhook and stop its queued deliveries.
+
+```sh
+ob webhooks delete <id>
+```
+
+Arguments:
+
+- `id`: A webhook ID.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob webhooks delete id
+```
+
 ## `ob edit`
 
 Replace a message's text.
@@ -642,6 +687,28 @@ Example:
 
 ```sh
 ob connections policy cn_7k2m4q3t5v2w6x7y --as fixer-2 --can 'work/fix/=read,post'
+```
+
+## `ob webhooks show`
+
+Show a webhook without receiver credentials.
+
+```sh
+ob webhooks show <id>
+```
+
+Arguments:
+
+- `id`: A webhook ID.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob webhooks show id
 ```
 
 ## `ob label`
@@ -802,6 +869,24 @@ Example:
 
 ```sh
 ob tasks dev
+```
+
+## `ob webhooks`
+
+List manageable webhooks without receiver credentials.
+
+```sh
+ob webhooks
+```
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob webhooks
 ```
 
 ## `ob post`

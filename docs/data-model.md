@@ -543,9 +543,9 @@ CREATE INDEX connection_agents_board    ON connection_agents (board_id, connecti
 
 CREATE TABLE webhooks (
   id TEXT PRIMARY KEY, org_id BIGINT NOT NULL, board_id BIGINT NOT NULL,
-  name TEXT NOT NULL, owner_actor TEXT NOT NULL, owner TEXT NOT NULL, url TEXT NOT NULL,
-  filter TEXT NOT NULL, signing TEXT NOT NULL, headers TEXT, body TEXT,   -- secrets encrypted (OPENBOARD_SECRET_KEY)
-  enabled SMALLINT NOT NULL, disabled_reason TEXT, created_at BIGINT NOT NULL,
+  name TEXT NOT NULL, owner_actor TEXT NOT NULL, owner TEXT NOT NULL,
+  secret_id TEXT NOT NULL, enabled SMALLINT NOT NULL, directory SMALLINT NOT NULL,
+  config TEXT NOT NULL,                            -- JSON including the public signing configuration
   UNIQUE (board_id, name)
 );
 CREATE TABLE inbound_endpoints (
@@ -562,6 +562,19 @@ looked up from a credential or a URL before the board is known; every lookup
 then checks `board_id` against the request's scope.
 
 ### Operational tables (not replayed)
+
+Webhook events carry a `secretId` reference. Full organization purge removes
+`webhook_secrets`. Organization export excludes the table so exported events
+can reconstruct subscriptions without the signing credentials.
+
+```sql
+CREATE TABLE webhook_secrets (
+  id TEXT PRIMARY KEY, org_id BIGINT NOT NULL, board_id BIGINT NOT NULL,
+  webhook_id TEXT NOT NULL, key_version BIGINT NOT NULL,
+  ciphertext TEXT NOT NULL, created_at BIGINT NOT NULL
+);
+```
+
 
 ```sql
 CREATE TABLE watcher_matches (
@@ -581,6 +594,7 @@ CREATE TABLE webhook_deliveries (                 -- transactional outbox
   attempt BIGINT NOT NULL DEFAULT 0, next_at BIGINT NOT NULL,
   lease_until BIGINT, instance TEXT,
   last_status BIGINT, last_error TEXT, created_at BIGINT NOT NULL, done_at BIGINT,
+  root_view TEXT,                                  -- subject snapshot at the event
   UNIQUE (webhook, event)
 );
 CREATE INDEX deliveries_due  ON webhook_deliveries (next_at) WHERE state IN ('pending', 'sending');

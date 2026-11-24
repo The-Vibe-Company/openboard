@@ -11,10 +11,10 @@ import { channelStatements } from "./views/channels.ts";
 import { connectionStatements } from "./views/connections.ts";
 import { devicePlatform, deviceScoped } from "./views/device.ts";
 import { eventStatements } from "./views/events.ts";
-import { exportStatements } from "./views/jobs/exports.ts";
 import { grantStatements } from "./views/grants.ts";
 import { invitationStatements } from "./views/invitations.ts";
 import { backfillPlatformStatements, backfillStatements } from "./views/jobs/backfill-board-org.ts";
+import { exportStatements } from "./views/jobs/exports.ts";
 import { jobPlatformStatements, jobStatements } from "./views/jobs/index.ts";
 import { legacyPurgePlatform, legacyPurgeScoped } from "./views/jobs/legacy-purge.ts";
 import { purgeStatements } from "./views/jobs/purge.ts";
@@ -30,8 +30,9 @@ import { taskListStatements } from "./views/tasks/list.ts";
 import { taskFoldStatements } from "./views/tasks/task-folds.ts";
 import { taskReadStatements } from "./views/tasks/tasks.ts";
 import { threadStatements } from "./views/threads.ts";
-
 import { watcherStatements } from "./views/watchers/index.ts";
+import { deliveryStatements } from "./views/webhooks/deliveries.ts";
+import { webhookStatements } from "./views/webhooks/webhooks.ts";
 
 /** Every statement the shared views run, by name, as written once (docs/codebase.md 3.2 and 4.4). */
 const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
@@ -71,6 +72,8 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...taskReadStatements,
   ...threadStatements,
   ...watcherStatements,
+  ...webhookStatements,
+  ...deliveryStatements,
 });
 
 /** One registered statement rendered for an engine: its text and how many positional values it binds. */

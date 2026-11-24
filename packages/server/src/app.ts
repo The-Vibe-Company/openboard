@@ -1,5 +1,5 @@
 import { operations } from "@openboard/contract";
-import { BACKFILL_BOARD_ORG_JOB, type Bucket, type Jobs, type Store } from "@openboard/ports";
+import { BACKFILL_BOARD_ORG_JOB, type Bucket, type Jobs, type Store, WEBHOOK_DELIVERY_JOB } from "@openboard/ports";
 import { verifiers } from "./auth/chain.ts";
 import { loginProviders } from "./auth/providers/index.ts";
 import type { Deps, ServerConfig } from "./deps.ts";
@@ -10,10 +10,11 @@ import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
 import { staticFiles } from "./http/static.ts";
 import { startBoardOrgBackfill } from "./jobs/board-org-startup.ts";
-import { startExportJobs } from "./jobs/export-org.ts";
 import { startDumpJob } from "./jobs/dump.ts";
+import { startExportJobs } from "./jobs/export-org.ts";
 import { type JobHandlers, startBoardJobs, startJobs } from "./jobs/registry.ts";
 import { logShippingJobs } from "./jobs/ship-log.ts";
+import { webhookJob } from "./jobs/webhooks.ts";
 
 export const DRAIN_TIMEOUT_MS = 10_000;
 
@@ -55,7 +56,8 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     providers: loginProviders(config, deps),
   };
   if (config.mode === "hosted" && !bucket) deps.log.info("log shipping is off", {});
-  const stopJobs = startBoardJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, handlers, bucket);
+  const boardJobs = { ...handlers, [WEBHOOK_DELIVERY_JOB]: webhookJob(config, deps) };
+  const stopJobs = startBoardJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, boardJobs, bucket);
   const stopExports = bucket && startExportJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, bucket);
   const stopDump = startDumpJob(ports.store.dumpIfMissing, bucket, deps);
   // Large bucket purges can outlive a lease. Give shipping its own runner so purges cannot occupy every poller.

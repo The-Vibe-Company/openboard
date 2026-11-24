@@ -120,7 +120,7 @@ export function isTailMessage(
   );
 }
 
-type TailMessage = Extract<
+export type TailMessage = Extract<
   BoardEvent,
   {
     type:

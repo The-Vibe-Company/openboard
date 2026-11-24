@@ -10,6 +10,7 @@ type Signup = (typeof SIGNUP_MODES)[number];
 
 /** The server's configuration, parsed once at startup (docs/codebase.md 5.5). */
 interface CommonConfig {
+  readonly secretKey?: Uint8Array;
   readonly host: string;
   readonly port: number;
   /** Number of trusted reverse proxy hops in front of this listener. */
@@ -124,12 +125,24 @@ function backupOf(env: Env, problems: string[]): BackupConfig | undefined {
   return Object.freeze({ endpoint: origin, bucket, region, accessKeyId, secretAccessKey });
 }
 
+function webhookKeyOf(env: Env, problems: string[]): Uint8Array | undefined {
+  if (env.OPENBOARD_SECRET_KEY !== undefined && env.OPENBOARD_SECRET_KEY_FILE !== undefined) {
+    problems.push("OPENBOARD_SECRET_KEY and OPENBOARD_SECRET_KEY_FILE cannot both be set");
+    return undefined;
+  }
+  const text = secretOf(env, "OPENBOARD_SECRET_KEY", problems);
+  if (text === undefined) return undefined;
+  if (!/^(?:[A-Za-z0-9+/]{43}|[A-Za-z0-9_-]{43})=?$/.test(text)) {
+    problems.push("OPENBOARD_SECRET_KEY: expected 32 bytes encoded as base64 or base64url");
+    return undefined;
+  }
+  return Buffer.from(text, "base64");
+}
+
 /** The one place the server reads its environment; every bad variable is named, and the caller exits 2. */
 export function loadConfig(env: Env = process.env): Config {
   const problems: string[] = [];
-  if (env.OPENBOARD_SECRET_KEY !== undefined && env.OPENBOARD_SECRET_KEY_FILE !== undefined) {
-    problems.push("OPENBOARD_SECRET_KEY and OPENBOARD_SECRET_KEY_FILE cannot both be set");
-  }
+  const secretKey = webhookKeyOf(env, problems);
   const port = Number(env.PORT ?? "8787");
   if (!Number.isInteger(port) || port < 1 || port > 65_535) problems.push(`PORT: expected 1 to 65535, got ${env.PORT}`);
   const proxyHops = env.OPENBOARD_TRUSTED_PROXIES;
@@ -170,6 +183,7 @@ export function loadConfig(env: Env = process.env): Config {
   return Object.freeze({
     ...(databaseUrl === undefined ? { mode: "local" as const } : { mode: "hosted" as const, databaseUrl }),
     host,
+    ...(secretKey && { secretKey }),
     port,
     trustedProxies,
     ...(env.OPENBOARD_INSTANCE_ID && { instanceId: env.OPENBOARD_INSTANCE_ID }),

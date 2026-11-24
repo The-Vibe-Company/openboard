@@ -50,6 +50,9 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
   labelMessage: () => ({ body: { set: { state: "seen" } } }),
   changeMemberRole: () => ({ body: { role: "admin" } }),
   createChannel: (tenant) => ({ body: { path: `${tenant.org}/new` } }),
+  createWebhook: (tenant) => ({
+    body: { name: tenant.marker, url: "http://127.0.0.1:9000/hook", filter: { tail: "dev" } },
+  }),
   createConnection: (tenant) => ({ body: { name: `${tenant.org}-new`, can: { "*": "all" } } }),
   createInvitation: () => ({ body: { role: "member" } }),
   createBoard: (tenant) => ({ body: { slug: `${tenant.org}-new`, name: `${tenant.marker} new` } }),
