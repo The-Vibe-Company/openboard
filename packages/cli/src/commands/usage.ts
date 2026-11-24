@@ -154,7 +154,8 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     },
   },
   read: {
-    summary: "List a channel's threads by activity, or print one thread when given a message ID.",
+    summary:
+      "List a channel's threads by activity with each root's author handle and age, or print one thread by message ID.",
     operations: ["listThreads", "readThread"],
     example: "ob read dev --label status=open --limit 20",
     options: {

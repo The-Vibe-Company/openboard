@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { runCli } from "../src/main.ts";
 
 const env = { BOARD_URL: "http://127.0.0.1:8787/api/local/main" };
-const message = (id: string, text: string) => ({ id, text });
+const message = (id: string, text: string) => ({ id, text, by: { actor: "ada" }, createdAt: "2026-01-01T00:00:00Z" });
 
 function run(argv: string[], answer: unknown, status = 200) {
   const lines = { out: [] as string[], err: [] as string[] };
@@ -12,7 +12,7 @@ function run(argv: string[], answer: unknown, status = 200) {
     return new Response(JSON.stringify(answer), { status, headers: { "content-type": "application/json" } });
   };
   const output = { out: (line: string) => lines.out.push(line), err: (line: string) => lines.err.push(line) };
-  return { code: runCli(argv, env, { fetch, output }), lines, urls };
+  return { code: runCli(argv, env, { fetch, output, now: () => Date.parse("2026-01-01T00:01:00Z") }), lines, urls };
 }
 
 test("ob read <id> prints the message, then each reply indented under it", async () => {
@@ -61,7 +61,11 @@ test("ob read <channel> prints a summary per thread and previews its latest repl
   };
   const { code, lines, urls } = run(["read", "dev"], page);
   expect(await code).toBe(0);
-  expect(lines.out).toEqual(["#2  quiet  (0 replies)", "#1  busy  (1 reply)", "  Latest reply: #3  on it"]);
+  expect(lines.out).toEqual([
+    "#2  ada · 1m  quiet  (0 replies)",
+    "#1  ada · 1m  busy  (1 reply)",
+    "  Latest reply: #3  on it",
+  ]);
   expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev`]);
 });
 
@@ -76,7 +80,7 @@ test("ob read <channel> --after forwards the cursor and prints no older line", a
   const page = { threads: [{ message: message("3", "later"), replies: 0, last: null }], cursor: "5" };
   const { code, lines, urls } = run(["read", "dev", "--after", "2", "--limit", "1"], page);
   expect(await code).toBe(0);
-  expect(lines.out).toEqual(["#3  later  (0 replies)"]);
+  expect(lines.out).toEqual(["#3  ada · 1m  later  (0 replies)"]);
   expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&after=2&limit=1`]);
 });
 
@@ -92,7 +96,10 @@ test("ob read <channel> --limit ends with the command that reads the older page,
   const page = { threads: [{ message: message("4", "new"), replies: 0, last: null }], cursor: "5", older: "4.4" };
   const { code, lines, urls } = run(["read", "dev", "--label", "area=api", "--limit", "1"], page);
   expect(await code).toBe(0);
-  expect(lines.out).toEqual(["#4  new  (0 replies)", "older: ob read dev --label area=api --before 4.4 --limit 1"]);
+  expect(lines.out).toEqual([
+    "#4  ada · 1m  new  (0 replies)",
+    "older: ob read dev --label area=api --before 4.4 --limit 1",
+  ]);
   expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&label=area%3Dapi&limit=1`]);
 });
 
@@ -100,7 +107,7 @@ test("ob read <channel> --before forwards the older and prints no older line on 
   const page = { threads: [{ message: message("2", "first"), replies: 0, last: null }], cursor: "5", older: null };
   const { code, lines, urls } = run(["read", "dev", "--before", "4.4", "--limit", "2"], page);
   expect(await code).toBe(0);
-  expect(lines.out).toEqual(["#2  first  (0 replies)"]);
+  expect(lines.out).toEqual(["#2  ada · 1m  first  (0 replies)"]);
   expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&before=4.4&limit=2`]);
 });
 

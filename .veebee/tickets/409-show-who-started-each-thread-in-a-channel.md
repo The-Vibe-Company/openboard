@@ -6,12 +6,16 @@ package: cli
 writes:
   - packages/cli/src/commands/read.ts
   - packages/cli/test/read.test.ts
+  - packages/cli/test/read-thread.test.ts
+  - packages/cli/test/read-channel.test.ts
+  - packages/cli/src/output.ts
+  - packages/cli/src/commands/usage.ts
   - skills/openboard/references/commands.md
 conformance: []
 modes: [local]
 depends_on: []
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t409
 issue: 728
 ---
 

@@ -1,4 +1,4 @@
-import { messageLine, shellWord } from "../output.ts";
+import { messageLine, messagePreview, shellWord } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 
 /** A decimal argument names a message, as upstream's `read` takes it; anything else names a channel. */
@@ -35,13 +35,26 @@ function readOlder(
     .join(" ");
 }
 
+/** Elapsed time in the same units as upstream's channel summaries. */
+function age(createdAt: string, now: number): string {
+  const seconds = Math.max(0, Math.round((now - Date.parse(createdAt)) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
+}
+
 /** A channel's thread roots and latest reply previews, ordered by activity, then the command for older ones. */
 async function readChannel(ctx: CommandContext, input: ChannelInput): Promise<void> {
   const page = await ctx.client.listThreads(input);
   if (ctx.json) return ctx.output.out(JSON.stringify(page, null, 2));
+  const now = ctx.now();
   for (const { message, replies, last } of page.threads) {
     const count = replies === 1 ? "1 reply" : `${replies} replies`;
-    ctx.output.out(`${messageLine(message)}  (${count})`);
+    const author = message.author?.handle || message.by.actor;
+    ctx.output.out(
+      `#${message.id}  ${author} · ${age(message.createdAt, now)}  ${messagePreview(message.text)}  (${count})`,
+    );
     if (last) ctx.output.out(`  Latest reply: ${messageLine(last)}`);
   }
   if (typeof page.older === "string") ctx.output.out(`older: ${readOlder(input, page.older, ctx.profile)}`);
