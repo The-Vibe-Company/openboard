@@ -392,6 +392,17 @@ read access and a live claim. Failure clears the claim, records the reason,
 sets `board.task=failed`, and emits `task.failed` with `{ id, thread, epoch, reason, by }`.
 `ob tasks fail <id> "<reason>"` uses the saved claim.
 
+`POST /tasks/:id/cancel` takes `{ reason }` and returns `{ task }`. The task's maker profile or
+its principal acting as itself can cancel it with channel read and either post or label access.
+A caller with manage in the channel can also cancel it. Other callers who can read the task get
+403 `task_not_owned`. Completed and canceled tasks answer 409 `task_finished` to an authorized
+caller. Cancellation clears any claim and hold, records the reason (1–1,000 characters of text),
+sets `board.task=canceled`, and emits `task.canceled` with `{ id, thread, reason, by }`.
+Use `ob tasks cancel <id> "<reason>"`. The CLI clears the caller's saved claim
+on success and adds `outcome: "canceled"` to its `--json` output. The event
+is available in the feed. Persisted pull-watcher matches will be added with
+task expiry matches (see [the rollout decision](decisions.md#task-cancellation-during-a-rolling-deploy)).
+
 At the lease deadline, the thread's task state reads `ready` and
 `GET /tasks?state=ready` includes it. A background job or the next successful
 claim appends `task.expired` with `{ id, epoch }` and updates the reserved

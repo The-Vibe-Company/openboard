@@ -1,5 +1,6 @@
 import type {
   Message,
+  TaskCanceledPayload,
   TaskClaimedPayload,
   TaskCompletedPayload,
   TaskCreatedPayload,
@@ -72,7 +73,16 @@ export interface TaskReleased extends Omit<MessagePosted, "type" | "payload"> {
   };
 }
 
+export interface TaskCanceled extends Omit<MessagePosted, "type" | "payload"> {
+  readonly type: "task.canceled";
+  readonly payload: Omit<TaskCanceledPayload, "id"> & {
+    readonly id: number;
+    readonly view: Message;
+  };
+}
+
 export type TaskEvent =
+  | TaskCanceled
   | TaskExpired
   | TaskCreated
   | TaskClaimed

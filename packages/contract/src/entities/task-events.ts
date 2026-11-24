@@ -84,6 +84,17 @@ export const TaskFailedEvent = Type.Object({
   message: Message,
 });
 
+export const TaskCanceledPayload = Type.Omit(TaskFailedPayload, ["epoch"]);
+export type TaskCanceledPayload = Static<typeof TaskCanceledPayload>;
+
+export const TaskCanceledEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("task.canceled"),
+  createdAt: Type.String(),
+  payload: TaskCanceledPayload,
+  message: Message,
+});
+
 export const TaskReleasedPayload = Type.Omit(TaskCompletedPayload, ["result"]);
 export type TaskReleasedPayload = Static<typeof TaskReleasedPayload>;
 

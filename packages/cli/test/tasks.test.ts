@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { withClaimStorage } from "../src/claims.ts";
@@ -155,6 +155,78 @@ test.each([
     expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({
       [JSON.stringify([other.boardUrl, other.actor, other.id])]: claim,
     });
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("ob tasks cancel sends the reason as the chosen profile and prints the task ID", async () => {
+  const lines: string[] = [];
+  const fetch = async (request: Request) => {
+    expect(`${request.method} ${request.url}`).toBe(`POST ${ENV.BOARD_URL}/tasks/2/cancel`);
+    expect(request.headers.get("x-board-profile")).toBe("fixer-1");
+    expect(await request.json()).toEqual({ reason: "not needed" });
+    return Response.json({ task: { id: "2" } });
+  };
+  const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  const args = ["tasks", "cancel", "2", "not needed", "--as", "fixer-1"];
+  expect(await runCli(args, ENV, { fetch, output })).toBe(0);
+  expect(lines).toEqual(["canceled 2"]);
+});
+
+test("ob tasks cancel reports its JSON outcome and clears only the caller's saved claim on success", async () => {
+  const home = mkdtempSync(join(tmpdir(), "ob-cancel-"));
+  const key = { boardUrl: ENV.BOARD_URL, actor: "agent-a", id: "2" };
+  const other = { ...key, actor: "agent-b" };
+  const claim = { epoch: 2, token: "test claim credential", until: "2023-11-14T22:28:20.000Z" };
+  const path = join(home, ".config", "openboard", "claims.json");
+  const lines: string[] = [];
+  const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  const run = (accepted: boolean) =>
+    runCli(
+      ["tasks", "cancel", "2", "not needed", "--json"],
+      { ...ENV, HOME: home },
+      {
+        output,
+        fetch: async (request) => {
+          if (request.url === `${ENV.BOARD_URL}/me`) return Response.json({ actor: key.actor });
+          expect(request.url).toBe(`${ENV.BOARD_URL}/tasks/2/cancel`);
+          expect(await request.json()).toEqual({ reason: "not needed" });
+          return accepted
+            ? Response.json({ task: { id: "2" } })
+            : Response.json({ error: { code: "unavailable", message: "retry" } }, { status: 503 });
+        },
+      },
+    );
+  const storedKey = ({ boardUrl, actor, id }: typeof key) => JSON.stringify([boardUrl, actor, id]);
+  try {
+    for (const entryKey of [key, other]) {
+      await withClaimStorage(home, async () => ({ result: null, entry: { key: entryKey, claim } }));
+    }
+    expect(await run(false)).toBe(1);
+    expect(lines.shift()).toBe("error: unavailable: retry");
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({ [storedKey(key)]: claim, [storedKey(other)]: claim });
+    expect(await run(true)).toBe(0);
+    expect(JSON.parse(lines[0] ?? "")).toEqual({ task: { id: "2" }, outcome: "canceled" });
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({ [storedKey(other)]: claim });
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("ob tasks cancel succeeds when the local claim cache cannot be opened", async () => {
+  const home = mkdtempSync(join(tmpdir(), "ob-cancel-"));
+  const lines: string[] = [];
+  try {
+    writeFileSync(join(home, ".config"), "");
+    const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+    const fetch = async (request: Request) => {
+      if (request.url === `${ENV.BOARD_URL}/me`) return Response.json({ actor: "agent-a" });
+      expect(request.url).toBe(`${ENV.BOARD_URL}/tasks/2/cancel`);
+      return Response.json({ task: { id: "2" } });
+    };
+    expect(await runCli(["tasks", "cancel", "2", "no"], { ...ENV, HOME: home }, { fetch, output })).toBe(0);
+    expect(lines).toEqual(["canceled 2"]);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

@@ -23,6 +23,7 @@ export const authenticated = operations.filter((operation) => operation.scope !=
 const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; query?: Fields; body?: Fields }>> = {
   createGrant: (tenant) => ({ body: grantDraft(tenant) }),
   createGrants: (tenant) => ({ body: { grants: [grantDraft(tenant)] } }),
+  cancelTask: () => ({ body: { reason: "test" } }),
   claimTask: () => ({ body: {} }),
   updateGrant: (tenant) => ({
     body: {

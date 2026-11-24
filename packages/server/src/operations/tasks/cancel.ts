@@ -1,0 +1,28 @@
+import type { cancelTask } from "@openboard/contract";
+import { agents, decideCancelTask, grants, parseId } from "@openboard/core";
+import { canListMentionActors, unrestrictedLocalOwner, withoutMentionDetails } from "../../auth/access.ts";
+import { authorOf } from "../../auth/author.ts";
+import { callerCan } from "../../deps.ts";
+import type { Handler } from "../index.ts";
+
+export const cancelTaskHandler: Handler<typeof cancelTask> = (ctx, input) => {
+  const position = parseId(input.id);
+  return ctx.board.write(
+    async (writer) => {
+      const target = position === null ? null : await writer.message(position);
+      const channelPermissions = target ? agents.allowedAt(ctx.by[callerCan] ?? {}, target.channel) : [];
+      const permissions = unrestrictedLocalOwner(ctx.by) ? grants.PERMISSIONS : channelPermissions;
+      const { events, task } = decideCancelTask(
+        { head: writer.head, actor: writer.actor, target },
+        input,
+        { by: ctx.by, author: authorOf(ctx.by), now: ctx.now() },
+        permissions,
+      );
+      ctx.debitWrite();
+      await writer.append(events);
+      return { task: canListMentionActors(ctx.by) ? task : { ...withoutMentionDetails(task), task: task.task } };
+    },
+    ctx.by.actor,
+    position,
+  );
+};
