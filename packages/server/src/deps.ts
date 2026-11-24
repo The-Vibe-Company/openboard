@@ -3,6 +3,7 @@ import type { OidcPrincipal, RepositoryPrincipal } from "@openboard/core";
 
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
+  readonly webhookTargets?: { readonly hosts: readonly string[]; readonly ports: readonly number[] };
   readonly secretKey?: Uint8Array;
   readonly instanceId?: string | undefined;
   readonly deploymentTag?: string | undefined;
@@ -52,8 +53,18 @@ export interface Deps {
   readonly randomBytes: (length: number) => Uint8Array;
   /** Outbound HTTP, for sign-in providers; absent, no provider is offered. */
   readonly fetch?: (request: Request) => Promise<Response>;
+  /** Webhook HTTP transport, given a checked numeric URL and the original TLS identity. */
+  readonly webhookFetch?: (request: Request, options: WebhookFetchOptions) => Promise<Response>;
   /** Resolve all addresses for the public outbound HTTP guard. */
   readonly resolveHost?: (hostname: string) => Promise<readonly string[]>;
+}
+
+interface WebhookFetchOptions {
+  readonly proxy: false;
+  readonly redirect: "manual";
+  readonly keepalive: false;
+  readonly decompress: false;
+  readonly tls?: { readonly serverName: string; readonly rejectUnauthorized: true };
 }
 
 /** Who a request writes as, once the pipeline has authenticated it. */

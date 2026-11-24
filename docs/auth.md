@@ -617,17 +617,23 @@ signing credentials. If a row cannot decrypt, the delivery becomes dead with
 
 ### SSRF on webhook URLs
 
-- `https` only, port 443 unless `OPENBOARD_WEBHOOK_ALLOWED_PORTS`; no
-  credentials in the URL; no redirects followed.
-- At creation and before each attempt, resolve the host and refuse loopback,
-  private (RFC 1918, `fc00::/7`), link-local (`169.254.0.0/16` including cloud
-  metadata, `fe80::/10`), CGNAT (`100.64.0.0/10`), unspecified, multicast, and
-  IPv4-mapped forms; refuse `.internal`, `.local`, `.railway.internal`, and the
-  service's own public host.
-- Connect to the checked address (no DNS rebinding window). Whether Bun's
-  `fetch` can pin an address while verifying TLS for the hostname is
-  unverified; if not, deliveries use `Bun.connect` with TLS and a minimal
-  HTTP/1.1 client.
-- Response bodies read up to 8 KB; 10 s timeout.
-- An operator-level allow-list (`OPENBOARD_WEBHOOK_ALLOWED_HOSTS`) exists for
-  private self-hosts; tenants cannot loosen the guard.
+- HTTPS on port 443 by default. Operators can add HTTPS ports with the
+  comma-separated `OPENBOARD_WEBHOOK_ALLOWED_PORTS` setting. URL credentials
+  and fragments are refused. Redirects are never followed.
+- At creation and before each attempt, check all resolved addresses. Refuse
+  loopback, private (RFC 1918, `fc00::/7`), link-local, CGNAT, unspecified,
+  multicast, IPv4-mapped IPv6, and other non-public addresses. Refuse
+  `.internal`, `.local`, `.localhost`, and the service's public hostname.
+- An operator can allow private addresses for exact hosts with the
+  comma-separated `OPENBOARD_WEBHOOK_ALLOWED_HOSTS` setting. Other address
+  restrictions still apply to those hosts. Request fields cannot change either
+  allow-list.
+- Local mode also accepts plain HTTP to loopback IPs or to `localhost` when
+  all DNS answers are loopback, on any receiver port. The board's own origin
+  is refused.
+- Bun fetch connects directly to a checked numeric address while using the
+  receiver hostname for the HTTP Host header and TLS identity verification.
+  On connection refusal it can try a different checked address. DNS at
+  creation and each delivery attempt have a 10-second deadline. Response
+  bodies are read up to 8 KB when bounded reads are available and discarded
+  otherwise.

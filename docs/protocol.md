@@ -716,8 +716,11 @@ Create omits `secret` when the caller supplies it. The `github` preset
 requires a nonempty secret and uses its UTF-8 bytes as the HMAC key. The CLI
 reads that preset's secret file verbatim, including trailing newlines. A missing
 GitHub secret or an unsupported signing preset returns 400 `invalid_signing`.
-Until hosted target validation ships, local mode accepts loopback HTTP or
-HTTPS URLs and hosted mode returns `invalid_url`.
+Targets follow the [webhook URL policy](auth.md#ssrf-on-webhook-urls).
+A refused target returns 400 `invalid_url` with one of these reasons:
+`syntax`, `credentials`, `fragment`, `scheme`, `port`, `service_host`,
+`reserved_host`, `dns` (lookup failure or no answers), or `address` (a
+forbidden address).
 A completed attempt records a terminal result in this first implementation.
 Deleting a subscription prevents new attempts. An attempt already claimed by
 a dispatcher may finish.

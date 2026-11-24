@@ -10,6 +10,7 @@ type Signup = (typeof SIGNUP_MODES)[number];
 
 /** The server's configuration, parsed once at startup (docs/codebase.md 5.5). */
 interface CommonConfig {
+  readonly webhookTargets: { readonly hosts: readonly string[]; readonly ports: readonly number[] };
   readonly secretKey?: Uint8Array;
   readonly host: string;
   readonly port: number;
@@ -139,9 +140,31 @@ function webhookKeyOf(env: Env, problems: string[]): Uint8Array | undefined {
   return Buffer.from(text, "base64");
 }
 
+function webhookTargetsOf(env: Env, problems: string[]): Config["webhookTargets"] {
+  const hosts =
+    env.OPENBOARD_WEBHOOK_ALLOWED_HOSTS?.split(",").map((host) => host.trim().toLowerCase().replace(/\.$/, "")) ?? [];
+  const label = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+  if (
+    hosts.some(
+      (host) =>
+        host.length > 253 ||
+        !host.split(".").every((part) => label.test(part)) ||
+        URL.parse(`https://${host}`)?.hostname !== host,
+    )
+  ) {
+    problems.push("OPENBOARD_WEBHOOK_ALLOWED_HOSTS: expected comma-separated exact hostnames");
+  }
+  const ports = env.OPENBOARD_WEBHOOK_ALLOWED_PORTS?.split(",").map((port) => port.trim()) ?? [];
+  if (ports.some((port) => !/^\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65_535)) {
+    problems.push("OPENBOARD_WEBHOOK_ALLOWED_PORTS: expected comma-separated ports from 1 to 65535");
+  }
+  return Object.freeze({ hosts: Object.freeze(hosts), ports: Object.freeze(ports.map(Number)) });
+}
+
 /** The one place the server reads its environment; every bad variable is named, and the caller exits 2. */
 export function loadConfig(env: Env = process.env): Config {
   const problems: string[] = [];
+  const webhookTargets = webhookTargetsOf(env, problems);
   const secretKey = webhookKeyOf(env, problems);
   const port = Number(env.PORT ?? "8787");
   if (!Number.isInteger(port) || port < 1 || port > 65_535) problems.push(`PORT: expected 1 to 65535, got ${env.PORT}`);
@@ -183,6 +206,7 @@ export function loadConfig(env: Env = process.env): Config {
   return Object.freeze({
     ...(databaseUrl === undefined ? { mode: "local" as const } : { mode: "hosted" as const, databaseUrl }),
     host,
+    webhookTargets,
     ...(secretKey && { secretKey }),
     port,
     trustedProxies,

@@ -17,8 +17,8 @@ export function unexpectedTimer(): never {
   throw new Error("unexpected timer");
 }
 
-type AppOptions = Pick<ServerConfig, "signup" | "signIn" | "webDir" | "secretKey"> &
-  Pick<Deps, "fetch" | "resolveHost"> & {
+type AppOptions = Pick<ServerConfig, "signup" | "signIn" | "webDir" | "secretKey" | "webhookTargets"> &
+  Pick<Deps, "fetch" | "resolveHost" | "webhookFetch"> & {
     readonly mode?: ServerConfig["mode"];
     readonly publicUrl?: ServerConfig["publicUrl"];
     readonly now?: () => number;
@@ -50,6 +50,7 @@ export function makeApp(options: AppOptions = {}) {
     localOwner: LOCAL_OWNER,
     // Keep a configured hash in hosted tests to exercise the verifier's mode guard.
     localOwnerTokenHash: OWNER.hash,
+    ...(options.webhookTargets && { webhookTargets: options.webhookTargets }),
     ...(options.secretKey && { secretKey: options.secretKey }),
     ...(signup && { signup }),
     ...(options.webDir === undefined ? {} : { webDir: options.webDir }),
@@ -62,6 +63,7 @@ export function makeApp(options: AppOptions = {}) {
     schedule: options.schedule ?? unexpectedTimer,
     randomBytes: (length) => new Uint8Array(length).fill(++drawn),
     ...(fetch && { fetch }),
+    ...(options.webhookFetch && { webhookFetch: options.webhookFetch }),
     ...(options.resolveHost && { resolveHost: options.resolveHost }),
   };
   const app = createCluster(config, { store: options.store ?? openStore(now), watchJobs: options.watchJobs }, deps);

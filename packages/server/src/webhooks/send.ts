@@ -1,12 +1,29 @@
+import { BoardError } from "@openboard/contract";
 import type { Deps } from "../deps.ts";
+import type { SignedWebhookRequest } from "./request.ts";
+import { type TargetConfig, webhookTarget, webhookTimeoutMs } from "./target.ts";
+
+const responseLimit = 8192;
+type CheckedTarget = Awaited<ReturnType<typeof webhookTarget>>;
+type Transport = NonNullable<Deps["webhookFetch"]>;
 
 async function drainResponse(response: Response): Promise<void> {
-  const reader = response.body?.getReader();
-  if (!reader) return;
-  let remaining = 8192;
+  const { body } = response;
+  if (!body) return;
+  let reader: ReadableStreamBYOBReader;
+  try {
+    reader = body.getReader({ mode: "byob" });
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+    // Bun may expose buffered responses as default streams with unbounded chunk sizes.
+    void body.cancel().catch(() => {});
+    return;
+  }
+
+  let remaining = responseLimit;
   try {
     while (remaining > 0) {
-      const next = await reader.read();
+      const next = await reader.read(new Uint8Array(remaining));
       if (next.done) return;
       remaining -= next.value.byteLength;
     }
@@ -15,25 +32,66 @@ async function drainResponse(response: Response): Promise<void> {
   }
 }
 
-export async function sendWebhook(request: Request, { fetch, schedule }: Pick<Deps, "fetch" | "schedule">) {
-  if (!fetch) return { status: null, error: "fetch_unavailable" };
+function refused(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "ECONNREFUSED";
+}
+
+async function fetchChecked(
+  { url, addresses }: CheckedTarget,
+  { headers, body }: SignedWebhookRequest,
+  signal: AbortSignal,
+  fetch: Transport,
+): Promise<Response> {
+  const endpoint = new URL(url);
+  headers.set("host", url.host);
+  headers.set("accept-encoding", "identity");
+  for (const address of addresses) {
+    signal.throwIfAborted();
+    endpoint.hostname = address.includes(":") ? `[${address}]` : address;
+    const request = new Request(endpoint.href, { method: "POST", body, headers, signal, redirect: "manual" });
+    try {
+      return await fetch(request, {
+        proxy: false,
+        redirect: "manual",
+        keepalive: false,
+        decompress: false,
+        ...(url.protocol === "https:" && {
+          tls: { serverName: url.hostname.replace(/^\[|\]$/g, ""), rejectUnauthorized: true },
+        }),
+      });
+    } catch (error) {
+      // A refused connection sent no POST. An ambiguous failure cannot be replayed here.
+      if (!refused(error)) throw error;
+    }
+  }
+  throw new Error("webhook target refused all connections");
+}
+
+export async function sendWebhook(
+  target: string,
+  config: TargetConfig,
+  { webhookFetch, resolveHost, schedule }: Pick<Deps, "webhookFetch" | "resolveHost" | "schedule">,
+  payload: SignedWebhookRequest,
+) {
+  if (!webhookFetch) return { status: null, error: "fetch_unavailable" };
   const controller = new AbortController();
   let status: number | null = null;
   const timeout = Promise.withResolvers<{ status: number | null; error: string }>();
-  const cancel = schedule(10_000, () => {
+  const cancel = schedule(webhookTimeoutMs, () => {
     timeout.resolve({ status, error: "timeout" });
     controller.abort();
   });
   try {
     const send = async () => {
-      const redirect = request.redirect === "manual" ? "manual" : "error";
-      const response = await fetch(new Request(request, { signal: controller.signal, redirect }));
+      const checked = await webhookTarget(target, config, resolveHost);
+      const response = await fetchChecked(checked, payload, controller.signal, webhookFetch);
       status = response.status;
       await drainResponse(response);
       return { status, error: null };
     };
     return await Promise.race([send(), timeout.promise]);
-  } catch {
+  } catch (error) {
+    if (error instanceof BoardError && error.code === "invalid_url") return { status: null, error: "invalid_url" };
     return { status, error: status === null ? "request_failed" : "response_body_failed" };
   } finally {
     cancel();

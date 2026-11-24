@@ -182,3 +182,21 @@ test("decodes a 32-byte webhook key and refuses malformed encodings", () => {
   }
   expect(() => load({ OPENBOARD_SECRET_KEY: "short" })).toThrow("expected 32 bytes encoded as base64 or base64url");
 });
+
+test("parses exact webhook hosts and additional HTTPS ports", () => {
+  expect(
+    load({
+      OPENBOARD_WEBHOOK_ALLOWED_HOSTS: "Hooks.Corp., other.example",
+      OPENBOARD_WEBHOOK_ALLOWED_PORTS: "8443, 9443",
+    }).webhookTargets,
+  ).toEqual({ hosts: ["hooks.corp", "other.example"], ports: [8443, 9443] });
+});
+
+test("names invalid webhook allow-list variables", () => {
+  for (const host of ["not a host", "*.example", "https://hooks.corp", "hooks.corp:8443", "hooks.corp,"]) {
+    expect(() => load({ OPENBOARD_WEBHOOK_ALLOWED_HOSTS: host })).toThrow(/^OPENBOARD_WEBHOOK_ALLOWED_HOSTS:/);
+  }
+  for (const port of ["0", "65536", "x", "443,"]) {
+    expect(() => load({ OPENBOARD_WEBHOOK_ALLOWED_PORTS: port })).toThrow(/^OPENBOARD_WEBHOOK_ALLOWED_PORTS:/);
+  }
+});

@@ -62,6 +62,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
     },
     randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
     fetch: (request) => fetch(request, { redirect: request.redirect === "manual" ? "manual" : "error" }),
+    webhookFetch: (request, options) => fetch(request, options),
     resolveHost: async (hostname) => (await lookup(hostname, { all: true })).map(({ address }) => address),
   };
   const { mode, publicUrl, localOwner, signup, github } = config;
@@ -82,6 +83,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
       mode,
       ...(config.secretKey && { secretKey: config.secretKey }),
       publicUrl,
+      webhookTargets: config.webhookTargets,
       localOwner,
       instanceId: config.instanceId,
       deploymentTag: config.deploymentTag,

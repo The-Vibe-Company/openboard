@@ -39,10 +39,12 @@ function setup(status: number) {
       wakes.push(wake);
       return () => {};
     },
-    fetch: async (request) => {
+    webhookFetch: async (request) => {
       requests.push(request);
       const body =
-        status === 503 ? new ReadableStream({ pull: () => Promise.reject(new Error("body read failed")) }) : null;
+        status === 503
+          ? new ReadableStream({ type: "bytes", pull: () => Promise.reject(new Error("body read failed")) })
+          : null;
       return new Response(body, { status });
     },
   });
@@ -91,7 +93,7 @@ test("delivers exactly one Standard Webhooks signed version 1 POST for a matchin
   if (!request) throw new Error("missing request");
   expect(request.url).toBe(target);
   expect(request.method).toBe("POST");
-  expect(request.redirect).toBe("error");
+  expect(request.redirect).toBe("manual");
   const id = request.headers.get("webhook-id");
   const ts = request.headers.get("webhook-timestamp");
   expect(id).toMatch(/^dl_[a-z2-7]{16}$/);
@@ -190,13 +192,4 @@ test("requires manage throughout the tail, including the member role cap and nar
   expect(await answer(send(route, narrow, { ...spec, filter: { tail: "dev/" } }), 403)).toMatchObject({
     error: { code: "forbidden" },
   });
-});
-
-test("refuses webhook targets in hosted mode before reaching the receiver", async () => {
-  const { owner, send } = await provision("hosted");
-  for (const url of [target, "https://example.com/webhook"]) {
-    expect(await answer(send("/api/hooks/main/x/webhooks", owner, { ...spec, url }), 400)).toMatchObject({
-      error: { code: "invalid_url" },
-    });
-  }
 });

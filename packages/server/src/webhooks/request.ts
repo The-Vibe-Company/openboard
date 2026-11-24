@@ -5,7 +5,11 @@ import type { ServerConfig } from "../deps.ts";
 import { signWebhook, webhookSigningScheme } from "../jobs/sign.ts";
 import { projectEvent } from "../operations/events.ts";
 import type { WebhookCredentials } from "./secret-box.ts";
-import { webhookTarget } from "./target.ts";
+
+export interface SignedWebhookRequest {
+  readonly headers: Headers;
+  readonly body: string;
+}
 
 export function webhookRequest(
   config: ServerConfig,
@@ -15,39 +19,25 @@ export function webhookRequest(
   credentials: WebhookCredentials,
   org: string,
   board: string,
-): Request | null {
-  const url = webhookTarget(input.webhook.url, config.mode);
+): SignedWebhookRequest | null {
   const [event] = projectEvent(input.event, input.record.directory, false);
   if (!event || !("message" in event)) throw new Error("missing webhook event message");
   const delivery = { id, attempt: input.attempt, webhook: input.webhook.id, name: input.webhook.name };
   const template = input.webhook.body as object | null;
   const body = webhookPayload(config.publicUrl, org, board, delivery, event, input.root ?? event.message, template);
   if (body === null) return null;
-  return signedRequest(url, input.webhook.signing.preset, id, now, credentials, body);
+  return signedWebhookRequest(input.webhook.signing.preset, id, now, credentials, body);
 }
 
-export function webhookPingRequest(
-  mode: ServerConfig["mode"],
-  webhook: Webhook,
-  id: string,
-  now: number,
-  credentials: WebhookCredentials,
-  body: string,
-): Request {
-  return signedRequest(webhookTarget(webhook.url, mode), webhook.signing.preset, id, now, credentials, body, "manual");
-}
-
-function signedRequest(
-  url: URL,
+export function signedWebhookRequest(
   preset: Webhook["signing"]["preset"],
   id: string,
   now: number,
   credentials: WebhookCredentials,
   body: string,
-  redirect: "error" | "manual" = "error",
-): Request {
+): SignedWebhookRequest {
   const headers = new Headers(credentials.headers);
   const scheme = webhookSigningScheme(preset);
   for (const [key, value] of signWebhook(scheme, id, now, body, credentials.secret)) headers.set(key, value);
-  return new Request(url.href, { method: "POST", headers, body, redirect });
+  return { headers, body };
 }
