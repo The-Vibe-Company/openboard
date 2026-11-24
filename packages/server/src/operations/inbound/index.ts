@@ -16,6 +16,7 @@ import {
   parseInboundRules,
   parseInboundThread,
   unmanagedGrantPattern,
+  validateInboundActions,
   validateWebhookSigningPreset,
 } from "@openboard/core";
 import type { BoardWriter, InboundRecord } from "@openboard/ports";
@@ -69,6 +70,7 @@ async function requireWriteManage(ctx: BoardContext, writer: BoardWriter, record
 
 export const createInboundHandler: Handler<typeof createInbound> = async (ctx, spec) => {
   const rulePlan = parseInboundRules(spec.rules);
+  validateInboundActions(rulePlan);
   const threadPlan = parseInboundThread(spec.thread);
   const can = writtenCan(spec.can);
   const { tolerance = 300, ...verify } = spec.verify;
@@ -135,6 +137,7 @@ export const getInboundHandler: Handler<typeof getInbound> = async (ctx, { id })
 
 export const updateInboundHandler: Handler<typeof updateInbound> = (ctx, { id, rules: input }) => {
   const rulePlan = parseInboundRules(input);
+  validateInboundActions(rulePlan);
   return ctx.board.write(async (writer) => {
     const record = requireEndpoint(await writer.inboundEndpoint(id));
     await requireWriteManage(ctx, writer, record);

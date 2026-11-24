@@ -9,13 +9,28 @@ writes:
   - packages/core/test/inbound/match.test.ts
   - packages/server/src/inbound/receive.ts
   - packages/server/src/inbound/run.ts
-  - packages/driver-sql/src/views/inbound.ts
+  - packages/driver-sql/src/views/inbound/index.ts
   - packages/server/test/inbound/reply.test.ts
+  - packages/core/src/index.ts
+  - packages/core/src/webhooks/template.ts
+  - packages/ports/src/inbound/index.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/driver-sql/migrations/0039-inbound-seen.sql
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/views/jobs/purge.ts
+  - packages/contract/src/operations/inbound/index.ts
+  - packages/server/openapi.json
+  - packages/server/test/inbound/create.test.ts
+  - packages/server/src/operations/inbound/index.ts
+  - packages/ports/testkit/isolation-case-seeds.ts
+  - docs/data-model.md
+  - docs/protocol.md
+  - skills/openboard/references/webhooks.md
 conformance: []
 modes: [local, hosted]
 depends_on: [317, 327]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 513
 ---
 

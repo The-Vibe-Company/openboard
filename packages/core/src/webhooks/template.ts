@@ -102,14 +102,39 @@ export function validateWebhookTemplate(template: object): void {
 
 const encoder = new TextEncoder();
 
-function resolvePath(payload: object, path: string): unknown {
+export function resolvePath(payload: object, path: readonly string[]): unknown {
   let value: unknown = payload;
-  for (const key of path.split(".")) {
-    if (value === null || typeof value !== "object" || !Object.hasOwn(value, key)) return null;
-    if (Array.isArray(value) && !arrayIndex.test(key)) return null;
+  for (const key of path) {
+    if (value === null || typeof value !== "object" || !Object.hasOwn(value, key)) return undefined;
+    if (Array.isArray(value) && !arrayIndex.test(key)) return undefined;
     value = (value as Record<string, unknown>)[key];
   }
-  return value ?? null;
+  return value;
+}
+
+function textValue(value: unknown): string {
+  return value == null ? "" : typeof value === "string" ? value : JSON.stringify(value);
+}
+
+export function renderTemplateText(
+  parts: readonly (string | { path: string[] })[],
+  payload: object,
+  limit: number,
+): { text: string; truncated: boolean } | null {
+  let text = "";
+  for (const part of parts) {
+    let value: string;
+    try {
+      value = typeof part === "string" ? part : textValue(resolvePath(payload, part.path));
+    } catch (error) {
+      if (error instanceof RangeError) return null;
+      throw error;
+    }
+    const remaining = limit - text.length;
+    text += value.slice(0, remaining);
+    if (value.length > remaining) return { text, truncated: true };
+  }
+  return { text, truncated: false };
 }
 
 function renderString(text: string, payload: object, byteLimit: number): string | null {
@@ -119,10 +144,9 @@ function renderString(text: string, payload: object, byteLimit: number): string 
   for (const match of placeholders) {
     const [placeholder, path] = match;
     if (path === undefined) continue;
-    const value = resolvePath(payload, path);
+    const value = resolvePath(payload, path.split(".")) ?? null;
     if (placeholder === text) return JSON.stringify(value);
-    rendered +=
-      text.slice(end, match.index) + (value === null ? "" : typeof value === "string" ? value : JSON.stringify(value));
+    rendered += text.slice(end, match.index) + textValue(value);
     // A UTF-16 code unit needs at least one byte in the final JSON.
     if (rendered.length > byteLimit) return null;
     end = match.index + placeholder.length;

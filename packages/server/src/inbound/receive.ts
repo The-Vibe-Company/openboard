@@ -6,6 +6,7 @@ import type { Pipeline } from "../http/pipeline.ts";
 import type { BoardPath } from "../http/scope.ts";
 import type { Handler } from "../operations/index.ts";
 import { INBOUND_VERIFY_INFO, openSecret } from "../webhooks/secret-box.ts";
+import { runInbound } from "./run.ts";
 import { verifyInbound } from "./verify.ts";
 
 const maxBodyBytes = 1024 * 1024;
@@ -54,7 +55,14 @@ export const receiveInboundEventHandler: Handler<typeof receiveInboundEvent> = a
   if (!credentials) throw new BoardError("unavailable", "inbound verification is unavailable");
   verifyInbound(record.inbound.verify, credentials.secret, ctx.headers, ctx.body, ctx.url, ctx.now());
   ctx.debitWrite();
-  return { ok: true, matched: [], results: [] };
+  if (record.inbound.rules.length === 0) return { ok: true, matched: [], results: [] };
+  return ctx.board.write(async (writer) => {
+    const current = await writer.inboundEndpoint(id);
+    if (!current?.inbound.enabled) throw missingEndpoint();
+    return current.inbound.rules.length === 0
+      ? { ok: true, matched: [], results: [] }
+      : runInbound(writer, current, ctx.headers, ctx.body, ctx.now());
+  }, record.inbound.principal);
 };
 
 export async function runSigned(
