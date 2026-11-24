@@ -44,12 +44,13 @@ export interface ReadyTaskQuery {
   readonly under?: string;
   readonly actor: string;
   readonly principal: string;
+  readonly from?: readonly string[];
   readonly now: number;
 }
 
 /** What a write reads of tasks under the board's lock. */
 export interface BoardTaskWriter extends Pick<BoardTaskReads, "taskRoot" | "taskBatch"> {
-  /** Oldest ready root assigned to the actor, then oldest unassigned root owned by the principal. */
+  /** Oldest ready root assigned to the actor, then oldest unassigned root owned by the principal or a principal in from. */
   nextReadyTask(query: ReadyTaskQuery): Promise<Message | null>;
   taskNeedEdges(ids: readonly number[]): Promise<TaskNeedEdge[]>;
   taskNeeds(ids: readonly number[]): Promise<Message[]>;

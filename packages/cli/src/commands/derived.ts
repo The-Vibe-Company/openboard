@@ -184,7 +184,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   }
   const usage =
     operation.name === "claimNextTask"
-      ? "ob tasks claim [--next] --channel <channel> [--lease <lease>] [--label <label>]... [--wait <seconds>]"
+      ? "ob tasks claim [--next] --channel <channel> [--lease <lease>] [--label <label>]... [--from <principal>]... [--wait <seconds>]"
       : commandUsage(command, args, fields, options, alternative);
   if (operation.name === "claimNextTask") {
     fields.set("next", { schema: { type: "boolean" }, required: false });
@@ -261,6 +261,7 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
       channel: String(input.channel),
       lease: input.lease as number | undefined,
       label: input.label as string[] | undefined,
+      from: input.from as string[] | undefined,
       wait: input.wait as number | undefined,
     });
   }
@@ -349,6 +350,7 @@ export const derivedCommands: readonly Command[] = operations.flatMap((operation
     const fields = fieldsOf(claimNextTask);
     const flags = new Map([
       ["label", "label"],
+      ["from", "from"],
       ["wait", "wait"],
       ["lease", "lease"],
       ["channel", "channel"],

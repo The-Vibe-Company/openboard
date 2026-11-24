@@ -1,4 +1,4 @@
-import type { claimNextTask, InputOf, OutputOf } from "@openboard/contract";
+import { BoardError, type claimNextTask, type InputOf, type OutputOf } from "@openboard/contract";
 import { channelFilter, labelFilters } from "@openboard/core";
 import { tailBoard } from "../../live/fan-out.ts";
 import { longPoll, MAX_WAIT_SECONDS } from "../../live/long-poll.ts";
@@ -9,12 +9,12 @@ type Input = InputOf<typeof claimNextTask>;
 type Answer = OutputOf<typeof claimNextTask>;
 type Claimed = Extract<Answer, { claim: unknown }>;
 
-function claimAttempt(ctx: BoardContext, { channel, label, lease }: Input, mayClaim: () => boolean) {
+function claimAttempt(ctx: BoardContext, { channel, label, lease, from }: Input, mayClaim: () => boolean) {
   const labels =
     label === undefined || Array.isArray(label)
       ? labelFilters(label)
       : Object.entries(label).map(([key, value]) => [key, [value]] as const);
-  const filters = { ...channelFilter(channel), labels };
+  const filters = { ...channelFilter(channel), labels, from };
   return (by: BoardContext["by"]) =>
     ctx.board.write(async (writer) => {
       const cursor = writer.head;
@@ -73,6 +73,11 @@ async function waitForClaim(ctx: BoardContext, input: Input, seconds: number): P
 }
 
 export const claimNextTaskHandler: Handler<typeof claimNextTask> = async (ctx, input) => {
+  if (
+    input.from?.some((owner) => !/^[^\s:]+:\S+$/.test(owner) || owner.includes("\0") || /[\uD800-\uDFFF]/u.test(owner))
+  ) {
+    throw new BoardError("invalid_from", "from: name each owner by principal ID");
+  }
   if (input.wait) return waitForClaim(ctx, input, input.wait);
   const page = await claimAttempt(ctx, input, () => true)(ctx.by);
   return page.events[0] ?? { task: null };
