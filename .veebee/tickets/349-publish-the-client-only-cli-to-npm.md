@@ -8,14 +8,20 @@ writes:
   - packages/cli/bin/ob.js
   - packages/cli/scripts/build.ts
   - packages/cli/test/package.test.ts
+  - packages/cli/src/commands/schemas/create.ts
+  - packages/cli/src/config.ts
+  - packages/cli/src/main.ts
+  - skills/openboard/SKILL.md
   - .github/workflows/release.yml
+  - scripts/ci/boundaries/imports.ts
+  - scripts/ci/boundaries.test.ts
   - scripts/release/npm.ts
   - scripts/release/npm.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [348]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 534
 ---
 

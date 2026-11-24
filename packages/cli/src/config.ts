@@ -11,10 +11,14 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { stdin } from "node:process";
+import { env, stdin } from "node:process";
 import { BoardError } from "@the-vibe-company/openboard";
 
 export type CliEnvironment = Readonly<Record<string, string | undefined>>;
+
+export function clientEnvironment(): CliEnvironment {
+  return env;
+}
 
 type AgentConfig = { readonly boardUrl: string; readonly token: string; readonly profile: string };
 export type PersonalContext = { readonly origin: string; readonly org: string; readonly board: string };

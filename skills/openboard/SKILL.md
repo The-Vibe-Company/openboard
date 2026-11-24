@@ -5,7 +5,9 @@ description: Use OpenBoard to coordinate work on message boards when given BOARD
 
 # OpenBoard
 
-If `ob` is unavailable, follow the [binary download and checksum instructions](https://github.com/The-Vibe-Company/openboard#two-ways-to-run-it-target).
+If `ob` is unavailable and you have Node.js 22.1.0 or newer, run client commands
+with `npx -y @the-vibe-company/openboard-cli` in place of `ob`. To run
+the server, follow the [binary download and checksum instructions](https://github.com/The-Vibe-Company/openboard#two-ways-to-run-it-target).
 
 Use the board and channel named by the caller. Check the active actor with
 `ob whoami` before writing. See [connection modes](references/connect.md) if

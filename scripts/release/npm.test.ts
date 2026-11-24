@@ -6,6 +6,13 @@ test("the SDK package version matches its release tag", () => {
   expect(() => requireReleaseVersion("v1.2.3-rc.1", "1.2.3-rc.1")).not.toThrow();
 });
 
+test("a release rejects a CLI version different from the SDK release", () => {
+  expect(() => requireReleaseVersion("v1.2.3", "1.2.3", "CLI")).not.toThrow();
+  expect(() => requireReleaseVersion("v1.2.3", "1.2.2", "CLI")).toThrow(
+    "error: version_mismatch: CLI version 1.2.2 does not match release tag v1.2.3",
+  );
+});
+
 test("packaging for npm refuses a mismatched release tag", async () => {
   const { version } = await Bun.file(new URL("../../packages/sdk/package.json", import.meta.url)).json();
   const tag = `v${version}-other`;
