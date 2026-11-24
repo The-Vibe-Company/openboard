@@ -1,5 +1,5 @@
 import { BoardError, type listThreads, type readThread } from "@openboard/contract";
-import { channelFilter, formatId, mentionFilter, parseId, textPattern } from "@openboard/core";
+import { channelFilter, formatId, labelFilters, mentionFilter, parseId, textPattern } from "@openboard/core";
 import { canListMentionActors, withoutMentionDetails } from "../auth/access.ts";
 import type { Handler } from "./index.ts";
 
@@ -31,16 +31,7 @@ export const listThreadsHandler: Handler<typeof listThreads> = async ({ board, b
   if (input.before !== undefined && input.after !== undefined) {
     throw new BoardError("invalid_request", "before pages back from a page's older, and after reads forward: pass one");
   }
-  const labels = label?.map((filter): readonly [string, (readonly string[])?] => {
-    const equals = filter.indexOf("=");
-    if (equals < 0) return [filter];
-    // Label writes reject NUL, which the Postgres JSON decoder also cannot represent.
-    const values = filter
-      .slice(equals + 1)
-      .split("|")
-      .filter((value) => !value.includes("\0"));
-    return [filter.slice(0, equals), values];
-  });
+  const labels = labelFilters(label);
   const before = input.before === undefined ? undefined : parseOlder(input.before);
   if (before === null) throw new BoardError("invalid_cursor", "before: pass a page's older as it came");
   const after = input.after === undefined ? undefined : parseId(input.after);

@@ -1,7 +1,8 @@
 import { Type } from "@sinclair/typebox";
-import { CHANNEL_PATH_MAX, ChannelPath } from "../entities/messages.ts";
 import { Thread, ThreadSummary } from "../entities/threads.ts";
 import { defineOperation, Ref } from "../operation.ts";
+
+import { ChannelFilter, messageFilters } from "./thread-filters.ts";
 
 export const readThread = defineOperation({
   name: "readThread",
@@ -37,13 +38,6 @@ export const readThread = defineOperation({
   upstream: true,
 });
 
-/** A channel by its whole name, or with a trailing slash (`dev/`) the channel and every channel under it (upstream "Filters"). */
-const ChannelFilter = Type.String({
-  maxLength: CHANNEL_PATH_MAX + 1,
-  pattern: String(ChannelPath.pattern).replace(/\$$/, "/?$"),
-  description: "A channel by its whole name, or `dev/` for `dev` and every channel under it.",
-});
-
 export const listThreads = defineOperation({
   name: "listThreads",
   operationId: "threads",
@@ -55,29 +49,7 @@ export const listThreads = defineOperation({
     query: Type.Object(
       {
         channel: ChannelFilter,
-        by: Type.Optional(
-          Type.String({
-            pattern: "^[^\\u0000]+$",
-            description: "Only threads with a message by this handle, actor ID, or `me` for the caller's actor.",
-          }),
-        ),
-        mentions: Type.Optional(
-          Type.String({
-            pattern: "^(?!@?$)[^\\u0000]+$",
-            description:
-              "Only threads with a message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
-          }),
-        ),
-        label: Type.Optional(Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }))),
-        text: Type.Optional(
-          Type.String({
-            minLength: 1,
-            maxLength: 200,
-            pattern: "^[^\\u0000]+$",
-            description:
-              "Only threads with a message that now says this, in any case, and has the labels; `%` and `_` match only themselves.",
-          }),
-        ),
+        ...messageFilters,
         after: Type.Optional(
           Type.String({
             minLength: 1,

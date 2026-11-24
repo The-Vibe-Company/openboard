@@ -1,0 +1,43 @@
+import type { Thread, ThreadSummary } from "@openboard/contract";
+import type { EventFilters, LabelsChanged, MessageDeleted, MessageEdited, MessagePosted } from "@openboard/core";
+import type { ThreadPosition } from "./store.ts";
+
+export interface BoardMessageReads {
+  /** Scans up to 200 log entries and returns matching feed events and the scanned cursor. */
+  readEvents(
+    after?: number,
+    filters?: EventFilters,
+  ): Promise<{
+    head: number;
+    cursor: number;
+    events: (MessagePosted | MessageEdited | MessageDeleted | LabelsChanged)[];
+  }>;
+  /**
+   * The root and selected replies in ascending order, or null when no message has the requested ID.
+   * A zero limit reads the root alone.
+   */
+  thread(id: number, options?: { readonly after?: number; readonly limit?: number }): Promise<Thread | null>;
+  /**
+   * The channel's latest `limit` (50 by default) threads last active before `before`, or the latest overall, in
+   * ascending activity order, with the same snapshot's board head. `older` is the position of the page's oldest
+   * thread when an older one matches, else null. With `after`, a log position, the first `limit` threads last active
+   * after it instead, and `older` is null. Pass `before` or `after`, not both. With `text`, a `LIKE` operand from
+   * core's `textPattern`, only threads whose root or a reply currently has a lowercased text it matches. With
+   * `under`, a `LIKE` operand from core's `channelFilter`, the threads of every channel it matches as well.
+   * With `author`, the matching message must also be by the exact actor, or match the actor ID or handle in `query`;
+   * with `mentions`, it mentions `id`, `handle` as written, or with `resolve` an actor with either (core's `mentionFilter`).
+   */
+  listThreads(
+    channel: string,
+    labels?: readonly (readonly [key: string, values?: readonly string[]])[],
+    page?: {
+      readonly author?: { readonly actor: string } | { readonly query: string };
+      readonly before?: ThreadPosition;
+      readonly after?: number;
+      readonly limit?: number;
+      readonly mentions?: { readonly id: string; readonly handle?: string; readonly resolve: boolean };
+      readonly text?: string;
+      readonly under?: string;
+    },
+  ): Promise<{ threads: ThreadSummary[]; head: number; older: ThreadPosition | null }>;
+}

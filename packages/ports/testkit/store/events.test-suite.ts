@@ -19,6 +19,9 @@ export function eventsSuite(driver: string, open: OpenStore): void {
         await writer.append(events);
       });
 
+      const unmatched = await board.readEvents(0, { channel: "ops", labels: [["status", ["open"]]] });
+      expect(unmatched).toEqual({ head: 201, cursor: 200, events: [] });
+
       const first = await board.readEvents(0);
       expect(first.cursor).toBe(200);
       expect(first.events.map(({ id }) => id)).toEqual(Array.from({ length: 200 }, (_, index) => index + 1));

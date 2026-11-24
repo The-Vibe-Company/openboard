@@ -19,6 +19,10 @@ export const actorStatements = {
     WHERE boards.org_id = ${"orgId"} AND boards.id = ${"boardId"}`,
   findActor: sql`SELECT id, kind, handle, name, avatar, via FROM actors
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"actor"}`,
+  findFilterActors: sql`SELECT id, kind, handle FROM actors
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"}
+      AND (id = ${"authorId"} OR lower(handle) = ${"authorHandle"}
+        OR id = ${"mentionId"} OR lower(handle) = ${"mentionHandle"})`,
   upsertActor: sql`INSERT INTO actors (org_id, board_id, id, principal, profile, kind, handle, name, avatar, via,
     first_seen, last_seen) VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"principal"}, ${"profile"}, ${"kind"},
     ${"handle"}, ${"name"}, ${"avatar"}, ${"via"}, ${"at"}, ${"at"}) ON CONFLICT (board_id, id) DO UPDATE SET
@@ -72,8 +76,27 @@ export async function foldActorSeen(tx: Db, dialect: Dialect, keys: BoardKeys, e
   });
 }
 
-export function actorReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "listActors"> {
+export function actorReads(
+  db: Db,
+  dialect: Dialect,
+  scope: BoardScope,
+): Pick<BoardView, "listActors" | "findFilterActors"> {
   return {
+    async findFilterActors(author, mention) {
+      const rows = await query(db, dialect, actorStatements.findFilterActors, {
+        orgId: scope.orgId,
+        boardId: scope.boardId,
+        authorId: author ?? null,
+        authorHandle: author?.toLowerCase() ?? null,
+        mentionId: mention?.id ?? null,
+        mentionHandle: mention?.handle ?? null,
+      });
+      return rows.map((row) => ({
+        id: String(row.id),
+        kind: String(row.kind) as Actor["kind"],
+        handle: String(row.handle),
+      }));
+    },
     async listActors() {
       const rows = await query(db, dialect, actorStatements.listActors, {
         boardId: scope.boardId,

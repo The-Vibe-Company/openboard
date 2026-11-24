@@ -63,4 +63,14 @@ export type { CreateOrgCommand, OrgCreation, OrgEvent } from "./orgs/create.ts";
 export * as orgs from "./orgs/create.ts";
 export { decideInvitation, previewInvite } from "./orgs/invite.ts";
 export { decideMemberRole, requireAnotherOwner, requireMemberRemoval } from "./orgs/roles.ts";
-export { channelFilter, mentionFilter, textPattern } from "./threads/filters.ts";
+export {
+  channelFilter,
+  type EventFilters,
+  eventAuthors,
+  eventMentions,
+  labelFilters,
+  matchesEventChannel,
+  matchesEventMessage,
+  mentionFilter,
+  textPattern,
+} from "./threads/filters.ts";

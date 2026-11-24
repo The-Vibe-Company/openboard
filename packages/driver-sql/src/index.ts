@@ -8,6 +8,7 @@ import orgsDdl from "../migrations/0006-orgs.sql" with { type: "text" };
 import invitationsDdl from "../migrations/0007-invitations.sql" with { type: "text" };
 import deviceDdl from "../migrations/0008-device.sql" with { type: "text" };
 import connectionUseDdl from "../migrations/0009-connection-use.sql" with { type: "text" };
+import eventMessageHistoryDdl from "../migrations/0010-event-message-history.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
@@ -24,8 +25,8 @@ import { orgReads, orgView } from "./views/orgs.ts";
 import { threadReads } from "./views/threads.ts";
 
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
-export { splitStatements } from "./ddl.ts";
 export { postgresText } from "./db.ts";
+export { splitStatements } from "./ddl.ts";
 export { platformStatements, statements } from "./statements.ts";
 
 /** A migration of the one DDL source, in Postgres syntax (docs/data-model.md "DDL"). */
@@ -46,6 +47,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 7, name: "0007-invitations", sql: invitationsDdl },
   { version: 8, name: "0008-device", sql: deviceDdl },
   { version: 9, name: "0009-connection-use", sql: connectionUseDdl },
+  { version: 10, name: "0010-event-message-history", sql: eventMessageHistoryDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */

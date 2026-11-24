@@ -80,7 +80,7 @@ export type Operation<
   readonly errors: readonly ErrorCode[];
   readonly access: {
     readonly permission: "read" | "post" | "react" | "label" | "manage";
-    readonly channel: "fromInput" | "fromMessage" | "any";
+    readonly channel: "fromInput" | "fromInputOrAny" | "fromMessage" | "any";
   } | null;
   readonly effects: {
     readonly readOnly: boolean;

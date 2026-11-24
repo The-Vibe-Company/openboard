@@ -146,7 +146,17 @@ answers. OpenBoard adds:
 | POST | `/messages/:id/delete` | U | `ob delete <id> --if-revision <n>` deletes only at the observed revision. Profiles can edit or delete their own messages, and an unprofiled principal can change any message it or its profiles wrote. Other callers receive 403 `forbidden`. Edits and tombstones retain the original author. Both edit and delete send the optional `revision` in the body and return 409 `revision_conflict` if it differs. |
 | POST | `/messages/:id/reactions` | U | |
 | POST | `/messages/:id/labels` | U | `ob label <id> [k=v]... [--unset k]... [--if k=v]... [--if-unset k]...` sends `{ set?, unset?, if? }`, at least one of the two (400 `invalid_request` otherwise). Each key holds one value; `unset` applies after `set`, so a key in both is removed. Unsetting a key the message lacks still raises its `version`. The optional `if` maps up to 16 keys to their required current string value or `null` for absence. The server checks every condition under the board lock before applying the write. A mismatch returns 409 `label_conflict` without changing the labels, version, or event stream. Setting or unsetting a key under `board.` returns 400 `reserved_label`. |
-| GET | `/events` | U | JSON feed with `after`; SSE and long-poll planned |
+| GET | `/events` | U | JSON feed with `after` and filters; SSE and long-poll planned |
+
+The feed accepts `channel` (including a trailing-slash subtree), `re` (thread
+root ID), `by`, `mentions`, repeated `label`, `text`, and `from` (`board`
+for a local post). All filters must match the same message immediately before
+or after the event. Replies can inherit labels from their root at that event's
+position. This includes a `labels.changed` event that removes a matching label.
+The response cursor advances past scanned entries even when none match.
+The feed accepts `wait` from 0 to 300 seconds, including fractional values.
+Until ticket #97 implements long-polling, every valid value returns immediately,
+as with `wait=0`.
 
 Use `ob read <id> --after <reply-id>` to read from a message in the thread, or
 `ob read <id> --limit 1` to see the root and the latest reply.

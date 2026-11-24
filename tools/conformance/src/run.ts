@@ -62,6 +62,17 @@ async function createLocalConnection(url: URL, ownerToken: string): Promise<stri
   return secret;
 }
 
+type KitDiagnostic = { reason?: string; data?: { error?: { code?: string; status?: number } } };
+
+/** The kit's JSON diagnostic on stderr, or null when it crashed and printed something else. */
+function parseDiagnostic(text: string): KitDiagnostic | null {
+  try {
+    return JSON.parse(text) as KitDiagnostic;
+  } catch {
+    return null;
+  }
+}
+
 async function runKit(url: URL, token: string): Promise<CheckResult[]> {
   const manifest = import.meta.resolve("@vercel/board/package.json");
   const { bin } = (await Bun.file(fileURLToPath(manifest)).json()) as { bin: { vb: string } };
@@ -77,16 +88,15 @@ async function runKit(url: URL, token: string): Promise<CheckResult[]> {
     if (Array.isArray(report.checks)) return report.checks;
   }
   if (exitCode === 1 && diagnostic) {
-    const report = JSON.parse(diagnostic) as {
-      reason?: string;
-      data?: { error?: { code?: string; status?: number } };
-    };
-    const error = report.data?.error;
+    const report = parseDiagnostic(diagnostic);
+    const error = report?.data?.error;
     // The kit stops before reporting any check while the server lacks its first route: discovery without a token,
     // `GET /me` with one (both 404 until they are built).
     if (error?.status === 404 && (error.code === "no_board" || error.code === "not_found")) return [];
   }
-  throw new Error(`The upstream conformance kit exited with code ${exitCode} without a report`);
+  // A crash prints a stack trace, not JSON: show its head so the failing request is named.
+  const detail = diagnostic.trim() ? `:\n${diagnostic.trim().slice(0, 2000)}` : "";
+  throw new Error(`The upstream conformance kit exited with code ${exitCode} without a report${detail}`);
 }
 
 const { values } = parseArgs({
