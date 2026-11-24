@@ -150,6 +150,8 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
       thread: thread.message.id,
       task: task.task.id,
       grant: granted.grant.id,
+      // Custom schemas cannot be registered yet. These versions exercise the schema lookup on each board.
+      schema: org === "alpha" ? "isolation@1" : "isolation@2",
       connection: fleet.connection.id,
       agent: claimed.agent.id,
       invitation: invited.invitation.id,

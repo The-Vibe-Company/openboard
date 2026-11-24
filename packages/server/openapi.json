@@ -2704,6 +2704,171 @@
         }
       }
     },
+    "/schemas": {
+      "post": {
+        "operationId": "createSchema",
+        "summary": "Register an immutable schema version.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["name", "version", "schema"],
+                "properties": {
+                  "name": { "pattern": "^[a-z][a-z0-9._-]*$", "type": "string" },
+                  "version": { "minimum": 1, "maximum": 9007199254740991, "type": "integer" },
+                  "description": {
+                    "pattern": "^(?:[^\\u0000\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])+$",
+                    "type": "string"
+                  },
+                  "schema": { "type": "object", "patternProperties": { "^(.*)$": {} } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["schema", "created"],
+                  "properties": {
+                    "schema": {
+                      "type": "object",
+                      "required": ["id", "name", "version", "description", "schema", "builtIn", "by", "at"],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "version": { "type": "integer" },
+                        "description": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "schema": { "type": "object", "patternProperties": { "^(.*)$": {} } },
+                        "builtIn": { "type": "boolean" },
+                        "by": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "at": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                      }
+                    },
+                    "created": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["schema", "created"],
+                  "properties": {
+                    "schema": {
+                      "type": "object",
+                      "required": ["id", "name", "version", "description", "schema", "builtIn", "by", "at"],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "version": { "type": "integer" },
+                        "description": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "schema": { "type": "object", "patternProperties": { "^(.*)$": {} } },
+                        "builtIn": { "type": "boolean" },
+                        "by": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "at": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                      }
+                    },
+                    "created": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "501": {
+            "description": "no_schemas",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      },
+      "get": {
+        "operationId": "schemas",
+        "summary": "List the board's schemas, built-ins first.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["schemas"],
+                  "properties": {
+                    "schemas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "name", "version", "description", "schema", "builtIn", "by", "at"],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "name": { "type": "string" },
+                          "version": { "type": "integer" },
+                          "description": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "schema": { "type": "object", "patternProperties": { "^(.*)$": {} } },
+                          "builtIn": { "type": "boolean" },
+                          "by": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "at": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/tasks": {
       "post": {
         "operationId": "createTask",
@@ -9966,6 +10131,69 @@
           },
           "404": {
             "description": "post_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/schemas/{id}": {
+      "get": {
+        "operationId": "schema",
+        "summary": "Read one schema version by name@version.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "schema", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["schema"],
+                  "properties": {
+                    "schema": {
+                      "type": "object",
+                      "required": ["id", "name", "version", "description", "schema", "builtIn", "by", "at"],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "version": { "type": "integer" },
+                        "description": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "schema": { "type": "object", "patternProperties": { "^(.*)$": {} } },
+                        "builtIn": { "type": "boolean" },
+                        "by": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "at": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_schema_id, schema_not_found, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "schema_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {

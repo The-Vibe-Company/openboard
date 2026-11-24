@@ -4,24 +4,32 @@ title: List the built-in schemas
 milestone: M13-data-files-schedules
 package: server
 writes:
-  - packages/contract/src/entities/schemas.ts
-  - packages/contract/src/operations/schemas.ts
+  - packages/contract/src/entities/schemas/view.ts
+  - packages/contract/src/operations/schemas/registry.ts
   - packages/contract/src/operations/index.ts
   - packages/contract/src/index.ts
   - packages/core/src/schemas/builtins.ts
   - packages/core/src/schemas/id.ts
   - packages/core/test/schemas/id.test.ts
   - packages/core/src/index.ts
-  - packages/server/src/operations/schemas.ts
+  - packages/server/src/operations/schemas/registry.ts
   - packages/server/src/operations/index.ts
   - packages/server/test/schemas/read.test.ts
   - packages/cli/test/schemas.test.ts
+  - packages/cli/src/output.ts
+  - packages/cli/src/commands/usage.ts
+  - packages/server/test/isolation/cases.ts
+  - packages/server/test/isolation/seed.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
+  - docs/protocol.md
   - NOTICE
 conformance: ["schemas/lists the built-in schemas first, and reads a schema by its ID"]
 modes: [local, hosted]
 depends_on: []
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 556
 ---
 

@@ -634,6 +634,24 @@ Example:
 ob grants
 ```
 
+## `ob schemas`
+
+List the board's schemas, built-ins first.
+
+```sh
+ob schemas
+```
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `list_schemas`.
+
+Example:
+
+```sh
+ob schemas
+```
+
 ## `ob tasks`
 
 List the tasks of a channel, a subtree (`dev/`), or the whole board, oldest first, each as its thread's summary.
@@ -767,6 +785,28 @@ Example:
 
 ```sh
 ob posted 42
+```
+
+## `ob schemas inspect`
+
+Read one schema version by name@version.
+
+```sh
+ob schemas inspect <id>
+```
+
+Arguments:
+
+- `id`: A schema ID.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_schema_id`, `error: not_found`, `error: remote_error`, `error: schema_not_found`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `read_schema`.
+
+Example:
+
+```sh
+ob schemas inspect git-commit@1
 ```
 
 ## `ob connections revoke-agent`

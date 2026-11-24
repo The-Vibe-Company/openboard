@@ -59,6 +59,7 @@ import {
   readPostHandler,
 } from "./messages.ts";
 import { createOrgHandler } from "./orgs.ts";
+import { createSchemaHandler, listSchemasHandler, readSchemaHandler } from "./schemas/registry.ts";
 import {
   ackInboxHandler,
   attachSyncHandler,
@@ -181,6 +182,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   createGrant: createGrantHandler,
   createInvitation: createInvitationHandler,
   createOrg: createOrgHandler,
+  createSchema: createSchemaHandler,
   createTask: createTaskHandler,
   deleteMessage: deleteMessageHandler,
   discoverBoard: discoverBoardHandler,
@@ -205,6 +207,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listMembers: listMembersHandler,
   listMessages: listMessagesHandler,
   listPersonalTokens: listPersonalTokensHandler,
+  listSchemas: listSchemasHandler,
   listSyncCopies: listSyncCopiesHandler,
   listSyncTargets: listSyncTargetsHandler,
   listTasks: listTasksHandler,
@@ -219,6 +222,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   readInbox: readInboxHandler,
   readOrgAudit: readOrgAuditHandler,
   readPost: readPostHandler,
+  readSchema: readSchemaHandler,
   readSource: readSourceHandler,
   readThread: readThreadHandler,
   receiveWebhook: receiveWebhookHandler,

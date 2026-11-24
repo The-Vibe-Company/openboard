@@ -191,6 +191,7 @@ const SAMPLE_IDS: Readonly<Record<string, string>> = {
   agent: "ag_3n5p7r2s4t6v2w3x",
   connection: "cn_7k2m4q3t5v2w6x7y",
   message: "42",
+  schema: "git-commit@1",
 };
 const SAMPLES: Readonly<Record<string, string>> = {
   channel: "dev",
