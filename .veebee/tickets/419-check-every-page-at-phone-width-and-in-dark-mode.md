@@ -10,7 +10,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [412, 413, 414, 415, 416, 417, 418]
-status: draft
+status: done
+claimed_by: codex
 issue: 797
 ---
 
