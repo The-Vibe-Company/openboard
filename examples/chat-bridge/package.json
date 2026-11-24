@@ -1,0 +1,19 @@
+{
+  "name": "@openboard/chat-bridge",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -b",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@openboard/driver-sqlite": "workspace:*",
+    "@openboard/server": "workspace:*",
+    "@types/bun": "1.4.5"
+  },
+  "dependencies": {
+    "@the-vibe-company/openboard": "workspace:*"
+  }
+}

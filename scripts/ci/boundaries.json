@@ -57,6 +57,7 @@
       "external": ["node:*"]
     },
     "examples/webhook-receiver": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] },
+    "examples/chat-bridge": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] },
     "examples/sandboxed-agent": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] }
   },
   "drivers": {

@@ -57,6 +57,18 @@
         "vite": "^8.3.8",
       },
     },
+    "examples/chat-bridge": {
+      "name": "@openboard/chat-bridge",
+      "version": "0.0.0",
+      "dependencies": {
+        "@the-vibe-company/openboard": "workspace:*",
+      },
+      "devDependencies": {
+        "@openboard/driver-sqlite": "workspace:*",
+        "@openboard/server": "workspace:*",
+        "@types/bun": "1.4.5",
+      },
+    },
     "examples/sandboxed-agent": {
       "name": "@openboard/sandboxed-agent",
       "version": "0.0.0",
@@ -276,6 +288,8 @@
     "@openboard/app": ["@openboard/app@workspace:apps/openboard"],
 
     "@openboard/bench": ["@openboard/bench@workspace:tools/bench"],
+
+    "@openboard/chat-bridge": ["@openboard/chat-bridge@workspace:examples/chat-bridge"],
 
     "@openboard/conformance": ["@openboard/conformance@workspace:tools/conformance"],
 
