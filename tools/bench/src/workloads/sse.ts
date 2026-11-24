@@ -1,8 +1,10 @@
+import type { createConnection, OutputOf } from "@openboard/contract";
 import type { Server } from "../drivers";
 import { type Board, percentile, send } from "./request";
 
 const CHANNEL = "bench-sse";
 const TAILS = 50;
+const TAILS_PER_READER = 20;
 const EVENTS = 1_000;
 
 export interface SseResult {
@@ -62,13 +64,27 @@ export async function runSseWorkload(server: Server): Promise<SseResult> {
     return (body as { message: { id: string } }).message.id;
   };
 
+  // Keep all 50 tails on one instance while staying within the 20-per-principal cap.
+  const readers = [server.board];
+  for (const name of ["bench-reader-one", "bench-reader-two"]) {
+    const { body } = await send(instance, server.board, {
+      method: "POST",
+      path: "/x/connections",
+      expected: 201,
+      body: { name, direct: true, can: { "*": ["read"] } },
+    });
+    readers.push({ ...server.board, token: (body as OutputOf<typeof createConnection>).secret });
+  }
   const cursor = await post("warm-up");
   const tails: Tail[] = [];
   const signal = AbortSignal.timeout(30_000);
   const decoder = new TextDecoder();
   const times: number[] = [];
   try {
-    for (let i = 0; i < TAILS; i++) tails.push(await openTail(instance, server.board, cursor, signal));
+    for (const reader of readers) {
+      const target = Math.min(tails.length + TAILS_PER_READER, TAILS);
+      while (tails.length < target) tails.push(await openTail(instance, reader, cursor, signal));
+    }
 
     for (let i = 0; i < EVENTS; i++) {
       const started = performance.now();

@@ -17,7 +17,7 @@ import {
 } from "../operations/index.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
 import { healthProbe } from "./health.ts";
-import { limitWrite, type RequestLimits } from "./limits.ts";
+import { limitStream, limitWrite, type RequestLimits } from "./limits.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
 import { type BoardPath, boardPath, notFound, type Tenants } from "./scope.ts";
@@ -289,7 +289,9 @@ async function runBoard(
     request.headers.get("accept")?.includes(operation.eventStream)
   ) {
     const input = decodeInput(operation, raw);
-    return streamEvents(await context(input), input, request.headers.get("last-event-id"), pipeline.track);
+    return streamEvents(await context(input), input, request.headers.get("last-event-id"), pipeline.track, () =>
+      limitStream(pipeline.rateLimits, path.org, by.principal),
+    );
   }
   const input = validate(operation, raw);
   const output = await handlerOf(operation)(await context(input), input);

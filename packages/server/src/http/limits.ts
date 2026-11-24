@@ -1,6 +1,9 @@
 import { BoardError } from "@openboard/contract";
 import type { PlatformView, RateLimits } from "@openboard/ports";
 
+const PRINCIPAL_STREAM_CAP = 20;
+const ORG_STREAM_CAP = 500;
+
 export interface RequestLimits {
   readonly rateLimits: RateLimits;
   readonly ip: string | undefined;
@@ -37,6 +40,8 @@ export function requestRateLimits(now: () => number, platform: PlatformView): Ra
   type Waiter = (admission: Admission) => void;
   type Pending = { count: number; waiters: Set<Waiter> };
   const pending = new Map<string, Pending>();
+  const byOrg = new Map<string, number>();
+  const byPrincipal = new Map<string, number>();
 
   function admit(ip: string, active: Pending): Admission | undefined {
     const retryAfter = failures(ip, false);
@@ -58,6 +63,20 @@ export function requestRateLimits(now: () => number, platform: PlatformView): Ra
   }
 
   return {
+    reserveStream(org, principal) {
+      const orgCount = byOrg.get(org) ?? 0;
+      const principalCount = byPrincipal.get(principal) ?? 0;
+      if (orgCount >= ORG_STREAM_CAP || principalCount >= PRINCIPAL_STREAM_CAP) return undefined;
+      byOrg.set(org, orgCount + 1);
+      byPrincipal.set(principal, principalCount + 1);
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        decrement(byOrg, org);
+        decrement(byPrincipal, principal);
+      };
+    },
     takeSignIn: (ip) => platform.takeRate(`sign-in:${ip ?? "unknown"}`, 30, 60_000, now()),
     takeWrite: (org) => writes(org, true),
     async admitAuth(ip) {
@@ -78,4 +97,20 @@ export function limitWrite(limits: RateLimits, org: string, readOnly: boolean): 
       next: [{ kind: "wait", seconds }],
     });
   }
+}
+
+function decrement(counts: Map<string, number>, key: string): void {
+  const count = counts.get(key)!;
+  if (count === 1) counts.delete(key);
+  else counts.set(key, count - 1);
+}
+
+export function limitStream(limits: RateLimits, org: string, principal: string): () => void {
+  const release = limits.reserveStream(org, principal);
+  if (!release) {
+    throw new BoardError("rate_limited", "too many open event streams", {
+      next: [{ kind: "wait", seconds: 1 }],
+    });
+  }
+  return release;
 }

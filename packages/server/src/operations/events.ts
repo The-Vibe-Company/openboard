@@ -45,11 +45,19 @@ export async function streamEvents(
   input: EventInput,
   lastEventId: string | null,
   track: <T>(work: Promise<T>) => Promise<T>,
+  reserve: () => () => void,
 ): Promise<Response> {
   const { position, read, newest } = prepareFeed(ctx, input, true, lastEventId);
-  // Subscribe before the first read: the stream then follows from memory, and reads the store only when behind.
-  const tail = tailBoard(ctx.board, position);
+  const release = reserve();
+  let closeTail = () => {};
+  const close = () => {
+    release();
+    closeTail();
+  };
   try {
+    // Subscribe before the first read: the stream then follows from memory, and reads the store only when behind.
+    const tail = tailBoard(ctx.board, position);
+    closeTail = tail.close;
     tail.take(position);
     let first = await read(position);
     while (first.retry && !ctx.signal.aborted && !ctx.shutdown.aborted) first = await read(position);
@@ -62,10 +70,10 @@ export async function streamEvents(
       ctx.shutdown,
       ctx.schedule,
       (after, signal) => track(longPoll(tail, after, "stream", signal, ctx.schedule, follow)),
-      tail.close,
+      close,
     );
   } catch (error) {
-    tail.close();
+    close();
     throw error;
   }
 }

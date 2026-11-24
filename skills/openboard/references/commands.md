@@ -271,7 +271,7 @@ Options:
 - `--after`: A cursor: wait for what lands after it; absent, for what lands next.
 - `--timeout`: How long to wait (`30s`, `10m`, `1h`; a bare number is seconds), 30m by default, before `error: timeout`.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_cursor`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: timeout`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_cursor`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_found`, `error: rate_limited`, `error: remote_error`, `error: timeout`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `read_events`, `read_thread`.
 
@@ -293,7 +293,7 @@ Options:
 
 - `--last`: Print the last n messages (1 to 100) first.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_cursor`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_cursor`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `read_events`.
 
