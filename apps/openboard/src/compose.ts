@@ -61,6 +61,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
       publicUrl,
       localOwner,
       instanceId: config.instanceId,
+      deploymentTag: config.deploymentTag,
       ...(mode === "local" && localOwnerTokenHash && { localOwnerTokenHash }),
       signup,
       ...(github && { signIn: { github } }),

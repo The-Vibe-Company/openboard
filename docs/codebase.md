@@ -374,6 +374,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 | `OPENBOARD_PUBLIC_URL` | canonical origin, never derived from `Host` |
 | `OPENBOARD_SECRET_KEY` | encrypts recoverable secrets (D29) |
 | `OPENBOARD_INSTANCE_ID` | Optional job log label. Each runner uses a generated lease owner ID and uses that ID as its default log label. |
+| `OPENBOARD_DEPLOYMENT_TAG` | Optional deployment tag reported by `/healthz` alongside the instance ID, when configured. |
 | `OPENBOARD_GITHUB_CLIENT_ID`, `OPENBOARD_GITHUB_CLIENT_SECRET` | GitHub sign-in |
 | `OPENBOARD_LOG_LEVEL` | log level |
 | `PORT` | listening port (Railway sets it), default `8787`; the only unprefixed variable |
@@ -512,7 +513,7 @@ One image for both modes. Build stage `oven/bun:<pinned>`; runtime stage `debian
 
 ### 7.5 Railway: hosted service
 
-- One Railway project, environments `staging` and `production`. Each has Railway Postgres, one node on the private network (D38), and one `openboard` service with **at least two replicas**, no volume, source = the GHCR image (never a Railway-side build, so every environment runs the bytes CI built). `railway.hosted.json`: health check `/readyz` (liveness `/healthz`), `numReplicas: 2`, restart on failure, pre-deploy command `openboard migrate`.
+- One Railway project, environments `staging` and `production`. Each has Railway Postgres, one node on the private network (D38), and one `openboard` service with **at least two replicas**, no volume, source = the GHCR image (never a Railway-side build, so every environment runs the bytes CI built). `railway.hosted.json`: health check `/readyz` (liveness `/healthz`), `numReplicas: 2`, restart on failure, pre-deploy command `openboard migrate`. For the staging image deploy, the deploy script reads these settings from the file and applies them through Railway’s GraphQL API.
 - Config: `OPENBOARD_DATABASE_URL` (Railway reference variable), `OPENBOARD_SIGNUP`, `OPENBOARD_PUBLIC_URL`, `OPENBOARD_SECRET_KEY`, GitHub sign-in credentials.
 - **Rolling deploy without downtime**: Railway starts new replicas, waits for `/readyz`, then sends `SIGTERM` to old ones. On `SIGTERM` an instance stops taking new requests, ends SSE streams with a retry hint and the last cursor, lets in-flight requests and its current job finish (10 s cap), releases its job leases, and exits. Clients resume on another replica by cursor. Unclaimed or released jobs are taken by the remaining instances.
 - **Migrations on deploy**: `openboard migrate` runs as the pre-deploy command under a Postgres advisory lock, so only one runs. Migrations are expand-only during a deploy, since old and new versions serve together: add tables and nullable columns, backfill in jobs, never drop or rename. A contract step (drop, rename, `NOT NULL`) ships in a later release, marked `-- contract-phase`, once no running version uses the object; `scripts/ci/migrations.ts` enforces the marker (armada keeps the same N/N-1 overlap for database objects: `AGENTS.md` non-negotiable 1, `docs/architecture.md` "Deployment overlap").

@@ -7,11 +7,18 @@ writes:
   - railway.hosted.json
   - scripts/release/railway-deploy.ts
   - scripts/release/railway-deploy.test.ts
+  - apps/openboard/src/compose.ts
+  - apps/openboard/src/config.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/http/health.ts
+  - docs/protocol.md
+  - docs/codebase.md
+  - docs/decisions.md
 conformance: []
 modes: [hosted]
 depends_on: [120, 123, 167, 184, 188, 402]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 269
 ---
 

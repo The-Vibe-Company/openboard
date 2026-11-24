@@ -26,7 +26,10 @@ The board API is upstream Vercel Board's protocol
 
 Both health probes are unauthenticated and return JSON with `Cache-Control: no-store`.
 `GET /healthz` returns 200 with `{"version":"<running version>"}` without
-querying storage. `GET /readyz` returns 200 with `{"ready":true}` when
+querying storage. OpenBoard deployments can set `OPENBOARD_DEPLOYMENT_TAG`
+to include an optional `deploymentTag` string and, when configured via
+`OPENBOARD_INSTANCE_ID`, an `instanceId` string identifying the responding replica.
+`GET /readyz` returns 200 with `{"ready":true}` when
 storage answers within one second with a compatible schema and the
 instance can serve traffic. It returns 503 with `{"ready":false}` while
 draining or when the readiness check fails.
