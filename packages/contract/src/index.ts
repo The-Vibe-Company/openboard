@@ -52,6 +52,7 @@ export {
   getMe,
   getOpenApi,
   getSession,
+  labelMessage,
   listActors,
   listBoards,
   listChannels,

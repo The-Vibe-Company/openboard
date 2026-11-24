@@ -115,6 +115,25 @@ export const reactToMessage = defineOperation({
   upstream: true,
 });
 
+export const labelMessage = defineOperation({
+  name: "labelMessage",
+  operationId: "label",
+  summary: "Set labels on a message, each key to one value, raising its version.",
+  route: { method: "POST", path: "/messages/:id/labels" },
+  scope: "board",
+  input: {
+    params: Type.Object({ id: Ref("message") }, { additionalProperties: false }),
+    body: Type.Object({ set: Labels }, { additionalProperties: false }),
+  },
+  output: Type.Object({ ok: Type.Literal(true) }),
+  errors: ["invalid_request", "reserved_label", "message_not_found", "message_deleted"],
+  access: { permission: "label", channel: "fromMessage" },
+  effects: { readOnly: false, idempotent: true, emits: ["labels.changed"] },
+  cli: { command: ["label"], args: ["id", "set"] },
+  mcp: { tool: "label_message" },
+  upstream: true,
+});
+
 export const listMessages = defineOperation({
   name: "listMessages",
   operationId: "channelMessages",

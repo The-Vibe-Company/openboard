@@ -14,7 +14,15 @@ import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
 import { changeMemberRole } from "./memberships.ts";
-import { deleteMessage, editMessage, listMessages, postMessage, reactToMessage, readPost } from "./messages.ts";
+import {
+  deleteMessage,
+  editMessage,
+  labelMessage,
+  listMessages,
+  postMessage,
+  reactToMessage,
+  readPost,
+} from "./messages.ts";
 import { createOrg } from "./orgs.ts";
 import { listThreads, readThread } from "./threads.ts";
 
@@ -36,6 +44,7 @@ export const operations = [
   getMe,
   getOpenApi,
   getSession,
+  labelMessage,
   listActors,
   listBoards,
   listChannels,
@@ -73,6 +82,7 @@ export {
   getMe,
   getOpenApi,
   getSession,
+  labelMessage,
   listActors,
   listBoards,
   listChannels,

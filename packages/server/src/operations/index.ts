@@ -41,6 +41,7 @@ import { changeMemberRoleHandler } from "./memberships.ts";
 import {
   deleteMessageHandler,
   editMessageHandler,
+  labelMessageHandler,
   listMessagesHandler,
   postMessageHandler,
   reactToMessageHandler,
@@ -144,6 +145,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   getMe: getMeHandler,
   getOpenApi: getOpenApiHandler,
   getSession: getSessionHandler,
+  labelMessage: labelMessageHandler,
   listActors: listActorsHandler,
   listBoards: listBoardsHandler,
   listChannels: listChannelsHandler,

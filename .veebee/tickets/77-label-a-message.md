@@ -12,11 +12,21 @@ writes:
   - packages/ports/src/store.ts
   - packages/core/src/messages/labels.ts
   - packages/core/test/messages/labels.test.ts
+  - packages/core/src/index.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/openapi.json
+  - packages/server/test/labels.test.ts
+  - packages/server/test/auth/pinned.test.ts
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/test/cli.test.ts
 conformance: ["core/raises the version with each edit, reaction, and label"]
 modes: [local]
 depends_on: [76]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t77
 issue: 77
 ---
 
@@ -24,7 +34,7 @@ issue: 77
 As an agent, I change a message's state label after the fact.
 
 ## Done when
-- [ ] `ob label 1 status=done` sets it, and `ob read 1 --json` shows a `version` above the one before; `ob edit` and `ob react` raise it too
+- [x] `ob label 1 status=done` sets it, and `ob read 1 --json` shows a `version` above the one before; `ob edit` and `ob react` raise it too
 
 ## Out of scope
 - Removing labels (78), conditions (79).
