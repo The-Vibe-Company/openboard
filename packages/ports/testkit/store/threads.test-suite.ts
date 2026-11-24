@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { messages } from "@openboard/core";
+import { decideEdit, messages, textPattern } from "@openboard/core";
 import type { BoardView, Store } from "../../src/index.ts";
 import { type OpenStore, testScope } from "../index.ts";
 
@@ -29,6 +29,57 @@ function reply(board: BoardView, id: number, text: string) {
     await writer.append(events);
     return message;
   });
+}
+
+function edit(board: BoardView, id: number, text: string) {
+  return board.write(async (writer) => {
+    const target = await writer.message(id);
+    if (!target) throw new Error(`message #${id} is missing`);
+    await writer.append([decideEdit({ head: writer.head, target }, { id: String(id), text }, { by, now: at + 1 })]);
+  });
+}
+
+/** Threads found by a root's or a reply's current text, in any case, with `%` and `_` as plain characters. */
+async function checkTextSearch(board: BoardView): Promise<void> {
+  const literal = await post(board, "dev", "Deploy FAILED at 100% on a_b");
+  const lookalike = await post(board, "dev", "deploy failed at 1000 on axb");
+  await reply(board, Number(lookalike.id), "a reply that says Crème Brûlée");
+  await post(board, "ops", "deploy failed elsewhere");
+  const found = async (text: string) =>
+    (await board.listThreads("dev", [], { text: textPattern(text) })).threads.map(({ message }) => message.id);
+  expect(await found("DEPLOY failed")).toEqual([literal.id, lookalike.id]);
+  expect(await found("100%")).toEqual([literal.id]);
+  expect(await found("a_b")).toEqual([literal.id]);
+  expect(await found("crème BRÛLÉE")).toEqual([lookalike.id]);
+  expect(await found("\\")).toEqual([]);
+  await edit(board, Number(lookalike.id), "deploy fixed");
+  expect(await found("1000")).toEqual([]);
+  expect(await found("deploy fixed")).toEqual([lookalike.id]);
+}
+
+/** Text and labels hold on one message, its root's labels included, and the text filter pages back like any other. */
+async function checkTextWithLabels(board: BoardView): Promise<void> {
+  const split = await post(board, "dev", "split");
+  await reply(board, Number(split.id), "deploy failed");
+  await post(board, "dev", "deploy failed, unlabelled");
+  const inherited = await post(board, "dev", "inherited", { area: "api" });
+  await reply(board, Number(inherited.id), "deploy failed");
+  const own = await post(board, "dev", "Deploy failed here", { area: "api" });
+  // The label is on one reply of `split` and the text on another: no single message has both.
+  await board.write(async (writer) => {
+    const target = await writer.replyTarget(Number(split.id));
+    const { events } = messages.decidePost(
+      { head: writer.head, target },
+      { re: split.id, text: "labelled", labels: { area: "api" } },
+      { by, now: at },
+    );
+    await writer.append(events);
+  });
+  const search = { text: textPattern("deploy failed") };
+  const first = await board.listThreads("dev", [["area"]], { ...search, limit: 1 });
+  expect(first.threads.map(({ message }) => message.id)).toEqual([own.id]);
+  const rest = await board.listThreads("dev", [["area"]], { ...search, before: first.older ?? undefined });
+  expect(rest).toMatchObject({ threads: [{ message: inherited }], older: null });
 }
 
 async function checkReplyPages(board: BoardView): Promise<void> {
@@ -105,6 +156,16 @@ function pagingTests(localBoard: () => Promise<BoardView>): void {
   });
 }
 
+function searchTests(localBoard: () => Promise<BoardView>): void {
+  test("finds threads by the current text of their root or a reply, in any case, wildcards as characters", async () => {
+    await checkTextSearch(await localBoard());
+  });
+
+  test("finds threads by a message with both the text and the labels, a page at a time", async () => {
+    await checkTextWithLabels(await localBoard());
+  });
+}
+
 export function threadsSuite(driver: string, open: OpenStore): void {
   describe(`${driver}: threads`, () => {
     let store: Store | undefined;
@@ -169,6 +230,8 @@ export function threadsSuite(driver: string, open: OpenStore): void {
     });
 
     pagingTests(localBoard);
+
+    searchTests(localBoard);
 
     test("reads no thread for a position no message holds", async () => {
       const board = await localBoard();

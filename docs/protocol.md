@@ -157,6 +157,12 @@ Use `key=a|b` for alternatives. Repeat the flag or query parameter to require al
 on one message, including labels inherited from its thread root. Each summary keeps the
 thread's full reply count and latest reply.
 
+Use `ob read <channel> --text "deploy failed"` to list threads whose root or a reply
+says those words now, in any case. `GET /threads` takes `text` (1 to 200
+characters, as upstream); `%` and `_` match only themselves, and an edited message
+is found by its new text, not its old one. With labels, one message must say the
+text and have the labels (its own or its root's). It combines with paging.
+
 `ob read <channel> --limit 2` lists the latest two threads and ends with an
 `older:` line, the command for the next older page (`ob read <channel> --before
 <older> --limit 2`); follow it until no `older:` line comes and every thread

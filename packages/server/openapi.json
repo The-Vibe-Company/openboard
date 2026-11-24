@@ -2413,6 +2413,18 @@
             "schema": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } }
           },
           {
+            "name": "text",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^[^\\u0000]+$",
+              "description": "Only threads with a message that now says this, in any case, and has the labels; `%` and `_` match only themselves.",
+              "type": "string"
+            }
+          },
+          {
             "name": "after",
             "in": "query",
             "required": false,
@@ -2457,6 +2469,13 @@
               "type": "string"
             },
             "label": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } },
+            "text": {
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^[^\\u0000]+$",
+              "description": "Only threads with a message that now says this, in any case, and has the labels; `%` and `_` match only themselves.",
+              "type": "string"
+            },
             "after": {
               "minLength": 1,
               "maxLength": 128,
