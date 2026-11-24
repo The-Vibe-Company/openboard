@@ -15,7 +15,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [162]
-status: claimed
+status: done
 claimed_by: claude-t167
 issue: 247
 ---
@@ -24,8 +24,8 @@ issue: 247
 As an operator deploying several instances at once, I run `openboard migrate` before they start and the schema is migrated exactly once.
 
 ## Done when
-- [ ] `OPENBOARD_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun apps/openboard/src/main.ts migrate` on an empty database prints each migration it applies and exits 0; run again, it prints that the schema is current and exits 0
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/driver-postgres/test/migrate.test.ts` passes: two migrators started together on one empty database both resolve, `schema_migrations` lists each version once, and the second waited on the lock instead of failing
+- [x] `OPENBOARD_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun apps/openboard/src/main.ts migrate` on an empty database prints each migration it applies and exits 0; run again, it prints that the schema is current and exits 0
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/driver-postgres/test/migrate.test.ts` passes: two migrators started together on one empty database both resolve, `schema_migrations` lists each version once, and the second waited on the lock instead of failing
 
 ## Out of scope
 - An instance refusing readiness when its minimum schema is newer than the database's (M6, 184).

@@ -56,9 +56,9 @@ if (url) {
       const rows =
         await holder`SELECT version, count(*)::int AS times FROM schema_migrations GROUP BY version ORDER BY version`;
       expect(rows).toEqual(migrations.map(({ version }) => ({ version, times: 1 })));
-      expect(await holder`SELECT count(*)::int AS held FROM pg_locks WHERE locktype = 'advisory'`).toEqual([
-        { held: 0 },
-      ]);
+      expect(
+        await holder`SELECT count(*)::int AS held FROM pg_locks WHERE locktype = 'advisory' AND database = (SELECT oid FROM pg_database WHERE datname = ${name})`,
+      ).toEqual([{ held: 0 }]);
     } finally {
       await Promise.all([holder.close(), first.close(), second.close()]);
     }
