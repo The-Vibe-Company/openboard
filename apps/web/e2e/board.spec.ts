@@ -82,7 +82,8 @@ test("the organization opens its default board and outsiders see Not found", asy
 
     await page.goto(`${server.url}/acme`);
     await expect(page).toHaveURL(`${server.url}/acme/main`);
-    await expect(page.getByRole("link", { name: "internal" })).toBeVisible();
+    const channels = page.getByRole("navigation", { name: "Channels" });
+    await expect(channels.getByRole("link", { name: "internal", exact: true })).toBeVisible();
 
     const context = await browser.newContext();
     try {

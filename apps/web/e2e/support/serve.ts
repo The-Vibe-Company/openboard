@@ -1,8 +1,11 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createTestDatabases, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { type App, createApp, type ServerConfig } from "@openboard/server";
+import { test } from "@playwright/test";
+import { hostedDatabaseUrl } from "../../playwright.config.ts";
 
 async function fakeProvider(request: Request): Promise<Response> {
   const { origin, pathname } = new URL(request.url);
@@ -29,6 +32,27 @@ async function fakeProvider(request: Request): Promise<Response> {
 }
 
 export async function temporaryDataDir() {
+  if (test.info().project.name === "hosted") {
+    const url = hostedDatabaseUrl();
+    if (!url) throw new Error("Hosted Playwright requires OPENBOARD_TEST_DATABASE_URL");
+    const databases = await createTestDatabases(url);
+    try {
+      const database = await databases.create();
+      return {
+        path: database.url,
+        async remove() {
+          try {
+            await database.drop();
+          } finally {
+            await databases.close();
+          }
+        },
+      };
+    } catch (error) {
+      await databases.close();
+      throw error;
+    }
+  }
   const path = await mkdtemp(join(tmpdir(), "openboard-browser-"));
   return { path, remove: () => rm(path, { recursive: true, force: true }) };
 }
@@ -42,79 +66,93 @@ interface ServeOptions {
   onResponse?: (request: Request, response: Response) => Response | Promise<Response>;
 }
 
-export async function serve({
-  signup = "open",
-  dataDir,
-  port = 0,
-  withProvider = true,
-  now = Date.now,
-  onResponse,
-}: ServeOptions = {}) {
-  const { path, remove: clean } =
-    dataDir === undefined ? await temporaryDataDir() : { path: dataDir, remove: () => Promise.resolve() };
-  let app: App | undefined;
-  let server: Bun.Server<undefined>;
+async function bootApp(url: string, path: string, mode: ServerConfig["mode"], options: ServeOptions) {
+  const { signup = "open", withProvider = true, now = Date.now } = options;
+  const store = mode === "hosted" ? await postgresDriver({ url: path }, now) : sqliteDriver({ dir: path }, now);
+  try {
+    return createApp(
+      {
+        mode,
+        publicUrl: url,
+        localOwner: "ob:user:local-browser-test",
+        signup,
+        webDir: join(import.meta.dir, "../../dist"),
+        ...(withProvider && {
+          signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } },
+        }),
+      },
+      { store, jobs: store.jobs },
+      {
+        now,
+        requestId: () => crypto.randomUUID(),
+        schedule(delay, run) {
+          const timer = setTimeout(run, delay);
+          return () => clearTimeout(timer);
+        },
+        log: { info() {}, error() {} },
+        randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
+        fetch: fakeProvider,
+      },
+    );
+  } catch (error) {
+    await store.close();
+    throw error;
+  }
+}
+
+export async function serve(options: ServeOptions = {}) {
+  const { dataDir, port = 0, onResponse } = options;
+  const mode = test.info().project.name === "hosted" ? "hosted" : "local";
+  const instances = mode === "hosted" ? 2 : 1;
+  const storage = dataDir === undefined ? await temporaryDataDir() : { path: dataDir, remove: async () => {} };
+  const apps: App[] = [];
+  let next = 0;
+  let server: Bun.Server<undefined> | undefined;
+
+  async function stop() {
+    try {
+      await server?.stop(true);
+      const results = await Promise.allSettled(apps.map((app) => app.close()));
+      for (const result of results) {
+        if (result.status === "rejected") throw result.reason;
+      }
+    } finally {
+      await storage.remove();
+    }
+  }
+
   try {
     server = Bun.serve({
       hostname: "localhost",
       port,
-      async fetch(request) {
+      async fetch(request, listener) {
+        const instance = next;
+        next = (next + 1) % instances;
+        const pathname = new URL(request.url).pathname;
+        if (request.method === "GET" && pathname.endsWith("/events")) listener.timeout(request, 0);
+        const app = apps[instance];
         const response = app ? await app.fetch(request) : new Response(null, { status: 503 });
+        if (
+          mode === "hosted" &&
+          response.ok &&
+          (pathname === "/healthz" || pathname.endsWith("/events") || pathname.endsWith("/messages"))
+        ) {
+          response.headers.set("x-openboard-test-instance", String(instance));
+        }
         return onResponse ? onResponse(request, response) : response;
       },
     });
+    const url = `http://localhost:${server.port}`;
+    for (let i = 0; i < instances; i++) apps.push(await bootApp(url, storage.path, mode, options));
+    return {
+      url,
+      drain: async () => {
+        await Promise.all(apps.map((app) => app.drain()));
+      },
+      stop,
+    };
   } catch (error) {
-    await clean();
+    await stop();
     throw error;
   }
-  const url = `http://localhost:${server.port}`;
-  try {
-    const store = sqliteDriver({ dir: path }, now);
-    try {
-      app = createApp(
-        {
-          mode: "local",
-          publicUrl: url,
-          localOwner: "ob:user:local-browser-test",
-          signup,
-          webDir: join(import.meta.dir, "../../dist"),
-          ...(withProvider && {
-            signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } },
-          }),
-        },
-        { store, jobs: store.jobs },
-        {
-          now,
-          requestId: () => crypto.randomUUID(),
-          schedule(delay, run) {
-            const timer = setTimeout(run, delay);
-            return () => clearTimeout(timer);
-          },
-          log: { info() {}, error() {} },
-          randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
-          fetch: fakeProvider,
-        },
-      );
-    } catch (error) {
-      await store.close();
-      throw error;
-    }
-  } catch (error) {
-    await server.stop(true);
-    await clean();
-    throw error;
-  }
-  const running = app;
-  return {
-    url,
-    drain: () => running.drain(),
-    async stop() {
-      await server.stop(true);
-      try {
-        await running.close();
-      } finally {
-        await clean();
-      }
-    },
-  };
 }

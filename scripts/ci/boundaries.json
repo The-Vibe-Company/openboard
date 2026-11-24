@@ -43,9 +43,9 @@
         "geist"
       ]
     },
-    "apps/web/e2e": { "may": [], "external": ["@playwright/test"] },
+    "apps/web/e2e": { "may": ["sdk"], "external": ["@playwright/test"] },
     "apps/web/e2e/support": {
-      "may": ["server", "driver-sqlite"],
+      "may": ["server", "driver-sqlite", "driver-postgres"],
       "external": ["@playwright/test", "bun", "node:fs", "node:os", "node:path"]
     },
     "tools/conformance": {

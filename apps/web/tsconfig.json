@@ -21,6 +21,9 @@
   ],
   "references": [
     {
+      "path": "../../packages/driver-postgres"
+    },
+    {
       "path": "../../packages/sdk"
     },
     {

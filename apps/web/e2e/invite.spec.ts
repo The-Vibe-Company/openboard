@@ -26,13 +26,23 @@ const test = base.extend<{
   orgName: [organization.name, { option: true }],
   board: async ({ browser, signup, orgName }, use) => {
     const dir = await temporaryDataDir();
-    const owner = await browser.newPage();
-    const existing = await browser.newPage();
+    let owner: Page | undefined;
+    let existing: Page | undefined;
     let now = Date.UTC(2026, 0, 1);
     const options = { dataDir: dir.path, now: () => now };
     try {
+      owner = await browser.newPage();
+      existing = await browser.newPage();
       // Create the owner and an existing account before switching to invite-only sign-up.
-      const bootstrap = await serve(options);
+      const bootstrap = await serve({
+        ...options,
+        onResponse(_request, response) {
+          // Both browser contexts reuse this origin after its listener has been replaced.
+          const headers = new Headers(response.headers);
+          headers.set("connection", "close");
+          return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+        },
+      });
       try {
         await signIn(owner, bootstrap.url, "maple-owner");
         await signIn(existing, bootstrap.url, "returning-person");
@@ -58,7 +68,7 @@ const test = base.extend<{
         await app.stop();
       }
     } finally {
-      await Promise.all([owner.context().close(), existing.context().close(), dir.remove()]);
+      await Promise.all([owner?.context().close(), existing?.context().close(), dir.remove()]);
     }
   },
 });

@@ -53,6 +53,7 @@ export function eventStream(
         close();
         if (abort.signal.aborted) return;
         if (shutdown.aborted) controller.enqueue(encoder.encode(`retry: 1000\nid: ${formatId(cursor)}\n\n`));
+        else if (deadline.signal.aborted) controller.enqueue(encoder.encode("retry: 100\n\n"));
         controller.close();
       };
       if (signal.aborted) {

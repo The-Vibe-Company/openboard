@@ -81,6 +81,8 @@ export type Operation<
   readonly input: I;
   /** The route accepts an omitted request body as well as a JSON body. */
   readonly bodyOptional?: true;
+  /** The body has no defaults and can be validated without cloning its JSON. */
+  readonly bodyDefaults?: false;
   readonly output: O;
   /** The success media type for a raw string body. Defaults to JSON. */
   readonly responseType?: "image/svg+xml";
@@ -156,15 +158,26 @@ function fromText(schema: TObject, value: object): object {
 
 /** Refuses an own `__proto__` key at any depth: cloning drops it, so it would vanish instead of being refused. */
 function refuseProtoKeys(value: unknown, path: string) {
-  if (typeof value !== "object" || value === null) return;
-  for (const [key, inner] of Object.entries(value)) {
-    const at = path ? `${path}.${key}` : key;
-    if (key === "__proto__") throw new BoardError("invalid_request", `${at}: __proto__ is no key a board takes`);
-    refuseProtoKeys(inner, at);
+  const pending = [{ value, path, key: "" }];
+  for (let next = pending.pop(); next; next = pending.pop()) {
+    if (next.key === "__proto__") {
+      throw new BoardError("invalid_request", `${next.path}: __proto__ is no key a board takes`);
+    }
+    if (typeof next.value !== "object" || next.value === null) continue;
+    for (const [key, inner] of Object.entries(next.value).reverse()) {
+      const at = next.path ? `${next.path}.${key}` : key;
+      pending.push({ value: inner, path: at, key });
+    }
   }
 }
 
-function decodePart(schema: TObject | undefined, value: unknown, where: string, convert: boolean): object {
+function decodePart(
+  schema: TObject | undefined,
+  value: unknown,
+  where: string,
+  convert: boolean,
+  defaults = true,
+): object {
   if (!schema) {
     const empty =
       value === undefined || (typeof value === "object" && value !== null && Object.keys(value).length === 0);
@@ -175,8 +188,9 @@ function decodePart(schema: TObject | undefined, value: unknown, where: string, 
     if (value !== undefined) throw new BoardError("invalid_request", `the ${where} must be a JSON object`);
   }
   refuseProtoKeys(value, "");
-  const copy = Value.Default(schema, Value.Clone(value ?? {}));
-  const decoded = convert ? fromText(schema, copy as object) : copy;
+  const input = (value ?? {}) as object;
+  const prepared = defaults ? (Value.Default(schema, Value.Clone(input)) as object) : input;
+  const decoded = convert ? fromText(schema, prepared) : prepared;
   const [first] = Value.Errors(schema, decoded);
   if (first) {
     const field = first.path.replace(/^\//, "").replaceAll("/", ".") || where;
@@ -191,7 +205,7 @@ export function decodeInput<Op extends Operation>(operation: Op, raw: RawInput):
     return {
       ...decodePart(operation.input.params, raw.params, "path", true),
       ...decodePart(operation.input.query, raw.query, "query", true),
-      ...decodePart(operation.input.body, raw.body, "body", false),
+      ...decodePart(operation.input.body, raw.body, "body", false, operation.bodyDefaults),
     } as InputOf<Op>;
   } catch (error) {
     if (operation.invalidInputCode && error instanceof BoardError && error.code === "invalid_request") {

@@ -2,6 +2,7 @@ import { BoardError, type createSchema, type listSchemas, type readSchema } from
 import {
   builtInSchemas,
   checkSchemaCapacity,
+  isIdenticalSchema,
   parseSchemaId,
   registeredSchema,
   repeatSchema,
@@ -22,11 +23,21 @@ export const readSchemaHandler: Handler<typeof readSchema> = async ({ board }, {
 };
 
 export const createSchemaHandler: Handler<typeof createSchema> = async ({ board, by, now, debitWrite }, input) => {
-  const payload = schemaRegistration(input);
+  let payload: SchemaRegistered["payload"];
+  try {
+    payload = schemaRegistration(input);
+  } catch (error) {
+    if (!(error instanceof BoardError) || error.code !== "invalid_schema") throw error;
+    // Identical retries of previously stored custom versions remain no-ops.
+    const existing = await board.schema(`${input.name}@${input.version}`);
+    if (existing && isIdenticalSchema(existing, input.schema, input.description ?? null)) {
+      return { schema: existing, created: false };
+    }
+    throw error;
+  }
   const { id, definition, description } = payload;
-  const builtIn = builtInSchemas().find((entry) => entry.id === id);
   return board.write(async (writer) => {
-    const existing = builtIn ?? (await writer.schema(id));
+    const existing = await writer.schema(id);
     if (existing) return { schema: repeatSchema(existing, definition, description), created: false };
     checkSchemaCapacity(await writer.schemaCount());
     debitWrite();

@@ -107,6 +107,7 @@ export { canonicalSchema } from "./schemas/canonical.ts";
 export { parseSchemaId } from "./schemas/id.ts";
 export {
   checkSchemaCapacity,
+  isIdenticalSchema,
   registeredSchema,
   repeatSchema,
   type SchemaRegistered,

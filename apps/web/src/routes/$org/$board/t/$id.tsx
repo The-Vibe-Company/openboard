@@ -8,6 +8,7 @@ import { sessionQuery } from "../../../../api/session.ts";
 import { threadErrorText, threadQuery } from "../../../../api/thread.ts";
 import { Composer } from "../../../../components/Composer.tsx";
 import { MessageView } from "../../../../components/MessageView.tsx";
+import { TaskState } from "../../../../components/TaskState.tsx";
 
 export const Route = createFileRoute("/$org/$board/t/$id")({
   beforeLoad: ({ params }) => {
@@ -63,6 +64,7 @@ function ThreadPage() {
       </h1>
       {data && (
         <>
+          {!data.message.deleted && data.message.task && <TaskState board={params} task={data.message.task} />}
           <ol className="board-threads" aria-label="Thread messages">
             {[data.message, ...data.replies].map((item) => (
               <li key={item.id}>
