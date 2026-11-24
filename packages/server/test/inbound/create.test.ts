@@ -1,7 +1,12 @@
 import { expect, test } from "bun:test";
 import type { createConnection, createInbound, OutputOf } from "@openboard/contract";
 import { testScope } from "@openboard/ports/testkit";
-import { openWebhookSecret } from "../../src/webhooks/secret-box.ts";
+import {
+  INBOUND_VERIFY_INFO,
+  openSecret,
+  openWebhookSecret,
+  sealWebhookSecret,
+} from "../../src/webhooks/secret-box.ts";
 import { BOARD_URL, call, makeApp, NOW } from "../support/app.ts";
 import { openStore } from "../support/drivers.ts";
 
@@ -14,6 +19,14 @@ const spec = {
   thread: { from: "{{body.externalRef}}", pattern: "^ob:(\\d+)$" },
   rules,
 };
+
+test("webhook ciphertext cannot open as an inbound secret with the same endpoint ID", () => {
+  const id = "ib_aaaaaaaaaaaaaaaa";
+  const credentials = { secret: "verify fixture", headers: {} };
+  const sealed = sealWebhookSecret(key, id, credentials, new Uint8Array(12));
+  expect(openWebhookSecret(key, id, sealed)).toEqual(credentials);
+  expect(openSecret(key, INBOUND_VERIFY_INFO, id, sealed)).toBeNull();
+});
 
 test("creates, lists, updates and deletes an endpoint and its exact grant without exposing its secret", async () => {
   const store = openStore(() => NOW);
@@ -42,7 +55,8 @@ test("creates, lists, updates and deletes an endpoint and its exact grant withou
       const sealed = await writer.inboundSecret(inbound.id);
       if (!sealed) throw new Error("missing sealed verify secret");
       expect(JSON.stringify(sealed)).not.toContain(secret);
-      expect(openWebhookSecret(key, inbound.id, sealed)?.secret === secret).toBe(true);
+      expect(openSecret(key, INBOUND_VERIFY_INFO, inbound.id, sealed)?.secret === secret).toBe(true);
+      expect(openSecret(key, INBOUND_VERIFY_INFO, "ib_other", sealed)).toBeNull();
       expect(await writer.activeGrant(record.grantId)).toMatchObject({
         can: spec.can,
         principals: [{ kind: "hook", inbound: inbound.id }],

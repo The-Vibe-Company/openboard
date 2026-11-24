@@ -47,6 +47,7 @@ writes:
   - packages/server/src/operations/grants/create.ts
   - packages/server/src/operations/inbound/index.ts
   - packages/server/src/operations/index.ts
+  - packages/server/src/webhooks/secret-box.ts
   - packages/server/test/grants/create.test.ts
   - packages/server/test/inbound/create.test.ts
   - packages/server/test/isolation/cases.ts

@@ -20,7 +20,7 @@ import {
 import type { BoardWriter, InboundRecord } from "@openboard/ports";
 import { unrestrictedLocalOwner } from "../../auth/access.ts";
 import { callerCan, requestScope } from "../../deps.ts";
-import { sealWebhookSecret } from "../../webhooks/secret-box.ts";
+import { INBOUND_VERIFY_INFO, sealSecret } from "../../webhooks/secret-box.ts";
 import { currentAuthority, requireGrantPatternManage, requireNewGrantManage } from "../grants/authority.ts";
 import { appendGrant, writtenCan } from "../grants/create.ts";
 import { refuseGrantLockout } from "../grants/lockout.ts";
@@ -99,7 +99,10 @@ export const createInboundHandler: Handler<typeof createInbound> = async (ctx, s
     }
     const grant = await appendGrant(ctx, writer, draft);
     await refuseGrantLockout(by, writer, "creating", can, undefined, ctx.now);
-    await writer.storeInboundSecret(id, sealWebhookSecret(key, id, { secret, headers: {} }, ctx.randomBytes(12)));
+    await writer.storeInboundSecret(
+      id,
+      sealSecret(key, INBOUND_VERIFY_INFO, id, { secret, headers: {} }, ctx.randomBytes(12)),
+    );
     await writer.append([
       {
         ...audit(ctx, writer.head + 1, now),
