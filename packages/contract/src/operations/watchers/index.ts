@@ -64,7 +64,7 @@ export const pullWatcherMatches = defineOperation({
     ),
   },
   output: Type.Object({ matches: Type.Array(WatcherMatch) }),
-  errors: ["no_registration", "invalid_request"],
+  errors: ["forbidden", "no_registration", "invalid_request"],
   effects: { readOnly: false, idempotent: false, emits: ["watch.failed"] },
   mcp: { tool: "pull_watcher_matches" },
 });
@@ -87,7 +87,7 @@ export const ackWatcherMatch = defineOperation({
     ),
   },
   output: Type.Object({ ok: Type.Literal(true) }),
-  errors: ["no_match", "stale_lease", "invalid_request"],
+  errors: ["forbidden", "no_match", "stale_lease", "invalid_request"],
   effects: { readOnly: false, idempotent: false, emits: ["watch.failed"] },
   mcp: { tool: "ack_watcher_match" },
 });
