@@ -110,6 +110,9 @@
       "dependencies": {
         "@openboard/contract": "workspace:*",
       },
+      "devDependencies": {
+        "@types/bun": "1.4.5",
+      },
     },
     "packages/server": {
       "name": "@openboard/server",

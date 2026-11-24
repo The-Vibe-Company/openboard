@@ -61,6 +61,20 @@ export function membershipsSuite(driver: string, open: OpenStore): void {
       expect(demotions.filter((result) => result.status === "fulfilled")).toHaveLength(1);
       expect(demotions).toContainEqual({ status: "rejected", reason: expect.objectContaining({ code: "last_owner" }) });
       expect((await acme.listMembers()).filter(({ role }) => role === "owner")).toHaveLength(1);
+
+      const currentOwner = (await platform.orgMembership("acme", owner))?.role === "owner" ? owner : member;
+      const currentAdmin = currentOwner === owner ? member : owner;
+      const remove = { personId: currentAdmin, targetId: currentAdmin, at: at + 3 };
+      expect(await acme.removeMember({ ...remove, targetId: outsider })).toBeNull();
+      await acme.changeMemberRole({ ...change, personId: currentOwner, targetId: currentAdmin, role: "owner" });
+      const changes = await Promise.allSettled([
+        acme.removeMember(remove),
+        acme.changeMemberRole({ ...change, personId: currentOwner, targetId: currentOwner }),
+      ]);
+      expect(changes.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(changes).toContainEqual({ status: "rejected", reason: expect.objectContaining({ code: "last_owner" }) });
+      expect((await acme.listMembers()).filter(({ role }) => role === "owner")).toHaveLength(1);
+      expect(await other.listMembers()).toEqual([{ principal: `ob:user:${outsider}`, role: "owner" }]);
     } finally {
       await store.close();
     }

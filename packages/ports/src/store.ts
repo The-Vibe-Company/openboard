@@ -122,6 +122,12 @@ export interface OrgView {
     readonly role: Role;
     readonly at: number;
   }): Promise<{ principal: string; role: Role } | null>;
+  /** Removes a member and records its audit event together, preserving the last owner and the person's sessions. */
+  removeMember(record: {
+    readonly personId: string;
+    readonly targetId: string;
+    readonly at: number;
+  }): Promise<{ principal: string } | null>;
   /** Stores the invitation and audit event together. False if the creator no longer has admin rights here. */
   createInvitation(record: {
     readonly invitation: Invitation;

@@ -20,3 +20,19 @@ export const changeMemberRole = defineOperation({
   why: "An organization administrator changes roles with a browser session.",
   upstream: false,
 });
+
+export const removeMember = defineOperation({
+  name: "removeMember",
+  summary: "Remove an organization member or leave the organization.",
+  route: { method: "POST", path: "/orgs/:org/members/:user/remove" },
+  scope: "org",
+  input: { params: Type.Object({ org: Slug, user: Ref("member") }) },
+  output: Type.Object({ principal: Type.String() }),
+  errors: ["invalid_request", "not_found", "unauthorized", "forbidden", "last_owner"],
+  access: { permission: "read", channel: "any" },
+  effects: { readOnly: false, idempotent: true, emits: ["ob.member.removed"] },
+  cli: false,
+  mcp: false,
+  why: "Organization administrators and departing members use browser sessions.",
+  upstream: false,
+});

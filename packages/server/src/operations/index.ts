@@ -40,7 +40,7 @@ import {
   previewInvitationHandler,
   revokeInvitationHandler,
 } from "./invitations.ts";
-import { changeMemberRoleHandler } from "./memberships.ts";
+import { changeMemberRoleHandler, removeMemberHandler } from "./memberships.ts";
 import {
   deleteMessageHandler,
   editMessageHandler,
@@ -154,8 +154,8 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listChannels: listChannelsHandler,
   listMembers: listMembersHandler,
   listMessages: listMessagesHandler,
-  listThreads: listThreadsHandler,
   listPersonalTokens: listPersonalTokensHandler,
+  listThreads: listThreadsHandler,
   pollDeviceSignIn: pollDeviceSignInHandler,
   postMessage: postMessageHandler,
   previewInvitation: previewInvitationHandler,
@@ -164,11 +164,12 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   readPost: readPostHandler,
   readThread: readThreadHandler,
   refreshAgentToken: refreshAgentTokenHandler,
+  removeMember: removeMemberHandler,
   revokeAgent: revokeAgentHandler,
-  revokeConnection: revokeConnectionHandler,
   revokeAllSessions: revokeAllSessionsHandler,
-  revokePersonalToken: revokePersonalTokenHandler,
+  revokeConnection: revokeConnectionHandler,
   revokeInvitation: revokeInvitationHandler,
+  revokePersonalToken: revokePersonalTokenHandler,
   startDeviceSignIn: startDeviceSignInHandler,
 };
 
