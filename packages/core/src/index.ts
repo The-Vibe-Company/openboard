@@ -91,7 +91,7 @@ export { grantMatchingClaims, matchesOidcClaims, type OidcPrincipal } from "./ac
 export { channelInputError, correctedChannel, InvalidGrantPattern } from "./channels/path.ts";
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail, type TailMessage } from "./events/tail.ts";
 export { base32, formatId, isoTime, parseId } from "./ids.ts";
-export { inboundMessagePermission, renderInboundMessageAction, validateInboundActions } from "./inbound/actions.ts";
+export { inboundActionPermission, renderInboundAction, validateInboundActions } from "./inbound/actions.ts";
 export type { InboundConfig } from "./inbound/events.ts";
 export { inboundThreadPosition, matchingInboundRules } from "./inbound/match.ts";
 export { compileInboundPattern } from "./inbound/pattern.ts";

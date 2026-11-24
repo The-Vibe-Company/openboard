@@ -7364,6 +7364,29 @@
                                   "type": "object",
                                   "required": ["react"],
                                   "properties": { "react": { "type": "string" } }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": ["task.block"],
+                                  "properties": { "task.block": { "type": "string" } }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": ["task.unblock", "outcome"],
+                                  "properties": {
+                                    "task.unblock": { "type": "string" },
+                                    "outcome": {
+                                      "anyOf": [
+                                        { "const": "unblocked", "type": "string" },
+                                        { "const": "unchanged", "type": "string" }
+                                      ]
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": ["task.cancel"],
+                                  "properties": { "task.cancel": { "type": "string" } }
                                 }
                               ]
                             }
@@ -24460,8 +24483,40 @@
                   "required": ["ok", "matched", "results"],
                   "properties": {
                     "ok": { "const": true, "type": "boolean" },
-                    "matched": { "type": "array", "items": {} },
-                    "results": { "type": "array", "items": {} }
+                    "matched": { "type": "array", "items": { "type": "integer" } },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          { "type": "object", "required": ["reply"], "properties": { "reply": { "type": "string" } } },
+                          { "type": "object", "required": ["label"], "properties": { "label": { "type": "string" } } },
+                          { "type": "object", "required": ["react"], "properties": { "react": { "type": "string" } } },
+                          {
+                            "type": "object",
+                            "required": ["task.block"],
+                            "properties": { "task.block": { "type": "string" } }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["task.unblock", "outcome"],
+                            "properties": {
+                              "task.unblock": { "type": "string" },
+                              "outcome": {
+                                "anyOf": [
+                                  { "const": "unblocked", "type": "string" },
+                                  { "const": "unchanged", "type": "string" }
+                                ]
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["task.cancel"],
+                            "properties": { "task.cancel": { "type": "string" } }
+                          }
+                        ]
+                      }
+                    }
                   }
                 }
               }
@@ -24480,11 +24535,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
-            "description": "not_found, thread_not_found",
+            "description": "not_found, thread_not_found, not_a_task",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "409": {
-            "description": "label_conflict",
+            "description": "label_conflict, task_blocked, task_claimed, task_finished",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "413": {

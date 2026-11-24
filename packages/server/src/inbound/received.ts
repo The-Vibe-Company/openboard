@@ -15,7 +15,10 @@ function publicReceipt({ eventId, at, result }: InboundReceipt): Receipt {
   const results = stored.results.map((action) => {
     if ("reply" in action) return { reply: action.reply };
     if ("label" in action) return { label: action.label };
-    return { react: action.react };
+    if ("react" in action) return { react: action.react };
+    if ("task.block" in action) return { "task.block": action["task.block"] };
+    if ("task.cancel" in action) return { "task.cancel": action["task.cancel"] };
+    return { "task.unblock": action["task.unblock"], outcome: action.outcome };
   });
   return { ...base, status: 200, matched: stored.matched, results };
 }

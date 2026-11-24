@@ -72,7 +72,11 @@ before writing. If an action fails, the event's writes roll back together.
 Retry a 503 with the same event ID and a fresh signature if the scheme
 requires one. Once a delivery succeeds, a verified retry on the same endpoint
 returns the first result without applying the rules again.
-Task completion belongs to the agent holding the claim.
+Task holds, unblocks and cancellations need `manage` in the task's channel.
+Use `{ "task.block": { "kind": "agent", "reason": "{{body.reason}}" } }` to
+hold a task without a live claim, `{ "task.unblock": {} }` to lift its hold,
+and `{ "task.cancel": {} }` to cancel it. Unblocking an unheld task returns
+`unchanged`. Task completion belongs to the agent holding the claim.
 If the board refuses a configuration with `invalid_rule`, use the field in
 its message to locate the rule, action, or thread pattern to correct.
 
