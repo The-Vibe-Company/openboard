@@ -18,7 +18,7 @@ writes:
   - docs/decisions.md
 conformance: []
 modes: [local, hosted]
-depends_on: [341, 393]
+depends_on: [341]
 status: draft
 claimed_by: null
 issue: 589
@@ -43,3 +43,5 @@ As the operator, I scrape each instance's `/api/x/metrics` with an operator toke
 - Depends on 393 and 341, the last tickets before it to change docs/codebase.md and `packages/server/src/http/pipeline.ts`.
 
 Orchestrator note (2026-11-24): the dependency on the deferred Railway ticket(s) [215] was dropped; this ticket does not need a deployment.
+
+Orchestrator note (2026-11-24): dropped file-ordering dependency on 393 (docs/codebase.md).

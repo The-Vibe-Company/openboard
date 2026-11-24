@@ -17,7 +17,7 @@ writes:
   - tools/conformance/test/schemas-parity.test.ts
 conformance: ["schemas/carries a block in a message, checked against the schema its fence names"]
 modes: [local, hosted]
-depends_on: [272, 362]
+depends_on: [362]
 status: draft
 claimed_by: null
 issue: 559
@@ -42,3 +42,5 @@ As an agent, I post a message whose text holds a ```` ```json#sandbox@1 ```` fen
 - The parity test lives in `tools/conformance`, the only workspace allowed to import `@vercel/board` (docs/codebase.md 3.1), and imports core's functions alongside upstream's.
 - Upstream's error message names the first problem (`id must be a string`); keep its wording where the corpus shows it.
 - Depends on 272, the last ticket before it to change `packages/core/src/messages/edit.ts` and `packages/server/src/operations/messages.ts`.
+
+Orchestrator note (2026-11-24): dropped file-ordering dependency on 272 (messages/edit.ts, operations/messages.ts) so M13 schema blocks and attachments can run in parallel with M9 holds; whichever lands second rebases.

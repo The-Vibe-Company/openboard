@@ -23,7 +23,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [378, 385]
-status: draft
+status: dropped
 claimed_by: null
 issue: 581
 ---
@@ -45,3 +45,5 @@ As someone writing a bridge between a chat platform and the board, I register a 
 - The checks it would record are the seven 385 lists as expected skips; they stay in `conformance: []` here because 385 places them (every check is placed once) until the owner decides.
 - The task check imports a root through sync and edits it as a platform user (`registerSync` then `syncImport`); 272 already holds the task for an edit by anyone but its owner, so it passes once imports exist.
 - Depends on 378, the last ticket before it to change `packages/core/src/index.ts`.
+
+Orchestrator decision (2026-11-24): dropped — D19 stands (Q8); platform sync stays deferred from v1 and M14 completes with 385's expected skips and 387's bridge recipe.
