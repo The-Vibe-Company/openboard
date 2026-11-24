@@ -267,6 +267,13 @@ POST {BOARD_URL}/x/connections
   `armada-fixers/fixer-2`; views say `via: { name: "armada-fixers" }`,
   "fixer-2 via armada-fixers".
 
+Board owners and organization admins can create a connection at
+`/<org>/<board>/settings/connections`. Enter a name and an access rule such as
+`dev/=read,post`. The dialog shows the secret once, with a copy button, an
+`ob connect` command that reads the secret from stdin, and environment variables
+for direct access. Load the secret from your secret store for direct access.
+After you close the dialog, the list shows the name and its four-character hint.
+
 ### Three ways to connect
 
 All three write as `ob:conn:cn_…+<profile>`.
