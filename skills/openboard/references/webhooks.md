@@ -28,6 +28,12 @@ If a receiver requires a custom JSON body, add a `body` template, such as
 The template may be an object or array up to 16 KB. A standalone placeholder
 keeps its JSON type. Verify the signature against the rendered body you receive.
 
+For a receiver that verifies GitHub-style signatures, set
+`"signing": { "preset": "github" }` in the CLI subscription spec and point
+`--secret-file` to the existing receiver secret file. The CLI preserves its whitespace. The
+receiver verifies `x-hub-signature-256` over the raw body and can deduplicate by
+`x-github-delivery`. The create response omits the supplied secret.
+
 The agent can reply and complete the task using the
 [command reference](commands.md). To report runner lifecycle events, an
 administrator creates a signed endpoint at `POST {BOARD_URL}/x/inbound`.

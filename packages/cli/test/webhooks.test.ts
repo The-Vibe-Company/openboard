@@ -52,6 +52,24 @@ for (const existing of [false, true]) {
   });
 }
 
+test("ob webhooks create sends the GitHub secret file verbatim", async () => {
+  const config = join(directory, "spec.json");
+  const path = join(directory, "hook.secret");
+  const gitHubSpec = { ...spec, signing: { preset: "github" } };
+  const contents = "  receiver's café fixture\n";
+  writeFileSync(config, JSON.stringify(gitHubSpec));
+  writeFileSync(path, contents, { mode: 0o600 });
+  const capture = fixture({ webhook }, 201);
+
+  expect(await capture.run(["create", "--file", config, "--secret-file", path])).toBe(0);
+  const [request] = capture.requests;
+  if (!request) throw new Error("missing create request");
+  expect(await request.json()).toEqual({ ...gitHubSpec, signing: { ...gitHubSpec.signing, secret: contents } });
+  expect(readFileSync(path, "utf8")).toBe(contents);
+  expect(capture.out).toEqual([webhook.id]);
+  expect(capture.errors).toEqual([]);
+});
+
 test("ob webhooks, show and delete print the board response without credentials", async () => {
   const commands = [
     { args: [], response: { webhooks: [webhook] }, path: "", method: "GET" },

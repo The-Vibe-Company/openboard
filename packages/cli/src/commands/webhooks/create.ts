@@ -1,5 +1,5 @@
 import { closeSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import type { WebhookSpec } from "@openboard/contract";
+import { BoardError, type WebhookSpec } from "@openboard/contract";
 import { type Command, Misuse } from "../index.ts";
 
 function options(args: readonly string[], optionsEnd: number) {
@@ -28,12 +28,13 @@ function readSpec(path: string): WebhookSpec {
   }
 }
 
-function reserveSecret(path: string): { fd: number } | { secret: string } {
+function reserveSecret(path: string, verbatim: boolean): { fd: number } | { secret: string } {
   try {
     return { fd: openSync(path, "wx", 0o600) };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    const secret = readFileSync(path, "utf8").trim();
+    const contents = readFileSync(path, "utf8");
+    const secret = verbatim ? contents : contents.trim();
     if (!secret) throw new Misuse("--secret-file is empty");
     return { secret };
   }
@@ -46,7 +47,7 @@ export const createWebhookCommand: Command = {
     const paths = options(ctx.args, ctx.optionsEnd);
     const spec = readSpec(paths.spec);
     if (spec.signing?.secret !== undefined) throw new Misuse("put the signing secret in --secret-file");
-    const file = reserveSecret(paths.secret);
+    const file = reserveSecret(paths.secret, spec.signing?.preset === "github");
     if ("secret" in file) {
       const { webhook } = await ctx.client.createWebhook({
         ...spec,
@@ -58,6 +59,7 @@ export const createWebhookCommand: Command = {
     let created: Awaited<ReturnType<typeof ctx.client.createWebhook>>;
     try {
       created = await ctx.client.createWebhook(spec);
+      if (created.secret === undefined) throw new BoardError("internal", "missing generated webhook secret");
     } catch (error) {
       closeSync(file.fd);
       unlinkSync(paths.secret);

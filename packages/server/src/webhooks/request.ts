@@ -2,7 +2,7 @@ import type { Webhook } from "@openboard/contract";
 import { webhookPayload } from "@openboard/core";
 import type { WebhookAttempt } from "@openboard/ports";
 import type { ServerConfig } from "../deps.ts";
-import { signWebhook } from "../jobs/sign.ts";
+import { signWebhook, webhookSigningScheme } from "../jobs/sign.ts";
 import { projectEvent } from "../operations/events.ts";
 import type { WebhookCredentials } from "./secret-box.ts";
 import { webhookTarget } from "./target.ts";
@@ -23,7 +23,7 @@ export function webhookRequest(
   const template = input.webhook.body as object | null;
   const body = webhookPayload(config.publicUrl, org, board, delivery, event, input.root ?? event.message, template);
   if (body === null) return null;
-  return signedRequest(url, id, now, credentials, body);
+  return signedRequest(url, input.webhook.signing.preset, id, now, credentials, body);
 }
 
 export function webhookPingRequest(
@@ -34,11 +34,12 @@ export function webhookPingRequest(
   credentials: WebhookCredentials,
   body: string,
 ): Request {
-  return signedRequest(webhookTarget(webhook.url, mode), id, now, credentials, body, "manual");
+  return signedRequest(webhookTarget(webhook.url, mode), webhook.signing.preset, id, now, credentials, body, "manual");
 }
 
 function signedRequest(
   url: URL,
+  preset: Webhook["signing"]["preset"],
   id: string,
   now: number,
   credentials: WebhookCredentials,
@@ -46,6 +47,7 @@ function signedRequest(
   redirect: "error" | "manual" = "error",
 ): Request {
   const headers = new Headers(credentials.headers);
-  for (const [key, value] of signWebhook(id, now, body, credentials.secret)) headers.set(key, value);
+  const scheme = webhookSigningScheme(preset);
+  for (const [key, value] of signWebhook(scheme, id, now, body, credentials.secret)) headers.set(key, value);
   return new Request(url.href, { method: "POST", headers, body, redirect });
 }

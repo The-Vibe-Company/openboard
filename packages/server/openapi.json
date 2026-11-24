@@ -4640,7 +4640,7 @@
     "/x/webhooks": {
       "post": {
         "operationId": "createWebhook",
-        "summary": "Subscribe to board events and return the signing secret once.",
+        "summary": "Subscribe to board events and return a generated signing secret once.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4670,15 +4670,7 @@
                     "additionalProperties": false,
                     "type": "object",
                     "properties": {
-                      "preset": {
-                        "anyOf": [
-                          { "const": "standard-webhooks", "type": "string" },
-                          { "const": "github", "type": "string" },
-                          { "const": "stripe", "type": "string" },
-                          { "const": "ts-id-body", "type": "string" },
-                          { "const": "none", "type": "string" }
-                        ]
-                      },
+                      "preset": { "type": "string" },
                       "algorithm": {
                         "anyOf": [
                           { "const": "hmac-sha256", "type": "string" },
@@ -4723,7 +4715,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["webhook", "secret"],
+                  "required": ["webhook"],
                   "properties": {
                     "webhook": {
                       "type": "object",

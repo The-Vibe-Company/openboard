@@ -75,6 +75,7 @@ test("delivers exactly one Standard Webhooks signed version 1 POST for a matchin
   const created = await answer<Created>(call(runner, "POST", "/x/webhooks", spec), 201);
   expect(created.webhook.id).toMatch(/^wh_[a-z2-7]{16}$/);
   expect(created.secret).toMatch(/^whsec_/);
+  if (!created.secret) throw new Error("missing generated webhook secret");
   await post(runner, "ops");
   const other = await post(runner, "dev");
   await answer(call(runner, "POST", `/messages/${other}/labels`, { set: { status: "waiting" } }), 200);

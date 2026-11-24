@@ -59,6 +59,7 @@ test("delivers the rendered template and signs the exact JSON bytes sent", async
     const created = await call(app, "POST", "/x/webhooks", { ...spec, body });
     expect(created.status).toBe(201);
     const { webhook, secret } = (await created.json()) as OutputOf<typeof createWebhook>;
+    if (!secret) throw new Error("missing generated webhook secret");
     expect(webhook.body).toEqual(body);
     const thread = await run("template fixture");
     expect(requests).toHaveLength(1);

@@ -65,6 +65,7 @@ test.each([[200], [302], [500], [410], [null]] as const)(
         call(app, "POST", "/x/webhooks", spec),
         201,
       );
+      if (!secret) throw new Error("missing generated webhook secret");
       const path = `/x/webhooks/${webhook.id}/test`;
       const { delivery } = await json<OutputOf<typeof testWebhook>>(call(app, "POST", path), 200);
       const { id } = delivery;
@@ -125,6 +126,33 @@ test("returns not_found for a deleted or unknown webhook", async () => {
     }
     expect(requests).toHaveLength(0);
     expect(await rows()).toHaveLength(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test("signs a test ping with the GitHub preset over the sent body", async () => {
+  const { app, requests } = setup(200);
+  const secret = "test receiver fixture";
+  try {
+    const { webhook } = await json<OutputOf<typeof createWebhook>>(
+      call(app, "POST", "/x/webhooks", { ...spec, signing: { preset: "github", secret } }),
+      201,
+    );
+    const { delivery } = await json<OutputOf<typeof testWebhook>>(
+      call(app, "POST", `/x/webhooks/${webhook.id}/test`),
+      200,
+    );
+    expect(requests).toHaveLength(1);
+    const [request] = requests;
+    if (!request) throw new Error("missing ping");
+    const body = Buffer.from(await request.arrayBuffer());
+    expect(JSON.parse(body.toString("utf8")).type).toBe("board.ping");
+    expect(request.redirect).toBe("manual");
+    expect(request.headers.get("x-github-delivery")).toBe(delivery.id);
+    expect(request.headers.get("x-hub-signature-256")).toBe(
+      `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`,
+    );
   } finally {
     await app.close();
   }
