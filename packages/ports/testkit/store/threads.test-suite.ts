@@ -51,6 +51,33 @@ async function checkReplyPages(board: BoardView): Promise<void> {
   expect(await board.thread(rootId, { after: Number(last.id) })).toEqual({ message: root, replies: [] });
 }
 
+/** Five threads, the first bumped to the newest by a reply, read two at a time from the newest page back. */
+async function checkThreadPages(board: BoardView): Promise<void> {
+  const roots = [];
+  for (let index = 1; index <= 5; index++) roots.push(await post(board, "dev", String(index)));
+  await reply(board, Number(roots[0]?.id), "bump");
+  const first = await board.listThreads("dev", [], { limit: 2 });
+  expect(first.threads.map(({ message }) => message.text)).toEqual(["5", "1"]);
+  expect(first.older).toEqual({ active: Number(roots[4]?.id), root: Number(roots[4]?.id) });
+  const second = await board.listThreads("dev", [], { before: first.older ?? undefined, limit: 2 });
+  expect(second.threads.map(({ message }) => message.text)).toEqual(["3", "4"]);
+  const last = await board.listThreads("dev", [], { before: second.older ?? undefined, limit: 2 });
+  expect(last).toMatchObject({ threads: [{ message: roots[1] }], older: null });
+}
+
+/** Threads with and without a label, interleaved: pages hold only the labelled ones and end at the oldest of them. */
+async function checkFilteredThreadPages(board: BoardView): Promise<void> {
+  const kept = [];
+  for (let index = 1; index <= 3; index++) {
+    kept.push(await post(board, "dev", `kept ${index}`, { area: "api" }));
+    await post(board, "dev", `skipped ${index}`);
+  }
+  const first = await board.listThreads("dev", [["area"]], { limit: 2 });
+  expect(first.threads.map(({ message }) => message.text)).toEqual(["kept 2", "kept 3"]);
+  const last = await board.listThreads("dev", [["area"]], { before: first.older ?? undefined, limit: 2 });
+  expect(last).toMatchObject({ threads: [{ message: kept[0] }], older: null });
+}
+
 export function threadsSuite(driver: string, open: OpenStore): void {
   describe(`${driver}: threads`, () => {
     let store: Store | undefined;
@@ -89,6 +116,7 @@ export function threadsSuite(driver: string, open: OpenStore): void {
           { message: root, replies: 2, last },
         ],
         head: Number(other.id),
+        older: null,
       });
     });
 
@@ -109,7 +137,16 @@ export function threadsSuite(driver: string, open: OpenStore): void {
       expect(await board.listThreads("dev", [["status", ["open"]]])).toEqual({
         threads: [{ message: match, replies: 0, last: null }],
         head: Number(foreign.id),
+        older: null,
       });
+    });
+
+    test("pages back from each page's oldest thread, listing every thread once", async () => {
+      await checkThreadPages(await localBoard());
+    });
+
+    test("pages back through only the threads a label filter keeps", async () => {
+      await checkFilteredThreadPages(await localBoard());
     });
 
     test("reads no thread for a position no message holds", async () => {

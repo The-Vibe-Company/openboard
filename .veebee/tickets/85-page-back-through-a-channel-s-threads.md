@@ -10,11 +10,17 @@ writes:
   - packages/ports/testkit/store/threads.test-suite.ts
   - packages/server/test/threads.test.ts
   - packages/ports/src/store.ts
+  - packages/cli/src/commands/read.ts
+  - packages/cli/test/read-thread.test.ts
+  - packages/server/openapi.json
+  - tools/conformance/score.json
+  - docs/protocol.md
+  - .veebee/tickets/85-page-back-through-a-channel-s-threads.md
 conformance: ["paging/pages back through a channel's threads by their `older`, each thread once"]
 modes: [local]
 depends_on: [84]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-t85
 issue: 85
 ---
 

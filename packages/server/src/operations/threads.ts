@@ -12,7 +12,16 @@ export const readThreadHandler: Handler<typeof readThread> = async (ctx, input) 
   return thread;
 };
 
-export const listThreadsHandler: Handler<typeof listThreads> = async ({ board }, { channel, label }) => {
+/** A page's `older`, `"<active>.<root>"`, as a position; null when the text is not one. */
+function parseOlder(text: string): { active: number; root: number } | null {
+  const [active, root, ...rest] = text.split(".").map(parseId);
+  if (active == null || root == null || rest.length > 0 || root < 1 || root > active) return null;
+  return { active, root };
+}
+
+/** The latest threads of a channel, or those before a page's `older`, oldest first, with the `older` that pages on. */
+export const listThreadsHandler: Handler<typeof listThreads> = async ({ board }, input) => {
+  const { channel, label, limit } = input;
   const labels = label?.map((filter): readonly [string, (readonly string[])?] => {
     const equals = filter.indexOf("=");
     if (equals < 0) return [filter];
@@ -23,6 +32,9 @@ export const listThreadsHandler: Handler<typeof listThreads> = async ({ board },
       .filter((value) => !value.includes("\0"));
     return [filter.slice(0, equals), values];
   });
-  const { threads, head } = await board.listThreads(channel, labels);
-  return { threads, cursor: formatId(head) };
+  const before = input.before === undefined ? undefined : parseOlder(input.before);
+  if (before === null) throw new BoardError("invalid_cursor", "before: pass a page's older as it came");
+  const { threads, head, older } = await board.listThreads(channel, labels, { before, limit });
+  if (before && before.active > head) throw new BoardError("invalid_cursor", "before: cursor is ahead of the board");
+  return { threads, cursor: formatId(head), older: older && `${formatId(older.active)}.${formatId(older.root)}` };
 };

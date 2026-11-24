@@ -45,6 +45,8 @@ export const threadStatements = {
       SELECT root.board_id, root.id, root.active, root.view, root.replies, root.last_reply
       FROM messages AS root
       WHERE root.board_id = ${"boardId"} AND root.channel = ${"channel"} AND root.re IS NULL
+        AND (CAST(${"beforeActive"} AS BIGINT) IS NULL
+          OR (root.active, root.id) < (CAST(${"beforeActive"} AS BIGINT), CAST(${"beforeRoot"} AS BIGINT)))
         AND (CAST(${"labels"} AS TEXT) = '[]' OR EXISTS (
           SELECT 1 FROM (SELECT 1) AS thread
           LEFT JOIN messages AS reply ON reply.board_id = root.board_id AND reply.re = root.id AND reply.deleted = 0
@@ -62,9 +64,9 @@ export const threadStatements = {
             )
           )
         ))
-      ORDER BY root.active DESC, root.id DESC LIMIT 50
+      ORDER BY root.active DESC, root.id DESC LIMIT CAST(${"limit"} AS BIGINT)
     )
-    SELECT boards.head, recent.view, recent.replies, reply.view AS last_view
+    SELECT boards.head, recent.active, recent.id, recent.view, recent.replies, reply.view AS last_view
     FROM boards LEFT JOIN recent ON recent.board_id = boards.id
     LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = recent.last_reply
     WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"}
@@ -76,25 +78,29 @@ export const threadStatements = {
 /** The thread reads of one board's view: one statement reads the message and its replies together. */
 export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "thread" | "listThreads"> {
   return {
-    async listThreads(channel, labels = []) {
+    async listThreads(channel, labels = [], { before, limit = 50 } = {}) {
       const rows = await query(db, dialect, threadStatements.listThreads, {
         boardId: scope.boardId,
         orgId: scope.orgId,
         channel,
         labels: JSON.stringify(labels),
+        beforeActive: before?.active ?? null,
+        beforeRoot: before?.root ?? null,
+        // One row past the page says whether an older thread exists without a second read.
+        limit: limit + 1,
       });
-      const threads = rows.flatMap((row) =>
-        row.view == null
-          ? []
-          : [
-              {
-                message: JSON.parse(String(row.view)) as Message,
-                replies: Number(row.replies),
-                last: row.last_view == null ? null : (JSON.parse(String(row.last_view)) as Message),
-              },
-            ],
-      );
-      return { threads, head: Number(rows[0]?.head ?? 0) };
+      const head = Number(rows[0]?.head ?? 0);
+      const listed = rows.filter((row) => row.view != null);
+      const extra = listed.length > limit;
+      const page = extra ? listed.slice(1) : listed;
+      const oldest = page[0];
+      const older = extra && oldest ? { active: Number(oldest.active), root: Number(oldest.id) } : null;
+      const threads = page.map((row) => ({
+        message: JSON.parse(String(row.view)) as Message,
+        replies: Number(row.replies),
+        last: row.last_view == null ? null : (JSON.parse(String(row.last_view)) as Message),
+      }));
+      return { threads, head, older };
     },
     async thread(id, { after, limit } = {}) {
       const statement = after === undefined ? threadStatements.thread : threadStatements.threadAfter;

@@ -149,6 +149,14 @@ Use `key=a|b` for alternatives. Repeat the flag or query parameter to require al
 on one message, including labels inherited from its thread root. Each summary keeps the
 thread's full reply count and latest reply.
 
+`ob read <channel> --limit 2` lists the latest two threads and ends with an
+`older:` line, the command for the next older page (`ob read <channel> --before
+<older> --limit 2`); follow it until no `older:` line comes and every thread
+appears once. `GET /threads` takes `limit` (1 to 500, 50 by default) and
+`before`, and answers `older`: `"<active>.<root>"`, or `null` when no thread is
+older. A `before` that is not of that form, or names a position past the board
+head, is 400 `invalid_cursor`.
+
 Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --idempotency-key`.
 
 ### Attachments, schedules, tasks, grants, schemas
