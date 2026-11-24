@@ -7,6 +7,7 @@ import type {
   listTasks,
   ManagedConnection,
   OutputOf,
+  reopenTask,
   revokeGrant,
   testWebhook,
 } from "@openboard/contract";
@@ -173,6 +174,10 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
         )
         .join("\n"),
     listTasks: tasksText,
+    reopenTask: (output) => {
+      const { task, outcome } = output as OutputOf<typeof reopenTask>;
+      return outcome === "reopened" ? `reopened ${task.id}` : "unchanged";
+    },
     testWebhook: (output) => {
       const { delivery } = output as OutputOf<typeof testWebhook>;
       if (delivery.status === null) throw new BoardError("unreachable", "the receiver could not be reached");

@@ -407,6 +407,16 @@ Deleting a task root appends `message.deleted` followed by `task.canceled` with 
 `deleted` in the same write for any unfinished task. Completed and already canceled
 tasks keep their state. Task lists include canceled and completed tasks with deleted roots.
 
+`POST /tasks/:id/reopen` takes no body and returns `{ task }` with an optional
+OpenBoard-only `outcome` of `"reopened"` or `"unchanged"`. It uses the same ownership
+rule and terminal-state errors as cancellation. A failed task returns to `ready`,
+clears its failure reason, and retains its claim epoch. The feed includes
+`task.reopened` with `{ id, thread, by }`. Reopening a ready, waiting, claimed, or
+blocked task emits no event. Use `ob tasks reopen <id>` to retry a failed task
+after fixing the cause. The CLI prints `reopened <id>` or `unchanged`.
+During a rolling deploy, upgraded replicas serve `task.reopened` in the feed.
+The writer omits [persisted pull-watcher matches and webhook deliveries](decisions.md#task-reopening-during-a-rolling-deploy) for this event.
+
 At the lease deadline, the thread's task state reads `ready` and
 `GET /tasks?state=ready` includes it. A background job or the next successful
 claim appends `task.expired` with `{ id, epoch }` and updates the reserved

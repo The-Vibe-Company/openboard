@@ -120,3 +120,14 @@ export const TaskExpiredEvent = Type.Object({
   payload: TaskExpiredPayload,
   message: Message,
 });
+
+export const TaskReopenedPayload = Type.Pick(TaskCanceledPayload, ["id", "thread", "by"]);
+export type TaskReopenedPayload = Static<typeof TaskReopenedPayload>;
+
+export const TaskReopenedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("task.reopened"),
+  createdAt: Type.String(),
+  payload: TaskReopenedPayload,
+  message: Message,
+});

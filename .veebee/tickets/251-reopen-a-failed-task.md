@@ -15,11 +15,33 @@ writes:
   - packages/server/test/tasks/reopen.test.ts
   - packages/cli/src/commands/tasks.ts
   - packages/cli/test/tasks.test.ts
+  - .veebee/tickets/251-reopen-a-failed-task.md
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/cli/src/output.ts
+  - packages/contract/src/entities/events.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/operations/tasks/reopen.ts
+  - packages/core/src/events/tail.ts
+  - packages/core/src/index.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/driver-sql/src/views/watchers/index.ts
+  - packages/driver-sql/src/views/webhooks/deliveries.ts
+  - packages/server/test/webhooks/deliver.test.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/tasks/reopen.ts
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
 conformance: ["tasks/fences what a claim does: once it's over, its writes are lost and change nothing"]
 modes: [local, hosted]
 depends_on: [250]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 424
 ---
 
