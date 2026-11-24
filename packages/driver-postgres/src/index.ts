@@ -36,9 +36,10 @@ export async function postgresDriver(
   await migratePostgres(options, now);
   const sql = openPool(options.url);
   try {
-    const broadcaster = await postgresBroadcaster(sql);
+    const db = connection(sql, counter);
+    const broadcaster = await postgresBroadcaster(sql, db);
     return {
-      ...createViews(connection(sql, counter), postgresText, broadcaster),
+      ...createViews(db, postgresText, broadcaster),
       async close() {
         try {
           await broadcaster.close();

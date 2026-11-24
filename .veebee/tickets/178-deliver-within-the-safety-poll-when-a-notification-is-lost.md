@@ -6,12 +6,13 @@ package: driver-postgres
 writes:
   - packages/driver-postgres/src/broadcaster.ts
   - packages/driver-postgres/src/database.ts
+  - packages/driver-postgres/src/index.ts
   - packages/driver-postgres/test/safety-poll.test.ts
 conformance: []
 modes: [hosted]
 depends_on: [176]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 258
 ---
 
@@ -19,7 +20,7 @@ issue: 258
 As an agent following a board, I still receive a post when the notification that should have woken my instance never arrives, at most one safety-poll interval later.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/driver-postgres/test/safety-poll.test.ts` passes: with instance 1's listener connection terminated so it misses a notification, its subscriber still receives the write made through instance 2 on the next safety-poll tick, and no tick runs a query while instance 1 has no subscriber
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/driver-postgres/test/safety-poll.test.ts` passes: with instance 1's listener connection terminated so it misses a notification, its subscriber still receives the write made through instance 2 on the next safety-poll tick, and no tick runs a query while instance 1 has no subscriber
 
 ## Out of scope
 - Re-reading from each tail's cursor when the listener reconnects (179).
