@@ -982,7 +982,7 @@ ob schemas
 List the tasks of a channel, a subtree (`dev/`), or the whole board, oldest first, each as its thread's summary.
 
 ```sh
-ob tasks [channel] [--state <state>] [--label <label>]... [--by <by>] [--owner <owner>] [--for <for>] [--after <after>] [--limit <limit>]
+ob tasks [channel] [--state <state>] [--label <label>]... [--by <by>] [--owner <owner>] [--for <for>] [--needs <needs>] [--after <after>] [--limit <limit>]
 ```
 
 Arguments:
@@ -996,6 +996,7 @@ Options:
 - `--by`: A task whose root this handle, actor ID, or `me` (the caller's actor) wrote.
 - `--owner`: A task this principal owns: its handle or principal ID.
 - `--for`: A task assigned to this actor: its handle or actor ID.
+- `--needs`: A prerequisite task ID that the listed tasks directly need.
 - `--after`: A page's `cursor`, or a task ID: the tasks whose root comes after it.
 - `--limit`: Maximum tasks, 50 by default.
 

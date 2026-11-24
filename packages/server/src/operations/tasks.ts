@@ -128,6 +128,8 @@ export const listTasksHandler: Handler<typeof listTasks> = async ({ board, by },
     by: input.by === "me" ? by.actor : input.by,
     owner: input.owner,
     for: input.for,
+    // An ID that does not name a position has no dependants, as in the upstream list.
+    needs: input.needs === undefined ? undefined : (parseId(input.needs) ?? -1),
     after,
     limit,
   });

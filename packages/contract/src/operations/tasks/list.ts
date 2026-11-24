@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import { ThreadSummary } from "../../entities/threads.ts";
-import { defineOperation } from "../../operation.ts";
+import { defineOperation, Ref } from "../../operation.ts";
 import { ChannelFilter } from "../thread-filters.ts";
 
 /** A handle or an ID, as `owner` and `for` take one. */
@@ -37,6 +37,9 @@ export const listTasks = defineOperation({
         ),
         owner: Named("A task this principal owns: its handle or principal ID."),
         for: Named("A task assigned to this actor: its handle or actor ID."),
+        needs: Type.Optional(
+          Ref("task", { description: "A prerequisite task ID that the listed tasks directly need." }),
+        ),
         after: Type.Optional(
           Type.String({
             minLength: 1,

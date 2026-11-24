@@ -15,6 +15,8 @@ export interface TaskListQuery {
   readonly owner?: string;
   /** An actor ID or handle the task is assigned to. */
   readonly for?: string;
+  /** The root position of a direct prerequisite. */
+  readonly needs?: number;
   /** Tasks made after this position. */
   readonly after?: number;
   readonly limit: number;
