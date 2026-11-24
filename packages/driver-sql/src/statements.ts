@@ -1,5 +1,5 @@
-import { postgresText } from "./db.ts";
-import { render } from "./sql.ts";
+import { type Dialect, postgresText } from "./db.ts";
+import { render, type Statement } from "./sql.ts";
 import { accountPlatformStatements, accountStatements } from "./views/accounts.ts";
 import { actorStatements } from "./views/actors.ts";
 import { agentStatements } from "./views/agents.ts";
@@ -14,30 +14,48 @@ import { messageStatements } from "./views/messages.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
 import { threadStatements } from "./views/threads.ts";
 
+/** Every statement the shared views run, by name, as written once (docs/codebase.md 3.2 and 4.4). */
+const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
+  ...accountStatements,
+  ...actorStatements,
+  ...agentStatements,
+  ...boardStatements,
+  ...channelStatements,
+  ...connectionStatements,
+  ...devicePlatform,
+  ...deviceScoped,
+  ...eventStatements,
+  ...invitationStatements,
+  ...membershipStatements,
+  ...messageStatements,
+  ...orgStatements,
+  ...threadStatements,
+});
+
+/** One registered statement rendered for an engine: its text and how many positional values it binds. */
+export interface RenderedStatement {
+  readonly text: string;
+  readonly params: number;
+}
+
+/** Every registered statement rendered for `dialect`, so each engine's test can `EXPLAIN` it with `NULL`s bound. */
+export function renderStatements(dialect: Dialect): Readonly<Record<string, RenderedStatement>> {
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(registry).map(([name, statement]) => {
+        const { text, names } = render(statement, dialect);
+        return [name, Object.freeze({ text, params: names.length })];
+      }),
+    ),
+  );
+}
+
 /**
- * The registry of every SQL statement the shared views run (docs/codebase.md 3.2 and 4.4).
- * Keys name a statement; values are its text in Postgres syntax with `$n` or `?` parameters.
- * Every statement must filter on `board_id` or `org_id`, except the platform statements listed below.
+ * The registry's text in Postgres syntax with `$n` parameters, by statement name. Every statement must filter on
+ * `board_id` or `org_id`, except the platform statements listed below.
  */
 export const statements: Readonly<Record<string, string>> = Object.freeze(
-  Object.fromEntries(
-    Object.entries({
-      ...accountStatements,
-      ...actorStatements,
-      ...agentStatements,
-      ...boardStatements,
-      ...channelStatements,
-      ...connectionStatements,
-      ...devicePlatform,
-      ...deviceScoped,
-      ...eventStatements,
-      ...invitationStatements,
-      ...membershipStatements,
-      ...messageStatements,
-      ...orgStatements,
-      ...threadStatements,
-    }).map(([name, statement]) => [name, render(statement, postgresText).text]),
-  ),
+  Object.fromEntries(Object.entries(renderStatements(postgresText)).map(([name, { text }]) => [name, text])),
 );
 
 /** Statements that run outside any tenant (accounts, sign-in); exempt from the tenant filter rule. */
