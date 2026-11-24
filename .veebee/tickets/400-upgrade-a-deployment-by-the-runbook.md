@@ -11,7 +11,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [193]
-status: draft
+status: blocked
 claimed_by: null
 issue: 595
 ---
@@ -32,3 +32,5 @@ As someone running OpenBoard myself, on a laptop, one container or several behin
 - docs/data-model.md "Migration strategy" (SQLite takes a `VACUUM INTO` snapshot before migrating, 212; no downgrades: restore instead), docs/codebase.md 7.5 (expand-only migrations, `openboard migrate` as pre-deploy, rolling deploy) and 7.6 (self-host), docs/architecture.md "Migrations without downtime".
 - The drill downloads a release binary from this repository's GitHub releases (194), the only download it makes; it verifies the published SHA-256 before running it.
 - Owner first: staging access for the third criterion.
+
+Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.

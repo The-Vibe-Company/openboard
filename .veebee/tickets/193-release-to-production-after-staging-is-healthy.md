@@ -12,7 +12,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [191]
-status: draft
+status: blocked
 claimed_by: null
 issue: 354
 ---
@@ -35,3 +35,5 @@ As the owner, I merge release-please's release PR and that version reaches produ
 - `staging-healthy.ts` reads `GITHUB_TOKEN` from its environment and calls the GitHub API with the global `fetch` (scripts read their own environment, docs/codebase.md 3.2). The rolling check is 191's step in the staging job.
 - Owner first: a Railway environment `production` (Railway Postgres, one node; the `openboard` service with two replicas from the GHCR image, no volume; `railway.hosted.json` as on staging) and a GitHub environment `production` holding its own `RAILWAY_TOKEN`, ideally with the owner as required reviewer. Agents cannot create accounts, tokens or environments; the second criterion is checked once they exist. A new workflow step is the owner's to approve (AGENTS.md "Pull requests").
 - Pin actions by commit, as `.github/workflows/ci.yml` does.
+
+Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.

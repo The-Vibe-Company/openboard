@@ -14,7 +14,7 @@ writes:
   - docs/auth.md
 conformance: []
 modes: [hosted]
-depends_on: [214, 215, 323]
+depends_on: [214, 323]
 status: draft
 claimed_by: null
 issue: 594
@@ -38,3 +38,5 @@ As the operator of the hosted service, I list organizations, look one up, and de
 - `delete` reuses 207's soft delete and enqueues 208's purge exactly as an owner's deletion does; `undelete` clears `deleted_at` and drops the pending purge job.
 - **Arrow added:** 214, which lands `apps/openboard/src/admin.ts` and `packages/server/src/operator.ts` and is not upstream of 215.
 - Depends on 323, the last ticket before it to change docs/auth.md.
+
+Orchestrator note (2026-11-24): the dependency on the deferred Railway ticket(s) [215] was dropped; this ticket does not need a deployment.

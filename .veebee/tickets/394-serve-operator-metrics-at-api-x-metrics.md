@@ -18,7 +18,7 @@ writes:
   - docs/decisions.md
 conformance: []
 modes: [local, hosted]
-depends_on: [215, 341, 393]
+depends_on: [341, 393]
 status: draft
 claimed_by: null
 issue: 589
@@ -41,3 +41,5 @@ As the operator, I scrape each instance's `/api/x/metrics` with an operator toke
 - The pipeline (`packages/server/src/http/pipeline.ts`) records each request's route template, status and duration where it already writes its log line (docs/codebase.md 5.4).
 - The route is a contract operation like every other (`cli: false`, `mcp: false`, with the reason that it is for operators), answering text instead of JSON.
 - Depends on 393 and 341, the last tickets before it to change docs/codebase.md and `packages/server/src/http/pipeline.ts`.
+
+Orchestrator note (2026-11-24): the dependency on the deferred Railway ticket(s) [215] was dropped; this ticket does not need a deployment.

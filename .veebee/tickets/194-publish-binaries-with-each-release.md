@@ -10,7 +10,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [193]
-status: draft
+status: blocked
 claimed_by: null
 issue: 355
 ---
@@ -30,3 +30,5 @@ As someone self-hosting OpenBoard, I download `openboard` or `ob` for my machine
 - docs/codebase.md 7.1 step 3 (four targets, `ob-<target>` the same bytes as `openboard-<target>`) and 7.4 (binaries built on native runners, attached with SHA-256 sums; multi-arch image to GHCR). `bun run build` (187) and the Dockerfile (188) already exist; this ticket runs them per architecture in `release.yml` and merges the image manifests.
 - The release job runs after 193's tag and before the production deploy, so a release never reaches production without its binaries.
 - Pin actions by commit, as `.github/workflows/ci.yml` does.
+
+Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.

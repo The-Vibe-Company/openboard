@@ -220,7 +220,7 @@ Legend.
 189  Deploy staging on Railway with two replicas   ← 120, 123, 402, 167, 184, 188
 190  Deploy every merge to staging   ← 189
 191  Prove a rolling deploy loses nothing with rolling-check   ← 183, 190
-192  Run the nightly checks against staging   ← 190
+192  Run the nightly checks against staging   ← (none)
 
 ## M7 Hosted deploy (23)
 
@@ -463,12 +463,12 @@ M11 and M12 changes made when their ticket files were written (each ticket's Not
 391  Record a restore drill in both modes   ← 389, 390
 392  Export an organization   ← 210, 383
 393  Import an organization export into ob serve   ← 389, 392
-394  Serve operator metrics at /api/x/metrics   ← 215, 341, 393
+394  Serve operator metrics at /api/x/metrics   ← 341, 393
 395  Sweep expired operational rows   ← 181, 300, 304, 333, 392
 396  Roll up daily usage per organization   ← 181, 304, 395
-397  Rebuild a board's folds with openboard reproject   ← 215, 389, 393
+397  Rebuild a board's folds with openboard reproject   ← 389, 393
 398  Apply the event-log compaction policy   ← 394, 396, 397
-399  Run openboard admin commands   ← 214, 215, 323
+399  Run openboard admin commands   ← 214, 323
 400  Upgrade a deployment by the runbook   ← 193
 401  Hold the full bench within budgets for seven nightly runs   ← 192, 237, 274
 

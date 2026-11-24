@@ -11,7 +11,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [183, 190]
-status: draft
+status: blocked
 claimed_by: null
 issue: 271
 ---
@@ -31,3 +31,5 @@ As the owner, every staging deploy proves that a client following the board thro
 - docs/codebase.md 6.4 (third bullet) and 7.5; docs/project.md M6 "Done when". The tail uses the SDK's `tail()` with reconnect (103, 104), which resumes on another replica by `Last-Event-ID` after a drain (183).
 - The board and secret: a dedicated organization on staging (D43 names one for conformance; the same can serve) with a direct connection, created once by the owner through sign-in on staging; its secret lives in the GitHub environment `staging` and reaches the script on stdin, never as an argument (D42).
 - `rolling-check.test.ts` covers the counting against an in-process stream, no network.
+
+Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.

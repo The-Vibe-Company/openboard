@@ -8,7 +8,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [189]
-status: draft
+status: blocked
 claimed_by: null
 issue: 270
 ---
@@ -29,3 +29,5 @@ As a contributor, the commit I merge to `main` is running on staging minutes lat
 - `Verify` stays as it is: no binary or image there (docs/codebase.md 6.7).
 - The workflow uses the GitHub environment `staging` and its `RAILWAY_TOKEN` (189); pushing to GHCR uses the workflow's `GITHUB_TOKEN` with `packages: write`. A new workflow is the owner's to approve (AGENTS.md "Pull requests"); the PR says so.
 - Pin actions by commit, as `.github/workflows/ci.yml` does.
+
+Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.
