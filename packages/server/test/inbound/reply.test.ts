@@ -97,7 +97,7 @@ test("posts a signed reply as the endpoint and records the result", () =>
     expect(await seen()).toBe(JSON.stringify(answer));
   }));
 
-test("runs all matching rules in order and writes nothing for an unmatched event", () =>
+test("runs all matching rules in order and emits no board events for an unmatched event", () =>
   withEndpoint(
     async ({ send, events, seen, thread }) => {
       const before = await events();
@@ -105,7 +105,7 @@ test("runs all matching rules in order and writes nothing for an unmatched event
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ ok: true, matched: [], results: [] });
       expect(await events()).toEqual(before);
-      expect(await seen("ignored-fixture")).toBeNull();
+      expect(await seen("ignored-fixture")).toBe(JSON.stringify({ ok: true, matched: [], results: [] }));
 
       const matched = await send();
       expect(matched.status).toBe(200);

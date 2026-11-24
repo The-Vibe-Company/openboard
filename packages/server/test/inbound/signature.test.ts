@@ -8,7 +8,7 @@ import { openStore } from "../support/drivers.ts";
 const key = new Uint8Array(32).fill(12);
 const secret = "shared signing fixture";
 const standardKey = Buffer.from(secret).toString("base64");
-const body = '{ "fixture": "raw body marker" }\n';
+const body = '{ "id": "body-delivery-fixture", "fixture": "raw body marker" }\n';
 const timestamp = NOW / 1000;
 const delivery = "delivery-fixture";
 

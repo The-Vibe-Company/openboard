@@ -77,7 +77,10 @@ export function verifyInbound(
   const scheme = { ...descriptor, signatureFormat: descriptor.signatureFormat.replace(/^[ \t]+|[ \t]+$/g, "") };
   const header = headers.get(scheme.signatureHeader);
   const id = scheme.idHeader ? headers.get(scheme.idHeader) : "";
-  if (!header || (scheme.idHeader && !id) || !scheme.signedPayload.includes("{body}")) throw badSignature();
+  if (!header || !scheme.signedPayload.includes("{body}")) throw badSignature();
+  if (scheme.idHeader && !id) {
+    throw new BoardError("invalid_request", "an inbound event requires a delivery ID");
+  }
   // A delimiter inside the ID would make the signed fields ambiguous.
   if ((usesStandardWebhooks(signing) || signing.preset === "ts-id-body") && id?.includes(".")) throw badSignature();
   const { timestamp, candidates } = signedHeaders(signing, scheme, headers, header);

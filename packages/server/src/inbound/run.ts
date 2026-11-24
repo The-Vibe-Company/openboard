@@ -2,7 +2,6 @@ import { BoardError, type OutputOf, type receiveInboundEvent } from "@openboard/
 import {
   agents,
   grants,
-  type InboundConfig,
   inboundReply,
   inboundThreadPosition,
   matchingInboundRules,
@@ -11,30 +10,15 @@ import {
   parseInboundThread,
 } from "@openboard/core";
 import type { BoardWriter, InboundRecord } from "@openboard/ports";
-import { webhookSigningScheme } from "../jobs/sign.ts";
 
 type Result = OutputOf<typeof receiveInboundEvent>;
 
-function parseBody(bytes: Uint8Array): unknown {
+export function parseInboundBody(bytes: Uint8Array): unknown {
   try {
     return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
   } catch {
-    throw new BoardError("invalid_request", "inbound events with rules require a JSON body");
+    throw new BoardError("invalid_request", "this inbound event requires a JSON body");
   }
-}
-
-const maxEventIdBytes = 1024;
-
-function eventId(inbound: InboundConfig, headers: Headers, body: unknown): string {
-  const header = webhookSigningScheme(inbound.verify).idHeader;
-  const id = header ? headers.get(header) : (body as { id?: unknown } | null)?.id;
-  if (typeof id !== "string" || !id || id.includes("\0") || !id.isWellFormed()) {
-    throw new BoardError("invalid_request", "an inbound action requires a delivery ID");
-  }
-  if (Buffer.byteLength(id) > maxEventIdBytes) {
-    throw new BoardError("invalid_request", "the inbound delivery ID exceeds 1024 bytes");
-  }
-  return id;
 }
 
 async function replyGrant(writer: BoardWriter, record: InboundRecord) {
@@ -69,11 +53,10 @@ export async function runInbound(
   writer: BoardWriter,
   record: InboundRecord,
   headers: Headers,
-  bytes: Uint8Array,
+  body: unknown,
   now: number,
 ): Promise<Result> {
   const { inbound } = record;
-  const body = parseBody(bytes);
   const rulePlan = inbound.rulePlan ?? parseInboundRules(inbound.rules);
   const fields = Object.fromEntries(headers);
   delete fields.authorization;
@@ -83,7 +66,6 @@ export async function runInbound(
   const answer = { ok: true as const, matched, results };
   if (matched.length === 0) return answer;
 
-  const delivery = eventId(inbound, headers, body);
   const { position, thread } = await resolveThread(writer, record, body);
 
   const { principal } = inbound;
@@ -103,6 +85,5 @@ export async function runInbound(
       results.push({ reply: message.id });
     }
   }
-  await writer.recordInboundSeen(inbound.id, delivery, now, JSON.stringify(answer));
   return answer;
 }
