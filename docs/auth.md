@@ -393,12 +393,14 @@ must hold across instances (marked †):
 | Sign-in attempts per IP | 30/min |
 | SSE streams per principal / per organization | 20 / 500 |
 
-By default, per-IP limits use the socket peer address. Set
-`OPENBOARD_TRUSTED_PROXIES` to the number of trusted proxy hops (Railway: `1`).
-Only enable it when all requests to the listener pass through those proxies
-and each proxy appends its peer address to `X-Forwarded-For`. The server selects
-the entry that many positions from the right. Missing, short, or invalid
-chains fall back to the socket address. `X-Real-IP` is ignored.
+With `OPENBOARD_TRUSTED_PROXIES` unset, per-IP limits use only the socket
+peer address. Set it to `N` (Railway: `1`) only when every path to the app,
+including private-network paths, goes through exactly `N` proxies you
+operate. A request that can bypass those proxies can forge the header.
+The hop count defines the trust boundary regardless of the proxies’ IP addresses.
+Each proxy must append its peer address to `X-Forwarded-For`. The app uses
+the Nth entry from the right. If that entry is missing or invalid, the
+app uses the socket peer address. It ignores `X-Real-IP`.
 
 ### Audit
 
