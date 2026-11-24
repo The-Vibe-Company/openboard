@@ -1,6 +1,8 @@
 import { Link, useParams } from "@tanstack/react-router";
-import type { ComponentPropsWithRef, MouseEvent } from "react";
+import { type ComponentPropsWithRef, type MouseEvent, useState } from "react";
 import type { ThreadSummary } from "../api/board.ts";
+import { Avatar } from "../ui/index.ts";
+import "./ThreadRow.css";
 
 const relativeTime = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
@@ -28,34 +30,20 @@ export function ThreadRow({
   const board = useParams({ from: "/$org/$board" });
   const { message, last, replies } = thread;
   const author = message.author?.name ?? message.from ?? message.by.profile ?? message.by.actor;
-  const initials = author
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => Array.from(word)[0])
-    .join("")
-    .toUpperCase();
+  const [failedAvatar, setFailedAvatar] = useState<string>();
+  const avatar = message.author?.avatar ?? undefined;
   const date = (last ?? message).createdAt;
   return (
-    <li {...row}>
+    <li {...row} className="channel-thread-row">
       <Link
-        className="board-thread"
+        className="channel-thread-link"
         to="/$org/$board/t/$id"
         params={{ ...board, id: message.id }}
         search={true}
         onClick={onOpen && ((event) => onOpen(event, message.id))}
       >
-        <span className="board-avatar" aria-hidden="true">
-          {initials}
-          {message.author?.avatar && (
-            <img
-              src={message.author.avatar}
-              alt=""
-              onError={(event) => {
-                event.currentTarget.hidden = true;
-              }}
-            />
-          )}
+        <span aria-hidden="true" onErrorCapture={() => setFailedAvatar(avatar)}>
+          <Avatar name={author} src={avatar === failedAvatar ? undefined : avatar} />
         </span>
         <div>
           <strong>
@@ -63,7 +51,7 @@ export function ThreadRow({
           </strong>
           <div>{author}</div>
         </div>
-        <span>
+        <span className="channel-thread-replies">
           {replies} {replies === 1 ? "reply" : "replies"}
         </span>
         <time dateTime={date} title={date}>

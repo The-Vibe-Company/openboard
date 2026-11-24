@@ -1,9 +1,14 @@
-.channel-thread-list {
+.channel-threads {
   position: relative;
+  box-sizing: content-box;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: var(--stroke) solid var(--border);
   overflow-anchor: none;
 }
 
-.channel-thread-list > li {
+.channel-threads > li {
   position: absolute;
   inset: 0 0 auto;
 }

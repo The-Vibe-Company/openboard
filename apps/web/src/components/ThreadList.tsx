@@ -1,6 +1,6 @@
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { defaultRangeExtractor, useWindowVirtualizer } from "@tanstack/react-virtual";
 import { type MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { threadPageSize, type ThreadSummary } from "../api/board.ts";
+import { type ThreadSummary, threadPageSize } from "../api/board.ts";
 import { EmptyChannel } from "./EmptyChannel.tsx";
 import { ThreadRow } from "./ThreadRow.tsx";
 import "./ThreadList.css";
@@ -17,15 +17,7 @@ export function ThreadList({
   ...page
 }: PagedThreads & { board: { org: string; board: string }; channel: string }) {
   if (page.threads.length === 0) return <EmptyChannel board={board} channel={channel} />;
-  if (page.hasOlder || page.threads.length > threadPageSize) return <VirtualThreads {...page} />;
-  const now = Date.now();
-  return (
-    <ol className="board-threads" aria-label="Latest threads">
-      {page.threads.map((thread) => (
-        <ThreadRow key={thread.message.id} thread={thread} now={now} />
-      ))}
-    </ol>
-  );
+  return <ChannelThreads {...page} />;
 }
 
 function rememberOpenedRow(event: MouseEvent<HTMLAnchorElement>, id: string) {
@@ -42,7 +34,8 @@ function rememberOpenedRow(event: MouseEvent<HTMLAnchorElement>, id: string) {
   window.history.replaceState({ ...window.history.state, openboardThreadAnchor: id }, "");
 }
 
-function VirtualThreads({ threads, fetchOlder, hasOlder }: PagedThreads) {
+function ChannelThreads({ threads, fetchOlder, hasOlder }: PagedThreads) {
+  const virtual = hasOlder || threads.length > threadPageSize;
   const list = useRef<HTMLOListElement>(null);
   const [scrollMargin, setScrollMargin] = useState<number | null>(null);
   useLayoutEffect(() => {
@@ -53,14 +46,22 @@ function VirtualThreads({ threads, fetchOlder, hasOlder }: PagedThreads) {
     }
     measureTop();
     const observer = new ResizeObserver(measureTop);
-    if (element.parentElement) observer.observe(element.parentElement);
+    const channel = element.parentElement;
+    if (channel) observer.observe(channel);
+    // The reconnect banner can move the channel without resizing its content.
+    if (channel?.previousElementSibling) observer.observe(channel.previousElementSibling);
     return () => observer.disconnect();
   }, []);
 
   const virtualizer = useWindowVirtualizer({
     count: threads.length,
     getItemKey: (index) => threads[index]?.message.id ?? index,
-    estimateSize: () => 65,
+    // Match the fixed 16-space row in ThreadRow.css.
+    estimateSize: () => 64,
+    // Preserve the visible thread on a live prepend after the reader scrolls into the list.
+    anchorTo: scrollMargin !== null && window.scrollY > scrollMargin ? "end" : "start",
+    rangeExtractor: (range) =>
+      virtual ? defaultRangeExtractor(range) : Array.from({ length: threads.length }, (_, index) => index),
     overscan: 10,
     scrollMargin: scrollMargin ?? 0,
   });
@@ -87,7 +88,7 @@ function VirtualThreads({ threads, fetchOlder, hasOlder }: PagedThreads) {
   return (
     <ol
       ref={list}
-      className="board-threads channel-thread-list"
+      className={virtual ? "channel-threads channel-thread-list" : "channel-threads"}
       aria-label="Latest threads"
       style={{ height: virtualizer.getTotalSize() }}
     >
@@ -97,12 +98,11 @@ function VirtualThreads({ threads, fetchOlder, hasOlder }: PagedThreads) {
         return (
           <ThreadRow
             key={key}
-            ref={virtualizer.measureElement}
             data-index={index}
             aria-posinset={index + 1}
             aria-setsize={hasOlder ? -1 : threads.length}
             style={{ transform: `translateY(${start - (scrollMargin ?? 0)}px)` }}
-            onOpen={rememberOpenedRow}
+            onOpen={virtual ? rememberOpenedRow : undefined}
             thread={thread}
             now={now}
           />

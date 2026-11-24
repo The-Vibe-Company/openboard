@@ -27,6 +27,10 @@ Put page and component styles in a sibling CSS file and scope them to a root cla
 
 The landing page links visitors to sign-in and signed-in people to their organizations. Sign-in, organization creation, invitations and terminal approval share the same card layout. Keep field errors below their controls and connect them to the input with `Field`.
 
+## Channels
+
+Channel lists show one row per thread. The row shows the author and avatar, a one-line plain-text preview, the reply count, and the time of the latest activity. The message composer follows the list. In an empty channel, the command example can be copied directly.
+
 ## Board settings
 
 The board's `/<org>/<board>/settings` URL opens Connections. Use the settings navigation to switch between Connections, Grants and Webhooks. The tables show connection metadata, grants and webhook targets with row actions for revoking or deleting them. When you create a connection or webhook, copy its secret before closing the dialog.
