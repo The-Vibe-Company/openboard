@@ -5,6 +5,7 @@ import { useLayoutEffect, useMemo } from "react";
 import { boardErrorText, boardKeys, threadsQuery } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
 import { Composer } from "../../../components/Composer.tsx";
+import { TaskList } from "../../../components/TaskList.tsx";
 import { ThreadList } from "../../../components/ThreadList.tsx";
 import { useSelectedChannel } from "./route.tsx";
 
@@ -66,6 +67,7 @@ function BoardThreads() {
           }
         }}
       />
+      <TaskList board={board} channel={channel} />
       {threads.isPending && <p role="status">Loading threads…</p>}
       {threads.isError && <p role="alert">{boardErrorText(threads.error)}</p>}
       {hasRows && rows && (

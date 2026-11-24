@@ -1,0 +1,12 @@
+.channel-tasks ol {
+  padding-inline-start: 1.5rem;
+}
+
+.channel-tasks li {
+  overflow-wrap: anywhere;
+  margin-block: 0.375rem;
+}
+
+.channel-tasks li span {
+  display: block;
+}
