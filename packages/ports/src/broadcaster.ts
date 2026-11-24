@@ -25,6 +25,8 @@ export interface CommittedEvents {
 
 /** Board-scoped wake-ups. The event store is the source of truth. */
 export interface Broadcaster {
+  /** Before COMMIT, mark the local page as pending. Release after publish or on transaction failure. */
+  prepareCommit?(scope: BoardScope, page: CommittedPage): () => void;
   /** Announce a new head and the events that reached it, only after their write commits. */
   publish(scope: BoardScope, page: CommittedPage): void;
   /**

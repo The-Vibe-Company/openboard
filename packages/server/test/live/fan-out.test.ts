@@ -3,7 +3,7 @@ import type { CreatedConnection } from "@openboard/contract";
 import type { BoardView, CommittedEvents, Store } from "@openboard/ports";
 import { tailBoard } from "../../src/live/fan-out.ts";
 import { BOARD_URL, call, makeApp, NOW, OWNER } from "../support/app.ts";
-import { openStore, type TestStore } from "../support/drivers.ts";
+import { openStore } from "../support/drivers.ts";
 
 /** `store`, counting the feed reads every board view sends to storage in `counted`. */
 function counting(store: Store, counted: { reads: number }): Store {
@@ -24,25 +24,11 @@ function counting(store: Store, counted: { reads: number }): Store {
   };
 }
 
-/** A test store that counts the feed reads of every instance on it, the second instance's included. */
+/** Use one app and its real store so the in-memory path is exercised on both drivers. */
 function countingStore() {
-  const store = openStore(() => NOW);
   const counted = { reads: 0 };
-  const { sibling } = store;
-  const wrapped: TestStore = {
-    ...counting(store, counted),
-    ...(sibling && { sibling: () => counting(sibling(), counted) }),
-  };
-  return { store: wrapped, counted };
-}
-
-/**
- * Whether every tail is on the instance that made every write, which holds the committed pages in memory: only then is
- * the number of store reads exact. A tail on another instance is woken by a notification that carries only the head
- * (D36), at a time the notification decides, and may also be woken by a late one for a commit its first read covered.
- */
-function sameInstance(tails: readonly { readonly instance: number }[], writers: readonly number[]) {
-  return tails.every((tail) => writers.every((writer) => writer === tail.instance));
+  const { sibling: _sibling, ...store } = openStore(() => NOW);
+  return { store: counting(store, counted), counted };
 }
 
 type Stream = Awaited<ReturnType<typeof openStream>>;
@@ -60,7 +46,7 @@ async function openStream(app: ReturnType<typeof makeApp>, query: string, token 
   const next = async () => decoder.decode((await reader.read()).value);
   expect(await next()).toBe(": connected\n\n");
   await next(); // The first page: the cursor the stream starts from.
-  return { next, close: () => reader.cancel(), instance: app.served.at(-1)! };
+  return { next, close: () => reader.cancel() };
 }
 
 /** The `id:` lines of one page, each tagged with whether it carries an event or only a cursor. */
@@ -74,7 +60,7 @@ const post = async (app: ReturnType<typeof makeApp>, channel: string, text: stri
   return ((await response.json()) as { message: { id: string } }).message.id;
 };
 
-function streamingApp(store: TestStore) {
+function streamingApp(store: Store) {
   return makeApp({ store, schedule: () => () => {} });
 }
 
@@ -87,7 +73,7 @@ test("a commit reaches every caught-up tail, from memory without a store read on
     counted.reads = 0;
     const id = await post(app, "dev", "hello");
     for (const stream of streams) expect(ids(await stream.next())).toEqual([id]);
-    if (sameInstance(streams, [app.served.at(-1)!])) expect(counted.reads).toBe(0);
+    expect(counted.reads).toBe(0);
   } finally {
     await Promise.all(streams.map((stream) => stream.close()));
     await app.close();
@@ -104,24 +90,19 @@ test("a slow tail never delays the others: it keeps one queued page, then catche
     const pending = slow.next();
     counted.reads = 0;
     const posted: string[] = [];
-    const writers: number[] = [];
     for (const text of ["one", "two", "three", "four"]) {
       posted.push(await post(app, "dev", text));
-      writers.push(app.served.at(-1)!);
       expect(ids(await fast.next())).toEqual([posted.at(-1)!]);
     }
     const reads = counted.reads;
     const pages = [ids(await pending)];
     while (pages.flat().length < posted.length) pages.push(ids(await slow.next()));
     expect(pages.flat()).toEqual(posted);
-    // A write on another instance wakes the slow tail without a page, so only one instance fixes how its pages split.
-    if (sameInstance([fast, slow], writers)) {
-      expect(reads).toBe(0);
-      // The first post filled the waiting read and the second the stream's one queued frame. The tail queued the third
-      // page; the fourth found that queue full, so both were dropped and the slow tail reads them from the store.
-      expect(pages).toEqual([[posted[0]!], [posted[1]!], posted.slice(2)]);
-      expect(counted.reads).toBe(1);
-    }
+    expect(reads).toBe(0);
+    // The first post filled the waiting read and the second the stream's one queued frame. The tail queued the third
+    // page; the fourth found that queue full, so both were dropped and the slow tail reads them from the store.
+    expect(pages).toEqual([[posted[0]!], [posted[1]!], posted.slice(2)]);
+    expect(counted.reads).toBe(1);
   } finally {
     await Promise.all([fast.close(), slow.close()]);
     await app.close();
@@ -143,22 +124,16 @@ test("a filtered tail and a channel-limited caller still receive only what they 
   const limited = await openStream(app, "?channel=dev", secret);
   try {
     counted.reads = 0;
-    const writers: number[] = [];
-    const write = async (channel: string, text: string) => {
-      const id = await post(app, channel, text);
-      writers.push(app.served.at(-1)!);
-      return id;
-    };
-    const hidden = await write("dev/secret", "not for the reader");
+    const hidden = await post(app, "dev/secret", "not for the reader");
     expect(ids(await filtered.next())).toEqual([`cursor ${hidden}`]);
     expect(ids(await limited.next())).toEqual([`cursor ${hidden}`]);
-    const dev = await write("dev", "for the reader");
+    const dev = await post(app, "dev", "for the reader");
     expect(ids(await filtered.next())).toEqual([`cursor ${dev}`]);
     expect(ids(await limited.next())).toEqual([dev]);
-    const ops = await write("ops", "for the filter");
+    const ops = await post(app, "ops", "for the filter");
     expect(ids(await filtered.next())).toEqual([ops]);
     expect(ids(await limited.next())).toEqual([`cursor ${ops}`]);
-    if (sameInstance([filtered, limited], writers)) expect(counted.reads).toBe(0);
+    expect(counted.reads).toBe(0);
   } finally {
     await Promise.all([filtered.close(), limited.close()]);
     await app.close();
@@ -207,7 +182,6 @@ test("a page served from memory carries the same events a store read returns", a
     for (const query of queries) streams.push(await openStream(app, `?after=0${query}`));
     counted.reads = 0;
     const id = await post(app, "dev", "first");
-    const writers = [app.served.at(-1)!];
     const writes = [
       () => call(app, "POST", `/messages/${id}/edit`, { text: "edited" }),
       () => call(app, "POST", `/messages/${id}/labels`, { set: { status: "open" } }),
@@ -224,10 +198,9 @@ test("a page served from memory carries the same events a store read returns", a
     await collect();
     for (const write of writes) {
       expect((await write()).status).toBeLessThan(300);
-      writers.push(app.served.at(-1)!);
       await collect();
     }
-    if (sameInstance(streams, writers)) expect(counted.reads).toBe(0);
+    expect(counted.reads).toBe(0);
     for (const [i, query] of queries.entries()) {
       const stored = (await (await call(app, "GET", `/events?after=0${query}`)).json()) as { events: unknown[] };
       expect(streamed[i]).toEqual(stored.events);

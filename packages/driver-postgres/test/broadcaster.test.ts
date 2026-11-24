@@ -1,9 +1,11 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
-import type { BoardView, BoardWriter, Store } from "@openboard/ports";
+import type { BoardView, BoardWriter, CommittedPage, Store } from "@openboard/ports";
 import { testScope } from "@openboard/ports/testkit";
 import { SQL } from "bun";
+import { postgresBroadcaster } from "../src/broadcaster.ts";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
+import { connection } from "../src/pool.ts";
 import { postgresTestUrl } from "./support/env.ts";
 
 const url = postgresTestUrl();
@@ -60,7 +62,8 @@ if (url) {
     stores.push(store);
     const keys = await store.platform().findBoard("local", "main");
     if (!keys) throw new Error("missing local/main fixture");
-    return { board: store.board(testScope(keys)), boardId: keys.boardId };
+    const scope = testScope(keys);
+    return { board: store.board(scope), boardId: keys.boardId, scope };
   }
 
   test("a tail on one instance reads positions written on another in order, each once", async () => {
@@ -104,6 +107,86 @@ if (url) {
       expect(subscription.reads).toEqual([cursor]);
     } finally {
       subscription.stop();
+    }
+  }, 850);
+
+  test("the local page wins over early and late notifications, and a newer remote commit wakes again", async () => {
+    const writer = await open();
+    await using sql = new SQL(database.url);
+    const after = (await writer.board.readEvents()).head;
+    const page = { after, head: after + 1, events: [] };
+    const payload = `${writer.boardId}:${page.head}`;
+    let flushed = Promise.withResolvers<void>();
+    // Observe each local notification on the broadcaster's connection after its queued wake has flushed.
+    const broadcaster = await postgresBroadcaster(
+      {
+        listen: (channel, wake, onListen) =>
+          sql.listen(
+            channel,
+            (message) => {
+              wake(message);
+              if (message === payload) setImmediate(() => setImmediate(flushed.resolve));
+            },
+            onListen,
+          ),
+      },
+      connection(sql),
+      () => () => {},
+    );
+    try {
+      const wakes: (CommittedPage | undefined)[] = [];
+      const remoteWake = Promise.withResolvers<void>();
+      broadcaster.subscribe(writer.scope, after, (page) => {
+        wakes.push(page);
+        if (page === undefined) remoteWake.resolve();
+      });
+
+      const release = broadcaster.prepareCommit?.(writer.scope, page);
+      if (!release) throw new Error("missing local commit tracking");
+      await sql.notify("ob_events", payload);
+      await flushed.promise;
+      expect(wakes).toStrictEqual([]);
+
+      broadcaster.publish(writer.scope, page);
+      release();
+      flushed = Promise.withResolvers<void>();
+      await sql.notify("ob_events", payload);
+      await flushed.promise;
+      expect(wakes).toStrictEqual([page]);
+
+      await writer.board.write(async (tx) => {
+        await append(tx);
+        return append(tx);
+      });
+      await remoteWake.promise;
+      expect(wakes).toStrictEqual([page, undefined]);
+    } finally {
+      await broadcaster.close();
+    }
+  }, 850);
+
+  test("the safety poll can wake a tail while a local commit acknowledgment is pending", async () => {
+    const writer = await open();
+    await using sql = new SQL(database.url);
+    let poll: (() => Promise<void>) | undefined;
+    const broadcaster = await postgresBroadcaster(sql, connection(sql), (tick) => {
+      poll = tick;
+      return () => {};
+    });
+    try {
+      const after = (await writer.board.readEvents()).head;
+      const wakes: (CommittedPage | undefined)[] = [];
+      broadcaster.subscribe(writer.scope, after, (page) => wakes.push(page));
+      const release = broadcaster.prepareCommit?.(writer.scope, { after, head: after + 1, events: [] });
+      if (!release || !poll) throw new Error("missing commit tracking or safety poll");
+      expect(await writer.board.write(append)).toEqual([after + 1]);
+
+      await poll();
+      expect(wakes).toStrictEqual([undefined]);
+      release();
+      expect(wakes).toStrictEqual([undefined]);
+    } finally {
+      await broadcaster.close();
     }
   }, 850);
 

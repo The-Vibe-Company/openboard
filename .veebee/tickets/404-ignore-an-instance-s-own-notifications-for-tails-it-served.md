@@ -4,6 +4,8 @@ title: Ignore an instance's own notifications for tails it already served
 milestone: M6-high-availability
 package: driver-postgres
 writes:
+  - packages/ports/src/broadcaster.ts
+  - packages/driver-sql/src/views/messages.ts
   - packages/driver-postgres/src/broadcaster.ts
   - packages/driver-postgres/test/broadcaster.test.ts
   - packages/server/src/live/fan-out.ts
@@ -11,8 +13,8 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [177]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 633
 ---
 
