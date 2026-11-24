@@ -30,8 +30,10 @@ test("an instance's own notification leaves the wake to its publish, which carri
   broadcaster.subscribe(scope, 1, (page, head) => wakes.push([page, head]));
   const page: CommittedPage = { after: 1, head: 3, events: [] };
   try {
-    // The notification of this instance's commit can arrive before the write returns and publishes its page.
-    const release = broadcaster.committing?.(scope, 3);
+    // The notifications of this instance's commit can arrive before the write returns and publishes its page, for its
+    // last head and for any it set on the way.
+    const release = broadcaster.committing?.(scope, 1, 3);
+    await notify("7:2");
     await notify("7:3");
     expect(wakes).toEqual([]);
     broadcaster.publish(scope, page);
@@ -40,7 +42,7 @@ test("an instance's own notification leaves the wake to its publish, which carri
     // Another instance's commit still wakes without a page, and so does a head this instance no longer commits.
     await notify("7:4");
     expect(wakes.at(-1)).toEqual([undefined, 4]);
-    broadcaster.committing?.(scope, 5)();
+    broadcaster.committing?.(scope, 4, 5)();
     await notify("7:5");
     expect(wakes.at(-1)).toEqual([undefined, 5]);
   } finally {

@@ -28,11 +28,11 @@ export interface Broadcaster {
   /** Announce a new head and the events that reached it, only after their write commits. */
   publish(scope: BoardScope, page: CommittedPage): void;
   /**
-   * Called inside a write before it commits `head`; the returned release once the write has published or failed. A
-   * broadcaster that also hears this instance's commits as notifications leaves those to `publish`, which carries the
-   * page, so a subscriber here never reads from the store what was just written here.
+   * Called inside a write before it commits the heads after `after` up to `head`; the returned release once the write
+   * has published or failed. A broadcaster that also hears this instance's commits as notifications or polled heads
+   * leaves those to `publish`, which carries the page, so a subscriber here does not re-read what was written here.
    */
-  committing?(scope: BoardScope, head: number): () => void;
+  committing?(scope: BoardScope, after: number, head: number): () => void;
   /**
    * Wake on heads above the given cursor. Register before reading; subscriptions do not replay. A wake carries the
    * head it announces, and the committed page when the commit's events are in memory; without one, the subscriber reads

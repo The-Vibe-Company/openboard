@@ -19,10 +19,14 @@ function repeat(tick: () => Promise<void>, milliseconds: number) {
   return () => clearInterval(timer);
 }
 
+/** Whether this instance is committing `position` on the board: its publish then follows, carrying the page. */
+type Own = (boardId: number, position: number) => boolean;
+
 function pollBoardHeads(
   db: Db,
   boards: ReadonlyMap<number, Board>,
   publish: (scope: Pick<BoardScope, "boardId">, position: number) => void,
+  own: Own,
 ) {
   return async () => {
     if (boards.size === 0) return;
@@ -34,7 +38,7 @@ function pollBoardHeads(
 
     for (const row of heads) {
       const boardId = Number(row.id);
-      if (boards.get(boardId) === subscribed.get(boardId)) {
+      if (boards.get(boardId) === subscribed.get(boardId) && !own(boardId, Number(row.head))) {
         publish({ boardId }, Number(row.head));
       }
     }
@@ -75,7 +79,7 @@ function reconnectPoll(readHeads: () => Promise<void>) {
 function onNotification(
   boards: ReadonlyMap<number, Board>,
   publish: (scope: Pick<BoardScope, "boardId">, position: number) => void,
-  committing: ReadonlyMap<number, ReadonlyMap<number, number>>,
+  own: Own,
 ) {
   return (payload: string) => {
     const match = /^(\d+):(\d+)$/.exec(payload);
@@ -85,7 +89,7 @@ function onNotification(
     if (!Number.isSafeInteger(boardId) || !Number.isSafeInteger(position)) return;
     const board = boards.get(boardId);
     // This instance's own commit: its publish follows with the page, which the notification would make tails re-read.
-    if (!board || committing.get(boardId)?.has(position)) return;
+    if (!board || own(boardId, position)) return;
     if (board.pending) {
       board.pending.position = Math.max(board.pending.position, position);
       return;
@@ -110,8 +114,13 @@ export async function postgresBroadcaster(
   schedule: Repeat = repeat,
 ): Promise<Broadcaster & { close(): Promise<void> }> {
   const boards = new Map<number, Board>();
-  // Heads this instance's writes are committing, by board, each with the number of writes committing it.
-  const committing = new Map<number, Map<number, number>>();
+  // The heads each of this instance's writes is committing, by board: after `after`, up to `head`.
+  const committing = new Map<number, Set<{ readonly after: number; readonly head: number }>>();
+  const own: Own = (boardId, position) => {
+    for (const range of committing.get(boardId) ?? [])
+      if (range.after < position && position <= range.head) return true;
+    return false;
+  };
   let stopPoll: (() => void) | undefined;
   let closed = false;
 
@@ -120,7 +129,7 @@ export async function postgresBroadcaster(
     stopPoll = undefined;
   }
 
-  const { poll, onListen } = reconnectPoll(pollBoardHeads(db, boards, publish));
+  const { poll, onListen } = reconnectPoll(pollBoardHeads(db, boards, publish, own));
 
   function remove(id: number, board: Board, subscription: Subscription) {
     if (!board.subscribers.delete(subscription) || board.subscribers.size !== 0) return;
@@ -144,22 +153,17 @@ export async function postgresBroadcaster(
     }
   }
 
-  const listener = await sql.listen("ob_events", onNotification(boards, publish, committing), onListen);
+  const listener = await sql.listen("ob_events", onNotification(boards, publish, own), onListen);
 
   return {
     publish: (scope, page) => publish(scope, page.head, page),
-    committing({ boardId }, head) {
-      const heads = committing.get(boardId) ?? new Map<number, number>();
-      committing.set(boardId, heads);
-      heads.set(head, (heads.get(head) ?? 0) + 1);
-      let released = false;
+    committing({ boardId }, after, head) {
+      const ranges = committing.get(boardId) ?? new Set();
+      committing.set(boardId, ranges);
+      const range = { after, head };
+      ranges.add(range);
       return () => {
-        if (released) return;
-        released = true;
-        const left = (heads.get(head) ?? 1) - 1;
-        if (left > 0) heads.set(head, left);
-        else heads.delete(head);
-        if (heads.size === 0 && committing.get(boardId) === heads) committing.delete(boardId);
+        if (ranges.delete(range) && ranges.size === 0 && committing.get(boardId) === ranges) committing.delete(boardId);
       };
     },
     subscribe({ boardId }, fromPosition, wake) {

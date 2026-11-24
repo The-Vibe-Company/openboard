@@ -930,3 +930,22 @@ Only product choices; each has a recommendation.
   exact subject of their locally linked GitHub identity.
 - **Consequence.** GitHub remains the only people sign-in provider. Grant
   creation and resolution use local data, with no GitHub API calls.
+
+### D59. Wakes carry their head; an instance leaves its own commits to its publish
+
+- **Decision.** Every broadcaster wake carries the head it announces, with
+  the committed page when it is in memory (`wake(page | undefined, head)`). A
+  board write tells the broadcaster, before `COMMIT`, which heads it commits
+  (`committing(scope, after, head)`, optional on the port) and releases them
+  once it has published or failed. The Postgres broadcaster skips its own
+  notifications and polled heads in that range; a tail ignores a page-less
+  wake for a head it has already read.
+- **Why.** Run on two instances, a tail re-read the store for commits it
+  already held: the writer's own `NOTIFY` could arrive before its local
+  publish and mark the head seen without its page, and a late notification
+  for a head a read had covered sent the tail back to the store.
+- **Consequence.** Every `Broadcaster` implementation passes the head on
+  each wake. A failed write publishes nothing: a rolled-back head is reused,
+  and announcing it would hide the next real commit of that head. A head
+  another instance commits while a failed write still holds it reaches this
+  instance's tails through the 2 s safety poll (D36).

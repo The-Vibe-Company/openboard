@@ -236,11 +236,14 @@ safety poll**.
   pool, never through a transaction-mode pooler). On a notification for a
   board with local subscribers, the board tail reads new events; several
   notifications in one tick are coalesced into one read.
-- An instance skips its own notifications: its write registers the head it
-  commits with the broadcaster before `COMMIT`, and the local publish that
-  follows wakes its tails with the page, so they never re-read what was just
-  written there. A wake without a page carries the head it announces, and a
-  tail that has already read up to that head does not read again.
+- An instance skips its own notifications (D59): its write registers the
+  heads it commits with the broadcaster before `COMMIT`, the listener and the
+  safety poll leave those heads to the local publish that follows, and that
+  publish wakes its tails with the page instead of a store read. A wake
+  without a page carries the head it announces, and a tail that has already
+  read up to that head does not read again. Limit: if a `COMMIT` fails and
+  another instance commits the same head before the write releases it, this
+  instance's tails learn of it from the next safety poll, within 2 s.
 - **Measured** on Bun 1.4.2: `sql.listen`/`sql.notify` work, and after a
   Postgres restart the listener received notifications again without
   application code. Notifications sent while the listener was disconnected

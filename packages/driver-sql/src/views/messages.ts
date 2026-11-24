@@ -328,7 +328,7 @@ export function boardView(
           const result = await fn(boardWriter);
           if (boardWriter.head <= head) return { result, page: undefined };
           release?.();
-          release = broadcaster.committing?.(scope, boardWriter.head);
+          release = broadcaster.committing?.(scope, head, boardWriter.head);
           return { result, page: { after: head, head: boardWriter.head, events } };
         });
         if (page !== undefined) broadcaster.publish(scope, page);
