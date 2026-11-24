@@ -13,8 +13,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: []
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-5.5-t382
 issue: 577
 ---
 

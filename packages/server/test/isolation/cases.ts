@@ -13,7 +13,7 @@ export const authenticated = operations.filter((operation) => operation.scope !=
  * A tenant's valid input for an operation besides its path: an ID case must reach the handler, not stop at
  * validation. An operation missing here sends no query and no body; `callOf` throws if validation refuses that.
  */
-const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { query?: Fields; body?: Fields }>> = {
+const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; query?: Fields; body?: Fields }>> = {
   postMessage: (tenant) => ({ body: { re: tenant.ids.message, text: `${tenant.marker} reply` } }),
   editMessage: (tenant) => ({ body: { text: `${tenant.marker} edit` } }),
   reactToMessage: () => ({ body: { emoji: "eyes" } }),
@@ -28,6 +28,16 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { query?: Fields; bod
   listThreads: () => ({ query: { channel: "dev" } }),
   approveDeviceSignIn: (tenant) => ({ body: { userCode: tenant.userCode, org: tenant.org } }),
   acceptInvitation: (tenant) => ({ body: { token: tenant.invitationToken } }),
+  attachSync: () => ({ body: { target: "elsewhere" } }),
+  findLinkedThread: () => ({ query: { url: "https://example.com/thread/1" } }),
+  readSource: () => ({ params: { key: "elsewhere" }, query: { target: "elsewhere" } }),
+  joinSource: () => ({ params: { key: "elsewhere" }, body: { target: "elsewhere" } }),
+  pushInbox: () => ({ params: { key: "elsewhere" }, body: { events: [] } }),
+  ackInbox: () => ({ params: { key: "elsewhere", id: "event" }, body: { lease: "lease" } }),
+  readInbox: () => ({ params: { key: "elsewhere" } }),
+  leaseInbox: () => ({ params: { key: "elsewhere" } }),
+  importSync: () => ({ body: { op: "post", from: null } }),
+  recordSyncReceipt: (tenant) => ({ body: { kind: "message", message: tenant.ids.message } }),
 };
 
 /** The `Ref` fields of an operation's input, where each sits and which kind it names. */
@@ -81,7 +91,7 @@ export function callOf(
 ): Call {
   const sample = SAMPLES[operation.name]?.(tenant) ?? {};
   const parts: Record<Part, Fields> = {
-    params: {},
+    params: { ...sample.params },
     query: { ...sample.query, ...queryOverrides },
     body: { ...sample.body },
   };
