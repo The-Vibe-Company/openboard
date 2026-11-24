@@ -327,6 +327,23 @@ test("GET /threads finds threads that mention someone, by handle, ID or me, a pe
   expect(await found(LOCAL_OWNER, secret)).toEqual([me, agent, replied]);
   expect(await found("local-test", secret)).toEqual([early]);
 
+  const notifier = await call(app, "POST", "/x/connections", {
+    name: "notifier",
+    direct: true,
+    can: { dev: ["post"] },
+  });
+  const { secret: postOnly } = (await notifier.json()) as { secret: string };
+  const alert = await app.fetch(
+    new Request(`${BOARD_URL}/messages`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${postOnly}`, "content-type": "application/json" },
+      body: JSON.stringify({ channel: "dev", text: "deploy failed @local-test" }),
+    }),
+  );
+  expect(alert.status).toBe(201);
+  const alerted = ((await alert.json()) as Thread).message.id;
+  expect(await found("me")).toEqual([early, me, agent, replied, alerted]);
+
   const refused = await call(app, "GET", "/threads?channel=dev&mentions=%40");
   expect(refused.status).toBe(400);
   expect(await refused.json()).toMatchObject({ error: { code: "invalid_request" } });

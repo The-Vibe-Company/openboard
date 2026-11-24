@@ -16,11 +16,12 @@ writes:
   - packages/cli/src/commands/read.ts
   - packages/cli/test/read-channel.test.ts
   - packages/server/openapi.json
+  - packages/server/src/operations/messages.ts
   - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [80, 89]
-status: claimed
+status: done
 claimed_by: claude-opus-5-5
 issue: 90
 ---
@@ -29,7 +30,7 @@ issue: 90
 As a person, I find every thread where someone called me in.
 
 ## Done when
-- [ ] `ob read dev --mentions me` lists only threads with a message mentioning me
+- [x] `ob read dev --mentions me` lists only threads with a message mentioning me
 
 ## Out of scope
 - Notifications.
