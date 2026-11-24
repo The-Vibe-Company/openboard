@@ -53,7 +53,7 @@ async function checkMessage(by: Principal, can: Can, permission: Permission, boa
  * Every verified caller stays inside the `can` it acts under (`callerCan`: an `obt_` token's pin, an `obc_`
  * connection's grant, a member's role-capped grant through a session or an `obp_` token), as upstream checks every grant (docs/auth.md "Pinned
  * narrowing"). An operation on a channel needs the permission there: the channel its input names (`channel`, or
- * `path` when it creates one), and the channel of the message it reads or replies to (`id`, `re`). One that reaches
+ * `path` when it creates one; for a subtree, every pattern inside it too), and the channel of the message it reads or replies to (`id`, `re`). One that reaches
  * every channel needs the permission at `*` and under every other pattern, since nothing narrows its answer yet. The
  * local owner holds no `can` and may do everything; any other caller without one may do nothing.
  */
@@ -75,6 +75,20 @@ function allowedEverywhere(can: Can, permission: Permission): boolean {
   return (
     agents.allowedAt(can, "*").includes(permission) &&
     Object.values(can).every((given) => grants.withImplied(given).includes(permission))
+  );
+}
+
+/**
+ * Whether `can` lets `permission` in at `channel`, and for a subtree (`dev/`) also at every pattern inside it, since
+ * nothing narrows a subtree's answer to the channels the caller may see.
+ */
+function allowedThroughout(can: Can, channel: string, permission: Permission): boolean {
+  if (!agents.allowedAt(can, channel).includes(permission)) return false;
+  if (!channel.endsWith("/")) return true;
+  return Object.entries(can).every(
+    ([pattern, given]) =>
+      !(pattern === channel.slice(0, -1) || pattern.startsWith(channel)) ||
+      grants.withImplied(given).includes(permission),
   );
 }
 
@@ -101,7 +115,7 @@ async function checkPermission(by: Principal, can: Can, access: Access, input: u
   const named = input as { channel?: unknown; path?: unknown; re?: unknown; id?: unknown };
   if (access.channel === "fromMessage") return checkMessage(by, can, permission, board, named.id);
   const channel = named.channel ?? named.path;
-  if (typeof channel === "string" && !agents.allowedAt(can, channel).includes(permission)) {
+  if (typeof channel === "string" && !allowedThroughout(can, channel, permission)) {
     throw outsideCan(by, permission, `in ${channel}`);
   }
   await checkMessage(by, can, permission, board, named.re);

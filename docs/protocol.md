@@ -163,6 +163,12 @@ characters, as upstream); `%` and `_` match only themselves, and an edited messa
 is found by its new text, not its old one. With labels, one message must say the
 text and have the labels (its own or its root's). It combines with paging.
 
+Use `ob read dev/` (a trailing slash) to list the threads of `dev` and of every
+channel under it (`dev/web`, `dev/web/api`) as one list, by activity, as upstream's
+"Filters" reads `channel`. Every other filter and paging works the same. The
+caller must read every pattern inside the subtree, or it is 403 `forbidden`
+(D53).
+
 `ob read <channel> --limit 2` lists the latest two threads and ends with an
 `older:` line, the command for the next older page (`ob read <channel> --before
 <older> --limit 2`); follow it until no `older:` line comes and every thread

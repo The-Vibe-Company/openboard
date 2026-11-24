@@ -1,7 +1,7 @@
 import { BoardError, type Message } from "@openboard/contract";
 import type { BoardScope, BoardView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
-import { type Fragment, query, sql } from "../sql.ts";
+import { type Fragment, query, type Statement, sql } from "../sql.ts";
 
 const filterRows: Fragment = {
   fragment: ({ name }) => (name === "sqlite" ? "json_each(filters.data)" : "jsonb_array_elements(filters.data::jsonb)"),
@@ -39,14 +39,35 @@ function threadPage(order: "ASC" | "DESC") {
     ORDER BY id`;
 }
 
-/** A channel's threads by activity between two bounds: the latest of them (`DESC`), or the first (`ASC`). */
-function threadList(order: "ASC" | "DESC") {
+/** Where a thread list names its channels; `splice` puts one of the predicates below in its place. */
+const CHANNELS: Fragment = { fragment: () => "" };
+const oneChannel = sql`root.channel = ${"channel"}`;
+const subtreeChannels = sql`(root.channel = ${"channel"} OR root.channel LIKE ${"under"} ESCAPE '\\')`;
+
+/** `outer` with `inner`'s text and parameters in place of the `marker` slot. */
+function splice<K extends string>(outer: Statement<K>, marker: Fragment, inner: Statement<K>): Statement<K> {
+  const at = outer.slots.indexOf(marker);
+  const [first = "", ...rest] = inner.strings;
+  const middle = [`${outer.strings[at]}${first}`, ...rest];
+  middle.push(`${middle.pop()}${outer.strings[at + 1]}`);
+  return Object.freeze({
+    strings: [...outer.strings.slice(0, at), ...middle, ...outer.strings.slice(at + 2)],
+    slots: [...outer.slots.slice(0, at), ...inner.slots, ...outer.slots.slice(at + 1)],
+  });
+}
+
+/**
+ * A channel's threads by activity between two bounds: the latest of them (`DESC`), or the first (`ASC`). A subtree's
+ * add every channel `under` matches; they read by board activity, so one channel's keep its own index.
+ */
+function threadList(order: "ASC" | "DESC", subtree = false) {
   const direction: Fragment = { fragment: () => order };
-  return sql`WITH filters AS (SELECT CAST(${"labels"} AS TEXT) AS data),
+
+  const list = sql`WITH filters AS (SELECT CAST(${"labels"} AS TEXT) AS data),
     recent AS (
       SELECT root.board_id, root.id, root.active, root.view, root.replies, root.last_reply
       FROM messages AS root
-      WHERE root.board_id = ${"boardId"} AND root.channel = ${"channel"} AND root.re IS NULL
+      WHERE root.board_id = ${"boardId"} AND ${CHANNELS} AND root.re IS NULL
         AND (root.active, root.id) < (CAST(${"beforeActive"} AS BIGINT), CAST(${"beforeRoot"} AS BIGINT))
         AND root.active > CAST(${"after"} AS BIGINT)
         AND ((CAST(${"labels"} AS TEXT) = '[]' AND CAST(${"text"} AS TEXT) IS NULL) OR EXISTS (
@@ -74,24 +95,32 @@ function threadList(order: "ASC" | "DESC") {
     LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = recent.last_reply
     WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"}
     ORDER BY recent.active, recent.id`;
+  return splice(list, CHANNELS, subtree ? subtreeChannels : oneChannel);
 }
 
 export const threadStatements = {
   listThreads: threadList("DESC"),
   listThreadsAfter: threadList("ASC"),
+  listSubtreeThreads: threadList("DESC", true),
+  listSubtreeThreadsAfter: threadList("ASC", true),
   thread: threadPage("DESC"),
   threadAfter: threadPage("ASC"),
 };
 
+/** The latest threads, then those after a cursor: of one channel, and of a subtree. */
+const oneChannelLists = [threadStatements.listThreads, threadStatements.listThreadsAfter] as const;
+const subtreeLists = [threadStatements.listSubtreeThreads, threadStatements.listSubtreeThreadsAfter] as const;
+
 /** The thread reads of one board's view: one statement reads the message and its replies together. */
 export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "thread" | "listThreads"> {
   return {
-    async listThreads(channel, labels = [], { before, after, limit = 50, text } = {}) {
-      const statement = after === undefined ? threadStatements.listThreads : threadStatements.listThreadsAfter;
+    async listThreads(channel, labels = [], { before, after, limit = 50, text, under } = {}) {
+      const statement = (under === undefined ? oneChannelLists : subtreeLists)[after === undefined ? 0 : 1];
       const rows = await query(db, dialect, statement, {
         boardId: scope.boardId,
         orgId: scope.orgId,
         channel,
+        under: under ?? null,
         labels: JSON.stringify(labels),
         text: text ?? null,
         // Past every log position, so the first page reads through the same index range as the older ones.

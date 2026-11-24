@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { decideEdit, messages, textPattern } from "@openboard/core";
+import { channelFilter, decideEdit, messages, textPattern } from "@openboard/core";
 import type { BoardView, Store } from "../../src/index.ts";
 import { type OpenStore, testScope } from "../index.ts";
 
@@ -80,6 +80,30 @@ async function checkTextWithLabels(board: BoardView): Promise<void> {
   expect(first.threads.map(({ message }) => message.id)).toEqual([own.id]);
   const rest = await board.listThreads("dev", [["area"]], { ...search, before: first.older ?? undefined });
   expect(rest).toMatchObject({ threads: [{ message: inherited }], older: null });
+}
+
+/** A subtree lists its own channel's threads and those of every channel under it, `_` as a plain character. */
+async function checkSubtree(board: BoardView): Promise<void> {
+  const own = await post(board, "dev_x", "in dev_x itself");
+  await post(board, "devaxb", "a lookalike if _ were a wildcard");
+  const nested = await post(board, "dev_x/web", "in dev_x/web");
+  const deep = await post(board, "dev_x/web/api", "two levels down", { area: "api" });
+  await post(board, "dev_xy", "a sibling sharing the name's start");
+  const under = async (pattern: string, labels: readonly (readonly [string])[] = [], limit?: number) => {
+    const { channel, under } = channelFilter(pattern);
+    return board.listThreads(channel, labels, { under, limit });
+  };
+  const ids = ({ threads }: { threads: { message: { id: string } }[] }) => threads.map(({ message }) => message.id);
+  expect(ids(await under("dev_x/"))).toEqual([own.id, nested.id, deep.id]);
+  expect(ids(await under("dev_x/web/"))).toEqual([nested.id, deep.id]);
+  expect(ids(await under("dev_x/", [["area"]]))).toEqual([deep.id]);
+  const latest = await under("dev_x/", [], 2);
+  expect(ids(latest)).toEqual([nested.id, deep.id]);
+  const rest = await board.listThreads("dev_x", [], {
+    under: channelFilter("dev_x/").under,
+    before: latest.older ?? undefined,
+  });
+  expect(rest).toMatchObject({ threads: [{ message: own }], older: null });
 }
 
 async function checkReplyPages(board: BoardView): Promise<void> {
@@ -163,6 +187,10 @@ function searchTests(localBoard: () => Promise<BoardView>): void {
 
   test("finds threads by a message with both the text and the labels, a page at a time", async () => {
     await checkTextWithLabels(await localBoard());
+  });
+
+  test("lists the threads of a channel and every channel under it, a page at a time", async () => {
+    await checkSubtree(await localBoard());
   });
 }
 

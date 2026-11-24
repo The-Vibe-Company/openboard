@@ -726,6 +726,20 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
 - **Consequence.** `ob whoami` can show the recorded token name and expiry.
   Existing upstream fields and the OpenBoard kind remain available.
 
+### D53. A subtree read needs read throughout the subtree
+
+- **Context.** Ticket 88 lets `GET /threads` take `channel=dev/`, upstream's
+  subtree pattern. A `can` may grant `dev/` and withhold a channel under it
+  (`{ "dev/": ["read"], "dev/secret": ["post"] }`), and the list does not
+  filter its threads by what the caller reads.
+- **Decision.** An operation whose input channel is a subtree needs the
+  permission at the pattern and at every pattern of the caller's `can` inside
+  it (the channel itself included), as a board-wide read needs it at `*` and
+  under every other pattern. Otherwise it is 403 `forbidden`.
+- **Consequence.** A caller narrowed inside a subtree reads it channel by
+  channel, or a smaller subtree it reads throughout. Later subtree filters
+  (events, tasks) reuse the same check.
+
 ## Hard blockers found
 
 None. Limits worth knowing:
