@@ -94,7 +94,7 @@ export async function foldWatchersRegistered(db: Db, dialect: Dialect, keys: Boa
 /** Read the snapshots before the fold, while the writing transaction still holds its board lock. */
 export async function matchWatchers(db: Db, dialect: Dialect, keys: BoardKeys, event: BoardEvent) {
   // Previous releases can lease any persisted match, so only match event kinds their readers decode.
-  if (event.type === "task.expired" || !isTailMessageEvent(event)) return;
+  if (event.type === "task.expired" || event.type === "task.released" || !isTailMessageEvent(event)) return;
   const registrations = await watcherReads(db, dialect, keys).watcherRegistrations(null);
   const watchers = registrations.flatMap(({ owner, watch }) =>
     Object.entries(watch).map(([id, { tail }]) => ({ owner, id, filters: parseTail(tail) })),

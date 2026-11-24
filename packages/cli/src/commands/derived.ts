@@ -2,7 +2,7 @@ import { type CliSpec, operations } from "@openboard/contract";
 import { formats } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 import { runTaskCommand } from "./tasks/claim.ts";
-import { runCompleteTask } from "./tasks/complete.ts";
+import { runSettleTask } from "./tasks/complete.ts";
 import { runRenewTask } from "./tasks/renew.ts";
 
 type Contracted = (typeof operations)[number];
@@ -167,7 +167,9 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     async run(ctx) {
       const input = inputOf(ctx, args, fields, flags, nullEntries, alternative);
       if (operation.name === "renewTask") return runRenewTask(ctx, input as { id: string; lease?: number });
-      if (operation.name === "completeTask") return runCompleteTask(ctx, input as { id: string; result?: string });
+      if (operation.name === "completeTask" || operation.name === "releaseTask") {
+        return runSettleTask(ctx, input as { id: string; result?: string }, operation.name);
+      }
       if (operation.name === "claimTask" || operation.name === "createTask") {
         const invoke = ctx.client[operation.name] as (
           ...args: Parameters<Invoke>

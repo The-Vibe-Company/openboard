@@ -6,6 +6,7 @@ import {
   TaskCompletedEvent,
   TaskCreatedEvent,
   TaskExpiredEvent,
+  TaskReleasedEvent,
   TaskRenewedEvent,
 } from "./task-events.ts";
 
@@ -112,5 +113,6 @@ export const Event = Type.Union([
   TaskClaimedEvent,
   TaskCompletedEvent,
   TaskExpiredEvent,
+  TaskReleasedEvent,
   TaskRenewedEvent,
 ]);

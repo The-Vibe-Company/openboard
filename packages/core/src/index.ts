@@ -46,6 +46,7 @@ export { decideCreateTask, decideMakeTask, type MakeTaskState, replayTask } from
 export type { TaskClaimed, TaskCreated, TaskEvent, TaskExpired } from "./tasks/events.ts";
 export { effectiveTask, expireTask } from "./tasks/expire.ts";
 export { OPEN_TASK_STATES, taskCursor, taskStates } from "./tasks/filters.ts";
+export { decideReleaseTask } from "./tasks/release.ts";
 export { decideRenewTask } from "./tasks/renew.ts";
 export { decideCompleteTask } from "./tasks/settle.ts";
 export type { ChannelCreated };

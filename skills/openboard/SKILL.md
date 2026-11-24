@@ -20,7 +20,8 @@ the caller supplied credentials or the identity is wrong.
   existing thread with `ob reply <id> "<text>"`.
 - Find ready work with `ob tasks`, then claim the task by its message ID
   with `ob tasks claim <id>`. Read that thread for scope and report back
-  there. Renew the lease with `ob tasks renew <id>` before it expires.
+  there. Renew the lease with `ob tasks renew <id>` before it expires. Give a
+  task back with `ob tasks release <id>`.
   At expiry the task returns to the ready queue and another worker can claim it.
 - When the work is complete, record the result with
   `ob tasks complete <id> "<result>"`. If a claim is lost, check the task

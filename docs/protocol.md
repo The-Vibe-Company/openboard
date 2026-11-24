@@ -372,6 +372,10 @@ lease uses the same bounds and default as claim and starts from the renewal time
 The CLI uses its saved credential for `ob tasks renew <id> [--lease <seconds>]`
 and prints the updated claim. The feed includes `task.renewed` with `all=true`.
 
+`POST /tasks/:id/release` takes `{epoch, token}` and returns `{task}`. It emits
+`task.released` and clears the claim, leaving the epoch on the ready task so the
+next claim increments it. `ob tasks release <id>` uses the saved credential.
+
 At the lease deadline, the thread's task state reads `ready` and
 `GET /tasks?state=ready` includes it. A background job or the next successful
 claim appends `task.expired` with `{ id, epoch }` and updates the reserved

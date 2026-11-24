@@ -106,26 +106,35 @@ test("ob tasks says when no task matches", async () => {
   expect((await tasks(["--state", "all"], { tasks: [], cursor: "9" })).lines).toEqual(["no tasks"]);
 });
 
-test.each(["completed", "claim_lost"] as const)("ob tasks complete forgets a claim after %s", async (outcome) => {
-  const home = mkdtempSync(join(tmpdir(), "ob-complete-"));
+test.each([
+  ["complete", "completed"],
+  ["complete", "claim_lost"],
+  ["release", "released"],
+] as const)("ob tasks %s forgets a claim after %s", async (command, outcome) => {
+  const home = mkdtempSync(join(tmpdir(), "ob-settle-"));
   const key = { boardUrl: ENV.BOARD_URL, actor: "agent-a", id: "2" };
   const claim = { epoch: 2, token: "test claim credential", until: "2023-11-14T22:28:20.000Z" };
   const other = { ...key, actor: "agent-b" };
   const path = join(home, ".config", "openboard", "claims.json");
   const lines: string[] = [];
   const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  const result = command === "complete" ? "fixed in a1b2c3" : undefined;
   const run = (accepted: boolean) =>
     runCli(
-      ["tasks", "complete", "2", "fixed in a1b2c3"],
+      ["tasks", command, "2", ...(result === undefined ? [] : [result])],
       { ...ENV, HOME: home },
       {
         output,
         fetch: async (request) => {
           if (request.url === `${ENV.BOARD_URL}/me`) return Response.json({ actor: key.actor });
-          expect(request.url).toBe(`${ENV.BOARD_URL}/tasks/2/complete`);
-          expect(await request.json()).toEqual({ epoch: claim.epoch, token: claim.token, result: "fixed in a1b2c3" });
+          expect(request.url).toBe(`${ENV.BOARD_URL}/tasks/2/${command}`);
+          expect(await request.json()).toEqual({
+            epoch: claim.epoch,
+            token: claim.token,
+            ...(result === undefined ? {} : { result }),
+          });
           return accepted
-            ? outcome === "completed"
+            ? outcome !== "claim_lost"
               ? Response.json({ task: { id: "2" } })
               : Response.json({ error: { code: "claim_lost", message: "claim expired" } }, { status: 409 })
             : Response.json({ error: { code: "unavailable", message: "retry" } }, { status: 503 });
@@ -137,10 +146,10 @@ test.each(["completed", "claim_lost"] as const)("ob tasks complete forgets a cla
       await withClaimStorage(home, async () => ({ result: null, entry: { key: entryKey, claim } }));
     }
     expect(await run(false)).toBe(1);
-    expect(await run(true)).toBe(outcome === "completed" ? 0 : 1);
+    expect(await run(true)).toBe(outcome !== "claim_lost" ? 0 : 1);
     expect(lines).toEqual([
       "error: unavailable: retry",
-      outcome === "completed" ? "completed 2" : "error: claim_lost: claim expired",
+      outcome !== "claim_lost" ? `${outcome} 2` : "error: claim_lost: claim expired",
     ]);
     expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({
       [JSON.stringify([other.boardUrl, other.actor, other.id])]: claim,

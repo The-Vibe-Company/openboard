@@ -115,6 +115,7 @@ export {
   recordSyncReceipt,
   refreshAgentToken,
   registerWatchers,
+  releaseTask,
   removeMember,
   renewTask,
   revokeAgent,

@@ -114,6 +114,7 @@ export function isTailMessage(
       event.type === "task.claimed" ||
       event.type === "task.completed" ||
       event.type === "task.expired" ||
+      event.type === "task.released" ||
       (renewals && event.type === "task.renewed"))
   );
 }
@@ -130,6 +131,7 @@ type TailMessage = Extract<
       | "task.claimed"
       | "task.completed"
       | "task.expired"
+      | "task.released"
       | "task.renewed";
   }
 >;
