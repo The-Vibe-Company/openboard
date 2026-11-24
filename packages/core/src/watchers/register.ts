@@ -6,7 +6,7 @@ const noWakeMessage = "this board wakes neither URLs nor paths. Use GET /watcher
 export function validateWatchers({ watch, sync = [], path, url }: InputOf<typeof registerWatchers>): void {
   if (typeof path === "string") throw new BoardError("no_wake_by_path", noWakeMessage);
   if (typeof url === "string") throw new BoardError("no_wake_by_url", noWakeMessage);
-  if (sync.length > 0) throw new BoardError("invalid_request", "this board keeps no sync");
+  if (sync.length > 0) throw new BoardError("forbidden", "this board keeps no sync");
   const entries = Object.entries(watch);
   if (entries.length > 32) throw new BoardError("bad_watcher", "a registration holds at most 32 watchers");
   for (const [id, { tail }] of entries) {

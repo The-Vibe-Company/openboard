@@ -76,11 +76,7 @@ test("rejects invalid watchers and sync entries, and distinguishes an absent reg
   );
   const many = Object.fromEntries(Array.from({ length: 33 }, (_, index) => [`w${index}`, { tail: "dev" }]));
   await error(call(app, "POST", "/watchers", { watch: many }), 400, "bad_watcher");
-  await error(
-    call(app, "POST", "/watchers", { watch, sync: [{ key: "s", platform: "fixture" }] }),
-    400,
-    "invalid_request",
-  );
+  await error(call(app, "POST", "/watchers", { watch, sync: [{ key: "s", platform: "fixture" }] }), 403, "forbidden");
   await error(call(app, "GET", pullPath), 404, "no_registration");
 });
 

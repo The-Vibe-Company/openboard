@@ -30,7 +30,7 @@ export const registerWatchers = defineOperation({
     ),
   },
   output: Registration,
-  errors: ["bad_watcher", "invalid_request", "no_wake_by_path", "no_wake_by_url"],
+  errors: ["bad_watcher", "forbidden", "invalid_request", "no_wake_by_path", "no_wake_by_url"],
   effects: { readOnly: false, idempotent: true, emits: ["ob.watchers.registered"] },
   mcp: { tool: "register_watchers" },
 });

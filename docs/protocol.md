@@ -361,12 +361,12 @@ board audit. The CLI is `ob grants update <id>` and the MCP tool is `update_gran
 
 | Method | Path | | Notes |
 | --- | --- | --- | --- |
-| POST | `/watchers` | U | `{ watch }` pull registrations, ≤ 32, keyed by actor (D17); `url` → 501 `no_wake_by_url`; `path` → 501 `no_wake_by_path`; any `sync` entry → 403 "this board keeps no sync" |
+| POST | `/watchers` | U | `{ watch }` pull registrations, ≤ 32, keyed by actor (D17); `url` → 501 `no_wake_by_url`; `path` → 501 `no_wake_by_path`; any `sync` entry → 403 `forbidden` ("this board keeps no sync") |
 | GET | `/watchers` | U | |
 | GET | `/watchers/matches` | U | 5-min leases, per thread in order, `wait` ≤ 25 s. An expired lease counts as a failed try. |
 | POST | `/watchers/matches/:id/ack` | U | `{ lease, error?, skip? }`. Errors retry after 1, 2, 4, and 8 seconds. The fifth failed try emits `watch.failed`. `skip: true` drops the match silently. |
 
-Until ticket 384, a non-empty `sync` registration answers 400 `invalid_request`.
+An empty `sync: []` is equivalent to omitting it.
 
 Upstream's watcher pull is the "pull/ack variant" of webhooks: register a
 tail, pull with a lease, ack or retry.

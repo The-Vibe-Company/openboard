@@ -7,11 +7,14 @@ writes:
   - packages/core/src/watchers/register.ts
   - packages/core/test/watchers/register.test.ts
   - packages/server/test/watchers/sync.test.ts
+  - packages/contract/src/operations/watchers/index.ts
+  - packages/server/test/watchers/matches.test.ts
+  - docs/protocol.md
 conformance: []
 modes: [local, hosted]
 depends_on: [300, 301, 382]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 579
 ---
 
