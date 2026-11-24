@@ -2,11 +2,11 @@ import type { Actor, Message } from "@openboard/contract";
 import { type BoardEvent, type MessageDeleted, type MessagePosted, messages, parseId } from "@openboard/core";
 import type { BoardKeys, BoardScope, BoardView, BoardWriter } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
-import { query, sql } from "../sql.ts";
+import { type Fragment, query, sql } from "../sql.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
 import { findAgent, findAgentByClaimKey, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
 import { lockBoard, setHead } from "./boards.ts";
-import { findChannel, foldChannelCreated } from "./channels.ts";
+import { codePointOrder, findChannel, foldChannelCreated } from "./channels.ts";
 import {
   connectionNamed,
   findConnection,
@@ -17,6 +17,18 @@ import {
   nextGrant,
   profileHolder,
 } from "./connections.ts";
+
+const jsonStrings: Fragment = {
+  fragment: ({ name }) =>
+    name === "sqlite" ? "json_each(input.data)" : "jsonb_array_elements_text(input.data::jsonb)",
+};
+const jsonRows: Fragment = {
+  fragment: ({ name }) => (name === "sqlite" ? "json_each(input.data)" : "jsonb_array_elements(input.data::jsonb)"),
+};
+const contains: Fragment = { fragment: ({ name }) => (name === "sqlite" ? "instr" : "strpos") };
+const messageReactions: Fragment = {
+  fragment: ({ name }) => (name === "sqlite" ? "m.view -> 'reactions'" : "m.view::jsonb ->> 'reactions'"),
+};
 
 export const messageStatements = {
   insertEvent: sql`INSERT INTO events (org_id, board_id, id, type, at, thread, message, channel, actor, principal,
@@ -33,6 +45,44 @@ export const messageStatements = {
     VALUES (${"orgId"}, ${"boardId"}, ${"path"}, ${"at"}, ${"id"}, 1, ${"threads"}) ON CONFLICT (board_id, path)
     DO UPDATE SET last_index = excluded.last_index, messages = channels.messages + 1,
     threads = channels.threads + excluded.threads`,
+  mentionActors: sql`WITH input AS (SELECT CAST(${"handles"} AS TEXT) AS data)
+    SELECT id, handle, name FROM actors WHERE org_id = ${"orgId"} AND board_id = ${"boardId"}
+    AND EXISTS (
+      SELECT 1 FROM input CROSS JOIN ${jsonStrings} AS wanted WHERE actors.board_id = ${"boardId"} AND (
+        lower(actors.handle) = wanted.value OR
+        substr(lower(actors.handle), length(actors.handle) - length(wanted.value)) = '/' || wanted.value
+      )
+    )
+    ORDER BY handle${codePointOrder}, id${codePointOrder}`,
+  mentionEvidence: sql`WITH input AS (SELECT CAST(${"handles"} AS TEXT) AS data),
+    evidence AS (
+      SELECT a.id AS actor, m.channel, m.id, m.version, m.board_id,
+        CASE WHEN m.actor = a.id OR ${contains}(${messageReactions}, '"' || a.id || '"') > 0
+          THEN NULL ELSE m.text END AS reference
+      FROM actors AS a JOIN messages AS m ON a.org_id = m.org_id AND a.board_id = m.board_id
+      WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"}
+        AND m.org_id = ${"orgId"} AND m.board_id = ${"boardId"} AND m.deleted = 0
+        AND EXISTS (
+          SELECT 1 FROM input CROSS JOIN ${jsonStrings} AS wanted WHERE a.board_id = ${"boardId"} AND (
+            lower(a.handle) = wanted.value OR
+            substr(lower(a.handle), length(a.handle) - length(wanted.value)) = '/' || wanted.value
+          )
+        )
+        AND (m.actor = a.id OR ${contains}(m.text, '@[' || a.id || ']') > 0 OR
+          ${contains}(${messageReactions}, '"' || a.id || '"') > 0)
+    ), ranked AS (
+      SELECT actor, channel, id, version, reference, board_id,
+        ROW_NUMBER() OVER (PARTITION BY actor, channel, reference ORDER BY id DESC) AS recent
+      FROM evidence WHERE board_id = ${"boardId"}
+    )
+    SELECT actor, channel, id, version, reference FROM ranked WHERE board_id = ${"boardId"} AND recent = 1`,
+  unchangedMentionEvidence: sql`WITH input AS (SELECT CAST(${"proofs"} AS TEXT) AS data)
+    SELECT proof.value ->> 0 AS actor FROM input CROSS JOIN ${jsonRows} AS proof
+    JOIN messages AS m ON m.id = CAST(proof.value ->> 1 AS BIGINT)
+    WHERE m.board_id = ${"boardId"} AND m.org_id = ${"orgId"}
+      AND m.version = CAST(proof.value ->> 2 AS BIGINT)`,
+  threadWriters: sql`SELECT DISTINCT actor FROM messages WHERE org_id = ${"orgId"} AND board_id = ${"boardId"}
+    AND (id = ${"thread"} OR re = ${"thread"})`,
   replyTarget: sql`SELECT id, channel, COALESCE(re, id) AS thread FROM messages
     WHERE board_id = ${"boardId"} AND id = ${"id"}`,
   message: sql`SELECT view FROM messages WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
@@ -182,6 +232,25 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor:
     },
     channel: (path) => findChannel(tx, dialect, keys, path),
     actor,
+    async mentionActors(handles) {
+      const rows = await query(tx, dialect, messageStatements.mentionActors, {
+        ...keys,
+        handles: JSON.stringify([...handles]),
+      });
+      return rows.map(({ id, handle, name }) => ({ id: String(id), handle: String(handle), name: String(name) }));
+    },
+    async unchangedMentionEvidence(proofs) {
+      if (proofs.length === 0) return new Set<string>();
+      const rows = await query(tx, dialect, messageStatements.unchangedMentionEvidence, {
+        ...keys,
+        proofs: JSON.stringify(proofs.map(({ actor, id, version }) => [actor, id, version])),
+      });
+      return new Set(rows.map(({ actor }) => String(actor)));
+    },
+    async threadWriters(thread) {
+      const rows = await query(tx, dialect, messageStatements.threadWriters, { ...keys, thread });
+      return new Set(rows.map(({ actor }) => String(actor)));
+    },
     async replyTarget(id) {
       const [row] = await query(tx, dialect, messageStatements.replyTarget, { boardId: keys.boardId, id });
       if (!row) return null;
@@ -221,7 +290,7 @@ export function boardView(
   db: Db,
   dialect: Dialect,
   scope: BoardScope,
-): Pick<BoardView, "write" | "channelMessages" | "ownClientPost"> {
+): Pick<BoardView, "write" | "channelMessages" | "ownClientPost" | "mentionEvidence"> {
   const keys: BoardKeys = { orgId: scope.orgId, boardId: scope.boardId };
   return {
     write: (fn, as) =>
@@ -230,6 +299,19 @@ export function boardView(
         const { head, actor } = await lockBoardAs(tx, dialect, keys, as);
         return fn(writer(tx, dialect, keys, head, actor));
       }),
+    async mentionEvidence(handles) {
+      const rows = await query(db, dialect, messageStatements.mentionEvidence, {
+        ...keys,
+        handles: JSON.stringify([...handles]),
+      });
+      return rows.map(({ actor, channel, id, version, reference }) => ({
+        actor: String(actor),
+        channel: String(channel),
+        id: Number(id),
+        version: Number(version),
+        reference: typeof reference === "string" ? reference : null,
+      }));
+    },
     async ownClientPost(clientId, { actor, principal }) {
       if (clientId.includes("\0")) return null;
       const [row] = await query(db, dialect, messageStatements.ownClientPost, { ...keys, clientId, actor, principal });

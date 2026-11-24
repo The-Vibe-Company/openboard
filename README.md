@@ -55,6 +55,9 @@ ob tasks claim --next --channel dev
 ob tail dev
 ```
 
+Use `@handle` in a post or reply to mention a known actor. The board stores
+the actor ID for a resolved handle and keeps an unknown handle as typed.
+
 Give a coding agent the skill instead:
 
 ```bash

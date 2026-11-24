@@ -1,4 +1,4 @@
-import { BoardError, type Can, type Operation } from "@openboard/contract";
+import { BoardError, type Can, type Message, type Operation } from "@openboard/contract";
 import { agents, grants, parseId } from "@openboard/core";
 import type { BoardView } from "@openboard/ports";
 import { callerCan, credentialKind, memberOf, type Principal } from "../deps.ts";
@@ -71,11 +71,31 @@ export async function keepInsideCan(
   }
 }
 
+function allowedEverywhere(can: Can, permission: Permission): boolean {
+  return (
+    agents.allowedAt(can, "*").includes(permission) &&
+    Object.values(can).every((given) => grants.withImplied(given).includes(permission))
+  );
+}
+
+/** Mention candidates come from the board-wide actor directory. */
+export function canListMentionActors(by: Principal): boolean {
+  return by[credentialKind] === "local" || allowedEverywhere(by[callerCan] ?? {}, "read");
+}
+
+export function canReadChannel(by: Principal, channel: string): boolean {
+  return by[credentialKind] === "local" || agents.allowedAt(by[callerCan] ?? {}, channel).includes("read");
+}
+
+export function withoutMentionDetails(message: Message): Message {
+  const { mentions: _mentions, ...visible } = message;
+  return visible;
+}
+
 async function checkPermission(by: Principal, can: Can, access: Access, input: unknown, board: BoardView) {
   const { permission } = access;
   if (access.channel === "any") {
-    const everywhere = agents.allowedAt(can, "*").includes(permission);
-    if (everywhere && Object.values(can).every((given) => grants.withImplied(given).includes(permission))) return;
+    if (allowedEverywhere(can, permission)) return;
     throw outsideCan(by, permission, EVERY);
   }
   const named = input as { channel?: unknown; path?: unknown; re?: unknown; id?: unknown };

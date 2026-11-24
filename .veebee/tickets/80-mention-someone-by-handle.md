@@ -10,14 +10,26 @@ writes:
   - packages/ports/testkit/store/messages.test-suite.ts
   - packages/server/test/messages.test.ts
   - packages/ports/src/store.ts
+  - packages/ports/src/index.ts
   - packages/core/src/messages/post.ts
   - packages/core/src/messages/mentions.ts
   - packages/core/test/messages/mentions.test.ts
+  - packages/contract/src/entities/messages.ts
+  - packages/core/src/messages/edit.ts
+  - packages/core/src/messages/delete.ts
+  - packages/server/src/auth/access.ts
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/threads.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
+  - README.md
+  - packages/server/test/mentions.test.ts
+  - tools/conformance/score.json
 conformance: ["core/stores a handle one actor has as a mention of them, and keeps one no one has as typed"]
 modes: [local]
 depends_on: [53, 79]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 80
 ---
 

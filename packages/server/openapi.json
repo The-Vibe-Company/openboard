@@ -1278,7 +1278,45 @@
                 "schema": {
                   "type": "object",
                   "required": ["ok"],
-                  "properties": { "ok": { "const": true, "type": "boolean" } }
+                  "properties": {
+                    "ok": { "const": true, "type": "boolean" },
+                    "mentions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["written", "actor", "candidates"],
+                        "properties": {
+                          "written": { "type": "string" },
+                          "actor": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": ["id", "handle", "name"],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "handle": { "type": "string" },
+                                  "name": { "type": "string" }
+                                }
+                              },
+                              { "type": "null" }
+                            ]
+                          },
+                          "candidates": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "handle", "name"],
+                              "properties": {
+                                "id": { "type": "string" },
+                                "handle": { "type": "string" },
+                                "name": { "type": "string" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -1903,6 +1941,42 @@
                           "id": { "type": "string" },
                           "channel": { "type": "string" },
                           "text": { "type": "string" },
+                          "mentions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["written", "actor", "candidates"],
+                              "properties": {
+                                "written": { "type": "string" },
+                                "actor": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": ["id", "handle", "name"],
+                                      "properties": {
+                                        "id": { "type": "string" },
+                                        "handle": { "type": "string" },
+                                        "name": { "type": "string" }
+                                      }
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                },
+                                "candidates": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": ["id", "handle", "name"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "handle": { "type": "string" },
+                                      "name": { "type": "string" }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
                           "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "thread": { "type": "string" },
@@ -2077,6 +2151,42 @@
                         "id": { "type": "string" },
                         "channel": { "type": "string" },
                         "text": { "type": "string" },
+                        "mentions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["written", "actor", "candidates"],
+                            "properties": {
+                              "written": { "type": "string" },
+                              "actor": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": ["id", "handle", "name"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "handle": { "type": "string" },
+                                      "name": { "type": "string" }
+                                    }
+                                  },
+                                  { "type": "null" }
+                                ]
+                              },
+                              "candidates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["id", "handle", "name"],
+                                  "properties": {
+                                    "id": { "type": "string" },
+                                    "handle": { "type": "string" },
+                                    "name": { "type": "string" }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
                         "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "thread": { "type": "string" },
@@ -2136,6 +2246,42 @@
                           ]
                         },
                         "blocks": { "type": "array", "items": {} }
+                      }
+                    },
+                    "mentions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["written", "actor", "candidates"],
+                        "properties": {
+                          "written": { "type": "string" },
+                          "actor": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": ["id", "handle", "name"],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "handle": { "type": "string" },
+                                  "name": { "type": "string" }
+                                }
+                              },
+                              { "type": "null" }
+                            ]
+                          },
+                          "candidates": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "handle", "name"],
+                              "properties": {
+                                "id": { "type": "string" },
+                                "handle": { "type": "string" },
+                                "name": { "type": "string" }
+                              }
+                            }
+                          }
+                        }
                       }
                     }
                   }
@@ -2359,6 +2505,42 @@
                               "id": { "type": "string" },
                               "channel": { "type": "string" },
                               "text": { "type": "string" },
+                              "mentions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["written", "actor", "candidates"],
+                                  "properties": {
+                                    "written": { "type": "string" },
+                                    "actor": {
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "required": ["id", "handle", "name"],
+                                          "properties": {
+                                            "id": { "type": "string" },
+                                            "handle": { "type": "string" },
+                                            "name": { "type": "string" }
+                                          }
+                                        },
+                                        { "type": "null" }
+                                      ]
+                                    },
+                                    "candidates": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "required": ["id", "handle", "name"],
+                                        "properties": {
+                                          "id": { "type": "string" },
+                                          "handle": { "type": "string" },
+                                          "name": { "type": "string" }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
                               "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                               "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                               "thread": { "type": "string" },
@@ -2461,6 +2643,42 @@
                                   "id": { "type": "string" },
                                   "channel": { "type": "string" },
                                   "text": { "type": "string" },
+                                  "mentions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["written", "actor", "candidates"],
+                                      "properties": {
+                                        "written": { "type": "string" },
+                                        "actor": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "required": ["id", "handle", "name"],
+                                              "properties": {
+                                                "id": { "type": "string" },
+                                                "handle": { "type": "string" },
+                                                "name": { "type": "string" }
+                                              }
+                                            },
+                                            { "type": "null" }
+                                          ]
+                                        },
+                                        "candidates": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "required": ["id", "handle", "name"],
+                                            "properties": {
+                                              "id": { "type": "string" },
+                                              "handle": { "type": "string" },
+                                              "name": { "type": "string" }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
                                   "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "thread": { "type": "string" },
@@ -2886,6 +3104,42 @@
                                   "id": { "type": "string" },
                                   "channel": { "type": "string" },
                                   "text": { "type": "string" },
+                                  "mentions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["written", "actor", "candidates"],
+                                      "properties": {
+                                        "written": { "type": "string" },
+                                        "actor": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "required": ["id", "handle", "name"],
+                                              "properties": {
+                                                "id": { "type": "string" },
+                                                "handle": { "type": "string" },
+                                                "name": { "type": "string" }
+                                              }
+                                            },
+                                            { "type": "null" }
+                                          ]
+                                        },
+                                        "candidates": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "required": ["id", "handle", "name"],
+                                            "properties": {
+                                              "id": { "type": "string" },
+                                              "handle": { "type": "string" },
+                                              "name": { "type": "string" }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
                                   "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "thread": { "type": "string" },
@@ -3014,6 +3268,42 @@
                                   "id": { "type": "string" },
                                   "channel": { "type": "string" },
                                   "text": { "type": "string" },
+                                  "mentions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["written", "actor", "candidates"],
+                                      "properties": {
+                                        "written": { "type": "string" },
+                                        "actor": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "required": ["id", "handle", "name"],
+                                              "properties": {
+                                                "id": { "type": "string" },
+                                                "handle": { "type": "string" },
+                                                "name": { "type": "string" }
+                                              }
+                                            },
+                                            { "type": "null" }
+                                          ]
+                                        },
+                                        "candidates": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "required": ["id", "handle", "name"],
+                                            "properties": {
+                                              "id": { "type": "string" },
+                                              "handle": { "type": "string" },
+                                              "name": { "type": "string" }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
                                   "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "thread": { "type": "string" },
@@ -3142,6 +3432,42 @@
                                   "id": { "type": "string" },
                                   "channel": { "type": "string" },
                                   "text": { "type": "string" },
+                                  "mentions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["written", "actor", "candidates"],
+                                      "properties": {
+                                        "written": { "type": "string" },
+                                        "actor": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "required": ["id", "handle", "name"],
+                                              "properties": {
+                                                "id": { "type": "string" },
+                                                "handle": { "type": "string" },
+                                                "name": { "type": "string" }
+                                              }
+                                            },
+                                            { "type": "null" }
+                                          ]
+                                        },
+                                        "candidates": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "required": ["id", "handle", "name"],
+                                            "properties": {
+                                              "id": { "type": "string" },
+                                              "handle": { "type": "string" },
+                                              "name": { "type": "string" }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
                                   "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                                   "thread": { "type": "string" },
@@ -3298,6 +3624,42 @@
                         "id": { "type": "string" },
                         "channel": { "type": "string" },
                         "text": { "type": "string" },
+                        "mentions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["written", "actor", "candidates"],
+                            "properties": {
+                              "written": { "type": "string" },
+                              "actor": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": ["id", "handle", "name"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "handle": { "type": "string" },
+                                      "name": { "type": "string" }
+                                    }
+                                  },
+                                  { "type": "null" }
+                                ]
+                              },
+                              "candidates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["id", "handle", "name"],
+                                  "properties": {
+                                    "id": { "type": "string" },
+                                    "handle": { "type": "string" },
+                                    "name": { "type": "string" }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
                         "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "thread": { "type": "string" },
@@ -3480,6 +3842,42 @@
                         "id": { "type": "string" },
                         "channel": { "type": "string" },
                         "text": { "type": "string" },
+                        "mentions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["written", "actor", "candidates"],
+                            "properties": {
+                              "written": { "type": "string" },
+                              "actor": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": ["id", "handle", "name"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "handle": { "type": "string" },
+                                      "name": { "type": "string" }
+                                    }
+                                  },
+                                  { "type": "null" }
+                                ]
+                              },
+                              "candidates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["id", "handle", "name"],
+                                  "properties": {
+                                    "id": { "type": "string" },
+                                    "handle": { "type": "string" },
+                                    "name": { "type": "string" }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
                         "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                         "thread": { "type": "string" },
@@ -3573,6 +3971,42 @@
                           "id": { "type": "string" },
                           "channel": { "type": "string" },
                           "text": { "type": "string" },
+                          "mentions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["written", "actor", "candidates"],
+                              "properties": {
+                                "written": { "type": "string" },
+                                "actor": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": ["id", "handle", "name"],
+                                      "properties": {
+                                        "id": { "type": "string" },
+                                        "handle": { "type": "string" },
+                                        "name": { "type": "string" }
+                                      }
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                },
+                                "candidates": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": ["id", "handle", "name"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "handle": { "type": "string" },
+                                      "name": { "type": "string" }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
                           "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "thread": { "type": "string" },

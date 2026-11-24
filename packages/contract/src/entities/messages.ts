@@ -41,11 +41,22 @@ export const MessageAuthor = Type.Object({
 });
 export type MessageAuthor = Static<typeof MessageAuthor>;
 
+export const MentionActor = Type.Object({ id: Type.String(), handle: Type.String(), name: Type.String() });
+export type MentionActor = Static<typeof MentionActor>;
+
+export const Mention = Type.Object({
+  written: Type.String(),
+  actor: Type.Union([MentionActor, Type.Null()]),
+  candidates: Type.Array(MentionActor),
+});
+export type Mention = Static<typeof Mention>;
+
 /** A message as the board answers it (upstream `MessageView`); IDs are decimal strings. */
 export const Message = Type.Object({
   id: Type.String(),
   channel: Type.String(),
   text: Type.String(),
+  mentions: Type.Optional(Type.Array(Mention)),
   re: Type.Union([Type.String(), Type.Null()]),
   replyTo: Type.Union([Type.String(), Type.Null()]),
   thread: Type.String(),
