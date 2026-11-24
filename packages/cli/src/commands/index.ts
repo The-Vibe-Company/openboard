@@ -8,6 +8,7 @@ export interface CommandContext {
   readonly client: Client;
   readonly boardUrl: string;
   readonly now: () => number;
+  readonly timeoutSignal: (ms: number) => AbortSignal;
   readonly args: readonly string[];
   /** The explicit `--as` override. */
   readonly profile: string | undefined;
@@ -17,7 +18,7 @@ export interface CommandContext {
   readonly output: Output;
 }
 
-export interface StandaloneContext extends Omit<CommandContext, "client" | "boardUrl" | "now"> {
+export interface StandaloneContext extends Omit<CommandContext, "client" | "boardUrl" | "now" | "timeoutSignal"> {
   readonly env: CliEnvironment;
   readonly options: CliOptions;
 }
