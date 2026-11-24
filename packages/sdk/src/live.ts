@@ -1,4 +1,4 @@
-import { type InputOf, type OutputOf, readEvents } from "@openboard/contract";
+import { BoardError, type InputOf, type OutputOf, readEvents } from "@openboard/contract";
 import { answerOf, type ClientOptions, reach, requestOf } from "./client.ts";
 
 /** One event of the board's feed, exactly as `GET /events` serves it. */
@@ -17,6 +17,22 @@ const LONG_POLL_SECONDS = 30;
 
 type Frame = { readonly id?: string; readonly event?: string; readonly data?: string };
 
+/** A stream that breaks after it opened is as `unreachable` as a board that never answered. */
+function broken(error: unknown): never {
+  if (!(error instanceof TypeError || (error instanceof Error && "code" in error))) throw error;
+  throw new BoardError("unreachable", `the board's event stream broke: ${error.message}`);
+}
+
+/** One `board` frame's event; a frame that is not JSON is the board's fault, as in `answerOf`. */
+function eventOf(data: string): BoardEvent {
+  try {
+    return JSON.parse(data) as BoardEvent;
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    throw new BoardError("remote_error", "the board sent an event that is not JSON");
+  }
+}
+
 /** Splits an SSE body into frames (WHATWG "event stream interpretation"); comments and `retry` are dropped. */
 async function* framesOf(body: ReadableStream<Uint8Array>): AsyncGenerator<Frame> {
   const reader = body.getReader();
@@ -25,7 +41,7 @@ async function* framesOf(body: ReadableStream<Uint8Array>): AsyncGenerator<Frame
   let frame: { id?: string; event?: string; data?: string[] } = {};
   try {
     while (true) {
-      const { value, done } = await reader.read();
+      const { value, done } = await reader.read().catch(broken);
       if (done) return;
       buffer += decoder.decode(value, { stream: true });
       // A trailing `\r` may be the first half of `\r\n`: hold it until the next chunk.
@@ -59,7 +75,7 @@ async function* framesOf(body: ReadableStream<Uint8Array>): AsyncGenerator<Frame
 async function* streamed(response: Response): AsyncGenerator<BoardEvent> {
   if (!response.body) return;
   for await (const frame of framesOf(response.body)) {
-    if (frame.event === "board" && frame.data !== undefined) yield JSON.parse(frame.data) as BoardEvent;
+    if (frame.event === "board" && frame.data !== undefined) yield eventOf(frame.data);
   }
 }
 

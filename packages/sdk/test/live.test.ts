@@ -157,3 +157,39 @@ test("a board that does not answer is unreachable", async () => {
     .catch((e: unknown) => e);
   expect((error as BoardError).code).toBe("unreachable");
 });
+
+test("a stream that breaks after it opened is unreachable", async () => {
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      controller.error(new TypeError("terminated"));
+    },
+  });
+  const fetch = async () => new Response(body, { headers: { "content-type": "text/event-stream" } });
+  const error = await tail({ url, token, fetch })
+    .next()
+    .catch((e: unknown) => e);
+  expect(error).toBeInstanceOf(BoardError);
+  expect((error as BoardError).code).toBe("unreachable");
+});
+
+test("a board frame that is not JSON is a remote error", async () => {
+  const live = liveResponse();
+  live.push("event: board\ndata: {not json\n\n");
+  const error = await tail({ url, token, fetch: async () => live.response })
+    .next()
+    .catch((e: unknown) => e);
+  expect((error as BoardError).code).toBe("remote_error");
+});
+
+test("long-polling after `last` follows by cursor alone", async () => {
+  const abort = new AbortController();
+  const seen: URL[] = [];
+  const fetch = async (request: Request) => {
+    seen.push(new URL(request.url));
+    if (seen.length === 2) abort.abort();
+    return Response.json({ cursor: "9", events: [posted("9", "newest")] });
+  };
+  for await (const _ of tail({ url, token, last: 2, signal: abort.signal, fetch })) {
+  }
+  expect(seen.map((u) => u.search)).toEqual(["?last=2", "?after=9&wait=30"]);
+});
