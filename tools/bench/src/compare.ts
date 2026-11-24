@@ -20,10 +20,10 @@ interface ModeBudget {
 
 const modeBudgets: Partial<Record<Mode, ModeBudget>> = budgets;
 const measuredBudgetMultiplier = 1.2;
-/** Sub-millisecond timings jitter by tenths of a millisecond on shared CI runners. */
-const measuredNoiseFloorMs = 0.5;
+/** Sub-millisecond timings jitter on shared CI runners: tenths of a millisecond at p50, up to a millisecond at p99. */
+const measuredNoiseFloorMs = { p50: 0.5, p99: 1 } as const;
 
-/** Returns diagnostics for increased exact counters and measured values more than 20% and 0.5 ms over budget. */
+/** Returns diagnostics for increased exact counters and measured values more than 20% and the noise floor over budget. */
 export function compareBudgets(report: ModeReport): string[] {
   const budget = modeBudgets[report.mode];
   if (!budget) return [];
@@ -41,8 +41,9 @@ export function compareBudgets(report: ModeReport): string[] {
       ["p50", p50, p50Ms],
       ["p99", p99, p99Ms],
     ] as const) {
-      if (value > Math.max(limit * measuredBudgetMultiplier, limit + measuredNoiseFloorMs)) {
-        failures.push(`${name} ${metric}: ${value} ms exceeds budget ${limit} ms by more than 20% and 0.5 ms`);
+      const floor = measuredNoiseFloorMs[metric];
+      if (value > Math.max(limit * measuredBudgetMultiplier, limit + floor)) {
+        failures.push(`${name} ${metric}: ${value} ms exceeds budget ${limit} ms by more than 20% and ${floor} ms`);
       }
     }
   }

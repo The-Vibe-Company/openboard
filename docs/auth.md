@@ -301,7 +301,10 @@ Authorization: Bearer obc_…
   permissions returns 400 `invalid_request`. Once the agent expires or is
   revoked, a retry returns 401 `unauthorized`. Use a new key for a new launch.
 - **Per-agent revoke:** `POST {BOARD_URL}/x/connections/:id/agents/:agent/revoke`,
-  also an inbound-rule action.
+  also an inbound-rule action: every token of that agent answers 401 from the
+  next request and its profile is free again, while the connection's secret and
+  its other agents keep working. Use `ob connections revoke-agent <id> <agent>`
+  as the local owner.
 
 **Mode 3, injecting proxy or MCP gateway (upstream's sandbox mode).** The
 secret stays outside the VM; the proxy adds `authorization`, a fixed

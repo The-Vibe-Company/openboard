@@ -11,11 +11,21 @@ writes:
   - packages/server/test/connections.test.ts
   - packages/ports/src/store.ts
   - packages/server/test/auth/revoke-agent.test.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/core/src/access/connections.ts
+  - packages/core/src/index.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/openapi.json
+  - docs/auth.md
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [128]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude
 issue: 130
 ---
 
@@ -23,7 +33,7 @@ issue: 130
 As an orchestrator, I stop one sandbox's agent without touching the others.
 
 ## Done when
-- [ ] `curl -X POST http://127.0.0.1:8787/api/local/main/x/connections/<id>/agents/<agent>/revoke` makes that agent's token answer 401 while another agent of the same connection keeps working
+- [x] `curl -X POST http://127.0.0.1:8787/api/local/main/x/connections/<id>/agents/<agent>/revoke` makes that agent's token answer 401 while another agent of the same connection keeps working
 
 ## Out of scope
 - The inbound rule that does it (M11, 332).

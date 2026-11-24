@@ -139,6 +139,12 @@ answers. OpenBoard adds:
 | POST | `/messages/:id/reactions`, `/messages/:id/labels` | U | |
 | GET | `/events` | U | JSON feed with `after`; SSE and long-poll planned |
 
+Use `ob read <channel> --label status=open` to list threads with a matching root or reply.
+`GET /threads` accepts `label=key` for presence and `label=key=value` for an exact value.
+Use `key=a|b` for alternatives. Repeat the flag or query parameter to require all filters
+on one message, including labels inherited from its thread root. Each summary keeps the
+thread's full reply count and latest reply.
+
 Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --idempotency-key`.
 
 ### Attachments, schedules, tasks, grants, schemas
@@ -202,7 +208,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | GET | `/x/connections/:id/policy` | X | `{ env, headers, routes }` for mode 3 |
 | POST | `/x/connections/claim` | X | bearer: connection secret |
 | POST | `/x/connections/refresh` | X | bearer: agent token |
-| POST | `/x/connections/:id/agents/:agent/revoke` | X | |
+| POST | `/x/connections/:id/agents/:agent/revoke` | X | Board owner or organization admin. Returns `{ id, connection, revokedAt }`; the agent's tokens answer 401 from the next request, its profile is free, and the connection and its other agents keep working. An unknown or already revoked agent, or one of another connection, answers 404 `not_found`. |
 | POST, GET | `/x/webhooks`; GET, POST `/x/webhooks/:id`; POST `/x/webhooks/:id/delete`, `/test` | X | |
 | GET | `/x/webhooks/:id/deliveries`; POST `/x/webhooks/:id/deliveries/:dl/retry` | X | |
 | POST, GET | `/x/inbound`; GET, POST `/x/inbound/:id`; POST `/x/inbound/:id/delete` | X | |
@@ -239,7 +245,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | GET, POST | `/api/x/orgs/:org/invitations` | admin | `{ role, email?, send? }` → `{ invitation, url }` |
 | POST | `/api/x/orgs/:org/invitations/:id/revoke` | admin | → `{ id, revokedAt }` and `ob.invitation.revoked`; 410 `invitation_used` if already accepted or revoked. Accepting a revoked link answers 410 `invitation_used` |
 | GET | `/api/x/invitations/:token` | anyone | organization name, role, expiry (for the accept page) |
-| POST | `/api/x/invitations/accept` | person | `{ token }` → `{ org, role }` |
+| POST | `/api/x/invitations/accept` | person | `{ token }` → `{ org, role }`. A bound invitation requires a matching verified email (case-insensitive), or returns 403 `invitation_email_mismatch` without consuming the link. |
 | GET, POST | `/api/x/orgs/:org/boards` | member / admin | list; create `{ slug, name }` with seeded grants |
 | POST | `/api/x/orgs/:org/boards/:board/delete` | admin | soft delete |
 | GET | `/api/x/orgs/:org/audit` | admin | organization events |

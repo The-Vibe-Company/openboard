@@ -56,6 +56,7 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
   });
 
   agentRevocationSuite(driver, open);
+  oneAgentRevocationSuite(driver, open);
   agentRefreshSuite(driver, open);
   claimsSuite(driver, open);
 }
@@ -107,6 +108,46 @@ function agentRevocationSuite(driver: string, open: OpenStore): void {
       expect(await board.connection(fixers.id)).toBeNull();
       expect(await board.agent(token.id)).toBeNull();
       expect(await board.readEvents(0)).toEqual({ head: 3, cursor: 3, events: [] });
+    } finally {
+      await store.close();
+    }
+  });
+}
+
+/** Revoking one agent frees its profile and leaves its connection and sibling agents as they were. */
+function oneAgentRevocationSuite(driver: string, open: OpenStore): void {
+  test(`${driver}: revokes one agent of a connection, off the feed, and keeps its siblings`, async () => {
+    const store = await open();
+    try {
+      const keys = await store.platform().findBoard("local", "main");
+      if (!keys) throw new Error("the implicit board local/main is missing");
+      const board = store.board(testScope(keys));
+      const fixers = await create(board, "fixers", "a");
+      const connection = { ...fixers, profiles: ["*"], tokenTtl: 3600, tokenMax: 86_400, claims };
+      const claim = (letter: string, profile: string) =>
+        board.write(async (writer) => {
+          const token = { id: `ag_${letter.repeat(16)}`, hash: letter.repeat(64) };
+          const context = { by, now: 1, connection, token };
+          const decided = agents.decideClaim({ head: writer.head, holder: null }, { profile }, context);
+          await writer.append(decided.events);
+          return token.id;
+        });
+      const first = await claim("b", "first");
+      const second = await claim("c", "second");
+      await board.write(async (writer) => {
+        const record = await writer.agent(first);
+        const target = record && { id: record.agent.id, connection: record.connection.id };
+        await writer.append([
+          connections.decideRevokeAgent(writer.head, { connection: fixers.id, agent: target }, { by, now: 2 }),
+        ]);
+        expect(await writer.agent(first)).toBeNull();
+        expect(await writer.profileHolder(fixers.id, "first")).toBeNull();
+        expect(await writer.profileHolder(fixers.id, "second")).toEqual({ id: second, tokenExpires: 3_600_001 });
+      });
+      expect(await board.agent(first)).toBeNull();
+      expect((await board.agent(second))?.agent.id).toBe(second);
+      expect((await board.connection(fixers.id))?.connection.id).toBe(fixers.id);
+      expect(await board.readEvents(0)).toEqual({ head: 4, cursor: 4, events: [] });
     } finally {
       await store.close();
     }

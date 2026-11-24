@@ -182,6 +182,23 @@ test("a token without react answers 403 forbidden to a reaction in a channel it 
   expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
 });
 
+test("a token claimed with only label labels a message, since label implies read", async () => {
+  app = makeApp();
+  await call(app, "POST", "/messages", post);
+  const token = await pinnedToken(app, { "dev/": ["label"] }, { "dev/": ["read", "post", "label"] });
+  const labeled = await as(app, token, null, "POST", "/messages/2/labels", { set: { status: "done" } });
+  expect([labeled.status, await labeled.json()]).toEqual([200, { ok: true }]);
+});
+
+test("a token without label answers 403 forbidden to a label write in a channel it posts in", async () => {
+  app = makeApp();
+  await call(app, "POST", "/messages", post);
+  const token = await pinnedToken(app);
+  const refused = await as(app, token, null, "POST", "/messages/2/labels", { set: { status: "open" } });
+  expect(refused.status).toBe(403);
+  expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
+});
+
 test("a post or reply with labels also needs label where it lands: 403 forbidden without it, and nothing posted", async () => {
   app = makeApp();
   const id = await postIn(app, "dev");

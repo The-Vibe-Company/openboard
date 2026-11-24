@@ -11,12 +11,20 @@ import {
 import { getMe, listActors } from "./actors.ts";
 import { createBoard, listBoards } from "./boards.ts";
 import { createChannel, listChannels } from "./channels.ts";
-import { claimConnection, createConnection, refreshAgentToken, revokeConnection } from "./connections.ts";
+import { claimConnection, createConnection, refreshAgentToken, revokeAgent, revokeConnection } from "./connections.ts";
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
 import { changeMemberRole } from "./memberships.ts";
-import { deleteMessage, editMessage, listMessages, postMessage, reactToMessage, readPost } from "./messages.ts";
+import {
+  deleteMessage,
+  editMessage,
+  labelMessage,
+  listMessages,
+  postMessage,
+  reactToMessage,
+  readPost,
+} from "./messages.ts";
 import { createOrg } from "./orgs.ts";
 import { listThreads, readThread } from "./threads.ts";
 
@@ -38,6 +46,7 @@ export const operations = [
   getMe,
   getOpenApi,
   getSession,
+  labelMessage,
   listActors,
   listBoards,
   listChannels,
@@ -53,6 +62,7 @@ export const operations = [
   readPost,
   readThread,
   refreshAgentToken,
+  revokeAgent,
   revokeAllSessions,
   revokeConnection,
   revokeInvitation,
@@ -77,6 +87,7 @@ export {
   getMe,
   getOpenApi,
   getSession,
+  labelMessage,
   listActors,
   listBoards,
   listChannels,
@@ -92,6 +103,7 @@ export {
   readPost,
   readThread,
   refreshAgentToken,
+  revokeAgent,
   revokeAllSessions,
   revokeConnection,
   revokeInvitation,

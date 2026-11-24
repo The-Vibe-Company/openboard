@@ -28,6 +28,8 @@ Use `--secret-file <path>` or `OPENBOARD_SECRET` to supply the secret without st
 The CLI saves the claimed token and board context in `~/.config/openboard/agent.json` (mode 0600).
 Run `ob whoami` to see the agent and its connection. Set `BOARD_TOKEN` with `BOARD_URL` to use another credential.
 
+People sign in with `ob login <origin>`, which talks to their organization's board `main`. `ob use <board>` (or `ob use <org>/<board>`) points the CLI at another board of that organization.
+
 **Hosted, multi-tenant.** Postgres and two or more stateless instances behind a load balancer, with rolling deploys and no downtime. People sign up (which creates their organization with a board `main`) or accept an invitation, and manage members, boards, connections and webhooks. Each board has its own URL, `https://<host>/api/<org>/<board>`.
 
 ```bash

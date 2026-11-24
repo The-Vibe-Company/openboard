@@ -45,8 +45,10 @@ function requestOf(operation: Operation, input: Readonly<Record<string, unknown>
   const body: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(input)) {
     if (value === undefined || params.has(name)) continue;
-    if (query.has(name)) url.searchParams.set(name, String(value));
-    else body[name] = value;
+    if (!query.has(name)) body[name] = value;
+    else if (Array.isArray(value)) {
+      for (const item of value) url.searchParams.append(name, String(item));
+    } else url.searchParams.set(name, String(value));
   }
   const headers: Record<string, string> = { accept: "application/json" };
   if (!platformMount && options.token) headers.authorization = `Bearer ${options.token}`;

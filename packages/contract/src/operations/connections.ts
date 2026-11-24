@@ -106,3 +106,19 @@ export const revokeConnection = defineOperation({
   why: "Connection revocation is a board administration command.",
   upstream: false,
 });
+
+export const revokeAgent = defineOperation({
+  name: "revokeAgent",
+  summary: "Revoke one claimed agent of a connection; the connection and its other agents keep working.",
+  route: { method: "POST", path: "/x/connections/:id/agents/:agent/revoke" },
+  scope: "board",
+  input: { params: Type.Object({ id: Ref("connection"), agent: Ref("agent") }) },
+  output: Type.Object({ id: Type.String(), connection: Type.String(), revokedAt: Type.String() }),
+  errors: ["unauthorized", "forbidden", "not_found"],
+  access: { permission: "manage", channel: "any" },
+  effects: { readOnly: false, idempotent: true, emits: ["ob.agent.revoked"] },
+  cli: { command: ["connections", "revoke-agent"], args: ["id", "agent"] },
+  mcp: false,
+  why: "Agent revocation is a board administration command, like connection revocation.",
+  upstream: false,
+});

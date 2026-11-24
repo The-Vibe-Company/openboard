@@ -28,7 +28,15 @@ export const listThreads = defineOperation({
   summary: "List a channel's latest threads by activity, oldest first, with reply counts and latest replies.",
   route: { method: "GET", path: "/threads" },
   scope: "board",
-  input: { query: Type.Object({ channel: ChannelPath }, { additionalProperties: false }) },
+  input: {
+    query: Type.Object(
+      {
+        channel: ChannelPath,
+        label: Type.Optional(Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }))),
+      },
+      { additionalProperties: false },
+    ),
+  },
   output: Type.Object({ threads: Type.Array(ThreadSummary), cursor: Type.String() }),
   errors: ["invalid_request"],
   access: { permission: "read", channel: "fromInput" },

@@ -10,6 +10,7 @@ import { findChannel, foldChannelCreated } from "./channels.ts";
 import {
   connectionNamed,
   findConnection,
+  foldAgentRevoked,
   foldConnectionCreated,
   foldConnectionRevoked,
   nextGrant,
@@ -40,6 +41,8 @@ export const messageStatements = {
     revision = ${"revision"}, version = ${"version"}, view = ${"view"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   reactToMessage: sql`UPDATE messages SET version = ${"version"}, view = ${"view"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  labelMessage: sql`UPDATE messages SET labels = ${"labels"}, version = ${"version"}, view = ${"view"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   dropRootReply: sql`UPDATE messages SET replies = replies - 1,
     (last_reply, active) = (
@@ -136,6 +139,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   else if (event.type === "actor.seen") await foldActorSeen(tx, dialect, keys, event);
   else if (event.type === "ob.agent.claimed") await foldAgentClaimed(tx, dialect, keys, event);
   else if (event.type === "ob.agent.refreshed") await foldAgentRefreshed(tx, dialect, keys, event);
+  else if (event.type === "ob.agent.revoked") await foldAgentRevoked(tx, dialect, keys, event);
   else if (event.type === "message.edited") {
     const { text, view } = event.payload;
     await query(tx, dialect, messageStatements.editMessage, {
@@ -153,6 +157,15 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
     await query(tx, dialect, messageStatements.reactToMessage, {
       ...keys,
       id: event.message,
+      version: view.version,
+      view: JSON.stringify(view),
+    });
+  } else if (event.type === "labels.changed") {
+    const { view } = event.payload;
+    await query(tx, dialect, messageStatements.labelMessage, {
+      ...keys,
+      id: event.message,
+      labels: JSON.stringify(view.labels),
       version: view.version,
       view: JSON.stringify(view),
     });

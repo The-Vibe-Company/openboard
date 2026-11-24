@@ -126,7 +126,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "403": {
-            "description": "forbidden",
+            "description": "forbidden, invitation_email_mismatch",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
@@ -1352,6 +1352,73 @@
         }
       }
     },
+    "/messages/{id}/labels": {
+      "post": {
+        "operationId": "label",
+        "summary": "Set labels on a message, each key to one value, raising its version.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["set"],
+                "properties": {
+                  "set": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ok"],
+                  "properties": { "ok": { "const": true, "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, reserved_label, message_deleted, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "message_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/actors": {
       "get": {
         "operationId": "actors",
@@ -1909,6 +1976,12 @@
               "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
               "type": "string"
             }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } }
           }
         ],
         "x-query-schema": {
@@ -1920,7 +1993,8 @@
               "maxLength": 2048,
               "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
               "type": "string"
-            }
+            },
+            "label": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } }
           }
         },
         "responses": {
@@ -3279,6 +3353,64 @@
                         "BOARD_PROFILE": { "type": "string" }
                       }
                     }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/x/connections/{id}/agents/{agent}/revoke": {
+      "post": {
+        "operationId": "revokeAgent",
+        "summary": "Revoke one claimed agent of a connection; the connection and its other agents keep working.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "connection", "type": "string" }
+          },
+          {
+            "name": "agent",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "agent", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id", "connection", "revokedAt"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "connection": { "type": "string" },
+                    "revokedAt": { "type": "string" }
                   }
                 }
               }

@@ -13,8 +13,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [146]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-t147
 issue: 148
 ---
 
@@ -22,7 +22,7 @@ issue: 148
 As an admin, a link works once and for seven days only.
 
 ## Done when
-- [ ] accepting an invitation a second time answers 410 `invitation_used`, and so does accepting one created more than seven days ago
+- [x] accepting an invitation a second time answers 410 `invitation_used`, and so does accepting one created more than seven days ago
 
 ## Out of scope
 - Email binding (148).

@@ -8,7 +8,8 @@ import { LOCAL_OWNER, NOW, PUBLIC_URL } from "./support/app.ts";
 import { browserSession, makeBrowserApp } from "./support/browser-session.ts";
 import { openStore } from "./support/drivers.ts";
 
-async function person(store: Store, slug: string, digit: number) {
+/** Signs a person in at `now`, without an organization. */
+async function signIn(store: Store, slug: string, digit: number, now = NOW) {
   const value = Buffer.alloc(32, digit).toString("base64url");
   const csrf = Buffer.alloc(32, digit + 2).toString("base64url");
   const personId = `u_${slug}`;
@@ -16,9 +17,14 @@ async function person(store: Store, slug: string, digit: number) {
     identity: { provider: "github", subject: slug, login: slug, name: slug, email: null, avatar: null },
     admitNew: true,
     newPersonId: personId,
-    session: { idHash: createHash("sha256").update(value).digest("hex"), csrf, expiresAt: NOW + 86_400_000 },
-    now: NOW,
+    session: { idHash: createHash("sha256").update(value).digest("hex"), csrf, expiresAt: now + 86_400_000 },
+    now,
   });
+  return { personId, headers: { cookie: `__Host-ob_session=${value}`, "x-ob-csrf": csrf, origin: PUBLIC_URL } };
+}
+
+async function person(store: Store, slug: string, digit: number) {
+  const { personId, headers } = await signIn(store, slug, digit);
   const org = orgs.decideCreate(
     { name: slug === "acme" ? "Acme" : "Other", slug },
     {
@@ -27,7 +33,7 @@ async function person(store: Store, slug: string, digit: number) {
     },
   );
   await store.platform().createOrg({ ...org, personId, now: NOW });
-  return { cookie: `__Host-ob_session=${value}`, "x-ob-csrf": csrf, origin: PUBLIC_URL };
+  return headers;
 }
 
 async function setup() {
@@ -64,8 +70,9 @@ async function setup() {
     create,
     preview,
     log,
+    join: async (slug: string, digit: number) => (await signIn(store, slug, digit, now)).headers,
     expire: () => {
-      now = NOW + 604_800_000;
+      now = NOW + 604_800_001;
     },
   };
 }
@@ -198,6 +205,60 @@ test("a second person signs in, accepts a link and sees both organization member
       ],
     });
     expect((await post("/orgs/acme/invitations", { role: "member" }, lin.headers)).status).toBe(403);
+  } finally {
+    await app.close();
+  }
+});
+
+test("accepting a link a second time, or one created more than seven days ago, answers 410 invitation_used", async () => {
+  const { app, acme, other, join, expire } = await setup();
+  const post = (path: string, headers: Record<string, string>, data: unknown) =>
+    app.fetch(new Request(`${PUBLIC_URL}/api/x${path}`, { method: "POST", headers, body: JSON.stringify(data) }));
+  const link = async () => {
+    const created = await post("/orgs/acme/invitations", acme, { role: "member" });
+    const { url } = (await created.json()) as OutputOf<typeof createInvitation>;
+    return new URL(url).pathname.slice("/invite/".length);
+  };
+  const refused = async (headers: Record<string, string>, token: string) => {
+    const response = await post("/invitations/accept", headers, { token });
+    expect(response.status).toBe(410);
+    expect(await response.json()).toMatchObject({ error: { code: "invitation_used" } });
+  };
+  try {
+    const used = await link();
+    const stale = await link();
+    const lin = await join("lin", 30);
+    expect((await post("/invitations/accept", lin, { token: used })).status).toBe(200);
+    await refused(lin, used);
+    await refused(other, used);
+    expire();
+    await refused(await join("mei", 31), stale);
+  } finally {
+    await app.close();
+  }
+});
+
+test("an email-bound invitation rejects a different or unverified email and admits the verified recipient", async () => {
+  const app = makeBrowserApp();
+  const post = (path: string, data: unknown, headers: Record<string, string>) =>
+    app.fetch(new Request(`${PUBLIC_URL}/api/x${path}`, { method: "POST", headers, body: JSON.stringify(data) }));
+  try {
+    const owner = await browserSession(app.fetch, "lin");
+    const ada = await browserSession(app.fetch, "ada");
+    const unverified = await browserSession(app.fetch, "mei");
+    expect((await post("/orgs", { slug: "acme", name: "Acme" }, owner.headers)).status).toBe(201);
+    const link = await post("/orgs/acme/invitations", { role: "member", email: "ada@example.com" }, owner.headers);
+    expect(link.status).toBe(201);
+    const { url } = (await link.json()) as OutputOf<typeof createInvitation>;
+    const body = { token: new URL(url).pathname.slice("/invite/".length) };
+    for (const person of [owner, unverified]) {
+      const refused = await post("/invitations/accept", body, person.headers);
+      expect(refused.status).toBe(403);
+      expect(await refused.json()).toMatchObject({ error: { code: "invitation_email_mismatch" } });
+    }
+    const accepted = await post("/invitations/accept", body, ada.headers);
+    expect(accepted.status).toBe(200);
+    expect(await accepted.json()).toEqual({ org: { slug: "acme", name: "Acme" }, role: "member" });
   } finally {
     await app.close();
   }

@@ -17,10 +17,10 @@ export const invitationStatements = {
   nextInvitationEvent: sql`SELECT COALESCE(MAX(id), 0) + 1 AS id FROM org_events WHERE org_id = ${"orgId"}`,
   listOrgMembers: sql`SELECT u.public_id, m.role FROM memberships m
     JOIN users u ON u.id = m.user_id WHERE m.org_id = ${"orgId"} ORDER BY u.public_id`,
-  lockRedeemableInvitation: sql`SELECT i.role, o.slug, o.name FROM invitations i
+  lockRedeemableInvitation: sql`SELECT i.role, i.email, o.slug, o.name FROM invitations i
     JOIN orgs o ON o.id = i.org_id WHERE i.org_id = ${"orgId"} AND i.token_hash = ${"tokenHash"}
     AND o.deleted_at IS NULL AND i.accepted_at IS NULL AND i.revoked_at IS NULL
-    AND i.expires_at > ${"at"} AND i.email IS NULL${forUpdate}`,
+    AND i.expires_at > ${"at"}${forUpdate}`,
   insertInvitedMember: sql`INSERT INTO memberships (org_id, user_id, role, created_at, invited_by)
     SELECT ${"orgId"}, u.id, i.role, ${"at"}, i.created_by FROM invitations i
     JOIN users u ON u.public_id = ${"personId"}
@@ -53,13 +53,20 @@ export function invitationPlatform(
         const scope = { orgId, tokenHash, at };
         const [invitation] = await query(tx, dialect, invitationStatements.lockRedeemableInvitation, scope);
         if (!invitation) {
-          // Read again after the lock wait, so a revoke that committed meanwhile is seen.
+          // Read again after the lock wait, so an accept or revoke that committed meanwhile is seen.
           const [latest] = await query(tx, dialect, invitationStatements.invitationByHash, { tokenHash });
-          if (latest && latest.revoked_at !== null)
-            throw new BoardError("invitation_used", "this invitation was revoked");
+          if (latest && (latest.accepted_at !== null || latest.revoked_at !== null || Number(latest.expires_at) <= at))
+            throw new BoardError("invitation_used", "this invitation was already used, revoked or expired");
           return null;
         }
-        await query(tx, dialect, orgStatements.lockPerson, { personId });
+        const [person] = await query(tx, dialect, orgStatements.lockPerson, { personId });
+        if (!person) return null;
+        if (
+          typeof invitation.email === "string" &&
+          (typeof person.email !== "string" || person.email.toLowerCase() !== invitation.email)
+        ) {
+          throw new BoardError("invitation_email_mismatch", "this invitation requires a matching verified email");
+        }
         const [joined] = await query(tx, dialect, orgStatements.personMemberships, { personId });
         if (joined) throw new BoardError("already_in_org", "you already belong to an organization");
         const [member] = await query(tx, dialect, invitationStatements.insertInvitedMember, { ...scope, personId });

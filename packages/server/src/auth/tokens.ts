@@ -1,8 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
-import { BoardError, type Can, type Operation, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
-import { agents, connections, grants, parseId } from "@openboard/core";
+import { BoardError, type Operation, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
+import { connections } from "@openboard/core";
 import type { AgentRecord, BoardView } from "@openboard/ports";
-import { agentOf, connectionOf, credentialKind, type Principal, pinnedCan, profileName, tokenHashOf } from "../deps.ts";
+import { agentOf, callerCan, connectionOf, credentialKind, type Principal, profileName, tokenHashOf } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { bearer, hashToken } from "./secrets.ts";
 
@@ -54,7 +54,7 @@ function holdsToken(record: AgentRecord, hash: string, now: number): boolean {
  * Step 1 of the verifier chain (docs/auth.md "Three ways to connect", mode 2): an `obt_` bearer writes as the profile
  * its agent was claimed for, through the agent's connection, when the request's board holds that agent and the
  * token's SHA-256 is the one kept. The profile is pinned (D30): an `x-board-profile` naming another one is refused.
- * The `can` it was claimed with is pinned too: `keepInsidePin` checks it on every request.
+ * The `can` it was claimed with is pinned too: `keepInsideCan` checks it on every request.
  */
 export function agentTokenVerifier(now: () => number): CredentialVerifier {
   return {
@@ -77,7 +77,7 @@ export function agentTokenVerifier(now: () => number): CredentialVerifier {
         [credentialKind]: "agent",
         [connectionOf]: { name: connection.name, profiles: connection.profiles },
         [agentOf]: agent.id,
-        [pinnedCan]: agent.can,
+        [callerCan]: agent.can,
         [profileName]: profile,
         [tokenHashOf]: presented,
       };
@@ -98,74 +98,4 @@ function refuseOtherProfile(request: Request, pinned: string): void {
   throw new BoardError("forbidden", `this token is pinned to the profile ${pinned} and may not write as ${name}`, {
     hint: `Drop --as and BOARD_PROFILE, or set them to ${pinned}; claim another token to write as ${name}.`,
   });
-}
-
-type Permission = NonNullable<Operation["access"]>["permission"] | "label";
-
-/** A write that sets labels, a post or a task with `labels`, also needs `label` where it lands (upstream `03-http.md` "Access"). */
-function permissionsFor(permission: Permission, input: unknown): Permission[] {
-  const labels = (input as { labels?: unknown }).labels;
-  const labelled = typeof labels === "object" && labels !== null && Object.keys(labels).length > 0;
-  return labelled && permission !== "label" ? [permission, "label"] : [permission];
-}
-
-function outsidePin(permission: Permission, where: string): BoardError {
-  return new BoardError("forbidden", `this token was claimed without ${permission} ${where}`, {
-    hint: "Run `ob whoami` to see what it can do; claim another token with that permission in its can.",
-  });
-}
-
-/**
- * The message `id` names stays inside the pin: in a channel the pin cannot read it answers as a missing one (404
- * `message_not_found`, docs/auth.md rule 9), so the token learns nothing of it; readable without `permission` is 403
- * `forbidden`. A message the board lacks answers the same 404 here, so a later one cannot slip past the check.
- */
-async function checkMessage(can: Can, permission: Permission, board: BoardView, id: unknown): Promise<void> {
-  const position = typeof id === "string" ? parseId(id) : null;
-  if (position === null) return;
-  const channel = (await board.thread(position))?.message.channel;
-  const allowed = channel === undefined ? [] : agents.allowedAt(can, channel);
-  if (!allowed.includes("read")) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
-  if (!allowed.includes(permission)) throw outsidePin(permission, `in ${channel}`);
-}
-
-/**
- * A claimed token is always a narrowed caller (docs/auth.md mode 2, "Pinned narrowing"). An operation on a channel
- * needs the permission there: the channel its input names (`channel`, or `path` when it creates one), and the channel
- * of the message it reads or replies to (`id`, `re`). One that reaches every channel needs the permission at `*` and
- * under every other pattern, since nothing narrows its answer yet. Other credentials pass untouched.
- */
-export async function keepInsidePin(
-  operation: Pick<Operation, "access">,
-  input: unknown,
-  by: Principal,
-  board: BoardView,
-): Promise<void> {
-  const can: Can | undefined = by[pinnedCan];
-  const { access } = operation;
-  if (can === undefined || access === null) return;
-  for (const permission of permissionsFor(access.permission, input)) {
-    await checkPermission(can, { ...access, permission }, input, board);
-  }
-}
-
-async function checkPermission(
-  can: Can,
-  access: { readonly permission: Permission; readonly channel: NonNullable<Operation["access"]>["channel"] },
-  input: unknown,
-  board: BoardView,
-): Promise<void> {
-  const { permission } = access;
-  if (access.channel === "any") {
-    const everywhere = agents.allowedAt(can, "*").includes(permission);
-    if (everywhere && Object.values(can).every((given) => grants.withImplied(given).includes(permission))) return;
-    throw outsidePin(permission, "on every channel");
-  }
-  const named = input as { channel?: unknown; path?: unknown; re?: unknown; id?: unknown };
-  if (access.channel === "fromMessage") return checkMessage(can, permission, board, named.id);
-  const channel = named.channel ?? named.path;
-  if (typeof channel === "string" && !agents.allowedAt(can, channel).includes(permission)) {
-    throw outsidePin(permission, `in ${channel}`);
-  }
-  await checkMessage(can, permission, board, named.re);
 }

@@ -28,6 +28,7 @@ import {
   claimConnectionHandler,
   createConnectionHandler,
   refreshAgentTokenHandler,
+  revokeAgentHandler,
   revokeConnectionHandler,
 } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
@@ -43,6 +44,7 @@ import { changeMemberRoleHandler } from "./memberships.ts";
 import {
   deleteMessageHandler,
   editMessageHandler,
+  labelMessageHandler,
   listMessagesHandler,
   postMessageHandler,
   reactToMessageHandler,
@@ -146,6 +148,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   getMe: getMeHandler,
   getOpenApi: getOpenApiHandler,
   getSession: getSessionHandler,
+  labelMessage: labelMessageHandler,
   listActors: listActorsHandler,
   listBoards: listBoardsHandler,
   listChannels: listChannelsHandler,
@@ -161,6 +164,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   readPost: readPostHandler,
   readThread: readThreadHandler,
   refreshAgentToken: refreshAgentTokenHandler,
+  revokeAgent: revokeAgentHandler,
   revokeConnection: revokeConnectionHandler,
   revokeAllSessions: revokeAllSessionsHandler,
   revokePersonalToken: revokePersonalTokenHandler,

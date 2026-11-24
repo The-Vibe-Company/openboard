@@ -17,6 +17,7 @@ export type RefKind =
   | "schedule"
   | "webhook"
   | "connection"
+  | "agent"
   | "member"
   | "org"
   | "invitation"
@@ -76,7 +77,7 @@ export type Operation<
   readonly status?: 200 | 201 | { readonly createdWhen: string };
   readonly errors: readonly ErrorCode[];
   readonly access: {
-    readonly permission: "read" | "post" | "react" | "manage";
+    readonly permission: "read" | "post" | "react" | "label" | "manage";
     readonly channel: "fromInput" | "fromMessage" | "any";
   } | null;
   readonly effects: {
@@ -106,7 +107,7 @@ export type OutputOf<Op> = Op extends Operation<OperationInput, infer O> ? Stati
 /** The raw parts of a request, before validation; path params and query values are strings. */
 export interface RawInput {
   readonly params?: Readonly<Record<string, string>>;
-  readonly query?: Readonly<Record<string, string>>;
+  readonly query?: Readonly<Record<string, string | readonly string[]>>;
   readonly body?: unknown;
 }
 

@@ -228,3 +228,28 @@ describe("ob post --label", () => {
     expect(board.seen).toEqual([]);
   });
 });
+
+describe("ob label", () => {
+  test("sends each k=v argument after the ID as a label to set, the last for a repeated key", async () => {
+    const board = fakeBoard(200, { ok: true });
+    const { output } = capture();
+    const argv = ["label", "2", "status=new", "url=a=b", "status=done"];
+    expect(await runCli(argv, env, { fetch: board.fetch, output })).toBe(0);
+    expect(board.seen.map(({ method, url }) => `${method} ${url}`)).toEqual([
+      `POST ${env.BOARD_URL}/messages/2/labels`,
+    ]);
+    expect(board.seen.map(({ body }) => JSON.parse(body))).toEqual([{ set: { status: "done", url: "a=b" } }]);
+  });
+
+  test.each([
+    ["no label", ["label", "2"], "expected 2 argument(s)"],
+    ["a label without =", ["label", "2", "status"], "each label takes k=v, a key and a value"],
+    ["a label without a value", ["label", "2", "status="], "each label takes k=v, a key and a value"],
+  ])("exits 2 for %s, sending nothing", async (_, argv, error) => {
+    const board = fakeBoard(200, {});
+    const { lines, output } = capture();
+    expect(await runCli(argv, env, { fetch: board.fetch, output })).toBe(2);
+    expect(lines.err[0]).toStartWith(`error: invalid_request: ${error}`);
+    expect(board.seen).toEqual([]);
+  });
+});
