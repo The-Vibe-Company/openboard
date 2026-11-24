@@ -4746,7 +4746,11 @@
                     "additionalProperties": false,
                     "type": "object",
                     "required": ["from", "pattern"],
-                    "properties": { "from": { "type": "string" }, "pattern": { "type": "string" } }
+                    "properties": {
+                      "from": { "type": "string" },
+                      "pattern": { "type": "string" },
+                      "flags": { "type": "string" }
+                    }
                   },
                   "verify": {
                     "additionalProperties": false,
@@ -4794,7 +4798,7 @@
                           "additionalProperties": false,
                           "type": "object",
                           "patternProperties": {
-                            "^body\\.": {
+                            "^(body|headers)\\.": {
                               "anyOf": [
                                 {
                                   "anyOf": [
@@ -4989,7 +4993,11 @@
                           "additionalProperties": false,
                           "type": "object",
                           "required": ["from", "pattern"],
-                          "properties": { "from": { "type": "string" }, "pattern": { "type": "string" } }
+                          "properties": {
+                            "from": { "type": "string" },
+                            "pattern": { "type": "string" },
+                            "flags": { "type": "string" }
+                          }
                         },
                         "id": { "type": "string" },
                         "url": { "type": "string" },
@@ -5047,7 +5055,7 @@
                                 "additionalProperties": false,
                                 "type": "object",
                                 "patternProperties": {
-                                  "^body\\.": {
+                                  "^(body|headers)\\.": {
                                     "anyOf": [
                                       {
                                         "anyOf": [
@@ -5300,7 +5308,11 @@
                             "additionalProperties": false,
                             "type": "object",
                             "required": ["from", "pattern"],
-                            "properties": { "from": { "type": "string" }, "pattern": { "type": "string" } }
+                            "properties": {
+                              "from": { "type": "string" },
+                              "pattern": { "type": "string" },
+                              "flags": { "type": "string" }
+                            }
                           },
                           "id": { "type": "string" },
                           "url": { "type": "string" },
@@ -5358,7 +5370,7 @@
                                   "additionalProperties": false,
                                   "type": "object",
                                   "patternProperties": {
-                                    "^body\\.": {
+                                    "^(body|headers)\\.": {
                                       "anyOf": [
                                         {
                                           "anyOf": [
@@ -5665,7 +5677,11 @@
                       "additionalProperties": false,
                       "type": "object",
                       "required": ["from", "pattern"],
-                      "properties": { "from": { "type": "string" }, "pattern": { "type": "string" } }
+                      "properties": {
+                        "from": { "type": "string" },
+                        "pattern": { "type": "string" },
+                        "flags": { "type": "string" }
+                      }
                     },
                     "id": { "type": "string" },
                     "url": { "type": "string" },
@@ -5723,7 +5739,7 @@
                             "additionalProperties": false,
                             "type": "object",
                             "patternProperties": {
-                              "^body\\.": {
+                              "^(body|headers)\\.": {
                                 "anyOf": [
                                   {
                                     "anyOf": [
@@ -5934,7 +5950,7 @@
                           "additionalProperties": false,
                           "type": "object",
                           "patternProperties": {
-                            "^body\\.": {
+                            "^(body|headers)\\.": {
                               "anyOf": [
                                 {
                                   "anyOf": [
@@ -6125,7 +6141,11 @@
                       "additionalProperties": false,
                       "type": "object",
                       "required": ["from", "pattern"],
-                      "properties": { "from": { "type": "string" }, "pattern": { "type": "string" } }
+                      "properties": {
+                        "from": { "type": "string" },
+                        "pattern": { "type": "string" },
+                        "flags": { "type": "string" }
+                      }
                     },
                     "id": { "type": "string" },
                     "url": { "type": "string" },
@@ -6183,7 +6203,7 @@
                             "additionalProperties": false,
                             "type": "object",
                             "patternProperties": {
-                              "^body\\.": {
+                              "^(body|headers)\\.": {
                                 "anyOf": [
                                   {
                                     "anyOf": [

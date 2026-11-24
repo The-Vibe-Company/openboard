@@ -88,7 +88,9 @@ export { channelInputError, correctedChannel, InvalidGrantPattern } from "./chan
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail, type TailMessage } from "./events/tail.ts";
 export { base32, formatId, isoTime, parseId } from "./ids.ts";
 export type { InboundConfig } from "./inbound/events.ts";
-export { parseInboundRules } from "./inbound/rules.ts";
+export { compileInboundPattern } from "./inbound/pattern.ts";
+export { matchInboundPattern } from "./inbound/pattern-match.ts";
+export { parseInboundRules, parseInboundThread } from "./inbound/rules.ts";
 export { decideDelete, type MessageDeleted } from "./messages/delete.ts";
 export { decideEdit, type MessageEdited } from "./messages/edit.ts";
 export { decideLabels, type LabelState, type LabelsChanged } from "./messages/labels.ts";

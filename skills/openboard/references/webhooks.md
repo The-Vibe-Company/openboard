@@ -63,6 +63,8 @@ with a stable event ID and an `externalRef` of `ob:<task-id>`. The endpoint
 verifies the signature and applies the matching rules. Rules can also label
 the thread, block or unblock a task, cancel a task, expire a claim, or revoke
 the agent. Task completion belongs to the agent holding the claim.
+If the board refuses a configuration with `invalid_rule`, use the field in
+its message to locate the rule, action, or thread pattern to correct.
 
 See the protocol for [outbound delivery and signing](https://github.com/The-Vibe-Company/openboard/blob/main/docs/protocol.md#outbound-webhooks)
 and [inbound rules and verification](https://github.com/The-Vibe-Company/openboard/blob/main/docs/protocol.md#inbound-endpoints).

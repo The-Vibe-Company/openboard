@@ -14,6 +14,7 @@ import {
   type InboundConfig,
   isoTime,
   parseInboundRules,
+  parseInboundThread,
   unmanagedGrantPattern,
   validateWebhookSigning,
 } from "@openboard/core";
@@ -40,7 +41,8 @@ function audit(ctx: BoardContext, id: number, at = ctx.now()) {
 }
 
 function withUrl(boardUrl: string, inbound: InboundConfig): Inbound {
-  return { ...inbound, url: `${boardUrl}/x/inbound/${inbound.id}/events` };
+  const { rulePlan: _rules, threadPlan: _thread, ...publicConfig } = inbound;
+  return { ...publicConfig, url: `${boardUrl}/x/inbound/${inbound.id}/events` };
 }
 
 function requireEndpoint(record: InboundRecord | null): InboundRecord {
@@ -66,7 +68,8 @@ async function requireWriteManage(ctx: BoardContext, writer: BoardWriter, record
 }
 
 export const createInboundHandler: Handler<typeof createInbound> = async (ctx, spec) => {
-  const rules = parseInboundRules(spec.rules);
+  const rulePlan = parseInboundRules(spec.rules);
+  const threadPlan = parseInboundThread(spec.thread);
   const can = writtenCan(spec.can);
   const { tolerance = 300, ...verify } = spec.verify;
   const { secret: supplied, ...signing } = validateWebhookSigning({ signing: verify });
@@ -81,7 +84,9 @@ export const createInboundHandler: Handler<typeof createInbound> = async (ctx, s
     name: spec.name,
     can,
     thread: spec.thread,
-    rules,
+    rules: spec.rules,
+    rulePlan,
+    threadPlan,
     enabled: true,
     principal: `ob:hook:${id}`,
     verify: { ...signing, tolerance },
@@ -129,13 +134,15 @@ export const getInboundHandler: Handler<typeof getInbound> = async (ctx, { id })
 };
 
 export const updateInboundHandler: Handler<typeof updateInbound> = (ctx, { id, rules: input }) => {
-  const rules = parseInboundRules(input);
+  const rulePlan = parseInboundRules(input);
   return ctx.board.write(async (writer) => {
     const record = requireEndpoint(await writer.inboundEndpoint(id));
     await requireWriteManage(ctx, writer, record);
     ctx.debitWrite();
-    await writer.append([{ ...audit(ctx, writer.head + 1), type: "ob.inbound.updated", payload: { id, rules } }]);
-    return withUrl(ctx.boardUrl, { ...record.inbound, rules });
+    await writer.append([
+      { ...audit(ctx, writer.head + 1), type: "ob.inbound.updated", payload: { id, rules: input, rulePlan } },
+    ]);
+    return withUrl(ctx.boardUrl, { ...record.inbound, rules: input });
   });
 };
 

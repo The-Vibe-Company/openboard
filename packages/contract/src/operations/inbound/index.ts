@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { Inbound, InboundSpec } from "../../entities/inbound/index.ts";
+import { describeInboundRuleIssue, Inbound, InboundSpec } from "../../entities/inbound/index.ts";
 import { defineOperation, Ref } from "../../operation.ts";
 
 const common = {
@@ -21,7 +21,7 @@ export const createInbound = defineOperation({
   input: { body: InboundSpec },
   output: Type.Object({ inbound: Inbound, secret: Type.Optional(Type.String()) }),
   status: 201,
-  invalidBodyItemCode: { array: "rules", code: "invalid_rule" },
+  invalidBodyItemCode: { array: "rules", code: "invalid_rule", describe: describeInboundRuleIssue },
   errors: [
     "forbidden",
     "invalid_request",
@@ -69,7 +69,7 @@ export const updateInbound = defineOperation({
   route: { method: "POST", path: "/x/inbound/:id" },
   input: { params, body: Type.Object({ rules: InboundSpec.properties.rules }, { additionalProperties: false }) },
   output: Inbound,
-  invalidBodyItemCode: { array: "rules", code: "invalid_rule" },
+  invalidBodyItemCode: { array: "rules", code: "invalid_rule", describe: describeInboundRuleIssue },
   errors: [...errors, "invalid_rule", "invalid_request"],
   effects: { readOnly: false, idempotent: false, emits: ["ob.inbound.updated"] },
   cli: false,

@@ -4,14 +4,28 @@ title: Refuse an inbound rule that does not parse
 milestone: M11-webhooks-and-watchers
 package: core
 writes:
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/contract/src/entities/inbound/index.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/inbound/index.ts
+  - packages/core/src/index.ts
+  - packages/core/src/inbound/events.ts
+  - packages/core/src/inbound/pattern.ts
+  - packages/core/src/inbound/pattern-match.ts
+  - packages/core/src/inbound/pattern-syntax.ts
+  - packages/driver-sql/src/views/inbound/index.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/inbound/index.ts
+  - skills/openboard/references/webhooks.md
   - packages/core/src/inbound/rules.ts
   - packages/core/test/inbound/rules.test.ts
   - packages/server/test/inbound/invalid-rules.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [326]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 520
 ---
 
@@ -19,8 +33,8 @@ issue: 520
 As a board admin, a mistake in an inbound endpoint's rules is refused when I save it, with the place of the mistake, instead of silently doing nothing when events arrive.
 
 ## Done when
-- [ ] `bun test packages/server/test/inbound/invalid-rules.test.ts` passes: creating or changing an endpoint answers 400 `invalid_rule` naming the path (`rules[1].do[0].reply`) for an unknown action, an action with an unknown or missing argument, a `when` path not starting with `body.` or `headers.`, an unclosed `{{`, a template naming something other than `body.*` or `thread.*`, a `thread.pattern` that is not a valid regex or has no capturing group, more than 32 rules or 8 actions in one rule, and a rule with no action
-- [ ] `bun test packages/core/test/inbound/rules.test.ts` passes: the parse is pure and returns the plan 328-332 run, so no check repeats at receive time
+- [x] `bun test packages/server/test/inbound/invalid-rules.test.ts` passes: creating or changing an endpoint answers 400 `invalid_rule` naming the path (`rules[1].do[0].reply`) for an unknown action, an action with an unknown or missing argument, a `when` path not starting with `body.` or `headers.`, an unclosed `{{`, a template naming something other than `body.*` or `thread.*`, a `thread.pattern` that is not a valid regex or has no capturing group, more than 32 rules or 8 actions in one rule, and a rule with no action
+- [x] `bun test packages/core/test/inbound/rules.test.ts` passes: the parse is pure and returns the plan 328-332 run, so no check repeats at receive time
 
 ## Out of scope
 - Verifying a body against a schema of the sender's events (not in docs).
