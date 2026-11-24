@@ -70,13 +70,13 @@ export async function foldInbound(db: Db, dialect: Dialect, keys: BoardKeys, eve
       config: JSON.stringify(inbound),
     });
   } else if (event.type === "ob.inbound.updated") {
-    const { id, rules } = event.payload;
+    const { id, rules, rulePlan } = event.payload;
     const current = await inboundReads(db, dialect, keys).inboundEndpoint(id);
     if (!current) throw new Error("missing inbound endpoint");
     await query(db, dialect, inboundStatements.updateInbound, {
       ...keys,
       id,
-      config: JSON.stringify({ ...current.inbound, rules }),
+      config: JSON.stringify({ ...current.inbound, rules, rulePlan }),
     });
   } else {
     const scope = { ...keys, id: event.payload.id };

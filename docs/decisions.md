@@ -1173,3 +1173,14 @@ require. OpenBoard does not cancel dependants on its own. Creating a task that
 needs an already canceled task answers `invalid_needs` (#816); a planner who no
 longer wants the dependants cancels them.
 ([Issue #817](https://github.com/The-Vibe-Company/openboard/issues/817))
+
+### D68. Bound inbound thread pattern matching
+
+Inbound endpoints compile thread patterns into a Thompson NFA when saved.
+The Pike VM prioritizes threads to preserve leftmost-first matching and
+captures. Its work is bounded by the compiled program size and input length,
+including nested repetition and ambiguous alternation. Source and input are
+capped at 200 UTF-16 code units and programs at 512 instructions. The restricted
+syntax and flags are defined in [Inbound endpoints](protocol.md#inbound-endpoints).
+Rules and compiled plans are stored with the inbound configuration so instances
+can share them. The original rules remain the public configuration.

@@ -96,7 +96,11 @@ export type Operation<
   readonly orgPersonalToken?: true;
   readonly invalidInputCode?: ErrorCode;
   /** Use a different code for malformed items in a named body array. */
-  readonly invalidBodyItemCode?: { readonly array: string; readonly code: ErrorCode };
+  readonly invalidBodyItemCode?: {
+    readonly array: string;
+    readonly code: ErrorCode;
+    readonly describe?: (input: unknown, path: string, message: string) => string | undefined;
+  };
   /** Optional alternate HTTP representation, negotiated through Accept. */
   readonly eventStream?: "text/event-stream";
   /** The success status, or the boolean output field that distinguishes 201 from 200. */
@@ -205,8 +209,11 @@ function decodePart(
   const [first] = Value.Errors(schema, decoded);
   if (first) {
     const field = first.path.replace(/^\//, "").replaceAll("/", ".") || where;
-    const code = invalidItem && first.path.startsWith(`/${invalidItem.array}/`) ? invalidItem.code : "invalid_request";
-    throw new BoardError(code, `${field}: ${first.message}`);
+    const item = invalidItem && first.path.startsWith(`/${invalidItem.array}/`) ? invalidItem : undefined;
+    throw new BoardError(
+      item?.code ?? "invalid_request",
+      item?.describe?.(decoded, first.path, first.message) ?? `${field}: ${first.message}`,
+    );
   }
   return decoded as object;
 }

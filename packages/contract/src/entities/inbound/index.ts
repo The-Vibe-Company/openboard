@@ -3,7 +3,10 @@ import { Value } from "@sinclair/typebox/value";
 import { CanInput } from "../connections.ts";
 import { Webhook, WebhookSpec } from "../webhooks/index.ts";
 
-const Thread = Type.Object({ from: Type.String(), pattern: Type.String() }, { additionalProperties: false });
+const Thread = Type.Object(
+  { from: Type.String(), pattern: Type.String(), flags: Type.Optional(Type.String()) },
+  { additionalProperties: false },
+);
 const Tolerance = Type.Optional(Type.Integer({ minimum: 0 }));
 const fields = {
   name: Webhook.properties.name,
@@ -45,7 +48,7 @@ const Match = Type.Union([text, Type.Number(), Type.Boolean(), Type.Null()]);
 export const InboundRules = Type.Array(
   Type.Object(
     {
-      when: Type.Record(Type.String({ pattern: "^body\\." }), Type.Union([Match, Type.Array(Match)]), {
+      when: Type.Record(Type.String({ pattern: "^(body|headers)\\." }), Type.Union([Match, Type.Array(Match)]), {
         additionalProperties: false,
       }),
       do: Type.Array(RuleAction, { minItems: 1 }),
@@ -82,3 +85,38 @@ export const Inbound = Type.Object({
 });
 export type InboundSpec = Static<typeof InboundSpec>;
 export type Inbound = Static<typeof Inbound>;
+
+export function describeInboundRuleIssue(input: unknown, pointer: string, message: string): string | undefined {
+  const segments = pointerParts(pointer);
+  const [root, index, list, actionIndex] = segments;
+  const at = (path: string[]) =>
+    path.reduce((result, key) => (/^\d+$/.test(key) ? `${result}[${key}]` : `${result}.${key}`));
+  if (root !== "rules" || !index) return undefined;
+  if (list === "when") {
+    const reason =
+      actionIndex && !/^(body|headers)\./.test(actionIndex)
+        ? "expected a condition path starting with body. or headers."
+        : message;
+    return `${at(segments)}: ${reason}`;
+  }
+  if (list !== "do") return undefined;
+  if (!actionIndex) return `${at(segments)}: expected at least one action`;
+  const actions = (input as { rules: { do: unknown[] }[] }).rules[Number(index)]?.do;
+  const action = actions?.[Number(actionIndex)];
+  const field = at(segments.slice(0, 4));
+  if (typeof action !== "object" || action === null || Array.isArray(action))
+    return `${field}: expected an action object`;
+  const [name, ...extra] = Object.keys(action);
+  if (!name || extra.length) return `${field}: expected exactly one action`;
+  const variant = RuleAction.anyOf.find((schema) => Object.hasOwn(schema.properties, name));
+  if (!variant) return `${field}.${name}: unsupported action`;
+  const [issue] = Value.Errors(variant, action);
+  return issue ? `${at([...segments.slice(0, 4), ...pointerParts(issue.path)])}: ${issue.message}` : undefined;
+}
+
+function pointerParts(pointer: string): string[] {
+  return pointer
+    .split("/")
+    .slice(1)
+    .map((part) => part.replaceAll("~1", "/").replaceAll("~0", "~"));
+}

@@ -914,7 +914,22 @@ returns `{ inbound: [...] }` and show returns the endpoint directly. Both omit
 the verify secret. Post `{ rules }` to `/x/inbound/:id` to replace the rules.
 Delete with `POST /x/inbound/:id/delete` to remove the endpoint and its grant.
 The 21st endpoint on a board returns 429 `quota_exceeded` with reason `inbound`.
-An unsupported rule action returns 400 `invalid_rule`.
+Invalid rules return 400 `invalid_rule` with the offending field in the error
+message, such as `rules[1].do[0].reply`. Save up to 32 rules with 1 to 8 actions
+each. Conditions use dot-separated `body.*` or `headers.*` paths. Action
+templates use `{{body.*}}` or `{{thread.*}}`, and `thread.from` uses
+`{{body.*}}`.
+
+`thread.pattern` requires a capturing group. The first capture gives the thread
+ID. The subset supports literals, escapes, character classes, `.`, anchors
+`^` and `$`, alternation, capturing and named capturing groups, and `?`,
+`*`, `+`, `{n}` and `{n,m}` quantifiers (including lazy forms), with
+`0 <= n <= m <= 20`. The optional `thread.flags` takes `i` for
+case-insensitive matching. Backreferences and lookarounds are refused.
+The source and the matched prefix of `thread.from` are each capped at 200
+UTF-16 code units. Saving compiles the pattern to at most 512 Thompson NFA
+instructions. The Pike VM keeps one prioritized thread per instruction at
+each input position and carries captures with each thread (D68).
 
 `ob inbound create --file runner-status.json --secret-file inbound.secret`
 prints the events URL. The secret file either supplies the verify secret or
