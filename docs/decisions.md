@@ -956,3 +956,11 @@ Only product choices; each has a recommendation.
   and replica settings unset during the owner's staging setup.
 - **Consequence.** The deploy command needs a staging-scoped Railway project
   token. It verifies the deployment tag on each replica returned by the API.
+
+### D60. Publish every merge and enable staging deploys explicitly
+
+- **Decision.** Publish the commit-tagged GHCR image on every merge to `main`.
+  Deploy it only when the `STAGING_DEPLOY` repository variable is `on`.
+- **Consequence.** Disabled deploys are recorded in the workflow summary.
+  Enabled deploys require the `staging` environment's `RAILWAY_TOKEN` secret
+  and fail if it is missing.

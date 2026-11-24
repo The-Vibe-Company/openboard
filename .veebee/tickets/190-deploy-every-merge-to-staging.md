@@ -5,11 +5,14 @@ milestone: M6-high-availability
 package: tools
 writes:
   - .github/workflows/release.yml
+  - .veebee/tickets/190-deploy-every-merge-to-staging.md
+  - docs/codebase.md
+  - docs/decisions.md
 conformance: []
 modes: [hosted]
 depends_on: [189]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 270
 ---
 
@@ -31,3 +34,5 @@ As a contributor, the commit I merge to `main` is running on staging minutes lat
 - Pin actions by commit, as `.github/workflows/ci.yml` does.
 
 Re-enabled (owner, 2026-11-24: "Ok pour railway pour moi"). Railway is set up: project `openboard` (d2f79d2f-64b8-4c30-b922-3b9502e6ea4e), environment `staging` with a `Postgres` service and an empty `openboard` service at https://openboard-staging.up.railway.app, variables OPENBOARD_DATABASE_URL (reference to Postgres), OPENBOARD_SECRET_KEY, OPENBOARD_PUBLIC_URL, OPENBOARD_SIGNUP=closed already set. GitHub OAuth credentials and any deploy token are set by the owner; never print or commit them.
+
+Decision on #270: publish the commit image on every merge. Deploy only when the repository variable `STAGING_DEPLOY` is `on`, using the `staging` environment secret `RAILWAY_TOKEN`. Record a disabled deploy in the run summary and fail an enabled deploy with `missing RAILWAY_TOKEN` if the secret is absent.
