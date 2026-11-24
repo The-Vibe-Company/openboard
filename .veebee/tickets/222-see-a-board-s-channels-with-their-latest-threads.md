@@ -11,6 +11,7 @@ writes:
   - apps/web/src/components/ThreadList.tsx
   - apps/web/src/components/ThreadRow.tsx
   - apps/web/src/api/board.ts
+  - apps/web/src/api/session.ts
   - apps/web/e2e/board.spec.ts
   - apps/web/src/styles.css
   - docs/architecture.md

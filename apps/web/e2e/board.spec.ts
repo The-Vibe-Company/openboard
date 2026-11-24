@@ -57,6 +57,13 @@ test("a member sees the latest threads and keeps the selected channel on reload"
       await expect(memberPage).toHaveURL(`${server.url}/acme/main?channel=dev`);
       await expect(sidebar.getByRole("link", { name: "dev", exact: true })).toHaveAttribute("aria-current", "page");
       await expect(rows.first()).toContainText("Earlier thread");
+
+      const header = memberPage.getByRole("banner");
+      await header.getByRole("button", { name: "Sign out" }).click();
+      await expect(memberPage).toHaveURL(`${server.url}/`);
+      await expect(header.getByRole("link", { name: "Sign in" })).toBeVisible();
+      await expect(sidebar).toHaveCount(0);
+      await expect(memberPage.getByText("Earlier thread")).toHaveCount(0);
     } finally {
       await context.close();
     }
