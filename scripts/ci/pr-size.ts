@@ -18,27 +18,21 @@ export function workspaceLineCounts(numstat: string): Map<string, number> {
   return counts;
 }
 
-export function hasSizeException(event: unknown): boolean {
-  return Boolean(
-    event &&
-      typeof event === "object" &&
-      "pull_request" in event &&
-      event.pull_request &&
-      typeof event.pull_request === "object" &&
-      "labels" in event.pull_request &&
-      Array.isArray(event.pull_request.labels) &&
-      event.pull_request.labels.some((label: unknown) => {
-        return label && typeof label === "object" && "name" in label && label.name === "size-exception";
-      }),
+function hasSizeException(labels: unknown): boolean {
+  return (
+    Array.isArray(labels) &&
+    labels.some((label: unknown) => {
+      return label && typeof label === "object" && "name" in label && label.name === "size-exception";
+    })
   );
 }
 
-async function checkPrSize(): Promise<number> {
+function checkPrSize(): number {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
-    options: { base: { type: "string" } },
+    options: { base: { type: "string" }, head: { type: "string", default: "HEAD" } },
   });
-  if (!values.base) throw new Error("Usage: bun scripts/ci/pr-size.ts --base <ref>");
+  if (!values.base) throw new Error("Usage: bun scripts/ci/pr-size.ts --base <ref> [--head <ref>]");
 
   // Git omits deleted and renamed files before emitting NUL-delimited paths.
   const diff = Bun.spawnSync([
@@ -52,7 +46,7 @@ async function checkPrSize(): Promise<number> {
     "--no-ext-diff",
     "--no-textconv",
     "--end-of-options",
-    `${values.base}...HEAD`,
+    `${values.base}...${values.head}`,
     "--",
   ]);
   if (!diff.success) throw new Error(diff.stderr.toString().trim() || "git diff failed");
@@ -62,8 +56,8 @@ async function checkPrSize(): Promise<number> {
     .sort(([left], [right]) => left.localeCompare(right));
   if (overBudget.length === 0) return 0;
 
-  const eventPath = process.env.GITHUB_EVENT_PATH;
-  if (eventPath && hasSizeException(await Bun.file(eventPath).json())) {
+  const labels: unknown = JSON.parse(process.env.PR_LABELS ?? "[]");
+  if (hasSizeException(labels)) {
     console.log("PR size check passed with the size-exception label.");
     return 0;
   }
@@ -76,7 +70,7 @@ async function checkPrSize(): Promise<number> {
 
 if (import.meta.main) {
   try {
-    process.exitCode = await checkPrSize();
+    process.exitCode = checkPrSize();
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

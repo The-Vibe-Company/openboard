@@ -6,6 +6,7 @@ name: CI
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
   merge_group:
@@ -42,6 +43,13 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run gen:check
+      - name: Check PR size
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels) }}
+        run: bun scripts/ci/pr-size.ts --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"
 
   unit-sqlite:
     runs-on: ubuntu-latest
