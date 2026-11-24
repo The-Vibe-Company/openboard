@@ -159,6 +159,12 @@ export const refreshAgentTokenHandler: Handler<typeof refreshAgentToken> = async
       hint: "Send the obt_ token the claim answered as the bearer; a connection's secret claims a new one instead.",
     });
   }
+  const seconds = ctx.rateLimits.takeRefresh(id);
+  if (seconds !== undefined) {
+    throw new BoardError("rate_limited", "too many token refreshes for this agent", {
+      next: [{ kind: "wait", seconds }],
+    });
+  }
   const minted = reissueToken(id, ctx.randomBytes(TOKEN_SECRET_BYTES));
   const agent = await ctx.board.write(async (writer) => {
     const record = await writer.agent(id);

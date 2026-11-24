@@ -4,13 +4,16 @@ title: Rate-limit token refreshes per agent
 milestone: M7-hosted-deploy
 package: server
 writes:
+  - docs/protocol.md
+  - packages/ports/src/seams.ts
+  - packages/server/src/http/limits.ts
   - packages/server/src/operations/connections.ts
   - packages/server/test/auth/refresh-limit.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [201]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 363
 ---
 
