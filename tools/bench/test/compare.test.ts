@@ -83,7 +83,8 @@ test("local SSE fan-out uses the measured budget and noise floor", () => {
   const sse = { tails: 50, events: 1000, p50: p50Ms, p99: p99Ms * 1.2 };
   expect(compareBudgets({ ...localReport, sse }, all)).toEqual([]);
 
-  const over = Math.ceil(sse.p99);
+  // Over both thresholds: 20% above the budget and more than the 1 ms noise floor above it.
+  const over = Math.ceil(p99Ms * 1.2 + 1);
   expect(compareBudgets({ ...localReport, sse: { ...sse, p99: over } }, all)).toEqual([
     `local SSE fan-out p99: ${over} ms exceeds budget ${p99Ms} ms by more than 20% and 1 ms`,
   ]);

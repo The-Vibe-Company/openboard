@@ -19,6 +19,7 @@ writes:
   - packages/server/src/operations/events.ts
   - packages/server/test/sse.test.ts
   - docs/architecture.md
+  - tools/bench/test/compare.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [108]

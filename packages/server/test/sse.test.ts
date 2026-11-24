@@ -283,13 +283,16 @@ test("stops pinging when a stream read fails", async () => {
       },
     },
   });
-  const response = await subscribe(app);
+  // A text filter matches earlier versions, which only the store holds: the post makes the stream read it.
+  const response = await subscribe(app, "?channel=dev&text=hi");
   const reader = response.body!.getReader();
   try {
     await reader.read();
     await reader.read();
     expect(timers.pending.size).toBe(2);
-    await expect(reader.read()).rejects.toThrow("storage failed");
+    const failed = reader.read();
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "hi" })).status).toBe(201);
+    await expect(failed).rejects.toThrow("storage failed");
     expect(timers.pending.size).toBe(0);
   } finally {
     await app.close();

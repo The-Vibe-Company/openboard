@@ -19,7 +19,7 @@ import { orgBoardsView, platformView } from "./views/boards.ts";
 import { channelReads } from "./views/channels.ts";
 import { connectionReads } from "./views/connections.ts";
 import { deviceView, personalTokenView } from "./views/device.ts";
-import { eventReads } from "./views/events.ts";
+import { committedEvents, eventReads } from "./views/events.ts";
 import { invitationPlatform, invitationView } from "./views/invitations.ts";
 import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
@@ -76,7 +76,8 @@ export function createViews(
     }),
     board: (scope) => ({
       ...boardView(db, dialect, scope, broadcaster),
-      subscribeEvents: (fromPosition, wake) => broadcaster.subscribe(scope, fromPosition, wake),
+      subscribeEvents: (fromPosition, wake) =>
+        broadcaster.subscribe(scope, fromPosition, (page) => wake(page && committedEvents(page))),
       ...personalTokenView(db, dialect, scope),
       ...agentReads(db, dialect, scope),
       ...auditReads(db, dialect, scope),

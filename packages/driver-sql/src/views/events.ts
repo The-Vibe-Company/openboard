@@ -12,11 +12,13 @@ import {
   matchesEventMessage,
   messages,
 } from "@openboard/core";
-import type { BoardScope, BoardView } from "@openboard/ports";
+import type { BoardScope, BoardView, CommittedEvents, CommittedPage } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
 
 const NEWEST_LOOKBACK = 2000;
+/** Rows one forward feed read scans. */
+const FORWARD_LIMIT = 200;
 
 const feedTypes: Fragment = {
   fragment: () => "('message.posted', 'message.edited', 'message.deleted', 'labels.changed')",
@@ -122,33 +124,91 @@ function bookkeepingEvent(row: Row): ActorSeen | ChannelCreated {
       };
 }
 
-function filteredEvent(
-  row: Row,
+type Page = Awaited<ReturnType<BoardView["readEvents"]>>;
+type Filters = Parameters<BoardView["readEvents"]>[1];
+type Snapshot = Parameters<typeof matchesEventMessage>[0];
+
+/** What one feed entry needs before its payload is parsed: a row, or an event a commit just appended. */
+interface Entry {
+  readonly type: string;
+  readonly visibility: number;
+  readonly channel: string | null;
+}
+
+/** Keep one entry if the feed serves it: bookkeeping only with `all`, a message event when a version matches. */
+function feedEvent(
+  entry: Entry,
+  event: () => FeedEvent | ActorSeen | ChannelCreated,
   filters: EventFilters,
   all: boolean,
-): ((FeedEvent & { current?: Message }) | ActorSeen | ChannelCreated)[] {
-  if (all && Number(row.visibility) === 1 && (row.type === "actor.seen" || row.type === "channel.created"))
-    return [bookkeepingEvent(row)];
+  root?: Snapshot,
+  previous?: Snapshot,
+): (FeedEvent | ActorSeen | ChannelCreated)[] {
+  if (all && entry.visibility === 1 && (entry.type === "actor.seen" || entry.type === "channel.created"))
+    return [event()];
   if (
-    Number(row.visibility) !== 0 ||
-    (row.type !== "message.posted" &&
-      row.type !== "message.edited" &&
-      row.type !== "message.deleted" &&
-      row.type !== "labels.changed") ||
-    !matchesEventChannel(String(row.channel), filters.channel)
+    entry.visibility !== 0 ||
+    (entry.type !== "message.posted" &&
+      entry.type !== "message.edited" &&
+      entry.type !== "message.deleted" &&
+      entry.type !== "labels.changed") ||
+    !matchesEventChannel(String(entry.channel), filters.channel)
   )
     return [];
-  const event = messageEvent(row);
-  const current = event.type === "message.posted" ? messages.messageView(event) : event.payload.view;
-  const root = snapshot(row.root);
-  const previous = snapshot(row.previous);
+  const message = event() as FeedEvent;
+  const current = message.type === "message.posted" ? messages.messageView(message) : message.payload.view;
   if (
     !matchesEventMessage(current, root, filters) &&
     !(previous !== undefined && matchesEventMessage(previous, root, filters))
   )
     return [];
-  if (typeof row.current !== "string") return [event];
-  return [{ ...event, current: JSON.parse(row.current) as Message }];
+  return [message];
+}
+
+function filteredEvent(row: Row, filters: EventFilters, all: boolean): Page["events"] {
+  const entry = { type: String(row.type), visibility: Number(row.visibility), channel: String(row.channel) };
+  const build = () => (entry.visibility === 1 ? bookkeepingEvent(row) : messageEvent(row));
+  const kept = feedEvent(entry, build, filters, all, snapshot(row.root), snapshot(row.previous));
+  if (kept.length === 0 || typeof row.current !== "string") return kept;
+  return [{ ...(kept[0] as FeedEvent), current: JSON.parse(row.current) as Message }];
+}
+
+/** How a feed read scans: bookkeeping only for `all` without filters; earlier versions for history filters. */
+function scanOf(filters: NonNullable<Filters>) {
+  // Bookkeeping concerns no message, so any filter leaves it out (upstream `03-http.md`, "Event types").
+  const all =
+    filters.all === true &&
+    [
+      filters.channel,
+      filters.thread,
+      filters.labels?.length ? filters.labels : undefined,
+      filters.text,
+      filters.from,
+      filters.authors,
+      filters.mentions,
+    ].every((value) => value === undefined);
+  const history = filters.text !== undefined || filters.mentions !== undefined || Boolean(filters.labels?.length);
+  return { all, history };
+}
+
+/**
+ * The feed page a forward read from `page.after` scans right after this commit, from the committed events alone. A
+ * newest read, a scan longer than one read's 200 rows, or a filter that needs an earlier version or the thread root
+ * is left to the store.
+ */
+export function committedEvents(page: CommittedPage): CommittedEvents {
+  return {
+    after: page.after,
+    head: page.head,
+    read(filters = {}) {
+      const { all, history } = scanOf(filters);
+      if (filters.last !== undefined || history || page.events.length > FORWARD_LIMIT) return undefined;
+      const events = page.events.flatMap((event) =>
+        feedEvent(event, () => event as FeedEvent | ActorSeen | ChannelCreated, filters, all),
+      );
+      return { head: page.head, cursor: page.head, events };
+    },
+  };
 }
 
 export function eventReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "readEvents"> {
@@ -156,23 +216,11 @@ export function eventReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<Bo
     async readEvents(after, filters = {}) {
       const { last } = filters;
       const selected = filters.channel === undefined ? undefined : channelFilter(filters.channel);
-      // Bookkeeping concerns no message, so any filter leaves it out (upstream `03-http.md`, "Event types").
-      const all =
-        filters.all === true &&
-        [
-          filters.channel,
-          filters.thread,
-          filters.labels?.length ? filters.labels : undefined,
-          filters.text,
-          filters.from,
-          filters.authors,
-          filters.mentions,
-        ].every((value) => value === undefined);
-      const history = filters.text !== undefined || filters.mentions !== undefined || Boolean(filters.labels?.length);
+      const { all, history } = scanOf(filters);
       // Like upstream's local feed, bound the lookback when filtering historical payloads.
       const limit =
         last === undefined
-          ? 200
+          ? FORWARD_LIMIT
           : history || filters.from !== undefined || filters.authors !== undefined
             ? NEWEST_LOOKBACK
             : last;

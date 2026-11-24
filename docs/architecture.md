@@ -397,9 +397,11 @@ measured by the spike): 80 to 90 MB RSS idle, about 1.1 ms per write, about
 
 The local quick benchmark delivers 1,000 events to each of 50 SSE tails.
 It measures from the start of each in-process write until all tails receive
-the event. The current regression baseline is 10.721 ms p50 and 16.079 ms p99.
-It includes the write and stream reads, and is above the 5 ms fan-out target.
-A separate follow-up will optimize fan-out.
+the event. The current regression baseline is 0.755 ms p50 and 2.223 ms p99,
+within the 5 ms fan-out target: a commit's events reach the tails in memory
+(the broadcaster carries the committed page), each caught-up tail serves them
+without a store read, and a tail that is behind, or that a page finds with one
+page already queued, catches up from the store.
 
 ### Hosted mode (Postgres)
 
