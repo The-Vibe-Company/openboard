@@ -4,6 +4,8 @@ title: Refuse a private or loopback webhook URL
 milestone: M11-webhooks-and-watchers
 package: server
 writes:
+  - apps/web/e2e/support/serve.ts
+  - apps/web/e2e/webhooks.spec.ts
   - packages/server/test/webhooks/ping.test.ts
   - packages/server/test/webhooks/sign-github.test.ts
   - packages/server/test/webhooks/template.test.ts

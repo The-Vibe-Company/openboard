@@ -74,6 +74,7 @@ test("an admin corrects an invalid tail, copies a webhook secret, receives a lab
     },
   });
   try {
+    if (!app.webhookReceiverUrl) throw new Error("webhook receiver was not started");
     await join(page, app.url, "admin");
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto(app.url + settings);
