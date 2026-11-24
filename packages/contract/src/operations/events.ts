@@ -7,13 +7,20 @@ import { ChannelFilter, messageFilters } from "./thread-filters.ts";
 export const readEvents = defineOperation({
   name: "readEvents",
   operationId: "events",
-  summary: "Read the board's events after a cursor, oldest first.",
+  summary: "Read the board's events after a cursor or read its newest events, oldest first.",
   route: { method: "GET", path: "/events" },
   scope: "board",
   input: {
     query: Type.Object(
       {
         after: Type.Optional(Type.String()),
+        last: Type.Optional(
+          Type.Integer({
+            minimum: 1,
+            maximum: 100,
+            description: "Return newest events immediately, oldest first. Cannot be combined with after or wait.",
+          }),
+        ),
         wait: Type.Optional(
           Type.Number({
             minimum: 0,

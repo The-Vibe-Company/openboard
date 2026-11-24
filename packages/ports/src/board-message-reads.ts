@@ -1,16 +1,19 @@
-import type { Thread, ThreadSummary } from "@openboard/contract";
+import type { Message, Thread, ThreadSummary } from "@openboard/contract";
 import type { EventFilters, LabelsChanged, MessageDeleted, MessageEdited, MessagePosted } from "@openboard/core";
 import type { ThreadPosition } from "./store.ts";
 
 export interface BoardMessageReads {
-  /** Scans up to 200 log entries and returns matching feed events and the scanned cursor. */
+  /**
+   * Scans up to 200 entries forward and returns the scanned cursor. With `last`, reads newest matching events
+   * in ascending order with their current message views and the snapshot's board head as cursor.
+   */
   readEvents(
     after?: number,
-    filters?: EventFilters,
+    filters?: EventFilters & { readonly last?: number },
   ): Promise<{
     head: number;
     cursor: number;
-    events: (MessagePosted | MessageEdited | MessageDeleted | LabelsChanged)[];
+    events: ((MessagePosted | MessageEdited | MessageDeleted | LabelsChanged) & { current?: Message })[];
   }>;
   /**
    * The root and selected replies in ascending order, or null when no message has the requested ID.

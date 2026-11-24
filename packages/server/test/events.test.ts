@@ -179,3 +179,51 @@ test("a channel-limited credential reads only events it may see", async () => {
     await app.close();
   }
 });
+
+test("reads the newest channel events oldest first with current views and resumes from the board head", async () => {
+  const app = makeApp();
+  try {
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "old text" })).status).toBe(201);
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "second" })).status).toBe(201);
+    expect((await call(app, "POST", "/messages/3/edit", { text: "second edited" })).status).toBe(200);
+    expect((await call(app, "POST", "/messages/3/edit", { text: "second revised" })).status).toBe(200);
+    expect((await call(app, "POST", "/messages", { channel: "dev/web", text: "outside" })).status).toBe(201);
+
+    const response = await call(app, "GET", "/events?channel=dev&last=3");
+    expect(response.status).toBe(200);
+    const page = (await response.json()) as OutputOf<typeof readEvents>;
+    expect(page.cursor).toBe("6");
+    expect(page.events.map(({ cursor, message }) => [cursor, message.text])).toEqual([
+      ["3", "second revised"],
+      ["4", "second revised"],
+      ["5", "second revised"],
+    ]);
+    expect(page.events[0]?.payload).toMatchObject({ text: "second revised" });
+    expect(page.events[1]?.payload).toMatchObject({ text: "second revised" });
+
+    const staleText = await call(app, "GET", "/events?channel=dev&last=3&text=second%20edited");
+    const filtered = (await staleText.json()) as OutputOf<typeof readEvents>;
+    expect(filtered.events.map(({ cursor }) => cursor)).toEqual(["5"]);
+
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "new" })).status).toBe(201);
+    const resumed = await call(app, "GET", `/events?channel=dev&after=${page.cursor}`);
+    expect(resumed.status).toBe(200);
+    expect(((await resumed.json()) as OutputOf<typeof readEvents>).events.map(({ cursor }) => cursor)).toEqual(["7"]);
+  } finally {
+    await app.close();
+  }
+});
+
+test.each(["last=2&after=0", "last=2&wait=0", "last=0", "last=101", "last=1.5"])(
+  "rejects invalid newest-event query %s",
+  async (query) => {
+    const app = makeApp();
+    try {
+      const response = await call(app, "GET", `/events?${query}`);
+      expect(response.status).toBe(400);
+      expect(((await response.json()) as { error: ErrorBody }).error.code).toBe("invalid_request");
+    } finally {
+      await app.close();
+    }
+  },
+);

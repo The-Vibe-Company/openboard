@@ -3066,9 +3066,20 @@
     "/events": {
       "get": {
         "operationId": "events",
-        "summary": "Read the board's events after a cursor, oldest first.",
+        "summary": "Read the board's events after a cursor or read its newest events, oldest first.",
         "parameters": [
           { "name": "after", "in": "query", "required": false, "schema": { "type": "string" } },
+          {
+            "name": "last",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Return newest events immediately, oldest first. Cannot be combined with after or wait.",
+              "type": "integer"
+            }
+          },
           {
             "name": "wait",
             "in": "query",
@@ -3153,6 +3164,12 @@
           "type": "object",
           "properties": {
             "after": { "type": "string" },
+            "last": {
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Return newest events immediately, oldest first. Cannot be combined with after or wait.",
+              "type": "integer"
+            },
             "wait": {
               "minimum": 0,
               "maximum": 300,
