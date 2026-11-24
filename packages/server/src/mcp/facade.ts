@@ -12,7 +12,33 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+export function mcpMethodNotAllowed(): Response {
+  return Response.json(
+    { error: { message: "MCP is stateless. Use POST for each request." } },
+    { status: 405, headers: { allow: "POST" } },
+  );
+}
+
+function acceptsJson(accept: string | null): boolean {
+  // Strip quoted parameter contents before splitting on media range and parameter separators.
+  const ranges = (accept ?? "").replace(/"(?:[^"\\]|\\.)*"/g, '""');
+  return ranges.split(",").some((entry) => {
+    const [mediaType, ...parameters] = entry.trim().toLowerCase().split(";");
+    return (
+      mediaType?.trim() === "application/json" &&
+      !parameters.some((parameter) => /^q\s*=\s*0(?:\.0*)?$/.test(parameter.trim()))
+    );
+  });
+}
+
 export async function mcpPost(request: Request): Promise<Response> {
+  if (!acceptsJson(request.headers.get("accept"))) {
+    return Response.json(
+      { error: { message: "Accept must include application/json." } },
+      { status: 406, headers: { vary: "Accept" } },
+    );
+  }
+
   const version = request.headers.get("mcp-protocol-version");
   if (version !== null && version !== PROTOCOL_VERSION) {
     throw new BoardError("invalid_request", "unsupported MCP-Protocol-Version");

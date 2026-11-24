@@ -5,12 +5,15 @@ milestone: M12-mcp-sdk-skill
 package: server
 writes:
   - packages/server/src/mcp/facade.ts
+  - packages/server/src/http/pipeline.ts
+  - docs/protocol.md
+  - skills/openboard/SKILL.md
   - packages/server/test/mcp/methods.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [339]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-340
 issue: 525
 ---
 

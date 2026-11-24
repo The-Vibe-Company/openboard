@@ -9,7 +9,7 @@ import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { runSigned } from "../inbound/receive.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
-import { mcpPost } from "../mcp/facade.ts";
+import { mcpMethodNotAllowed, mcpPost } from "../mcp/facade.ts";
 import { streamEvents } from "../operations/events.ts";
 import {
   type AccountOperation,
@@ -210,10 +210,8 @@ async function run(
     const response = await runPlatform(request, url, pipeline, logged);
     if (response) return response;
   }
-  if (request.method === "POST") {
-    const path = mcpPath(url.pathname, pipeline.config.mode);
-    if (path) return runMcp(request, path, pipeline, logged);
-  }
+  const mcp = mcpPath(url.pathname, pipeline.config.mode);
+  if (mcp) return runMcp(request, mcp, pipeline, logged);
   const path = boardPath(url.pathname, pipeline.config.mode);
   if (!path) throw notFound();
   logged.org = path.org;
@@ -272,14 +270,16 @@ function authenticateBoard(
 async function runMcp(request: Request, path: BoardPath, pipeline: Pipeline & RequestLimits, logged: RequestFields) {
   logged.org = path.org;
   const { publicUrl } = pipeline.config;
-  const audience = `${publicUrl}/api/${path.org}/${path.board}`;
-  // Discovery accepts the same credentials as whoami and executes no board operation.
-  const { by } = await authenticateBoard(request, path, pipeline, getMe.name, audience);
-  logged.actor = by.actor;
   const origin = request.headers.get("origin");
   if (origin !== null && origin !== new URL(publicUrl).origin) {
     throw new BoardError("forbidden", "the MCP Origin must match this server");
   }
+  if (request.method !== "POST") return mcpMethodNotAllowed();
+
+  const audience = `${publicUrl}/api/${path.org}/${path.board}`;
+  // Discovery accepts the same credentials as whoami and executes no board operation.
+  const { by } = await authenticateBoard(request, path, pipeline, getMe.name, audience);
+  logged.actor = by.actor;
   return mcpPost(request);
 }
 
