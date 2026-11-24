@@ -169,6 +169,19 @@ Use `ob read <channel> --by <handle>` to list threads with a matching root or re
 by handle or ID. Tombstones retain their author for this filter. The same
 message must satisfy the other filters.
 
+Use `ob read <channel> --mentions me` to list threads whose root or a live reply
+mentions you. `GET /threads` accepts `mentions` as `me` (the caller's actor ID
+and handle), `@[actor-id]` (that ID exactly), or a name with or without its `@`,
+taken as an actor ID and as a handle. A message matches when its text holds
+`@[id]` (case-sensitive), or `@[id+…` for an agent or profile under that ID, so a
+person covers their agents; or when a handle it wrote stayed text, a mention of
+no one (see "Mentions"), and is that handle or a name under it (`@ada`,
+`@ada/claude`), in any case, outside code. For a caller that reads every channel,
+a handle or ID also covers that actor's ID and handle. A mention edited away no
+longer matches. Until mentions are indexed (data-model.md `terms`), an `@[id]`
+typed by hand inside code still matches. The same message must satisfy the other
+filters.
+
 Use `ob read dev/` (a trailing slash) to list the threads of `dev` and of every
 channel under it (`dev/web`, `dev/web/api`) as one list, by activity, as upstream's
 "Filters" reads `channel`. Every other filter and paging works the same. The

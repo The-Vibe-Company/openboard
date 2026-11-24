@@ -119,7 +119,9 @@ async function resolvePostMentions(
   thread: number | undefined,
   { handles, scoped }: MentionVisibility,
 ) {
-  if (handles.size === 0 || channel === undefined || !canReadChannel(ctx.by, channel)) return undefined;
+  if (handles.size === 0 || channel === undefined) return undefined;
+  // A writer that cannot read the channel looks no one up, but its handles stay recorded as mentions of no one.
+  if (!canReadChannel(ctx.by, channel)) return messages.settleMentions(text, handles, []);
   const candidates = await writer.mentionActors(handles);
   const visible = scoped && (await writer.unchangedMentionEvidence(scoped));
   const actors = visible ? candidates.filter(({ id }) => visible.has(id)) : candidates;
