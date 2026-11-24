@@ -7,6 +7,7 @@ import type { MessageEdited } from "./messages/edit.ts";
 import type { LabelsChanged } from "./messages/labels.ts";
 import type { ActorSeen, MessagePosted } from "./messages/post.ts";
 import type { ReactionAdded, ReactionRemoved } from "./messages/reactions.ts";
+import type { WatchFailed } from "./watchers/ack.ts";
 import type { WatchersRegistered } from "./watchers/register.ts";
 
 export type {
@@ -62,7 +63,8 @@ export type BoardEvent =
   | ReactionAdded
   | ReactionRemoved
   | TaskEvent
-  | WatchersRegistered;
+  | WatchersRegistered
+  | WatchFailed;
 
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail } from "./events/tail.ts";
 export { formatId, isoTime, parseId } from "./ids.ts";
@@ -110,5 +112,11 @@ export {
   mentionFilter,
   textPattern,
 } from "./threads/filters.ts";
-export { checkWatcherLease, WATCHER_LEASE_MS } from "./watchers/ack.ts";
+export {
+  checkWatcherLease,
+  decideWatcherAck,
+  WATCHER_LEASE_MS,
+  WATCHER_MAX_TRIES,
+  type WatchFailed,
+} from "./watchers/ack.ts";
 export { validateWatchers, type WatchersRegistered } from "./watchers/register.ts";

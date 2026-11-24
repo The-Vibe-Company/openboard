@@ -363,8 +363,8 @@ board audit. The CLI is `ob grants update <id>` and the MCP tool is `update_gran
 | --- | --- | --- | --- |
 | POST | `/watchers` | U | `{ watch }` pull registrations, ≤ 32, keyed by actor (D17); `url` → 501 `no_wake_by_url`; `path` → 501 `no_wake_by_path`; any `sync` entry → 403 "this board keeps no sync" |
 | GET | `/watchers` | U | |
-| GET | `/watchers/matches` | U | 5-min leases, per thread in order, `wait` ≤ 25 s |
-| POST | `/watchers/matches/:id/ack` | U | |
+| GET | `/watchers/matches` | U | 5-min leases, per thread in order, `wait` ≤ 25 s. An expired lease counts as a failed try. |
+| POST | `/watchers/matches/:id/ack` | U | `{ lease, error?, skip? }`. Errors retry after 1, 2, 4, and 8 seconds. The fifth failed try emits `watch.failed`. `skip: true` drops the match silently. |
 
 Until ticket 384, a non-empty `sync` registration answers 400 `invalid_request`.
 
@@ -492,6 +492,10 @@ and `watch.failed`. Sync events (`thread.synced`, `message.synced`,
 `message.files_synced`, `message.sync_failed`, `message.linked`) are never
 written. OpenBoard's `ob.*` board events and organization events are stored
 but never served on `/events`; they are read through the audit routes.
+
+`watch.failed` carries `matched` (match ID), `thread` (thread ID), and `error`.
+OpenBoard adds an optional `watcher` field with the registration's watcher ID.
+Only callers who can read the matched channel receive the failure event.
 
 ## Outbound webhooks
 

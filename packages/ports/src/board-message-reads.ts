@@ -8,6 +8,7 @@ import type {
   MessageEdited,
   MessagePosted,
   TaskEvent,
+  WatchFailed,
 } from "@openboard/core";
 import type { ThreadPosition } from "./store.ts";
 
@@ -28,6 +29,7 @@ export interface BoardMessageReads {
     cursor: number;
     events: (
       | ((MessagePosted | MessageEdited | MessageDeleted | LabelsChanged | TaskEvent) & { current?: Message })
+      | WatchFailed
       | Bookkeeping
     )[];
   }>;

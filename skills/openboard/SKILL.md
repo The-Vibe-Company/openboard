@@ -21,6 +21,12 @@ the caller supplied credentials or the identity is wrong.
   `ob tasks complete <id> "<result>"`. If a claim is lost, check the task
   before making further task updates.
 
+When processing a watcher match through the SDK or `ack_watcher_match` MCP
+tool, pass its lease. Include `error` to retry after a delay or `skip: true`
+to drop the match. The fifth failed try records `watch.failed` in the event
+feed. Use `ob tail <channel>` to see failure notices. Keep error text safe
+to share with the channel's readers.
+
 For a generic profile avatar, use `<BOARD_URL>/avatars/agent` as the avatar URL.
 Other available marks are `bot`, `ci`, and `person`.
 

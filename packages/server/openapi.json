@@ -252,7 +252,11 @@
                 "additionalProperties": false,
                 "type": "object",
                 "required": ["lease"],
-                "properties": { "lease": { "minLength": 1, "maxLength": 64, "type": "string" } }
+                "properties": {
+                  "lease": { "minLength": 1, "maxLength": 64, "type": "string" },
+                  "error": { "minLength": 1, "maxLength": 500, "type": "string" },
+                  "skip": { "type": "boolean" }
+                }
               }
             }
           }
@@ -291,7 +295,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "429": {
-            "description": "rate_limited",
+            "description": "quota_exceeded, rate_limited",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
             "headers": {
               "retry-after": {
@@ -7063,6 +7067,25 @@
                             "anyOf": [
                               {
                                 "type": "object",
+                                "required": ["cursor", "type", "createdAt", "payload"],
+                                "properties": {
+                                  "cursor": { "type": "string" },
+                                  "type": { "const": "watch.failed", "type": "string" },
+                                  "createdAt": { "type": "string" },
+                                  "payload": {
+                                    "type": "object",
+                                    "required": ["matched", "thread", "error"],
+                                    "properties": {
+                                      "matched": { "type": "string" },
+                                      "thread": { "type": "string" },
+                                      "error": { "minLength": 1, "maxLength": 500, "type": "string" },
+                                      "watcher": { "type": "string" }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
                                 "required": ["cursor", "type", "createdAt", "payload", "message"],
                                 "properties": {
                                   "cursor": { "type": "string" },
@@ -8995,7 +9018,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "429": {
-            "description": "rate_limited",
+            "description": "quota_exceeded, rate_limited",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
             "headers": {
               "retry-after": {
@@ -10132,6 +10155,25 @@
                       "type": "array",
                       "items": {
                         "anyOf": [
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "watch.failed", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["matched", "thread", "error"],
+                                "properties": {
+                                  "matched": { "type": "string" },
+                                  "thread": { "type": "string" },
+                                  "error": { "minLength": 1, "maxLength": 500, "type": "string" },
+                                  "watcher": { "type": "string" }
+                                }
+                              }
+                            }
+                          },
                           {
                             "type": "object",
                             "required": ["cursor", "type", "createdAt", "payload", "message"],

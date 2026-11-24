@@ -65,7 +65,7 @@ export const pullWatcherMatches = defineOperation({
   },
   output: Type.Object({ matches: Type.Array(WatcherMatch) }),
   errors: ["no_registration", "invalid_request"],
-  effects: { readOnly: false, idempotent: false, emits: [] },
+  effects: { readOnly: false, idempotent: false, emits: ["watch.failed"] },
   mcp: { tool: "pull_watcher_matches" },
 });
 
@@ -77,10 +77,17 @@ export const ackWatcherMatch = defineOperation({
   route: { method: "POST", path: "/watchers/matches/:id/ack" },
   input: {
     params: Type.Object({ id: Ref("watcherMatch") }),
-    body: Type.Object({ lease: Type.String({ minLength: 1, maxLength: 64 }) }, { additionalProperties: false }),
+    body: Type.Object(
+      {
+        lease: Type.String({ minLength: 1, maxLength: 64 }),
+        error: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })),
+        skip: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false },
+    ),
   },
   output: Type.Object({ ok: Type.Literal(true) }),
   errors: ["no_match", "stale_lease", "invalid_request"],
-  effects: { readOnly: false, idempotent: false, emits: [] },
+  effects: { readOnly: false, idempotent: false, emits: ["watch.failed"] },
   mcp: { tool: "ack_watcher_match" },
 });

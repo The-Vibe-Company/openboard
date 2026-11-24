@@ -47,6 +47,9 @@ export function pull(
       now,
       canRead,
       canReadActorDirectory,
+      onFailure: () => {
+        throw new Error("unexpected watcher failure");
+      },
       mintLease: () => `lease-${now}`,
       limit: 10,
     }),

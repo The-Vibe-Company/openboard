@@ -2,14 +2,17 @@ import { BoardError, type Message, type Registration } from "@openboard/contract
 import {
   type BoardEvent,
   checkWatcherLease,
+  decideWatcherAck,
   eventAuthors,
   eventMentions,
+  formatId,
   isTailMessage,
   isTailMessageEvent,
   matchesTailEvent,
   mentionFilter,
   parseTail,
   WATCHER_LEASE_MS,
+  WATCHER_MAX_TRIES,
   type WatchersRegistered,
 } from "@openboard/core";
 import type { BoardKeys, BoardView, BoardWriter } from "@openboard/ports";
@@ -34,6 +37,7 @@ export const watcherStatements = {
     FROM watcher_matches m JOIN events e ON e.org_id = m.org_id AND e.board_id = m.board_id AND e.id = m.event
     WHERE m.org_id = ${"orgId"} AND m.board_id = ${"boardId"} AND m.owner = ${"owner"}
       AND m.needs_actor_directory <= ${"canReadDirectory"}
+      AND (${"canRetire"} = 1 OR m.attempt + (CASE WHEN m.lease IS NULL THEN 0 ELSE 1 END) < ${"maxTries"})
       AND (m.event, m.id) > (${"afterEvent"}, ${"afterId"})
       AND m.state = 'pending' AND m.next_at <= ${"now"} AND (m.lease_until IS NULL OR m.lease_until <= ${"now"})
       AND NOT EXISTS (SELECT 1 FROM watcher_matches older WHERE older.org_id = ${"orgId"} AND older.board_id = ${"boardId"}
@@ -48,7 +52,10 @@ export const watcherStatements = {
       AND state = 'pending' AND (lease_until IS NULL OR lease_until <= ${"now"})`,
   leaseWatcherMatch: sql`UPDATE watcher_matches SET lease = ${"lease"}, lease_until = ${"until"}, attempt = ${"attempt"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND owner = ${"owner"} AND id = ${"id"}`,
-  watcherLease: sql`SELECT lease FROM watcher_matches
+  watcherLease: sql`SELECT m.lease, m.attempt, m.watcher, m.thread, e.channel
+    FROM watcher_matches m JOIN events e ON e.org_id = m.org_id AND e.board_id = m.board_id AND e.id = m.event
+    WHERE m.org_id = ${"orgId"} AND m.board_id = ${"boardId"} AND m.owner = ${"owner"} AND m.id = ${"id"}`,
+  retryWatcherMatch: sql`UPDATE watcher_matches SET attempt = ${"attempt"}, next_at = ${"nextAt"}, lease = NULL, lease_until = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND owner = ${"owner"} AND id = ${"id"}`,
   removeWatcherMatch: sql`DELETE FROM watcher_matches
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND owner = ${"owner"} AND id = ${"id"}`,
@@ -142,7 +149,7 @@ export function watcherWriter(
   }
   return {
     watcherRegistrationHash,
-    async pullWatcherMatches({ owner, now, limit, mintLease, canRead, canReadActorDirectory }) {
+    async pullWatcherMatches({ owner, now, limit, mintLease, onFailure, canRead, canReadActorDirectory }) {
       if ((await watcherRegistrationHash(owner)) === null) {
         throw new BoardError("no_registration", "this caller has no watchers registered here");
       }
@@ -151,8 +158,9 @@ export function watcherWriter(
       const matches = [];
       let afterEvent = 0;
       let afterId = "";
+      let canRetire = true;
       // Read a bounded page before applying caller-specific channel access.
-      while (matches.length < limit) {
+      scan: while (matches.length < limit) {
         const rows = await query(db, dialect, watcherStatements.nextWatcherMatches, {
           ...keys,
           owner,
@@ -160,6 +168,8 @@ export function watcherWriter(
           afterEvent,
           afterId,
           canReadDirectory: canReadActorDirectory ? 1 : 0,
+          canRetire: canRetire ? 1 : 0,
+          maxTries: WATCHER_MAX_TRIES,
         });
         for (const row of rows) {
           if (!canRead(String(row.channel))) {
@@ -173,8 +183,18 @@ export function watcherWriter(
             continue;
           }
           const id = String(row.match_id);
-          const lease = mintLease();
           const attempt = Number(row.attempt) + Number(row.lease != null);
+          if (attempt >= WATCHER_MAX_TRIES) {
+            await query(db, dialect, watcherStatements.removeWatcherMatch, { ...keys, owner, id });
+            onFailure(watchFailure(row, id, "watcher lease expired"));
+            // Append at most one failure per pull even when many leases expire at once.
+            canRetire = false;
+            // Its successor may now be eligible ahead of the rest of the prefetched page.
+            afterEvent = Number(row.id);
+            afterId = id;
+            continue scan;
+          }
+          const lease = mintLease();
           await query(db, dialect, watcherStatements.leaseWatcherMatch, {
             ...keys,
             owner,
@@ -193,10 +213,39 @@ export function watcherWriter(
       }
       return matches;
     },
-    async ackWatcherMatch({ owner, id, lease }) {
-      const [row] = await query(db, dialect, watcherStatements.watcherLease, { ...keys, owner, id });
-      checkWatcherLease(row ? { lease: typeof row.lease === "string" ? row.lease : null } : null, lease);
-      await query(db, dialect, watcherStatements.removeWatcherMatch, { ...keys, owner, id });
-    },
+    ackWatcherMatch: (input) => ackMatch(db, dialect, keys, input),
+  };
+}
+
+async function ackMatch(
+  db: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  { owner, id, lease, error, skip, now }: Parameters<BoardWriter["ackWatcherMatch"]>[0],
+) {
+  const scope = { ...keys, owner, id };
+  const [row] = await query(db, dialect, watcherStatements.watcherLease, scope);
+  if (!row) throw new BoardError("no_match", "no match is waiting for this caller");
+  checkWatcherLease({ lease: typeof row.lease === "string" ? row.lease : null }, lease);
+  const decision = decideWatcherAck(Number(row.attempt), now ?? 0, { error, skip });
+  if (decision.kind === "retry") {
+    await query(db, dialect, watcherStatements.retryWatcherMatch, {
+      ...scope,
+      attempt: decision.attempt,
+      nextAt: decision.nextAt,
+    });
+    return null;
+  }
+  await query(db, dialect, watcherStatements.removeWatcherMatch, scope);
+  if (decision.kind === "drop") return null;
+  return watchFailure(row, id, decision.error);
+}
+
+function watchFailure(row: Row, id: string, error: string) {
+  const thread = Number(row.thread);
+  return {
+    channel: String(row.channel),
+    thread,
+    payload: { matched: id, thread: formatId(thread), error, watcher: String(row.watcher) },
   };
 }

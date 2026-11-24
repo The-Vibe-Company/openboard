@@ -29,6 +29,10 @@ function parse(ctx: CommandContext): { channel: string; last?: number } {
 
 /** An event on one line, as upstream's `vb tail`: `#4  dev  fixer-2: hi`, led by its type unless it is a post. */
 function eventLine(event: BoardEvent): string | undefined {
+  if (event.type === "watch.failed") {
+    const { thread, watcher, error } = event.payload;
+    return `watch.failed  #${thread}  ${watcher ?? "watcher"}: ${JSON.stringify(error)}`;
+  }
   if (!("message" in event)) return undefined;
   const { message } = event;
   const line = `#${message.id}  ${message.channel}  ${messageLine(message).slice(`#${message.id}  `.length)}`;

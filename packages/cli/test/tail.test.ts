@@ -85,6 +85,19 @@ test("ob tail <channel> --last 3 prints the three newest events first, oldest fi
   expect(requests).toEqual([{ url: "/api/local/main/events?channel=dev&last=3", lastEventId: null }]);
 });
 
+test("ob tail --last 1 prints a watcher failure", async () => {
+  const failed = {
+    cursor: "8",
+    type: "watch.failed",
+    createdAt: "2026-11-24T00:00:00.000Z",
+    payload: { matched: "4-000000000001", thread: "4", watcher: "triage", error: "timeout" },
+  };
+  const { code, printed } = run(["dev", "--last", "1"], [Response.json({ events: [failed], cursor: "8" })]);
+  expect(await code).toBe(130);
+  expect(printed.out).toEqual(['watch.failed  #4  triage: "timeout"']);
+  expect(printed.err).toEqual([]);
+});
+
 test("ob tail --json prints one event per line as the board serves it", async () => {
   const posted = event("4", "hi");
   const { code, printed } = run(["--json", "dev"], [Response.json({ events: [], cursor: "3" }), stream(posted)]);
