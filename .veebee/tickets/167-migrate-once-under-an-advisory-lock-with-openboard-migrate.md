@@ -11,11 +11,12 @@ writes:
   - apps/openboard/src/migrate.ts
   - apps/openboard/src/compose.ts
   - apps/openboard/test/migrate.test.ts
+  - docs/architecture.md
 conformance: []
 modes: [hosted]
 depends_on: [162]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-t167
 issue: 247
 ---
 
