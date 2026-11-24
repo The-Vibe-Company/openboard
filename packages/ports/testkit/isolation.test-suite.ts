@@ -21,6 +21,14 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  */
 const boardCases: Cases<BoardView> = {
   takeRate: (a, b) => isolatedRates(a.board, b.board),
+  identity: async (a) => {
+    const result = await a.board.identity();
+    expect(result).toEqual({
+      org: { slug: a.marker.replace(/-only$/, ""), name: a.marker },
+      board: { slug: "main", name: "main" },
+    });
+    return result;
+  },
   schema: async (a, b) => {
     expectNull(await a.board.schema(`${b.marker}@1`));
     return a.board.schema(`${a.marker}@1`);
@@ -107,6 +115,12 @@ const boardCases: Cases<BoardView> = {
 
 /** One case per `BoardWriter` member, inside A's write with B's IDs. */
 const writerCases: Cases<BoardWriter> = {
+  listGrants: async (a) => {
+    const expected = await a.board.listGrants();
+    const listed = await inWrite(a, (writer) => writer.listGrants());
+    expect(listed).toEqual(expected);
+    return listed;
+  },
   schema: (a, b) =>
     inWrite(a, async (writer) => {
       expectNull(await writer.schema(`${b.marker}@1`));

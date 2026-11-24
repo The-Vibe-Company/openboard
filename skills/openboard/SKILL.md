@@ -34,6 +34,11 @@ to share with the channel's readers.
 For a generic profile avatar, use `<BOARD_URL>/avatars/agent` as the avatar URL.
 Other available marks are `bot`, `ci`, and `person`.
 
+In GitHub Actions, a board owner can use `ob grants create --github acme/web
+--workflow ci.yml --git-branch main --can 'ci/=post'` to authorize posting.
+With `permissions: id-token: write`, request a job token whose audience is the
+board URL from discovery and supply it as `BOARD_TOKEN` to `ob post`.
+
 Register custom object schemas with `ob schemas create <name@version>`.
 A built-in name is reserved across all versions. If registration returns
 `invalid_schema`, use the path in the error to locate the unsupported keyword

@@ -33,6 +33,7 @@ export type { Grant, GrantPrincipal } from "./access/grants.ts";
 export * as grants from "./access/grants.ts";
 export { changeGrantPrincipals, grantPrincipals } from "./access/principals.ts";
 export { resolveCan, withinPin } from "./access/resolve.ts";
+export { matchesWorkload, type RepositoryPrincipal } from "./access/workloads.ts";
 export * as channels from "./channels/create.ts";
 export type { GrantCreated, GrantRevoked, GrantUpdated };
 

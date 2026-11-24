@@ -4837,7 +4837,8 @@
                             { "const": "connection", "type": "string" },
                             { "const": "agent", "type": "string" },
                             { "const": "session", "type": "string" },
-                            { "const": "personal", "type": "string" }
+                            { "const": "personal", "type": "string" },
+                            { "const": "oidc", "type": "string" }
                           ]
                         },
                         "name": { "type": "string" },
@@ -4876,7 +4877,8 @@
                             { "const": "connection", "type": "string" },
                             { "const": "agent", "type": "string" },
                             { "const": "session", "type": "string" },
-                            { "const": "personal", "type": "string" }
+                            { "const": "personal", "type": "string" },
+                            { "const": "oidc", "type": "string" }
                           ]
                         }
                       }

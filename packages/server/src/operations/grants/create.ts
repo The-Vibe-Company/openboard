@@ -1,7 +1,8 @@
 import { BoardError, type createGrant } from "@openboard/contract";
 import { type GrantCreated, grantPrincipals, grants, isoTime } from "@openboard/core";
 import { keepInsideCan } from "../../auth/access.ts";
-import { memberOf } from "../../deps.ts";
+import { currentWorkload } from "../../auth/oidc.ts";
+import { memberOf, workloadOf } from "../../deps.ts";
 import type { Handler } from "../index.ts";
 
 export const createGrantHandler: Handler<typeof createGrant> = async (ctx, input) => {
@@ -44,6 +45,14 @@ export async function requireGrantManage(ctx: GrantContext, channels: string[], 
 
 function appendGrant(ctx: GrantContext, can: GrantCan, principals: ReturnType<typeof grantPrincipals>) {
   return ctx.board.write(async (writer) => {
+    if (ctx.by[workloadOf]) {
+      const by = await currentWorkload(ctx.by, writer, ctx.now);
+      await requireGrantManage(
+        { ...ctx, by },
+        Object.keys(can),
+        principals.some(({ kind }) => kind === "oidc"),
+      );
+    }
     for (const principal of principals) {
       if (principal.kind === "connection" && !(await writer.connection(principal.connection))) {
         throw new BoardError("not_found", "no such connection");

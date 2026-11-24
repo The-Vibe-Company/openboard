@@ -2,7 +2,8 @@ import { BoardError, type GrantView, type revokeGrant } from "@openboard/contrac
 import type { GrantRevoked } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
 import { personGrantCan } from "../../auth/access.ts";
-import { callerCan, credentialKind, memberOf, type Principal } from "../../deps.ts";
+import { currentWorkload } from "../../auth/oidc.ts";
+import { callerCan, credentialKind, type Deps, memberOf, type Principal, workloadOf } from "../../deps.ts";
 import type { Handler } from "../index.ts";
 import { requireGrantManage } from "./create.ts";
 import { canListGrants } from "./list.ts";
@@ -16,11 +17,17 @@ function unreachable(action: GrantChange): BoardError {
 }
 
 /** Use the authority that still exists under the same board lock as the grant being revoked. */
-export async function currentAuthority(by: Principal, writer: BoardWriter, action: GrantChange): Promise<Principal> {
+export async function currentAuthority(
+  by: Principal,
+  writer: BoardWriter,
+  action: GrantChange,
+  now: Deps["now"],
+): Promise<Principal> {
   if (by[credentialKind] === "connection") {
     const record = await writer.connection(by.principal.slice("ob:conn:".length));
     return { ...by, [callerCan]: record?.effectiveCan ?? {} };
   }
+  if (by[workloadOf]) return currentWorkload(by, writer, now);
   const member = by[memberOf];
   if (!member) return by;
   const current = await writer.grantMember(by.principal.slice("ob:user:".length));
@@ -53,7 +60,7 @@ export async function authorizeExistingGrantChange(
 
 export const revokeGrantHandler: Handler<typeof revokeGrant> = (ctx, { id }) =>
   ctx.board.write(async (writer) => {
-    const by = await currentAuthority(ctx.by, writer, "revoking");
+    const by = await currentAuthority(ctx.by, writer, "revoking", ctx.now);
     const position = /^g[1-9]\d*$/.test(id) ? Number(id.slice(1)) : NaN;
     const grant = Number.isSafeInteger(position) ? await writer.activeGrant(position) : null;
     await authorizeExistingGrantChange(ctx, by, grant, "revoking");

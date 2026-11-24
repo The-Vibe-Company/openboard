@@ -44,6 +44,8 @@ export function providerLinks(providers: readonly LoginProvider[], publicUrl: st
   return providers.map(({ id }) => ({ id, start: `${publicUrl}/auth/${id}/start` }));
 }
 
+export { githubOidc as oidcIssuer } from "./github/oidc.ts";
+
 export interface SignInContext extends RequestLimits {
   readonly config: ServerConfig;
   readonly deps: Deps;

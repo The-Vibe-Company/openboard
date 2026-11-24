@@ -10,6 +10,7 @@ const CredentialKind = Type.Union([
   Type.Literal("agent"),
   Type.Literal("session"),
   Type.Literal("personal"),
+  Type.Literal("oidc"),
 ]);
 
 export const Me = Type.Object({

@@ -463,8 +463,8 @@ Order; the first verifier whose cheap `match` accepts decides:
 3. `obp_` bearer: personal token (its organization must be the URL's; the
    person must still be a member).
 4. `obl_` bearer: local owner token (local mode only).
-5. JWT bearer: OIDC. GitHub Actions' issuer and any issuer a grant on this
-   board names; keys by OIDC discovery, cached, https only, no redirects, no
+5. JWT bearer: OIDC. GitHub Actions is the built-in issuer. Keys come from
+   OIDC discovery and are cached. Fetches use HTTPS only, with no redirects or
    private hosts (as upstream's `src/server/tokens.ts`); `aud` must equal this
    board's `BOARD_URL`, which includes the organization and board path, so a
    token minted for one tenant's board is useless on another's. Principals
@@ -491,9 +491,13 @@ and `BOARD_URL` set mints a GitHub OIDC token with the board URL as audience
 (`src/client/node.ts`, `githubActionsToken`); the board verifies it locally;
 access only from a grant (`ob grants create --github acme/web --workflow ci.yml
 --git-branch main --can 'ci/=read,post'`). Matching rules follow upstream
-(`workflow_ref`, `refs/heads/<branch>`, `event_name`; PR runs carry
-`refs/pull/<n>/merge`). Naming any other issuer takes `manage` everywhere on
-the board, and a `sub`.
+(`workflow_ref`, `refs/heads/<branch>`, `event_name`; `pull_request` runs carry
+`refs/pull/<n>/merge`). Request the token with the board URL returned by
+discovery as its audience, then pass it as a bearer to the board API or as
+`BOARD_TOKEN` to `ob post`. A repository-name grant keeps matching the name
+after a repository is recreated. The signed `repository_id` identifies the
+actor and is never written back to the grant. Grant-defined issuers are reserved for future support and require board-wide
+`manage` and a `sub`.
 
 ## The credential that runs conformance
 
