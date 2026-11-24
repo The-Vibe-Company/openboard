@@ -268,6 +268,10 @@ on `NOTIFY ob_jobs` when a new item is due within a second.
 - `openboard migrate` runs as the deploy's pre-start step (Railway offers a
   pre-deploy command, unverified on current Railway) under
   `pg_advisory_lock(<constant>)`, so concurrent deploys never run it twice.
+  Hosted `openboard serve` migrates at start through the same lock. Each lock
+  attempt is bounded by a short `lock_timeout` and retried: a waiter blocked
+  inside one statement holds a snapshot that the holder's
+  `CREATE INDEX CONCURRENTLY` would wait out, a deadlock.
 - Expand/contract only: a release may add tables, columns, indexes
   (`CREATE INDEX CONCURRENTLY`, outside a transaction), and backfill per
   board in batches under the board lock; dropping happens one release later.
