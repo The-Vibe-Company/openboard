@@ -1,3 +1,5 @@
+import { readRollingSecret, reportRollingCheck, rollingCheck } from "./rolling-check.ts";
+
 const API = "https://backboard.railway.com/graphql/v2";
 const PROJECT = "d2f79d2f-64b8-4c30-b922-3b9502e6ea4e";
 const ORIGIN = "https://openboard-staging.up.railway.app";
@@ -17,6 +19,12 @@ const targetQuery = `query StagingTarget {
 }`;
 const environmentQuery = `query StagingEnvironment($id: String!) {
   environment(id: $id) { name serviceInstances { edges { node { serviceName serviceId } } } }
+}`;
+const previousQuery = `query PreviousStagingDeployment($input: DeploymentListInput!) {
+  deployments(input: $input, first: 1) { edges { node { id } } }
+}`;
+const retirementQuery = `query StagingRetirement($id: String!) {
+  deployment(id: $id) { status }
 }`;
 const updateMutation = `mutation UpdateStaging($serviceId: String!, $environmentId: String!, $input: ServiceInstanceUpdateInput!) {
   serviceInstanceUpdate(serviceId: $serviceId, environmentId: $environmentId, input: $input)
@@ -97,6 +105,7 @@ function pollDelay(retryAfter: string | null, now: number): number {
 async function waitForReplicas(
   api: ReturnType<typeof railway>,
   deploymentId: string,
+  previousId: string | undefined,
   tag: string,
   runtime: Runtime,
 ): Promise<string[]> {
@@ -104,6 +113,7 @@ async function waitForReplicas(
   const seen = new Set<string>();
   let pending: Deployment["instances"] = [];
   let status = "unknown";
+  let previousStatus: string | undefined;
   let readFailure: string | undefined;
   while (runtime.now() < deadline) {
     let deployment: Deployment;
@@ -134,10 +144,26 @@ async function waitForReplicas(
       status === "SUCCESS" &&
       active.length === STAGING_DEPLOY_SETTINGS.multiRegionConfig[REGION].numReplicas &&
       !pending.length
-    )
-      return active.map(({ id }) => id);
+    ) {
+      if (!previousId) return active.map(({ id }) => id);
+      try {
+        const { deployment: previous } = await api<{ deployment: { status: string } | null }>(retirementQuery, {
+          id: previousId,
+        });
+        previousStatus = previous?.status ?? "unknown";
+        if (previousStatus === "REMOVED") return active.map(({ id }) => id);
+      } catch (error) {
+        if (!(error instanceof RetryableReadError)) throw error;
+        const now = runtime.now();
+        await runtime.sleep(Math.max(0, Math.min(deadline - now, pollDelay(error.retryAfter, now))));
+        continue;
+      }
+    }
     if (terminalStatuses.includes(status)) break;
     await runtime.sleep(1_000);
+  }
+  if (previousStatus !== undefined) {
+    throw new Error(`Previous staging deployment ${previousId} did not retire (${previousStatus})`);
   }
   const details = pending.map(({ id, status }) => `${id} (${status})`).join(", ");
   throw new Error(
@@ -147,18 +173,24 @@ async function waitForReplicas(
   );
 }
 
+function validateDeployment(args: readonly string[], token: string | undefined) {
+  const [environment, tag] = args;
+  if (args.length !== 2 || environment !== "staging" || !tag || !/^main-[a-f0-9]{7,40}$/.test(tag)) {
+    throw new Error("Usage: bun scripts/release/railway-deploy.ts staging main-<sha> [--rolling-check]");
+  }
+  if (!token?.trim()) throw new Error("Set RAILWAY_TOKEN to a staging Railway project token");
+  return [environment, tag, token] as const;
+}
+
 export async function deployStaging(
   args: readonly string[],
   token: string | undefined,
   runtime: Runtime = { fetch, now: Date.now, sleep: Bun.sleep },
+  options: { waitForRetirement?: boolean } = {},
 ): Promise<string[]> {
-  const [environment, tag] = args;
-  if (args.length !== 2 || environment !== "staging" || !tag || !/^main-[a-f0-9]{7,40}$/.test(tag)) {
-    throw new Error("Usage: bun scripts/release/railway-deploy.ts staging main-<sha>");
-  }
-  if (!token?.trim()) throw new Error("Set RAILWAY_TOKEN to a staging Railway project token");
+  const [environment, tag, credential] = validateDeployment(args, token);
 
-  const api = railway(token, runtime.fetch);
+  const api = railway(credential, runtime.fetch);
   const { projectToken } = await api<{ projectToken: { projectId: string; environmentId: string } }>(targetQuery);
   if (projectToken?.projectId !== PROJECT)
     throw new Error("RAILWAY_TOKEN must belong to the OpenBoard Railway project");
@@ -169,6 +201,15 @@ export async function deployStaging(
   if (!service) throw new Error("Railway staging has no openboard service");
 
   const ids = { environmentId, serviceId: service.node.serviceId };
+  let previousId: string | undefined;
+  if (options.waitForRetirement) {
+    const { deployments } = await api<{ deployments: { edges: { node: { id: string } }[] } }>(previousQuery, {
+      input: { ...ids, projectId: PROJECT, status: { successfulOnly: true } },
+    });
+    previousId = deployments.edges[0]?.node.id;
+    if (!previousId) throw new Error("No active staging deployment to replace");
+  }
+
   const { serviceInstanceUpdate } = await api<{ serviceInstanceUpdate: boolean }>(updateMutation, {
     ...ids,
     input: {
@@ -180,13 +221,25 @@ export async function deployStaging(
   if (!serviceInstanceUpdate) throw new Error("Railway did not update the staging service");
   const { serviceInstanceDeployV2: deploymentId } = await api<{ serviceInstanceDeployV2: string }>(deployMutation, ids);
   if (!deploymentId) throw new Error("Railway did not return a deployment ID");
-  return waitForReplicas(api, deploymentId, tag, runtime);
+  return waitForReplicas(api, deploymentId, previousId, tag, runtime);
 }
 
 if (import.meta.main) {
   try {
-    const replicas = await deployStaging(process.argv.slice(2), process.env.RAILWAY_TOKEN);
-    console.log(`Verified ${process.argv[3]} on staging replicas: ${replicas.join(", ")}`);
+    const args = process.argv.slice(2);
+    const checked = args.at(-1) === "--rolling-check";
+    if (checked) args.pop();
+    const [, tag, token] = validateDeployment(args, process.env.RAILWAY_TOKEN);
+    const deploy = async () => {
+      const replicas = await deployStaging(args, token, undefined, { waitForRetirement: checked });
+      console.log(`Verified ${tag} on staging replicas: ${replicas.join(", ")}`);
+    };
+    if (checked) {
+      const secret = await readRollingSecret();
+      reportRollingCheck(await rollingCheck(`${ORIGIN}/api/conformance-ci/main`, secret, deploy));
+    } else {
+      await deploy();
+    }
   } catch (error) {
     console.error(`error: deploy_failed: ${error instanceof Error ? error.message : "Deployment failed"}`);
     process.exitCode = 1;

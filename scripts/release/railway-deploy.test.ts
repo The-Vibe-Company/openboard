@@ -10,11 +10,18 @@ const ids = { environmentId: target.environmentId, serviceId: service.serviceId 
 
 function fakeRailway(
   health: { instanceId: string; deploymentTag: string }[],
-  options: { environment?: string; rejectUpdate?: boolean; interruptPoll?: boolean; replaced?: boolean } = {},
+  options: {
+    environment?: string;
+    rejectUpdate?: boolean;
+    interruptPoll?: boolean;
+    replaced?: boolean;
+    retirement?: string[];
+  } = {},
 ) {
   let now = 0;
   let probes = 0;
   let polls = 0;
+  let retirementReads = 0;
   const sleeps: number[] = [];
   const calls: { operation: string; variables: Record<string, unknown> }[] = [];
   const request = async (url: string | URL | Request, init?: RequestInit) => {
@@ -40,6 +47,14 @@ function fakeRailway(
               serviceInstances: { edges: [{ node: { serviceName: "Postgres" } }, { node: service }] },
             },
           },
+        });
+      case "PreviousStagingDeployment":
+        expect(variables).toEqual({ input: { ...ids, projectId: target.projectId, status: { successfulOnly: true } } });
+        return Response.json({ data: { deployments: { edges: [{ node: { id: "old-deployment" } }] } } });
+      case "StagingRetirement":
+        expect(variables).toEqual({ id: "old-deployment" });
+        return Response.json({
+          data: { deployment: { status: options.retirement?.[retirementReads++] ?? "REMOVED" } },
         });
       case "UpdateStaging":
         return options.rejectUpdate
@@ -92,6 +107,8 @@ test("deploys the tagged GHCR image and verifies distinct replicas despite old a
   const replicas = await deployStaging(args, credential, fake.runtime);
   expect(replicas).toEqual(["replica-a", "replica-b"]);
   expect(fake.probes()).toBe(4);
+  expect(fake.calls.some(({ operation }) => operation === "PreviousStagingDeployment")).toBe(false);
+  expect(fake.calls.some(({ operation }) => operation === "StagingRetirement")).toBe(false);
   expect(fake.calls.map(({ operation }) => operation).slice(0, 5)).toEqual([
     "StagingTarget",
     "StagingEnvironment",
@@ -153,6 +170,22 @@ test("honors Retry-After on an interrupted status poll and still verifies both r
   );
   expect(await deployStaging(args, credential, fake.runtime)).toEqual(["replica-a", "replica-b"]);
   expect(fake.sleeps).toEqual([1_000, 2_000]);
+});
+
+test("waits for the previous deployment to retire after both new replicas are healthy", async () => {
+  const fake = fakeRailway(
+    [
+      { instanceId: "replica-a", deploymentTag: tag },
+      { instanceId: "replica-b", deploymentTag: tag },
+    ],
+    { retirement: ["REMOVING", "REMOVED"] },
+  );
+  expect(await deployStaging(args, credential, fake.runtime, { waitForRetirement: true })).toEqual([
+    "replica-a",
+    "replica-b",
+  ]);
+  expect(fake.calls.filter(({ operation }) => operation === "StagingRetirement")).toHaveLength(2);
+  expect(fake.sleeps).toEqual([1_000, 1_000]);
 });
 
 test("ignores the replica the deploy replaced, which Railway lists as REMOVED", async () => {
