@@ -5,6 +5,7 @@ milestone: M8-front
 package: web
 writes:
   - apps/web/e2e/onboarding.spec.ts
+  - apps/web/e2e/board.spec.ts
   - apps/web/e2e/scroll.spec.ts
   - apps/web/e2e/support/serve.ts
   - apps/web/e2e/support/board-live.ts
