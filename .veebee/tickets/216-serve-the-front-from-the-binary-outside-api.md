@@ -33,7 +33,7 @@ writes:
   - .gitignore
 conformance: []
 modes: [local, hosted]
-depends_on: [187, 199]
+depends_on: [187]
 status: draft
 claimed_by: null
 issue: 377
@@ -57,4 +57,4 @@ As a person opening my board's address in a browser, the OpenBoard page loads fr
 - The SPA: React, TanStack Router (file routes, the generated route tree is exempt from size limits), TanStack Query, Vite, Geist, monochrome (D6; Vercel-like and minimal). `apps/web/src/api/client.ts` wraps the SDK with the browser's session (`credentials: "same-origin"`) and the CSRF value from `GET /api/x/session`; every page after this one uses it. The SDK today sends `x-ob-csrf` only on account and organization writes; a cookie-authenticated board write needs it too (docs/auth.md "Sessions and CSRF"), so `packages/sdk/src/client.ts` sends it on every non-GET when configured.
 - Brotli and gzip copies are made at build time (`scripts/build/index.ts`), never per request.
 - Playwright lands here so every later front ticket can check itself in a browser on a laptop: `apps/web/e2e/support/serve.ts` starts an app on SQLite with `OPENBOARD_SIGNUP=open` and a fake GitHub (as `packages/server/test/support/browser-session.ts` does: GitHub's token and user calls answered by the injected `fetch`, the authorize redirect routed back to the callback by Playwright), and `e2e/support/sign-in.ts` signs a named person in. The harness exports `serve({ signup?, dataDir?, port? })` returning `{ url, drain, stop }`, so later specs choose sign-up mode (220) or restart a server on the same data (231) without editing it. Its public URL is `http://localhost:<port>` so the `__Host-` cookies are accepted. That file is a composition root: it needs an entry in `scripts/ci/boundaries.json` (owner-reviewed), as do Vite, its React plugin, the TanStack router plugin and Playwright as `apps/web` dev dependencies. Each needs a `Dependency:` line in the PR (AGENTS.md non-negotiable 5).
-- Depends on 199, the last ticket before it to change `packages/server/src/http/pipeline.ts`.
+- No longer waits for 199 (orchestrator, 2026-11-24): both change `packages/server/src/http/pipeline.ts`, which only orders the work; whichever lands second rebases.
