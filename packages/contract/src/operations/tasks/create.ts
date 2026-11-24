@@ -47,7 +47,7 @@ export const createTask = defineOperation({
   effects: {
     readOnly: false,
     idempotent: false,
-    emits: ["message.posted", "task.created", "task.claimed"],
+    emits: ["message.posted", "task.created", "task.ready", "task.claimed"],
     meter: "messages",
   },
   cli: {

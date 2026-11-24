@@ -348,7 +348,8 @@ original task snapshot while they lack read access. A caller who had read access
 and has since lost it gets 409 `duplicate_id` on retry.
 
 `POST /tasks` with `{ re, needs? }` instead makes a task of the thread that message roots, as it is:
-it posts nothing and appends only `task.created`. The root keeps its author and text; its `task`
+it appends `task.created` and any immediate task transitions without posting a message.
+The root keeps its author and text; its `task`
 records the caller as above. It requires `label` in the thread's channel. A reply is 400
 `invalid_request` (name its root), a deleted root 400 `message_deleted`, a thread that is a task
 already 409 `already_a_task`, and `re` with `channel`, `text`, `labels`, `noSync` or `id` 400
@@ -360,7 +361,11 @@ that names itself as a prerequisite returns 400 `invalid_needs`. The new task is
 `waiting` until all its prerequisites complete. Failed tasks can still be named as
 prerequisites, and the new task waits for them to complete. Claiming a task while waiting returns
 409 `task_waiting`. Completing the last prerequisite makes it ready and appends
-`task.ready` in the completing write. Failure and cancellation leave dependants waiting.
+`task.ready` in the completing write. If all prerequisites are already completed at creation,
+the same write appends `task.created` with state `waiting`, then `task.ready` with state
+`ready`, then `task.claimed` if requested. A task without prerequisites starts ready
+with only `task.created` and any requested claim. Forward reads of the event feed show the task state
+after each event in its `message` field. Failure and cancellation leave dependants waiting.
 
 `GET /tasks` lists tasks oldest first, each as its thread's summary `{ message, replies, last }`,
 in `{ tasks, cursor }`. Its query is upstream's: `channel` (a channel, `dev/` for a subtree, absent
