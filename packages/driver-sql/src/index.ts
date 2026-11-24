@@ -7,6 +7,7 @@ import accountsDdl from "../migrations/0005-accounts.sql" with { type: "text" };
 import orgsDdl from "../migrations/0006-orgs.sql" with { type: "text" };
 import invitationsDdl from "../migrations/0007-invitations.sql" with { type: "text" };
 import deviceDdl from "../migrations/0008-device.sql" with { type: "text" };
+import connectionUseDdl from "../migrations/0009-connection-use.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
@@ -42,6 +43,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 6, name: "0006-orgs", sql: orgsDdl },
   { version: 7, name: "0007-invitations", sql: invitationsDdl },
   { version: 8, name: "0008-device", sql: deviceDdl },
+  { version: 9, name: "0009-connection-use", sql: connectionUseDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */

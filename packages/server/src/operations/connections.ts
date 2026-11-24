@@ -2,6 +2,8 @@ import {
   BoardError,
   type claimConnection,
   type createConnection,
+  type getConnection,
+  type listConnections,
   type refreshAgentToken,
   type revokeAgent,
   type revokeConnection,
@@ -15,9 +17,12 @@ import { reissueToken, TOKEN_SECRET_BYTES } from "../auth/tokens.ts";
 import { agentOf, credentialKind, memberOf, profileName, tokenHashOf } from "../deps.ts";
 import type { Handler } from "./index.ts";
 
-/** The first and last four characters of a secret, for people to tell secrets apart; never enough to use one. */
+/**
+ * `…` and the last four characters of a secret, for people to tell secrets apart: never enough to use one, and without
+ * its `obc_` prefix, so no listing ever shows text that looks like a secret (docs/auth.md "Connections").
+ */
 function hintOf(secret: string): string {
-  return `${secret.slice(0, 4)}…${secret.slice(-4)}`;
+  return `…${secret.slice(-4)}`;
 }
 
 /**
@@ -157,10 +162,10 @@ export const refreshAgentTokenHandler: Handler<typeof refreshAgentToken> = async
 };
 
 /**
- * Only the local owner on the local board, or a board owner or organization admin, revokes or rotates (docs/auth.md
- * "Revoke", "Rotate").
+ * Only the local owner on the local board, or a board owner or organization admin, manages connections: lists, reads,
+ * revokes or rotates them (docs/auth.md "Revoke", "Rotate", "List").
  */
-function requireRevoker(ctx: Parameters<Handler<typeof revokeConnection>>[0], what: string): void {
+function requireManager(ctx: Parameters<Handler<typeof revokeConnection>>[0], what: string): void {
   const role = ctx.by[memberOf]?.role;
   if (ctx.by[credentialKind] === "local") {
     if (new URL(ctx.boardUrl).pathname !== "/api/local/main") {
@@ -172,7 +177,7 @@ function requireRevoker(ctx: Parameters<Handler<typeof revokeConnection>>[0], wh
 }
 
 export const revokeConnectionHandler: Handler<typeof revokeConnection> = async (ctx, { id }) => {
-  requireRevoker(ctx, "revoke a connection");
+  requireManager(ctx, "revoke a connection");
   return ctx.board.write(async (writer) => {
     const record = await writer.connection(id);
     if (!record) throw new BoardError("not_found", "no such active connection on this board");
@@ -189,7 +194,7 @@ export const revokeConnectionHandler: Handler<typeof revokeConnection> = async (
 
 /** Revokes one agent of the connection: its tokens answer 401 from the next request, its siblings keep working. */
 export const revokeAgentHandler: Handler<typeof revokeAgent> = async (ctx, { id, agent }) => {
-  requireRevoker(ctx, "revoke an agent");
+  requireManager(ctx, "revoke an agent");
   return ctx.board.write(async (writer) => {
     const record = await writer.agent(agent);
     const now = ctx.now();
@@ -206,7 +211,7 @@ export const revokeAgentHandler: Handler<typeof revokeAgent> = async (ctx, { id,
  * none by default) and its claimed agent tokens are untouched (docs/auth.md "Rotate").
  */
 export const rotateConnectionHandler: Handler<typeof rotateConnection> = async (ctx, { id, overlap }) => {
-  requireRevoker(ctx, "rotate a connection's secret");
+  requireManager(ctx, "rotate a connection's secret");
   const minted = reissueSecret(id, ctx.randomBytes(SECRET_PART_BYTES));
   const now = ctx.now();
   const { connection, previousUntil } = await ctx.board.write(async (writer) => {
@@ -227,4 +232,18 @@ export const rotateConnectionHandler: Handler<typeof rotateConnection> = async (
     env: { BOARD_URL: ctx.boardUrl, BOARD_TOKEN: minted.token },
     previousUntil: previousUntil === null ? null : isoTime(previousUntil),
   };
+};
+
+/** Every active connection of the board, with its live agents and last use; never a secret (docs/auth.md "List"). */
+export const listConnectionsHandler: Handler<typeof listConnections> = async (ctx) => {
+  requireManager(ctx, "list connections");
+  return { connections: await ctx.board.listConnections(ctx.now()) };
+};
+
+/** One active connection of the board as the listing shows it; an unknown or revoked one is 404 `not_found`. */
+export const getConnectionHandler: Handler<typeof getConnection> = async (ctx, { id }) => {
+  requireManager(ctx, "read a connection");
+  const connection = await ctx.board.managedConnection(id, ctx.now());
+  if (!connection) throw new BoardError("not_found", "no such active connection on this board");
+  return { connection };
 };

@@ -6,6 +6,7 @@ import type {
   Connection,
   Invitation,
   InvitationRole,
+  ManagedConnection,
   Message,
   Named,
   PersonalToken,
@@ -325,6 +326,13 @@ export interface BoardView {
   agent(id: string): Promise<AgentRecord | null>;
   /** The unrevoked connection of this board with the ID, or null when the board has none with it. */
   connection(id: string): Promise<ConnectionRecord | null>;
+  /**
+   * The board's unrevoked connections by name, each with its agents unrevoked and whose token lives at `now` (epoch
+   * milliseconds), and the time of its latest event; never a secret or a secret's hash.
+   */
+  listConnections(now: number): Promise<ManagedConnection[]>;
+  /** One unrevoked connection of this board as `listConnections` shows it, or null when the board has none with it. */
+  managedConnection(id: string, now: number): Promise<ManagedConnection | null>;
   /** The first `limit` channels the query selects, by path, with their counts and the board head at the time of the read. */
   listChannels(query: ChannelsQuery): Promise<{ channels: Channel[]; head: number }>;
   /** Scans up to 200 log entries and returns the default feed and scanned cursor. */

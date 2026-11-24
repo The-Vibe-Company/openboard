@@ -194,3 +194,55 @@ describe("ob connections rotate", () => {
     expect(lines.err[0]).toContain(problem);
   });
 });
+
+describe("ob connections", () => {
+  const agent = {
+    id: `ag_${"c".repeat(16)}`,
+    actor: `ob:conn:${connection.id}+fixer-2`,
+    can: { "*": ["read"] },
+    expiresAt: "2023-11-14T23:14:20.000Z",
+    hardExpiresAt: "2023-11-15T22:14:20.000Z",
+    profile: "fixer-2",
+    createdAt: "2023-11-14T22:14:20.000Z",
+  };
+  const listed = {
+    ...connection,
+    principal: `ob:conn:${connection.id}`,
+    can: { "*": ["read"] },
+    direct: false,
+    profiles: ["*"],
+    secretHint: "…bbbb",
+    createdBy: "ob:user:local-test",
+    createdAt: "2023-11-14T22:13:20.000Z",
+  };
+
+  test("lists each connection with its agents, last use and secret hint", async () => {
+    const used = { ...listed, lastUsedAt: "2023-11-14T22:14:20.000Z", agents: [agent] };
+    const idle = { ...listed, id: `cn_${"d".repeat(16)}`, name: "spare", lastUsedAt: null, agents: [] };
+    const requests: string[] = [];
+    const fetch = async (request: Request) => {
+      requests.push(`${request.method} ${request.url}`);
+      return Response.json({ connections: [used, idle] });
+    };
+    const { lines, output } = capture();
+    expect(await runCli(["connections"], env, { fetch, output })).toBe(0);
+    expect(requests).toEqual([`GET ${BOARD_URL}/x/connections`]);
+    expect(lines.out.join("\n").split("\n")).toEqual([
+      `laptop  ${connection.id}  secret …bbbb  last used 2023-11-14T22:14:20.000Z`,
+      `  agent ${agent.id}  fixer-2  expires 2023-11-14T23:14:20.000Z`,
+      `spare  ${idle.id}  secret …bbbb  last used never`,
+      "  no agents",
+    ]);
+  });
+
+  test("shows one connection, and says so when the board has none", async () => {
+    const one = async () => Response.json({ connection: { ...listed, lastUsedAt: null, agents: [] } });
+    const shown = capture();
+    expect(await runCli(["connections", "show", connection.id], env, { fetch: one, output: shown.output })).toBe(0);
+    expect(shown.lines.out.join("\n")).toBe(`laptop  ${connection.id}  secret …bbbb  last used never\n  no agents`);
+    const none = capture();
+    const empty = async () => Response.json({ connections: [] });
+    expect(await runCli(["connections"], env, { fetch: empty, output: none.output })).toBe(0);
+    expect(none.lines.out).toEqual(["no connections"]);
+  });
+});

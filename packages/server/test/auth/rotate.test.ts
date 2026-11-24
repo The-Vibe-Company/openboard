@@ -45,7 +45,7 @@ test("a rotated secret's predecessor works for the overlap, then only the new on
     expect(body.secret).not.toBe(laptop.secret);
     expect(body.secret.slice(0, 20)).toBe(laptop.secret.slice(0, 20));
     expect(body).toEqual({
-      connection: { ...laptop.connection, secretHint: `obc_…${body.secret.slice(-4)}` },
+      connection: { ...laptop.connection, secretHint: `…${body.secret.slice(-4)}` },
       secret: body.secret,
       env: { BOARD_URL, BOARD_TOKEN: body.secret },
       previousUntil: "2023-11-14T22:23:20.000Z",
