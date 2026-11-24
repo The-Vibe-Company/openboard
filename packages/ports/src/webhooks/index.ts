@@ -38,11 +38,10 @@ export interface BoardWebhookWriter extends BoardWebhookReads {
     id: string,
     attempt: number,
     outcome: {
-      state: "done" | "dead";
       status: number | null;
       error: string | null;
       now: number;
-    },
+    } & ({ state: "done" | "dead"; nextAt?: never } | { state: "pending"; nextAt: number }),
   ): Promise<void>;
 }
 

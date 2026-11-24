@@ -726,7 +726,6 @@ A refused target returns 400 `invalid_url` with one of these reasons:
 `syntax`, `credentials`, `fragment`, `scheme`, `port`, `service_host`,
 `reserved_host`, `dns` (lookup failure or no answers), or `address` (a
 forbidden address).
-A completed attempt records a terminal result in this first implementation.
 Deleting a subscription prevents new attempts. An attempt already claimed by
 a dispatcher may finish.
 
@@ -743,7 +742,10 @@ a dispatcher may finish.
   "event": { "cursor": "813", "type": "task.ready", "createdAt": "…", "payload": { … }, "message": { … }, "actor": null } }
 ```
 
-- `delivery.id` is stable across retries (receivers dedupe on it).
+- `delivery.id` is the receiver's idempotency key and stays constant across
+  retries. The version 1 payload stays the same apart from `delivery.attempt`,
+  which starts at 1 and increments for each send. Each attempt is signed over
+  its own serialized body using that attempt's timestamp.
 - `subject` carries what a receiver needs to act and correlate: `thread` (=
   task ID), `channel`, root `labels`, `schedule` (`{ id, n }` for scheduled
   messages, a natural idempotency key). A receiver passes `subject.thread` on

@@ -12,7 +12,7 @@ const boardOrigin = "https://board.example";
 const spec = { name: "hook", filter: { tail: "dev", types: ["labels.changed"] } };
 
 async function hosted(options: Parameters<typeof makeApp>[0] = {}) {
-  const store = openSnapshotStore(() => NOW);
+  const store = openSnapshotStore(options.now ?? (() => NOW));
   const wakes: Array<Parameters<Jobs["watch"]>[2]> = [];
   const app = makeApp({
     ...options,
@@ -48,6 +48,9 @@ async function hosted(options: Parameters<typeof makeApp>[0] = {}) {
         expect((await send(`/hooks/main/messages/${message.id}/labels`, { set: { status: "ready" } })).status).toBe(
           200,
         );
+        await Promise.all(wakes.map((wake) => wake()));
+      },
+      async wake() {
         await Promise.all(wakes.map((wake) => wake()));
       },
       async deliveries() {
@@ -133,6 +136,39 @@ test("delivery uses the checked address and verified TLS identity, never follows
   }
 });
 
+test("retries a failed DNS lookup before sending to a checked address", async () => {
+  let now = NOW;
+  let dnsAvailable = true;
+  const requests: Request[] = [];
+  const app = await hosted({
+    now: () => now,
+    resolveHost: async () => {
+      if (!dnsAvailable) throw new Error("DNS lookup failed");
+      return [publicAddress];
+    },
+    webhookFetch: async (request) => {
+      requests.push(request);
+      return new Response(null, { status: 204 });
+    },
+  });
+  try {
+    expect((await app.create(receiver)).status).toBe(201);
+    dnsAvailable = false;
+    await app.deliver();
+    expect(requests).toHaveLength(0);
+    expect(await app.deliveries()).toContainEqual(
+      expect.objectContaining({ state: "pending", last_error: "request_failed" }),
+    );
+    dnsAvailable = true;
+    now += 10_000;
+    await app.wake();
+    expect(requests.map((request) => request.url)).toEqual([`https://${publicAddress}/hook?from=board`]);
+    expect(await app.deliveries()).toContainEqual(expect.objectContaining({ state: "done", last_status: 204 }));
+  } finally {
+    await app.close();
+  }
+});
+
 test("only operator configuration can allow an exact private host and extra HTTPS ports", async () => {
   const app = await hosted({
     resolveHost: async () => ["10.0.0.5"],
@@ -186,7 +222,7 @@ test("tries the next validated loopback address only after a refused connection"
     },
     payload(),
   );
-  expect(result).toEqual({ status: 204, error: null });
+  expect(result).toEqual({ status: 204, error: null, retryAfter: null });
   expect(attempts).toEqual(["http://[::1]:9000/", "http://127.0.0.1:9000/"]);
 });
 
@@ -244,7 +280,7 @@ test("reads at most 8 KB from a byte stream and cancels unbounded default stream
       },
       payload(),
     );
-  expect(await send(bytes)).toEqual({ status: 200, error: null });
+  expect(await send(bytes)).toEqual({ status: 200, error: null, retryAfter: null });
   expect(bytesRead).toBe(8192);
   expect(cancelled).toBe(true);
 
@@ -260,6 +296,6 @@ test("reads at most 8 KB from a byte stream and cancels unbounded default stream
     },
     { highWaterMark: 0 },
   );
-  expect(await send(unbounded)).toEqual({ status: 200, error: null });
+  expect(await send(unbounded)).toEqual({ status: 200, error: null, retryAfter: null });
   expect(unboundedCancelled).toBe(true);
 });

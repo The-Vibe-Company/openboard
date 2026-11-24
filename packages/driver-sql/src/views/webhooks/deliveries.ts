@@ -31,7 +31,8 @@ export const deliveryStatements = {
   pingSecret: sql`SELECT ciphertext, key_version FROM webhook_secrets
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook_id = ${"webhook"} AND id = ${"secretId"}`,
   beginDelivery: sql`UPDATE webhook_deliveries SET state = 'sending', attempt = attempt + 1, instance = ${"instance"}
-    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND event IS NOT NULL AND state IN ('pending', 'sending')
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND event IS NOT NULL
+      AND state IN ('pending', 'sending') AND next_at <= ${"now"}
     RETURNING attempt`,
   deliveryInput: sql`SELECT w.config, w.secret_id, w.owner_actor, w.owner, w.directory, s.ciphertext, s.key_version, d.root_view,
       d.attempt, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal, e.payload
@@ -43,7 +44,8 @@ export const deliveryStatements = {
   skipDelivery: sql`UPDATE webhook_deliveries SET state = 'skipped', done_at = ${"now"}, instance = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND state = 'sending'`,
   finishDelivery: sql`UPDATE webhook_deliveries
-    SET state = ${"state"}, last_status = ${"status"}, last_error = ${"error"}, done_at = ${"now"}, instance = NULL
+    SET state = ${"state"}, last_status = ${"status"}, last_error = ${"error"}, done_at = ${"doneAt"},
+        next_at = COALESCE(${"nextAt"}, next_at), instance = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND state = 'sending' AND attempt = ${"attempt"}`,
 };
 
@@ -85,7 +87,14 @@ export function deliveryWriter(
       };
     },
     async finishWebhookAttempt(id, attempt, outcome) {
-      await query(db, dialect, deliveryStatements.finishDelivery, { ...keys, id, attempt, ...outcome });
+      await query(db, dialect, deliveryStatements.finishDelivery, {
+        ...keys,
+        id,
+        attempt,
+        ...outcome,
+        doneAt: outcome.state === "pending" ? null : outcome.now,
+        nextAt: outcome.nextAt ?? null,
+      });
     },
   };
 }

@@ -28,3 +28,25 @@ test("webhook payload truncates on a UTF-8 boundary and marks the shortened body
   expect(Buffer.byteLength(body)).toBeLessThanOrEqual(256 * 1024);
   expect(Buffer.byteLength(body)).toBeGreaterThan(256 * 1024 - 8);
 });
+
+test("reserves space for attempt 10 without changing the delivery text", () => {
+  const { events } = messages.decidePost(
+    { head: 0 },
+    { channel: "dev", text: "fixture" },
+    { now: 0, by: { actor: "owner", principal: "owner", profile: null } },
+  );
+  const posted = events.find((event) => event.type === "message.posted");
+  if (posted?.type !== "message.posted") throw new Error("missing post");
+  const render = (attempt: number, text: string) => {
+    const message = { ...messages.messageView(posted), text };
+    const delivery = { id: "dl_example", attempt, webhook: "wh_example", name: "test" };
+    const body = webhookPayload("http://localhost", "local", "main", delivery, { message, payload: {} }, message);
+    if (!body) throw new Error("missing encoded body");
+    return body;
+  };
+  const text = "a".repeat(256 * 1024 - Buffer.byteLength(render(1, "")));
+  const first = render(1, text);
+  const last = render(10, text);
+  expect(last).toBe(first.replace('"attempt":1', '"attempt":10'));
+  expect(Buffer.byteLength(last)).toBe(256 * 1024);
+});

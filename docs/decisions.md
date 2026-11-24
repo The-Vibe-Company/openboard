@@ -1124,3 +1124,10 @@ A test sends `board.ping` once during the administrative request. Its
 delivery row has a null event and thread, so readers can identify it without
 an event join. Ping failures never count toward disabling a subscription.
 ([Issue #491](https://github.com/The-Vibe-Company/openboard/issues/491#issuecomment-7136782211))
+
+### Webhook retry payloads
+
+A retry keeps the delivery ID as the receiver's idempotency key. The version 1
+payload changes only in its incrementing attempt field. Each signature covers
+the bytes sent on that attempt with its own timestamp.
+([Issue #492](https://github.com/The-Vibe-Company/openboard/issues/492))
