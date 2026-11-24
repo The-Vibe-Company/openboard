@@ -1,36 +1,29 @@
 import { BoardError, type updateGrant } from "@openboard/contract";
 import { changeGrantPrincipals, type GrantUpdated, grantPrincipals, isoTime } from "@openboard/core";
-import { credentialKind, memberOf } from "../../deps.ts";
 import type { Handler } from "../index.ts";
-import { currentAuthority } from "./authority.ts";
-import { requireGrantManage, writtenCan } from "./create.ts";
+import { currentAuthority, requireExistingGrantManage, requireNewGrantManage } from "./authority.ts";
+import { writtenCan } from "./create.ts";
 import { checkIssuerLimit, validateGrantIssuers } from "./oidc.ts";
-import { authorizeExistingGrantChange } from "./revoke.ts";
 
 export const updateGrantHandler: Handler<typeof updateGrant> = (ctx, input) =>
   ctx.board.write(async (writer) => {
-    const by = await currentAuthority(ctx.by, writer, "updating", ctx.now);
+    const { by, authority } = await currentAuthority(ctx.by, writer, "updating", ctx.now);
     const position = /^g[1-9]\d*$/.test(input.id) ? Number(input.id.slice(1)) : NaN;
     const previous = Number.isSafeInteger(position) ? await writer.activeGrant(position) : null;
-    await authorizeExistingGrantChange(ctx, by, previous, "updating");
+    requireExistingGrantManage(by, authority, previous, "updating");
     if (!previous) throw new BoardError("grant_not_found", `grant not found: ${input.id}`);
-    const owner = by[credentialKind] === "local" || by[memberOf]?.role === "owner";
-    const current = { ...ctx, by };
     if (!input.add && !input.remove && !input.can) {
       throw new BoardError("invalid_grant", "name principals to add or remove, or a can");
     }
     const add = grantPrincipals(input.add ?? []);
     const principals = changeGrantPrincipals(previous, add, input.remove ?? []);
     const can = input.can === undefined ? previous.can : writtenCan(input.can);
-    if (!owner && (input.add || input.can)) {
-      await requireGrantManage(
-        current,
-        Object.keys(can),
-        principals.some(({ kind }) => kind === "oidc"),
-      );
+    const namesIssuer = add.some(({ kind }) => kind === "oidc");
+    if (input.add || input.can) {
+      await requireNewGrantManage(writer, authority, { can, principals }, namesIssuer, previous.id);
     }
     validateGrantIssuers(add);
-    if (add.some(({ kind }) => kind === "oidc")) await checkIssuerLimit(writer, principals, position);
+    if (namesIssuer) await checkIssuerLimit(writer, principals, position);
     ctx.debitWrite();
     for (const named of add) {
       if (named.kind === "connection" && !(await writer.connection(named.connection))) {

@@ -406,6 +406,12 @@ principal outranks a group, and a group outranks `everyone`. Grants tied at
 the deciding pattern and level add their permissions. Grant creation
 appears as `ob.grant.created` in the board audit. The response and subsequent listings
 keep `can` as submitted, including `"all"`, the order of permission lists, and empty lists.
+Creating a grant needs `manage` at each named pattern and under it wherever
+the caller's own grants limit access. A narrower `everyone` closure still
+applies at any pattern explicitly named in the grant. The caller must also
+hold all permissions that `everyone` would give anywhere on the resulting
+board. Naming an `oidc` principal needs `manage` throughout the board.
+Board owners may change grants regardless of their board grants.
 For a caller other than a local owner, organization owner, or admin, creation
 returns 409 `grant_lockout` if the grant would leave its maker unable to manage
 it. Setting `lockMeOut: true` allows creation in that case.
@@ -420,7 +426,9 @@ and a claimed token always gets 403. The store supplies starting grants until re
 and `by`/`at` null. The CLI is `ob grants`, printed as upstream's `vb grants`; the MCP tool is `list_grants`.
 
 `POST /grants/:id/revoke` accepts no body or `{ lockMeOut }` and returns `{ revoked }`.
-Board owners can revoke any grant. Other callers need `manage` wherever the grant reaches.
+Revocation checks the existing grant's reach. The check also applies to
+removal-only updates. Adding principals or replacing `can` additionally
+checks the resulting grant as for creation.
 A successful revocation removes the grant from listings and effective permissions on the next
 request and records `ob.grant.revoked` in the board audit. For a starting grant, the store records
 a revocation marker. A repeat by a board owner or a caller with `manage` at `*` returns `{ revoked: false }`.

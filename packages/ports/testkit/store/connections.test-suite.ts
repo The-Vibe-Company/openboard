@@ -42,6 +42,7 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
       expect(await board.connection(laptop.id)).toEqual({
         connection: laptop,
         effectiveCan: laptop.can,
+        grantCans: [{ can: laptop.can, capped: false, level: "principal" }],
         grant: { id: 4, principals: [{ kind: "connection", connection: laptop.id }], can: laptop.can },
         secretHash: "cd".repeat(32),
         previous: null,

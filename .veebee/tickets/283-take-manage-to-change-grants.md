@@ -6,14 +6,21 @@ package: server
 writes:
   - packages/core/src/access/grant-changes.ts
   - packages/core/test/access/grant-changes.test.ts
-  - packages/contract/src/operations/grants.ts
-  - packages/server/src/operations/grants.ts
+  - packages/core/src/index.ts
+  - packages/ports/src/store.ts
+  - packages/ports/testkit/store/connections.test-suite.ts
+  - packages/driver-sql/src/views/connections.ts
+  - packages/server/src/operations/grants/authority.ts
+  - packages/server/src/operations/grants/create.ts
+  - packages/server/src/operations/grants/revoke.ts
+  - packages/server/src/operations/grants/update.ts
+  - docs/protocol.md
   - packages/server/test/grants/manage.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [282]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 458
 ---
 
