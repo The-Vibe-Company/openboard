@@ -23,7 +23,7 @@ writes:
   - packages/server/test/tasks/expiry.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [244, 211]
+depends_on: [244, 211, 410]
 status: draft
 claimed_by: null
 issue: 418
@@ -42,3 +42,5 @@ As a team running agents, a task whose agent died without renewing becomes ready
 ## Notes
 - Upstream "A lease that runs out makes the task claimable at once, and `GET /tasks?state=ready` lists it. Its label says `ready` once the board appends `task.expired`: when its timer fires, or with the next claim." docs/data-model.md "Claims, leases, and dependencies" (lazy expiry: every command expires a dead claim first, reads compute the effective state; the job appends `task.expired` promptly), D24.
 - The job runs on the `Jobs` port (181, `packages/server/src/jobs/registry.ts`): the claim's and the renewal's writes enqueue it for `claim_until`, so any instance runs it once (docs/architecture.md "Jobs any instance can take"). The global index `tasks_claims (claim_until) WHERE state = 'claimed'` serves a sweep after downtime, if one is needed: say in the PR. Depends on 211, the last ticket before it to register a job in `registry.ts`.
+
+Waits for 410 (orchestrator, 2026-11-24, #418): carrying the next due time with the enqueue keeps every task write's statement count exact. A first draft of this ticket is on branch `t/245-return-an-unrenewed-task-to-the-queue`.
