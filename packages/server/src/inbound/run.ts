@@ -1,17 +1,20 @@
 import { BoardError, type OutputOf, type receiveInboundEvent } from "@openboard/contract";
 import {
   agents,
+  decideLabels,
+  decideReaction,
   grants,
-  inboundReply,
+  inboundMessagePermission,
   inboundThreadPosition,
   matchingInboundRules,
   messages,
   parseInboundRules,
   parseInboundThread,
+  renderInboundMessageAction,
 } from "@openboard/core";
 import type { BoardWriter, InboundRecord } from "@openboard/ports";
 
-type Result = OutputOf<typeof receiveInboundEvent> | MissingThread;
+type Result = OutputOf<typeof receiveInboundEvent>;
 type MissingThread = { error: { code: "thread_not_found"; message: string } };
 
 export function parseInboundBody(bytes: Uint8Array): unknown {
@@ -22,7 +25,7 @@ export function parseInboundBody(bytes: Uint8Array): unknown {
   }
 }
 
-async function replyGrant(writer: BoardWriter, record: InboundRecord) {
+async function endpointGrant(writer: BoardWriter, record: InboundRecord) {
   const grant = await writer.activeGrant(record.grantId);
   const endpoint = record.inbound.id;
   if (!grant?.principals.some((entry) => entry.kind === "hook" && entry.inbound === endpoint)) {
@@ -36,7 +39,7 @@ function missingThread(message = "the inbound reference did not identify an avai
 }
 
 async function resolveThread(writer: BoardWriter, record: InboundRecord, body: unknown) {
-  const can = await replyGrant(writer, record);
+  const can = await endpointGrant(writer, record);
   const { inbound } = record;
   const plan = inbound.threadPlan ?? parseInboundThread(inbound.thread);
   const target = inboundThreadPosition(plan, body);
@@ -48,10 +51,7 @@ async function resolveThread(writer: BoardWriter, record: InboundRecord, body: u
   if (!thread || thread.re !== null || thread.deleted) return missingThread();
   const permissions = agents.allowedAt(can, thread.channel);
   if (!permissions.includes("read")) return missingThread();
-  if (!permissions.includes("post")) {
-    throw new BoardError("forbidden", "the inbound endpoint needs post in the thread's channel");
-  }
-  return { position, thread };
+  return { position, thread, permissions };
 }
 
 export async function runInbound(
@@ -60,20 +60,21 @@ export async function runInbound(
   headers: Headers,
   body: unknown,
   now: number,
-): Promise<Result> {
+): Promise<Result | MissingThread> {
   const { inbound } = record;
   const rulePlan = inbound.rulePlan ?? parseInboundRules(inbound.rules);
   const fields = Object.fromEntries(headers);
   delete fields.authorization;
   const matching = matchingInboundRules(rulePlan, { body, headers: fields });
   const matched = matching.map(({ index }) => index);
-  const results: { reply: string }[] = [];
+  const results: Result["results"] = [];
   const answer = { ok: true as const, matched, results };
   if (matched.length === 0) return answer;
 
   const resolved = await resolveThread(writer, record, body);
   if ("error" in resolved) return resolved;
-  const { position, thread } = resolved;
+  const { position, thread, permissions } = resolved;
+  let root = thread;
 
   const { principal } = inbound;
   const context = {
@@ -85,11 +86,26 @@ export async function runInbound(
   const target = { id: position, thread: position, channel: thread.channel };
   for (const { actions } of matching) {
     for (const action of actions) {
-      const command = inboundReply(action, body, thread);
-      const { events, message } = messages.decidePost({ head: writer.head, actor, target }, command, context);
-      await writer.append(events);
+      const required = inboundMessagePermission(action);
+      if (!permissions.includes(required)) {
+        throw new BoardError("forbidden", `the inbound endpoint needs ${required} in the thread's channel`);
+      }
+      const { permission, input } = renderInboundMessageAction(action, body, root);
+      const state = { head: writer.head, actor, target: root };
+      if (permission === "post") {
+        const { events, message } = messages.decidePost({ ...state, target }, input, context);
+        await writer.append(events);
+        results.push({ reply: message.id });
+      } else {
+        const events =
+          permission === "label" ? decideLabels(state, input, context) : decideReaction(state, input, context);
+        if (events.length > 0) await writer.append(events);
+        for (const event of events) {
+          if (event.type !== "actor.seen") root = event.payload.view;
+        }
+        results.push({ [permission]: root.id });
+      }
       actor = { id: principal, ...context.author };
-      results.push({ reply: message.id });
     }
   }
   return answer;
