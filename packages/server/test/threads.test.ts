@@ -175,4 +175,14 @@ describe("searching a channel's threads by text", () => {
     expect(await found("1000")).toEqual([]);
     expect(await found("deploy fixed")).toEqual([lookalike]);
   });
+
+  test.each([[""], ["x".repeat(201)], ["a%00b"]])(
+    "GET /threads answers 400 invalid_request for text=%s",
+    async (text) => {
+      app = makeApp();
+      const read = await call(app, "GET", `/threads?channel=dev&text=${text}`);
+      expect(read.status).toBe(400);
+      expect(await read.json()).toMatchObject({ error: { code: "invalid_request" } });
+    },
+  );
 });

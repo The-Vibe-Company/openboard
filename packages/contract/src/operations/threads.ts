@@ -50,9 +50,11 @@ export const listThreads = defineOperation({
         label: Type.Optional(Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }))),
         text: Type.Optional(
           Type.String({
-            maxLength: 4096,
+            minLength: 1,
+            maxLength: 200,
+            pattern: "^[^\\u0000]+$",
             description:
-              "Only threads whose root or a reply now says this, in any case; `%` and `_` match only themselves.",
+              "Only threads with a message that now says this, in any case, and has the labels; `%` and `_` match only themselves.",
           }),
         ),
         after: Type.Optional(

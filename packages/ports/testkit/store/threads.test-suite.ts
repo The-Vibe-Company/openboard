@@ -57,6 +57,31 @@ async function checkTextSearch(board: BoardView): Promise<void> {
   expect(await found("deploy fixed")).toEqual([lookalike.id]);
 }
 
+/** Text and labels hold on one message, its root's labels included, and the text filter pages back like any other. */
+async function checkTextWithLabels(board: BoardView): Promise<void> {
+  const split = await post(board, "dev", "split");
+  await reply(board, Number(split.id), "deploy failed");
+  await post(board, "dev", "deploy failed, unlabelled");
+  const inherited = await post(board, "dev", "inherited", { area: "api" });
+  await reply(board, Number(inherited.id), "deploy failed");
+  const own = await post(board, "dev", "Deploy failed here", { area: "api" });
+  // The label is on one reply of `split` and the text on another: no single message has both.
+  await board.write(async (writer) => {
+    const target = await writer.replyTarget(Number(split.id));
+    const { events } = messages.decidePost(
+      { head: writer.head, target },
+      { re: split.id, text: "labelled", labels: { area: "api" } },
+      { by, now: at },
+    );
+    await writer.append(events);
+  });
+  const search = { text: textPattern("deploy failed") };
+  const first = await board.listThreads("dev", [["area"]], { ...search, limit: 1 });
+  expect(first.threads.map(({ message }) => message.id)).toEqual([own.id]);
+  const rest = await board.listThreads("dev", [["area"]], { ...search, before: first.older ?? undefined });
+  expect(rest).toMatchObject({ threads: [{ message: inherited }], older: null });
+}
+
 async function checkReplyPages(board: BoardView): Promise<void> {
   const root = await post(board, "dev", "root");
   const rootId = Number(root.id);
@@ -131,6 +156,16 @@ function pagingTests(localBoard: () => Promise<BoardView>): void {
   });
 }
 
+function searchTests(localBoard: () => Promise<BoardView>): void {
+  test("finds threads by the current text of their root or a reply, in any case, wildcards as characters", async () => {
+    await checkTextSearch(await localBoard());
+  });
+
+  test("finds threads by a message with both the text and the labels, a page at a time", async () => {
+    await checkTextWithLabels(await localBoard());
+  });
+}
+
 export function threadsSuite(driver: string, open: OpenStore): void {
   describe(`${driver}: threads`, () => {
     let store: Store | undefined;
@@ -196,9 +231,7 @@ export function threadsSuite(driver: string, open: OpenStore): void {
 
     pagingTests(localBoard);
 
-    test("finds threads by the current text of their root or a reply, in any case, wildcards as characters", async () => {
-      await checkTextSearch(await localBoard());
-    });
+    searchTests(localBoard);
 
     test("reads no thread for a position no message holds", async () => {
       const board = await localBoard();

@@ -158,9 +158,10 @@ on one message, including labels inherited from its thread root. Each summary ke
 thread's full reply count and latest reply.
 
 Use `ob read <channel> --text "deploy failed"` to list threads whose root or a reply
-says those words now, in any case. `GET /threads` takes `text` (up to 4096
-characters); `%` and `_` match only themselves, and an edited message is found by
-its new text, not its old one. It combines with labels and paging.
+says those words now, in any case. `GET /threads` takes `text` (1 to 200
+characters, as upstream); `%` and `_` match only themselves, and an edited message
+is found by its new text, not its old one. With labels, one message must say the
+text and have the labels (its own or its root's). It combines with paging.
 
 `ob read <channel> --limit 2` lists the latest two threads and ends with an
 `older:` line, the command for the next older page (`ob read <channel> --before

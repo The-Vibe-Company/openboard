@@ -9,8 +9,8 @@ const filterRows: Fragment = {
 const rootLabels: Fragment = {
   fragment: ({ name }) => (name === "sqlite" ? "json_each(root.labels)" : "jsonb_each_text(root.labels::jsonb)"),
 };
-const replyLabels: Fragment = {
-  fragment: ({ name }) => (name === "sqlite" ? "json_each(reply.labels)" : "jsonb_each_text(reply.labels::jsonb)"),
+const hitLabels: Fragment = {
+  fragment: ({ name }) => (name === "sqlite" ? "json_each(hit.labels)" : "jsonb_each_text(hit.labels::jsonb)"),
 };
 const filterValues: Fragment = {
   fragment: ({ name }) =>
@@ -49,26 +49,23 @@ function threadList(order: "ASC" | "DESC") {
       WHERE root.board_id = ${"boardId"} AND root.channel = ${"channel"} AND root.re IS NULL
         AND (root.active, root.id) < (CAST(${"beforeActive"} AS BIGINT), CAST(${"beforeRoot"} AS BIGINT))
         AND root.active > CAST(${"after"} AS BIGINT)
-        AND (CAST(${"text"} AS TEXT) IS NULL OR root.text_lower LIKE CAST(${"text"} AS TEXT) ESCAPE '\\' OR EXISTS (
-          SELECT 1 FROM messages AS hit WHERE hit.board_id = ${"boardId"} AND hit.re = root.id
-            AND hit.text_lower LIKE CAST(${"text"} AS TEXT) ESCAPE '\\'
-        ))
-        AND (CAST(${"labels"} AS TEXT) = '[]' OR EXISTS (
-          SELECT 1 FROM (SELECT 1) AS thread
-          LEFT JOIN messages AS reply ON reply.board_id = root.board_id AND reply.re = root.id AND reply.deleted = 0
-          WHERE root.board_id = ${"boardId"} AND NOT EXISTS (
-            SELECT 1 FROM filters CROSS JOIN ${filterRows} AS filter
-            LEFT JOIN ${rootLabels} AS root_label ON root_label.key = filter.value ->> 0
-            LEFT JOIN ${replyLabels} AS reply_label ON reply_label.key = filter.value ->> 0
-            WHERE root.board_id = ${"boardId"} AND (
-              (root_label.key IS NULL AND reply_label.key IS NULL) OR (
-                filter.value -> 1 IS NOT NULL AND NOT EXISTS (
-                  SELECT 1 FROM ${filterValues} AS allowed WHERE root.board_id = ${"boardId"}
-                    AND (allowed.value = root_label.value OR allowed.value = reply_label.value)
+        AND ((CAST(${"labels"} AS TEXT) = '[]' AND CAST(${"text"} AS TEXT) IS NULL) OR EXISTS (
+          SELECT 1 FROM messages AS hit
+          WHERE hit.board_id = ${"boardId"} AND (hit.id = root.id OR (hit.re = root.id AND hit.deleted = 0))
+            AND (CAST(${"text"} AS TEXT) IS NULL OR hit.text_lower LIKE CAST(${"text"} AS TEXT) ESCAPE '\\')
+            AND NOT EXISTS (
+              SELECT 1 FROM filters CROSS JOIN ${filterRows} AS filter
+              LEFT JOIN ${rootLabels} AS root_label ON root_label.key = filter.value ->> 0
+              LEFT JOIN ${hitLabels} AS hit_label ON hit_label.key = filter.value ->> 0
+              WHERE hit.board_id = ${"boardId"} AND (
+                (root_label.key IS NULL AND hit_label.key IS NULL) OR (
+                  filter.value -> 1 IS NOT NULL AND NOT EXISTS (
+                    SELECT 1 FROM ${filterValues} AS allowed WHERE hit.board_id = ${"boardId"}
+                      AND (allowed.value = root_label.value OR allowed.value = hit_label.value)
+                  )
                 )
               )
             )
-          )
         ))
       ORDER BY root.active ${direction}, root.id ${direction} LIMIT CAST(${"limit"} AS BIGINT)
     )
