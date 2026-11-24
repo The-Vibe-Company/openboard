@@ -4,21 +4,26 @@ title: List the last active tasks
 milestone: M9-tasks
 package: server
 writes:
-  - packages/contract/src/operations/tasks.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/tasks/list.ts
   - packages/core/src/tasks/filters.ts
   - packages/core/test/tasks/filters.test.ts
   - packages/ports/src/tasks.ts
-  - packages/driver-sql/src/views/tasks.ts
-  - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/src/views/tasks/list.ts
   - packages/server/src/operations/tasks.ts
   - packages/server/test/tasks/latest.test.ts
-  - packages/cli/src/commands/tasks.ts
+  - packages/cli/src/output.ts
   - packages/cli/test/tasks.test.ts
+  - docs/protocol.md
+  - packages/server/openapi.json
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
 conformance: ["tasks/lists the last active tasks with latest, wherever they come in the order they were made"]
 modes: [local, hosted]
 depends_on: [255]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 430
 ---
 

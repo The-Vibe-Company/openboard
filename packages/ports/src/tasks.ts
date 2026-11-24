@@ -19,13 +19,15 @@ export interface TaskListQuery {
   readonly needs?: number;
   /** Tasks made after this position. */
   readonly after?: number;
+  /** Select the last active matches and return the latest active last. */
+  readonly latest?: boolean;
   readonly limit: number;
 }
 
 export interface BoardTaskReads {
   /** The root of a task on this board, or null when this board has no such task. */
   taskRoot(id: number): Promise<Message | null>;
-  /** The first `limit` matching tasks after `after`, oldest first, each as its thread's summary, with the snapshot's head. */
+  /** A page of matching tasks as thread summaries, with the snapshot's head. */
   listTasks(query: TaskListQuery): Promise<{ tasks: ThreadSummary[]; head: number }>;
 }
 

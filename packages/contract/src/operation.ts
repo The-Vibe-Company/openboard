@@ -149,12 +149,12 @@ export interface RawInput {
 const TEXT_FORMS: Readonly<Record<string, { pattern: RegExp; read: (text: string) => unknown }>> = {
   integer: { pattern: /^-?(?:0|[1-9]\d{0,15})$/, read: Number },
   number: { pattern: /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/, read: Number },
-  boolean: { pattern: /^(?:true|false)$/, read: (text) => text === "true" },
+  boolean: { pattern: /^(?:true|false|1|0)$/, read: (text) => text === "true" || text === "1" },
 };
 
 /**
  * Path and query values arrive as text: a field typed integer, number or boolean takes only its plain decimal or
- * `true`/`false` spelling. Anything else is left as text, so validation refuses it (`limit=1e2` is not 100).
+ * upstream boolean spelling (`true`/`false` or `1`/`0`). Anything else is left as text for validation.
  */
 function fromText(schema: TObject, value: object): object {
   const entries = Object.entries(value).map(([name, field]) => {

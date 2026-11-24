@@ -378,8 +378,11 @@ or one state), `label` on the root, `by` (who wrote the root: handle, actor ID o
 root stands; follow `task.created` on the feed to see every new task. A full page's `cursor` is its
 last task's ID; a shorter one's is the board head. As `GET /events`
 does, a list without `channel` needs `read` on every channel, and a subtree needs it throughout.
-`latest` is not served yet. The CLI is `ob tasks [channel] [--needs <id>]`, the SDK method `listTasks`,
-the MCP tool `list_tasks`.
+With `latest=true` (or `latest=1`), the list selects the `limit` most recently active matching tasks
+by thread activity and returns them with the latest active last. The cursor is
+the board head. Combining an enabled `latest` with `after` returns 400 `invalid_request`.
+The CLI is `ob tasks [channel] [--needs <id>] [--latest]`, the SDK method `listTasks`,
+and the MCP tool `list_tasks`.
 
 `POST /tasks/:id/claim` takes an optional `lease` in seconds (30–3600, default 900).
 It requires `label` in the task's channel and answers

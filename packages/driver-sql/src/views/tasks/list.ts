@@ -32,16 +32,19 @@ const needsTask = sql`AND t.id IN (
 )`;
 
 /**
- * A board's visible tasks, in their roots' order, after a position, through `tasks_ready` for a channel: states as
+ * A board's visible tasks, ordered by root ID or activity: states as
  * `,ready,claimed,`, labels on the root, and who wrote the root, owns the task or is assigned it, by ID or handle.
  */
 function taskList(
   channels: Statement<"boardId" | "channel" | "under">,
   prerequisite: Statement<"orgId" | "boardId" | "needs"> = sql``,
+  latest = false,
 ) {
+  const selectOrder: Fragment = { fragment: () => (latest ? "root.active DESC, t.id DESC" : "t.id") };
+  const resultOrder: Fragment = { fragment: () => (latest ? "page.active, page.id" : "page.id") };
   const list = sql`WITH filters AS (SELECT CAST(${"labels"} AS TEXT) AS data),
     page AS (
-      SELECT t.board_id, t.id, root.view, root.replies, root.last_reply
+      SELECT t.board_id, t.id, root.active, root.view, root.replies, root.last_reply
       FROM tasks AS t JOIN messages AS root ON root.board_id = t.board_id AND root.id = t.id
       WHERE t.board_id = ${"boardId"} AND ${CHANNELS} AND t.id > CAST(${"after"} AS BIGINT)
         ${PREREQUISITE}
@@ -68,13 +71,13 @@ function taskList(
             )
           ))
         )
-      ORDER BY t.id LIMIT CAST(${"limit"} AS BIGINT)
+      ORDER BY ${selectOrder} LIMIT CAST(${"limit"} AS BIGINT)
     )
     SELECT boards.head, page.id, page.view, page.replies, reply.view AS last_view
     FROM boards LEFT JOIN page ON page.board_id = boards.id
     LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = page.last_reply
     WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"}
-    ORDER BY page.id`;
+    ORDER BY ${resultOrder}`;
   return splice(splice(list, CHANNELS, channels), PREREQUISITE, prerequisite);
 }
 
@@ -85,12 +88,24 @@ export const taskListStatements = {
   listTasksNeeding: taskList(oneChannel, needsTask),
   listSubtreeTasksNeeding: taskList(subtreeChannels, needsTask),
   listBoardTasksNeeding: taskList(everyChannel, needsTask),
+  listLatestTasks: taskList(oneChannel, undefined, true),
+  listLatestSubtreeTasks: taskList(subtreeChannels, undefined, true),
+  listLatestBoardTasks: taskList(everyChannel, undefined, true),
+  listLatestTasksNeeding: taskList(oneChannel, needsTask, true),
+  listLatestSubtreeTasksNeeding: taskList(subtreeChannels, needsTask, true),
+  listLatestBoardTasksNeeding: taskList(everyChannel, needsTask, true),
 };
 
 const taskListsByScope = {
   board: [taskListStatements.listBoardTasks, taskListStatements.listBoardTasksNeeding],
   channel: [taskListStatements.listTasks, taskListStatements.listTasksNeeding],
   subtree: [taskListStatements.listSubtreeTasks, taskListStatements.listSubtreeTasksNeeding],
+} as const;
+
+const latestTaskListsByScope = {
+  board: [taskListStatements.listLatestBoardTasks, taskListStatements.listLatestBoardTasksNeeding],
+  channel: [taskListStatements.listLatestTasks, taskListStatements.listLatestTasksNeeding],
+  subtree: [taskListStatements.listLatestSubtreeTasks, taskListStatements.listLatestSubtreeTasksNeeding],
 } as const;
 
 /** A board's task list: one statement reads the page, each root's latest reply and the board's head together. */
@@ -101,10 +116,23 @@ export function taskListReads(
   clock: () => number,
 ): Pick<BoardTaskReads, "listTasks"> {
   return {
-    async listTasks({ channel, under, states, labels = [], by, owner, for: assignee, needs, after = 0, limit }) {
+    async listTasks({
+      channel,
+      under,
+      states,
+      labels = [],
+      by,
+      owner,
+      for: assignee,
+      needs,
+      after = 0,
+      latest,
+      limit,
+    }) {
       const now = clock();
       const scopeName = channel === undefined ? "board" : under === undefined ? "channel" : "subtree";
-      const statement = taskListsByScope[scopeName][needs === undefined ? 0 : 1];
+      const lists = latest ? latestTaskListsByScope : taskListsByScope;
+      const statement = lists[scopeName][needs === undefined ? 0 : 1];
       const rows = await query(db, dialect, statement, {
         boardId: scope.boardId,
         orgId: scope.orgId,

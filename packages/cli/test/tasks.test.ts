@@ -256,3 +256,10 @@ test.each([
   expect(lines[0]).toBe(expected);
   expect(JSON.parse(lines[1] ?? "")).toEqual(result);
 });
+
+test("ob tasks --latest sends the flag and omits the continuation on a full page", async () => {
+  const page = { tasks: [{ message: root("2", "a", {}), replies: 0, last: null }], cursor: "9" };
+  const { lines, urls } = await tasks(["dev", "--latest", "--limit", "1"], page);
+  expect(urls).toEqual([`${ENV.BOARD_URL}/tasks?latest=true&limit=1&channel=dev`]);
+  expect(lines).toEqual(["#2  ready  a"]);
+});

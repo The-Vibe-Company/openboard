@@ -114,10 +114,13 @@ async function makeTask(ctx: BoardContext, re: string, claim: boolean | undefine
 }
 
 /**
- * A board's tasks, oldest first, each as its thread's summary (upstream `GET /tasks`): a channel's, a subtree's
+ * A board's tasks, each as its thread's summary (upstream `GET /tasks`): a channel's, a subtree's
  * (`dev/`), or every channel's; open ones unless `state` asks for `all` or one state. `cursor` reads on as `after`.
  */
 export const listTasksHandler: Handler<typeof listTasks> = async ({ board, by }, input) => {
+  if (input.latest && input.after !== undefined) {
+    throw new BoardError("invalid_request", "latest: cannot be combined with after");
+  }
   const after = input.after === undefined ? undefined : parseId(input.after);
   if (after === null) throw new BoardError("invalid_cursor", "after: expected a page's cursor or a task ID");
   const limit = input.limit ?? 50;
@@ -131,6 +134,7 @@ export const listTasksHandler: Handler<typeof listTasks> = async ({ board, by },
     // An ID that does not name a position has no dependants, as in the upstream list.
     needs: input.needs === undefined ? undefined : (parseId(input.needs) ?? -1),
     after,
+    latest: input.latest,
     limit,
   });
   if ((after ?? 0) > head) throw new BoardError("invalid_cursor", "after: cursor is ahead of the board");
@@ -141,10 +145,12 @@ export const listTasksHandler: Handler<typeof listTasks> = async ({ board, by },
         last: last === null ? null : withoutMentionDetails(last),
         replies,
       }));
-  const cursor = taskCursor(
-    page.map(({ message }) => Number(message.id)),
-    limit,
-    head,
-  );
+  const cursor = input.latest
+    ? head
+    : taskCursor(
+        page.map(({ message }) => Number(message.id)),
+        limit,
+        head,
+      );
   return { tasks, cursor: formatId(cursor) };
 };
