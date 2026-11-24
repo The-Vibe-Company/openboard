@@ -1,0 +1,46 @@
+.board-settings nav {
+  display: flex;
+  flex-wrap: wrap;
+  margin-block-end: calc(4 * var(--space));
+}
+
+.board-settings nav a {
+  padding: calc(2 * var(--space));
+  border-block-end: var(--focus-width) solid transparent;
+}
+
+.board-settings nav a[aria-current] {
+  border-block-end-color: var(--accent);
+}
+
+.board-settings .settings-table {
+  margin-block-start: calc(4 * var(--space));
+  overflow-x: auto;
+}
+
+.board-settings .ui-table :is(td, th) {
+  vertical-align: top;
+  text-align: start;
+}
+
+.board-settings :is(th h2, td pre) {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.board-settings .ui-table :is(button, thead th:first-child, .webhook-status) {
+  white-space: nowrap;
+}
+
+.board-settings fieldset {
+  display: grid;
+  gap: calc(3 * var(--space));
+  min-inline-size: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.board-settings td > button {
+  margin: 0 var(--space) var(--space) 0;
+}

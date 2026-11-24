@@ -99,7 +99,7 @@ test("shows live agents and last use, and a stale revoke reports the missing con
     const loaded = page.waitForResponse(app.url + connectionsPath);
     await page.goto(app.url + settings);
     const { connections } = await (await loaded).json();
-    const row = page.getByRole("list", { name: "Active connections" }).getByRole("listitem");
+    const row = page.getByRole("table", { name: "Active connections" }).locator("tbody").getByRole("row");
     await expect(row.getByText("Live agents: worker", { exact: true })).toBeVisible();
     const lastUse = row.locator("time");
     expect(Number.isFinite(Date.parse(connections[0].lastUsedAt))).toBe(true);

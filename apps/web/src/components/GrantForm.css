@@ -1,0 +1,12 @@
+.grant-form :is(select, textarea) {
+  min-inline-size: 0;
+}
+
+.grant-form [role="alert"] {
+  color: var(--danger-label);
+  white-space: pre-wrap;
+}
+
+.grant-form button + button {
+  margin-inline-start: var(--space);
+}

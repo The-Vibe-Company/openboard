@@ -5,7 +5,7 @@ import { useState } from "react";
 import { browserClient } from "../../../../api/client.ts";
 import { addConnectionGrant, type Can, formatCan, type Grant, grantList } from "../../../../api/grants.ts";
 import { GrantError, GrantForm } from "../../../../components/GrantForm.tsx";
-import "./grants.css";
+import { Button, Table } from "../../../../ui/index.ts";
 
 export const Route = createFileRoute("/$org/$board/settings/grants")({
   component: GrantsRoute,
@@ -30,8 +30,8 @@ function GrantsPage({ client, org, board }: { client: Client; org: string; board
   const grants = list.data?.value?.grants;
   const refresh = () => queryClient.invalidateQueries({ queryKey: key });
   return (
-    <main className="grant-settings">
-      <h1>Grants</h1>
+    <section aria-labelledby="grants-heading">
+      <h1 id="grants-heading">Grants</h1>
       {list.isPending && <p role="status">Loading grants…</p>}
       {error &&
         (error instanceof BoardError && error.code === "forbidden" ? (
@@ -44,17 +44,40 @@ function GrantsPage({ client, org, board }: { client: Client; org: string; board
           {adding ? (
             <NewGrant client={client} org={org} board={board} onCancel={() => setAdding(false)} refresh={refresh} />
           ) : (
-            <button type="button" onClick={() => setAdding(true)}>
-              Add grant
-            </button>
+            <Button onClick={() => setAdding(true)}>Add grant</Button>
           )}
-          {grants.length === 0 && <p>No grants.</p>}
-          {grants.map((grant) => (
-            <GrantEntry key={grant.id} grant={grant} client={client} refresh={refresh} />
-          ))}
+          {grants.length === 0 ? (
+            <p>No grants.</p>
+          ) : (
+            <div className="settings-table">
+              <Table aria-label="Grants">
+                <thead>
+                  <tr>
+                    <th scope="col">Grant</th>
+                    <th scope="col">Principals and permissions</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grants.map((grant) => (
+                    <tr key={grant.id} aria-label={grant.id}>
+                      <th scope="row">
+                        <h2>{grant.id}</h2>
+                      </th>
+                      <td>
+                        <code>{grant.principals.map(principalFlags).join(" ")}</code>
+                        <pre>{formatCan(grant.can)}</pre>
+                      </td>
+                      <GrantActions grant={grant} client={client} refresh={refresh} />
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
         </>
       )}
-    </main>
+    </section>
   );
 }
 
@@ -94,27 +117,20 @@ function NewGrant({
           }}
         />
       ) : (
-        <button type="button" onClick={onCancel}>
-          Cancel
-        </button>
+        <Button onClick={onCancel}>Cancel</Button>
       )}
     </>
   );
 }
 
-function GrantEntry({ grant, client, refresh }: { grant: Grant; client: Client; refresh: () => Promise<void> }) {
+function GrantActions({ grant, client, refresh }: { grant: Grant; client: Client; refresh: () => Promise<void> }) {
   const [mode, setMode] = useState<"edit" | "revoke" | null>(null);
   const revoke = useMutation({
     mutationFn: () => client.revokeGrant({ id: grant.id }),
     onSuccess: refresh,
   });
   return (
-    <section aria-label={grant.id}>
-      <h2>{grant.id}</h2>
-      <p>
-        <code>{grant.principals.map(principalFlags).join(" ")}</code>
-      </p>
-      <pre>{formatCan(grant.can)}</pre>
+    <td>
       {mode === "edit" && (
         <GrantForm
           initial={grant.can}
@@ -129,11 +145,11 @@ function GrantEntry({ grant, client, refresh }: { grant: Grant; client: Client; 
       {mode === "revoke" && (
         <>
           <p>Revoke grant {grant.id}?</p>
-          <button type="button" disabled={revoke.isPending} onClick={() => revoke.mutate()}>
+          <Button variant="danger" pending={revoke.isPending} onClick={() => revoke.mutate()}>
             Confirm revoke
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="secondary"
             disabled={revoke.isPending}
             onClick={() => {
               revoke.reset();
@@ -141,20 +157,20 @@ function GrantEntry({ grant, client, refresh }: { grant: Grant; client: Client; 
             }}
           >
             Cancel
-          </button>
+          </Button>
           {revoke.isError && <GrantError error={revoke.error} />}
         </>
       )}
       {mode === null && (
         <>
-          <button type="button" onClick={() => setMode("edit")}>
+          <Button variant="secondary" onClick={() => setMode("edit")}>
             Edit
-          </button>
-          <button type="button" onClick={() => setMode("revoke")}>
+          </Button>
+          <Button variant="danger" onClick={() => setMode("revoke")}>
             Revoke
-          </button>
+          </Button>
         </>
       )}
-    </section>
+    </td>
   );
 }

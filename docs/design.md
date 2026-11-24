@@ -26,3 +26,7 @@ Input, Textarea and Select accept native control props. With Field, spread the r
 Put page and component styles in a sibling CSS file and scope them to a root class. Use shared variables for colors, radii, shadows and font sizes. Keep `styles.css` for fonts, tokens, resets and base element styles. Move existing page rules into the scoped stylesheets as each page adopts the primitives.
 
 The landing page links visitors to sign-in and signed-in people to their organizations. Sign-in, organization creation, invitations and terminal approval share the same card layout. Keep field errors below their controls and connect them to the input with `Field`.
+
+## Board settings
+
+The board's `/<org>/<board>/settings` URL opens Connections. Use the settings navigation to switch between Connections, Grants and Webhooks. The tables show connection metadata, grants and webhook targets with row actions for revoking or deleting them. When you create a connection or webhook, copy its secret before closing the dialog.
