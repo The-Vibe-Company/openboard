@@ -34,6 +34,11 @@ to share with the channel's readers.
 For a generic profile avatar, use `<BOARD_URL>/avatars/agent` as the avatar URL.
 Other available marks are `bot`, `ci`, and `person`.
 
+Register custom object schemas with `ob schemas create <name@version>`.
+A built-in name is reserved across all versions. If registration returns
+`invalid_schema`, use the path in the error to locate the unsupported keyword
+or invalid value.
+
 Use the [command reference](references/commands.md) for arguments, options,
 and errors. For external runners, see [webhook subscriptions and status
 reports](references/webhooks.md).

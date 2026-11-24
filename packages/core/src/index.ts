@@ -39,10 +39,10 @@ export type { GrantCreated, GrantRevoked, GrantUpdated };
 import type { TaskEvent } from "./tasks/events.ts";
 
 export { decideClaimTask } from "./tasks/claim.ts";
-export { decideRenewTask } from "./tasks/renew.ts";
 export { decideCreateTask, decideMakeTask, type MakeTaskState, replayTask } from "./tasks/create.ts";
 export type { TaskClaimed, TaskCreated, TaskEvent } from "./tasks/events.ts";
 export { OPEN_TASK_STATES, taskCursor, taskStates } from "./tasks/filters.ts";
+export { decideRenewTask } from "./tasks/renew.ts";
 export { decideCompleteTask } from "./tasks/settle.ts";
 export type { ChannelCreated };
 export type BoardEvent =
@@ -67,15 +67,6 @@ export type BoardEvent =
   | TaskEvent
   | WatchersRegistered
   | WatchFailed;
-
-export { canonicalSchema } from "./schemas/canonical.ts";
-export {
-  checkSchemaCapacity,
-  registeredSchema,
-  repeatSchema,
-  type SchemaRegistered,
-  schemaRegistration,
-} from "./schemas/register.ts";
 
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail } from "./events/tail.ts";
 export { formatId, isoTime, parseId } from "./ids.ts";
@@ -112,7 +103,16 @@ export {
 } from "./orgs/quotas.ts";
 export { decideMemberRole, requireAnotherOwner, requireMemberRemoval } from "./orgs/roles.ts";
 export { builtInSchemas } from "./schemas/builtins.ts";
+export { canonicalSchema } from "./schemas/canonical.ts";
 export { parseSchemaId } from "./schemas/id.ts";
+export {
+  checkSchemaCapacity,
+  isIdenticalSchema,
+  registeredSchema,
+  repeatSchema,
+  type SchemaRegistered,
+  schemaRegistration,
+} from "./schemas/register.ts";
 export {
   channelFilter,
   type EventFilters,

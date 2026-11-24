@@ -174,7 +174,7 @@ Options:
 - `--data`: Inline JSON Schema.
 - `--description`: Text.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_schema`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: schema_immutable`, `error: too_many_schemas`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_schema`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_schema`, `error: schema_immutable`, `error: too_many_schemas`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: none.
 
