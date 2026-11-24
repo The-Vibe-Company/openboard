@@ -1,4 +1,4 @@
-import { BoardError, type createOrg } from "@openboard/contract";
+import { BoardError, type createOrg, type deleteOrg } from "@openboard/contract";
 import { orgs } from "@openboard/core";
 import { BOARD_ROUTE_SEGMENTS } from "../http/scope.ts";
 import type { AccountContext, Handler } from "./index.ts";
@@ -59,3 +59,6 @@ export const createOrgHandler: Handler<typeof createOrg> = async (ctx, input) =>
   await ctx.platform.createOrg({ ...creation, personId: person.id, now });
   return { org: creation.org, membership: { principal, role: creation.role }, board: creation.board };
 };
+
+export const deleteOrgHandler: Handler<typeof deleteOrg> = async (ctx) =>
+  ctx.org.deleteOrg(ctx.person.id, ctx.now(), ctx.debitWrite);

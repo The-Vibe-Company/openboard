@@ -3787,6 +3787,81 @@
         }
       }
     },
+    "/api/x/orgs/{org}/delete": {
+      "post": {
+        "operationId": "deleteOrg",
+        "summary": "Soft-delete an organization as its owner and retain its data for 30 days.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" }
+          },
+          {
+            "name": "x-ob-csrf",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["org", "deletedAt", "purgeAt"],
+                  "properties": {
+                    "org": {
+                      "type": "object",
+                      "required": ["slug", "name"],
+                      "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }
+                    },
+                    "deletedAt": { "type": "string" },
+                    "purgeAt": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "operationId": "discovery",
@@ -12251,6 +12326,29 @@
                                     "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }
                                   },
                                   "owner": { "type": "string" }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.org.deleted", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["org", "deletedAt", "purgeAt"],
+                                "properties": {
+                                  "org": {
+                                    "type": "object",
+                                    "required": ["slug", "name"],
+                                    "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }
+                                  },
+                                  "deletedAt": { "type": "string" },
+                                  "purgeAt": { "type": "string" }
                                 }
                               }
                             }

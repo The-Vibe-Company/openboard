@@ -1,4 +1,4 @@
-import type { Named } from "@openboard/contract";
+import { BoardError, type Named } from "@openboard/contract";
 import { type BoardCreation, dailyEventsLimit, type OrgQuotaOverrides, storedBytesLimit } from "@openboard/core";
 import type { BoardKeys, OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
@@ -7,8 +7,9 @@ import { invitationStatements } from "./invitations.ts";
 import { exhaustedQuota, orgStatements } from "./orgs.ts";
 
 const notifyHead: Fragment = Object.freeze({ fragment: (dialect: Dialect) => dialect.notifyHeadSuffix });
+// Board writes share the organization lock so deletion cannot commit while they append.
 const boardLock: Fragment = Object.freeze({
-  fragment: (dialect: Dialect) => (dialect.lockSuffix ? `${dialect.lockSuffix} OF boards` : ""),
+  fragment: (dialect: Dialect) => (dialect.lockSuffix ? `${dialect.lockSuffix} OF boards FOR SHARE OF orgs` : ""),
 });
 const messageBytes: Fragment = Object.freeze({
   fragment: ({ name }: Dialect) =>
@@ -38,7 +39,7 @@ export const TIMELINE_ADVANCE = 1_000_000;
 export const boardStatements = {
   orgBySlug: sql`SELECT id FROM orgs WHERE slug = ${"slug"} AND deleted_at IS NULL`,
   boardBySlug: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"} AND deleted_at IS NULL`,
-  lockBoard: sql`SELECT boards.head, boards.timeline, ${serverTimeline} AS server_timeline, orgs.quotas,
+  lockBoard: sql`SELECT boards.head, boards.timeline, ${serverTimeline} AS server_timeline, orgs.quotas, orgs.deleted_at,
     ${eventDay} AS event_day,
     EXISTS (SELECT 1 FROM watcher_registrations w WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"} AND w.watch <> '{}') AS has_watchers,
     CASE WHEN boards.daily_event_day >= quota_clock.day THEN CAST(${eventTally} ->> 'count' AS BIGINT)
@@ -131,6 +132,7 @@ export async function lockBoard(
     actorLoaded = true;
   }
   if (!row) throw new Error(`board ${keys.boardId} of organization ${keys.orgId} is missing`);
+  if (row.deleted_at != null) throw new BoardError("not_found", "no such board or route");
   const head = Number(row.head);
   const recorded = Number(row.timeline ?? 0);
   const timeline = Number(row.server_timeline ?? 0);

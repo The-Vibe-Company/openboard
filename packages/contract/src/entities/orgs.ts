@@ -28,6 +28,10 @@ export const CreatedOrg = Type.Object({
 });
 export type CreatedOrg = Static<typeof CreatedOrg>;
 
+/** The organization and its 30-day retention window, in ISO 8601 UTC. */
+export const DeletedOrg = Type.Object({ org: Named, deletedAt: Type.String(), purgeAt: Type.String() });
+export type DeletedOrg = Static<typeof DeletedOrg>;
+
 /** The signed-in person and the organizations they belong to, with their role in each. */
 export const Account = Type.Object({ person: Person, memberships: Type.Array(Membership) });
 export type Account = Static<typeof Account>;

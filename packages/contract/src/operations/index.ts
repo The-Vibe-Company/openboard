@@ -41,7 +41,7 @@ import {
   reactToMessage,
   readPost,
 } from "./messages.ts";
-import { createOrg } from "./orgs.ts";
+import { createOrg, deleteOrg } from "./orgs.ts";
 import { createSchema, listSchemas, readSchema } from "./schemas/registry.ts";
 import {
   attachSync,
@@ -91,6 +91,7 @@ export const operations = [
   createSchema,
   createTask,
   deleteMessage,
+  deleteOrg,
   discoverBoard,
   editMessage,
   findLinkedThread,
@@ -172,6 +173,7 @@ export {
   createSchema,
   createTask,
   deleteMessage,
+  deleteOrg,
   discoverBoard,
   editMessage,
   findLinkedThread,

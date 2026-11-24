@@ -201,6 +201,7 @@ const writerCases: Cases<BoardWriter> = {
 
 /** One case per `OrgView` method, on A's organization, with B's people and IDs. */
 const orgCases: Cases<OrgView> = {
+  deleteOrg: async (a, b) => await expect(a.org.deleteOrg(b.personId, at)).rejects.toMatchObject({ code: "not_found" }),
   takeRate: (a, b) => isolatedRates(a.org, b.org),
   listMembers: (a) => a.org.listMembers(),
   auditEvents: (a) => a.org.auditEvents(0, 500),

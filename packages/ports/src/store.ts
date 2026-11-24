@@ -6,6 +6,7 @@ import type {
   Channel,
   ClaimedAgent,
   Connection,
+  DeletedOrg,
   Invitation,
   InvitationRole,
   ManagedConnection,
@@ -30,20 +31,12 @@ import type { BoardMessageReads } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
 import type { BoardJobWriter, Jobs } from "./jobs.ts";
+import type { OrgAuditRecord } from "./org-audit-record.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
 import type { BoardWatcherReads, BoardWatcherWriter } from "./watchers.ts";
 
 /** A board configuration event (`ob.*`, visibility 2), as stored: its payload may hold hashes the audit strips. */
 export type AuditRecord = Extract<BoardEvent, { readonly visibility: 2 }>;
-
-/** An organization event as stored in `org_events`: the audit picks what its payload shows. */
-export interface OrgAuditRecord {
-  readonly id: number;
-  readonly type: string;
-  readonly at: number;
-  readonly actor: string;
-  readonly payload: Readonly<Record<string, unknown>>;
-}
 
 declare const minted: unique symbol;
 
@@ -94,6 +87,7 @@ interface RateView {
 }
 
 export interface OrgView extends RateView {
+  deleteOrg(personId: string, at: number, admit?: () => void): Promise<DeletedOrg>;
   listMembers(): Promise<{ principal: string; role: Role }[]>;
   /** The organization's first `limit` events after its event ID `after`, oldest first, and the last event ID read first. */
   auditEvents(after: number, limit: number): Promise<{ events: OrgAuditRecord[]; head: number }>;

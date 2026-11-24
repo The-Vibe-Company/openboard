@@ -34,7 +34,10 @@ async function waitForEvents(
   try {
     // A new tail reads the store first, so the wait always resolves a page; the read only satisfies the type.
     const signal = AbortSignal.any([ctx.signal, ctx.shutdown]);
-    return (await longPoll(tail, position, seconds, signal, ctx.schedule, read)) ?? (await read(position));
+    const page = (await longPoll(tail, position, seconds, signal, ctx.schedule, read)) ?? (await read(position));
+    // A timeout can return the last empty page without running its read again.
+    if (page.events.length === 0) await ctx.reauthorize();
+    return page;
   } finally {
     tail.close();
   }
