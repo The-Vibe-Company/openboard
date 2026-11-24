@@ -1,4 +1,4 @@
-import { claimJob, type Db, jobWake, nextJob, releaseJobs } from "@openboard/driver-sql";
+import { claimJob, type Db, dueJobMetrics, jobWake, nextJob, releaseJobs } from "@openboard/driver-sql";
 import type { Jobs } from "@openboard/ports";
 import { sqliteDialect } from "./dialect.ts";
 
@@ -13,6 +13,7 @@ export function sqliteJobs(
     }
   }
   return {
+    dueMetrics: dueJobMetrics(db, sqliteDialect),
     claim: claimJob(db, sqliteDialect),
     release: releaseJobs(db, sqliteDialect, committed),
     committed,

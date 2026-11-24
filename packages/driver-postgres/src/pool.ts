@@ -66,7 +66,11 @@ async function guarded<T>(run: () => Promise<T>): Promise<T> {
  * Runs the shared registry's positional queries on the pool or its reserved transaction connection. `counter`, when
  * given, counts every statement and wait, including transaction control.
  */
-export function connection(sql: SQL, counter?: StatementCounter): Db {
+export function connection(
+  sql: SQL,
+  counter?: StatementCounter,
+  boardLockObserver?: () => ((ms: number) => void) | undefined,
+): Db {
   const run = (session: SQL, text: string, values: readonly unknown[]) => {
     return session.unsafe<Row[]>(text, [...values]);
   };
@@ -81,7 +85,18 @@ export function connection(sql: SQL, counter?: StatementCounter): Db {
         const result = await sql.begin(async (session) => {
           counter?.count(true); // BEGIN, sent before this callback runs.
           let batchOpen = false;
+          const observe = boardLockObserver?.();
           const tx: Db = {
+            ...(observe && {
+              async measureBoardLock<T>(work: () => Promise<T>) {
+                const started = performance.now();
+                try {
+                  return await work();
+                } finally {
+                  observe(performance.now() - started);
+                }
+              },
+            }),
             query: async (text, values) => {
               if (counter) {
                 // Bun serializes simple queries and queries with preparation disabled. Prepared queries

@@ -252,7 +252,7 @@ export const claimTask = defineOperation({
 });
 ```
 
-- `scope` is mandatory. `board` routes are relative to `BOARD_URL` (`/api/<org>/<board>`; OpenBoard-only ones under `{BOARD_URL}/x/`). `org` routes (members, boards, invitations) live under `/api/x/orgs/<org>/…` and `account` routes (the signed-in person) under `/api/x/…`. `public` covers discovery, health and sign-up start. Connections, webhooks, grants, inbound endpoints and schedules are per board (D34), so they are `board` scope.
+- `scope` is mandatory. `board` routes are relative to `BOARD_URL` (`/api/<org>/<board>`; OpenBoard-only ones under `{BOARD_URL}/x/`). `org` routes (members, boards, invitations) live under `/api/x/orgs/<org>/…` and `account` routes (the signed-in person) under `/api/x/…`. `public` covers tenant-free operations such as discovery, health, sign-up start and the operator-authenticated metrics route. Connections, webhooks, grants, inbound endpoints and schedules are per board (D34), so they are `board` scope.
 - `Ref(kind)` marks every input field that names a tenant resource. The isolation suite and the router use it.
 - `cli: false` / `mcp: false` need a `why`. `upstream: false` operations live under an `/x/` prefix (D23, D35).
 - `effects.meter` names the usage counter the operation feeds (seam, section 4.5).
@@ -384,7 +384,8 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 | `OPENBOARD_WEBHOOK_CUSTOM_SIGNING` | permit writes that set custom HMAC signing, preset `none`, or nonempty static headers, `on` or `off` (default `off`); enable after all replicas support the schemes |
 | `OPENBOARD_SECRET_KEY` | Base64 or base64url-encoded 32-byte key for recoverable secrets (D29). Hosted startup requires it or `OPENBOARD_SECRET_KEY_FILE`. Plain local startup with neither generates and reuses a raw 32-byte key in `~/.config/openboard/secret-key` (directory 0700, file 0600) and refuses startup if the data directory contains the key directory. A configured key file in local mode must also be outside the data directory and the Docker data volume. |
 | `OPENBOARD_DOCKER` | Set to `on` by the Docker image to require a separate key source for secret storage in local mode. Defaults to `off`. |
-| `OPENBOARD_INSTANCE_ID` | Optional job log label. Each runner uses a generated lease owner ID and uses that ID as its default log label. |
+| `OPENBOARD_METRICS_TOKEN` or `OPENBOARD_METRICS_TOKEN_FILE` | Dedicated bearer credential for `GET /api/x/metrics` in either mode. When unset, scrapes return 404. |
+| `OPENBOARD_INSTANCE_ID` | Optional job log and metrics label. Each runner uses a generated lease owner ID as its default log label. Each metrics registry generates a label at startup when this variable is unset. |
 | `OPENBOARD_DEPLOYMENT_TAG` | Optional deployment tag reported by `/healthz` alongside the instance ID, when configured. |
 | `OPENBOARD_GITHUB_CLIENT_ID`, `OPENBOARD_GITHUB_CLIENT_SECRET` | GitHub sign-in |
 | `OPENBOARD_LOG_LEVEL` | log level |

@@ -1,9 +1,15 @@
+import type { StoreMetrics, WebhookOutcome } from "@openboard/ports";
+
 /** A value a statement binds or a row holds; JSON is `TEXT`, booleans `0`/`1`, times milliseconds (data-model "DDL"). */
 export type SqlValue = string | number | bigint | null | Uint8Array;
 export type Row = Readonly<Record<string, SqlValue>>;
 
 /** The engine-neutral connection the shared views run on; each driver implements it over its own client. */
 export interface Db {
+  /** Register an outcome to publish after this transaction commits. */
+  webhookOutcome?(outcome: WebhookOutcome): void;
+  /** Measure the first board lock statement, including the preceding write mutex wait on SQLite. */
+  measureBoardLock?<T>(work: () => Promise<T>): Promise<T>;
   /** Runs one statement with positional values and returns its rows (none for a write without `RETURNING`). */
   query(text: string, values: readonly SqlValue[]): Promise<Row[]>;
   /**
@@ -11,6 +17,29 @@ export interface Db {
    * SQLite takes the process write mutex and `BEGIN IMMEDIATE`; Postgres locks the board row in the first statement.
    */
   transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T>;
+}
+
+/** Buffer webhook outcomes until commit so a rolled back attempt contributes no samples. */
+export function withWebhookMetrics(db: Db, current: () => StoreMetrics | undefined): Db {
+  return {
+    ...db,
+    async transaction<T>(fn: (tx: Db) => Promise<T>) {
+      const observe = current()?.webhook;
+      if (!observe) return db.transaction(fn);
+      let outcomes: WebhookOutcome[] | undefined;
+      const result = await db.transaction((tx) =>
+        fn({
+          ...tx,
+          webhookOutcome(outcome) {
+            outcomes ??= [];
+            outcomes.push(outcome);
+          },
+        }),
+      );
+      outcomes?.forEach(observe);
+      return result;
+    },
+  };
 }
 
 /** What differs between the engines in the shared SQL text (docs/data-model.md "The store port"). */

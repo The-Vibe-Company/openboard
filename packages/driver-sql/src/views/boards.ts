@@ -157,7 +157,8 @@ export async function lockBoard(
 ) {
   const params = { ...keys, ...window, taskId };
   let actorLoaded = dialect.name === "sqlite" || taskId !== null;
-  let [row] = await query(tx, dialect, boardStatements.lockBoard, { ...params, actor: actorLoaded ? actor : null });
+  const acquire = () => query(tx, dialect, boardStatements.lockBoard, { ...params, actor: actorLoaded ? actor : null });
+  let [row] = await (tx.measureBoardLock ? tx.measureBoardLock(acquire) : acquire());
   // A waiting Postgres statement refreshes only the locked row. If another writer advanced it, get a
   // fresh snapshot of sibling usage, the legacy own-board fallback, the actor and the task target together.
   if (row?.snapshot_head != null && Number(row.snapshot_head) !== Number(row.head)) {

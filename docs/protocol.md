@@ -666,6 +666,17 @@ seconds.
 - Grants and schemas: `list_grants`, `explain_grants`, `create_grant`,
   `create_grants`, `update_grant`, `revoke_grant`, `list_schemas`, `read_schema`.
 
+## Operator metrics
+
+`GET /api/x/metrics` (X) accepts the bearer configured through
+`OPENBOARD_METRICS_TOKEN` or `OPENBOARD_METRICS_TOKEN_FILE`. It returns
+`200 text/plain; version=0.0.4` with Prometheus samples labelled by instance.
+When disabled it returns 404 `not_found`. When enabled it returns
+401 `unauthorized` for absent or invalid operator credentials, including
+tenant credentials. Scrapes query due queue depth and age by job kind.
+Request timers use contract route templates and operation names. The endpoint sends
+`Cache-Control: no-store`.
+
 ## Route inventory: accounts and organizations (`/api/x/…`, all X)
 
 | Method | Path | Who | Notes |

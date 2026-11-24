@@ -1,10 +1,11 @@
 import { ORG_PURGE_RETENTION_MS } from "@openboard/core";
-import { claimJob, type Db, jobWake, nextJob, postgresText, releaseJobs } from "@openboard/driver-sql";
+import { claimJob, type Db, dueJobMetrics, jobWake, nextJob, postgresText, releaseJobs } from "@openboard/driver-sql";
 import type { Jobs } from "@openboard/ports";
 import type { SQL } from "bun";
 
 export function postgresJobs(sql: Pick<SQL, "listen">, db: Db, now: () => number): Jobs {
   return {
+    dueMetrics: dueJobMetrics(db, postgresText),
     claim: claimJob(db, postgresText),
     release: releaseJobs(db, postgresText),
     watch(kinds, schedule, wake) {

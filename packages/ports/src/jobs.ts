@@ -23,10 +23,18 @@ export type JobClaim = { readonly job: Job } | { readonly job: null; readonly ne
 
 /** Cross-board dispatch exposes routing metadata only. Effects re-enter the scoped board writer. */
 export interface Jobs {
+  /** Dispatchable queue depth and earliest available time per requested kind. */
+  dueMetrics(kinds: readonly string[], now: number): Promise<readonly JobDueMetrics[]>;
   claim(kinds: readonly string[], lease: JobLease): Promise<JobClaim>;
   /** Make this runner’s outstanding leases due immediately, optionally protecting its current job. */
   release(instanceId: string, now: number, exceptId?: string): Promise<void>;
   watch(kinds: readonly string[], schedule: JobSchedule, wake: () => Promise<number | null>): () => void;
+}
+
+export interface JobDueMetrics {
+  readonly kind: string;
+  readonly count: number;
+  readonly oldest: number | null;
 }
 
 export type JobPayload = Readonly<Record<string, unknown>>;

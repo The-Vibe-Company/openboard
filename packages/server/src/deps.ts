@@ -6,6 +6,7 @@ export interface ServerConfig {
   readonly webhookCustomSigning?: boolean;
   readonly webhookTargets?: { readonly hosts: readonly string[]; readonly ports: readonly number[] };
   readonly secretKey?: Uint8Array;
+  readonly metricsTokenHash?: string;
   readonly instanceId?: string | undefined;
   readonly deploymentTag?: string | undefined;
   /** Vite output directory for a source app with a front. */
@@ -45,6 +46,7 @@ export interface Logger {
 /** Time, logging and anything else that varies per process comes from here, never from a global. */
 export interface Deps {
   readonly now: () => number;
+  readonly residentBytes?: () => number;
   /** Schedule a one-shot timer and return its cancel function. */
   readonly schedule: (delayMs: number, run: () => void) => () => void;
   readonly log: Logger;

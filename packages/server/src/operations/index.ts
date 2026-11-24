@@ -5,6 +5,7 @@ import type {
   operations,
   pollDeviceSignIn,
   previewInvitation,
+  getMetrics,
   receiveInboundEvent,
   SignInProvider,
   startDeviceSignIn,
@@ -74,6 +75,7 @@ import {
   reactToMessageHandler,
   readPostHandler,
 } from "./messages.ts";
+import { getMetricsHandler, type MetricsContext } from "./metrics/index.ts";
 import { downloadOrgExportHandler, getOrgExportHandler, requestOrgExportHandler } from "./org/exports.ts";
 import { createOrgHandler, deleteOrgHandler } from "./orgs.ts";
 import { createSchemaHandler, listSchemasHandler, readSchemaHandler } from "./schemas/registry.ts";
@@ -190,19 +192,21 @@ interface DeviceContext extends RequestLimits {
 /** The context an operation's handler takes; `never` for a union mixing scopes that take different contexts. */
 type ContextOf<Op> = [Op] extends [DeviceOperation]
   ? DeviceContext
-  : [Op] extends [typeof previewInvitation]
-    ? PublicPlatformContext
-    : [Op] extends [{ readonly scope: "org" }]
-      ? OrgContext
-      : [Op] extends [{ readonly scope: "public" }]
-        ? PublicContext
-        : [Op] extends [{ readonly scope: "account" }]
-          ? AccountContext
-          : [Op] extends [{ readonly scope: "board" }]
-            ? [Op] extends [typeof receiveInboundEvent]
-              ? SignatureContext
-              : BoardContext
-            : never;
+  : [Op] extends [typeof getMetrics]
+    ? MetricsContext
+    : [Op] extends [typeof previewInvitation]
+      ? PublicPlatformContext
+      : [Op] extends [{ readonly scope: "org" }]
+        ? OrgContext
+        : [Op] extends [{ readonly scope: "public" }]
+          ? PublicContext
+          : [Op] extends [{ readonly scope: "account" }]
+            ? AccountContext
+            : [Op] extends [{ readonly scope: "board" }]
+              ? [Op] extends [typeof receiveInboundEvent]
+                ? SignatureContext
+                : BoardContext
+              : never;
 
 export type Handler<Op extends Operation> = (ctx: ContextOf<Op>, input: InputOf<Op>) => Promise<OutputOf<Op>>;
 
@@ -210,7 +214,7 @@ type Contracted = (typeof operations)[number];
 /** The operations answered without a tenant or a credential. */
 export type PublicOperation = Exclude<
   Extract<Contracted, { readonly scope: "public" }>,
-  typeof previewInvitation | DeviceOperation
+  typeof previewInvitation | typeof getMetrics | DeviceOperation
 >;
 /** The operations of the signed-in person, under `/api/x`. */
 export type AccountOperation = Extract<Contracted, { readonly scope: "account" }>;
@@ -296,6 +300,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   postMessage: postMessageHandler,
   previewDeviceSignIn: previewDeviceSignInHandler,
   previewInvitation: previewInvitationHandler,
+  getMetrics: getMetricsHandler,
   pullWatcherMatches: pullWatcherMatchesHandler,
   pushInbox: pushInboxHandler,
   reactToMessage: reactToMessageHandler,

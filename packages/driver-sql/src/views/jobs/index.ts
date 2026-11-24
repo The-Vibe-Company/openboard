@@ -69,6 +69,10 @@ const dispatchAt: Fragment = {
 
 export const jobPlatformStatements = {
   // Dispatch runs before a board is known. These statements expose no payload or other board content.
+  dueJobMetrics: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds, CAST(${"now"} AS BIGINT) AS at)
+    SELECT kind, COUNT(*) AS count, MIN(available_at) AS oldest FROM jobs
+    WHERE kind IN (${kindSet}) AND available_at <= ${"now"} AND ${activeExpiryBoard}
+    AND ${readyDeliveryLane} AND (${dispatchAt}) <= ${"now"} GROUP BY kind`,
   claimJob: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds, CAST(${"now"} AS BIGINT) AS at)
     UPDATE jobs SET available_at = ${"until"}, instance_id = ${"instanceId"}
     WHERE id = (
@@ -88,6 +92,17 @@ export const jobPlatformStatements = {
       SELECT MIN(o.deleted_at) + ${"retention"} AS due FROM orgs o WHERE ${"includeLegacy"} = 1 AND ${unqueued}
     ) AS due_jobs`,
 };
+
+export function dueJobMetrics(db: Db, dialect: Dialect): Jobs["dueMetrics"] {
+  return async (kinds, now) => {
+    const rows = await query(db, dialect, jobPlatformStatements.dueJobMetrics, { kinds: JSON.stringify(kinds), now });
+    const byKind = new Map(rows.map((row) => [row.kind, row]));
+    return kinds.map((kind) => {
+      const row = byKind.get(kind);
+      return { kind, count: row ? Number(row.count) : 0, oldest: row ? Number(row.oldest) : null };
+    });
+  };
+}
 
 export const jobStatements = {
   enqueueJob: sql`INSERT INTO jobs (org_id, board_id, kind, available_at, payload)

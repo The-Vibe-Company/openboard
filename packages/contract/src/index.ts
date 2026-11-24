@@ -116,6 +116,7 @@ export {
   postMessage,
   previewDeviceSignIn,
   previewInvitation,
+  getMetrics,
   pullWatcherMatches,
   pushInbox,
   reactToMessage,

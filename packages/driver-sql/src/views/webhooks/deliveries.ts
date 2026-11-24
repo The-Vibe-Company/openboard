@@ -125,7 +125,7 @@ export const deliveryStatements = {
     WHERE d.org_id = ${"orgId"} AND d.board_id = ${"boardId"} AND d.id = ${"id"}
       AND (d.event IS NULL OR e.id IS NOT NULL)`,
   skipDelivery: sql`UPDATE webhook_deliveries SET state = 'skipped', done_at = ${"now"}, instance = NULL
-    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND state = 'sending'`,
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND state = 'sending' RETURNING id`,
   finishDelivery: sql`UPDATE webhook_deliveries
     SET state = ${"state"}, last_status = ${"status"}, last_error = ${"error"}, done_at = ${"doneAt"},
         next_at = COALESCE(${"nextAt"}, next_at), instance = NULL
@@ -172,12 +172,15 @@ export function deliveryWriter(
       const [started] = await query(db, dialect, deliveryStatements.beginDelivery, params);
       if (!started) {
         const [expired] = await query(db, dialect, deliveryStatements.expireFinalDelivery, params);
+        if (expired) db.webhookOutcome?.("dead");
         return expired && expired.event !== null ? { expiredWebhookId: String(expired.webhook) } : null;
       }
       if (!started.ready) return { deferred: true };
       const [row] = await query(db, dialect, deliveryStatements.deliveryInput, params);
       if (!row) {
-        await query(db, dialect, deliveryStatements.skipDelivery, params);
+        if ((await query(db, dialect, deliveryStatements.skipDelivery, params)).length) {
+          db.webhookOutcome?.("skipped");
+        }
         return null;
       }
       const event = row.event === null ? null : messageEvent(row);
@@ -210,6 +213,7 @@ export function deliveryWriter(
         doneAt: outcome.state === "pending" ? null : outcome.now,
         nextAt: outcome.nextAt ?? null,
       });
+      if (rows.length) db.webhookOutcome?.(outcome.state === "pending" ? "retry" : outcome.state);
       return rows.length > 0;
     },
   };

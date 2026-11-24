@@ -78,13 +78,13 @@ import { watcherReads } from "./views/watchers/index.ts";
 import { webhookReads } from "./views/webhooks/webhooks.ts";
 
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
-export { postgresText } from "./db.ts";
+export { postgresText, withWebhookMetrics } from "./db.ts";
 export { splitStatements } from "./ddl.ts";
 export { localBroadcaster } from "./local-broadcaster.ts";
 export { databaseRows, seedTaskNeed, simulateLegacyDeletion, tenantRows } from "./purge-test-data.ts";
 export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
 export { seedSweep, sweepSnapshot } from "./sweep-test-data.ts";
-export { claimJob, nextJob, releaseJobs } from "./views/jobs/index.ts";
+export { claimJob, dueJobMetrics, nextJob, releaseJobs } from "./views/jobs/index.ts";
 export { jobWake } from "./views/jobs/wake.ts";
 
 /** A migration of the one DDL source, in Postgres syntax (docs/data-model.md "DDL"). */

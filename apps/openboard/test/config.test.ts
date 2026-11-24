@@ -310,3 +310,22 @@ test("rejects a key file path whose canonical spelling selects a different file"
     fixture.close();
   }
 });
+
+test("metrics accept a dedicated token or file, and keep only its digest", () => {
+  const dir = mkdtempSync(join(tmpdir(), "openboard-metrics-"));
+  try {
+    const file = join(dir, "token");
+    writeFileSync(file, "example-metrics\n", { mode: 0o600 });
+    const inline = load({ OPENBOARD_METRICS_TOKEN: "example-metrics" });
+    const fromFile = load({ OPENBOARD_METRICS_TOKEN_FILE: file });
+    expect(inline.metricsTokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(fromFile.metricsTokenHash).toBe(inline.metricsTokenHash);
+    expect(load({}).metricsTokenHash).toBeUndefined();
+    expect(() => load({ OPENBOARD_METRICS_TOKEN: "example-metrics", OPENBOARD_METRICS_TOKEN_FILE: file })).toThrow(
+      /cannot both be set/,
+    );
+    expect(() => load({ OPENBOARD_METRICS_TOKEN: "" })).toThrow(/expected a dedicated bearer token/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

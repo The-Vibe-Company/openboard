@@ -58,6 +58,11 @@
       }
     },
     "securitySchemes": {
+      "operatorAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Configured OpenBoard operator metrics token"
+      },
       "bearerAuth": { "type": "http", "scheme": "bearer" },
       "sessionAuth": { "type": "apiKey", "in": "cookie", "name": "__Host-ob_session" }
     }
@@ -12586,6 +12591,37 @@
           },
           "500": {
             "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/api/x/metrics": {
+      "get": {
+        "operationId": "getMetrics",
+        "summary": "Scrape instance metrics using the configured operator bearer token.",
+        "security": [{ "operatorAuth": [] }],
+        "servers": [{ "url": "/" }],
+        "responses": {
+          "200": { "description": "Success", "content": { "text/plain": { "schema": { "type": "string" } } } },
+          "400": {
+            "description": "invalid_request",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "503": {
+            "description": "unavailable",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           }
         }

@@ -78,7 +78,10 @@ export function requestOf(
   const token = options.token;
   if (
     token &&
-    (!platformMount || operation.orgPersonalToken || (operation.accountBearer && token.startsWith("obp_")))
+    (!platformMount ||
+      operation.auth === "operator" ||
+      operation.orgPersonalToken ||
+      (operation.accountBearer && token.startsWith("obp_")))
   ) {
     headers.authorization = `Bearer ${token}`;
   }
