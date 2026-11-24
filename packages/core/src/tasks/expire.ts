@@ -6,8 +6,8 @@ import { withTask } from "./view.ts";
 export function effectiveTask(root: Message, now: number): Message {
   const { task } = root;
   if (task?.state !== "claimed" || !task.claim || task.claim.until > isoTime(now)) return root;
-  // The reserved label reflects the last event, even when a read already sees a dead lease as ready.
-  return { ...root, task: { ...task, state: "ready", claim: null } };
+  // The reserved label reflects the last event, even when a read already sees a dead lease as released.
+  return { ...root, task: { ...task, state: task.blocked ? "blocked" : "ready", claim: null } };
 }
 
 export function expireTask(head: number, root: Message, now: number): TaskExpired | undefined {

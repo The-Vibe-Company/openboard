@@ -32,3 +32,14 @@ export function projectTaskNeedsChanged(event: Extract<TaskEvent, { type: "task.
     message,
   };
 }
+
+export function projectTaskBlocked(event: Extract<TaskEvent, { type: "task.blocked" }>, message: Message) {
+  const { id, thread, kind, reason, by } = event.payload;
+  return {
+    cursor: formatId(event.id),
+    type: event.type,
+    createdAt: isoTime(event.at),
+    payload: { id: formatId(id), thread, kind, reason, by },
+    message,
+  };
+}

@@ -50,7 +50,7 @@ function taskList(
         ${PREREQUISITE}
         AND (root.deleted = 0 OR t.state IN ('canceled', 'completed'))
         AND ${position}(CAST(${"states"} AS TEXT), ',' || (CASE
-          WHEN t.state = 'claimed' AND t.claim_until <= CAST(${"now"} AS BIGINT) THEN 'ready'
+          WHEN t.state = 'claimed' AND t.claim_until <= CAST(${"now"} AS BIGINT) THEN CASE WHEN t.blocked_reason IS NULL THEN 'ready' ELSE 'blocked' END
           ELSE t.state END) || ',') > 0
         AND (CAST(${"owner"} AS TEXT) IS NULL OR t.owner = ${"owner"} OR t.owner IN (
           SELECT principal FROM actors WHERE board_id = ${"boardId"} AND lower(handle) = ${"ownerHandle"} AND id = principal

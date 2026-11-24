@@ -13,8 +13,8 @@ import type { BoardView, Bucket, OrgView, PersonRecord, PlatformView } from "@op
 import type { Session } from "../auth/sessions.ts";
 import type { Deps, Principal, ServerConfig } from "../deps.ts";
 import type { RequestLimits } from "../http/limits.ts";
-import { listInboundReceivedHandler } from "../inbound/received.ts";
 import { receiveInboundEventHandler, type SignatureContext } from "../inbound/receive.ts";
+import { listInboundReceivedHandler } from "../inbound/received.ts";
 import {
   approveDeviceSignInHandler,
   getAccountHandler,
@@ -99,6 +99,7 @@ import { createTaskBatchHandler, getTaskBatchHandler } from "./tasks/batch.ts";
 import { cancelTaskHandler } from "./tasks/cancel.ts";
 import { claimTaskHandler } from "./tasks/claim.ts";
 import { completeTaskHandler, failTaskHandler } from "./tasks/complete.ts";
+import { blockTaskHandler } from "./tasks/hold.ts";
 import { setTaskNeedsHandler } from "./tasks/needs.ts";
 import { releaseTaskHandler } from "./tasks/release.ts";
 import { renewTaskHandler } from "./tasks/renew.ts";
@@ -224,6 +225,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   approveDeviceSignIn: approveDeviceSignInHandler,
   attachSync: attachSyncHandler,
   cancelTask: cancelTaskHandler,
+  blockTask: blockTaskHandler,
   setTaskNeeds: setTaskNeedsHandler,
   changeMemberRole: changeMemberRoleHandler,
   claimConnection: claimConnectionHandler,

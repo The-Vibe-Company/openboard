@@ -83,6 +83,7 @@ import { claimTask } from "./tasks/claim.ts";
 import { completeTask } from "./tasks/complete.ts";
 import { createTask } from "./tasks/create.ts";
 import { failTask } from "./tasks/fail.ts";
+import { blockTask } from "./tasks/hold.ts";
 import { listTasks } from "./tasks/list.ts";
 import { setTaskNeeds } from "./tasks/needs.ts";
 import { releaseTask } from "./tasks/release.ts";
@@ -108,6 +109,7 @@ export const operations = [
   approveDeviceSignIn,
   attachSync,
   cancelTask,
+  blockTask,
   changeMemberRole,
   claimConnection,
   claimTask,
@@ -218,6 +220,7 @@ export {
   ackWatcherMatch,
   approveDeviceSignIn,
   attachSync,
+  blockTask,
   cancelTask,
   changeMemberRole,
   claimConnection,
