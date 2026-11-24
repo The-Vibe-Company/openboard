@@ -7,11 +7,18 @@ writes:
   - apps/web/src/components/ThreadList.tsx
   - apps/web/src/api/board.ts
   - apps/web/e2e/scroll.spec.ts
+  - apps/web/src/components/ThreadList.css
+  - apps/web/src/components/ThreadRow.tsx
+  - apps/web/src/routes/$org/$board/index.tsx
+  - apps/web/src/main.tsx
+  - apps/web/package.json
+  - bun.lock
+  - docs/architecture.md
 conformance: []
 modes: [local, hosted]
 depends_on: [223]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 391
 ---
 
@@ -19,8 +26,8 @@ issue: 391
 As a member of a busy board, I scroll back through thousands of threads in a channel without the page slowing down.
 
 ## Done when
-- [ ] `bun run e2e apps/web/e2e/scroll.spec.ts` passes: in a channel of 2,000 threads posted through the API, the page holds fewer than 100 thread rows in the DOM at any time, scrolling to the end loads older pages until the first thread shows, and no page of threads is requested twice
-- [ ] in the same spec, returning from a thread puts the list back at the row that was opened
+- [x] `bun run e2e apps/web/e2e/scroll.spec.ts` passes: in a channel of 2,000 threads posted through the API, the page holds fewer than 100 thread rows in the DOM at any time, scrolling to the end loads older pages until the first thread shows, and no page of threads is requested twice
+- [x] in the same spec, returning from a thread puts the list back at the row that was opened
 
 ## Out of scope
 - Long threads (a thread's replies are paged by 84 and rendered as they come; not virtualized here).

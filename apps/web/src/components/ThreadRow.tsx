@@ -1,4 +1,5 @@
 import { Link, useParams } from "@tanstack/react-router";
+import type { ComponentPropsWithRef, MouseEvent } from "react";
 import type { ThreadSummary } from "../api/board.ts";
 
 const relativeTime = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
@@ -14,7 +15,16 @@ function relativeDate(date: string, now: number) {
   return relativeTime.format(Math.trunc(seconds), "second");
 }
 
-export function ThreadRow({ thread, now }: { thread: ThreadSummary; now: number }) {
+export function ThreadRow({
+  thread,
+  now,
+  onOpen,
+  ...row
+}: ComponentPropsWithRef<"li"> & {
+  thread: ThreadSummary;
+  now: number;
+  onOpen?: (event: MouseEvent<HTMLAnchorElement>, id: string) => void;
+}) {
   const board = useParams({ from: "/$org/$board" });
   const { message, last, replies } = thread;
   const author = message.author?.name ?? message.from ?? message.by.profile ?? message.by.actor;
@@ -27,8 +37,14 @@ export function ThreadRow({ thread, now }: { thread: ThreadSummary; now: number 
     .toUpperCase();
   const date = (last ?? message).createdAt;
   return (
-    <li>
-      <Link className="board-thread" to="/$org/$board/t/$id" params={{ ...board, id: message.id }} search={true}>
+    <li {...row}>
+      <Link
+        className="board-thread"
+        to="/$org/$board/t/$id"
+        params={{ ...board, id: message.id }}
+        search={true}
+        onClick={onOpen && ((event) => onOpen(event, message.id))}
+      >
         <span className="board-avatar" aria-hidden="true">
           {initials}
           {message.author?.avatar && (

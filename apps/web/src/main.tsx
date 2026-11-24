@@ -5,7 +5,11 @@ import { createRoot } from "react-dom/client";
 import { routeTree } from "./routeTree.gen.ts";
 import "./styles.css";
 
-const router = createRouter({ routeTree, scrollRestoration: true });
+const router = createRouter({
+  routeTree,
+  // A virtual list restores the thread by ID after its rows are available.
+  scrollRestoration: ({ location }) => !("openboardThreadAnchor" in location.state),
+});
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
