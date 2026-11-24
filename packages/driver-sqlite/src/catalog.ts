@@ -1,7 +1,16 @@
 import { Database, type SQLQueryBindings } from "bun:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { type Db, migrations, type Row, seedTaskNeed, simulateLegacyDeletion, tenantRows } from "@openboard/driver-sql";
+import {
+  type Db,
+  migrations,
+  type Row,
+  seedSweep,
+  seedTaskNeed,
+  simulateLegacyDeletion,
+  sweepSnapshot,
+  tenantRows,
+} from "@openboard/driver-sql";
 import type { BoardKeys } from "@openboard/ports";
 import { sqliteDialect } from "./dialect.ts";
 import { migrate } from "./migrate.ts";
@@ -83,6 +92,9 @@ export function sqlitePurgeFixture(now: () => number) {
         withTestDb(file, (db, database) =>
           tenantRows(db, "?", readCatalog(database).tables, orgId, [boardId, ...extraBoards]),
         ),
+      seedSweep: (keys: BoardKeys, webhook: string, at: number) =>
+        withTestDb(file, (db) => seedSweep(db, sqliteDialect, keys, webhook, at)),
+      sweepSnapshot: () => withTestDb(file, sweepSnapshot),
       seedTaskNeed: (keys: BoardKeys, task: number, needs: number) =>
         withTestDb(file, (db) => seedTaskNeed(db, sqliteDialect, keys, task, needs)),
       simulateLegacyDeletion: (orgId: number) =>

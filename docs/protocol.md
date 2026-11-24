@@ -934,6 +934,10 @@ response. `ob webhooks disable <id>` pauses dispatch and `ob webhooks enable
   or `too_large` when the rendered body exceeds the size limit).
   Use `state` to filter, `limit` for 1 to 200 rows (default 50), and pass
   `older` as `before` to fetch the next page when `older` is non-null.
+  Done and skipped deliveries expire seven days after completion. Dead deliveries
+  expire after 30 days and can be retried during that window. OpenBoard reclaims
+  expired rows during job activity. If a cursor anchor has been swept, the next
+  request returns `{ deliveries: [], older: null }`.
   The CLI prints one line per row or the full response with `--json`.
   Use `ob webhooks retry <id> <dl>` to re-send a dead delivery. It prints
   `queued <dl>`. The delivery keeps its ID and restarts at attempt 1.

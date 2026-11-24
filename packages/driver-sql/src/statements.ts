@@ -20,6 +20,7 @@ import { jobPlatformStatements, jobStatements } from "./views/jobs/index.ts";
 import { legacyPurgePlatform, legacyPurgeScoped } from "./views/jobs/legacy-purge.ts";
 import { purgeStatements } from "./views/jobs/purge.ts";
 import { shippingStatements } from "./views/jobs/shipping.ts";
+import { sweepStatements } from "./views/jobs/sweep.ts";
 import { membershipStatements } from "./views/memberships.ts";
 import { messageStatements } from "./views/messages/statements.ts";
 import { operatorPlatform, operatorScoped } from "./views/operator/index.ts";
@@ -68,6 +69,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...purgeStatements,
   ...schemaStatements,
   ...shippingStatements,
+  ...sweepStatements,
   ...taskFoldStatements,
   ...taskListStatements,
   ...taskReadStatements,
@@ -117,6 +119,7 @@ export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...Object.keys(oidcStatements),
   ...Object.keys(rateStatements),
   ...Object.keys(readinessStatements),
+  ...Object.keys(sweepStatements),
   "shippingOrgs",
   "orgMembership",
   "invitationByHash",

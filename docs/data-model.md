@@ -624,9 +624,9 @@ CREATE TABLE inbound_seen (
 );
 ```
 
-Retention (job): done/skipped deliveries and `inbound_seen` after 7 days, done
-matches after 1 day, expired sessions and device codes, accepted or expired
-invitations after 90 days.
+Retention (job): done/skipped deliveries and `inbound_seen` after 7 days, dead
+deliveries after 30 days, done matches after 1 day, expired sessions and device
+codes, and invitations 90 days after acceptance or unaccepted expiry.
 
 ## How folds are derived
 

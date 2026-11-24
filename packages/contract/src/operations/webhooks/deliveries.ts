@@ -4,7 +4,8 @@ import { defineOperation, Ref } from "../../operation.ts";
 
 export const listWebhookDeliveries = defineOperation({
   name: "listWebhookDeliveries",
-  summary: "List a webhook's deliveries newest first.",
+  summary:
+    "List a webhook's deliveries newest first. Done and skipped deliveries are kept for 7 days, and dead deliveries for 30 days.",
   route: { method: "GET", path: "/x/webhooks/:id/deliveries" },
   scope: "board",
   input: {

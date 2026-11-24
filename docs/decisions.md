@@ -1206,3 +1206,12 @@ after all replicas support unsigned deliveries and enforce the receiver-origin
 check. A URL change to another origin requires replacing or clearing any stored static
 headers in that request. Same-origin URL changes can retain the headers.
 ([Issue #501](https://github.com/The-Vibe-Company/openboard/issues/501))
+
+### Operational retention runs during job activity
+
+The existing job runners reclaim bounded batches of expired operational rows
+during due work. Each instance runs at most one sweep per minute while jobs
+are active. An idle server arms no retention timer. Done and skipped
+webhook deliveries age out after seven days and dead deliveries after 30 days.
+A swept history cursor returns an empty page with no older cursor.
+([Issue #590](https://github.com/The-Vibe-Company/openboard/issues/590))

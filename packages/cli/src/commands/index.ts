@@ -35,6 +35,7 @@ export interface Command {
   /** `["read"]`, `["tasks", "claim"]`. */
   readonly words: readonly string[];
   readonly usage: string;
+  readonly help?: string;
   run(ctx: CommandContext): Promise<number>;
 }
 
