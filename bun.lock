@@ -139,6 +139,8 @@
       "name": "@openboard/bench",
       "version": "0.0.0",
       "devDependencies": {
+        "@openboard/contract": "workspace:*",
+        "@openboard/driver-postgres": "workspace:*",
         "@openboard/driver-sqlite": "workspace:*",
         "@openboard/server": "workspace:*",
         "@types/bun": "1.4.5",

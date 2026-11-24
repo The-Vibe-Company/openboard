@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test";
+import process from "node:process";
 import { formatTable, measure } from "../src/counters";
+import { boot } from "../src/drivers";
 import { countArmedTimers } from "../src/timers";
+import { runMessageWorkloads } from "../src/workloads/messages";
 import { percentile } from "../src/workloads/request";
 
 const sizes = { posts: 3, replies: 2, reads: 2 };
@@ -54,15 +57,23 @@ test("local runs the post, reply and channel-read workloads, each with its state
   expect(lines[5]).toBe(`${"Timers armed when idle".padEnd(32)}${"0".padStart(12)}`);
 });
 
-test("hosted runs no workload until its baseline, and still counts idle timers", async () => {
-  expect(formatTable(await measure("hosted", sizes))).toBe(
-    [
-      "hosted",
-      `${"Workload".padEnd(16)}${"Operation".padEnd(16)}        Runs  Statements      p50 ms      p99 ms`,
-      "(no workloads yet: the hosted baseline arrives with the Postgres driver)",
-      `${"Timers armed when idle".padEnd(32)}${"0".padStart(12)}`,
-    ].join("\n"),
-  );
+const postgres = process.env.OPENBOARD_TEST_DRIVER === "postgres";
+
+test.skipIf(!postgres)("hosted runs the workloads on two instances sharing one Postgres database", async () => {
+  const server = await boot("hosted");
+  try {
+    expect(server.instances).toHaveLength(2);
+    const workloads = await runMessageWorkloads(server, sizes);
+    expect(workloads.map(({ workload, statements }) => [workload, statements])).toEqual([
+      ["post", 11],
+      ["reply", 14],
+      ["channelRead", 4],
+    ]);
+    // Every request went through the instances in turn, and each one's store sent its own statements.
+    for (const { statements } of server.instances) expect(statements.statements).toBeGreaterThan(0);
+  } finally {
+    await server.close();
+  }
 });
 
 test("percentiles take the nearest rank", () => {

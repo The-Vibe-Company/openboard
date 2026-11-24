@@ -27,8 +27,13 @@ test("an idle timer increase identifies both counts", () => {
   expect(compareBudgets({ ...localReport, idleTimers: 1 })).toEqual(["local timers armed when idle: 0 -> 1"]);
 });
 
-test("a mode without a recorded budget has no budget failures", () => {
-  expect(compareBudgets({ mode: "hosted", workloads: [], idleTimers: 1 })).toEqual([]);
+test("hosted is held to its own budget", () => {
+  const hosted = { post: 11, reply: 15, channelRead: 4 };
+  const workloads = localReport.workloads.map((row) => ({ ...row, statements: hosted[row.workload] }));
+  expect(compareBudgets({ mode: "hosted", workloads, idleTimers: 1 })).toEqual([
+    "hosted postMessage (reply) statements: 14 -> 15",
+    "hosted timers armed when idle: 0 -> 1",
+  ]);
 });
 
 test("a measured write exactly 20% over budget passes", () => {

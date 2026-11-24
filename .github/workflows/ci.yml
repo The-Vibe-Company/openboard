@@ -154,6 +154,24 @@ jobs:
   bench:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      # Hosted mode boots two instances on a fresh database cloned on this service.
+      OPENBOARD_TEST_DATABASE_URL: postgres://openboard:openboard@127.0.0.1:55432/openboard
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_USER: openboard
+          POSTGRES_PASSWORD: openboard
+          POSTGRES_DB: openboard
+        ports:
+          - "55432:5432"
+        options: >-
+          --tmpfs /var/lib/postgresql/data
+          --health-cmd "pg_isready -h 127.0.0.1 -U openboard -d openboard"
+          --health-interval 1s
+          --health-timeout 3s
+          --health-retries 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

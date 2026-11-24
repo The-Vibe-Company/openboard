@@ -18,7 +18,7 @@ interface ModeBudget {
   readonly measured: Readonly<Record<WorkloadName, LatencyBudget>>;
 }
 
-const modeBudgets: Partial<Record<Mode, ModeBudget>> = budgets;
+const modeBudgets: Record<Mode, ModeBudget> = budgets;
 const measuredBudgetMultiplier = 1.2;
 /** Sub-millisecond timings jitter on shared CI runners: tenths of a millisecond at p50, up to a millisecond at p99. */
 const measuredNoiseFloorMs = { p50: 0.5, p99: 1 } as const;
@@ -26,7 +26,6 @@ const measuredNoiseFloorMs = { p50: 0.5, p99: 1 } as const;
 /** Returns diagnostics for increased exact counters and measured values more than 20% and the noise floor over budget. */
 export function compareBudgets(report: ModeReport): string[] {
   const budget = modeBudgets[report.mode];
-  if (!budget) return [];
 
   const failures: string[] = [];
   for (const { workload, operation, statements, p50, p99 } of report.workloads) {

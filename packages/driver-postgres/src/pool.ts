@@ -1,6 +1,7 @@
 import { SQL } from "bun";
 import { BoardError } from "@openboard/contract";
 import type { Db, Row } from "@openboard/driver-sql";
+import type { StatementCounter } from "./counters.ts";
 
 /**
  * docs/data-model.md "Postgres settings", sent as startup parameters rather than a session `SET` so every
@@ -61,18 +62,33 @@ async function guarded<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-/** Runs the shared registry's positional queries on the pool or its reserved transaction connection. */
-export function connection(sql: SQL): Db {
+/**
+ * Runs the shared registry's positional queries on the pool or its reserved transaction connection. `counter`, when
+ * given, counts every statement sent: each query, and a transaction's `BEGIN` and its `COMMIT` or `ROLLBACK`.
+ */
+export function connection(sql: SQL, counter?: StatementCounter): Db {
+  const run = (session: SQL, text: string, values: readonly unknown[]) => {
+    counter?.count();
+    return session.unsafe<Row[]>(text, [...values]);
+  };
   return {
-    query: (text, values) => guarded(() => sql.unsafe<Row[]>(text, [...values])),
+    query: (text, values) => guarded(() => run(sql, text, values)),
     transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T> {
       return guarded(async () => {
         const result = await sql.begin(async (session) => {
+          counter?.count(); // BEGIN, sent before this callback runs.
           const tx: Db = {
-            query: async (text, values) => session.unsafe<Row[]>(text, [...values]),
+            query: async (text, values) => run(session, text, values),
             transaction: () => Promise.reject(new Error("a board write does not nest")),
           };
-          return { value: await fn(tx) };
+          try {
+            const value = await fn(tx);
+            counter?.count(); // COMMIT, sent once this callback returns.
+            return { value };
+          } catch (error) {
+            counter?.count(); // ROLLBACK, sent once this callback throws.
+            throw error;
+          }
         });
         return result.value;
       });

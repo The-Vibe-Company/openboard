@@ -1,4 +1,4 @@
-import { boot, type Mode } from "./drivers";
+import { boot, type Mode, type Server } from "./drivers";
 import { countArmedTimers } from "./timers";
 import { runMessageWorkloads, type Sizes, type WorkloadResult } from "./workloads/messages";
 
@@ -8,18 +8,16 @@ export interface ModeReport {
   readonly idleTimers: number;
 }
 
-/**
- * Boots `mode`, counts the timers it leaves armed once settled, then runs the workloads of `sizes` on it. Hosted mode
- * runs no workload until the Postgres driver records its baseline (M5).
- */
+/** Boots `mode`, counts the timers it leaves armed once settled, then runs the workloads of `sizes` on it. */
 export async function measure(mode: Mode, sizes: Sizes): Promise<ModeReport> {
-  let server: ReturnType<typeof boot> | undefined;
+  let server: Server | undefined;
   try {
     const idleTimers = await countArmedTimers(async () => {
-      server = boot(mode);
+      server = await boot(mode);
       await Promise.all(server.instances.map(({ app }) => app.drain()));
     });
-    const workloads = mode === "local" && server ? await runMessageWorkloads(server, sizes) : [];
+    if (!server) throw new Error(`${mode} did not boot`);
+    const workloads = await runMessageWorkloads(server, sizes);
     return { mode, workloads, idleTimers };
   } finally {
     await server?.close();
@@ -41,7 +39,6 @@ export function formatTable(report: ModeReport): string {
     const cells = [String(row.runs), String(row.statements), row.p50.toFixed(3), row.p99.toFixed(3)];
     return row.workload.padEnd(width) + row.operation.padEnd(width) + cells.map((c) => c.padStart(CELL)).join("");
   });
-  if (rows.length === 0) rows.push("(no workloads yet: the hosted baseline arrives with the Postgres driver)");
   const idle = "Timers armed when idle".padEnd(2 * width) + String(report.idleTimers).padStart(CELL);
   return [report.mode, header, ...rows, idle].join("\n");
 }

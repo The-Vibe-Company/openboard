@@ -1,4 +1,4 @@
-import type { Server } from "../drivers";
+import type { Instance, Server } from "../drivers";
 import { type Cost, percentile, send } from "./request";
 
 /** How many times each workload runs: the full bench, or the reduced quick one the required check runs. */
@@ -44,15 +44,18 @@ function summarize(workload: WorkloadName, operation: string, costs: readonly Co
 const messageId = (body: unknown) => (body as { message: { id: string } }).message.id;
 
 /**
- * Runs the message workloads on the first instance, one request at a time: `posts` posts to one channel, `replies`
- * replies spread over those posts, then `reads` reads of the channel's latest 50 messages.
+ * Runs the message workloads one request at a time, each request on the next of the server's instances in turn:
+ * `posts` posts to one channel, `replies` replies spread over those posts, then `reads` reads of the channel's latest
+ * 50 messages.
  */
 export async function runMessageWorkloads(server: Server, sizes: Sizes): Promise<WorkloadResult[]> {
-  const [instance] = server.instances;
-  if (instance === undefined) throw new Error("no instance to run the workloads on");
+  if (server.instances.length === 0) throw new Error("no instance to run the workloads on");
   if (sizes.posts < 1 || sizes.replies < 1 || sizes.reads < 1) throw new RangeError("a workload needs runs");
-  const call = (method: string, path: string, expected: number, body?: unknown) =>
-    send(instance, server.token, { method, path, body, expected });
+  let turn = 0;
+  const call = (method: string, path: string, expected: number, body?: unknown) => {
+    const instance = server.instances[turn++ % server.instances.length] as Instance;
+    return send(instance, server.board, { method, path, body, expected });
+  };
   const post = (text: string) => call("POST", "/messages", 201, { channel: CHANNEL, text });
   const read = () => call("GET", `/messages?channel=${CHANNEL}&limit=${READ_LIMIT}`, 200);
 
