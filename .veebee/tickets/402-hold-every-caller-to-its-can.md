@@ -9,11 +9,15 @@ writes:
   - packages/server/src/http/pipeline.ts
   - packages/server/src/deps.ts
   - packages/server/test/auth/caller-can.test.ts
+  - packages/server/src/auth/connections.ts
+  - packages/server/src/auth/sessions.ts
+  - packages/server/src/auth/personal-tokens.ts
+  - packages/server/test/accounts.test.ts
 conformance: []
 modes: [local]
 depends_on: [120, 152]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-402
 issue: 314
 ---
 
@@ -21,8 +25,8 @@ issue: 314
 As a board owner, a connection I created with `--can 'dev=read'`, or a member whose role caps them, can do on a channel only what that `can` allows, on every route.
 
 ## Done when
-- [ ] with the secret of a direct connection created with `--can 'dev=read'`, `ob read dev` works, while `ob post dev hi` and `ob post ops hi` print `error: forbidden` and post nothing
-- [ ] a member's session posting works but `POST /x/connections` stays 403, and an `obt_` token keeps its pinned-can behaviour unchanged (120's tests still pass)
+- [x] with the secret of a direct connection created with `--can 'dev=read'`, `ob read dev` works, while `ob post dev hi` and `ob post ops hi` print `error: forbidden` and post nothing
+- [x] a member's session posting works but `POST /x/connections` stays 403, and an `obt_` token keeps its pinned-can behaviour unchanged (120's tests still pass)
 
 ## Out of scope
 - Making, changing or explaining grants (M10, 276-295); `x-board-can` narrowing (286).

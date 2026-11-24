@@ -1,5 +1,6 @@
 import type { Can, Connection } from "@openboard/contract";
 import {
+  type AgentRevoked,
   type ConnectionCreated,
   type ConnectionRevoked,
   connections,
@@ -41,6 +42,9 @@ export const connectionStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"grant"}`,
   revokeConnectionAgents: sql`UPDATE connection_agents SET revoked_at = ${"at"}, revoked_by = ${"by"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND connection = ${"id"} AND revoked_at IS NULL`,
+  revokeAgent: sql`UPDATE connection_agents SET revoked_at = ${"at"}, revoked_by = ${"by"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND connection = ${"connection"} AND id = ${"agent"}
+      AND revoked_at IS NULL`,
   /** The active connection with the first grant naming it: the one created with it. */
   connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.direct, c.claims_max, c.claims_used,
     c.profiles, c.token_ttl_s, c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can
@@ -154,4 +158,16 @@ export async function foldConnectionRevoked(tx: Db, dialect: Dialect, keys: Boar
   await query(tx, dialect, connectionStatements.revokeConnection, params);
   await query(tx, dialect, connectionStatements.revokeConnectionGrant, { ...keys, grant });
   await query(tx, dialect, connectionStatements.revokeConnectionAgents, params);
+}
+
+/** Folds revocation of one agent in the event's transaction; its connection and other agents stay as they are. */
+export async function foldAgentRevoked(tx: Db, dialect: Dialect, keys: BoardKeys, event: AgentRevoked) {
+  const { connection, agent } = event.payload;
+  await query(tx, dialect, connectionStatements.revokeAgent, {
+    ...keys,
+    connection,
+    agent,
+    at: event.at,
+    by: event.actor,
+  });
 }

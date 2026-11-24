@@ -3,7 +3,8 @@ import type { PlatformView } from "@openboard/ports";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
 import { sessionOf, signOut } from "../auth/sessions.ts";
-import { keepInsidePin, refuseClaimedConfiguration } from "../auth/tokens.ts";
+import { keepInsideCan } from "../auth/access.ts";
+import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
 import {
@@ -190,7 +191,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
     query: readQuery(operation, url.searchParams),
     body: request.method === "GET" ? undefined : await readBody(request),
   });
-  await keepInsidePin(operation, input, by, board);
+  await keepInsideCan(operation, input, by, board);
   const { now, randomBytes } = pipeline.deps;
   const boardUrl = `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`;
   const output = await handlerOf(operation)({ board, by, now, boardUrl, randomBytes }, input);

@@ -5,7 +5,7 @@ import { forUpdate, query, sql } from "../sql.ts";
 
 /** Organizations, their memberships and their events. */
 export const orgStatements = {
-  lockPerson: sql`SELECT id FROM users WHERE public_id = ${"personId"}${forUpdate}`,
+  lockPerson: sql`SELECT id, email FROM users WHERE public_id = ${"personId"}${forUpdate}`,
   insertOrg: sql`INSERT INTO orgs (slug, name, created_by, created_at)
     VALUES (${"slug"}, ${"name"}, ${"userId"}, ${"at"}) ON CONFLICT (slug) DO NOTHING RETURNING id`,
   insertMembership: sql`INSERT INTO memberships (org_id, user_id, role, created_at)
