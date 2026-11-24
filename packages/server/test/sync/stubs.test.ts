@@ -48,6 +48,9 @@ describe("a board that syncs nowhere", () => {
   test("POST /messages/:id/typing answers no targets", async () => {
     const got = await answer("POST", `/messages/${message}/typing`, a.session, { status: "thinking" });
     expect(got).toEqual({ status: 200, body: { targets: [] } });
+    const reader = await narrowed("reads-only", { "*": ["read"] });
+    const refused = await answer("POST", `/messages/${message}/typing`, reader, {});
+    expect(refused).toMatchObject({ status: 403, body: error("forbidden") });
   });
 
   test("GET /sources/:key/read and POST /sources/:key/join answer 404 not_synced_here", async () => {
@@ -57,9 +60,11 @@ describe("a board that syncs nowhere", () => {
     expect(join).toMatchObject({ status: 404, body: error("not_synced_here") });
   });
 
-  test("POST /webhooks/:key answers 404 not_found without a token", async () => {
-    const got = await answer("POST", "/webhooks/chat-eu", {}, { type: "event_callback" });
-    expect(got).toMatchObject({ status: 404, body: error("not_found") });
+  test("POST /webhooks/:key answers 404 not_found without a token, whatever its query", async () => {
+    for (const path of ["/webhooks/chat-eu", "/webhooks/chat-eu?challenge=1"]) {
+      const got = await answer("POST", path, {}, { type: "event_callback" });
+      expect(got, path).toMatchObject({ status: 404, body: error("not_found") });
+    }
   });
 
   test("GET /inbox/:key answers no events with sync in every channel, 403 forbidden otherwise", async () => {

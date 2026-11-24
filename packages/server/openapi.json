@@ -377,10 +377,10 @@
                         "properties": {
                           "target": { "type": "string" },
                           "key": { "type": "string" },
-                          "thread": { "type": "string" },
+                          "thread": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "message": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                           "url": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                          "undelivered": { "type": "boolean" }
+                          "undelivered": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
                         }
                       }
                     }
@@ -2243,22 +2243,8 @@
                     "thread": { "type": "string" },
                     "root": { "type": "string" },
                     "channel": { "type": "string" },
-                    "targets": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": ["target", "key", "thread", "message", "url", "undelivered"],
-                        "properties": {
-                          "target": { "type": "string" },
-                          "key": { "type": "string" },
-                          "thread": { "type": "string" },
-                          "message": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                          "url": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
-                          "undelivered": { "type": "boolean" }
-                        }
-                      }
-                    },
-                    "external": { "type": "array", "items": {} }
+                    "targets": { "type": "array", "items": { "type": "string" } },
+                    "external": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } }
                   }
                 }
               }
@@ -2386,7 +2372,7 @@
                   "required": ["channel", "name", "joined"],
                   "properties": {
                     "channel": { "type": "string" },
-                    "name": { "type": "string" },
+                    "name": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                     "joined": { "type": "boolean" }
                   }
                 }
@@ -3263,7 +3249,12 @@
                 "schema": {
                   "type": "object",
                   "required": ["copies"],
-                  "properties": { "copies": { "type": "object", "patternProperties": { "^(.*)$": {} } } }
+                  "properties": {
+                    "copies": {
+                      "type": "object",
+                      "patternProperties": { "^(.*)$": { "type": "object", "patternProperties": { "^(.*)$": {} } } }
+                    }
+                  }
                 }
               }
             }
@@ -5827,10 +5818,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
                   "type": "object",
-                  "required": ["channel", "messages"],
-                  "properties": { "channel": { "type": "string" }, "messages": { "type": "array", "items": {} } }
+                  "required": ["channel", "name", "thread", "messages", "more"],
+                  "properties": {
+                    "channel": { "type": "string" },
+                    "name": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                    "thread": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                    "messages": { "type": "array", "items": {} },
+                    "more": { "type": "boolean" },
+                    "next": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                  }
                 }
               }
             }
@@ -6221,6 +6218,12 @@
             "schema": { "minLength": 1, "maxLength": 128, "type": "string" }
           }
         ],
+        "x-query-schema": {
+          "additionalProperties": true,
+          "description": "Whatever the platform puts on its URL.",
+          "type": "object",
+          "properties": {}
+        },
         "responses": {
           "200": {
             "description": "Success",

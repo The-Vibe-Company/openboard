@@ -132,7 +132,10 @@ export const receiveWebhook = defineOperation({
   summary: "Platform ingress for a sync entry (no token); this board runs none, so it answers 404.",
   route: { method: "POST", path: "/webhooks/:key" },
   scope: "public",
-  input: { params: KeyParams },
+  input: {
+    params: KeyParams,
+    query: Type.Object({}, { additionalProperties: true, description: "Whatever the platform puts on its URL." }),
+  },
   output: WebhookAnswer,
   errors: ["not_found"],
   access: null,

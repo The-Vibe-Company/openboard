@@ -6,6 +6,7 @@ import { Type } from "@sinclair/typebox";
  */
 
 const Text = Type.String({ minLength: 1, maxLength: 1024 });
+const Nullable = Type.Union([Type.String(), Type.Null()]);
 
 /** An opaque sync key, the entry a platform's sync runs under; it names no tenant resource. */
 export const SyncKey = Type.String({ minLength: 1, maxLength: 128 });
@@ -14,10 +15,11 @@ export const SyncKey = Type.String({ minLength: 1, maxLength: 128 });
 export const SyncTarget = Type.Object({
   target: Type.String(),
   key: Type.String(),
-  thread: Type.String(),
-  message: Type.Union([Type.String(), Type.Null()]),
-  url: Type.Union([Type.String(), Type.Null()]),
-  undelivered: Type.Boolean(),
+  thread: Nullable,
+  message: Nullable,
+  url: Nullable,
+  /** Why the message did not reach it, when it did not. */
+  undelivered: Nullable,
 });
 
 export const SyncTargets = Type.Object({ targets: Type.Array(SyncTarget) });
@@ -85,25 +87,31 @@ export const SyncThread = Type.Object({
   thread: Type.String(),
   root: Type.String(),
   channel: Type.String(),
-  targets: Type.Array(SyncTarget),
-  external: Type.Array(Type.Unknown()),
+  targets: Type.Array(Type.String()),
+  external: Type.Record(Type.String(), Type.String()),
 });
 
 /** The board thread and message platform IDs name. */
 export const SyncFound = Type.Object({
-  thread: Type.Union([Type.String(), Type.Null()]),
-  message: Type.Union([Type.String(), Type.Null()]),
+  thread: Nullable,
+  message: Nullable,
 });
 
-export const SyncCopies = Type.Object({ copies: Type.Record(Type.String(), Type.Unknown()) });
+export const SyncCopies = Type.Object({
+  copies: Type.Record(Type.String(), Type.Record(Type.String(), Type.Unknown())),
+});
 
 /** A platform channel or thread read on demand: nothing about it is stored on the board. */
-export const SourceRead = Type.Object(
-  { channel: Type.String(), messages: Type.Array(Type.Unknown()) },
-  { additionalProperties: true },
-);
+export const SourceRead = Type.Object({
+  channel: Type.String(),
+  name: Nullable,
+  thread: Nullable,
+  messages: Type.Array(Type.Unknown()),
+  more: Type.Boolean(),
+  next: Type.Optional(Nullable),
+});
 
-export const SourceJoined = Type.Object({ channel: Type.String(), name: Type.String(), joined: Type.Boolean() });
+export const SourceJoined = Type.Object({ channel: Type.String(), name: Nullable, joined: Type.Boolean() });
 
 /** What a platform's webhook gets back; a board that syncs nowhere answers it 404. */
 export const WebhookAnswer = Type.Object({}, { additionalProperties: true });

@@ -21,7 +21,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: []
-status: claimed
+status: done
 claimed_by: claude-opus-5.5-t382
 issue: 577
 ---
