@@ -281,7 +281,7 @@ Every request goes through one pipeline in `packages/server/src/http/pipeline.ts
 
 1. **Resolve the tenant from the path** (`http/scope.ts`): `/api/<org>/<board>` (or `/api` locally, an alias of `/api/local/main`) and `/api/x/orgs/<org>/…` give the organization slug and, for `board` operations, the board slug. Unknown slugs answer 404 without saying which part is unknown; discovery answers from the URL alone (D35).
 2. **Authenticate**: the verifier chain returns a principal (session, personal token, connection, agent token, OIDC, local owner token) with the organization and, for board-bound credentials, the board it belongs to.
-3. **Match credential and path**: a credential of another organization, or a board-bound credential on another board, answers 404, before any handler code. Only this step mints the `BoardScope`/`OrgScope` (D33).
+3. **Match credential and path**: on an authenticated route of an existing board, a connection secret (`obc_`) or agent token (`obt_`) issued for a different board or organization gets 401 `unauthorized`. A person's session or personal token (`obp_`) outside its organization answers 404 `not_found`. Both checks precede handler code. Only this step mints the `BoardScope`/`OrgScope` (D33).
 4. **Rate limit** (`RateLimits` port) per organization and credential.
 5. **Authorize**: membership role and grants for the operation's `access` (members capped as D34 says).
 6. **Quota** (`Quotas` port) when the operation creates or stores something countable.
@@ -450,9 +450,9 @@ Because the SQLite driver's broadcaster and jobs are in-process, a server featur
 
 ### 6.5 The tenant isolation suite
 
-`packages/server/test/isolation/isolation.test.ts` is generated at test time from `operations`, not hand-written per operation:
+The isolation suite uses `operations` to check that every operation declares a scope. Its planned generated cases cover the following behavior.
 1. `seed.ts` creates two organizations, A and B, each with a board and one resource of every `Ref` kind (message, thread, task, grant, schema, file, schedule, webhook, connection, member, invitation, board), and records B's slugs and resource IDs.
-2. **Path cases**: for every operation with `scope` `org` or `board`, it calls the operation with A's full-rights credentials (session, personal token, connection, agent token) on B's URL (`/api/<B-org>/<B-board>/…`, `/api/x/orgs/<B-org>/…`) and on A's other board with a board-bound credential. It expects 404, never 2xx, 401 or 403.
+2. **Path cases**: on authenticated board routes, present A's connection secret and agent token on A's other board and on B's board. Expect 401 `unauthorized`. Present A's session and personal token on B's board, and A's session on B's organization routes. Expect 404 `not_found`. Neither case may return 2xx or 403.
 3. **ID cases**: for every `Ref` field in its input, it calls the operation on A's own URL with B's ID in that field. Since positions are per board, it also uses IDs that exist in both boards and checks the answer is A's resource, never B's. It expects A's data or a 404, never B's data.
 4. For every list, search, feed or tail operation called as A, no B resource appears in the output.
 5. Before and after the whole run it takes B's digest (a digest of B's events and rows taken through the platform view: hash of B's events and derived rows); they must be equal.

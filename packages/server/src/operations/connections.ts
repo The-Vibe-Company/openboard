@@ -22,7 +22,7 @@ function hintOf(secret: string): string {
 
 /**
  * A connection on this board, holding one grant and one `obc_` secret answered here once. A member, whose role caps
- * them below `manage`, never creates one; otherwise only the board's owner does until grants decide who may
+ * them below `manage`, never creates one. Organization admins and owners and the local owner may
  * (docs/auth.md "Connections", "Who may create one").
  */
 export const createConnectionHandler: Handler<typeof createConnection> = async (ctx, input) => {
@@ -32,9 +32,9 @@ export const createConnectionHandler: Handler<typeof createConnection> = async (
       hint: "Ask an organization admin or owner to create the connection.",
     });
   }
-  if (ctx.by[credentialKind] !== "local") {
-    throw new BoardError("forbidden", "only the board's owner creates connections", {
-      hint: "Run `ob connections create` as the user who started `ob serve`.",
+  if (!member && ctx.by[credentialKind] !== "local") {
+    throw new BoardError("forbidden", "only board administrators and owners create connections", {
+      hint: "Ask an organization admin or owner to create the connection.",
     });
   }
   const minted = mintSecret("obc_", ctx.randomBytes(SECRET_BYTES));
