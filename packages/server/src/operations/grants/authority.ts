@@ -88,13 +88,29 @@ export async function requireNewGrantManage(
   replacing?: string,
 ) {
   if (!authority) return;
-  const pattern = unmanagedGrantPattern(authority, next.can);
+  requireGrantPatternManage(authority, next.can, namesIssuer);
+  const active = await writer.listGrants();
+  requireEveryoneManage(authority, [...active.filter(({ id }) => id !== replacing), next]);
+}
+
+export function requireGrantPatternManage(
+  authority: GrantAuthority | null,
+  can: GrantView["can"],
+  namesIssuer: boolean,
+) {
+  if (!authority) return;
+  const pattern = unmanagedGrantPattern(authority, can);
   if (pattern !== undefined) throw new BoardError("forbidden", `changing this grant needs manage at ${pattern}`);
-  if (namesIssuer && unmanagedGrantPattern(authority, next.can, true) !== undefined) {
+  if (namesIssuer && unmanagedGrantPattern(authority, can, true) !== undefined) {
     throw new BoardError("forbidden", "naming an oidc issuer needs manage on every channel");
   }
-  const active = await writer.listGrants();
-  const missing = missingEveryonePermission(authority, [...active.filter(({ id }) => id !== replacing), next]);
+}
+
+export function requireEveryoneManage(
+  authority: GrantAuthority,
+  after: readonly Pick<GrantView, "can" | "principals">[],
+) {
+  const missing = missingEveryonePermission(authority, after);
   if (missing) {
     throw new BoardError(
       "forbidden",

@@ -61,6 +61,7 @@ export {
   createChannel,
   createConnection,
   createGrant,
+  createGrants,
   createInvitation,
   createOrg,
   createSchema,

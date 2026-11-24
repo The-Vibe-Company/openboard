@@ -27,6 +27,7 @@ import {
 } from "./connections.ts";
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
+import { createGrants } from "./grants/batch.ts";
 import { createGrant } from "./grants/create.ts";
 import { explainGrants } from "./grants/explain.ts";
 import { listGrants } from "./grants/list.ts";
@@ -94,6 +95,7 @@ export const operations = [
   createChannel,
   createConnection,
   createGrant,
+  createGrants,
   createInvitation,
   createOrg,
   createSchema,
@@ -187,6 +189,7 @@ export {
   createChannel,
   createConnection,
   createGrant,
+  createGrants,
   createInvitation,
   createOrg,
   createSchema,

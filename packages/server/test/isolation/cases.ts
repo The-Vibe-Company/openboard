@@ -21,15 +21,8 @@ export const authenticated = operations.filter((operation) => operation.scope !=
  * validation. An operation missing here sends no query and no body; `callOf` throws if validation refuses that.
  */
 const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; query?: Fields; body?: Fields }>> = {
-  createGrant: (tenant) => ({
-    body: {
-      principals: [
-        { kind: "connection", connection: tenant.ids.connection },
-        { kind: "user", userId: tenant.ids.member?.slice("ob:user:".length) },
-      ],
-      can: { dev: ["read"] },
-    },
-  }),
+  createGrant: (tenant) => ({ body: grantDraft(tenant) }),
+  createGrants: (tenant) => ({ body: { grants: [grantDraft(tenant)] } }),
   claimTask: () => ({ body: {} }),
   updateGrant: (tenant) => ({
     body: {
@@ -79,6 +72,16 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
   recordSyncReceipt: (tenant) => ({ body: { kind: "message", message: tenant.ids.message } }),
 };
 
+function grantDraft(tenant: Tenant) {
+  return {
+    principals: [
+      { kind: "connection", connection: tenant.ids.connection },
+      { kind: "user", userId: tenant.ids.member?.slice("ob:user:".length) },
+    ],
+    can: { dev: ["read"] },
+  };
+}
+
 /** The `Ref` fields of an operation's input, where each sits and which kind it names. */
 export function refFields(operation: Operation): { part: Part; field: string; kind: RefKind }[] {
   const found: { part: Part; field: string; kind: RefKind }[] = [];
@@ -89,13 +92,15 @@ export function refFields(operation: Operation): { part: Part; field: string; ki
       if (kind) found.push({ part, field, kind });
       if (
         part === "body" &&
-        ["principals", "add", "remove"].includes(field) &&
-        (operation.name === "createGrant" || operation.name === "updateGrant")
+        ((["principals", "add", "remove"].includes(field) &&
+          (operation.name === "createGrant" || operation.name === "updateGrant")) ||
+          (operation.name === "createGrants" && field === "grants"))
       ) {
         for (const variant of GrantPrincipalInput.anyOf) {
           for (const [key, nested] of Object.entries(variant.properties)) {
             const nestedKind = refKind(nested);
-            if (nestedKind) found.push({ part, field: `${field}.${key}`, kind: nestedKind });
+            const path = field === "grants" ? "grants.0.principals" : field;
+            if (nestedKind) found.push({ part, field: `${path}.${key}`, kind: nestedKind });
           }
         }
       }
@@ -150,12 +155,13 @@ export function callOf(
     if (part === "params") parts.params[field] = tenant.ids[kind];
   }
   if (override?.field.includes(".")) {
-    const [field, key] = override.field.split(".") as [string, string];
+    const [field, key] = override.field.split(".").slice(-2) as [string, string];
+    const target = override.field.startsWith("grants.") ? (parts.body.grants as [Fields])[0] : parts.body;
     const variant = GrantPrincipalInput.anyOf.find((principal) => key in principal.properties);
     if (!variant) throw new Error(`Missing principal variant for ${key}`);
     const replacement = { kind: variant.properties.kind.const, [key]: override.value.replace(/^ob:user:/, "") };
-    const principals = parts.body[field] as Fields[] | undefined;
-    parts.body[field] = principals
+    const principals = target[field] as Fields[] | undefined;
+    target[field] = principals
       ? principals.map((principal) => (key in principal ? replacement : principal))
       : [replacement];
   } else if (override) parts[override.part][override.field] = override.value;
