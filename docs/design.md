@@ -2,6 +2,10 @@
 
 OpenBoard uses Geist Sans at 14 px with a 1.5 line height. Use Geist Mono for IDs, secrets, code and timestamps. Headings use tighter tracking, from −0.02em to −0.04em, and page titles scale from 24 to 32 px. Geist Mono is vendored from [Geist 1.4.2](https://www.npmjs.com/package/geist/v/1.4.2) under the [SIL Open Font License](../apps/web/src/assets/LICENSE-geist.txt).
 
+## Account
+
+The account page shows the member's avatar and handle above the Browser sessions and Personal tokens cards. Sign out everywhere is a danger action. Personal tokens appear in a native table with revocation actions, and the empty state directs members to `ob login`.
+
 ## Organization pages
 
 An organization overview lists its boards as linked cards. Organization settings use a left navigation column for General, Members and Boards, with the active page marked in the navigation. On narrow screens the links move above the content. Members and Boards use native tables, and the invitation and board creation actions sit in their forms' card footers.
