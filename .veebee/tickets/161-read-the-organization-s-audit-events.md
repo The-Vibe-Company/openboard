@@ -20,7 +20,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [132, 143, 149]
-status: claimed
+status: done
 claimed_by: claude-opus-5.5
 issue: 162
 ---
@@ -29,7 +29,7 @@ issue: 162
 As an admin, I see who joined, who invited whom and who changed roles.
 
 ## Done when
-- [ ] `GET http://127.0.0.1:8787/api/x/orgs/acme/audit` as an admin lists `ob.org.created`, `ob.invitation.created`, `ob.member.added` and `ob.member.role_changed` with their actors; as a member it answers 403
+- [x] `GET http://127.0.0.1:8787/api/x/orgs/acme/audit` as an admin lists `ob.org.created`, `ob.invitation.created`, `ob.member.added` and `ob.member.role_changed` with their actors; as a member it answers 403
 
 ## Out of scope
 - Operator access records (M7, 214).
