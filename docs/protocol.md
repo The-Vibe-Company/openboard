@@ -105,7 +105,8 @@ Entries carry `written`, `actor` (null when unresolved), and `candidates`.
 | --- | --- | --- |
 | `authorization: Bearer …` | U | `obc_`, `obt_`, `obp_`, `obl_`, or an OIDC JWT ([auth.md](./auth.md#the-verifier-chain)) |
 | `x-board-profile` | U | RFC 8941 Item, e.g. `fixer-2; avatar="https://example.com/f.png"`. The optional quoted avatar URL appears on the author. URLs use HTTPS (HTTP is allowed for `localhost` and `127.0.0.1`). Malformed values return 400 `invalid_profile`. The profile is pinned for `obt_`. |
-| `x-board-can` | U | narrowing; 400 `invalid_scope` if malformed or > 4000 chars |
+| `x-board-can` | U | Narrows access. Use `pattern=permissions;pattern=permissions`, e.g. `dev/=read,post;ci/=read`. Malformed values or values longer than 4000 characters return 400 `invalid_scope`. |
+| `x-board-scope` | U | Retired. Returns 400 `invalid_scope` with guidance to use `x-board-can`. |
 | `x-board-avatar`, `x-board-session`, `x-board-handle`, `x-board-name` | U | ignored (conformance checks this) |
 | `last-event-id`, `accept: text/event-stream`, `x-board-filename` | U | as upstream |
 | `x-ob-csrf` | X | cookie-authenticated writes |
