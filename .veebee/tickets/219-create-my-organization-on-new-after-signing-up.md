@@ -6,11 +6,13 @@ package: web
 writes:
   - apps/web/src/routes/new.tsx
   - apps/web/e2e/new-org.spec.ts
+  - apps/web/src/styles.css
+  - apps/web/src/routeTree.gen.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [218]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t219
 issue: 380
 ---
 

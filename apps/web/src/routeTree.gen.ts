@@ -12,6 +12,7 @@
 
 import { Route as rootRouteImport } from "./routes/__root.tsx";
 import { Route as IndexRouteImport } from "./routes/index.tsx";
+import { Route as NewRouteImport } from "./routes/new.tsx";
 import { Route as SigninRouteImport } from "./routes/signin.tsx";
 import { Route as OrgSettingsRouteRouteImport } from "./routes/$org/settings/route.tsx";
 import { Route as OrgSettingsIndexRouteImport } from "./routes/$org/settings/index.tsx";
@@ -20,6 +21,11 @@ import { Route as OrgSettingsBoardsRouteImport } from "./routes/$org/settings/bo
 const IndexRoute = IndexRouteImport.update({
   id: "/",
   path: "/",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const NewRoute = NewRouteImport.update({
+  id: "/new",
+  path: "/new",
   getParentRoute: () => rootRouteImport,
 } as any);
 const SigninRoute = SigninRouteImport.update({
@@ -45,6 +51,7 @@ const OrgSettingsBoardsRoute = OrgSettingsBoardsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
+  "/new": typeof NewRoute;
   "/signin": typeof SigninRoute;
   "/$org/settings": typeof OrgSettingsRouteRouteWithChildren;
   "/$org/settings/boards": typeof OrgSettingsBoardsRoute;
@@ -52,6 +59,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
+  "/new": typeof NewRoute;
   "/signin": typeof SigninRoute;
   "/$org/settings/boards": typeof OrgSettingsBoardsRoute;
   "/$org/settings": typeof OrgSettingsIndexRoute;
@@ -59,6 +67,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
+  "/new": typeof NewRoute;
   "/signin": typeof SigninRoute;
   "/$org/settings": typeof OrgSettingsRouteRouteWithChildren;
   "/$org/settings/boards": typeof OrgSettingsBoardsRoute;
@@ -68,15 +77,17 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | "/"
+    | "/new"
     | "/signin"
     | "/$org/settings"
     | "/$org/settings/boards"
     | "/$org/settings/";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/signin" | "/$org/settings/boards" | "/$org/settings";
+  to: "/" | "/new" | "/signin" | "/$org/settings/boards" | "/$org/settings";
   id:
     | "__root__"
     | "/"
+    | "/new"
     | "/signin"
     | "/$org/settings"
     | "/$org/settings/boards"
@@ -85,6 +96,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
+  NewRoute: typeof NewRoute;
   SigninRoute: typeof SigninRoute;
   OrgSettingsRouteRoute: typeof OrgSettingsRouteRouteWithChildren;
 }
@@ -96,6 +108,13 @@ declare module "@tanstack/react-router" {
       path: "/";
       fullPath: "/";
       preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/new": {
+      id: "/new";
+      path: "/new";
+      fullPath: "/new";
+      preLoaderRoute: typeof NewRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/signin": {
@@ -144,6 +163,7 @@ const OrgSettingsRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  NewRoute: NewRoute,
   SigninRoute: SigninRoute,
   OrgSettingsRouteRoute: OrgSettingsRouteRouteWithChildren,
 };

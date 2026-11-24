@@ -62,3 +62,23 @@ h1 {
   font: inherit;
   padding: 0.4rem 0.8rem;
 }
+
+.new-org-form {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 24rem;
+  margin-inline: auto;
+  text-align: left;
+}
+
+.new-org-form input {
+  min-width: 0;
+  font: inherit;
+  padding: 0.4rem 0.8rem;
+}
+
+.new-org-form [role="alert"] {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #a11919;
+}
