@@ -1,5 +1,5 @@
 import { BoardError } from "@openboard/contract";
-import type { RateLimits } from "@openboard/ports";
+import type { PlatformView, RateLimits } from "@openboard/ports";
 
 export interface RequestLimits {
   readonly rateLimits: RateLimits;
@@ -29,7 +29,7 @@ function tokenBuckets(now: () => number, capacity: number, refillPerMs: number, 
   };
 }
 
-export function instanceRateLimits(now: () => number): RateLimits {
+export function requestRateLimits(now: () => number, platform: PlatformView): RateLimits {
   // Integer units: a write costs 1,000 and a failed authentication costs 3,000.
   const writes = tokenBuckets(now, 1_000_000, 200, 1_000);
   const failures = tokenBuckets(now, 60_000, 1, 3_000);
@@ -58,6 +58,7 @@ export function instanceRateLimits(now: () => number): RateLimits {
   }
 
   return {
+    takeSignIn: (ip) => platform.takeRate(`sign-in:${ip ?? "unknown"}`, 30, 60_000, now()),
     takeWrite: (org) => writes(org, true),
     async admitAuth(ip) {
       const active = pending.get(ip) ?? { count: 0, waiters: new Set<Waiter>() };

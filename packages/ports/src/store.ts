@@ -156,6 +156,8 @@ type DevicePoll = { status: "missing" | "pending" | "too_soon" } | { status: "is
 
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
 export interface PlatformView {
+  /** Consume one platform-wide attempt in a fixed window, or return the retry delay in seconds. */
+  takeRate(key: string, limit: number, windowMs: number, now: number): Promise<number | undefined>;
   /** Start a device request and prune prior expired requests using the supplied clock. */
   startDevice(deviceHash: string, userCode: string, clientName: string, now: number, expiresAt: number): Promise<void>;
   /** Only a current member of the named organization can approve an unused, live code. */

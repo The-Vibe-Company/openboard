@@ -212,7 +212,7 @@ async function run(
     return signOut(request, pipeline.platform, pipeline.deps.now(), pipeline.config.publicUrl);
   }
   if (url.pathname.startsWith("/auth/")) {
-    const answer = signInRoute(request, url, pipeline);
+    const answer = await signInRoute(request, url, pipeline);
     if (!answer) throw notFound();
     return answer;
   }

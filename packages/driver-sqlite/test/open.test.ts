@@ -61,7 +61,7 @@ test("keeps a posted message and the migration records on reopen", async () => {
       ]);
       expect(database.query("PRAGMA journal_mode").get()).toEqual({ journal_mode: "wal" });
       expect(database.query("SELECT version, applied_at FROM schema_migrations ORDER BY version").all()).toEqual(
-        Array.from({ length: 18 }, (_, index) => ({ version: index + 1, applied_at: 100 })),
+        Array.from({ length: 19 }, (_, index) => ({ version: index + 1, applied_at: 100 })),
       );
     } finally {
       database.close();
@@ -170,6 +170,36 @@ test("a new writer counts events appended by a pre-quota writer during an upgrad
     expect(database.query("SELECT id FROM events ORDER BY id").all()).toEqual([{ id: 1 }, { id: 2 }]);
   } finally {
     await driver.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a new rate window prunes expired counters after the clock-skew grace period", async () => {
+  const dir = mkdtempSync("openboard-rate-counters-");
+  try {
+    const store = sqliteDriver({ dir });
+    const limits = store.platform();
+    try {
+      await limits.takeRate("sign-in:old", 30, 60_000, 0);
+      await limits.takeRate("longer-window", 30, 120_000, 0);
+      await limits.takeRate("sign-in:new", 30, 60_000, 60_000);
+      expect(await limits.takeRate("sign-in:old", 1, 60_000, 59_999)).toBe(1);
+      await limits.takeRate("sign-in:new", 30, 60_000, 120_000);
+    } finally {
+      await store.close();
+    }
+
+    const database = new Database(join(dir, "board.db"), { readonly: true });
+    try {
+      expect(database.query("SELECT key, window_start FROM rate_counters ORDER BY key, window_start").all()).toEqual([
+        { key: "longer-window", window_start: 0 },
+        { key: "sign-in:new", window_start: 60_000 },
+        { key: "sign-in:new", window_start: 120_000 },
+      ]);
+    } finally {
+      database.close();
+    }
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
