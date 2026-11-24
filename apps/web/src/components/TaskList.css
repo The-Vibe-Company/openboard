@@ -1,12 +1,77 @@
+.channel-tasks {
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.channel-tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(2 * var(--space));
+  padding: calc(2.5 * var(--space)) calc(3.5 * var(--space));
+}
+
+.channel-tasks-header h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.channel-tasks-count {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: calc(5 * var(--space));
+  padding-inline: calc(1.5 * var(--space));
+  border-radius: var(--radius-pill);
+  background: var(--border);
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .channel-tasks ol {
-  padding-inline-start: calc(6 * var(--space));
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .channel-tasks li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(2 * var(--space)) calc(3 * var(--space));
+  padding: calc(2.5 * var(--space)) calc(3.5 * var(--space));
+  border-block-start: var(--stroke) solid var(--border);
+  background: var(--background);
   overflow-wrap: anywhere;
-  margin-block: calc(2 * var(--space));
+}
+
+.channel-tasks li:hover {
+  background: var(--surface);
+}
+
+.channel-tasks .channel-task-link {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+  font-weight: 500;
+}
+
+.channel-tasks .channel-task-link:hover {
+  text-decoration: none;
 }
 
 .channel-tasks .task-state-badge {
-  display: table;
+  flex-shrink: 0;
+  max-inline-size: 100%;
+}
+
+.channel-tasks > button {
+  margin: calc(2 * var(--space)) calc(3.5 * var(--space));
 }

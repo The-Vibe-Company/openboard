@@ -2,12 +2,27 @@
   min-inline-size: 0;
 }
 
+.thread-page .thread-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space);
+  margin-block-end: calc(2 * var(--space));
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 500;
+}
+
+.thread-page .thread-back:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
 .thread-page > h1[tabindex="-1"]:focus-visible {
   outline: none;
 }
 
 .thread-page .thread-messages {
-  margin: 0;
+  margin: 0 0 calc(4 * var(--space));
   padding: 0;
   list-style: none;
 }

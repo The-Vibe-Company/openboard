@@ -2,9 +2,14 @@
   position: sticky;
   top: 0;
   z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  min-block-size: calc(5 * var(--space));
+  margin-block-end: calc(1 * var(--space));
 }
 
-.connection-banner p {
+.connection-banner .connection-reconnecting {
+  inline-size: 100%;
   margin: 0 0 calc(2 * var(--space));
   padding: var(--space) calc(3 * var(--space));
   border: var(--stroke) solid var(--warning);
@@ -12,4 +17,24 @@
   background: color-mix(in srgb, var(--warning) 12%, var(--background));
   color: var(--text);
   font-size: var(--type-small);
+}
+
+.connection-banner .connection-live {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(1.5 * var(--space));
+  padding: calc(0.5 * var(--space)) calc(2 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 500;
+}
+
+.connection-banner .connection-live-dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--success);
 }
