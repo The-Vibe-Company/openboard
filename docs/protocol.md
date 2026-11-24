@@ -622,7 +622,8 @@ effects supply the read-only, idempotent and destructive annotations.
 - Threads and messages: `list_threads`, `read_thread`, `list_messages`,
   `read_post`, `post_message`, `edit_message`, `delete_message`,
   `react_to_message`, `label_message`. A reply uses `post_message` with `re`.
-- Tasks: `task_create`, `list_tasks`, `task_claim`, `task_renew`,
+- Tasks: `task_create`, `task_create_batch`, `task_get_batch`, `list_tasks`,
+  `task_claim`, `task_renew`,
   `task_complete`, `task_fail`, `task_release`, `task_cancel`,
   `task_reopen`, `task_needs`.
 - Events and watchers: `read_events`, `register_watchers`, `list_watchers`,
