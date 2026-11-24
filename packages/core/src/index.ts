@@ -147,7 +147,7 @@ export {
 } from "./watchers/ack.ts";
 export { validateWatchers, type WatchersRegistered } from "./watchers/register.ts";
 export { matchesWebhookFilter } from "./webhooks/filter.ts";
-export { webhookOutcome } from "./webhooks/outcome.ts";
+export { webhookOutcome, webhookRetryAt } from "./webhooks/outcome.ts";
 export { webhookPayload, webhookPing } from "./webhooks/payload.ts";
 export { validateWebhook } from "./webhooks/validate.ts";
 export type { WebhookCreated, WebhookDeleted };

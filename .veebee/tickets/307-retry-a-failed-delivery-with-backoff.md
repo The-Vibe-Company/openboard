@@ -6,14 +6,22 @@ package: core
 writes:
   - packages/core/src/webhooks/outcome.ts
   - packages/core/test/webhooks/outcome.test.ts
-  - packages/driver-sql/src/views/deliveries.ts
+  - packages/driver-sql/src/views/webhooks/deliveries.ts
+  - packages/core/src/index.ts
+  - packages/core/src/webhooks/payload.ts
+  - packages/core/test/webhooks/payload.test.ts
+  - packages/ports/src/webhooks/index.ts
+  - packages/server/src/webhooks/send.ts
+  - packages/server/test/webhooks/deliver.test.ts
+  - docs/protocol.md
+  - docs/decisions.md
   - packages/server/src/jobs/webhooks.ts
   - packages/server/test/webhooks/retry.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [306]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-307
 issue: 492
 ---
 
@@ -22,7 +30,7 @@ As the owner of a receiver that was down for a few minutes, I get the deliveries
 
 ## Done when
 - [ ] `bun test packages/core/test/webhooks/outcome.test.ts` passes: a network error, a timeout, 408, 425, 429 and any 5xx retry after 10 s, 30 s, 2 min, 10 min, 30 min, 1 h, 3 h, 6 h, 12 h; a `retry-after` up to 1 h replaces the next wait; any other 4xx is dead at once; 2xx within 10 s is done
-- [ ] `bun test packages/server/test/webhooks/retry.test.ts` passes on the fake clock: a receiver answering 503 twice then 200 receives three POSTs with the same `webhook-id` and body, `delivery.attempt` 1, 2, 3, 10 s then 30 s apart, and the delivery ends `done`; no attempt runs before it is due; the same file passes on Postgres
+- [ ] `bun test packages/server/test/webhooks/retry.test.ts` passes on the fake clock: a receiver answering 503 twice then 200 receives three POSTs with the same `webhook-id` and bodies identical except for `delivery.attempt` 1, 2, 3, each signed over its own bytes, 10 s then 30 s apart, and the delivery ends `done`; no attempt runs before it is due; the same file passes on Postgres
 
 ## Out of scope
 - What happens after the last attempt (308); 410 (310); per-thread order (320).

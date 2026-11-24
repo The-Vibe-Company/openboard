@@ -73,9 +73,10 @@ export async function sendWebhook(
   { webhookFetch, resolveHost, schedule }: Pick<Deps, "webhookFetch" | "resolveHost" | "schedule">,
   payload: SignedWebhookRequest,
 ) {
-  if (!webhookFetch) return { status: null, error: "fetch_unavailable" };
+  if (!webhookFetch) return { status: null, retryAfter: null, error: "fetch_unavailable" };
   const controller = new AbortController();
   let status: number | null = null;
+  let retryAfter: string | null = null;
   const timeout = Promise.withResolvers<{ status: number | null; error: string }>();
   const cancel = schedule(webhookTimeoutMs, () => {
     timeout.resolve({ status, error: "timeout" });
@@ -86,13 +87,16 @@ export async function sendWebhook(
       const checked = await webhookTarget(target, config, resolveHost);
       const response = await fetchChecked(checked, payload, controller.signal, webhookFetch);
       status = response.status;
+      retryAfter = response.headers.get("retry-after");
       await drainResponse(response);
       return { status, error: null };
     };
-    return await Promise.race([send(), timeout.promise]);
+    const result = await Promise.race([send(), timeout.promise]);
+    return { ...result, retryAfter };
   } catch (error) {
-    if (error instanceof BoardError && error.code === "invalid_url") return { status: null, error: "invalid_url" };
-    return { status, error: status === null ? "request_failed" : "response_body_failed" };
+    if (error instanceof BoardError && error.code === "invalid_url" && error.reason !== "dns")
+      return { status: null, retryAfter: null, error: "invalid_url" };
+    return { status, retryAfter, error: status === null ? "request_failed" : "response_body_failed" };
   } finally {
     cancel();
   }

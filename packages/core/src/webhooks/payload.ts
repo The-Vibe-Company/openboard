@@ -18,9 +18,12 @@ function webhookSubject(root: Message, message: string, url: string) {
   };
 }
 
-function encodeWebhookPayload<T extends { event: { message: Message; payload: object } }>(payload: T): string | null {
+function encodeWebhookPayload<T extends { event: { message: Message; payload: object } }>(
+  payload: T,
+  maxBytes: number,
+): string | null {
   let body = JSON.stringify(payload);
-  if (encoder.encode(body).length <= limit) return body;
+  if (encoder.encode(body).length <= maxBytes) return body;
   const text = Array.from(payload.event.message.text);
   const fields = payload.event.payload;
   const encode = (length: number) => {
@@ -36,13 +39,13 @@ function encodeWebhookPayload<T extends { event: { message: Message; payload: ob
     });
   };
   body = encode(0);
-  if (encoder.encode(body).length > limit) return null;
+  if (encoder.encode(body).length > maxBytes) return null;
   let low = 0;
   let high = text.length;
   while (low < high) {
     const middle = Math.ceil((low + high) / 2);
     const candidate = encode(middle);
-    if (encoder.encode(candidate).length <= limit) {
+    if (encoder.encode(candidate).length <= maxBytes) {
       body = candidate;
       low = middle;
     } else high = middle - 1;
@@ -75,5 +78,7 @@ export function webhookPayload(
     subject: webhookSubject(root, event.message.id, threadUrl),
     event,
   };
-  return template === null ? encodeWebhookPayload(payload) : renderWebhookTemplate(template, payload, limit);
+  // Reserve the extra digit in attempt 10 so retries preserve the same event text.
+  const maxBytes = delivery.attempt < 10 ? limit - 1 : limit;
+  return template === null ? encodeWebhookPayload(payload, maxBytes) : renderWebhookTemplate(template, payload, limit);
 }
