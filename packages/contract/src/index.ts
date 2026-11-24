@@ -7,6 +7,8 @@ export * from "./entities/events.ts";
 export * from "./entities/invitations.ts";
 export * from "./entities/messages.ts";
 export * from "./entities/orgs.ts";
+export * from "./entities/task-events.ts";
+export * from "./entities/tasks.ts";
 export * from "./entities/threads.ts";
 export {
   BoardError,
@@ -35,6 +37,7 @@ export {
   refKind,
   type Scope,
 } from "./operation.ts";
+export { AuditEvent, OrgAuditEvent } from "./operations/audit.ts";
 export {
   acceptInvitation,
   approveDeviceSignIn,
@@ -45,6 +48,7 @@ export {
   createConnection,
   createInvitation,
   createOrg,
+  createTask,
   deleteMessage,
   discoverBoard,
   editMessage,
@@ -82,5 +86,4 @@ export {
   rotateConnection,
   startDeviceSignIn,
 } from "./operations/index.ts";
-export { AuditEvent, OrgAuditEvent } from "./operations/audit.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

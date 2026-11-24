@@ -277,6 +277,34 @@ Example:
 ob channels create dev/ci
 ```
 
+## `ob tasks create`
+
+Start a thread as a ready task.
+
+```sh
+ob tasks create <channel> <text> [--label <k=v>]... [--no-sync]
+```
+
+Arguments:
+
+- `channel`: Text.
+- `text`: Text.
+
+Options:
+
+- `--label`: A `key=value` entry; repeatable.
+- `--no-sync`: A switch: present means yes.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_create`.
+
+Example:
+
+```sh
+ob tasks create dev "Ship it"
+```
+
 ## `ob delete`
 
 Delete your message, leaving a tombstone in its thread.

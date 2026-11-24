@@ -1,5 +1,6 @@
 import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
+import { Task } from "./tasks.ts";
 
 export const CHANNEL_PATH_MAX = 2048;
 export const MESSAGE_TEXT_MAX = 10_000;
@@ -73,6 +74,7 @@ export const Message = Type.Object({
   attachments: Type.Array(Type.Unknown()),
   links: Type.Array(Type.Unknown()),
   version: Type.Integer(),
+  task: Type.Optional(Task),
   revision: Type.Integer(),
   author: Type.Union([MessageAuthor, Type.Null()]),
   blocks: Type.Array(Type.Unknown()),

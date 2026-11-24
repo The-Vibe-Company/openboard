@@ -101,6 +101,10 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
     send("POST", `${base}/messages`, session, { channel: "dev", text: `${marker} second root` }),
     "second thread",
   );
+  const task = await ok<{ task: { id: string } }>(
+    send("POST", `${base}/tasks`, session, { channel: "dev", text: `${marker} task` }),
+    "task",
+  );
   const can = { "*": "all" };
   const direct = await ok<{ secret: string; connection: { id: string } }>(
     send("POST", `${base}/x/connections`, session, { name: `${marker}-direct`, can, direct: true }),
@@ -126,6 +130,7 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
     ids: {
       message,
       thread: thread.message.id,
+      task: task.task.id,
       connection: fleet.connection.id,
       agent: claimed.agent.id,
       invitation: invited.invitation.id,

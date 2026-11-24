@@ -138,6 +138,7 @@ function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boolean): 
   if (current !== undefined && byWords && (current.deleted || current.text !== historical.text)) return [];
 
   const visible = (view: ReturnType<typeof messages.messageView>) => (everywhere ? view : withoutMentionDetails(view));
+  if (event.type === "task.created") return [projectTaskCreated(event, visible(current ?? historical))];
   if (event.type === "labels.changed") {
     const { view, set, unset, ...payload } = event.payload;
     const carried =
@@ -199,4 +200,18 @@ function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boolean): 
       message: visible(current ?? historical),
     },
   ];
+}
+
+function projectTaskCreated(
+  event: Extract<FeedEvent, { type: "task.created" }>,
+  message: ReturnType<typeof messages.messageView>,
+) {
+  const { view: _view, id, needs, ...payload } = event.payload;
+  return {
+    cursor: formatId(event.id),
+    type: event.type,
+    createdAt: isoTime(event.at),
+    payload: { ...payload, id: formatId(id), needs: needs.map(formatId) },
+    message,
+  };
 }

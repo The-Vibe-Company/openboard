@@ -231,6 +231,13 @@ Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --
 | GET, POST | `/grants`; POST `/grants/batch`; PATCH `/grants/:id`; GET `/grants/explain`; POST `/grants/:id/revoke` | U | plus principal kinds `connection`, `all-connections`; `explain` takes `connection=` |
 | GET | `/schemas`, `/schemas/:id`; POST `/schemas` | U | built-ins `git-commit@1`, `vercel-deployment@1` (data from upstream's `src/contract/data-schemas.ts`, Apache-2.0) |
 
+`POST /tasks` with `{ channel, text, labels?, noSync? }` starts a thread as a ready task.
+It requires `post` in the channel and also `label` when the caller supplies labels.
+The 201 response is `{ task: Message }`. The root's `task` records the writer's
+principal as `owner` and actor as `by`, and the root carries `board.task=ready`.
+Use `ob tasks create <channel> "<text>"` to print the root ID, or use that ID with
+`ob read` or `ob reply`. The SDK method is `createTask` and the MCP tool is `task_create`.
+
 ### Watchers (the pull/ack variant)
 
 | Method | Path | | Notes |
