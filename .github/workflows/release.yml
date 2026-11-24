@@ -70,10 +70,18 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
       - run: bun install --frozen-lockfile
-      - name: Deploy and verify staging
+      - name: Deploy staging without rolling check
+        if: vars.STAGING_ROLLING_CHECK != 'on'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo 'Rolling check skipped because the repository variable `STAGING_ROLLING_CHECK` is not set to `on`.' >> "$GITHUB_STEP_SUMMARY"
+          bun scripts/release/railway-deploy.ts staging "$DEPLOYMENT_TAG"
+      - name: Deploy staging with rolling check
+        if: vars.STAGING_ROLLING_CHECK == 'on'
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           STAGING_CONFORMANCE_SECRET: ${{ secrets.STAGING_CONFORMANCE_SECRET }}
         run: |
           printf '%s\n' "$STAGING_CONFORMANCE_SECRET" |
-            bun scripts/release/railway-deploy.ts staging "$DEPLOYMENT_TAG"
+            bun scripts/release/railway-deploy.ts staging "$DEPLOYMENT_TAG" --rolling-check

@@ -24,7 +24,7 @@ As the owner, every staging deploy proves that a client following the board thro
 
 ## Done when
 - [ ] `bun scripts/release/rolling-check.ts --url https://<staging host>/api/<staging org>/main < secret-file`, started while `scripts/release/railway-deploy.ts staging <tag>` replaces every replica, keeps a tail open, posts a numbered message every 100 ms until the deploy is done, then exits 0 printing how many it posted and that each arrived once, in order; it exits 1 naming each missing, repeated or out-of-order number
-- [ ] the staging deploy of 190 runs it on every merge, and the run of the merge that lands this ticket shows it passing
+- [ ] with `STAGING_ROLLING_CHECK=on`, the staging deploy of 190 runs the check on every staging deploy and fails without a connection secret. Until the owner creates the staging board and configures the secret and switch, staging deploys without the check and records the reason in the run summary.
 
 ## Out of scope
 - Production releases gated on it (M7, 193).

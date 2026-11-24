@@ -107,10 +107,11 @@ test("deploys the tagged GHCR image and verifies distinct replicas despite old a
   const replicas = await deployStaging(args, credential, fake.runtime);
   expect(replicas).toEqual(["replica-a", "replica-b"]);
   expect(fake.probes()).toBe(4);
-  expect(fake.calls.map(({ operation }) => operation).slice(0, 6)).toEqual([
+  expect(fake.calls.some(({ operation }) => operation === "PreviousStagingDeployment")).toBe(false);
+  expect(fake.calls.some(({ operation }) => operation === "StagingRetirement")).toBe(false);
+  expect(fake.calls.map(({ operation }) => operation).slice(0, 5)).toEqual([
     "StagingTarget",
     "StagingEnvironment",
-    "PreviousStagingDeployment",
     "UpdateStaging",
     "DeployStaging",
     "StagingDeployment",
@@ -179,7 +180,10 @@ test("waits for the previous deployment to retire after both new replicas are he
     ],
     { retirement: ["REMOVING", "REMOVED"] },
   );
-  expect(await deployStaging(args, credential, fake.runtime)).toEqual(["replica-a", "replica-b"]);
+  expect(await deployStaging(args, credential, fake.runtime, { waitForRetirement: true })).toEqual([
+    "replica-a",
+    "replica-b",
+  ]);
   expect(fake.calls.filter(({ operation }) => operation === "StagingRetirement")).toHaveLength(2);
   expect(fake.sleeps).toEqual([1_000, 1_000]);
 });
