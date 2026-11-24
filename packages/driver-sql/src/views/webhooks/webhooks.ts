@@ -13,9 +13,9 @@ import { query, sql } from "../../sql.ts";
 import { exhaustedQuota } from "../orgs.ts";
 
 export const webhookStatements = {
-  webhooks: sql`SELECT config, secret_id, owner_actor, owner, directory FROM webhooks
+  webhooks: sql`SELECT config, secret_id, owner_actor, owner, directory, workload FROM webhooks
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} ORDER BY id`,
-  webhook: sql`SELECT config, secret_id, owner_actor, owner, directory FROM webhooks
+  webhook: sql`SELECT config, secret_id, owner_actor, owner, directory, workload FROM webhooks
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   deliveryCursor: sql`SELECT created_at FROM webhook_deliveries
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook = ${"id"} AND id = ${"before"}`,
@@ -32,8 +32,8 @@ export const webhookStatements = {
   webhookQuota: sql`SELECT o.quotas, (SELECT COUNT(*) FROM webhooks
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"}) AS count
     FROM boards b JOIN orgs o ON o.id = b.org_id WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"}`,
-  insertWebhook: sql`INSERT INTO webhooks (org_id, board_id, id, name, owner_actor, owner, secret_id, enabled, directory, config)
-    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"name"}, ${"ownerActor"}, ${"owner"}, ${"secretId"}, ${"enabled"}, ${"directory"}, ${"config"})`,
+  insertWebhook: sql`INSERT INTO webhooks (org_id, board_id, id, name, owner_actor, owner, secret_id, enabled, directory, config, workload)
+    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"name"}, ${"ownerActor"}, ${"owner"}, ${"secretId"}, ${"enabled"}, ${"directory"}, ${"config"}, ${"workload"})`,
   updateWebhook: sql`UPDATE webhooks SET name = ${"name"}, secret_id = ${"secretId"}, enabled = ${"enabled"}, config = ${"config"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   waitingWebhookDeliveries: sql`SELECT d.id, d.next_at FROM webhook_deliveries d
@@ -75,6 +75,9 @@ export function webhookRecord(row: Row): WebhookRecord {
     ownerActor: String(row.owner_actor),
     owner: String(row.owner),
     directory: Boolean(row.directory),
+    ...(typeof row.workload === "string" && {
+      workload: JSON.parse(row.workload) as NonNullable<WebhookRecord["workload"]>,
+    }),
   };
 }
 
@@ -217,5 +220,6 @@ export async function foldWebhook(
     ownerActor: event.actor,
     owner: event.principal,
     directory: Number(event.payload.directory),
+    workload: event.payload.workload ? JSON.stringify(event.payload.workload) : null,
   });
 }

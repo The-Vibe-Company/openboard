@@ -83,7 +83,7 @@ export type BoardEvent =
   | WebhookUpdated
   | WebhookDeleted;
 
-export { matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";
+export { grantMatchingClaims, matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";
 export { channelInputError, correctedChannel, InvalidGrantPattern } from "./channels/path.ts";
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail, type TailMessage } from "./events/tail.ts";
 export { base32, formatId, isoTime, parseId } from "./ids.ts";

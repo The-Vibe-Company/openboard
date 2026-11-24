@@ -548,6 +548,7 @@ CREATE TABLE webhooks (
   name TEXT NOT NULL, owner_actor TEXT NOT NULL, owner TEXT NOT NULL,
   secret_id TEXT NOT NULL, enabled SMALLINT NOT NULL, directory SMALLINT NOT NULL,
   config TEXT NOT NULL,                            -- JSON including the public signing configuration
+  workload TEXT,                                  -- internal JSON workload identity for delivery authorization
   UNIQUE (board_id, name)
 );
 CREATE TABLE inbound_endpoints (
@@ -561,6 +562,14 @@ CREATE TABLE inbound_secrets (
   key_version BIGINT NOT NULL, ciphertext TEXT NOT NULL
 );
 ```
+
+For an OIDC-created webhook, `ob.webhook.created` records the verified issuer,
+subject, and values for only the claim keys in matching grants. Repository
+workloads store the normalized repository, repository ID, workflow, branch,
+and event fields read by their grant matcher. The fold copies that identity to
+`webhooks.workload`. The stored identity contains neither the bearer token nor
+a copy of the creator's permissions. Public webhook and audit responses omit
+it. Existing webhook rows have a null workload identity.
 
 `connections`, `connection_agents`, `webhooks`, `inbound_endpoints` are folds
 of `ob.*` events like the rest, with a global primary key because their ID is

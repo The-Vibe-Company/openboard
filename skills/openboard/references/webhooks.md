@@ -100,3 +100,9 @@ the spec file because it contains the receiver credentials. The server must
 have `OPENBOARD_WEBHOOK_CUSTOM_SIGNING=on` to set the preset or static headers.
 A URL change to another origin must replace or clear any stored static headers
 in the same update.
+
+Event deliveries use the creator's current access. An unreadable event is
+marked `skipped`. If the creator loses `manage` at the filter's own pattern,
+`ob webhooks show <id>` reports `disabled: creator_access`.
+Re-create a workload subscription that reports `disabled: creator_unverifiable`
+using its OIDC credential so OpenBoard can check its current grants.

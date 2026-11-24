@@ -94,6 +94,14 @@ export const WebhookSpec = Type.Object(
 );
 export type WebhookSpec = Static<typeof WebhookSpec>;
 
+export const WebhookDisabledReason = Type.Union([
+  Type.Literal("gone"),
+  Type.Literal("dead_deliveries"),
+  Type.Literal("creator_access"),
+  Type.Literal("creator_unverifiable"),
+]);
+export type WebhookDisabledReason = Static<typeof WebhookDisabledReason>;
+
 export const Webhook = Type.Object({
   ...config,
   id: Type.String(),
