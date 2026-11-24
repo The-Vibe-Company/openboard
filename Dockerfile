@@ -11,7 +11,6 @@ RUN useradd --uid 10001 --user-group --create-home openboard \
 COPY --from=build /build/dist/openboard-linux-* /usr/local/bin/openboard
 USER openboard
 ENV OPENBOARD_DATA_DIR=/data
-VOLUME /data
 EXPOSE 8787
 ENTRYPOINT ["openboard"]
 CMD ["serve"]
