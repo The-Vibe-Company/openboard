@@ -381,7 +381,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 | `OPENBOARD_DATA_DIR` | SQLite mode: database, blobs, backups (default `./.openboard`) |
 | `OPENBOARD_SIGNUP` | `open`, `invite` or `closed` (docs/auth.md); local mode defaults to `closed`, no sign-up unless set (D48) |
 | `OPENBOARD_PUBLIC_URL` | canonical origin, never derived from `Host` |
-| `OPENBOARD_WEBHOOK_CUSTOM_SIGNING` | permit custom HMAC webhook creation, `on` or `off` (default `off`); enable after all replicas support custom signing |
+| `OPENBOARD_WEBHOOK_CUSTOM_SIGNING` | permit writes that set custom HMAC signing, preset `none`, or nonempty static headers, `on` or `off` (default `off`); enable after all replicas support the schemes |
 | `OPENBOARD_SECRET_KEY` | encrypts recoverable secrets (D29) |
 | `OPENBOARD_INSTANCE_ID` | Optional job log label. Each runner uses a generated lease owner ID and uses that ID as its default log label. |
 | `OPENBOARD_DEPLOYMENT_TAG` | Optional deployment tag reported by `/healthz` alongside the instance ID, when configured. |

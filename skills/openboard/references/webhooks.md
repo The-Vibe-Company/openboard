@@ -86,3 +86,10 @@ A subscription pauses on HTTP 410 or after its 101st dead event delivery in
 `disabled: dead_deliveries`, respectively. Test pings never count toward the
 limit. Run `ob webhooks enable <id>` when the receiver is ready to accept the
 queued deliveries. Use `ob webhooks disable <id>` to pause it manually.
+
+For a receiver that uses static headers, set `signing.preset` to `none` and
+create the webhook with `ob webhooks create --file <spec.json>`. Protect
+the spec file because it contains the receiver credentials. The server must
+have `OPENBOARD_WEBHOOK_CUSTOM_SIGNING=on` to set the preset or static headers.
+A URL change to another origin must replace or clear any stored static headers
+in the same update.

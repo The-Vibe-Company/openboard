@@ -194,13 +194,13 @@ ob inbound create --file runner-status.json --secret-file ./inbound.secret
 Subscribe to board events and store the signing secret privately.
 
 ```sh
-ob webhooks create --file <spec.json> --secret-file <path>
+ob webhooks create --file <spec.json> [--secret-file <path>]
 ```
 
 Options:
 
 - `--file`: JSON subscription spec.
-- `--secret-file`: Existing signing secret or a new 0600 file.
+- `--secret-file`: Existing signing secret or a new 0600 file. Required unless the preset is none.
 
 Errors: `error: bad_watcher`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_signing`, `error: invalid_url`, `error: not_found`, `error: not_supported`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: slug_taken`, `error: unauthorized`, `error: unreachable`.
 

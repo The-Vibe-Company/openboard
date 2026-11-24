@@ -63,9 +63,20 @@ function audit(ctx: BoardContext, id: number, at: number) {
   };
 }
 
-function requireCustomSigning(ctx: BoardContext, signing: Webhook["signing"]) {
-  if ("algorithm" in signing && !ctx.webhookConfig.webhookCustomSigning) {
+function requireWebhookFeatures(
+  ctx: BoardContext,
+  signing: Webhook["signing"] | undefined,
+  headers: Webhook["headers"] | undefined,
+) {
+  if (ctx.webhookConfig.webhookCustomSigning) return;
+  if (signing?.preset === "none") {
+    throw new BoardError("invalid_signing", "the none preset requires OPENBOARD_WEBHOOK_CUSTOM_SIGNING=on");
+  }
+  if (signing && "algorithm" in signing) {
     throw new BoardError("invalid_signing", "custom signing requires OPENBOARD_WEBHOOK_CUSTOM_SIGNING=on");
+  }
+  if (headers && Object.keys(headers).length) {
+    throw new BoardError("invalid_request", "static headers require OPENBOARD_WEBHOOK_CUSTOM_SIGNING=on");
   }
 }
 
@@ -89,14 +100,14 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
     body,
   } = validateWebhook(spec);
   requireManage(ctx, tail.channel);
-  requireCustomSigning(ctx, signing);
+  requireWebhookFeatures(ctx, signing, headers);
   const key = signingKey(ctx);
   ctx.debitWrite();
   const { url } = await webhookTarget(spec.url, ctx.webhookConfig, withDnsDeadline(ctx.resolveHost, ctx.schedule));
   const now = ctx.now();
   const id = `wh_${base32(ctx.randomBytes(10))}`;
   const secretId = base32(ctx.randomBytes(10));
-  const secret = suppliedSecret ?? newSecret(ctx);
+  const secret = "preset" in signing && signing.preset === "none" ? undefined : (suppliedSecret ?? newSecret(ctx));
   const webhook: Webhook = {
     id,
     name: spec.name,
@@ -109,7 +120,7 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
     disabledReason: null,
     createdAt: isoTime(now),
   };
-  const credentials = { secret, headers };
+  const credentials = { secret: secret ?? "", headers };
   const sealed = sealWebhookSecret(key, `${id}.${secretId}`, credentials, ctx.randomBytes(12));
   const directory = canListMentionActors(ctx.by);
   await ctx.board.write(async (writer) => {
@@ -123,7 +134,7 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
       { ...audit(ctx, writer.head + 1, now), type: "ob.webhook.created", payload: { webhook, secretId, directory } },
     ]);
   });
-  return suppliedSecret === undefined ? { webhook, secret } : { webhook };
+  return suppliedSecret === undefined && secret !== undefined ? { webhook, secret } : { webhook };
 };
 
 async function updateCredentials(
@@ -153,11 +164,11 @@ async function updateCredentials(
     signing: patch.signing ?? { ...record.webhook.signing, secret: saved?.secret },
     headers: patch.headers ?? saved?.headers,
   });
-  if (patch.signing !== undefined) requireCustomSigning(ctx, signing);
-  const secret = supplied ?? newSecret(ctx);
+  requireWebhookFeatures(ctx, patch.signing === undefined ? undefined : signing, patch.headers);
+  const secret = "preset" in signing && signing.preset === "none" ? undefined : (supplied ?? newSecret(ctx));
   const secretId = base32(ctx.randomBytes(10));
   const id = record.webhook.id;
-  const sealed = sealWebhookSecret(key, `${id}.${secretId}`, { secret, headers }, ctx.randomBytes(12));
+  const sealed = sealWebhookSecret(key, `${id}.${secretId}`, { secret: secret ?? "", headers }, ctx.randomBytes(12));
   await writer.storeWebhookSecret(id, secretId, sealed, now);
   await writer.removeWebhookSecret(record);
   return { secretId, signing, headers: publicHeaders, secret: supplied === undefined ? secret : undefined };
@@ -197,6 +208,14 @@ export const updateWebhookHandler: Handler<typeof updateWebhook> = async (ctx, {
     });
     requireManage(ctx, tail.channel);
     if (target === undefined) ctx.debitWrite();
+    if (
+      target &&
+      target.origin !== new URL(current.url).origin &&
+      patch.headers === undefined &&
+      Object.keys(current.headers).length
+    ) {
+      throw new BoardError("invalid_request", "replace or clear headers when changing the webhook URL origin");
+    }
     if (tail.channel !== undefined && tail.channel !== parseTail(current.filter.tail).channel) {
       const channels = await writer.webhookDeliveryChannels(id);
       if (channels.some((channel) => channel === null || !matchesEventChannel(channel, tail.channel))) {

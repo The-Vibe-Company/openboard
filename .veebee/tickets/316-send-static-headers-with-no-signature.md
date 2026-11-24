@@ -7,12 +7,24 @@ writes:
   - packages/core/src/webhooks/signing.ts
   - packages/core/test/webhooks/signing.test.ts
   - packages/server/src/jobs/sign.ts
+  - packages/server/src/operations/webhooks/index.ts
+  - packages/server/src/webhooks/request.ts
+  - docs/protocol.md
+  - docs/codebase.md
+  - docs/decisions.md
+  - packages/cli/src/commands/webhooks/create.ts
+  - packages/cli/src/commands/usage.ts
+  - packages/cli/test/webhooks.test.ts
+  - skills/openboard/references/commands.md
+  - skills/openboard/references/webhooks.md
   - packages/server/test/webhooks/static-headers.test.ts
+  - packages/server/test/webhooks/sign-github.test.ts
+  - packages/server/test/webhooks/gone.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [315]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 501
 ---
 

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { WebhookSpec } from "@openboard/contract";
-import { validateWebhookSigning } from "../../src/webhooks/signing.ts";
+import { validateWebhookSigning, validateWebhookSigningPreset } from "../../src/webhooks/signing.ts";
 
 test.each(["github", "unknown"])("rejects invalid %s signing with 400 invalid_signing", (preset) => {
   const signing = preset === "github" ? { preset } : { preset, secret: "receiver fixture" };
@@ -95,5 +95,12 @@ test.each([
       status: 400,
       message: expect.stringContaining(`${field} ${reason}`),
     }),
+  );
+});
+
+test("unsigned subscriptions do not widen the presets used for inbound verification", () => {
+  expect(validateWebhookSigning({ signing: { preset: "none" } })).toEqual({ preset: "none", secret: undefined });
+  expect(() => validateWebhookSigningPreset({ preset: "none" })).toThrow(
+    expect.objectContaining({ code: "invalid_signing", status: 400 }),
   );
 });

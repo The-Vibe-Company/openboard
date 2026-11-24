@@ -1,4 +1,4 @@
-import { BoardError, type WebhookSpec } from "@openboard/contract";
+import { BoardError, type Webhook, type WebhookSpec } from "@openboard/contract";
 import { webhookBodyLimit } from "./payload.ts";
 
 const encoder = new TextEncoder();
@@ -14,10 +14,13 @@ const payloadTokenBytes = {
 
 const reservedHeaders = ["accept-encoding", "content-type", "content-length", "host", "user-agent"];
 
+const invalidHeaderName = /[^!#$%&'*+.^_`|~0-9A-Za-z-]/;
+const invalidHeaderValue = /[^\t\x20-\x7e\x80-\xff]/;
+
 type SigningHeader = "signatureHeader" | "timestampHeader" | "idHeader";
 
 function validateHeader(field: SigningHeader, name: string | undefined, used: Set<string>): string {
-  if (!name || /[^!#$%&'*+.^_`|~0-9A-Za-z-]/.test(name)) {
+  if (!name || invalidHeaderName.test(name)) {
     throw new BoardError("invalid_signing", `${field} must be a valid HTTP header name`);
   }
   const key = name.toLowerCase();
@@ -74,7 +77,7 @@ function validateCustomSigning(signing: NonNullable<WebhookSpec["signing"]>) {
   if (signatureFormat === undefined) invalidSigning("signatureFormat", "is required");
   const format = templateTokens("signatureFormat", signatureFormat, headerTokenBytes, 8 * 1024);
   if (!format.has("sig")) invalidSigning("signatureFormat", "must contain {sig}");
-  if (/[^\t\x20-\x7e\x80-\xff]/.test(signatureFormat)) {
+  if (invalidHeaderValue.test(signatureFormat)) {
     invalidSigning("signatureFormat", "must produce a valid HTTP header value");
   }
   if (signedPayload === undefined) invalidSigning("signedPayload", "is required");
@@ -99,11 +102,46 @@ function validateCustomSigning(signing: NonNullable<WebhookSpec["signing"]>) {
   } as const;
 }
 
-export function validateWebhookSigning({ signing = {}, headers }: Pick<WebhookSpec, "signing" | "headers">) {
+const presetHeaders = {
+  "standard-webhooks": ["webhook-signature", "webhook-timestamp", "webhook-id"],
+  github: ["x-hub-signature-256", "x-github-delivery"],
+  stripe: ["stripe-signature"],
+};
+
+function validateStaticHeaders(headers: Record<string, string>, signing: Webhook["signing"]) {
+  const entries = Object.entries(headers);
+  if (entries.length > 20) throw new BoardError("invalid_request", "webhooks support at most 20 static headers");
+  const { preset, signatureHeader, timestampHeader, idHeader } = signing;
+  const signingHeaders =
+    preset && preset in presetHeaders
+      ? presetHeaders[preset as keyof typeof presetHeaders]
+      : [signatureHeader?.toLowerCase(), timestampHeader?.toLowerCase(), idHeader?.toLowerCase()];
+  const used = new Set([...reservedHeaders, ...signingHeaders]);
+  for (const [name, value] of entries) {
+    if (!name || invalidHeaderName.test(name)) {
+      throw new BoardError("invalid_request", "static header names must be valid HTTP header tokens");
+    }
+    const key = name.toLowerCase();
+    if (used.has(key)) throw new BoardError("invalid_request", "static headers must be distinct and unreserved");
+    if (invalidHeaderValue.test(value)) throw new BoardError("invalid_request", "invalid static header value");
+    used.add(key);
+  }
+}
+
+export function validateWebhookSigning({ signing = {}, headers = {} }: Pick<WebhookSpec, "signing" | "headers">) {
   const { preset, secret: _secret, ...custom } = signing;
-  if (headers && Object.keys(headers).length) invalidSigning("headers", "are not available yet");
-  if (preset === undefined && Object.keys(custom).length) return validateCustomSigning(signing);
-  return validateWebhookSigningPreset(signing);
+  if (preset === "none") {
+    if (Object.keys(custom).length) invalidSigning("preset", "cannot be combined with a custom scheme");
+    const unsigned = { preset, secret: undefined } as const;
+    validateStaticHeaders(headers, unsigned);
+    return unsigned;
+  }
+  const validated =
+    preset === undefined && Object.keys(custom).length
+      ? validateCustomSigning(signing)
+      : validateWebhookSigningPreset(signing);
+  validateStaticHeaders(headers, validated);
+  return validated;
 }
 
 export function validateWebhookSigningPreset(signing: NonNullable<WebhookSpec["signing"]>) {

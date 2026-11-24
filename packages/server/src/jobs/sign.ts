@@ -113,19 +113,19 @@ function signingTimestamp(format: SigningScheme["timestampFormat"], now: number)
 }
 
 export function signWebhook(
-  scheme: SigningScheme,
+  signing: Webhook["signing"],
   id: string,
   now: number,
   body: string,
   secret: string,
   url: string,
 ): Headers {
+  const headers = new Headers({ "content-type": "application/json" });
+  if (signing.preset === "none") return headers;
+  const scheme = webhookSigningScheme(signing);
   const ts = signingTimestamp(scheme.timestampFormat, now);
   const signature = webhookSignature(scheme, { id, ts, body, method: "POST", url }, secret);
-  const headers = new Headers({
-    "content-type": "application/json",
-    [scheme.signatureHeader]: formatWebhookSignature(scheme, ts, signature),
-  });
+  headers.set(scheme.signatureHeader, formatWebhookSignature(scheme, ts, signature));
   if (scheme.idHeader) headers.set(scheme.idHeader, id);
   if (scheme.timestampHeader) headers.set(scheme.timestampHeader, ts);
   return headers;

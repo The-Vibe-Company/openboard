@@ -847,6 +847,19 @@ delivery is dead with `lastError: "too_large"`.
 | `ts-id-body` | `v1=<hex HMAC-SHA256 of "{ts}.{id}.{body}">`; header names supplied by the receiver (the shape Armada signs its own webhooks with) |
 | `none` | no signature; static `headers` (for example a bearer) |
 
+The `none` preset sends no signing headers and generates no signing secret.
+Creating a webhook with this preset or setting it on update requires
+`OPENBOARD_WEBHOOK_CUSTOM_SIGNING=on`; otherwise the API returns HTTP 400
+`invalid_signing`. Keep the flag off during a rolling upgrade from a release without this preset.
+Enable it after every replica supports unsigned delivery and the receiver-origin check.
+All presets accept up to 20 static headers. Setting nonempty static headers
+also requires the rollout flag to be on, and returns 400 `invalid_request`
+while it is off. Existing deliveries and clearing static headers work
+regardless of the flag setting. Header values are encrypted at rest and returned as `"…"` in subscription responses. Names must be valid HTTP tokens,
+distinct regardless of case, and cannot match a header set by OpenBoard or by
+the active signing scheme. Invalid static headers return HTTP 400
+`invalid_request`, including values with line breaks.
+
 For a custom HMAC scheme, omit `preset` and supply `algorithm`,
 `signatureHeader`, `signatureFormat`, `encoding`, and `signedPayload`.
 The `{sig}` token is required in `signatureFormat`. Supply `timestampFormat`
@@ -873,7 +886,11 @@ Invalid names return HTTP 400 `invalid_signing` and identify the field.
 
 `POST {BOARD_URL}/x/webhooks/:id` accepts a partial creation spec and returns
 `{ webhook, secret? }`. Omitted fields retain their values. `body: null`
-restores the default payload. Updates use the creation rules and require manage
+restores the default payload. If the URL changes origin (scheme, host, or port)
+and the subscription has stored static headers, supply replacement `headers`
+or `"headers": {}` to clear them in the same request. Omitting `headers` in this
+case returns HTTP 400 `invalid_request` naming `headers`. A same-origin URL
+change keeps omitted headers. Updates use the creation rules and require manage
 access throughout both the current and the resulting tail. If the channel scope
 changes, the resulting tail must cover the channels of the subscription's
 existing deliveries. Otherwise create a separate subscription for the new scope.
