@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-export async function signIn(page: Page, url: string, name: string) {
+export async function signIn(page: Page, url: string, name: string, startSignIn?: () => Promise<void>) {
   const start = `${url}/auth/github/start`;
   await page.route(start, async (route) => {
     const response = await route.fetch({ maxRedirects: 0 });
@@ -17,7 +17,14 @@ export async function signIn(page: Page, url: string, name: string) {
     await route.fulfill({ response, headers: { ...headers, location: callback.href } });
   });
   try {
-    await page.goto(start);
+    if (startSignIn) {
+      await Promise.all([
+        page.waitForURL((current) => current.origin === url && current.pathname === "/new"),
+        startSignIn(),
+      ]);
+    } else {
+      await page.goto(start);
+    }
     const handle = await page.evaluate(async () => {
       const response = await fetch("/api/x/session");
       return response.ok ? (await response.json()).person?.handle : undefined;

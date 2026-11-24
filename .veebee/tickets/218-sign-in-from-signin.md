@@ -9,11 +9,16 @@ writes:
   - apps/web/src/routes/__root.tsx
   - apps/web/src/components/Header.tsx
   - apps/web/e2e/signin.spec.ts
+  - apps/web/e2e/support/serve.ts
+  - apps/web/e2e/support/sign-in.ts
+  - apps/web/src/routeTree.gen.ts
+  - apps/web/src/styles.css
+  - docs/auth.md
 conformance: []
 modes: [local, hosted]
 depends_on: [216]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 379
 ---
 
