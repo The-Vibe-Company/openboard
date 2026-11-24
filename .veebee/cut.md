@@ -108,7 +108,7 @@ Legend.
 92  Create a channel   ← 91
 93  Answer created: false for a channel that already exists [c]   ← 51, 92
 
-## M3 Live tail (15)
+## M3 Live tail (16)
 
 94  Read the feed after a cursor   ← 36
 95  Filter the feed like a thread list [c]   ← 90, 94
@@ -125,6 +125,8 @@ Legend.
 106  Wait for the next event on a thread   ← 97
 107  Exit 1 when a wait times out   ← 106
 108  Measure 50 SSE tails in the local bench   ← 57, 99
+
+403  Fan out committed events to tails without re-reading the store   ← 108
 
 ## M4 Accounts, organizations and auth (54)
 
