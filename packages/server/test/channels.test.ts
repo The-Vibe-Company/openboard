@@ -72,6 +72,21 @@ test("GET /channels answers the last page with next null, and none under an unkn
   }
 });
 
+test("GET /channels accepts a maximum-length channel path as its next cursor", async () => {
+  const app = makeApp();
+  try {
+    const channel = "a".repeat(2048);
+    await postTo(app, [channel, "dev"]);
+    const first = (await (await call(app, "GET", "/channels?limit=1")).json()) as { next: string };
+    expect(first.next).toBe(channel);
+    const next = await call(app, "GET", `/channels?limit=1&after=${first.next}`);
+    expect(next.status).toBe(200);
+    expect(await next.json()).toMatchObject({ channels: [{ path: "dev" }], next: null });
+  } finally {
+    await app.close();
+  }
+});
+
 test.each([
   ["a limit of 0", "/channels?limit=0", "limit"],
   ["a limit over 500", "/channels?limit=501", "limit"],

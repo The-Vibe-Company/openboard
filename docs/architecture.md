@@ -138,6 +138,9 @@ and the cross-instance parts are in-process.
   `/:org/:board/settings/connections`, `/:org/:board/settings/webhooks`,
   `/:org/:board/settings/inbound`, `/:org/:board/settings/grants`. These path
   words are reserved as organization slugs ([protocol.md](./protocol.md#urls)).
+- **Board view.** The channel sidebar uses `GET {BOARD_URL}/channels`. The
+  selected channel is stored in `?channel=`. The thread list uses
+  `GET {BOARD_URL}/threads` and shows the latest activity first.
 - **Headers.** CSP `default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://github.com`,
   `x-content-type-options: nosniff`, `referrer-policy: same-origin`, HSTS.
 - **Session.** `__Host-ob_session` cookie for the person (not per
