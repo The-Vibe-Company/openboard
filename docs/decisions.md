@@ -769,6 +769,18 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   required fields (the suite says so), and a new `Ref` kind needs a seed. No
   case is ever excluded.
 
+### D55. Postgres concurrent index migrations run outside a transaction
+
+- **Status:** accepted ([issue #242](https://github.com/The-Vibe-Company/openboard/issues/242)).
+- **Decision.** Run a Postgres migration containing `CREATE INDEX CONCURRENTLY`
+  one statement at a time outside a transaction. Keep these migrations limited
+  to concurrent index builds so every statement can be retried. Keep valid
+  indexes from previous attempts and remove invalid indexes before rebuilding.
+  Record the version in `schema_migrations` after every statement succeeds.
+- **Consequence.** Other migrations and their version records commit together
+  in one transaction. SQLite renders away `CONCURRENTLY` and applies all
+  migrations inside transactions.
+
 ## Hard blockers found
 
 None. Limits worth knowing:

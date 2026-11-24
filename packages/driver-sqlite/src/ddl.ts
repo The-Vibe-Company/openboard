@@ -1,3 +1,5 @@
+import { splitStatements } from "@openboard/driver-sql";
+
 /**
  * Renders a migration written for Postgres to SQLite, by the mechanical differences of docs/data-model.md "DDL":
  * integer types become `INTEGER`, `BYTEA` becomes `BLOB`, identity keys become `INTEGER PRIMARY KEY`, tables are
@@ -9,15 +11,6 @@ export function renderDdl(postgres: string): string {
     .map(renderStatement)
     .map((statement) => `${statement};`)
     .join("\n");
-}
-
-/** The statements of a DDL file, comments removed; DDL holds no `;` inside a literal. */
-function splitStatements(source: string): string[] {
-  return source
-    .replace(/--[^\n]*/g, "")
-    .split(";")
-    .map((statement) => statement.trim())
-    .filter(Boolean);
 }
 
 function renderStatement(statement: string): string {

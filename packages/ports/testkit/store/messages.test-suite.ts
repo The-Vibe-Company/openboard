@@ -155,6 +155,10 @@ export function messagesSuite(driver: string, open: OpenStore): void {
   labelsSuite(open);
   repliesSuite(driver, open);
   clientIdsSuite(driver, open);
+  storedMessagesSuite(driver, open);
+}
+
+function storedMessagesSuite(driver: string, open: OpenStore): void {
   describe(`${driver}: messages`, () => {
     const opened = eachStore(open);
     const localBoard = () => opened.board();
@@ -171,6 +175,7 @@ export function messagesSuite(driver: string, open: OpenStore): void {
       const first = await post(board, "dev", "hello");
       const second = await post(board, "dev", "again");
       expect([first.id, second.id]).toEqual(["1", "2"]);
+      expect(await board.thread(Number(first.id))).toEqual({ message: first, replies: [] });
       expect(await board.channelMessages({ channel: "dev", limit: 50 })).toEqual([first, second]);
     });
 

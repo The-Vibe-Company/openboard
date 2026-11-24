@@ -12,6 +12,20 @@ import { messagesSuite } from "./store/messages.test-suite.ts";
 import { orgsSuite } from "./store/orgs.test-suite.ts";
 import { threadsSuite } from "./store/threads.test-suite.ts";
 
+export {
+  accountsSuite,
+  actorsSuite,
+  boardsSuite,
+  channelsSuite,
+  connectionsSuite,
+  eventsSuite,
+  invitationsSuite,
+  membershipsSuite,
+  messagesSuite,
+  orgsSuite,
+  threadsSuite,
+};
+
 /** Opens a fresh, migrated store; each test gets its own. */
 export type OpenStore = () => Promise<Store>;
 

@@ -87,3 +87,32 @@ describe("sign-in and sign-up", () => {
     );
   });
 });
+
+describe("the database URL", () => {
+  const url = "postgresql://board@db.example/openboard";
+
+  test("defaults to local mode and selects hosted mode when configured", () => {
+    expect(load({}).mode).toBe("local");
+    expect(load({ OPENBOARD_DATABASE_URL: url })).toMatchObject({ mode: "hosted", databaseUrl: url });
+  });
+
+  test("reads a URL from a file and rejects dual configuration", () => {
+    const dir = mkdtempSync(join(tmpdir(), "openboard-config-"));
+    try {
+      const file = join(dir, "database-url");
+      writeFileSync(file, `${url}\n`);
+      expect(load({ OPENBOARD_DATABASE_URL_FILE: file })).toMatchObject({ mode: "hosted", databaseUrl: url });
+      expect(() => load({ OPENBOARD_DATABASE_URL: "", OPENBOARD_DATABASE_URL_FILE: file })).toThrow(
+        /^OPENBOARD_DATABASE_URL and OPENBOARD_DATABASE_URL_FILE cannot both be set/,
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects invalid URLs without printing the value", () => {
+    expect(() => load({ OPENBOARD_DATABASE_URL: "https://user:example@db.example" })).toThrow(
+      /^OPENBOARD_DATABASE_URL: expected a postgres or postgresql URL with a host$/,
+    );
+  });
+});

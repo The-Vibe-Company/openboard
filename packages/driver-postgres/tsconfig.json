@@ -3,12 +3,16 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": ".",
-    "outDir": "../../.tsbuild/packages/driver-postgres"
+    "outDir": "../../.tsbuild/packages/driver-postgres",
+    "types": ["bun"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"],
   "references": [
     {
       "path": "../driver-sql"
+    },
+    {
+      "path": "../ports"
     }
   ]
 }
