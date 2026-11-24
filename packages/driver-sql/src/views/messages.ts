@@ -1,6 +1,6 @@
 import type { Actor, Message } from "@openboard/contract";
 import { type BoardEvent, type MessageDeleted, type MessagePosted, messages, parseId } from "@openboard/core";
-import type { BoardKeys, BoardScope, BoardView, BoardWriter, Broadcaster } from "@openboard/ports";
+import type { BoardGrantReads, BoardKeys, BoardScope, BoardView, BoardWriter, Broadcaster } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
@@ -307,7 +307,10 @@ export function boardView(
   dialect: Dialect,
   scope: BoardScope,
   broadcaster: Broadcaster,
-): Pick<BoardView, "write" | "channelMessages" | "ownClientPost" | "mentionEvidence" | "taskRoot" | "personGrants"> {
+): Pick<
+  BoardView,
+  "write" | "channelMessages" | "ownClientPost" | "mentionEvidence" | "taskRoot" | keyof BoardGrantReads
+> {
   const keys: BoardKeys = { orgId: scope.orgId, boardId: scope.boardId };
   return {
     ...taskReads(db, dialect, keys),

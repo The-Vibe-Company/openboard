@@ -72,6 +72,7 @@ export {
   listBoards,
   listChannels,
   listConnections,
+  listGrants,
   listMembers,
   listMessages,
   listPersonalTokens,

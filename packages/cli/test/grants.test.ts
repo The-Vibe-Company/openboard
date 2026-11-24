@@ -74,3 +74,56 @@ test("rejects duplicate channel patterns before sending the request", async () =
   expect(status).toBe(2);
   expect(errors[0]).toContain("--can names dev more than once");
 });
+
+test("grants lists each grant as upstream's vb grants prints it, and --json prints { grants }", async () => {
+  const id = `cn_${"b".repeat(16)}`;
+  const grants = [
+    { id: "g1", principals: [{ kind: "all-users" }], can: { "*": "all" }, capped: true, by: null, at: null },
+    { id: "g3", principals: [{ kind: "all-apps" }], can: { "*": ["read", "post"] }, capped: false, by: null, at: null },
+    {
+      id: "g4",
+      principals: [{ kind: "connection", connection: id }],
+      can: { dev: ["read", "post"], "dev/secret": [] },
+      capped: false,
+      by: "ob:user:local",
+      at: "2026-11-24T00:00:00.000Z",
+    },
+    {
+      id: "g12",
+      principals: [{ kind: "user", userId: "u_example", email: null }, { kind: "all-connections" }],
+      can: { "*": [] },
+      capped: false,
+      by: "ob:user:local",
+      at: "2026-11-24T00:00:00.000Z",
+    },
+  ];
+  const run = async (args: string[]) => {
+    const out: string[] = [];
+    const code = await runCli(
+      args,
+      { BOARD_URL: "http://127.0.0.1:8787/api/local/main" },
+      {
+        fetch: async (request) => {
+          expect(request.method).toBe("GET");
+          expect(request.url).toBe("http://127.0.0.1:8787/api/local/main/grants");
+          return Response.json({ grants });
+        },
+        output: { out: (line) => out.push(line), err: (line) => out.push(line) },
+      },
+    );
+    return { code, out };
+  };
+  expect(await run(["grants"])).toEqual({
+    code: 0,
+    out: [
+      [
+        "g1   --all-users                         everything your role allows",
+        "g3   --all-apps                          read post",
+        `g4   --connection ${id}    dev=read,post dev/secret=none`,
+        "g12  --user u_example --all-connections  nothing",
+      ].join("\n"),
+    ],
+  });
+  const json = await run(["grants", "--json"]);
+  expect(JSON.parse(json.out.join("\n"))).toEqual({ grants });
+});

@@ -8,6 +8,7 @@ import type {
   OutputOf,
 } from "@openboard/contract";
 import type { BoardError } from "@the-vibe-company/openboard";
+import { grantsText } from "./grant-views.ts";
 
 /** Where the CLI writes; tests hand in their own. */
 export interface Output {
@@ -152,6 +153,7 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
     },
     getConnection: (output) => connectionText((output as OutputOf<typeof getConnection>).connection),
     listChannels: channelsText,
+    listGrants: grantsText,
     listConnections: (output) => {
       const { connections } = output as OutputOf<typeof listConnections>;
       return connections.length === 0 ? "no connections" : connections.map(connectionText).join("\n");

@@ -14,11 +14,23 @@ writes:
   - packages/server/test/grants/list.test.ts
   - packages/cli/src/commands/grants.ts
   - packages/cli/test/grants.test.ts
+  - packages/contract/src/operations/grants/list.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/server/src/operations/grants/list.ts
+  - packages/server/src/operations/index.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/ports/testkit/index.ts
+  - packages/cli/src/grant-views.ts
+  - packages/cli/src/output.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
+  - docs/protocol.md
 conformance: []
 modes: [local, hosted]
 depends_on: [276]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t277
 issue: 452
 ---
 
@@ -26,8 +38,8 @@ issue: 452
 As a board owner, I see every grant on the board with `ob grants`: whom each names and what it lets them do.
 
 ## Done when
-- [ ] `ob grants` as the local owner prints one row per unrevoked grant, g1 (`--all-users  all`), g2, g3, each connection's grant and any made with `ob grants create`, as upstream's `vb grants` prints them (`*` alone in words, other patterns as `pattern=permissions`, `none` for a closed one); `ob grants --json` prints `{ grants }`, each with `id`, `principals`, `can`, `capped`, `by` and `at`
-- [ ] a direct connection whose grant is `dev=all` gets `error: forbidden: …` (no `manage` at `*`), and so does a claimed agent token
+- [x] `ob grants` as the local owner prints one row per unrevoked grant, g1 (`--all-users  all`), g2, g3, each connection's grant and any made with `ob grants create`, as upstream's `vb grants` prints them (`*` alone in words, other patterns as `pattern=permissions`, `none` for a closed one); `ob grants --json` prints `{ grants }`, each with `id`, `principals`, `can`, `capped`, `by` and `at`
+- [x] a direct connection whose grant is `dev=all` gets `error: forbidden: …` (no `manage` at `*`), and so does a claimed agent token
 
 ## Out of scope
 - Revoking (278).

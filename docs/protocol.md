@@ -265,6 +265,12 @@ carry the exact subject of a person's locally linked GitHub identity.
 Project and app principal kinds are preserved for display. Grant creation
 appears as `ob.grant.created` in the board audit.
 
+`GET /grants` returns `{ grants }`, every unrevoked grant oldest first in the same view, as upstream's
+does; it needs `manage` everywhere (an owner or admin through g1, or a connection whose grant has it),
+and a claimed token always gets 403. No row holds the starting grants: the store answers g1 (`all-users`,
+`*=all`, `capped: true`, as roles cap it), g2 (`all-projects`) and g3 (`all-apps`) with upstream's `can`,
+and `by`/`at` null. The CLI is `ob grants`, printed as upstream's `vb grants`; the MCP tool is `list_grants`.
+
 ### Watchers (the pull/ack variant)
 
 | Method | Path | | Notes |

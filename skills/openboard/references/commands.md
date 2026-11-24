@@ -511,6 +511,24 @@ Example:
 ob connections
 ```
 
+## `ob grants`
+
+List the board's unrevoked grants: whom each names and what it lets them do.
+
+```sh
+ob grants
+```
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `list_grants`.
+
+Example:
+
+```sh
+ob grants
+```
+
 ## `ob tasks`
 
 List the tasks of a channel, a subtree (`dev/`), or the whole board, oldest first, each as its thread's summary.
