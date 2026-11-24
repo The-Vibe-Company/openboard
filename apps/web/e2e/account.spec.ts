@@ -7,6 +7,9 @@ async function openAccount(page: Page, url: string) {
   await page.getByRole("link", { name: "Account" }).click();
   await expect(page).toHaveURL(`${url}/account`);
   await expect(page.getByRole("main").getByText("Signed in as ada")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Browser sessions" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Personal tokens" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "ada" })).toBeVisible();
 }
 
 test("signs the same person out in both browser contexts on their next request", async ({ page, browser }) => {
@@ -85,6 +88,8 @@ test("lists device sign-in token metadata and revokes its board access", async (
   try {
     await openAccount(page, app.url);
     await expect(page.getByText("No personal tokens.")).toBeVisible();
+    await expect(page.getByText("ob login", { exact: false })).toBeVisible();
+    await expect(page.getByRole("table")).toHaveCount(0);
     const token = await issuePersonalToken(page, app.url);
     const boardRequest = () => fetch(`${app.url}/api/acme/main/me`, { headers: { authorization: `Bearer ${token}` } });
     const active = await boardRequest();
@@ -92,7 +97,9 @@ test("lists device sign-in token metadata and revokes its board access", async (
     const { expiresAt } = await active.json();
 
     await page.reload();
-    const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Laptop" }) });
+    const table = page.getByRole("table", { name: "Personal tokens" });
+    await expect(table).toBeVisible();
+    const row = table.getByRole("row").filter({ has: page.getByRole("heading", { name: "Laptop" }) });
     await expect(row.getByText("acme", { exact: true })).toBeVisible();
     await expect(row.locator("time")).toBeVisible();
     await expect(row.locator("time")).toHaveAttribute("datetime", new Date(expiresAt).toISOString());

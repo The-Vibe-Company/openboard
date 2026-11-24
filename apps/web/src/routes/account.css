@@ -1,50 +1,95 @@
 .account {
   display: block;
   box-sizing: border-box;
-  width: min(100%, 44rem);
+  inline-size: min(100%, 44rem);
   margin-inline: auto;
-  padding: 2rem 1rem;
+  padding: calc(6 * var(--space)) calc(4 * var(--space));
   overflow-wrap: anywhere;
 }
 
-.account h1 {
+.account-profile {
+  display: flex;
+  align-items: center;
+  gap: calc(3 * var(--space));
+  margin-block-end: calc(6 * var(--space));
+}
+
+.account-profile .ui-avatar {
+  inline-size: calc(10 * var(--space));
+}
+
+.account-profile h1 {
   margin: 0;
 }
 
-.account section {
-  margin-top: 2rem;
+.account-handle {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
 }
 
-.account button {
-  font: inherit;
-  padding: 0.4rem 0.8rem;
+.account-card {
+  display: grid;
+  gap: calc(3 * var(--space));
+  margin-block-end: calc(4 * var(--space));
 }
 
-.account .personal-tokens {
-  padding-inline-start: 1.25rem;
-}
-
-.account .personal-tokens li {
-  padding-block: 1rem;
-  border-top: 1px solid #ddd;
-}
-
-.account .personal-tokens h3 {
+.account-card h2 {
   margin: 0;
 }
 
-.account .personal-tokens dt {
-  font-weight: 600;
+.account-card p {
+  margin: 0;
 }
 
-.account .personal-tokens dd {
-  margin-inline-start: 0;
+.account-card > .ui-button {
+  justify-self: start;
 }
 
-.account .personal-tokens dl div + div {
-  margin-top: 0.5rem;
+.account-hint {
+  color: var(--muted);
 }
 
-.account .personal-tokens button[aria-disabled="true"] {
-  opacity: 0.65;
+.account-card [role="alert"] {
+  margin: 0;
+  color: var(--danger-label);
+}
+
+.account-card .ui-empty-state h3 {
+  margin: 0 0 calc(2 * var(--space));
+}
+
+.account-table-scroll {
+  max-inline-size: 100%;
+  overflow-x: auto;
+}
+
+.account-tokens-table {
+  overflow-wrap: normal;
+}
+
+.account-tokens-table th {
+  color: var(--muted);
+  font-weight: 500;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.account-tokens-table h3 {
+  margin: 0;
+}
+
+.account-token-actions {
+  text-align: end;
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .account-tokens-table :is(th, td) {
+    padding-inline: var(--space);
+  }
+
+  .account-tokens-table th {
+    white-space: normal;
+  }
 }

@@ -6,10 +6,12 @@ package: web
 writes:
   - apps/web/src/routes/account.tsx
   - apps/web/src/routes/account.css
+  - apps/web/e2e/account.spec.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [411]
-status: draft
+status: done
+claimed_by: claude
 issue: 796
 ---
 
@@ -17,7 +19,7 @@ issue: 796
 As a member, `/account` shows my profile (avatar, handle) at the top, then a Browser sessions card with a danger `Sign out everywhere` button, then a Personal tokens card with a `Table` of tokens or an `EmptyState`.
 
 ## Done when
-- [ ] `/account` shows the profile header and the two `Card`s; with no personal token the tokens card shows an `EmptyState` explaining how to create one with `ob login`; with tokens it lists them in a `Table`
+- [x] `/account` shows the profile header and the two `Card`s; with no personal token the tokens card shows an `EmptyState` explaining how to create one with `ob login`; with tokens it lists them in a `Table`
 
 ## Rules
 - Use only the tokens and primitives of `docs/design.md` (ticket 411): no colour, radius, shadow or font size written as a raw value outside `apps/web/src/styles.css`.
