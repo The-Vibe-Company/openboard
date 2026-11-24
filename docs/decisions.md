@@ -607,6 +607,11 @@ Lease consumption and the database effect commit together.
   `*=all`: on the local board (created with the local owner token) and on a
   board of a dedicated staging organization in hosted mode
   ([auth.md](./auth.md#the-credential-that-runs-conformance)).
+- **Amendment (ticket 281).** Run the kit a second time on the test board
+  with the local owner credential or a hosted organization owner's personal
+  token. Use the owner result only for checks the connection skipped. The
+  kit can name a person in a grant that keeps the runner inside a closed
+  pattern, which lets it exercise grant precedence and related rules.
 - **Consequence.** The lockout check runs; app, viewer, sync, root-edit-blocks
   (via sync), and upstream's unspecified checks are skipped.
 

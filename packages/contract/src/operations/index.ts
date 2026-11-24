@@ -27,6 +27,7 @@ import {
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { createGrant } from "./grants/create.ts";
+import { explainGrants } from "./grants/explain.ts";
 import { listGrants } from "./grants/list.ts";
 import { revokeGrant } from "./grants/revoke.ts";
 import { updateGrant } from "./grants/update.ts";
@@ -113,6 +114,7 @@ export const operations = [
   listChannels,
   listConnections,
   listGrants,
+  explainGrants,
   listMembers,
   listMessages,
   listPersonalTokens,
@@ -196,6 +198,7 @@ export {
   listChannels,
   listConnections,
   listGrants,
+  explainGrants,
   listMembers,
   listMessages,
   listPersonalTokens,

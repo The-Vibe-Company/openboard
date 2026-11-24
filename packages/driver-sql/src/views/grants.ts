@@ -1,18 +1,24 @@
 import type { CanInput, GrantPrincipal, GrantView } from "@openboard/contract";
 import { type GrantCreated, type GrantRevoked, type GrantUpdated, grants, isoTime } from "@openboard/core";
-import type { BoardGrantReads, BoardKeys } from "@openboard/ports";
+import type { AgentRecord, BoardGrantReads, BoardKeys } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
 
-/** Aggregate grant documents inside the credential's query, preserving its round-trip count. */
+/** Aggregate documents and their nearest level inside the credential query. */
 export const grantCanArray: Fragment = Object.freeze({
-  fragment: (dialect: Dialect) =>
-    dialect.name === "sqlite" ? "json_group_array(g.can)" : "CAST(json_agg(g.can) AS TEXT)",
+  fragment: ({ name }: Dialect) =>
+    name === "sqlite"
+      ? "json_group_array(json_array(can, rank))"
+      : "CAST(json_agg(json_build_array(can, rank)) AS TEXT)",
 });
 
-export function connectionGrantCans(value: unknown): CanInput[] {
-  const documents = value == null ? [] : (JSON.parse(String(value)) as string[]);
-  return documents.map((document) => JSON.parse(document) as CanInput);
+export function connectionGrantCans(value: unknown): AgentRecord["grantCans"] {
+  const documents = value == null ? [] : (JSON.parse(String(value)) as [string, number][]);
+  return documents.map(([document, rank]) => ({
+    can: JSON.parse(document) as CanInput,
+    capped: false,
+    level: rank === 0 ? "principal" : "group",
+  }));
 }
 
 const lockIssuerQuota: Fragment = Object.freeze({
@@ -53,7 +59,7 @@ export const grantStatements = {
   deleteGrantPrincipals: sql`DELETE FROM grant_principals WHERE board_id = ${"boardId"} AND grant_id = ${"grantId"}`,
   insertGrantPrincipal: sql`INSERT INTO grant_principals (org_id, board_id, grant_id, kind, key, detail)
     VALUES (${"orgId"}, ${"boardId"}, ${"grantId"}, ${"kind"}, ${"key"}, ${"detail"})`,
-  personGrants: sql`SELECT DISTINCT g.id, g.can, g.capped
+  personGrants: sql`SELECT g.id, g.can, g.capped, MIN(CASE WHEN p.kind = 'all-users' THEN 1 ELSE 0 END) AS rank
     FROM grant_principals p JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
     JOIN boards b ON b.id = g.board_id AND b.org_id = g.org_id
     JOIN memberships m ON m.org_id = b.org_id JOIN users u ON u.id = m.user_id
@@ -63,8 +69,9 @@ export const grantStatements = {
       AND ((p.kind = 'user' AND p.key = u.public_id)
         OR (p.kind = 'all-users' AND p.key = '')
         OR (p.kind = 'github' AND p.key = i.subject))
+    GROUP BY g.id, g.can, g.capped
     UNION ALL
-    SELECT 1, '{"*":"all"}', 1 FROM boards b
+    SELECT 1, '{"*":"all"}', 1, 1 FROM boards b
     JOIN memberships m ON m.org_id = b.org_id JOIN users u ON u.id = m.user_id
     WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"}
       AND u.public_id = ${"personId"} AND u.disabled_at IS NULL
@@ -120,7 +127,9 @@ export function grantReads(db: Db, dialect: Dialect, keys: BoardKeys): BoardGran
   return {
     async personGrants(personId) {
       const rows = await query(db, dialect, grantStatements.personGrants, { ...keys, personId });
-      return rows.map(({ can, capped }) => ({
+      return rows.map(({ id, can, capped, rank }) => ({
+        id: grants.formatGrantId(Number(id)),
+        level: Number(rank) === 0 ? "principal" : "group",
         can: JSON.parse(String(can)) as CanInput,
         capped: Number(capped) === 1,
       }));

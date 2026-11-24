@@ -37,6 +37,9 @@ to share with the channel's readers.
 For a generic profile avatar, use `<BOARD_URL>/avatars/agent` as the avatar URL.
 Other available marks are `bot`, `ci`, and `person`.
 
+Use `ob grants explain dev/web` to see what your credential may do on a
+channel. With `manage` at `*`, add `--user <id>` to inspect a board member.
+
 In GitHub Actions, a board owner can use `ob grants create --github acme/web
 --workflow ci.yml --git-branch main --can 'ci/=post'` to authorize posting.
 With `permissions: id-token: write`, request a job token whose audience is the

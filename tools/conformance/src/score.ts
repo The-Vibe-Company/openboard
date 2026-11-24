@@ -28,3 +28,11 @@ export function recordChecks(score: Score, mode: keyof Score, added: readonly st
   const names = [...new Set([...score[mode], ...added])].sort();
   return { ...score, [mode]: names };
 }
+
+/** The connection's results are authoritative wherever it ran the check. */
+export function fillSkipped(primary: readonly CheckResult[], fallback: readonly CheckResult[]): CheckResult[] {
+  const alternate = new Map(fallback.map((check) => [`${check.group}/${check.name}`, check]));
+  return primary.map((check) =>
+    check.status === "skipped" ? (alternate.get(`${check.group}/${check.name}`) ?? check) : check,
+  );
+}

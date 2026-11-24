@@ -34,7 +34,8 @@ async function bootApp(
     {
       mode: hosted ? "hosted" : "local",
       publicUrl,
-      localOwner: "ob:user:local-tools",
+      // The kit recognizes a board-local owner by its principal namespace.
+      localOwner: "board:local-tools",
       ...(hosted
         ? { signup: "open", signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } } }
         : { localOwnerTokenHash: backend.owner.hash }),

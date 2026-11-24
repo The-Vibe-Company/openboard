@@ -41,6 +41,7 @@ import {
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
 import { createGrantHandler } from "./grants/create.ts";
+import { explainGrantsHandler } from "./grants/explain.ts";
 import { listGrantsHandler } from "./grants/list.ts";
 import { revokeGrantHandler } from "./grants/revoke.ts";
 import { updateGrantHandler } from "./grants/update.ts";
@@ -219,6 +220,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listChannels: listChannelsHandler,
   listConnections: listConnectionsHandler,
   listGrants: listGrantsHandler,
+  explainGrants: explainGrantsHandler,
   listMembers: listMembersHandler,
   listMessages: listMessagesHandler,
   listPersonalTokens: listPersonalTokensHandler,

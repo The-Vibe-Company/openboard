@@ -1,10 +1,17 @@
 import process, { argv, execPath } from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { createConnection, createOrg, getSession } from "@openboard/contract";
+import {
+  approveDeviceSignIn,
+  createConnection,
+  createOrg,
+  getSession,
+  pollDeviceSignIn,
+  startDeviceSignIn,
+} from "@openboard/contract";
 import type { CheckGroup, CheckResult } from "@vercel/board/conformance";
 import { boot } from "./drivers";
-import { lostChecks, newChecks, recordChecks, type Score } from "./score";
+import { fillSkipped, lostChecks, newChecks, recordChecks, type Score } from "./score";
 
 const groups: readonly CheckGroup[] = [
   "core",
@@ -84,10 +91,7 @@ async function hostedSession(url: URL) {
   return headers;
 }
 
-export async function createDirectConnection(url: URL, ownerToken?: string): Promise<string> {
-  const headers = ownerToken
-    ? { authorization: `Bearer ${ownerToken}`, "content-type": "application/json" }
-    : await hostedSession(url);
+async function createDirectConnection(url: URL, headers: Record<string, string>): Promise<string> {
   const response = await fetch(new URL(url.href + createConnection.route.path), {
     method: createConnection.route.method,
     headers,
@@ -103,6 +107,30 @@ export async function createDirectConnection(url: URL, ownerToken?: string): Pro
   const { secret } = (await response.json()) as (typeof createConnection.output)["static"];
   if (typeof secret !== "string" || !secret) throw new Error("The conformance connection did not return a secret");
   return secret;
+}
+
+async function hostedOwnerToken(url: URL, headers: Record<string, string>): Promise<string> {
+  async function post<O extends { route: { path: string; method: string } }>(
+    operation: O,
+    body: object,
+    credentials?: Record<string, string>,
+  ) {
+    const response = await fetch(new URL(`/api/x${operation.route.path}`, url), {
+      method: operation.route.method,
+      headers: credentials ?? { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok)
+      throw new Error(`Conformance device sign-in failed at ${operation.route.path} (HTTP ${response.status})`);
+    return response.json() as Promise<unknown>;
+  }
+  const { userCode, deviceCode } = (await post(startDeviceSignIn, {
+    clientName: "Conformance",
+  })) as (typeof startDeviceSignIn.output)["static"];
+  await post(approveDeviceSignIn, { userCode, org: "conformance-ci" }, headers);
+  const result = (await post(pollDeviceSignIn, { deviceCode })) as (typeof pollDeviceSignIn.output)["static"];
+  if (!("token" in result)) throw new Error("Conformance device sign-in did not issue a token");
+  return result.token;
 }
 
 type KitDiagnostic = { reason?: string; data?: { error?: { code?: string; status?: number } } };
@@ -195,8 +223,13 @@ async function main() {
   } else {
     const server = await boot(options.driver, options.instances);
     try {
-      const token = await createDirectConnection(server.url, server.ownerToken);
-      checks = await runKit(server.url, token, false);
+      const headers: Record<string, string> = server.ownerToken
+        ? { authorization: `Bearer ${server.ownerToken}`, "content-type": "application/json" }
+        : await hostedSession(server.url);
+      const token = await createDirectConnection(server.url, headers);
+      const connectionChecks = await runKit(server.url, token, false);
+      const owner = server.ownerToken ?? (await hostedOwnerToken(server.url, headers));
+      checks = fillSkipped(connectionChecks, await runKit(server.url, owner, false));
     } finally {
       await server.close();
     }

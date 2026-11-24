@@ -293,9 +293,16 @@ Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --
 | POST, GET | `/tasks`; POST `/tasks/batch`; GET `/tasks/batch/:id` | U | |
 | POST | `/tasks/claim` | U | `wait` held ≤ 120 s |
 | POST | `/tasks/:id/{claim,renew,release,complete,fail,block,unblock,reopen,assign,needs,cancel}` | U | |
-| GET, POST | `/grants`; POST `/grants/batch`; PATCH `/grants/:id`; GET `/grants/explain`; POST `/grants/:id/revoke` | U | plus principal kinds `connection`, `all-connections`; `explain` takes `connection=` |
+| GET, POST | `/grants`; POST `/grants/batch`; PATCH `/grants/:id`; GET `/grants/explain`; POST `/grants/:id/revoke` | U | plus principal kinds `connection`, `all-connections` |
 | GET | `/schemas`, `/schemas/:id` | U | every board caller can read built-ins `git-commit@1`, `vercel-deployment@1` (upstream data, Apache-2.0) |
 | POST | `/schemas` | U | register a version with board-wide manage access. An identical repeat returns `created: false`. Changes answer 409 `schema_immutable`, and a 501st custom version answers 400 `too_many_schemas` |
+
+`GET /grants/explain?channel=dev/web` returns the channel, winning pattern,
+less-specific patterns, closest principal level, deciding grants, role cap
+and effective permissions. It accepts the upstream subject selectors.
+Explaining another subject requires `manage` at `*` or board ownership.
+A self-explanation omits grant records when the caller cannot list them.
+The CLI wraps its JSON output in `{ explanation: … }`.
 
 Registration answers 409 `reserved_schema` for any version of a built-in name.
 Custom definitions must describe an object and use supported structural keywords.
