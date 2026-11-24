@@ -10,6 +10,7 @@ import {
   readCommand,
   replyCommand,
   type StandaloneContext,
+  useCommand,
   whoamiCommand,
 } from "./commands/index.ts";
 import { clientConfig } from "./config.ts";
@@ -23,9 +24,12 @@ export interface CliOptions {
   readonly readStdin?: () => string;
 }
 
-const commands: readonly (Command | typeof connectCommand | typeof loginCommand)[] = [
+type AnyCommand = Command | typeof connectCommand | typeof loginCommand | typeof useCommand;
+
+const commands: readonly AnyCommand[] = [
   connectCommand,
   loginCommand,
+  useCommand,
   createConnectionCommand,
   readCommand,
   messagesCommand,
@@ -34,7 +38,7 @@ const commands: readonly (Command | typeof connectCommand | typeof loginCommand)
   ...derivedCommands,
 ];
 
-function find(words: readonly string[]): Command | typeof connectCommand | typeof loginCommand | undefined {
+function find(words: readonly string[]): AnyCommand | undefined {
   return commands
     .filter((command) => command.words.every((word, at) => words[at] === word))
     .sort((a, b) => b.words.length - a.words.length)[0];

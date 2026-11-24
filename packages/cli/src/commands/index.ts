@@ -36,4 +36,5 @@ export { loginCommand } from "./login.ts";
 export { messagesCommand } from "./messages.ts";
 export { readCommand } from "./read.ts";
 export { replyCommand } from "./reply.ts";
+export { useCommand } from "./use.ts";
 export { whoamiCommand } from "./whoami.ts";
