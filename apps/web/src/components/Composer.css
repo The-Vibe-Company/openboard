@@ -1,0 +1,17 @@
+.composer {
+  display: grid;
+  gap: 0.5rem;
+  margin-block-end: 1rem;
+}
+
+.composer textarea {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  font: inherit;
+  resize: vertical;
+}
+
+.composer button {
+  justify-self: start;
+}
