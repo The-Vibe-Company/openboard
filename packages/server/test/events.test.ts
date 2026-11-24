@@ -161,15 +161,18 @@ test("rechecks a named author registered between actor lookup and event scan", a
       ...store,
       board(scope) {
         const board = store.board(scope);
-        return {
-          ...board,
-          async findFilterActors(...args) {
-            const actors = await board.findFilterActors(...args);
-            lookedUp.resolve();
-            await continueRead.promise;
-            return actors;
+        // A Proxy, not a spread: the Postgres test store's views have no own methods to copy.
+        return new Proxy(board, {
+          get(target, key) {
+            if (key !== "findFilterActors") return Reflect.get(target, key);
+            return async (...args: Parameters<typeof board.findFilterActors>) => {
+              const actors = await board.findFilterActors(...args);
+              lookedUp.resolve();
+              await continueRead.promise;
+              return actors;
+            };
           },
-        };
+        });
       },
     },
   });
