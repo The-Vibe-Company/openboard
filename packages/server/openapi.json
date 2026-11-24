@@ -20756,6 +20756,78 @@
         }
       }
     },
+    "/x/inbound/{id}/events": {
+      "post": {
+        "operationId": "receiveInboundEvent",
+        "summary": "Receive an event signed with the inbound endpoint's configured scheme.",
+        "security": [],
+        "x-openboard-auth": "signature",
+        "requestBody": {
+          "required": true,
+          "content": { "*/*": { "schema": { "type": "string", "format": "binary" } } }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "inbound", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ok", "matched", "results"],
+                  "properties": {
+                    "ok": { "const": true, "type": "boolean" },
+                    "matched": { "type": "array", "items": {} },
+                    "results": { "type": "array", "items": {} }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "bad_signature",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "413": {
+            "description": "too_large",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "503": {
+            "description": "unavailable",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/webhooks/{key}": {
       "post": {
         "operationId": "webhook",

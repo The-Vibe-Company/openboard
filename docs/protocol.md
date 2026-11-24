@@ -921,9 +921,16 @@ prints the events URL. The secret file either supplies the verify secret or
 receives the generated secret with mode 0600. Use `ob inbound`,
 `ob inbound show <id>`, and `ob inbound delete <id>` to manage endpoints.
 
-- **Verification** with the same scheme object as outbound signing, over the
-  raw body; timestamp within `tolerance`; dedupe on the sender's event ID; a
-  duplicate answers 200 with the first result.
+- **Verification** for `POST {BOARD_URL}/x/inbound/:id/events` uses the
+  endpoint's configured signing headers and the original body bytes. The
+  timestamp, when the scheme signs one, must be within `tolerance` seconds
+  of the server clock (300 by default). The GitHub preset signs the body
+  alone. Standard Webhooks and `ts-id-body` delivery IDs cannot contain a
+  period, which separates signed fields. The receiver generates its own
+  request ID. Board bearer credentials are ignored. SDK clients send a pre-signed
+  request with `receiveInboundEvent({ id }, { signed: { headers, body } })`.
+  Dedupe uses the sender's
+  event ID, and a duplicate answers 200 with the first result.
 - **Effects** run in one board transaction together with the dedupe insert, so
   they happen exactly once even with retries and several instances.
 - **Principal** `ob:hook:ib_…` with its own grant (created under grant-change
@@ -933,7 +940,8 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   upstream's `task.expired`), `agents.revoke`. Fenced writes (`complete`,
   `fail`, `release`) stay with the agent that holds the claim.
 - **Answers:** 200 `{ ok, matched, results }`; 401 `bad_signature`; 404 unknown
-  or disabled; 422 when a rule needs a thread and none is found (do not
+  or disabled; 413 `too_large` for bodies over 1 MiB; 429 `rate_limited` when
+  admission is exhausted; 422 when a rule needs a thread and none is found (do not
   retry); 503 on storage failure (retry).
 
 ## Worked example: board event → Armada routine → agent → board

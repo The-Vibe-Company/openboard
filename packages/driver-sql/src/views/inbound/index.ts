@@ -39,6 +39,10 @@ export function inboundReads(db: Db, dialect: Dialect, keys: BoardKeys): BoardIn
       const [row] = await query(db, dialect, inboundStatements.inboundEndpoint, { ...keys, id });
       return row ? record(row) : null;
     },
+    async inboundSecret(id) {
+      const [row] = await query(db, dialect, inboundStatements.inboundSecret, { ...keys, id });
+      return row ? { keyVersion: Number(row.key_version), ciphertext: String(row.ciphertext) } : null;
+    },
   };
 }
 
@@ -51,10 +55,6 @@ export function inboundWriter(db: Db, dialect: Dialect, keys: BoardKeys): BoardI
     },
     async storeInboundSecret(id, secret) {
       await query(db, dialect, inboundStatements.storeInboundSecret, { ...keys, id, ...secret });
-    },
-    async inboundSecret(id) {
-      const [row] = await query(db, dialect, inboundStatements.inboundSecret, { ...keys, id });
-      return row ? { keyVersion: Number(row.key_version), ciphertext: String(row.ciphertext) } : null;
     },
   };
 }

@@ -30,6 +30,10 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  * case does not compile. A case answers what the view gave, which must hold nothing of B.
  */
 const boardCases: Cases<BoardView> = {
+  inboundSecret: async (a, b) => {
+    expect(await b.board.inboundSecret(inboundId)).toEqual(inboundCipher);
+    expectNull(await a.board.inboundSecret(inboundId));
+  },
   inboundEndpoints: async (a) => expect(await a.board.inboundEndpoints()).toEqual([]),
   inboundEndpoint: async (a) => expectNull(await a.board.inboundEndpoint(inboundId)),
   webhooks: async (a) => {

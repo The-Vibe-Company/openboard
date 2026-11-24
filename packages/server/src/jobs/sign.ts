@@ -64,16 +64,30 @@ export function webhookSigningScheme(signing: Webhook["signing"]): SigningScheme
   }
 }
 
+/** Substitute metadata as UTF-8 while hashing the body exactly as it arrived. */
+export function webhookSignature(
+  scheme: SigningScheme,
+  parts: { id: string; ts: string; body: string | Uint8Array; method: string; url: string },
+  secret: string,
+): string {
+  const hmac = createHmac(scheme.algorithm.slice("hmac-".length), scheme.key(secret));
+  const chunks = scheme.signedPayload.split(/\{(id|ts|body|method|url)\}/g);
+  for (const [index, chunk] of chunks.entries()) {
+    hmac.update(index % 2 === 0 ? chunk : parts[chunk as keyof typeof parts]);
+  }
+  return hmac.digest(scheme.encoding);
+}
+
+export function formatWebhookSignature(scheme: SigningScheme, ts: string, signature: string): string {
+  return scheme.signatureFormat.replace(/\{(ts|sig)\}/g, (_, token) => (token === "sig" ? signature : ts));
+}
+
 export function signWebhook(scheme: SigningScheme, id: string, now: number, body: string, secret: string): Headers {
   const ts = String(Math.floor(now / 1000));
-  const parts = { id, ts, body };
-  const payload = scheme.signedPayload.replace(/\{(id|ts|body)\}/g, (_, token: keyof typeof parts) => parts[token]);
-  const signature = createHmac(scheme.algorithm.slice("hmac-".length), scheme.key(secret))
-    .update(payload)
-    .digest(scheme.encoding);
+  const signature = webhookSignature(scheme, { id, ts, body, method: "POST", url: "" }, secret);
   const headers = new Headers({
     "content-type": "application/json",
-    [scheme.signatureHeader]: scheme.signatureFormat.replace("{ts}", ts).replace("{sig}", signature),
+    [scheme.signatureHeader]: formatWebhookSignature(scheme, ts, signature),
   });
   if (scheme.idHeader) headers.set(scheme.idHeader, id);
   if (scheme.timestampHeader) headers.set(scheme.timestampHeader, ts);

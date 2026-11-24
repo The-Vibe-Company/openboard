@@ -5,6 +5,7 @@ import type {
   operations,
   pollDeviceSignIn,
   previewInvitation,
+  receiveInboundEvent,
   SignInProvider,
   startDeviceSignIn,
 } from "@openboard/contract";
@@ -12,6 +13,7 @@ import type { BoardView, Bucket, OrgView, PersonRecord, PlatformView } from "@op
 import type { Session } from "../auth/sessions.ts";
 import type { Deps, Principal, ServerConfig } from "../deps.ts";
 import type { RequestLimits } from "../http/limits.ts";
+import { receiveInboundEventHandler, type SignatureContext } from "../inbound/receive.ts";
 import {
   approveDeviceSignInHandler,
   getAccountHandler,
@@ -190,7 +192,9 @@ type ContextOf<Op> = [Op] extends [DeviceOperation]
         : [Op] extends [{ readonly scope: "account" }]
           ? AccountContext
           : [Op] extends [{ readonly scope: "board" }]
-            ? BoardContext
+            ? [Op] extends [typeof receiveInboundEvent]
+              ? SignatureContext
+              : BoardContext
             : never;
 
 export type Handler<Op extends Operation> = (ctx: ContextOf<Op>, input: InputOf<Op>) => Promise<OutputOf<Op>>;
@@ -291,6 +295,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   readSchema: readSchemaHandler,
   readSource: readSourceHandler,
   readThread: readThreadHandler,
+  receiveInboundEvent: receiveInboundEventHandler,
   receiveWebhook: receiveWebhookHandler,
   recordSyncReceipt: recordSyncReceiptHandler,
   refreshAgentToken: refreshAgentTokenHandler,

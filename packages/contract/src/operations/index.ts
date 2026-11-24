@@ -34,7 +34,14 @@ import { listGrants } from "./grants/list.ts";
 import { revokeGrant } from "./grants/revoke.ts";
 import { updateGrant } from "./grants/update.ts";
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
-import { createInbound, deleteInbound, getInbound, listInbound, updateInbound } from "./inbound/index.ts";
+import {
+  createInbound,
+  deleteInbound,
+  getInbound,
+  listInbound,
+  receiveInboundEvent,
+  updateInbound,
+} from "./inbound/index.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
 import { changeMemberRole, removeMember } from "./memberships.ts";
 import {
@@ -175,6 +182,7 @@ export const operations = [
   readSchema,
   readSource,
   readThread,
+  receiveInboundEvent,
   receiveWebhook,
   recordSyncReceipt,
   refreshAgentToken,
@@ -278,6 +286,7 @@ export {
   readSchema,
   readSource,
   readThread,
+  receiveInboundEvent,
   receiveWebhook,
   recordSyncReceipt,
   refreshAgentToken,

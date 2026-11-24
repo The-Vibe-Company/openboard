@@ -7,6 +7,7 @@ import { type LoginProvider, providerLinks, signInRoute } from "../auth/provider
 import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
+import { runSigned } from "../inbound/receive.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
 import { streamEvents } from "../operations/events.ts";
 import {
@@ -19,6 +20,7 @@ import {
 import { errorResponse, recoverGrant, rejectedInput } from "./errors.ts";
 import { healthProbe } from "./health.ts";
 import { limitStream, limitWrite, type RequestLimits } from "./limits.ts";
+import { REQUEST_ID, requestIdOf } from "./request-id.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
 import { type BoardPath, boardPath, notFound, type Tenants } from "./scope.ts";
@@ -236,29 +238,6 @@ async function run(
     const response = await runPlatform(request, url, pipeline, logged);
     if (response) return response;
   }
-  return runBoard(request, url, pipeline, logged);
-}
-
-/** A tombstone is distinguishable only by a connection or agent that can prove it belonged to the board. */
-function requestBoard(pipeline: Pipeline, path: BoardPath, request: Request, chain: readonly CredentialVerifier[]) {
-  return pipeline.tenants.board(path, async (board: BoardView) => {
-    const verifier = chain.find(
-      (verifier) => (verifier.name === "agent" || verifier.name === "connection") && verifier.match(request),
-    );
-    if (!verifier) return false;
-    const authorization = request.headers.get("authorization") ?? "";
-    const proof = new Request(request.url, { headers: { authorization } });
-    // The claim operation recognizes both direct and claim-only secrets. Profile headers are irrelevant here.
-    return (await verifier.verify(proof, board, "claimConnection")) !== null;
-  });
-}
-
-async function runBoard(
-  request: Request,
-  url: URL,
-  pipeline: Pipeline & RequestLimits,
-  logged: RequestFields,
-): Promise<Response> {
   const path = boardPath(url.pathname, pipeline.config.mode);
   if (!path) throw notFound();
   logged.org = path.org;
@@ -277,6 +256,39 @@ async function runBoard(
     return runPublic(url, path, operation, matched.params, pipeline);
   }
   if (operation.scope !== "board") throw notFound();
+  if (operation.auth === "signature" && operation.name === "receiveInboundEvent") {
+    const input = validate(operation, { params: matched.params });
+    const output = await runSigned(request, (ctx) => handlerOf(operation)(ctx, input), path, pipeline);
+    return operationResponse(operation, output);
+  }
+  return runBoard(request, url, path, { operation, params: matched.params }, pipeline, logged);
+}
+
+/** A tombstone is distinguishable only by a connection or agent that can prove it belonged to the board. */
+function requestBoard(pipeline: Pipeline, path: BoardPath, request: Request, chain: readonly CredentialVerifier[]) {
+  return pipeline.tenants.board(path, async (board: BoardView) => {
+    const verifier = chain.find(
+      (verifier) => (verifier.name === "agent" || verifier.name === "connection") && verifier.match(request),
+    );
+    if (!verifier) return false;
+    const authorization = request.headers.get("authorization") ?? "";
+    const proof = new Request(request.url, { headers: { authorization } });
+    // The claim operation recognizes both direct and claim-only secrets. Profile headers are irrelevant here.
+    return (await verifier.verify(proof, board, "claimConnection")) !== null;
+  });
+}
+
+type RouteMatch = { operation: Extract<Contracted, { scope: "board" }>; params: Params };
+
+async function runBoard(
+  request: Request,
+  url: URL,
+  path: BoardPath,
+  matched: RouteMatch,
+  pipeline: Pipeline & RequestLimits,
+  logged: RequestFields,
+) {
+  const { operation } = matched;
   const { chain } = pipeline;
   const audience = `${pipeline.config.publicUrl}${path.mount}`;
   const { board, by } = await limitAuthentication(pipeline, async () => {
@@ -334,15 +346,6 @@ async function runBoard(
   return response;
 }
 
-const REQUEST_ID = "x-request-id";
-/** A client's request ID is echoed when it is 1 to 128 printable ASCII characters without spaces; else one is minted. */
-const echoable = /^[\x21-\x7e]{1,128}$/;
-
-function requestIdOf(request: Request, deps: Deps): string {
-  const given = request.headers.get(REQUEST_ID);
-  return given !== null && echoable.test(given) ? given : deps.requestId();
-}
-
 /** Redact invitation tokens and user approval codes before route matching. */
 function loggedPath(path: string): string {
   return path
@@ -354,9 +357,9 @@ function loggedPath(path: string): string {
 export async function handle(request: Request, pipeline: Pipeline, ip?: string): Promise<Response> {
   const { now } = pipeline.deps;
   const started = now();
-  const requestId = requestIdOf(request, pipeline.deps);
-  const log = withFields(pipeline.deps.log, { request_id: requestId });
   const url = new URL(request.url);
+  const requestId = requestIdOf(request, url.pathname, pipeline);
+  const log = withFields(pipeline.deps.log, { request_id: requestId });
   const logged: RequestFields = {
     req: `${request.method} ${loggedPath(url.pathname)}`,
     op: null,

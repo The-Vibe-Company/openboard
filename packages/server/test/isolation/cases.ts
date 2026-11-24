@@ -204,6 +204,7 @@ export interface PathCase {
   readonly headers: Headers;
   /** 401 for a board-bound credential off its board, 404 for a person outside the organization (docs/codebase.md 6.5). */
   readonly status: 401 | 404;
+  readonly code?: "bad_signature";
   readonly twin?: Call;
 }
 
@@ -225,6 +226,19 @@ export function pathCases(seeded: Seeded): PathCase[] {
       : (["session", "personal", "connection", "agent"] as const)) {
       const name = `${operation.name}: deleted organization's ${kind}`;
       cases.push({ name, call: onDeleted, headers: deleted[kind], status: 404, twin: onUnknown });
+    }
+    if (operation.auth === "signature") {
+      for (const kind of ["session", "personal", "connection", "agent"] as const) {
+        cases.push({
+          name: `${operation.name}: A's ${kind} cannot sign for B's endpoint`,
+          call: onB,
+          headers: a[kind],
+          status: 401,
+          code: "bad_signature",
+        });
+        add(kind, "A's other board without the endpoint", callOf(operation, a, undefined, aOther), a[kind], 404);
+      }
+      continue;
     }
     if (operation.scope === "org") {
       add("session", "B's organization", onB, a.session, 404);

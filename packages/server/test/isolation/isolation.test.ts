@@ -60,13 +60,13 @@ test("every contract operation declares a scope", () => {
 });
 
 describe("path cases: A's credentials off A's board or organization", () => {
-  for (const { name, call, headers, status, twin } of paths) {
+  for (const { name, call, headers, status, code, twin } of paths) {
     test(name, async () => {
       const response = await send(call, headers);
       expect(response.status, `${name}: ${call.method} ${call.path}`).toBe(status);
-      const code = status === 401 ? "unauthorized" : "not_found";
+      const expected = code ?? (status === 401 ? "unauthorized" : "not_found");
       const body = await response.json();
-      expect(body).toMatchObject({ error: { code } });
+      expect(body).toMatchObject({ error: { code: expected } });
       if (twin) {
         const unknown = await send(twin, headers);
         expect(unknown.status).toBe(status);
