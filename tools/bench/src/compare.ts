@@ -1,7 +1,7 @@
 import budgets from "../budgets.json";
 import type { ModeReport } from "./counters";
 import type { Mode } from "./drivers";
-import type { WorkloadName } from "./workloads/messages";
+import type { WorkloadName } from "./workloads/request";
 
 interface CounterBudget {
   readonly statements: Readonly<Record<WorkloadName, number>>;
