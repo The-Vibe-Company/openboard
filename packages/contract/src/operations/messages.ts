@@ -2,6 +2,8 @@ import { Type } from "@sinclair/typebox";
 import { ChannelPath, LabelKey, Labels, MESSAGE_TEXT_MAX, Mention, Message } from "../entities/messages.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
+const ExternalTarget = Type.String({ minLength: 3, maxLength: 300 });
+
 export const postMessage = defineOperation({
   name: "postMessage",
   operationId: "post",
@@ -21,6 +23,18 @@ export const postMessage = defineOperation({
         text: Type.String({ maxLength: MESSAGE_TEXT_MAX }),
         labels: Type.Optional(Labels),
         noSync: Type.Optional(Type.Boolean()),
+        sync: Type.Optional(
+          Type.Array(
+            Type.Union([
+              ExternalTarget,
+              Type.Object({
+                target: ExternalTarget,
+                kind: Type.Union([Type.Literal("channel"), Type.Literal("thread")]),
+              }),
+            ]),
+            { maxItems: 10, description: "External targets for a new thread. This board refuses any targets." },
+          ),
+        ),
         id: Type.Optional(
           Type.String({
             minLength: 1,
@@ -38,6 +52,7 @@ export const postMessage = defineOperation({
   errors: [
     "invalid_request",
     "invalid_after",
+    "invalid_target",
     "reserved_label",
     "message_not_found",
     "duplicate_id",

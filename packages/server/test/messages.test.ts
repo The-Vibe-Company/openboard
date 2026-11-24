@@ -226,7 +226,7 @@ describe("refusing what the contract does not take", () => {
   test.each([
     ["a channel that is not a path", { channel: "Dev Ops", text: "x" }, "channel"],
     ["blank text", { channel: "dev", text: "  " }, "text"],
-    ["a field the route does not take", { channel: "dev", text: "x", sync: ["somewhere"] }, "sync"],
+    ["a field the route does not take", { channel: "dev", text: "x", unexpected: true }, "unexpected"],
     ["a missing channel", { text: "x" }, "channel"],
   ])("answers 400 invalid_request for %s", async (_, body, field) => {
     app = makeApp();

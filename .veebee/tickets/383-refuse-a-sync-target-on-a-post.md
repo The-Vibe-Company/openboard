@@ -8,12 +8,15 @@ writes:
   - packages/core/src/messages/post.ts
   - packages/core/test/messages/post-sync.test.ts
   - packages/server/test/sync/post-target.test.ts
+  - packages/server/test/messages.test.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
   - docs/protocol.md
 conformance: []
 modes: [local, hosted]
 depends_on: [382]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t383
 issue: 578
 ---
 
@@ -21,8 +24,8 @@ issue: 578
 As an agent that asks for a new thread to start in a platform channel, I am told this board syncs nowhere, and nothing is posted, instead of a post that silently stays on the board.
 
 ## Done when
-- [ ] `bun test packages/server/test/sync/post-target.test.ts` passes on SQLite and Postgres: `POST /messages` with `{ "channel": "dev", "text": "x", "sync": ["chat:#incidents"] }` answers 400 `invalid_target` with a message saying this board syncs nowhere and a `next` naming `noSync`; `sync` on a reply, and `sync` with `noSync: true`, answer 400 `invalid_request` as upstream's rules say; an empty `sync: []` posts; nothing is written on a refusal
-- [ ] `bun test packages/core/test/messages/post-sync.test.ts` covers the same rules in core, and docs/protocol.md "Sync (deferred)" lists the answer to a post's `sync`
+- [x] `bun test packages/server/test/sync/post-target.test.ts` passes on SQLite and Postgres: `POST /messages` with `{ "channel": "dev", "text": "x", "sync": ["chat:#incidents"] }` answers 400 `invalid_target` with a message saying this board syncs nowhere and a `next` naming `noSync`; `sync` on a reply, and `sync` with `noSync: true`, answer 400 `invalid_request` as upstream's rules say; an empty `sync: []` posts; nothing is written on a refusal
+- [x] `bun test packages/core/test/messages/post-sync.test.ts` covers the same rules in core, and docs/protocol.md "Sync (deferred)" lists the answer to a post's `sync`
 
 ## Out of scope
 - Other sync routes (382); watcher registrations (384).

@@ -2,9 +2,11 @@ import {
   type Actor,
   type Author,
   BoardError,
+  type InputOf,
   type Mention,
   type Message,
   type MessageAuthor,
+  type postMessage,
 } from "@openboard/contract";
 import { formatId, isoTime } from "../ids.ts";
 import { checkLabels } from "./labels.ts";
@@ -21,6 +23,7 @@ export interface PostCommand {
   readonly text: string;
   readonly labels?: Readonly<Record<string, string>>;
   readonly noSync?: boolean;
+  readonly sync?: Readonly<NonNullable<InputOf<typeof postMessage>["sync"]>>;
   /** The client's idempotency key: a retry under it gets back the post that landed instead of posting again. */
   readonly id?: string;
 }
@@ -156,6 +159,17 @@ export function checkPost(command: PostCommand, by: Author) {
   }
   checkMessageText(command.text);
   checkLabels(command.labels ?? {});
+  if (!command.sync?.length) return;
+  if (command.re !== undefined) {
+    throw new BoardError("invalid_request", "sync: only a new thread can name sync targets");
+  }
+  if (command.noSync) {
+    throw new BoardError("invalid_request", "sync: noSync and sync contradict each other");
+  }
+  const { sync: _, ...post } = command;
+  throw new BoardError("invalid_target", "This board syncs nowhere.", {
+    next: [{ kind: "call", operation: "post", input: { ...post, noSync: true } }],
+  });
 }
 
 /** The message a `message.posted` event shows: what its fold stores as the message's view. */

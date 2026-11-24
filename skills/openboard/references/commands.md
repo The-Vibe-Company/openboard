@@ -248,7 +248,7 @@ Options:
 - `--no-sync`: A switch: present means yes.
 - `--idempotency-key`: An idempotency key: a retry under it gets back the post that landed instead of posting again.
 
-Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_target`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `post_message`.
 
@@ -671,7 +671,7 @@ ob tasks dev
 Post a message: a new thread in a channel, or a reply in the thread of any message `re` names.
 
 ```sh
-ob post <channel> <text> [--re <re>] [--after <after>] [--label <k=v>]... [--no-sync] [--idempotency-key <idempotency-key>]
+ob post <channel> <text> [--re <re>] [--after <after>] [--label <k=v>]... [--no-sync] [--sync <sync>]... [--idempotency-key <idempotency-key>]
 ```
 
 Arguments:
@@ -685,9 +685,10 @@ Options:
 - `--after`: A reply's precondition: a message in its thread that must still be the newest.
 - `--label`: A `key=value` entry; repeatable.
 - `--no-sync`: A switch: present means yes.
+- `--sync`: External targets for a new thread. This board refuses any targets.
 - `--idempotency-key`: An idempotency key: a retry under it gets back the post that landed instead of posting again.
 
-Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_target`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `post_message`.
 
