@@ -437,7 +437,7 @@ Rules (armada: `AGENTS.md` "Tests"): one test per behaviour at the cheapest laye
 
 "Skipped: not kept here" counts as not passing. Upstream says its local server passes all but four checks (team roles, apps, member lockout, cross-team grants: upstream `docs/04-reference/05-conformance.md`); those are listed under `expectedSkips` with that reason. With the D43 credential, the checks `docs/auth.md` lists as still skipped (the app and viewer checks, every sync check after registration because of D19, the root-edit-blocks task check, members shut out under a lock, grants across teams) are the complete `expectedSkips` list; the lockout check runs and must pass.
 
-`bun run conformance --url <BOARD_URL>` (connection secret on stdin) runs the same against a deployed instance; nightly against staging.
+`bun run conformance --url <BOARD_URL>` runs against a deployed board using its direct connection secret on stdin. It compares with the hosted score by default. Add `--driver sqlite` for a deployed SQLite board. The deployed run does not boot or seed a server and rejects `--update` and `--instances`.
 
 ### 6.4 The two-instance HA test
 
@@ -470,7 +470,7 @@ The storage-level twin, `packages/ports/testkit/isolation.test-suite.ts`, checks
 
 The target numbers for each mode are set in one place, `docs/architecture.md` "Efficiency budgets"; this file does not restate them. `tools/bench/budgets.json` holds the values CI enforces: the architecture targets at first, replaced by measured baselines in M1 (local) and M5 (hosted) wherever the measurement is better, never looser than the target.
 
-Raising a budget is the owner's decision. `--quick` runs counters and reduced workloads in the required check; the full bench (compiled binary, idle windows, hosted against staging's Postgres) runs nightly and on release, and posts results to the project board's `openboard/ops` channel once dogfooding starts.
+Raising a budget is the owner's decision. `--quick` runs counters and reduced workloads in the required check; the full bench runs nightly and on release. The nightly workflow uses the runner's Postgres service for the hosted benchmark. Results go to the project board's `openboard/ops` channel once dogfooding starts.
 
 ### 6.7 What runs where
 
@@ -478,8 +478,10 @@ Raising a budget is the owner's decision. `--quick` runs counters and reduced wo
 |---|---|---|
 | `Verify` (`.github/workflows/ci.yml`), every PR and the merge queue | six parallel jobs, then an aggregate job named `Verify` that fails unless all succeeded: **`static`** (Biome, oxlint, boundaries, sizes, migrations check, module state, agents guard, typecheck, `gen:check`, PR size); **`unit-sqlite`** (`bun test`: core, contract, SQLite testkit, HTTP, isolation, clients, web unit); **`conformance-sqlite`**; **`postgres`** (Postgres service container; Postgres testkit, HTTP, isolation and HA tests with two instances); **`conformance-postgres`** (service container; two instances); **`bench`** (`--quick`, both modes' counters, local measured values) | yes, the only one |
 | `web.yml`, PRs touching `apps/web/**`, `packages/sdk/**`, `packages/contract/**` | Vite build, Playwright on Chromium | no |
-| `nightly.yml` | full bench both modes, full Playwright, conformance against staging, `bun test --rerun-each 3` on both drivers to surface flakes | no; failures post to the board and open an issue |
+| `nightly.yml` | full bench both modes, conformance against staging when configured, `bun test --rerun-each 3` on both drivers to surface flakes | no; failing steps open an issue naming the job and linking the run |
 | `release.yml` | binaries, image, npm, deploys, rolling check | not a PR gate |
+
+Nightly staging conformance uses the repository variable `STAGING_URL` for the HTTPS origin and the `staging` environment secret `STAGING_CONFORMANCE_SECRET` for a direct connection to `conformance-ci/main`. With no URL GitHub skips the job. With a URL and no secret the job succeeds after reporting that it skipped conformance before checkout. Any protection rules on the `staging` environment apply before this check. Playwright and posting results to the board are separate milestones.
 
 Keeping `Verify` under two minutes (armada: `docs/ci-budget.md`): the six jobs run in parallel; each caches Bun's install; each targets 90 s wall time including setup. The Postgres service container starts while dependencies install, and the template database makes per-file databases cheap. SQLite and Postgres work are in separate jobs, so Postgres adds no time to the critical path unless it is the slowest job. When `unit-sqlite` or `postgres` passes 60 s of test time it is sharded with a balance file (armada: `scripts/ci/unit-shards.ts`). CI never builds binaries or images, never runs a browser, never calls the internet, never retries. Going over two minutes is a defect with its own ticket. Adding a job, a required check or a gate is the owner's decision.
 

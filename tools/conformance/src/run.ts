@@ -84,7 +84,7 @@ async function hostedSession(url: URL) {
   return headers;
 }
 
-async function createDirectConnection(url: URL, ownerToken?: string): Promise<string> {
+export async function createDirectConnection(url: URL, ownerToken?: string): Promise<string> {
   const headers = ownerToken
     ? { authorization: `Bearer ${ownerToken}`, "content-type": "application/json" }
     : await hostedSession(url);
@@ -116,7 +116,7 @@ function parseDiagnostic(text: string): KitDiagnostic | null {
   }
 }
 
-async function runKit(url: URL, token: string): Promise<CheckResult[]> {
+async function runKit(url: URL, token: string, deployed: boolean): Promise<CheckResult[]> {
   const manifest = import.meta.resolve("@vercel/board/package.json");
   const { bin } = (await Bun.file(fileURLToPath(manifest)).json()) as { bin: { vb: string } };
   const cli = fileURLToPath(new URL(bin.vb, manifest));
@@ -127,9 +127,15 @@ async function runKit(url: URL, token: string): Promise<CheckResult[]> {
   });
   const [output, diagnostic, exitCode] = await Promise.all([child.stdout.text(), child.stderr.text(), child.exited]);
   if ((exitCode === 0 || exitCode === 1) && output) {
-    const report = JSON.parse(output) as { checks?: CheckResult[] };
-    if (Array.isArray(report.checks)) return report.checks;
+    try {
+      const report = JSON.parse(output) as { checks?: CheckResult[] };
+      if (Array.isArray(report.checks)) return report.checks;
+    } catch {
+      throw new Error("The upstream conformance kit returned an invalid JSON report");
+    }
   }
+  // A deployed server can put arbitrary text into the kit's diagnostics.
+  if (deployed) throw new Error(`The upstream conformance kit exited with code ${exitCode} without a report`);
   if (exitCode === 1 && diagnostic) {
     const report = parseDiagnostic(diagnostic);
     const error = report?.data?.error;
@@ -142,38 +148,69 @@ async function runKit(url: URL, token: string): Promise<CheckResult[]> {
   throw new Error(`The upstream conformance kit exited with code ${exitCode} without a report${detail}`);
 }
 
-const { values } = parseArgs({
-  args: argv.slice(2),
-  options: {
-    driver: { type: "string", default: "sqlite" },
-    instances: { type: "string" },
-    update: { type: "boolean", default: false },
-  },
-});
-const { driver } = values;
-if (driver !== "sqlite" && driver !== "postgres") throw new Error("--driver must be sqlite or postgres");
-const instances = values.instances ?? (driver === "postgres" ? "2" : "1");
-if (instances !== "1" && (instances !== "2" || driver === "sqlite")) {
-  throw new Error("--instances must be 1, or 2 with --driver postgres");
+export function parseOptions(args: string[]) {
+  const { values } = parseArgs({
+    args,
+    options: {
+      driver: { type: "string" },
+      instances: { type: "string" },
+      update: { type: "boolean", default: false },
+      url: { type: "string" },
+    },
+  });
+  const driver = values.driver ?? (values.url === undefined ? "sqlite" : "postgres");
+  if (driver !== "sqlite" && driver !== "postgres") throw new Error("--driver must be sqlite or postgres");
+  const mode = driver === "sqlite" ? "local" : "hosted";
+  if (values.url !== undefined) {
+    if (values.update || values.instances !== undefined)
+      throw new Error("--url cannot be used with --update or --instances");
+    const url = URL.parse(values.url);
+    if (!url || !["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
+      throw new Error("--url must be an HTTP(S) board URL without credentials, a query or a fragment");
+    }
+    return { mode, url, update: false } as const;
+  }
+  const instances = values.instances ?? (driver === "postgres" ? "2" : "1");
+  if (instances !== "1" && (instances !== "2" || driver === "sqlite")) {
+    throw new Error("--instances must be 1, or 2 with --driver postgres");
+  }
+  return { mode, driver, instances: Number(instances), update: values.update } as const;
 }
 
-const mode = driver === "sqlite" ? "local" : "hosted";
-const scoreFile = new URL("../score.json", import.meta.url);
-const score = (await Bun.file(scoreFile).json()) as Score;
-const server = await boot(driver, Number(instances));
-try {
-  const token = await createDirectConnection(server.url, server.ownerToken);
-  const checks = await runKit(server.url, token);
+export async function readConnectionSecret(stdin: { text(): Promise<string> }) {
+  const secret = (await stdin.text()).trim();
+  if (!secret) throw new Error("--url requires a connection secret on stdin");
+  return secret;
+}
+
+async function main() {
+  const options = parseOptions(argv.slice(2));
+  const { mode, update } = options;
+  const scoreFile = new URL("../score.json", import.meta.url);
+  const score = (await Bun.file(scoreFile).json()) as Score;
+  let checks: CheckResult[];
+  if (options.url) {
+    if (process.stdin.isTTY) throw new Error("--url requires a connection secret on stdin");
+    checks = await runKit(options.url, await readConnectionSecret(Bun.stdin), true);
+  } else {
+    const server = await boot(options.driver, options.instances);
+    try {
+      const token = await createDirectConnection(server.url, server.ownerToken);
+      checks = await runKit(server.url, token, false);
+    } finally {
+      await server.close();
+    }
+  }
   printTable(checks);
   const lost = lostChecks(score[mode], checks);
   for (const name of lost) console.error(`Lost conformance check (${mode}): ${name}`);
   if (lost.length > 0) process.exitCode = 1;
   const added = newChecks(score[mode], checks);
-  const hint = values.update ? "" : " (not recorded: run with --update)";
+  const hint = update ? "" : " (not recorded: run with --update)";
   for (const name of added) console.log(`New conformance check (${mode}): ${name}${hint}`);
-  if (values.update && added.length > 0) {
+  if (update && added.length > 0) {
     await writeScore(scoreFile, recordChecks(score, mode, added));
   }
-} finally {
-  await server.close();
 }
+
+if (import.meta.main) await main();
