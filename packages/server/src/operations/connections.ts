@@ -5,9 +5,11 @@ import {
   type refreshAgentToken,
   type revokeAgent,
   type revokeConnection,
+  type rotateConnection,
 } from "@openboard/contract";
 import { agents, connections, grants, isoTime } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
+import { reissueSecret, SECRET_PART_BYTES } from "../auth/connections.ts";
 import { mintSecret, SECRET_BYTES } from "../auth/secrets.ts";
 import { reissueToken, TOKEN_SECRET_BYTES } from "../auth/tokens.ts";
 import { agentOf, credentialKind, memberOf, profileName, tokenHashOf } from "../deps.ts";
@@ -154,7 +156,10 @@ export const refreshAgentTokenHandler: Handler<typeof refreshAgentToken> = async
   return { agent, token: minted.token, env };
 };
 
-/** Only the local owner on the local board, or a board owner or organization admin, revokes (docs/auth.md "Revoke"). */
+/**
+ * Only the local owner on the local board, or a board owner or organization admin, revokes or rotates (docs/auth.md
+ * "Revoke", "Rotate").
+ */
 function requireRevoker(ctx: Parameters<Handler<typeof revokeConnection>>[0], what: string): void {
   const role = ctx.by[memberOf]?.role;
   if (ctx.by[credentialKind] === "local") {
@@ -162,12 +167,12 @@ function requireRevoker(ctx: Parameters<Handler<typeof revokeConnection>>[0], wh
       throw new BoardError("unauthorized", "the credential is not valid on this board");
     }
   } else if (role !== "owner" && role !== "admin") {
-    throw new BoardError("forbidden", `only a board owner or organization admin may revoke ${what}`);
+    throw new BoardError("forbidden", `only a board owner or organization admin may ${what}`);
   }
 }
 
 export const revokeConnectionHandler: Handler<typeof revokeConnection> = async (ctx, { id }) => {
-  requireRevoker(ctx, "a connection");
+  requireRevoker(ctx, "revoke a connection");
   return ctx.board.write(async (writer) => {
     const record = await writer.connection(id);
     if (!record) throw new BoardError("not_found", "no such active connection on this board");
@@ -184,7 +189,7 @@ export const revokeConnectionHandler: Handler<typeof revokeConnection> = async (
 
 /** Revokes one agent of the connection: its tokens answer 401 from the next request, its siblings keep working. */
 export const revokeAgentHandler: Handler<typeof revokeAgent> = async (ctx, { id, agent }) => {
-  requireRevoker(ctx, "an agent");
+  requireRevoker(ctx, "revoke an agent");
   return ctx.board.write(async (writer) => {
     const record = await writer.agent(agent);
     const now = ctx.now();
@@ -194,4 +199,32 @@ export const revokeAgentHandler: Handler<typeof revokeAgent> = async (ctx, { id,
     ]);
     return { id: agent, connection: id, revokedAt: isoTime(now) };
   });
+};
+
+/**
+ * Replaces the connection's secret, answered here once; the replaced one keeps working for `overlap` (at most 24 h,
+ * none by default) and its claimed agent tokens are untouched (docs/auth.md "Rotate").
+ */
+export const rotateConnectionHandler: Handler<typeof rotateConnection> = async (ctx, { id, overlap }) => {
+  requireRevoker(ctx, "rotate a connection's secret");
+  const minted = reissueSecret(id, ctx.randomBytes(SECRET_PART_BYTES));
+  const now = ctx.now();
+  const { connection, previousUntil } = await ctx.board.write(async (writer) => {
+    const record = await writer.connection(id);
+    if (!record) throw new BoardError("not_found", "no such active connection on this board");
+    const secret = { hash: minted.hash, hint: hintOf(minted.token) };
+    const command = { connection: id, ...(overlap === undefined ? {} : { overlap }) };
+    const event = connections.decideRotate(writer.head, command, { by: ctx.by, now, secret });
+    await writer.append([event]);
+    return {
+      connection: { ...record.connection, secretHint: secret.hint },
+      previousUntil: event.payload.previousUntil,
+    };
+  });
+  return {
+    connection,
+    secret: minted.token,
+    env: { BOARD_URL: ctx.boardUrl, BOARD_TOKEN: minted.token },
+    previousUntil: previousUntil === null ? null : isoTime(previousUntil),
+  };
 };

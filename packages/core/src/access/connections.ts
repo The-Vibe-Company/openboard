@@ -1,5 +1,6 @@
 import { type Author, BoardError, type CanInput, type Connection } from "@openboard/contract";
 import { isoTime } from "../ids.ts";
+import { ttlSeconds } from "./agents.ts";
 import { compileCan, formatGrantId, type Grant } from "./grants.ts";
 
 /** What a new connection's write needs to know, read under the board lock. */
@@ -176,5 +177,64 @@ export function decideRevokeAgent(
     principal: by.principal,
     visibility: 2,
     payload: { connection, agent: agent.id },
+  };
+}
+
+export interface ConnectionRotated extends Omit<ConnectionCreated, "type" | "payload"> {
+  readonly type: "ob.connection.rotated";
+  readonly payload: {
+    readonly connection: string;
+    /** SHA-256 (hex) of the new secret and its hint; the secret itself is never in the log. */
+    readonly secretHash: string;
+    readonly secretHint: string;
+    /** Epoch milliseconds until which the replaced secret still works, or null when it stops at once. */
+    readonly previousUntil: number | null;
+  };
+}
+
+/** The longest a replaced secret keeps working (docs/auth.md "Connections", "Rotate"). */
+export const MAX_OVERLAP_S = 86_400;
+
+/**
+ * Seconds the replaced secret keeps working: `overlap` as `<n><s|m|h|d>`, `0s` or absent for none. Past 24 h is
+ * 400 `invalid_request`.
+ */
+export function overlapSeconds(overlap: string | undefined): number {
+  if (overlap === undefined || /^0[smhd]$/.test(overlap)) return 0;
+  const seconds = ttlSeconds(overlap);
+  if (seconds > MAX_OVERLAP_S) {
+    throw new BoardError("invalid_request", `overlap ${overlap} is longer than 24 hours`, {
+      hint: "Give an overlap of at most 24h, then rotate again if agents need longer.",
+    });
+  }
+  return seconds;
+}
+
+/**
+ * Replaces the connection's secret with the minted one; the secret it replaces keeps working `overlap` (at most 24 h,
+ * none by default), and a secret an earlier rotation left working stops now. Its claimed agent tokens are untouched.
+ */
+export function decideRotate(
+  head: number,
+  command: { readonly connection: string; readonly overlap?: string },
+  { by, now, secret }: { readonly by: Author; readonly now: number; readonly secret: Omit<MintedSecret, "id"> },
+): ConnectionRotated {
+  const seconds = overlapSeconds(command.overlap);
+  return {
+    id: head + 1,
+    type: "ob.connection.rotated",
+    at: now,
+    thread: null,
+    message: null,
+    channel: null,
+    actor: by.actor,
+    principal: by.principal,
+    visibility: 2,
+    payload: {
+      connection: command.connection,
+      secretHash: secret.hash,
+      secretHint: secret.hint,
+      previousUntil: seconds === 0 ? null : now + seconds * 1000,
+    },
   };
 }

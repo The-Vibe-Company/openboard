@@ -11,7 +11,14 @@ import {
 import { getMe, listActors } from "./actors.ts";
 import { createBoard, listBoards } from "./boards.ts";
 import { createChannel, listChannels } from "./channels.ts";
-import { claimConnection, createConnection, refreshAgentToken, revokeAgent, revokeConnection } from "./connections.ts";
+import {
+  claimConnection,
+  createConnection,
+  refreshAgentToken,
+  revokeAgent,
+  revokeConnection,
+  rotateConnection,
+} from "./connections.ts";
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
@@ -68,6 +75,7 @@ export const operations = [
   revokeConnection,
   revokeInvitation,
   revokePersonalToken,
+  rotateConnection,
   startDeviceSignIn,
 ] as const;
 
@@ -110,5 +118,6 @@ export {
   revokeConnection,
   revokeInvitation,
   revokePersonalToken,
+  rotateConnection,
   startDeviceSignIn,
 };

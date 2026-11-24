@@ -30,6 +30,7 @@ import {
   refreshAgentTokenHandler,
   revokeAgentHandler,
   revokeConnectionHandler,
+  rotateConnectionHandler,
 } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
@@ -170,6 +171,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   revokeConnection: revokeConnectionHandler,
   revokeInvitation: revokeInvitationHandler,
   revokePersonalToken: revokePersonalTokenHandler,
+  rotateConnection: rotateConnectionHandler,
   startDeviceSignIn: startDeviceSignInHandler,
 };
 

@@ -13,6 +13,7 @@ import {
   foldAgentRevoked,
   foldConnectionCreated,
   foldConnectionRevoked,
+  foldConnectionRotated,
   nextGrant,
   profileHolder,
 } from "./connections.ts";
@@ -140,6 +141,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   else if (event.type === "ob.agent.claimed") await foldAgentClaimed(tx, dialect, keys, event);
   else if (event.type === "ob.agent.refreshed") await foldAgentRefreshed(tx, dialect, keys, event);
   else if (event.type === "ob.agent.revoked") await foldAgentRevoked(tx, dialect, keys, event);
+  else if (event.type === "ob.connection.rotated") await foldConnectionRotated(tx, dialect, keys, event);
   else if (event.type === "message.edited") {
     const { text, view } = event.payload;
     await query(tx, dialect, messageStatements.editMessage, {

@@ -207,7 +207,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | --- | --- | --- | --- |
 | POST, GET | `/x/connections` | X | create; list those the caller manages |
 | GET | `/x/connections/:id` | X | with agents |
-| POST | `/x/connections/:id/rotate` | X | |
+| POST | `/x/connections/:id/rotate` | X | Board owner or organization admin. Body `{ overlap? }` (`10m`, at most `24h`; absent or `0s`: none). Returns `{ connection, secret, env, previousUntil }`, the new secret shown once; the old one works until `previousUntil` (null: it stopped at once). An overlap past 24 h answers 400 `invalid_request`; an unknown or revoked connection 404 `not_found`. |
 | POST | `/x/connections/:id/revoke` | X | Board owner or organization admin. Returns `{ id, revokedAt }`. Unknown or already revoked connections answer 404 `not_found`. |
 | GET | `/x/connections/:id/policy` | X | `{ env, headers, routes }` for mode 3 |
 | POST | `/x/connections/claim` | X | bearer: connection secret |

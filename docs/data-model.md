@@ -590,6 +590,7 @@ decide and may append several events; folds never append.
 | `task.completed` | state; decrement `waiting_on` of dependants (the command appended their `task.ready`) |
 | `task.expired` | clear claim; `ready` (or `blocked` if held) |
 | `ob.connection.created` | insert `connections` and its grant |
+| `ob.connection.rotated` | `connections`: the new secret's hash and hint; the old one to `prev_secret_hash` until `prev_secret_until` (the overlap, ≤ 24 h) |
 | `ob.agent.claimed` | insert `connection_agents` (the token's hash, never the token) |
 | `ob.agent.refreshed` | `connection_agents`: the new token's hash; the old one to `prev_hash` until `prev_until` (60 s) |
 

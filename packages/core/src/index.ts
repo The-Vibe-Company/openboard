@@ -1,5 +1,5 @@
 import type { AgentClaimed, AgentRefreshed } from "./access/agents.ts";
-import type { AgentRevoked, ConnectionCreated, ConnectionRevoked } from "./access/connections.ts";
+import type { AgentRevoked, ConnectionCreated, ConnectionRevoked, ConnectionRotated } from "./access/connections.ts";
 import type { ChannelCreated } from "./channels/create.ts";
 import type { MessageDeleted } from "./messages/delete.ts";
 import type { MessageEdited } from "./messages/edit.ts";
@@ -20,6 +20,7 @@ export type {
   AgentRevoked,
   ConnectionCreated,
   ConnectionRevoked,
+  ConnectionRotated,
   ConnectionState,
   MintedSecret,
 } from "./access/connections.ts";
@@ -36,6 +37,7 @@ export type BoardEvent =
   | ChannelCreated
   | ConnectionCreated
   | ConnectionRevoked
+  | ConnectionRotated
   | MessagePosted
   | MessageEdited
   | MessageDeleted
