@@ -1,12 +1,24 @@
 import type { Named } from "@openboard/contract";
-import type { BoardCreation } from "@openboard/core";
+import { type BoardCreation, type OrgQuotaOverrides, storedBytesLimit } from "@openboard/core";
 import type { BoardKeys, OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
-import { type Fragment, forUpdate, query, sql } from "../sql.ts";
+import { type Fragment, query, sql } from "../sql.ts";
 import { invitationStatements } from "./invitations.ts";
 import { exhaustedQuota, orgStatements } from "./orgs.ts";
 
 const notifyHead: Fragment = Object.freeze({ fragment: (dialect: Dialect) => dialect.notifyHeadSuffix });
+const boardLock: Fragment = Object.freeze({
+  fragment: (dialect: Dialect) => (dialect.lockSuffix ? `${dialect.lockSuffix} OF boards` : ""),
+});
+const messageBytes: Fragment = Object.freeze({
+  fragment: ({ name }: Dialect) =>
+    name === "postgres"
+      ? "octet_length(convert_to(m.text, 'UTF8')) + COALESCE(octet_length(convert_to(CAST(CAST(m.view AS JSON) -> 'blocks' AS TEXT), 'UTF8')), 0)"
+      : "octet_length(m.text) + COALESCE(octet_length(m.view -> 'blocks'), 0)",
+});
+const skipLocked: Fragment = Object.freeze({
+  fragment: ({ name }: Dialect) => (name === "postgres" ? " FOR UPDATE SKIP LOCKED" : ""),
+});
 const serverTimeline: Fragment = Object.freeze({ fragment: (dialect: Dialect) => dialect.serverTimeline });
 
 /** How far a write moves the head past a timeline change, above any cursor handed out before it (D37). */
@@ -16,10 +28,37 @@ export const TIMELINE_ADVANCE = 1_000_000;
 export const boardStatements = {
   orgBySlug: sql`SELECT id FROM orgs WHERE slug = ${"slug"} AND deleted_at IS NULL`,
   boardBySlug: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"} AND deleted_at IS NULL`,
-  lockBoard: sql`SELECT head, timeline, ${serverTimeline} AS server_timeline FROM boards
-    WHERE org_id = ${"orgId"} AND id = ${"boardId"}${forUpdate}`,
-  setHead: sql`UPDATE boards SET head = ${"head"}, timeline = ${serverTimeline}
+  lockBoard: sql`SELECT boards.head, boards.timeline, ${serverTimeline} AS server_timeline, orgs.quotas,
+    actors.id, actors.kind, actors.handle, actors.name, actors.avatar, actors.via,
+    CASE WHEN boards.stored_bytes_head = boards.head THEN boards.stored_bytes ELSE (
+      SELECT COALESCE(SUM(${messageBytes}), 0)
+      FROM messages m WHERE m.org_id = ${"orgId"} AND m.board_id = ${"boardId"} AND m.deleted = 0
+    ) END AS board_bytes,
+    (SELECT snapshot.head FROM boards snapshot
+      WHERE snapshot.org_id = ${"orgId"} AND snapshot.id = ${"boardId"}) AS snapshot_head,
+    EXISTS(SELECT 1 FROM boards sibling WHERE sibling.org_id = ${"orgId"} AND sibling.id <> ${"boardId"}
+      AND COALESCE(sibling.stored_bytes_head, -1) <> sibling.head) AS stale_siblings,
+    (SELECT COALESCE(SUM(CASE WHEN sibling.stored_bytes_head = sibling.head THEN sibling.stored_bytes ELSE (
+      SELECT COALESCE(SUM(${messageBytes}), 0)
+      FROM messages m WHERE m.org_id = ${"orgId"} AND m.board_id = sibling.id AND m.deleted = 0
+    ) END), 0) FROM boards sibling WHERE sibling.org_id = ${"orgId"} AND sibling.id <> ${"boardId"}) AS other_bytes
+    FROM boards JOIN orgs ON orgs.id = boards.org_id
+    LEFT JOIN actors ON actors.org_id = boards.org_id AND actors.board_id = boards.id AND actors.id = ${"actor"}
+    WHERE boards.org_id = ${"orgId"} AND boards.id = ${"boardId"}${boardLock}`,
+  setHead: sql`UPDATE boards SET head = ${"head"}, timeline = ${serverTimeline},
+    stored_bytes = ${"storedBytes"}, stored_bytes_head = ${"head"}
     WHERE org_id = ${"orgId"} AND id = ${"boardId"}${notifyHead}`,
+  repairStoredBytes: sql`WITH stale AS (
+    SELECT id, head, org_id FROM boards
+    WHERE org_id = ${"orgId"} AND id <> ${"boardId"} AND COALESCE(stored_bytes_head, -1) <> head
+      AND head = (SELECT snapshot.head FROM boards snapshot WHERE snapshot.org_id = ${"orgId"}
+        AND snapshot.id = boards.id)${skipLocked}
+  )
+    UPDATE boards SET stored_bytes = (
+      SELECT COALESCE(SUM(${messageBytes}), 0) FROM messages m
+      WHERE m.org_id = ${"orgId"} AND m.board_id = stale.id AND m.deleted = 0
+    ), stored_bytes_head = stale.head
+    FROM stale WHERE boards.org_id = ${"orgId"} AND boards.id = stale.id`,
   orgBoards: sql`SELECT slug, name FROM boards WHERE org_id = ${"orgId"} AND deleted_at IS NULL ORDER BY slug`,
   orgBoardCount: sql`SELECT COUNT(*) AS count FROM boards WHERE org_id = ${"orgId"} AND deleted_at IS NULL`,
   boardSlugUsed: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"}`,
@@ -40,6 +79,13 @@ export function platformView(db: Db, dialect: Dialect): Pick<PlatformView, "find
   };
 }
 
+export interface BoardStorage {
+  readonly boardBytes: number;
+  readonly otherBytes: number;
+  readonly limit: number;
+  readonly staleSiblings: boolean;
+}
+
 /**
  * Reads the board's head under its lock: the first statement of every board write (docs/data-model.md). The same
  * statement reads the server's timeline; when it differs from the one the board recorded, the write allocates from
@@ -47,18 +93,41 @@ export function platformView(db: Db, dialect: Dialect): Pick<PlatformView, "find
  * with the new head, so a write that appends nothing changes nothing. A board that recorded no timeline yet (`0`)
  * does not advance, and an engine whose timeline is the constant `0` (SQLite) never does.
  */
-export async function lockBoard(tx: Db, dialect: Dialect, keys: BoardKeys): Promise<number> {
-  const [row] = await query(tx, dialect, boardStatements.lockBoard, keys);
+export async function lockBoard(tx: Db, dialect: Dialect, keys: BoardKeys, actor: string | null) {
+  let actorLoaded = dialect.name === "sqlite";
+  let [row] = await query(tx, dialect, boardStatements.lockBoard, { ...keys, actor: actorLoaded ? actor : null });
+  // A waiting Postgres statement refreshes only the locked row. If another writer advanced it, get a
+  // fresh snapshot of sibling usage, the legacy own-board fallback and the actor together.
+  if (row?.snapshot_head != null && Number(row.snapshot_head) !== Number(row.head)) {
+    [row] = await query(tx, dialect, boardStatements.lockBoard, { ...keys, actor });
+    actorLoaded = true;
+  }
   if (!row) throw new Error(`board ${keys.boardId} of organization ${keys.orgId} is missing`);
   const head = Number(row.head);
   const recorded = Number(row.timeline ?? 0);
   const timeline = Number(row.server_timeline ?? 0);
-  return timeline === 0 || recorded === 0 || timeline === recorded ? head : head + TIMELINE_ADVANCE;
+  const overrides = typeof row.quotas === "string" ? (JSON.parse(row.quotas) as OrgQuotaOverrides | null) : null;
+  return {
+    row,
+    actorLoaded,
+    head: timeline === 0 || recorded === 0 || timeline === recorded ? head : head + TIMELINE_ADVANCE,
+    storage: {
+      boardBytes: Number(row.board_bytes),
+      otherBytes: Number(row.other_bytes),
+      limit: storedBytesLimit(overrides ?? {}),
+      staleSiblings: Boolean(row.stale_siblings),
+    },
+  };
 }
 
-/** Moves the board's head to its last appended event and records the server's timeline with it (D37). */
-export async function setHead(tx: Db, dialect: Dialect, keys: BoardKeys, head: number): Promise<void> {
-  await query(tx, dialect, boardStatements.setHead, { ...keys, head });
+/** Moves the board's head and records its folded size and the server's timeline (D37). */
+export async function setHead(tx: Db, dialect: Dialect, keys: BoardKeys, head: number, storedBytes: number) {
+  await query(tx, dialect, boardStatements.setHead, { ...keys, head, storedBytes });
+}
+
+/** Initialize untouched legacy siblings when a write can repair them without waiting for their locks. */
+export async function repairStoredBytes(tx: Db, dialect: Dialect, keys: BoardKeys) {
+  await query(tx, dialect, boardStatements.repairStoredBytes, keys);
 }
 
 /** One organization's boards, every statement bound to its scope. */

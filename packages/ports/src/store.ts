@@ -18,10 +18,10 @@ import type {
 import type {
   BoardCreation,
   BoardEvent,
-  CountQuotas,
   Grant,
   messages,
   OrgCreation,
+  OrgQuotaOverrides,
   QuotaOutcome,
 } from "@openboard/core";
 import type { PersonRecord, SessionRecord, SignInRecord } from "./account-records.ts";
@@ -178,7 +178,7 @@ export interface PlatformView {
    */
   createOrg(record: CreateOrgRecord): Promise<void>;
   /** Replaces the count quota overrides for one organization; false when the organization is absent. */
-  setOrgQuotas(orgId: number, overrides: Partial<CountQuotas>): Promise<boolean>;
+  setOrgQuotas(orgId: number, overrides: OrgQuotaOverrides): Promise<boolean>;
   /** The person's memberships of organizations that are not deleted, by organization slug. */
   memberships(personId: string): Promise<MembershipRecord[]>;
   /** The tenant resolver checks the signed-in person's membership before minting an organization scope. */

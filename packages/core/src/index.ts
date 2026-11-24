@@ -77,7 +77,16 @@ export * as boards from "./orgs/boards.ts";
 export type { CreateOrgCommand, OrgCreation, OrgEvent } from "./orgs/create.ts";
 export * as orgs from "./orgs/create.ts";
 export { decideInvitation, previewInvite } from "./orgs/invite.ts";
-export { type CountQuota, type CountQuotas, countQuotaError, countQuotas, type QuotaOutcome } from "./orgs/quotas.ts";
+export {
+  type CountQuota,
+  type CountQuotas,
+  checkStoredBytes,
+  countQuotaError,
+  countQuotas,
+  type OrgQuotaOverrides,
+  type QuotaOutcome,
+  storedBytesLimit,
+} from "./orgs/quotas.ts";
 export { decideMemberRole, requireAnotherOwner, requireMemberRemoval } from "./orgs/roles.ts";
 export {
   channelFilter,
