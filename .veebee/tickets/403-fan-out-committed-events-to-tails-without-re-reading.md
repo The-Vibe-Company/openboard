@@ -11,11 +11,19 @@ writes:
   - packages/driver-sql/src/local-broadcaster.ts
   - packages/ports/src/broadcaster.ts
   - tools/bench/budgets.json
+  - packages/ports/src/store.ts
+  - packages/ports/src/index.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/server/src/operations/events.ts
+  - packages/server/test/sse.test.ts
+  - docs/architecture.md
 conformance: []
 modes: [local, hosted]
 depends_on: [108]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-403
 issue: 603
 ---
 
