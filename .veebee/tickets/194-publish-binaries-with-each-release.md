@@ -4,14 +4,17 @@ title: Publish binaries with each release
 milestone: M7-hosted-deploy
 package: tools
 writes:
+  - .veebee/tickets/194-publish-binaries-with-each-release.md
+  - README.md
+  - skills/openboard/SKILL.md
   - .github/workflows/release.yml
   - scripts/release/checksums.ts
   - scripts/release/checksums.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [193]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 355
 ---
 
