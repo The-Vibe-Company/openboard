@@ -29,8 +29,8 @@ export interface Broadcaster {
   publish(scope: BoardScope, page: CommittedPage): void;
   /**
    * Called inside a write before it commits the heads after `after` up to `head`; the returned release once the write
-   * has published or failed. A broadcaster that also hears this instance's commits as notifications or polled heads
-   * leaves those to `publish`, which carries the page, so a subscriber here does not re-read what was written here.
+   * has published or failed. A broadcaster that also hears this instance's commits as notifications leaves those
+   * to `publish`, which carries the page, so a subscriber here does not re-read what was written here.
    */
   committing?(scope: BoardScope, after: number, head: number): () => void;
   /**

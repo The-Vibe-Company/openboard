@@ -1,11 +1,12 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
-import type { Db } from "@openboard/driver-sql";
-import type { BoardView, BoardWriter, CommittedPage, Store } from "@openboard/ports";
+import { createViews, type Db, postgresText } from "@openboard/driver-sql";
+import type { BoardView, BoardWriter, Broadcaster, CommittedPage, Store } from "@openboard/ports";
 import { testScope } from "@openboard/ports/testkit";
 import { SQL } from "bun";
 import { postgresBroadcaster } from "../src/broadcaster.ts";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
+import { connection, openPool } from "../src/pool.ts";
 import { postgresTestUrl } from "./support/env.ts";
 
 const url = postgresTestUrl();
@@ -64,6 +65,48 @@ if (url) {
     if (!keys) throw new Error("missing local/main fixture");
     return { board: store.board(testScope(keys)), boardId: keys.boardId };
   }
+
+  test("a write holds the heads it commits until it has published, and releases them when it fails", async () => {
+    await using pool = openPool(database.url);
+    const steps: string[] = [];
+    const broadcaster: Broadcaster = {
+      publish: (_, page) => steps.push(`publish ${page.after}->${page.head}`),
+      subscribe: () => () => {},
+      committing(_, after, head) {
+        steps.push(`committing ${after}->${head}`);
+        return () => steps.push(`release ${after}->${head}`);
+      },
+    };
+    const views = createViews(connection(pool), postgresText, broadcaster);
+    const keys = await views.platform().findBoard("local", "main");
+    if (!keys) throw new Error("missing local/main fixture");
+    const board = views.board(testScope(keys));
+    const { head } = await board.readEvents();
+    const ids = await board.write(append);
+    expect(steps).toEqual([
+      `committing ${head}->${ids.at(-1)}`,
+      `publish ${head}->${ids.at(-1)}`,
+      `release ${head}->${ids.at(-1)}`,
+    ]);
+    steps.length = 0;
+    const failed = board.write(async (writer) => {
+      await append(writer);
+      throw new Error("the handler failed after appending");
+    });
+    await expect(failed).rejects.toThrow("the handler failed after appending");
+    // The handler failed before the write registered anything; a COMMIT that fails releases what it registered.
+    expect(steps).toEqual([]);
+    expect((await board.readEvents()).head).toBe(ids.at(-1)!);
+    // Whatever fails once the heads are registered, the write still releases them.
+    const throwing = createViews(connection(pool), postgresText, {
+      ...broadcaster,
+      publish: () => {
+        throw new Error("publishing failed");
+      },
+    }).board(testScope(keys));
+    await expect(throwing.write(append)).rejects.toThrow("publishing failed");
+    expect(steps.map((step) => step.split(" ")[0])).toEqual(["committing", "release"]);
+  });
 
   test("a tail on one instance reads positions written on another in order, each once", async () => {
     const subscriber = await open();

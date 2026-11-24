@@ -937,9 +937,10 @@ Only product choices; each has a recommendation.
   the committed page when it is in memory (`wake(page | undefined, head)`). A
   board write tells the broadcaster, before `COMMIT`, which heads it commits
   (`committing(scope, after, head)`, optional on the port) and releases them
-  once it has published or failed. The Postgres broadcaster skips its own
-  notifications and polled heads in that range; a tail ignores a page-less
-  wake for a head it has already read.
+  once it has published or failed. The Postgres listener skips its own
+  notifications in that range; the safety poll does not, so it still bounds
+  delivery when a write's outcome is unknown. A tail ignores a page-less wake
+  for a head it has already read.
 - **Why.** Run on two instances, a tail re-read the store for commits it
   already held: the writer's own `NOTIFY` could arrive before its local
   publish and mark the head seen without its page, and a late notification

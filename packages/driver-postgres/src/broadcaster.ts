@@ -26,7 +26,6 @@ function pollBoardHeads(
   db: Db,
   boards: ReadonlyMap<number, Board>,
   publish: (scope: Pick<BoardScope, "boardId">, position: number) => void,
-  own: Own,
 ) {
   return async () => {
     if (boards.size === 0) return;
@@ -38,7 +37,8 @@ function pollBoardHeads(
 
     for (const row of heads) {
       const boardId = Number(row.id);
-      if (boards.get(boardId) === subscribed.get(boardId) && !own(boardId, Number(row.head))) {
+      // Not filtered by `own`: the poll is the backstop even while a write's outcome is still unknown (D36).
+      if (boards.get(boardId) === subscribed.get(boardId)) {
         publish({ boardId }, Number(row.head));
       }
     }
@@ -129,7 +129,7 @@ export async function postgresBroadcaster(
     stopPoll = undefined;
   }
 
-  const { poll, onListen } = reconnectPoll(pollBoardHeads(db, boards, publish, own));
+  const { poll, onListen } = reconnectPoll(pollBoardHeads(db, boards, publish));
 
   function remove(id: number, board: Board, subscription: Subscription) {
     if (!board.subscribers.delete(subscription) || board.subscribers.size !== 0) return;
