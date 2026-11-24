@@ -1,4 +1,10 @@
 {
+  "expectedSkips": {
+    "grants/caps a person by their team role, so a viewer reads but neither posts nor manages": "No team roles to cap a grant.",
+    "grants/names an app by its slug or client ID, keeps it by client ID, and every app as a group": "No apps.",
+    "grants/lets a member grant on a pattern after a lock under it": "A run cannot lift a lock it is shut out by.",
+    "grants/lets a project on another team in, in its environments": "Grants across teams are unspecified."
+  },
   "local": [
     "core/answers 400 for a request that does not validate",
     "core/answers 404 for an ID that names nothing",
