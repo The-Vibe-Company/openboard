@@ -1,7 +1,7 @@
 import process, { argv, execPath } from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { createConnection } from "@openboard/contract";
+import { createConnection, createOrg, getSession } from "@openboard/contract";
 import type { CheckGroup, CheckResult } from "@vercel/board/conformance";
 import { boot } from "./drivers";
 import { lostChecks, newChecks, recordChecks, type Score } from "./score";
@@ -44,10 +44,53 @@ async function writeScore(file: URL, score: Score) {
   await Bun.write(file, formatted);
 }
 
-async function createLocalConnection(url: URL, ownerToken: string): Promise<string> {
+function responseCookie(response: Response, name: string): string {
+  const cookie = response.headers
+    .getSetCookie()
+    .find((line) => line.startsWith(`${name}=`))
+    ?.split(";")[0];
+  if (!cookie) throw new Error(`Conformance sign-in did not return ${name} (HTTP ${response.status})`);
+  return cookie;
+}
+
+async function hostedSession(url: URL) {
+  const started = await fetch(new URL("/auth/github/start", url), { redirect: "manual" });
+  const pending = responseCookie(started, "__Host-ob_signin");
+  const location = started.headers.get("location");
+  const state = location && new URL(location).searchParams.get("state");
+  if (!state) throw new Error("Conformance sign-in did not return OAuth state");
+
+  const callback = new URL("/auth/github/callback", url);
+  callback.search = new URLSearchParams({ code: "example-code", state }).toString();
+  const returned = await fetch(callback, { redirect: "manual", headers: { cookie: pending } });
+  const cookie = responseCookie(returned, "__Host-ob_session");
+
+  const session = await fetch(new URL(`/api/x${getSession.route.path}`, url), { headers: { cookie } });
+  if (!session.ok) throw new Error(`Reading the conformance session failed with HTTP ${session.status}`);
+  const { csrf, person } = (await session.json()) as (typeof getSession.output)["static"];
+  if (!person || !csrf) throw new Error("Conformance sign-in did not establish a session with CSRF");
+
+  const headers = { cookie, "x-ob-csrf": csrf, origin: url.origin, "content-type": "application/json" };
+  const org = await fetch(new URL(`/api/x${createOrg.route.path}`, url), {
+    method: createOrg.route.method,
+    headers,
+    body: JSON.stringify({
+      slug: "conformance-ci",
+      name: "Conformance CI",
+    } satisfies (typeof createOrg.input.body)["static"]),
+  });
+  if (org.status !== createOrg.status)
+    throw new Error(`Creating the conformance organization failed with HTTP ${org.status}`);
+  return headers;
+}
+
+async function createDirectConnection(url: URL, ownerToken?: string): Promise<string> {
+  const headers = ownerToken
+    ? { authorization: `Bearer ${ownerToken}`, "content-type": "application/json" }
+    : await hostedSession(url);
   const response = await fetch(new URL(url.href + createConnection.route.path), {
     method: createConnection.route.method,
-    headers: { authorization: `Bearer ${ownerToken}`, "content-type": "application/json" },
+    headers,
     body: JSON.stringify({
       name: "conformance",
       direct: true,
@@ -119,7 +162,7 @@ const scoreFile = new URL("../score.json", import.meta.url);
 const score = (await Bun.file(scoreFile).json()) as Score;
 const server = await boot(driver, Number(instances));
 try {
-  const token = mode === "local" ? await createLocalConnection(server.url, server.token) : server.token;
+  const token = await createDirectConnection(server.url, server.ownerToken);
   const checks = await runKit(server.url, token);
   printTable(checks);
   const lost = lostChecks(score[mode], checks);
