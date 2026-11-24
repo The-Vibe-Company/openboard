@@ -41,3 +41,16 @@ test("the request scope limits a subtree independently of everyone and the calle
   expect(unmanagedGrantPattern(authority, { "ops/ci/": ["post"] })).toBeUndefined();
   expect(unmanagedGrantPattern(authority, { "ops/ci/": ["post"] }, true)).toBe("ops/secret/");
 });
+
+test("everyone permissions must fit at patterns named only in the request scope", () => {
+  const everyone: Pick<GrantView, "principals" | "can"> = {
+    principals: [{ kind: "everyone" }],
+    can: { "ops/": ["read"] },
+  };
+  const effective = compileCan({ "*": "all" });
+  const scope = compileCan({ "*": "all", "ops/open/": [] });
+  expect(missingEveryonePermission({ own: effective, effective, scope }, [everyone])).toEqual({
+    pattern: "ops/open/",
+    permission: "read",
+  });
+});

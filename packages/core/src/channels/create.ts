@@ -66,7 +66,9 @@ export function privateChannelGrants(
     if (missing) {
       throw new BoardError(
         "forbidden",
-        `everyone gets ${missing.permission} at ${missing.pattern}, which this caller lacks`,
+        authority.scope === undefined
+          ? `everyone gets ${missing.permission} at ${missing.pattern}, which this caller lacks`
+          : "everyone gets permissions this caller lacks",
       );
     }
   }

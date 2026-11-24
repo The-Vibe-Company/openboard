@@ -1,6 +1,7 @@
 import type { Can, CanInput, GrantView, Permission } from "@openboard/contract";
 import { allowedAt, matchingPatterns } from "./agents.ts";
 import { compileCan } from "./grants.ts";
+import { narrowCan } from "./narrow.ts";
 import { resolveCan } from "./resolve.ts";
 
 export interface GrantAuthority {
@@ -37,7 +38,7 @@ export function unmanagedGrantPattern(
 
 /** Anyone a grant admits may also get what everyone gives on the resulting board. */
 export function missingEveryonePermission(
-  { effective }: GrantAuthority,
+  { effective, scope }: GrantAuthority,
   after: readonly Pick<GrantView, "can" | "principals">[],
 ): { pattern: string; permission: Permission } | undefined {
   const everyone = resolveCan(
@@ -45,8 +46,9 @@ export function missingEveryonePermission(
       .filter(({ principals }) => principals.some(({ kind }) => kind === "everyone"))
       .map(({ can }) => compileCan(can)),
   );
-  for (const pattern of new Set([...Object.keys(everyone), ...Object.keys(effective)])) {
-    const allowed = allowedAt(effective, pattern);
+  const caller = scope === undefined ? effective : narrowCan(effective, scope);
+  for (const pattern of new Set([...Object.keys(everyone), ...Object.keys(caller)])) {
+    const allowed = allowedAt(caller, pattern);
     const missing = allowedAt(everyone, pattern).find((permission) => !allowed.includes(permission));
     if (missing) return { pattern, permission: missing };
   }
