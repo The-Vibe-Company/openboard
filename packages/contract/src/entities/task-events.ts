@@ -139,3 +139,14 @@ export const TaskReadyEvent = Type.Object({
   payload: Type.Object({ id: Type.String() }),
   message: Message,
 });
+
+export const TaskNeedsChangedPayload = Type.Pick(TaskCreatedPayload, ["id", "thread", "needs", "by"]);
+export type TaskNeedsChangedPayload = Static<typeof TaskNeedsChangedPayload>;
+
+export const TaskNeedsChangedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("task.needs_changed"),
+  createdAt: Type.String(),
+  payload: TaskNeedsChangedPayload,
+  message: Message,
+});

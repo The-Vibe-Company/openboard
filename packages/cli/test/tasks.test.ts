@@ -263,3 +263,24 @@ test("ob tasks --latest sends the flag and omits the continuation on a full page
   expect(urls).toEqual([`${ENV.BOARD_URL}/tasks?latest=true&limit=1&channel=dev`]);
   expect(lines).toEqual(["#2  ready  a"]);
 });
+
+test("ob tasks needs sends prerequisite IDs or an empty list with --none", async () => {
+  const lines: string[] = [];
+  const bodies: unknown[] = [];
+  const fetch = async (request: Request) => {
+    expect(`${request.method} ${request.url}`).toBe(`POST ${ENV.BOARD_URL}/tasks/4/needs`);
+    const body = await request.json();
+    bodies.push(body);
+    return Response.json({ task: { id: "4", task: { needs: body.needs } } });
+  };
+  const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  for (const args of [["#2", "3"], ["--none"]]) {
+    expect(await runCli(["tasks", "needs", "#4", ...args], ENV, { fetch, output })).toBe(0);
+  }
+  expect(bodies).toEqual([{ needs: ["2", "3"] }, { needs: [] }]);
+  expect(lines).toEqual(["4 needs #2 #3", "4 needs nothing"]);
+  for (const args of [[], ["2", "--none"]]) {
+    expect(await runCli(["tasks", "needs", "4", ...args], ENV, { fetch, output })).toBe(2);
+  }
+  expect(bodies).toHaveLength(2);
+});

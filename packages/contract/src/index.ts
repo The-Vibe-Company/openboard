@@ -132,6 +132,7 @@ export {
   removeMember,
   renewTask,
   reopenTask,
+  setTaskNeeds,
   requestOrgExport,
   revokeAgent,
   revokeAllSessions,

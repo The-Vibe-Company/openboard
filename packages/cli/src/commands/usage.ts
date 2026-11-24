@@ -257,10 +257,12 @@ const SAMPLE_IDS: Readonly<Record<string, string>> = {
   connection: "cn_7k2m4q3t5v2w6x7y",
   message: "42",
   schema: "git-commit@1",
+  task: "42",
 };
 const SAMPLES: Readonly<Record<string, string>> = {
   channel: "dev",
   emoji: "eyes",
+  needs: "40 41",
   path: "dev/ci",
   prefix: "dev/",
   set: "status=done",
@@ -362,7 +364,11 @@ function referenceOf(command: AnyCommand): CommandReference {
     usage: command.usage,
     summary: derived?.summary ?? handwritten?.summary ?? "",
     arguments: [...args, ...alternative].map((name) => ({ name, meaning: meaningOf(fields.get(name) ?? {}) })),
-    options: optionsOf(command, used, handwritten?.options ?? {}),
+    options: optionsOf(
+      command,
+      used,
+      derived?.name === "setTaskNeeds" ? { none: "Clear every prerequisite." } : (handwritten?.options ?? {}),
+    ),
     errors: errorsOf(used, handwritten?.errors ?? []),
     mcpTools: used
       .filter((operation) => handwritten?.tools?.includes(operation.name) ?? true)

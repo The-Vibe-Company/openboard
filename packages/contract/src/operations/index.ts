@@ -85,6 +85,7 @@ import { listTasks } from "./tasks/list.ts";
 import { releaseTask } from "./tasks/release.ts";
 import { renewTask } from "./tasks/renew.ts";
 import { reopenTask } from "./tasks/reopen.ts";
+import { setTaskNeeds } from "./tasks/needs.ts";
 import { listThreads, readThread } from "./threads.ts";
 import { ackWatcherMatch, listWatchers, pullWatcherMatches, registerWatchers } from "./watchers/index.ts";
 import { listWebhookDeliveries, retryWebhookDelivery } from "./webhooks/deliveries.ts";
@@ -191,6 +192,7 @@ export const operations = [
   removeMember,
   renewTask,
   reopenTask,
+  setTaskNeeds,
   requestOrgExport,
   revokeAgent,
   revokeAllSessions,
@@ -295,6 +297,7 @@ export {
   removeMember,
   renewTask,
   reopenTask,
+  setTaskNeeds,
   requestOrgExport,
   retryWebhookDelivery,
   revokeAgent,

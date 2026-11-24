@@ -369,6 +369,22 @@ the same write appends `task.created` with state `waiting`, then `task.ready` wi
 with only `task.created` and any requested claim. Forward reads of the event feed show the task state
 after each event in its `message` field. Failure and cancellation leave dependants waiting.
 
+`POST /tasks/:id/needs` takes `{ needs }` and returns `{ task }`. It replaces the
+prerequisites using the same validation as creation. The caller needs channel
+read access and must be the task's owner acting as itself, the profile that
+created the task (with `post` or `label`), or have `manage` in the task's channel.
+A caller who can read the task but cannot change it receives 403
+`task_not_owned`. The CLI is `ob tasks needs <id> <needs>...` or
+`ob tasks needs <id> --none`, the SDK method is `setTaskNeeds`, and the MCP
+tool is `task_needs`.
+
+Replacing the prerequisites of a ready or waiting task appends
+`task.needs_changed` with the new IDs. A nonempty list sets the task to
+`waiting`. If every prerequisite is completed, the same write appends
+`task.ready`, setting it to `ready`. Clearing the list sets the task to
+`ready` in `task.needs_changed` alone. Sending the same set appends no events,
+even if the IDs are reordered or repeated.
+
 `GET /tasks` lists tasks oldest first, each as its thread's summary `{ message, replies, last }`,
 in `{ tasks, cursor }`. Its query is upstream's: `channel` (a channel, `dev/` for a subtree, absent
 for every channel), `state` (`open` by default: `waiting`, `ready`, `claimed`, `blocked`; `all`;
