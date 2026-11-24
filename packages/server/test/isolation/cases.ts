@@ -12,9 +12,11 @@ type Part = "params" | "query" | "body";
 type Fields = Record<string, unknown>;
 
 /** Operations the tenant resolver scopes: the ones mounted under an organization or a board. */
-export const scoped = operations.filter((operation) => operation.scope === "org" || operation.scope === "board");
+export const scoped: readonly Operation[] = operations.filter(
+  (operation) => operation.scope === "org" || operation.scope === "board",
+);
 /** Operations a credential reaches: the scoped ones and the signed-in person's own (`account`). */
-export const authenticated = operations.filter((operation) => operation.scope !== "public");
+export const authenticated: readonly Operation[] = operations.filter((operation) => operation.scope !== "public");
 
 /**
  * A tenant's valid input for an operation besides its path: an ID case must reach the handler, not stop at
