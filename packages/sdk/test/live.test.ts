@@ -193,3 +193,18 @@ test("long-polling after `last` follows by cursor alone", async () => {
   }
   expect(seen.map((u) => u.search)).toEqual(["?last=2", "?after=9&wait=30"]);
 });
+
+test("aborting while the stream is open ends the tail quietly", async () => {
+  const abort = new AbortController();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      abort.signal.addEventListener("abort", () => controller.error(abort.signal.reason));
+    },
+  });
+  const fetch = async () => new Response(body, { headers: { "content-type": "text/event-stream" } });
+  const events = tail({ url, token, signal: abort.signal, fetch });
+  const next = events.next();
+  await Promise.resolve();
+  abort.abort();
+  expect((await next).done).toBe(true);
+});

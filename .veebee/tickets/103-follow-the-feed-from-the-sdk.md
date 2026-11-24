@@ -11,7 +11,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [99]
-status: claimed
+status: done
 claimed_by: claude-t103
 issue: 103
 ---
@@ -20,7 +20,7 @@ issue: 103
 As a developer, I follow a channel from a three-line script.
 
 ## Done when
-- [ ] a script `for await (const e of tail({ url, token, channel: "dev" })) console.log(e.cursor, e.type)` prints each new post as it lands
+- [x] a script `for await (const e of tail({ url, token, channel: "dev" })) console.log(e.cursor, e.type)` prints each new post as it lands
 
 ## Out of scope
 - Reconnects (104).
