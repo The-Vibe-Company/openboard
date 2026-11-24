@@ -18,6 +18,11 @@ replay. Accounts, organizations, and operational queues are plain tables.
   table's primary key starts with `board_id`. Every statement the store runs
   on a board table has `board_id = $scope` in its predicate; a CI check parses
   the statement registry and fails on any statement that does not.
+  During the organization-column expansion, `grant_principals.org_id` and
+  `task_needs.org_id` are nullable. Startup queues a board-locked job to fill
+  missing values in batches from the board's organization. Reads still use the
+  board key so writes by old replicas remain visible during rollout. The later
+  contract phase must account for any writes by old replicas after a sweep.
 - **Shared tables, not schema- or database-per-tenant.** Thousands of small
   tenants would make per-tenant schemas a migration and connection-pool
   problem; shared tables keep one migration, one pool, cheap empty tenants.
@@ -464,7 +469,7 @@ CREATE INDEX tasks_claims ON tasks (claim_until) WHERE state = 'claimed';       
 CREATE INDEX tasks_owner  ON tasks (board_id, owner, state, id);
 CREATE INDEX tasks_for    ON tasks (board_id, for_actor, state, id) WHERE for_actor IS NOT NULL;
 
-CREATE TABLE task_needs (board_id BIGINT NOT NULL, task BIGINT NOT NULL, needs BIGINT NOT NULL, PRIMARY KEY (board_id, task, needs));
+CREATE TABLE task_needs (org_id BIGINT, board_id BIGINT NOT NULL, task BIGINT NOT NULL, needs BIGINT NOT NULL, PRIMARY KEY (board_id, task, needs));
 CREATE INDEX task_needs_reverse ON task_needs (board_id, needs, task);
 CREATE TABLE task_batches (board_id BIGINT NOT NULL, principal TEXT NOT NULL, id TEXT NOT NULL,
                            digest TEXT NOT NULL, tasks TEXT NOT NULL, PRIMARY KEY (board_id, principal, id));
@@ -494,6 +499,7 @@ CREATE TABLE grants (
   PRIMARY KEY (board_id, id)
 );
 CREATE TABLE grant_principals (
+  org_id BIGINT,
   board_id BIGINT NOT NULL, grant_id BIGINT NOT NULL, kind TEXT NOT NULL, key TEXT NOT NULL, detail TEXT NOT NULL,
   PRIMARY KEY (board_id, grant_id, kind, key)
 );

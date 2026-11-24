@@ -149,6 +149,10 @@ function isDestructiveTableAlter(words: string[], index: number, tableDefaults: 
   });
 }
 
+function keywordWords(words: string[]): string[] {
+  return words.map((word) => (/^(?:[Uu]&)?"/u.test(word) ? word : word.toUpperCase()));
+}
+
 function isDestructive(statement: SqlToken[], tableDefaults: Map<string, Set<string>>): boolean {
   const words = statement.map(({ text }) =>
     /^(?:[Uu]&)?"/u.test(text) ? text : text.replace(/[a-z]/gu, (character) => character.toUpperCase()),
@@ -251,18 +255,40 @@ function alterColumnDeclaration(action: string[]): string[][] {
   return [];
 }
 
-function columnDeclarations(words: string[]): string[][] {
-  const upper = words.map((word) => word.toUpperCase());
+function createdTable(words: string[], upper: string[]) {
   const head = upper.slice(0, 4).join(" ");
-  if (/^CREATE (?:(?:GLOBAL |LOCAL )?(?:TEMP |TEMPORARY )|UNLOGGED |FOREIGN )?TABLE(?: |$)/u.test(head)) {
-    const afterTable = upper.indexOf("TABLE") + 1;
-    const conditional = upper.slice(afterTable, afterTable + 3).join(" ") === "IF NOT EXISTS";
-    const { actions } = relation(upper, afterTable + (conditional ? 3 : 0));
-    if (actions[0] !== "(") return [];
-    return alterActions(parenthesizedList(words.slice(words.length - actions.length))).filter(
-      (column) => !isTableConstraint(column),
-    );
-  }
+  if (!/^CREATE (?:(?:GLOBAL |LOCAL )?(?:TEMP |TEMPORARY )|UNLOGGED |FOREIGN )?TABLE(?: |$)/u.test(head)) return;
+  const afterTable = upper.indexOf("TABLE") + 1;
+  const conditional = upper.slice(afterTable, afterTable + 3).join(" ") === "IF NOT EXISTS";
+  const { name, actions } = relation(upper, afterTable + (conditional ? 3 : 0));
+  const tableName = (JSON.parse(name) as string[]).join(".");
+  if (actions[0] !== "(") return { name: tableName, columns: null };
+  const columns = alterActions(parenthesizedList(words.slice(words.length - actions.length))).filter(
+    (column) => !isTableConstraint(column),
+  );
+  return { name: tableName, columns };
+}
+
+export function checkBoardTableOrg(file: string, sql: string): string[] {
+  // Applied migrations are immutable; 0024 adds the missing columns to these tables.
+  const legacy = file === "0002-connections.sql" ? "grant_principals" : file === "0012-tasks.sql" ? "task_needs" : "";
+  return scanSql(sql).statements.flatMap((statement) => {
+    const words = statement.map(({ text }) => text);
+    const table = createdTable(words, keywordWords(words));
+    if (!table || table.name === legacy) return [];
+    if (!table.columns) return [`${file}: table ${table.name} must declare columns explicitly for SQLite STRICT`];
+    const columns = table.columns.map((column) => identifierName(column, 0, identifierEnd(column, 0)));
+    return columns.includes("board_id") && !columns.includes("org_id")
+      ? [`${file}: board-scoped table ${table.name} must declare org_id`]
+      : [];
+  });
+}
+
+function columnDeclarations(words: string[]): string[][] {
+  const upper = keywordWords(words);
+  const table = createdTable(words, upper);
+  if (table) return table.columns ?? [];
+  const head = upper.slice(0, 4).join(" ");
   if (!/^ALTER (?:FOREIGN )?TABLE(?: |$)/u.test(head)) return [];
   const { actions } = relation(upper, upper.indexOf("TABLE") + 1);
   return alterActions(words.slice(words.length - actions.length)).flatMap(alterColumnDeclaration);
@@ -355,7 +381,11 @@ if (import.meta.main) {
         .sort()
         .flatMap((file) => {
           const sql = readFileSync(`${directory}/${file}`, "utf8");
-          return [...checkDestructiveMigration(file, sql), ...checkSqliteRendering(file, sql)];
+          return [
+            ...checkDestructiveMigration(file, sql),
+            ...checkSqliteRendering(file, sql),
+            ...checkBoardTableOrg(file, sql),
+          ];
         }),
     ];
     for (const problem of problems) process.stderr.write(`${directory}: ${problem}\n`);
