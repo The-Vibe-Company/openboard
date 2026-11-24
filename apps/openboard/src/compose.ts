@@ -47,7 +47,14 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
   const store =
     config.mode === "hosted"
       ? await hostedStore(config.databaseUrl, deps.now)
-      : sqliteDriver({ dir: config.dataDir, sync: config.sync }, deps.now);
+      : sqliteDriver(
+          {
+            dir: config.dataDir,
+            sync: config.sync,
+            onSnapshotError: () => deps.log.error("SQLite snapshot failed", {}),
+          },
+          deps.now,
+        );
   return createApp(
     {
       mode,

@@ -20,10 +20,14 @@ export async function buildBinary(target: Target, outputDir: string): Promise<vo
       "build",
       "--compile",
       "--minify",
+      // Compiled workers resolve beside the executable in Bun’s embedded filesystem.
+      "--entry-naming",
+      "[name].[ext]",
       `--target=${target}`,
       "--outfile",
       executable,
       "apps/openboard/src/main.ts",
+      "packages/driver-sqlite/src/snapshot-worker.ts",
     ],
     { cwd: resolve(import.meta.dir, "../.."), stdout: "inherit", stderr: "inherit" },
   );

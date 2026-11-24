@@ -5,6 +5,9 @@ milestone: M7-hosted-deploy
 package: driver-sqlite
 writes:
   - packages/driver-sqlite/src/snapshot.ts
+  - packages/driver-sqlite/src/snapshot-worker.ts
+  - apps/openboard/src/compose.ts
+  - scripts/build/index.ts
   - packages/driver-sqlite/src/open.ts
   - packages/driver-sqlite/src/migrate.ts
   - packages/driver-sqlite/src/index.ts
@@ -13,8 +16,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [39, 184]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 373
 ---
 

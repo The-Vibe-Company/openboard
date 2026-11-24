@@ -3,7 +3,22 @@ import type { Migration } from "@openboard/driver-sql";
 import { renderDdl } from "./ddl.ts";
 
 /** Applies every migration the database has not recorded, each in its own transaction, in order. */
-export function migrate(database: Database, migrations: readonly Migration[], now: number): void {
+export function migrate(
+  database: Database,
+  migrations: readonly Migration[],
+  now: number,
+  beforeMigration?: (version: number) => void,
+): void {
+  if (beforeMigration) {
+    const hasLedger = database
+      .query("SELECT 1 FROM sqlite_schema WHERE name = 'schema_migrations' AND type = 'table'")
+      .get();
+    const versions = hasLedger
+      ? database.query<{ version: number }, []>("SELECT version FROM schema_migrations").all()
+      : [];
+    const pending = migrations.find(({ version }) => !versions.some((row) => row.version === version));
+    if (pending) beforeMigration(pending.version);
+  }
   database.run(
     "CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL) STRICT",
   );
