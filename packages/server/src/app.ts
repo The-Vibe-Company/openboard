@@ -21,6 +21,7 @@ import { startDumpJob } from "./jobs/dump.ts";
 import { startExportJobs } from "./jobs/export-org.ts";
 import { type JobHandlers, startBoardJobs, startJobs } from "./jobs/registry.ts";
 import { logShippingJobs } from "./jobs/ship-log.ts";
+import { sweepOnActivity } from "./jobs/sweep.ts";
 import { webhookJob } from "./jobs/webhooks.ts";
 
 export const DRAIN_TIMEOUT_MS = 10_000;
@@ -62,29 +63,7 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     chain: verifiers(config, platform, deps),
     providers: loginProviders(config, deps),
   };
-  if (config.mode === "hosted" && !bucket) deps.log.info("log shipping is off", {});
-  const delivery = webhookJob(config, deps);
-  // Older workers only claim event deliveries and cannot send a re-queued ping.
-  const boardJobs = { ...handlers, [WEBHOOK_DELIVERY_JOB]: delivery, [WEBHOOK_RESEND_JOB]: delivery };
-  const stopJobs = startBoardJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, boardJobs, bucket);
-  const stopExports = bucket && startExportJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, bucket);
-  const stopDump = startDumpJob(ports.store.dumpIfMissing, bucket, deps);
-  // Large bucket purges can outlive a lease. Give shipping its own runner so purges cannot occupy every poller.
-  const stopShipping =
-    bucket &&
-    startJobs(
-      ports.jobs,
-      pipeline.tenants,
-      deps,
-      config.instanceId,
-      logShippingJobs(bucket, platform, pipeline.tenants, deps, shutdown.signal),
-    );
-  const stopBackfill = Object.hasOwn(handlers, BACKFILL_BOARD_ORG_JOB)
-    ? startBoardOrgBackfill(platform, deps)
-    : undefined;
-  const stopBackground = async (release = false) => {
-    await Promise.all([stopJobs, stopExports, stopShipping, stopBackfill, stopDump].map((stop) => stop?.(release)));
-  };
+  const stopBackground = startBackground(ports, pipeline, handlers);
   let draining: Promise<void> | undefined;
   let closing: Promise<void> | undefined;
   async function finishDrain() {
@@ -111,6 +90,36 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
       closing ??= (draining ?? stopBackground()).finally(() => ports.store.close());
       return closing;
     },
+  };
+}
+
+function startBackground(ports: Ports, pipeline: Pipeline, handlers: JobHandlers) {
+  const { bucket, config, deps, platform, shutdown } = pipeline;
+  if (config.mode === "hosted" && !bucket) deps.log.info("log shipping is off", {});
+  const delivery = webhookJob(config, deps);
+  // Older workers only claim event deliveries and cannot send a re-queued ping.
+  const boardJobs = { ...handlers, [WEBHOOK_DELIVERY_JOB]: delivery, [WEBHOOK_RESEND_JOB]: delivery };
+  const sweep = sweepOnActivity(platform, deps);
+  const stopJobs = startBoardJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, boardJobs, bucket, sweep);
+  const stopExports = bucket && startExportJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, bucket, sweep);
+  const stopDump = startDumpJob(ports.store.dumpIfMissing, bucket, deps);
+  // Large bucket purges can outlive a lease. Give shipping its own runner so purges cannot occupy every poller.
+  const stopShipping =
+    bucket &&
+    startJobs(
+      ports.jobs,
+      pipeline.tenants,
+      deps,
+      config.instanceId,
+      logShippingJobs(bucket, platform, pipeline.tenants, deps, shutdown),
+      undefined,
+      sweep,
+    );
+  const stopBackfill = Object.hasOwn(handlers, BACKFILL_BOARD_ORG_JOB)
+    ? startBoardOrgBackfill(platform, deps)
+    : undefined;
+  return async (release = false) => {
+    await Promise.all([stopJobs, stopExports, stopShipping, stopBackfill, stopDump].map((stop) => stop?.(release)));
   };
 }
 

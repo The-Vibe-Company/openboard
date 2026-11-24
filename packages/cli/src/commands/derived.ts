@@ -168,6 +168,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   if (alternative !== undefined) shown.splice(0, shown.length, `(${forms.join(" | ")})`);
   const derived: Command = {
     words: command,
+    ...(operation.name === "listWebhookDeliveries" && { help: operation.summary }),
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
     async run(ctx) {
       const input = inputOf(ctx, args, fields, flags, nullEntries, alternative);

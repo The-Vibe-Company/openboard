@@ -32,9 +32,18 @@ export function startBoardJobs(
   deps: Deps,
   instance: string | undefined,
   handlers: JobHandlers,
-  bucket?: Bucket,
+  bucket: Bucket | undefined,
+  onActivity: () => Promise<void>,
 ) {
-  return startJobs(jobs, tenants, deps, instance, { ...handlers, [TASK_EXPIRY_JOB]: taskExpiryJob }, bucket);
+  return startJobs(
+    jobs,
+    tenants,
+    deps,
+    instance,
+    { ...handlers, [TASK_EXPIRY_JOB]: taskExpiryJob },
+    bucket,
+    onActivity,
+  );
 }
 
 export function startJobs(
@@ -44,12 +53,12 @@ export function startJobs(
   instance: string | undefined,
   handlers: JobHandlers,
   bucket?: Bucket,
+  onActivity?: () => Promise<void>,
 ): (release?: boolean) => Promise<void> {
   const registry = new Map(Object.entries(handlers));
   if (registry.size === 0) return async () => {};
-  // A configured instance label may be reused by a replacement while the old runner is draining.
-  let leaseOwner: string | undefined;
   const kinds = [...registry.keys()];
+  let leaseOwner: string | undefined;
   let stopped = false;
   let pending = false;
   let active: Promise<number | null> | undefined;
@@ -61,19 +70,13 @@ export function startJobs(
       const claim = await jobs.claim(kinds, lease);
       if (stopped) return null;
       if (!claim.job) return claim.nextDue;
-      const { job } = claim;
-      const handler = registry.get(job.kind);
+      const handler = registry.get(claim.job.kind);
       if (!handler) continue;
-      currentJob = job.id;
-      try {
-        const ran = await runEffect(tenants, handler, job, lease, deps.now, bucket);
-        if (ran) deps.log.info("job completed", { kind: job.kind, instanceId });
-      } catch {
-        // Leave the lease to expire. An unsuccessful transaction rolls back both consumption and the effect.
-        deps.log.error("job failed", { kind: job.kind, instanceId });
-      } finally {
+      currentJob = claim.job.id;
+      await runLoggedEffect(tenants, handler, claim.job, lease, deps, instanceId, bucket).finally(() => {
         currentJob = undefined;
-      }
+      });
+      if (!stopped) await onActivity?.();
     }
     return null;
   }
@@ -99,6 +102,7 @@ export function startJobs(
   const stop = jobs.watch(kinds, deps.schedule, async () => {
     if (stopped) return null;
     pending = true;
+    // A replacement can reuse the configured instance label while the old owner drains.
     leaseOwner ??= deps.requestId();
     active ??= drain(leaseOwner);
     return active;
@@ -116,6 +120,24 @@ export function startJobs(
     // A claim might have finished during shutdown, or the current effect might have rolled back.
     if (release && running) await releaseLeases(jobs, deps, owner, instanceId);
   };
+}
+
+async function runLoggedEffect(
+  tenants: Tenants,
+  handler: JobHandler | OrgJobHandler | ExternalBoardJobHandler,
+  job: Job,
+  lease: JobLease,
+  deps: Deps,
+  instanceId: string,
+  bucket?: Bucket,
+) {
+  try {
+    const ran = await runEffect(tenants, handler, job, lease, deps.now, bucket);
+    if (ran) deps.log.info("job completed", { kind: job.kind, instanceId });
+  } catch {
+    // Leave the lease to expire. An unsuccessful transaction rolls back both consumption and the effect.
+    deps.log.error("job failed", { kind: job.kind, instanceId });
+  }
 }
 
 function runEffect(
