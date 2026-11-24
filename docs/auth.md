@@ -466,9 +466,9 @@ Order; the first verifier whose cheap `match` accepts decides:
 3. `obp_` bearer: personal token (its organization must be the URL's; the
    person must still be a member).
 4. `obl_` bearer: local owner token (local mode only).
-5. JWT bearer: OIDC. GitHub Actions is the built-in issuer. Keys come from
-   OIDC discovery and are cached. Fetches use HTTPS only, with no redirects or
-   private hosts (as upstream's `src/server/tokens.ts`); `aud` must equal this
+5. JWT bearer: OIDC. GitHub Actions is the built-in issuer. Other issuers
+   must be named in an active grant on the requested board before discovery.
+   `aud` must equal this
    board's `BOARD_URL`, which includes the organization and board path, so a
    token minted for one tenant's board is useless on another's. Principals
    follow upstream: `github:repo:<repository_id>`, `oidc:<issuer>:<sub>`.
@@ -499,8 +499,25 @@ access only from a grant (`ob grants create --github acme/web --workflow ci.yml
 discovery as its audience, then pass it as a bearer to the board API or as
 `BOARD_TOKEN` to `ob post`. A repository-name grant keeps matching the name
 after a repository is recreated. The signed `repository_id` identifies the
-actor and is never written back to the grant. Grant-defined issuers are reserved for future support and require board-wide
-`manage` and a `sub`.
+actor and is never written back to the grant.
+
+A caller with board-wide `manage` can also run
+`ob grants create --oidc https://gitlab.example.com --claim 'sub=project_path:acme/api:*' --claim project_id=42 --can 'ci/=post'`.
+The issuer must be a public HTTPS hostname on port 443. An organization can name
+up to eight distinct issuers in active grants on its non-deleted boards. Each configured claim must
+match. Repeating a claim accepts any one of its named values. The signed token's
+issuer and subject identify the actor as `oidc:<issuer>:<sub>`. Percent signs and plus signs are escaped in the issuer and subject. Colons
+after the issuer's scheme are escaped so the issuer, subject and profile
+remain distinct. An explicit OIDC grant for the built-in issuer can authorize
+its signed subject when no repository grant matches.
+
+Discovery and JWKS stay on the issuer's origin and refuse redirects. Each
+fetch has a five-second deadline and a 64 KiB response cap. Before either
+request the server rejects the hostname if any resolved address is non-public,
+including private, loopback, link-local, carrier-grade NAT, multicast and
+reserved addresses. DNS rebinding remains possible between this check and the
+HTTP client's own DNS lookup. Validated signing keys are cached for five
+minutes, with at most one reload per issuer every 30 seconds across instances.
 
 ## The credential that runs conformance
 

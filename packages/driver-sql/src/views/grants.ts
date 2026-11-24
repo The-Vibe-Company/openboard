@@ -15,7 +15,25 @@ export function connectionGrantCans(value: unknown): CanInput[] {
   return documents.map((document) => JSON.parse(document) as CanInput);
 }
 
+const lockIssuerQuota: Fragment = Object.freeze({
+  fragment: ({ name }: Dialect) =>
+    name === "postgres"
+      ? "pg_advisory_xact_lock(hashtextextended('openboard oidc issuer quota:' || CAST(scope.org_id AS TEXT), 0))"
+      : "scope.org_id",
+});
+const issuerJson: Fragment = Object.freeze({
+  fragment: ({ name }: Dialect) =>
+    name === "postgres" ? "CAST(p.detail AS JSON) ->> 'issuer'" : "p.detail ->> 'issuer'",
+});
+
 export const grantStatements = {
+  lockGrantIssuerQuota: sql`SELECT ${lockIssuerQuota} FROM (SELECT CAST(${"orgId"} AS BIGINT) AS org_id) scope
+    WHERE scope.org_id = ${"orgId"}`,
+  otherGrantIssuers: sql`SELECT DISTINCT ${issuerJson} AS issuer
+    FROM grant_principals p JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
+    JOIN boards b ON b.org_id = g.org_id AND b.id = g.board_id
+    WHERE g.org_id = ${"orgId"} AND b.deleted_at IS NULL AND g.revoked = 0 AND p.kind = 'oidc'
+      AND NOT (g.board_id = ${"boardId"} AND g.id = ${"replacing"})`,
   nextGrant: sql`SELECT next_grant FROM boards WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
   setNextGrant: sql`UPDATE boards SET next_grant = ${"nextGrant"} WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
   insertGrant: sql`INSERT INTO grants (org_id, board_id, id, principals, can, capped, by, at)
@@ -213,4 +231,11 @@ async function indexGrantPrincipals(
       detail,
     });
   }
+}
+
+export async function otherGrantIssuers(tx: Db, dialect: Dialect, keys: BoardKeys, replacing: number) {
+  // The advisory lock serializes issuer additions without upgrading the board writer's shared organization row lock.
+  if (dialect.name === "postgres") await query(tx, dialect, grantStatements.lockGrantIssuerQuota, keys);
+  const rows = await query(tx, dialect, grantStatements.otherGrantIssuers, { ...keys, replacing });
+  return rows.map(({ issuer }) => String(issuer));
 }

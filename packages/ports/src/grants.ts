@@ -13,6 +13,8 @@ export interface BoardGrantReads {
 }
 
 export interface BoardGrantWriter extends Pick<BoardGrantReads, "listGrants"> {
+  /** Active issuers elsewhere in this organization, read under the issuer quota lock. */
+  otherGrantIssuers(replacing: number): Promise<string[]>;
   /** The next grant number, read under the board's write lock. */
   nextGrant(): Promise<number>;
   /** Find an active grant under the board write lock. */

@@ -1,3 +1,4 @@
+import { lookup } from "node:dns/promises";
 import { migratePostgres, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { createApp, type Deps, jsonLogger, maintenanceJobs } from "@openboard/server";
@@ -43,6 +44,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
     },
     randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
     fetch: (request) => fetch(request, { redirect: "error" }),
+    resolveHost: async (hostname) => (await lookup(hostname, { all: true })).map(({ address }) => address),
   };
   const { mode, publicUrl, localOwner, signup, github } = config;
   const store =

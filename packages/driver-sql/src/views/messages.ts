@@ -27,7 +27,7 @@ import {
   nextGrant,
   profileHolder,
 } from "./connections.ts";
-import { activeGrant, foldGrantEvent, grantReads } from "./grants.ts";
+import { activeGrant, foldGrantEvent, grantReads, otherGrantIssuers } from "./grants.ts";
 import { type JobWrites, jobWriter } from "./jobs/index.ts";
 import { messageStatements } from "./messages/statements.ts";
 import { orgReads } from "./orgs.ts";
@@ -299,6 +299,7 @@ function writer(
       return row ? (JSON.parse(String(row.view)) as Message) : null;
     },
     listGrants: grantReads(tx, dialect, keys).listGrants,
+    otherGrantIssuers: (replacing) => otherGrantIssuers(tx, dialect, keys, replacing),
     nextGrant: () => nextGrant(tx, dialect, keys),
     activeGrant: (id) => activeGrant(tx, dialect, keys, id),
     async grantMember(personId) {

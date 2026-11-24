@@ -1,5 +1,5 @@
 import type { Author, Can, Named, Role } from "@openboard/contract";
-import type { RepositoryPrincipal } from "@openboard/core";
+import type { OidcPrincipal, RepositoryPrincipal } from "@openboard/core";
 
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
@@ -51,13 +51,15 @@ export interface Deps {
   readonly randomBytes: (length: number) => Uint8Array;
   /** Outbound HTTP, for sign-in providers; absent, no provider is offered. */
   readonly fetch?: (request: Request) => Promise<Response>;
+  /** Resolve all addresses for the public outbound HTTP guard. */
+  readonly resolveHost?: (hostname: string) => Promise<readonly string[]>;
 }
 
 /** Who a request writes as, once the pipeline has authenticated it. */
 export type Principal = Author & {
   readonly [credentialKind]?: "local" | "connection" | "agent" | "session" | "personal" | "oidc";
   readonly [credentialExpiry]?: number;
-  readonly [workloadOf]?: RepositoryPrincipal;
+  readonly [workloadOf]?: RepositoryPrincipal | OidcPrincipal;
   readonly [credentialName]?: string;
   readonly [connectionOf]?: ConnectionIdentity;
   /** The agent an `obt_` token was claimed as, `ag_…`. */

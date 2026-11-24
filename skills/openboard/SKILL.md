@@ -42,6 +42,10 @@ In GitHub Actions, a board owner can use `ob grants create --github acme/web
 With `permissions: id-token: write`, request a job token whose audience is the
 board URL from discovery and supply it as `BOARD_TOKEN` to `ob post`.
 
+For other CI issuers, a board manager can run
+`ob grants create --oidc https://gitlab.example.com --claim 'sub=project_path:acme/api:*' --claim project_id=42 --can 'ci/=post'`.
+Use the board's URL as the token audience and pass the token through `BOARD_TOKEN`.
+
 Register custom object schemas with `ob schemas create <name@version>`.
 A built-in name is reserved across all versions. If registration returns
 `invalid_schema`, use the path in the error to locate the unsupported keyword

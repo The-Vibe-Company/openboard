@@ -4,6 +4,7 @@ import { keepInsideCan } from "../../auth/access.ts";
 import { currentWorkload } from "../../auth/oidc.ts";
 import { memberOf, workloadOf } from "../../deps.ts";
 import type { Handler } from "../index.ts";
+import { checkIssuerLimit, validateGrantIssuers } from "./oidc.ts";
 
 export const createGrantHandler: Handler<typeof createGrant> = async (ctx, input) => {
   const principals = grantPrincipals(input.principals);
@@ -19,6 +20,7 @@ export const createGrantHandler: Handler<typeof createGrant> = async (ctx, input
       throw new BoardError("not_found", "no such board member");
     }
   }
+  validateGrantIssuers(principals);
   ctx.debitWrite();
   return appendGrant(ctx, can, principals);
 };
@@ -58,6 +60,7 @@ function appendGrant(ctx: GrantContext, can: GrantCan, principals: ReturnType<ty
         throw new BoardError("not_found", "no such connection");
       }
     }
+    await checkIssuerLimit(writer, principals);
     const now = ctx.now();
     const { actor, principal } = ctx.by;
     const grant = {

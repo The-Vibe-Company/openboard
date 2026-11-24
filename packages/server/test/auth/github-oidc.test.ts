@@ -11,6 +11,7 @@ const keys = await crypto.subtle.generateKey(
   ["sign", "verify"],
 );
 const jwk = await crypto.subtle.exportKey("jwk", keys.publicKey);
+const resolveHost = async () => ["8.8.8.8"];
 const schedule = () => () => {};
 const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
 
@@ -127,7 +128,10 @@ async function checkRejectedTokens(instance: Http, valid: string) {
 test("OIDC posts as the repository only within a matching board grant", async () => {
   const reads: string[] = [];
   let kid = "first";
+  let now = NOW;
   const app = makeApp({
+    resolveHost,
+    now: () => now,
     schedule,
     fetch: async (request) => {
       reads.push(request.url);
@@ -153,12 +157,23 @@ test("OIDC posts as the repository only within a matching board grant", async ()
     );
     await checkIdentity(instance, valid);
     await checkRejectedTokens(instance, valid);
+    expect(
+      (
+        await call(instance, "POST", "/grants", {
+          principals: [{ kind: "oidc", issuer: ISSUER, claims: { sub: "another" } }],
+          can: { "ci/": ["post"] },
+        })
+      ).status,
+    ).toBe(200);
+    expect((await post(instance, await token({ repository: "acme/other", sub: "another" }))).status).toBe(201);
     expect(reads).toEqual([DISCOVERY, JWKS]);
     await expectError("unknown key", await post(instance, await token({}, "unknown")), 401, "unauthorized");
     kid = "rotated";
+    await expectError("reload cooldown", await post(instance, await token({}, kid)), 401, "unauthorized");
+    now += 30_000;
     expect((await post(instance, await token({}, kid))).status).toBe(201);
-    expect(reads).toEqual([DISCOVERY, JWKS, DISCOVERY, JWKS, DISCOVERY, JWKS]);
-    process.stdout.write("known key cached and missing keys trigger discovery; rotated key -> 201\n");
+    expect(reads).toEqual([DISCOVERY, JWKS, DISCOVERY, JWKS]);
+    process.stdout.write("known key cached; rotated key after reload cooldown -> 201\n");
     if (app.instances[1]) expect((await post(app.instances[1], await token({}, kid))).status).toBe(201);
   } finally {
     await app.close();
@@ -167,9 +182,12 @@ test("OIDC posts as the repository only within a matching board grant", async ()
 
 test("OIDC rejects redirects and JWKS URLs outside the trusted HTTPS origin", async () => {
   const reads: string[] = [];
+  let now = NOW;
   let discovery = Response.redirect("https://127.0.0.1/keys");
   const app = makeApp({
+    resolveHost,
     schedule,
+    now: () => now,
     fetch: async (request) => {
       reads.push(request.url);
       expect(request.redirect).toBe("error");
@@ -177,7 +195,7 @@ test("OIDC rejects redirects and JWKS URLs outside the trusted HTTPS origin", as
     },
   });
   try {
-    const credential = await token();
+    const credential = await token({ exp: NOW / 1000 + 300 });
     const instance = firstInstance(app);
     await expectError("redirected discovery", await post(instance, credential), 401, "unauthorized");
     for (const [label, jwks_uri] of [
@@ -185,6 +203,7 @@ test("OIDC rejects redirects and JWKS URLs outside the trusted HTTPS origin", as
       ["private JWKS", "https://127.0.0.1/keys"],
       ["other-host JWKS", "https://example.com/keys"],
     ] as const) {
+      now += 30_000;
       discovery = Response.json({ issuer: ISSUER, jwks_uri });
       await expectError(label, await post(instance, credential), 401, "unauthorized");
     }
@@ -197,6 +216,7 @@ test("OIDC rejects redirects and JWKS URLs outside the trusted HTTPS origin", as
 
 test("OIDC grant mutations check current workload authority under the write lock", async () => {
   const app = makeApp({
+    resolveHost,
     schedule,
     fetch: async ({ url }) => issuerResponse(url),
   });
@@ -228,10 +248,13 @@ test("OIDC grant mutations check current workload authority under the write lock
 test("OIDC times out a stalled discovery body and reopens key refresh", async () => {
   const armed = Promise.withResolvers<() => void>();
   const reading = Promise.withResolvers<void>();
-  const stalled = Promise.withResolvers<unknown>();
+  const stalled = Promise.withResolvers<void>();
   let firstFetch = true;
+  let now = NOW;
   let cancelled = 0;
   const app = makeApp({
+    resolveHost,
+    now: () => now,
     schedule: (ms, expire) => {
       expect(ms).toBe(5000);
       armed.resolve(expire);
@@ -240,14 +263,14 @@ test("OIDC times out a stalled discovery body and reopens key refresh", async ()
     fetch: async (request) => {
       if (firstFetch) {
         firstFetch = false;
-        const response = new Response();
-        Object.defineProperty(response, "json", {
-          value: () => {
-            reading.resolve();
-            return stalled.promise;
-          },
-        });
-        return response;
+        return new Response(
+          new ReadableStream({
+            pull: () => {
+              reading.resolve();
+              return stalled.promise;
+            },
+          }),
+        );
       }
       return issuerResponse(request.url);
     },
@@ -259,10 +282,11 @@ test("OIDC times out a stalled discovery body and reopens key refresh", async ()
     await reading.promise;
     (await armed.promise)();
     await expectError("stalled discovery deadline", await request, 401, "unauthorized");
+    now += 30_000;
     await expectError("key refresh recovers", await post(instance, credential), 403, "forbidden");
     expect(cancelled).toBe(3);
   } finally {
-    stalled.resolve(null);
+    stalled.resolve();
     await app.close();
   }
 });

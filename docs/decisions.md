@@ -135,7 +135,10 @@ self-host on SQLite.
 - **Decision.** OpenBoard issues opaque credentials: connection secrets
   (`obc_`), claimed agent tokens (`obt_`), personal tokens (`obp_`), session
   cookies. It keeps upstream's zero-secret path for CI (GitHub Actions and any
-  OIDC issuer a grant names, verified locally).
+  OIDC issuer a grant names, verified locally). Grant-named issuers use a
+  shared public-host guard, same-origin discovery and keys, and an
+  organization-wide limit of eight distinct issuers. See [auth.md](auth.md#ci-github-actions-and-other-oidc-issuers)
+  for the outbound request limits and remaining DNS rebinding risk.
 - **Consequence.** A shared secret exists at all, which upstream avoids. We
   contain it: secrets are hashed, prefixed for scanning, scoped by a grant,
   expirable, rotatable, revocable with cascade, and the sandbox path does not

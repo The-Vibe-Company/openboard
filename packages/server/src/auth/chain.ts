@@ -32,7 +32,7 @@ export function verifiers(config: ServerConfig, platform: PlatformView, deps: De
   if (config.mode === "local" && config.localOwnerTokenHash) {
     chain.push(localOwnerVerifier(config.localOwner, config.localOwnerTokenHash));
   }
-  chain.push(oidcVerifier(deps, oidcIssuer), sessionVerifier(platform, now, config.publicUrl));
+  chain.push(oidcVerifier(deps, oidcIssuer, platform), sessionVerifier(platform, now, config.publicUrl));
   return chain;
 }
 

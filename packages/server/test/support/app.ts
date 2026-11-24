@@ -17,7 +17,7 @@ export function unexpectedTimer(): never {
 }
 
 type AppOptions = Pick<ServerConfig, "signup" | "signIn" | "webDir"> &
-  Pick<Deps, "fetch"> & {
+  Pick<Deps, "fetch" | "resolveHost"> & {
     readonly mode?: ServerConfig["mode"];
     readonly publicUrl?: ServerConfig["publicUrl"];
     readonly now?: () => number;
@@ -59,6 +59,7 @@ export function makeApp(options: AppOptions = {}) {
     schedule: options.schedule ?? unexpectedTimer,
     randomBytes: (length) => new Uint8Array(length).fill(++drawn),
     ...(fetch && { fetch }),
+    ...(options.resolveHost && { resolveHost: options.resolveHost }),
   };
   const app = createCluster(config, { store: options.store ?? openStore(now) }, deps);
   return Object.assign(app, { logged });

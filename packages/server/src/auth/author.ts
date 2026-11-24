@@ -9,8 +9,12 @@ import { connectionOf, memberOf, type Principal, profileAvatar, profileName, wor
 export function authorOf(by: Principal): MessageAuthor {
   const connection = by[connectionOf];
   const member = by[memberOf];
+  const workload = by[workloadOf];
   const handle =
-    connection?.name ?? by[workloadOf]?.repository ?? member?.handle ?? by.principal.replace(/^ob:user:/, "");
+    connection?.name ??
+    (workload?.kind === "github" ? workload.repository : undefined) ??
+    member?.handle ??
+    by.principal.replace(/^ob:user:/, "");
   if (by.profile === null) {
     if (member) return { kind: "person", handle, name: member.name, avatar: member.avatar };
     return { kind: connection || by[workloadOf] ? "workflow" : "person", handle, name: handle, avatar: null };
