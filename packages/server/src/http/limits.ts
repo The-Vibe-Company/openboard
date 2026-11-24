@@ -36,9 +36,10 @@ export function requestRateLimits(
   platform: PlatformView,
   { perPrincipal = 20, perOrganization = 500 }: NonNullable<ServerConfig["streamLimits"]> = {},
 ): RateLimits {
-  // Integer units: a write costs 1,000 and a failed authentication costs 3,000.
+  // Integer units: a write costs 1,000, failed authentication 3,000, and refresh 10,000.
   const writes = tokenBuckets(now, 1_000_000, 200, 1_000);
   const failures = tokenBuckets(now, 60_000, 1, 3_000);
+  const refreshes = tokenBuckets(now, 60_000, 1, 10_000);
   type Admission = Awaited<ReturnType<RateLimits["admitAuth"]>>;
   type Waiter = (admission: Admission) => void;
   type Pending = { count: number; waiters: Set<Waiter> };
@@ -81,6 +82,7 @@ export function requestRateLimits(
       };
     },
     takeSignIn: (ip) => platform.takeRate(`sign-in:${ip ?? "unknown"}`, 30, 60_000, now()),
+    takeRefresh: (agent) => refreshes(agent, true),
     takeWrite: (org) => writes(org, true),
     async admitAuth(ip) {
       const active = pending.get(ip) ?? { count: 0, waiters: new Set<Waiter>() };

@@ -429,7 +429,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/x/connections/:id/revoke` | X | Board owner or organization admin. Returns `{ id, revokedAt }`. Unknown or already revoked connections answer 404 `not_found`. |
 | GET | `/x/connections/:id/policy` | X | `{ env, headers, routes }` for mode 3 |
 | POST | `/x/connections/claim` | X | bearer: connection secret |
-| POST | `/x/connections/refresh` | X | bearer: agent token |
+| POST | `/x/connections/refresh` | X | Bearer: agent token. Per-instance token bucket per agent (six per minute, burst six). A limited request answers 429 `rate_limited` with `retry-after` in seconds and leaves the token unchanged. |
 | POST | `/x/connections/:id/agents/:agent/revoke` | X | Board owner or organization admin. Returns `{ id, connection, revokedAt }`; the agent's tokens answer 401 from the next request, its profile is free, and the connection and its other agents keep working. An unknown or already revoked agent, or one of another connection, answers 404 `not_found`. |
 | POST, GET | `/x/webhooks`; GET, POST `/x/webhooks/:id`; POST `/x/webhooks/:id/delete`, `/test` | X | |
 | GET | `/x/webhooks/:id/deliveries`; POST `/x/webhooks/:id/deliveries/:dl/retry` | X | |
