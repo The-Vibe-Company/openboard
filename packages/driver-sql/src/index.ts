@@ -46,6 +46,7 @@ import usageDdl from "../migrations/0044-usage.sql" with { type: "text" };
 import usageIndexesDdl from "../migrations/0045-usage.sql" with { type: "text" };
 import usageDeliveryDdl from "../migrations/0046-usage.sql" with { type: "text" };
 import usagePurgeDdl from "../migrations/0047-usage.sql" with { type: "text" };
+import webhookJobIndexesDdl from "../migrations/0048-webhook-job-indexes.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -143,6 +144,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 45, name: "0045-usage", sql: usageIndexesDdl },
   { version: 46, name: "0046-usage", sql: usageDeliveryDdl },
   { version: 47, name: "0047-usage", sql: usagePurgeDdl },
+  { version: 48, name: "0048-webhook-job-indexes", sql: webhookJobIndexesDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */

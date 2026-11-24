@@ -514,7 +514,7 @@ from the first hosted release, because tenants are strangers.
 | Organization export | NDJSON of every board's events and organization events plus blobs, the same format as log shipping; importable into `ob serve` | Owner can request it (job), download link valid 24 h |
 | Organization deletion | Soft delete (sign-in blocked, data kept 30 days), then a job hard-deletes rows by `org_id` (blobs included) and the bucket prefix; backups age out within their retention | Implemented, since a stranger must be able to leave |
 | Audit | Organization events (`org_events`) and board `ob.*` events, readable by admins | All administrative actions recorded |
-| Webhook abuse | SSRF guard; per-org delivery rate cap; response size caps; dead-letter disables; optional receiver verification handshake later | SSRF guard mandatory with no tenant override; caps on |
+| Webhook abuse | SSRF guard; shared per-organization delivery budget; response size caps; dead-letter disables; optional receiver verification handshake later | SSRF guard mandatory with no tenant override; 600 queued delivery attempts per organization per UTC minute across all boards and instances |
 | Tenant isolation tests | A suite that creates two organizations and runs every route of one with the other's credentials and IDs, expecting 401/404 and no data; plus a static check that every statement in the store references `board_id` or `org_id` | In CI from the first hosted milestone |
 | Operator access | Operator actions on a tenant go through a support role recorded in the tenant's audit | Recorded |
 

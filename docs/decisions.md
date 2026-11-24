@@ -1242,3 +1242,15 @@ are active. An idle server arms no retention timer. Done and skipped
 webhook deliveries age out after seven days and dead deliveries after 30 days.
 A swept history cursor returns an empty page with no older cursor.
 ([Issue #590](https://github.com/The-Vibe-Company/openboard/issues/590))
+
+### D69. Cap queued webhook deliveries per organization (ticket 324)
+
+- **Decision.** An organization has 600 queued delivery attempts per UTC
+  minute, shared by every board and worker. Claiming a delivery job reserves
+  one slot in the same transaction, including retries and queued resends.
+  Postgres shares the counter across replicas, and SQLite uses the same
+  counter locally.
+- **Consequence.** The picker skips capped organizations and continues with
+  other eligible jobs. Pending deliveries keep their state and attempt count
+  and become eligible again at the next minute boundary, subject to their
+  normal due time and lane order.

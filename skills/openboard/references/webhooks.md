@@ -91,6 +91,10 @@ and [inbound rules and verification](https://github.com/The-Vibe-Company/openboa
 Run `ob webhooks test <id>` to send a signed `board.ping` to the receiver and
 see its HTTP status and response time. Each command makes one attempt.
 
+Each organization can dispatch 600 queued webhook delivery attempts per UTC
+minute across all boards and instances. Retries and queued resends share
+this budget. Excess deliveries stay pending until the next minute.
+
 A subscription pauses on HTTP 410 or after its 101st dead event delivery in
 24 hours. `ob webhooks show <id>` reports `disabled: gone` or
 `disabled: dead_deliveries`, respectively. Test pings never count toward the
