@@ -2,7 +2,7 @@
 
 Legend.
 - One line per ticket: `NN  title   ← deps`. Numbers run across the whole project in construction order; a ticket depends only on lower numbers.
-- Ticket files exist for M0-M6 (`.veebee/tickets/NN-slug.md`); from M7 on, these lines are the plan and files are written when the milestone before is nearly done.
+- Ticket files exist for M0-M8 (`.veebee/tickets/NN-slug.md`); from M9 on, these lines are the plan and files are written when the milestone before is nearly done.
 - `[c]` marks a line that claims upstream conformance checks, `[s]` one that records `expectedSkips`; every one of the 91 checks is placed exactly once.
 - `writes` exclude generated files and the shared append points of `docs/project.md` section 5; tickets touching `contract`, `ports` or migrations are also serialized at claim time.
 
@@ -224,52 +224,52 @@ Legend.
 
 193  Release to production after staging is healthy   ← 191
 194  Publish binaries with each release   ← 193
-195  Gate sign-up with OPENBOARD_SIGNUP   ← 169
-196  Refuse a resource past its organization's count quota   ← 170
-197  Refuse a write past the organization's stored bytes   ← 196
-198  Refuse events past a board's daily cap   ← 196
-199  Rate-limit writes per organization   ← 181
+195  Gate sign-up with OPENBOARD_SIGNUP   ← 169, 177, 182
+196  Refuse a resource past its organization's count quota   ← 170, 195
+197  Refuse a write past the organization's stored bytes   ← 185, 196
+198  Refuse events past a board's daily cap   ← 197
+199  Rate-limit writes per organization   ← 181, 184, 188, 196
 200  Rate-limit failed authentication per IP   ← 199
 201  Rate-limit claims per connection across instances   ← 199
-202  Rate-limit token refreshes per agent   ← 199
-203  Rate-limit organization creation per person or IP   ← 199
-204  Rate-limit invitations per organization   ← 199
-205  Rate-limit sign-in attempts per IP   ← 199
-206  Cap open streams per principal or organization   ← 199
-207  Soft-delete an organization   ← 170
+202  Rate-limit token refreshes per agent   ← 201
+203  Rate-limit organization creation per person or IP   ← 201
+204  Rate-limit invitations per organization   ← 201
+205  Rate-limit sign-in attempts per IP   ← 195, 199
+206  Cap open streams per principal or organization   ← 102, 183, 199
+207  Soft-delete an organization   ← 155, 170, 203
 208  Hard-delete an organization 30 days after its deletion   ← 181, 207
-209  Soft-delete a board   ← 207
-210  Ship each organization's log to the bucket every 10 seconds   ← 181
-211  Take a daily pg_dump   ← 181
-212  Snapshot a local board with VACUUM INTO on schedule   ← 39
-213  Pass the local score from a self-host container on one volume   ← 188, 192, 212
-214  Record operator access in the tenant's audit   ← 161
+209  Soft-delete a board   ← 208
+210  Ship each organization's log to the bucket every 10 seconds   ← 199, 208
+211  Take a daily pg_dump   ← 210
+212  Snapshot a local board with VACUUM INTO on schedule   ← 39, 184
+213  Pass the local score from a self-host container on one volume   ← 188, 192, 199, 211, 212
+214  Record operator access in the tenant's audit   ← 161, 196, 209, 210
 215  Serve a board on production   ← 193, 195, 196, 199, 208
 
 ## M8 Front (22)
 
-216  Serve the front from the binary outside /api   ← 187
+216  Serve the front from the binary outside /api   ← 187, 199
 217  Serve the front with strict security headers   ← 216
 218  Sign in from /signin   ← 216
 219  Create my organization on /new after signing up   ← 218
-220  Join an organization from an invitation link   ← 218
+220  Join an organization from an invitation link   ← 195, 218
 221  Approve a terminal sign-in on /device   ← 218
 222  See a board's channels with their latest threads   ← 216
 223  See how to post in an empty channel   ← 222
 224  Open a thread   ← 222
 225  Render message Markdown safely   ← 224
 226  Show generic avatars at /avatars/:name   ← 216
-227  See a new message arrive live   ← 224
+227  See a new message arrive live   ← 102, 224
 228  Post a new thread from the page   ← 222
-229  Reply from the page   ← 224
-230  Scroll a long channel smoothly   ← 222
+229  Reply from the page   ← 224, 228
+230  Scroll a long channel smoothly   ← 223
 231  Show the page as reconnecting during a deploy   ← 227
 232  Invite a member from organization settings   ← 220
 233  Create a board from organization settings   ← 216
 234  Create a connection from board settings   ← 216
 235  Revoke a connection from board settings   ← 234
 236  Revoke my sessions on /account   ← 218
-237  Run the onboarding journeys in Playwright on both modes   ← 219, 220, 227, 228, 234
+237  Run the onboarding journeys in Playwright on both modes   ← 192, 219, 220, 227, 228, 234
 
 ## M9 Tasks (38)
 
@@ -485,6 +485,15 @@ Legend.
     - immutable slugs;
     - sync in v1.
 11. **Dogfooding.** Phase A (organization `tvc` on production, from M7) is setup work, not a code ticket. Phase B is 275 (`scripts/tickets/sync-board.ts`).
+12. **M7 and M8 choices the docs leave open** (written into their tickets as proposals):
+    - how a local-mode container listens (213): proposed `OPENBOARD_HOST`, set to `0.0.0.0` by the image;
+    - the first operator action and its command (214): proposed `openboard admin quota <org> <key>=<n> --reason …`, recorded as `ob.operator.*` organization events;
+    - which forwarding header carries the client IP behind Railway's edge (199), to check on staging;
+    - the set of generic avatar names (226);
+    - how many local snapshots to keep (212): proposed eight;
+    - deleting the board `main` (209): proposed refused, `main` goes only with its organization;
+    - how an invite-only instance gets its first person (215): proposed one sign-up while `OPENBOARD_SIGNUP=open`.
+13. **M3 is not upstream of M5-M8.** No dependency path leads from the live-tail tickets (94-108) to M5 onward, although 177, 183, 206, 227 and 231 build on SSE. 206 and 227 now depend on 102; 177 and 183 were left as written.
 
 ### Contradictions between docs (decisions.md followed where it speaks)
 
@@ -496,3 +505,4 @@ Legend.
 - **Default sign-up mode.** `docs/auth.md` says hosted defaults to `open`. Q6 recommends `invite`, and `docs/project.md` M7 ships behind `OPENBOARD_SIGNUP=invite`.
 - **Local owner principal.** `docs/auth.md` gives it as `ob:user:local-<os user>`, while `users.public_id` is `u_<base32>` (`docs/data-model.md`).
 - **Numbering.** `docs/codebase.md` 3.3 numbers its points 1, 2, 3, 5, 4.
+- **Rate limits in hosted mode.** `docs/codebase.md` 4.5 says the hosted implementation is "never an in-memory counter". `docs/auth.md` "Rate limits" and `docs/architecture.md` "SaaS seams" keep per-instance token buckets for hot paths and Postgres counters only for the limits marked †. The cut follows the latter (199, 201).
