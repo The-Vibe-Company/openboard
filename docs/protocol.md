@@ -1012,7 +1012,9 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   body's `id` field for a scheme without one (such as Stripe). A missing ID
   answers 400 `invalid_request` when a signature is supplied. The endpoint
   saves its first successful result or `422 thread_not_found` result. A verified
-  duplicate on the same endpoint returns that result without writing again.
+  duplicate on the same endpoint returns that result without writing again while
+  the record is retained. Job activity can sweep records older than seven days.
+  A verified delivery whose record was swept is processed as new.
 - **Rules** evaluate all `when` conditions against the JSON body and request headers. Each
   condition matches one value or any value in its list. Matching rules and
   their actions run in order. A reply renders its text with `body` and the
@@ -1029,7 +1031,8 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   as the message API. Successful results include `{ "label": "<root id>" }`
   or `{ "react": "<root id>" }` in action order.
 - **Effects** run in one board transaction together with the dedupe insert, so
-  they happen at most once per endpoint and delivery ID, including across instances.
+  they happen at most once per endpoint and delivery ID while its dedupe record
+  is retained, including across instances.
 - **Principal** `ob:hook:ib_…` with its own grant (created under grant-change
   rules).
 - **Actions** (closed list): `reply`, `label`, `react`, `task.block`,
