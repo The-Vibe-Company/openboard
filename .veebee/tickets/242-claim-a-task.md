@@ -27,11 +27,30 @@ writes:
   - packages/cli/test/claims.test.ts
   - packages/cli/src/commands/tasks.ts
   - packages/cli/test/tasks.test.ts
+  - docs/protocol.md
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/src/commands/index.ts
+  - packages/cli/src/commands/tasks/claim.ts
+  - packages/cli/src/main.ts
+  - packages/cli/src/output.ts
+  - packages/contract/src/entities/events.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/tasks/claim.ts
+  - packages/contract/src/operations/tasks/create.ts
+  - packages/core/src/index.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/server/openapi.json
+  - packages/server/src/auth/access.ts
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/tasks/claim.ts
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
 conformance: ["tasks/starts a thread as a task, or makes one of a thread that was there: it reads as its thread, and board.task finds it"]
 modes: [local, hosted]
 depends_on: [241]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 415
 ---
 
@@ -39,9 +58,9 @@ issue: 415
 As an agent, I take a ready task for a lease with `ob tasks claim 2`, so no one else works on it meanwhile.
 
 ## Done when
-- [ ] `ob tasks claim 2` prints `#2  yours for 15m  fix the build`; `ob read 2 --json` shows `state: "claimed"`, `epoch: 1`, `claim: { actor, until }` and `board.task` `claimed`; the claim's token appears in no answer but the claim's own, and the CLI keeps it in `~/.config/openboard/claims.json` (mode 0600), never printing it (`--json` prints `{ task, claim: { epoch, until } }`)
-- [ ] a second `ob tasks claim 2` prints `error: task_claimed: …`; `ob tasks claim 3` on a thread that is no task prints `error: not_a_task: …`; `ob tasks create dev "x" --claim` makes and claims a task in one write
-- [ ] `bun test packages/server/test/tasks/claim.test.ts` passes: of three claims racing for one task (on two instances with `OPENBOARD_TEST_DRIVER=postgres`), one lands and two get 409 `task_claimed`; and `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `tasks/starts a thread as a task, or makes one of a thread that was there: it reads as its thread, and board.task finds it`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
+- [x] `ob tasks claim 2` prints `#2  yours for 15m  fix the build`; `ob read 2 --json` shows `state: "claimed"`, `epoch: 1`, `claim: { actor, until }` and `board.task` `claimed`; the claim's token appears in no answer but the claim's own, and the CLI keeps it in `~/.config/openboard/claims.json` (mode 0600), never printing it (`--json` prints `{ task, claim: { epoch, until } }`)
+- [x] a second `ob tasks claim 2` prints `error: task_claimed: …`; `ob tasks claim 3` on a thread that is no task prints `error: not_a_task: …`; `ob tasks create dev "x" --claim` makes and claims a task in one write
+- [x] `bun test packages/server/test/tasks/claim.test.ts` passes: of three claims racing for one task (on two instances with `OPENBOARD_TEST_DRIVER=postgres`), one lands and two get 409 `task_claimed`; and `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `tasks/starts a thread as a task, or makes one of a thread that was there: it reads as its thread, and board.task finds it`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
 
 ## Out of scope
 - Completing (243), renewing (244), expiry (245), releasing (247), failing (248), fencing every claim write (249).

@@ -22,7 +22,8 @@ const NEWEST_LOOKBACK = 2000;
 const FORWARD_LIMIT = 200;
 
 const feedTypes: Fragment = {
-  fragment: () => "('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created')",
+  fragment: () =>
+    "('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed')",
 };
 
 /** Bookkeeping: events that concern no message, served only with `all` (docs/data-model.md, `visibility` 1). */
@@ -39,19 +40,19 @@ function eventPage(newest: boolean) {
   const start: Fragment = { fragment: () => (newest ? `b.head - ${NEWEST_LOOKBACK}` : "b.head") };
   return sql`SELECT b.head, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal,
     e.visibility, e.payload,
-    CASE WHEN ${"history"} = 1 AND e.visibility = 0 AND e.type IN ('message.edited', 'message.deleted', 'labels.changed', 'task.created') THEN (
+    CASE WHEN ${"history"} = 1 AND e.visibility = 0 AND e.type IN ('message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed') THEN (
       SELECT p.payload FROM events p
       WHERE p.org_id = ${"orgId"} AND p.board_id = ${"boardId"} AND p.thread = e.thread
         AND p.message = e.message AND p.id < e.id AND p.visibility = 0
-        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created')
+        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed')
       ORDER BY p.id DESC LIMIT 1
     ) END AS previous,
     CASE WHEN ${"rootLabels"} = 1 AND e.message <> e.thread AND e.visibility = 0
-      AND e.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created') THEN (
+      AND e.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed') THEN (
       SELECT p.payload FROM events p
       WHERE p.org_id = ${"orgId"} AND p.board_id = ${"boardId"} AND p.thread = e.thread
         AND p.message = e.thread AND p.id < e.id AND p.visibility = 0
-        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created')
+        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed')
       ORDER BY p.id DESC LIMIT 1
     ) END AS root${projectedView}
     FROM boards b LEFT JOIN events e ON e.org_id = b.org_id AND e.board_id = b.id
@@ -86,7 +87,18 @@ function messageEvent(row: Row): FeedEvent {
     visibility: 0 as const,
   };
   const payload = JSON.parse(String(row.payload)) as unknown;
-  if (row.type === "task.created") return { ...common, type: "task.created", payload: payload as TaskEvent["payload"] };
+  if (row.type === "task.created")
+    return {
+      ...common,
+      type: "task.created",
+      payload: payload as Extract<TaskEvent, { type: "task.created" }>["payload"],
+    };
+  if (row.type === "task.claimed")
+    return {
+      ...common,
+      type: "task.claimed",
+      payload: payload as Extract<TaskEvent, { type: "task.claimed" }>["payload"],
+    };
   if (row.type === "labels.changed")
     return { ...common, type: "labels.changed", payload: payload as LabelsChanged["payload"] };
   if (row.type === "message.deleted")
@@ -154,7 +166,8 @@ function feedEvent(
       entry.type !== "message.edited" &&
       entry.type !== "message.deleted" &&
       entry.type !== "labels.changed" &&
-      entry.type !== "task.created") ||
+      entry.type !== "task.created" &&
+      entry.type !== "task.claimed") ||
     !matchesEventChannel(String(entry.channel), filters.channel)
   )
     return [];

@@ -59,6 +59,7 @@ import {
   pushInbox,
   recordSyncReceipt,
 } from "./sync/records.ts";
+import { claimTask } from "./tasks/claim.ts";
 import { createTask } from "./tasks/create.ts";
 import { listTasks } from "./tasks/list.ts";
 import { listThreads, readThread } from "./threads.ts";
@@ -71,6 +72,7 @@ export const operations = [
   attachSync,
   changeMemberRole,
   claimConnection,
+  claimTask,
   createBoard,
   createChannel,
   createConnection,
@@ -139,6 +141,7 @@ export {
   attachSync,
   changeMemberRole,
   claimConnection,
+  claimTask,
   createBoard,
   createChannel,
   createConnection,

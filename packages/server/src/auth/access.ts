@@ -8,9 +8,9 @@ type Access = { readonly permission: Permission; readonly channel: NonNullable<O
 
 /** A write that sets labels, a post or a task with `labels`, also needs `label` where it lands (upstream `03-http.md` "Access"). */
 function permissionsFor(permission: Permission, input: unknown): Permission[] {
-  const labels = (input as { labels?: unknown }).labels;
+  const { labels, claim } = input as { labels?: unknown; claim?: unknown };
   const labelled = typeof labels === "object" && labels !== null && Object.keys(labels).length > 0;
-  return labelled && permission !== "label" ? [permission, "label"] : [permission];
+  return (labelled || claim === true) && permission !== "label" ? [permission, "label"] : [permission];
 }
 
 const EVERY = "on every channel";

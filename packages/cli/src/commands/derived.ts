@@ -1,6 +1,7 @@
 import { type CliSpec, operations } from "@openboard/contract";
 import { formats } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
+import { runTaskCommand } from "./tasks/claim.ts";
 
 type Contracted = (typeof operations)[number];
 type Invoke = (input: Readonly<Record<string, unknown>>) => Promise<unknown>;
@@ -163,6 +164,12 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
     async run(ctx) {
       const input = inputOf(ctx, args, fields, flags, nullEntries, alternative);
+      if (operation.name === "claimTask" || operation.name === "createTask") {
+        const invoke = ctx.client[operation.name] as (
+          ...args: Parameters<Invoke>
+        ) => ReturnType<Parameters<typeof runTaskCommand>[2]>;
+        return runTaskCommand(ctx, operation.name === "claimTask" || input.claim === true, () => invoke(input));
+      }
       const answer = await (ctx.client[operation.name] as Invoke)(input);
       const format = formats[operation.name];
       ctx.output.out(ctx.json || !format ? JSON.stringify(answer, null, 2) : format(answer, input));

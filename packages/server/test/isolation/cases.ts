@@ -23,6 +23,7 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
       can: { dev: ["read"] },
     },
   }),
+  claimTask: () => ({ body: {} }),
   createTask: (tenant) => ({ body: { channel: "dev", text: `${tenant.marker} task` } }),
   postMessage: (tenant) => ({ body: { re: tenant.ids.message, text: `${tenant.marker} reply` } }),
   editMessage: (tenant) => ({ body: { text: `${tenant.marker} edit` } }),
