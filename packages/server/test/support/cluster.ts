@@ -1,4 +1,4 @@
-import type { Store } from "@openboard/ports";
+import type { Jobs, Store } from "@openboard/ports";
 import { type App, createApp, type Deps, type ServerConfig } from "../../src/index.ts";
 import type { TestStore } from "./drivers.ts";
 
@@ -40,6 +40,12 @@ export function cluster(store: TestStore, build: (store: Store) => App): Cluster
 }
 
 /** `createApp(config, ports, deps)` as a `cluster` on `ports.store`: every instance has the same config and deps. */
-export function createCluster(config: ServerConfig, ports: { readonly store: TestStore }, deps: Deps): Cluster {
-  return cluster(ports.store, (store) => createApp(config, { store, jobs: store.jobs }, deps));
+export function createCluster(
+  config: ServerConfig,
+  ports: { readonly store: TestStore; readonly watchJobs?: Jobs["watch"] | undefined },
+  deps: Deps,
+): Cluster {
+  return cluster(ports.store, (store) =>
+    createApp(config, { store, jobs: { ...store.jobs, watch: ports.watchJobs ?? (() => () => {}) } }, deps),
+  );
 }

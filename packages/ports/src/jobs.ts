@@ -1,5 +1,6 @@
 import type { BoardKeys } from "./store.ts";
 
+export const TASK_EXPIRY_JOB = "task-expiry";
 export const BACKFILL_BOARD_ORG_JOB = "backfill-board-org";
 export const PURGE_ORG_JOB = "purge-org";
 

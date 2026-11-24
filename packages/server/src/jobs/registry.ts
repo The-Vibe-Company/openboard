@@ -1,6 +1,16 @@
-import type { BoardWriter, Bucket, Job, JobLease, JobPayload, Jobs, OrgView } from "@openboard/ports";
+import {
+  type BoardWriter,
+  type Bucket,
+  type Job,
+  type JobLease,
+  type JobPayload,
+  type Jobs,
+  type OrgView,
+  TASK_EXPIRY_JOB,
+} from "@openboard/ports";
 import type { Deps } from "../deps.ts";
 import type { Tenants } from "../http/scope.ts";
+import { taskExpiryJob } from "./task-expiry.ts";
 
 export interface OrgJobHandler {
   run(org: OrgView, job: Job, lease: JobLease, now: number, bucket?: Bucket): Promise<boolean>;
@@ -9,7 +19,18 @@ export interface OrgJobHandler {
 export type JobHandlers = Readonly<Record<string, JobHandler | OrgJobHandler>>;
 
 /** A job effect runs under the board lock, in the same transaction that consumes its lease. */
-export type JobHandler = (writer: BoardWriter, payload: JobPayload) => Promise<void>;
+export type JobHandler = (writer: BoardWriter, payload: JobPayload, now: number) => Promise<void>;
+
+export function startBoardJobs(
+  jobs: Jobs,
+  tenants: Tenants,
+  deps: Deps,
+  instance: string | undefined,
+  handlers: JobHandlers,
+  bucket?: Bucket,
+) {
+  return startJobs(jobs, tenants, deps, instance, { ...handlers, [TASK_EXPIRY_JOB]: taskExpiryJob }, bucket);
+}
 
 export function startJobs(
   jobs: Jobs,
@@ -22,17 +43,16 @@ export function startJobs(
   const registry = new Map(Object.entries(handlers));
   if (registry.size === 0) return async () => {};
   // A configured instance label may be reused by a replacement while the old runner is draining.
-  const leaseOwner = deps.requestId();
-  const instanceId = instance ?? leaseOwner;
+  let leaseOwner: string | undefined;
   const kinds = [...registry.keys()];
   let stopped = false;
   let pending = false;
   let active: Promise<number | null> | undefined;
   let currentJob: string | undefined;
 
-  async function run() {
+  async function run(owner: string, instanceId: string) {
     while (!stopped) {
-      const lease = { instanceId: leaseOwner, claimedAt: deps.now() };
+      const lease = { instanceId: owner, claimedAt: deps.now() };
       const claim = await jobs.claim(kinds, lease);
       if (stopped) return null;
       if (!claim.job) return claim.nextDue;
@@ -52,14 +72,14 @@ export function startJobs(
     }
     return null;
   }
-
-  async function drain() {
+  async function drain(owner: string) {
+    const instanceId = instance ?? owner;
     try {
       let nextDue: number | null;
       do {
         pending = false;
         try {
-          nextDue = await run();
+          nextDue = await run(owner, instanceId);
         } catch {
           deps.log.error("job claim failed", { instanceId });
           nextDue = deps.now() + 1_000;
@@ -71,22 +91,25 @@ export function startJobs(
       active = undefined;
     }
   }
-
   const stop = jobs.watch(kinds, deps.schedule, async () => {
     if (stopped) return null;
     pending = true;
-    active ??= drain();
+    leaseOwner ??= deps.requestId();
+    active ??= drain(leaseOwner);
     return active;
   });
   return async (release = false) => {
     stopped = true;
     stop();
     const running = active;
+    const owner = leaseOwner;
+    if (owner === undefined) return;
+    const instanceId = instance ?? owner;
     // An unfinished job must keep its lease. Return any others even if the current job hits the shutdown cap.
-    if (release) await releaseLeases(jobs, deps, leaseOwner, instanceId, currentJob);
+    if (release) await releaseLeases(jobs, deps, owner, instanceId, currentJob);
     await running;
     // A claim might have finished during shutdown, or the current effect might have rolled back.
-    if (release && running) await releaseLeases(jobs, deps, leaseOwner, instanceId);
+    if (release && running) await releaseLeases(jobs, deps, owner, instanceId);
   };
 }
 
@@ -100,9 +123,10 @@ function runEffect(
 ): Promise<boolean> {
   if (typeof handler !== "function") return handler.run(tenants.jobOrg(job), job, lease, now(), bucket);
   return tenants.jobBoard(job).write(async (writer) => {
-    const payload = await writer.takeJob(job.id, lease, now());
+    const takenAt = now();
+    const payload = await writer.takeJob(job.id, lease, takenAt);
     if (payload === null) return false;
-    await handler(writer, payload);
+    await handler(writer, payload, Math.max(takenAt, lease.claimedAt));
     return true;
   });
 }

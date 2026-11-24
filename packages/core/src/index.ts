@@ -42,7 +42,8 @@ import type { TaskEvent } from "./tasks/events.ts";
 
 export { decideClaimTask } from "./tasks/claim.ts";
 export { decideCreateTask, decideMakeTask, type MakeTaskState, replayTask } from "./tasks/create.ts";
-export type { TaskClaimed, TaskCreated, TaskEvent } from "./tasks/events.ts";
+export type { TaskClaimed, TaskCreated, TaskEvent, TaskExpired } from "./tasks/events.ts";
+export { effectiveTask, expireTask } from "./tasks/expire.ts";
 export { OPEN_TASK_STATES, taskCursor, taskStates } from "./tasks/filters.ts";
 export { decideRenewTask } from "./tasks/renew.ts";
 export { decideCompleteTask } from "./tasks/settle.ts";
@@ -70,6 +71,7 @@ export type BoardEvent =
   | WatchersRegistered
   | WatchFailed;
 
+export { matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";
 export { channelInputError, correctedChannel, InvalidGrantPattern } from "./channels/path.ts";
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail } from "./events/tail.ts";
 export { formatId, isoTime, parseId } from "./ids.ts";
@@ -135,4 +137,3 @@ export {
   type WatchFailed,
 } from "./watchers/ack.ts";
 export { validateWatchers, type WatchersRegistered } from "./watchers/register.ts";
-export { matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";

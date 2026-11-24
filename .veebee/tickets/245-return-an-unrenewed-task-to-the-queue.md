@@ -21,11 +21,41 @@ writes:
   - packages/server/src/operations/task-claims.ts
   - packages/server/src/operations/tasks.ts
   - packages/server/test/tasks/expiry.test.ts
+  - docs/architecture.md
+  - docs/codebase.md
+  - docs/data-model.md
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/contract/src/entities/events.ts
+  - packages/contract/src/operations/tasks/claim.ts
+  - packages/core/src/events/tail.ts
+  - packages/core/src/index.ts
+  - packages/driver-sql/migrations/0028-job-key.sql
+  - packages/driver-sql/migrations/0029-job-key-index.sql
+  - packages/driver-sql/migrations/0030-task-expiry-jobs.sql
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/jobs/index.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/driver-sql/src/views/tasks/list.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/driver-sql/src/views/watchers/index.ts
+  - packages/driver-sqlite/src/ddl.ts
+  - packages/ports/src/index.ts
+  - packages/ports/src/jobs.ts
+  - packages/server/openapi.json
+  - packages/server/src/app.ts
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/threads.ts
+  - packages/server/test/support/app.ts
+  - packages/server/test/support/cluster.ts
+  - packages/server/test/watchers/matches.test.ts
+  - skills/openboard/SKILL.md
 conformance: []
 modes: [local, hosted]
 depends_on: [244, 211, 410]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 418
 ---
 
@@ -33,7 +63,7 @@ issue: 418
 As a team running agents, a task whose agent died without renewing becomes ready again for the next agent, with no one stepping in.
 
 ## Done when
-- [ ] `bun test packages/server/test/tasks/expiry.test.ts` passes with a fake clock: once `claim.until` passes, `GET /tasks?state=ready` lists the task and its thread reads `ready` before any write; the next claim appends `task.expired` then `task.claimed` with `epoch` 2; the expiry job (run by calling the runner) appends one `task.expired` and sets `board.task` back to `ready`; and the expired claim's complete answers 409 `claim_lost` and changes nothing
+- [x] `bun test packages/server/test/tasks/expiry.test.ts` passes with a fake clock: once `claim.until` passes, `GET /tasks?state=ready` lists the task and its thread reads `ready` before any write; the next claim appends `task.expired` then `task.claimed` with `epoch` 2; the expiry job (run by calling the runner) appends one `task.expired` and sets `board.task` back to `ready`; and the expired claim's complete answers 409 `claim_lost` and changes nothing
 
 ## Out of scope
 - The same across two instances (246).

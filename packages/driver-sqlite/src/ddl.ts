@@ -3,18 +3,31 @@ import { splitStatements } from "@openboard/driver-sql";
 /**
  * Renders a migration written for Postgres to SQLite, by the mechanical differences of docs/data-model.md "DDL":
  * integer types become `INTEGER`, `BYTEA` becomes `BLOB`, identity keys become `INTEGER PRIMARY KEY`, tables are
- * `STRICT` and, with a composite key, `WITHOUT ROWID`. Postgres functions, triggers, extensions and trigram indexes
+ * `STRICT` and, with a composite key, `WITHOUT ROWID`. Postgres notification functions and triggers, extensions and trigram indexes
  * are omitted, and `CONCURRENTLY` is stripped.
  */
 export function renderDdl(postgres: string): string {
-  return splitStatements(postgres)
+  const statements = splitStatements(postgres);
+  return statements
     .filter(
       (statement) =>
-        !/^CREATE (?:EXTENSION|FUNCTION|TRIGGER)\b/i.test(statement) && !/\bUSING\s+gin\b/i.test(statement),
+        (/^CREATE TRIGGER sync_task_expiry_job\b/i.test(statement) ||
+          !/^CREATE (?:EXTENSION|FUNCTION|TRIGGER)\b/i.test(statement)) &&
+        !/\bUSING\s+gin\b/i.test(statement),
     )
-    .map(renderStatement)
+    .map((statement) => renderTaskExpiryTrigger(statement, statements) ?? renderStatement(statement))
     .map((statement) => `${statement};`)
     .join("\n");
+}
+
+// The task expiry trigger uses shared SQL; SQLite inlines the function's DML.
+function renderTaskExpiryTrigger(statement: string, statements: readonly string[]): string | undefined {
+  const call = "EXECUTE FUNCTION sync_task_expiry_job()";
+  if (!statement.endsWith(call)) return undefined;
+  const definition = statements.find((candidate) => candidate.startsWith("CREATE FUNCTION sync_task_expiry_job()"));
+  const body = /\bBEGIN\s+([\s\S]+?)\s+RETURN NEW;/.exec(definition ?? "")?.[1];
+  if (!body) throw new Error("cannot render the task expiry trigger");
+  return statement.replace(call, `BEGIN ${body} END`);
 }
 
 // Postgres can delete from a simple view directly. SQLite needs the declared base-row key.

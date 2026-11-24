@@ -214,6 +214,7 @@ test:
 | `CREATE EXTENSION pg_trgm` and the trigram index | omitted (SQLite searches with `LIKE`, see [Search](#search)) |
 | `CREATE INDEX CONCURRENTLY` in migrations | `CREATE INDEX` |
 | Stored functions and triggers for job wake-up notifications | omitted (the SQLite driver wakes jobs in-process) |
+| Task lease queue trigger | SQLite trigger with the same statements inlined |
 
 Example of the mapping, `messages` on SQLite:
 `CREATE TABLE messages (org_id INTEGER NOT NULL, board_id INTEGER NOT NULL, id INTEGER NOT NULL, …, PRIMARY KEY (board_id, id)) STRICT, WITHOUT ROWID;`

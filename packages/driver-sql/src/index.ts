@@ -26,6 +26,9 @@ import orgOnBoardRowsDdl from "../migrations/0024-org-on-board-rows.sql" with { 
 import oidcKeysDdl from "../migrations/0025-oidc-keys.sql" with { type: "text" };
 import jobNotificationsDdl from "../migrations/0026-job-notifications.sql" with { type: "text" };
 import purgeTombstoneNotificationsDdl from "../migrations/0027-purge-tombstone-notifications.sql" with { type: "text" };
+import jobKeyDdl from "../migrations/0028-job-key.sql" with { type: "text" };
+import jobKeyIndexDdl from "../migrations/0029-job-key-index.sql" with { type: "text" };
+import taskExpiryJobsDdl from "../migrations/0030-task-expiry-jobs.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -98,6 +101,9 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 25, name: "0025-oidc-keys", sql: oidcKeysDdl },
   { version: 26, name: "0026-job-notifications", sql: jobNotificationsDdl },
   { version: 27, name: "0027-purge-tombstone-notifications", sql: purgeTombstoneNotificationsDdl },
+  { version: 28, name: "0028-job-key", sql: jobKeyDdl },
+  { version: 29, name: "0029-job-key-index", sql: jobKeyIndexDdl },
+  { version: 30, name: "0030-task-expiry-jobs", sql: taskExpiryJobsDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -148,7 +154,7 @@ export function createViews(
       ...threadReads(db, dialect, scope),
       ...watcherReads(db, dialect, scope),
       ...schemaReads(db, dialect, scope),
-      ...taskListReads(db, dialect, scope),
+      ...taskListReads(db, dialect, scope, jobs.now),
       ...channelReads(db, dialect, scope),
       ...connectionReads(db, dialect, scope),
       ...eventReads(db, dialect, scope),

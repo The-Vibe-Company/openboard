@@ -32,7 +32,7 @@ import { type JobWrites, jobWriter } from "./jobs/index.ts";
 import { messageStatements } from "./messages/statements.ts";
 import { orgReads } from "./orgs.ts";
 import { foldSchemaRegistered, schemaWriter } from "./schemas/registry.ts";
-import { foldTaskEvent } from "./tasks/task-folds.ts";
+import { foldTaskEvent, notifyTaskExpiry } from "./tasks/task-folds.ts";
 import { taskReads, taskWriter } from "./tasks/tasks.ts";
 import { foldWatchersRegistered, matchWatchers, watcherWriter } from "./watchers/index.ts";
 
@@ -157,7 +157,6 @@ function contentBytes(message: Pick<Message, "text" | "blocks"> | null): number 
   const utf8 = new TextEncoder();
   return utf8.encode(message.text).length + utf8.encode(JSON.stringify(message.blocks)).length;
 }
-
 function messageStorage(
   tx: Db,
   dialect: Dialect,
@@ -354,6 +353,7 @@ export function boardView(
           return { result, page };
         });
         if (enqueued) for (const [kind, dueAt] of enqueued) jobs.committed(kind, dueAt);
+        notifyTaskExpiry(page?.events ?? [], jobs.committed);
         if (page !== undefined) broadcaster.publish(scope, page);
         return result;
       } finally {

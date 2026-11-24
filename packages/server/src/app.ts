@@ -11,7 +11,7 @@ import { tenants } from "./http/scope.ts";
 import { staticFiles } from "./http/static.ts";
 import { startBoardOrgBackfill } from "./jobs/board-org-startup.ts";
 import { startDumpJob } from "./jobs/dump.ts";
-import { type JobHandlers, startJobs } from "./jobs/registry.ts";
+import { type JobHandlers, startBoardJobs, startJobs } from "./jobs/registry.ts";
 import { logShippingJobs } from "./jobs/ship-log.ts";
 
 export const DRAIN_TIMEOUT_MS = 10_000;
@@ -53,7 +53,7 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
   };
   const bucket = config.mode === "hosted" ? ports.bucket : undefined;
   if (config.mode === "hosted" && !bucket) deps.log.info("log shipping is off", {});
-  const stopJobs = startJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, handlers, bucket);
+  const stopJobs = startBoardJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, handlers, bucket);
   const stopDump = startDumpJob(ports.store.dumpIfMissing, bucket, deps);
   // Large bucket purges can outlive a lease. Give shipping its own runner so purges cannot occupy every poller.
   const stopShipping =

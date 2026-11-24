@@ -28,12 +28,20 @@ const kindSet: Fragment = {
   fragment: (dialect) => `SELECT value FROM input CROSS JOIN ${kinds.fragment(dialect)} AS job_kind`,
 };
 
+// A tombstone cannot run board writes. Skip its expiry jobs in both dispatch and the next timer.
+const activeExpiryBoard: Fragment = {
+  fragment: () => `(jobs.kind <> 'task-expiry' OR EXISTS (
+  SELECT 1 FROM boards b JOIN orgs o ON o.id = b.org_id
+  WHERE b.id = jobs.board_id AND b.org_id = jobs.org_id AND b.deleted_at IS NULL AND o.deleted_at IS NULL
+))`,
+};
+
 export const jobPlatformStatements = {
   // Dispatch runs before a board is known. These statements expose no payload or other board content.
   claimJob: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds)
     UPDATE jobs SET available_at = ${"until"}, instance_id = ${"instanceId"}
     WHERE id = (
-      SELECT id FROM jobs WHERE kind IN (${kindSet}) AND available_at <= ${"now"}
+      SELECT id FROM jobs WHERE kind IN (${kindSet}) AND available_at <= ${"now"} AND ${activeExpiryBoard}
       ORDER BY available_at, id LIMIT 1${skipLocked}
     )
     RETURNING CAST(id AS TEXT) AS id, kind, org_id, board_id`,
@@ -43,7 +51,7 @@ export const jobPlatformStatements = {
     RETURNING kind`,
   nextJob: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds)
     SELECT MIN(due) AS due FROM (
-      SELECT MIN(available_at) AS due FROM jobs WHERE kind IN (${kindSet})
+      SELECT MIN(available_at) AS due FROM jobs WHERE kind IN (${kindSet}) AND ${activeExpiryBoard}
       UNION ALL
       SELECT MIN(o.deleted_at) + ${"retention"} AS due FROM orgs o WHERE ${"includeLegacy"} = 1 AND ${unqueued}
     ) AS due_jobs`,

@@ -1066,3 +1066,16 @@ Parked event reads wake on deletion and reauthorize against the tombstone.
 - **Consequence.** The local container accepts requests on the published port
   and uses the same authentication as a loopback deployment. Its owner
   credential is stored on the data volume.
+
+
+### D66. Task expiry jobs during a rolling deploy
+
+- **Status:** accepted (orchestrator, [issue #418](https://github.com/The-Vibe-Company/openboard/issues/418)).
+- **Decision.** The task expiry handler and producer ship together. A runner
+  leases only its registered job kinds, so an older replica leaves expiry
+  jobs for an upgraded replica. Read-time expiry and reclaim continue to
+  apply on upgraded replicas while delivery is pending.
+- **Consequence.** Older feed replicas skip `task.expired` during rollout.
+  The writer leaves expiry out of the persisted watcher allowlist because an
+  older watcher reader can lease every persisted match. Other job kinds
+  follow the general release rule in codebase.md §5.7.

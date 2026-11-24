@@ -366,6 +366,12 @@ lease uses the same bounds and default as claim and starts from the renewal time
 The CLI uses its saved credential for `ob tasks renew <id> [--lease <seconds>]`
 and prints the updated claim. The feed includes `task.renewed` with `all=true`.
 
+At the lease deadline, the thread's task state reads `ready` and
+`GET /tasks?state=ready` includes it. A background job or the next successful
+claim appends `task.expired` with `{ id, epoch }` and updates the reserved
+`board.task` label. The next claim increments the epoch. Completing an expired
+claim answers 409 `claim_lost` without writing an event.
+
 `POST /grants` returns 200 with `{ grant }` in the upstream grant view.
 OpenBoard accepts `connection` (a board connection ID) and `all-connections`.
 A `user` takes a board member's OpenBoard person ID. For a `github` principal
