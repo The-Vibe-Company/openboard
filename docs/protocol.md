@@ -1007,12 +1007,21 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   answers 400 `invalid_request` when a signature is supplied. The endpoint
   saves its first successful result, including when no rules match. A verified
   duplicate on the same endpoint returns that result without writing again.
-- **Reply rules** evaluate all `when` conditions against the JSON body and request headers. Each
+- **Rules** evaluate all `when` conditions against the JSON body and request headers. Each
   condition matches one value or any value in its list. Matching rules and
   their actions run in order. A reply renders its text with `body` and the
   thread root and requires both `read` and `post` there. An unreadable thread
   answers 404. A readable thread without permission to post answers 403
   `forbidden`. Delivery IDs are limited to 1024 bytes.
+- **Labels and reactions** target the thread root and require `read` plus the
+  action's `label` or `react` permission. A label action accepts `set`, `unset`
+  and optional `if` conditions, including `null` to require a label to be absent.
+  Action templates see the root after preceding actions. Setting or unsetting
+  a label under `board.` fails with `reserved_label`. An unmet condition fails
+  with `label_conflict`.
+  A reaction adds the endpoint's reaction using the same short names and aliases
+  as the message API. Successful results include `{ "label": "<root id>" }`
+  or `{ "react": "<root id>" }` in action order.
 - **Effects** run in one board transaction together with the dedupe insert, so
   they happen at most once per endpoint and delivery ID, including across instances.
 - **Principal** `ob:hook:ib_…` with its own grant (created under grant-change
