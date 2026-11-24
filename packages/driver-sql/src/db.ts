@@ -22,6 +22,8 @@ export interface Dialect {
   readonly lockSuffix: string;
   /** Announces the updated head in the same statement on Postgres, with no extra round trip. */
   readonly notifyHeadSuffix: string;
+  /** The server's timeline, read with the board lock (D37): Postgres's checkpoint timeline, `0` where there is none. */
+  readonly serverTimeline: string;
 }
 
 /** The dialect the registry is written in, and the one Postgres runs. */
@@ -30,4 +32,5 @@ export const postgresText: Dialect = Object.freeze({
   placeholder: (index: number) => `$${index}`,
   lockSuffix: " FOR UPDATE",
   notifyHeadSuffix: " RETURNING (SELECT pg_notify('ob_events', boards.id::text || ':' || boards.head::text))",
+  serverTimeline: "(pg_control_checkpoint()).timeline_id",
 });

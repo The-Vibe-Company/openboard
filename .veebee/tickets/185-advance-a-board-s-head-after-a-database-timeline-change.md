@@ -10,11 +10,15 @@ writes:
   - packages/driver-sql/src/db.ts
   - packages/driver-sql/src/views/boards.ts
   - packages/driver-sqlite/src/dialect.ts
+  - packages/driver-sqlite/test/timeline.test.ts
+  - packages/driver-sql/test/actors.test.ts
+  - docs/data-model.md
+  - docs/decisions.md
 conformance: []
 modes: [local, hosted]
 depends_on: [164, 176]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-5-5
 issue: 265
 ---
 

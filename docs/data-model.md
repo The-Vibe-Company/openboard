@@ -155,13 +155,15 @@ cluster; the guard ships before that:
   replica round trip per commit. Whether Railway's managed HA allows enabling
   it without becoming self-managed is unverified.
 - **Timeline guard** (default if synchronous replication is unavailable):
-  `boards.timeline` stores the server timeline seen at the last write. Each
-  pooled connection reads the current timeline once when it opens
-  (`SELECT timeline_id FROM pg_control_checkpoint()`; whether the app role may
-  call it without `pg_monitor` is unverified). A write that sees a timeline
-  different from `boards.timeline` first advances `head` by 1,000,000 and
+  `boards.timeline` stores the server timeline seen at the last write. The
+  board's lock statement reads the current timeline in the same round trip
+  (`(pg_control_checkpoint()).timeline_id`, which Postgres 17 lets any role
+  call, without `pg_monitor`). A write that sees a timeline different from
+  `boards.timeline` first advances `head` by 1,000,000, and the head update
   records the new timeline, so new IDs are above any cursor handed out before
-  the failover. Lost events stay lost (RPO), but no client skips new ones.
+  the failover. A board that recorded none yet (`0`) records it without
+  advancing; SQLite's timeline is the constant `0`, so a local write never
+  advances. Lost events stay lost (RPO), but no client skips new ones.
 
 ## IDs and cursors
 

@@ -486,8 +486,12 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   by 1,000,000 before allocating IDs. Synchronous replication to one replica is
   the stronger alternative if the chosen cluster allows it.
 - **Consequence.** No client skips new events after a failover; lost events
-  stay lost. Unverified: whether the app role may read
-  `pg_control_checkpoint()` on Railway; whether Railway's HA cluster allows
+  stay lost. The lock statement reads the timeline in the same round trip, and
+  a board whose recorded timeline is `0` (never written by the guard) records
+  it without advancing. On Postgres 17 a plain non-superuser role may call
+  `pg_control_checkpoint()` (checked in ticket 185), so the app role needs no
+  grant unless the provider revoked it. Unverified: the same on Railway's role
+  (staging, ticket 189); whether Railway's HA cluster allows
   `synchronous_mode` without becoming self-managed.
 
 ### D38. Railway Postgres, one node; failover-ready code (given, N7)
