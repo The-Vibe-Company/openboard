@@ -11,7 +11,7 @@ writes:
   - packages/server/test/inbound/received.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [333]
+depends_on: [333, 334]
 status: draft
 claimed_by: null
 issue: 521
