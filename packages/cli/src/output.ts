@@ -9,6 +9,7 @@ import type {
   ManagedConnection,
   OutputOf,
   reopenTask,
+  retryWebhookDelivery,
   revokeGrant,
   testWebhook,
 } from "@openboard/contract";
@@ -187,6 +188,7 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
             .join("  "),
         )
         .join("\n"),
+    retryWebhookDelivery: (output) => `queued ${(output as OutputOf<typeof retryWebhookDelivery>).id}`,
     testWebhook: (output) => {
       const { delivery } = output as OutputOf<typeof testWebhook>;
       if (delivery.status === null) throw new BoardError("unreachable", "the receiver could not be reached");

@@ -100,7 +100,10 @@ export function webhookWriter(
   db: Db,
   dialect: Dialect,
   keys: BoardKeys,
-): Omit<BoardWebhookWriter, "beginWebhookPing" | "beginWebhookAttempt" | "finishWebhookAttempt"> {
+): Omit<
+  BoardWebhookWriter,
+  "beginWebhookPing" | "retryWebhookDelivery" | "beginWebhookAttempt" | "finishWebhookAttempt"
+> {
   return {
     ...webhookReads(db, dialect, keys),
     async webhookQuota() {

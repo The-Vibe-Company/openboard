@@ -167,6 +167,14 @@ const writerCases: Cases<BoardWriter> = {
     if (!foreign) throw new Error("missing foreign webhook");
     await inWrite(a, async (writer) => expectNull(await writer.beginWebhookPing(foreign, "foreign-ping", at)));
   },
+  retryWebhookDelivery: async (a, b) => {
+    const [foreign] = await b.board.webhooks();
+    if (!foreign) throw new Error("missing foreign webhook");
+    const { id } = foreign.webhook;
+    const [delivery] = await b.board.webhookDeliveries(id, { limit: 1 });
+    if (!delivery) throw new Error("missing foreign delivery");
+    expect(await inWrite(a, (writer) => writer.retryWebhookDelivery(id, delivery.id, at))).toBe("missing");
+  },
   beginWebhookAttempt: (a) =>
     inWrite(a, async (writer) => expectNull(await writer.beginWebhookAttempt("missing", "fixture", at))),
   finishWebhookAttempt: (a) =>
@@ -501,9 +509,14 @@ async function seedCase(method: string, a: StoreTenant, b: StoreTenant) {
   if (["webhooks", "webhook", "removeWebhookSecret", "beginWebhookPing"].includes(method)) {
     await seedWebhook(b.board, b.marker, b.actor);
   }
-  if (method === "webhookDeliveries") {
+  if (method === "webhookDeliveries" || method === "retryWebhookDelivery") {
     const foreign = await seedWebhook(b.board, b.marker, b.actor);
-    await inWrite(b, (writer) => writer.beginWebhookPing(foreign, "foreign-ping", at));
+    await inWrite(b, async (writer) => {
+      await writer.beginWebhookPing(foreign, "foreign-ping", at);
+      if (method === "retryWebhookDelivery") {
+        await writer.finishWebhookAttempt("foreign-ping", 1, { state: "dead", status: 422, error: "status", now: at });
+      }
+    });
   }
 }
 

@@ -4,15 +4,32 @@ title: Re-send a dead delivery
 milestone: M11-webhooks-and-watchers
 package: server
 writes:
-  - packages/contract/src/operations/webhook-deliveries.ts
-  - packages/server/src/operations/webhook-deliveries.ts
-  - packages/driver-sql/src/views/deliveries.ts
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/cli/src/output.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/operations/webhooks/deliveries.ts
+  - packages/driver-sql/src/views/jobs/index.ts
+  - packages/driver-sql/src/views/webhooks/deliveries.ts
+  - packages/driver-sql/src/views/webhooks/webhooks.ts
+  - packages/ports/src/webhooks/index.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/server/openapi.json
+  - packages/server/src/app.ts
+  - packages/server/src/jobs/webhooks.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/webhooks/deliveries.ts
+  - packages/server/src/webhooks/request.ts
+  - packages/server/test/isolation/seed.ts
   - packages/server/test/webhooks/resend.test.ts
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [308]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-309
 issue: 494
 ---
 
@@ -20,8 +37,8 @@ issue: 494
 As a board admin whose receiver is fixed, I run `ob webhooks retry <id> <delivery>` and the dead delivery goes out again with its original ID.
 
 ## Done when
-- [ ] `bun test packages/server/test/webhooks/resend.test.ts` passes: `POST /x/webhooks/:id/deliveries/:dl/retry` on a `dead` delivery makes it `pending` with a fresh attempt schedule and the same `dl_` ID, and the next run sends it; on a `pending`, `sending` or `done` delivery it answers 400 `invalid_request` "only a dead delivery is sent again"; a delivery of another webhook or board answers 404 `not_found`; it needs the same access as managing the webhook
-- [ ] `ob webhooks retry <id> <dl>` prints `queued dl_…`
+- [x] `bun test packages/server/test/webhooks/resend.test.ts` passes: `POST /x/webhooks/:id/deliveries/:dl/retry` on a `dead` delivery makes it `pending` with a fresh attempt schedule and the same `dl_` ID, and the next run sends it; on a `pending`, `sending` or `done` delivery it answers 400 `invalid_request` "only a dead delivery is sent again"; a delivery of another webhook or board answers 404 `not_found`; it needs the same access as managing the webhook
+- [x] `ob webhooks retry <id> <dl>` prints `queued dl_…`
 
 ## Out of scope
 - Re-sending every dead delivery at once (not in the cut); re-enabling a disabled webhook (310).

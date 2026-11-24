@@ -18,7 +18,7 @@ export interface WebhookAttempt {
   readonly webhook: Webhook;
   readonly record: WebhookRecord;
   readonly secret: WebhookSecret | null;
-  readonly event: TailMessage;
+  readonly event: TailMessage | null;
   readonly root: Message | null;
   readonly attempt: number;
 }
@@ -37,6 +37,7 @@ export interface BoardWebhookWriter extends BoardWebhookReads {
   storeWebhookSecret(id: string, secretId: string, secret: WebhookSecret, now: number): Promise<void>;
   removeWebhookSecret(record: WebhookRecord): Promise<void>;
   beginWebhookPing(record: WebhookRecord, id: string, now: number): Promise<WebhookSecret | null>;
+  retryWebhookDelivery(webhook: string, id: string, now: number): Promise<"queued" | "missing" | "not_dead">;
   beginWebhookAttempt(id: string, instance: string, now: number): Promise<WebhookAttempt | null>;
   finishWebhookAttempt(
     id: string,
@@ -50,3 +51,4 @@ export interface BoardWebhookWriter extends BoardWebhookReads {
 }
 
 export const WEBHOOK_DELIVERY_JOB = "webhook-delivery";
+export const WEBHOOK_RESEND_JOB = "webhook-resend";

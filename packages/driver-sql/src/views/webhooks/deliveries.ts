@@ -31,21 +31,30 @@ export const deliveryStatements = {
     RETURNING id`,
   pingSecret: sql`SELECT ciphertext, key_version FROM webhook_secrets
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook_id = ${"webhook"} AND id = ${"secretId"}`,
+  retryDelivery: sql`UPDATE webhook_deliveries
+    SET state = 'pending', attempt = 0, next_at = ${"now"}, last_status = NULL,
+        last_error = NULL, done_at = NULL, instance = NULL
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook = ${"webhook"} AND id = ${"id"}
+      AND state = 'dead'
+    RETURNING id`,
+  findDelivery: sql`SELECT id FROM webhook_deliveries
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook = ${"webhook"} AND id = ${"id"}`,
   beginDelivery: sql`UPDATE webhook_deliveries SET state = 'sending', attempt = attempt + 1, instance = ${"instance"}
-    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND event IS NOT NULL
-      AND state IN ('pending', 'sending') AND next_at <= ${"now"} AND attempt < ${"maxAttempts"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
+      AND state IN ('pending', 'sending') AND next_at <= ${"now"} AND attempt < CASE WHEN event IS NULL THEN 1 ELSE ${"maxAttempts"} END
     RETURNING attempt`,
   expireFinalDelivery: sql`UPDATE webhook_deliveries
     SET state = 'dead', last_status = NULL, last_error = 'unreachable', done_at = ${"now"}, instance = NULL
-    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND event IS NOT NULL
-      AND state = 'sending' AND next_at <= ${"now"} AND attempt >= ${"maxAttempts"}`,
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
+      AND state = 'sending' AND next_at <= ${"now"} AND attempt >= CASE WHEN event IS NULL THEN 1 ELSE ${"maxAttempts"} END`,
   deliveryInput: sql`SELECT w.config, w.secret_id, w.owner_actor, w.owner, w.directory, s.ciphertext, s.key_version, d.root_view,
-      d.attempt, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal, e.payload
+      d.attempt, d.event, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal, e.payload
     FROM webhook_deliveries d
     JOIN webhooks w ON w.org_id = d.org_id AND w.board_id = d.board_id AND w.id = d.webhook AND w.enabled = 1
-    JOIN events e ON e.org_id = d.org_id AND e.board_id = d.board_id AND e.id = d.event
+    LEFT JOIN events e ON e.org_id = d.org_id AND e.board_id = d.board_id AND e.id = d.event
     LEFT JOIN webhook_secrets s ON s.org_id = w.org_id AND s.board_id = w.board_id AND s.webhook_id = w.id AND s.id = w.secret_id
-    WHERE d.org_id = ${"orgId"} AND d.board_id = ${"boardId"} AND d.id = ${"id"}`,
+    WHERE d.org_id = ${"orgId"} AND d.board_id = ${"boardId"} AND d.id = ${"id"}
+      AND (d.event IS NULL OR e.id IS NOT NULL)`,
   skipDelivery: sql`UPDATE webhook_deliveries SET state = 'skipped', done_at = ${"now"}, instance = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND state = 'sending'`,
   finishDelivery: sql`UPDATE webhook_deliveries
@@ -58,7 +67,10 @@ export function deliveryWriter(
   db: Db,
   dialect: Dialect,
   keys: BoardKeys,
-): Pick<BoardWebhookWriter, "beginWebhookPing" | "beginWebhookAttempt" | "finishWebhookAttempt"> {
+): Pick<
+  BoardWebhookWriter,
+  "beginWebhookPing" | "retryWebhookDelivery" | "beginWebhookAttempt" | "finishWebhookAttempt"
+> {
   return {
     async beginWebhookPing(record, id, now) {
       const params = { ...keys, id, webhook: record.webhook.id, secretId: record.secretId, now };
@@ -67,6 +79,12 @@ export function deliveryWriter(
       return typeof row?.ciphertext === "string"
         ? { ciphertext: row.ciphertext, keyVersion: Number(row.key_version) }
         : null;
+    },
+    async retryWebhookDelivery(webhook, id, now) {
+      const params = { ...keys, webhook, id, now };
+      if ((await query(db, dialect, deliveryStatements.retryDelivery, params)).length) return "queued";
+      const [row] = await query(db, dialect, deliveryStatements.findDelivery, params);
+      return row ? "not_dead" : "missing";
     },
     async beginWebhookAttempt(id, instance, now) {
       const params = { ...keys, id, instance, now, maxAttempts: webhookMaxAttempts };
@@ -79,8 +97,8 @@ export function deliveryWriter(
         await query(db, dialect, deliveryStatements.skipDelivery, params);
         return null;
       }
-      const event = messageEvent(row);
-      if (!isTailMessageEvent(event)) throw new Error("invalid webhook event");
+      const event = row.event === null ? null : messageEvent(row);
+      if (event !== null && !isTailMessageEvent(event)) throw new Error("invalid webhook event");
       const record = webhookRecord(row);
       return {
         record,

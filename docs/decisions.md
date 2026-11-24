@@ -1128,7 +1128,9 @@ the creator prevents creation with 409 `channel_granted`. Grants there can outra
 
 A test sends `board.ping` once during the administrative request. Its
 delivery row has a null event and thread, so readers can identify it without
-an event join. Ping failures never count toward disabling a subscription.
+an event join. Pings never receive automatic retries. An administrator can
+manually re-send a failed ping with the same delivery ID, and each manual
+re-send is a single attempt. Ping failures never count toward disabling a subscription.
 ([Issue #491](https://github.com/The-Vibe-Company/openboard/issues/491#issuecomment-7136782211))
 
 ### Webhook retry payloads

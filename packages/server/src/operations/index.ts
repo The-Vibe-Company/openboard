@@ -99,7 +99,7 @@ import {
   pullWatcherMatchesHandler,
   registerWatchersHandler,
 } from "./watchers/index.ts";
-import { listWebhookDeliveriesHandler } from "./webhooks/deliveries.ts";
+import { listWebhookDeliveriesHandler, retryWebhookDeliveryHandler } from "./webhooks/deliveries.ts";
 import {
   createWebhookHandler,
   deleteWebhookHandler,
@@ -260,6 +260,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listThreads: listThreadsHandler,
   listWatchers: listWatchersHandler,
   listWebhookDeliveries: listWebhookDeliveriesHandler,
+  retryWebhookDelivery: retryWebhookDeliveryHandler,
   listWebhooks: listWebhooksHandler,
   testWebhook: testWebhookHandler,
   pollDeviceSignIn: pollDeviceSignInHandler,

@@ -52,7 +52,8 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
       return board.write(async (writer) => {
         const now = deps.now();
         if (!(await writer.takeJob(job.id, lease, now))) return false;
-        const nextAt = webhookRetryAt({ status, error, retryAfter, attempt: input.attempt, now });
+        const nextAt =
+          input.event === null ? null : webhookRetryAt({ status, error, retryAfter, attempt: input.attempt, now });
         const outcome =
           nextAt === null ? webhookOutcome(error === "timeout" ? null : status) : { state: "pending" as const, nextAt };
         await writer.finishWebhookAttempt(id, input.attempt, { ...outcome, status, error, now });
