@@ -10,8 +10,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [317, 310]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: codex
 issue: 503
 ---
 
