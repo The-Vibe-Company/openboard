@@ -16,7 +16,7 @@ writes:
   - packages/server/test/reproject.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [215, 389, 393]
+depends_on: [389, 393]
 status: draft
 claimed_by: null
 issue: 592
@@ -40,3 +40,5 @@ As the operator after a release that changes how events fold, I rebuild a board'
 - Every fold must be deterministic for the byte comparison to hold: a fold that reads the clock or anything outside the event and current state is a bug this ticket fixes (name each one in the PR).
 - The projection version is a constant in `driver-sql`, raised by any PR that changes a fold.
 - Depends on 393, the last ticket before it to change `apps/openboard/src/main.ts`.
+
+Orchestrator note (2026-11-24): the dependency on the deferred Railway ticket(s) [215] was dropped; this ticket does not need a deployment.

@@ -10,7 +10,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [193, 195, 196, 199, 208]
-status: draft
+status: blocked
 claimed_by: null
 issue: 376
 ---
@@ -32,3 +32,5 @@ As the owner, production runs on Railway with invite-only sign-up, and our own o
 - Owner first, as for staging (189): production's variables (`OPENBOARD_PUBLIC_URL` on the production domain, `OPENBOARD_SECRET_KEY`, `OPENBOARD_SIGNUP=invite` per Q6, the GitHub sign-in pair of a production OAuth app, `OPENBOARD_DATABASE_URL` as a Railway reference), the domain, and the organization `tvc`. Bootstrapping an invite-only instance has no invitation to start from: the owner signs up once while `OPENBOARD_SIGNUP=open`, creates `tvc`, then sets `invite` and redeploys; say in the PR how it went. The smoke connection's secret lives in the GitHub environment `production` and reaches the script on stdin (D42).
 - Measure on production and record in docs/architecture.md "Hosted on Railway": the app-to-database round trip and the restart time of the database service (listed there as "to measure before launch").
 - The script reuses the SDK (`@the-vibe-company/openboard`) with the secret, as an agent would; 193's workflow may call it after each production deploy once this lands.
+
+Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.

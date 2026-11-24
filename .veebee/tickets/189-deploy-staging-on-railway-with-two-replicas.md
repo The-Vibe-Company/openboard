@@ -10,7 +10,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [120, 123, 167, 184, 188, 402]
-status: draft
+status: blocked
 claimed_by: null
 issue: 269
 ---
@@ -31,3 +31,5 @@ As the owner, a staging OpenBoard runs on Railway as two replicas on one Railway
 - docs/codebase.md 7.5: `railway.hosted.json` holds the healthcheck `/readyz` (liveness `/healthz`), `numReplicas: 2`, restart on failure, pre-deploy `openboard migrate` (167). Whether Railway's pre-deploy command fits is unverified (docs/architecture.md "Migrations without downtime"): say in the PR what Railway did.
 - `railway-deploy.ts` reads `RAILWAY_TOKEN` from its environment (scripts read their own, docs/codebase.md 3.2) and never prints it; it calls Railway's API with the global `fetch`.
 - Also check on staging, and record in the PR: the app-to-database round trip (docs/architecture.md "Hosted on Railway", to measure before launch) and whether the app role can read `pg_control_checkpoint()` (185).
+
+Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.
