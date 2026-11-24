@@ -23,6 +23,8 @@ As a board owner, when the runner reports a sandbox gone, the agent token that s
 ## Done when
 - [ ] `bun test packages/server/test/inbound/revoke.test.ts` passes: `{ "agents.revoke": { "connection": "cn_…", "profile": "{{thread.claim.profile}}" } }` revokes the live agent of that connection holding that profile, so its `obt_` tokens answer 401 from the next request and the profile is free; no live agent is `{ "agents.revoke": "none" }` in `results`; creating or changing an endpoint with this action needs the creator to manage that connection (board owner or organization admin), else 403 `forbidden`; a connection of another board is refused at creation with 400 `invalid_rule`
 
+- [ ] a matching rule whose action needs no thread (`agents.revoke`) answers its result, not 422 (deferred from 334, #519)
+
 ## Out of scope
 - Revoking a whole connection from a rule (not in the closed list).
 

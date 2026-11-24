@@ -12,7 +12,7 @@ writes:
   - docs/decisions.md
 conformance: []
 modes: [hosted]
-depends_on: [210, 324, 367]
+depends_on: [210, 367]
 status: draft
 claimed_by: null
 issue: 566
@@ -35,3 +35,5 @@ As the owner, a file someone attaches on the hosted service is in the backup buc
 - docs/decisions.md: D26's status line says hosted attachments go to S3-compatible storage, which contradicts D39 (Postgres `bytea`, object storage past a threshold) and docs/data-model.md "Attachments": correct the status line to point at D39.
 - Owner: the bucket and its credentials (Q2), as for 210; the second criterion is checked once they exist.
 - Depends on 210 for the bucket and its job, and on 324, the last ticket before it to change docs/decisions.md.
+
+Orchestrator note (2026-11-24): dropped file-ordering dependency on 324 (docs/decisions.md).

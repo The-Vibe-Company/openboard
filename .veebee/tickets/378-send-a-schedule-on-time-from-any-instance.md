@@ -18,7 +18,7 @@ writes:
   - packages/server/test/ha/schedules.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [181, 372, 373, 375, 377]
+depends_on: [181, 373, 375, 377]
 status: draft
 claimed_by: null
 issue: 573
@@ -43,3 +43,5 @@ As a person who scheduled a nudge, it posts in the thread when it is due, as me,
 - After each send the next slot comes from 377's `packages/core/src/schedules/timing.ts`. **Arrow added:** 377, so repeats are computed before the first send exists and the two do not change the schedule core in parallel.
 - In local mode the runner is the SQLite jobs timer (181): the process must be running (D24), which the README already says for webhooks.
 - Depends on 375 and 372, the last tickets before it to change `packages/core/src/index.ts` and `packages/server/src/jobs/registry.ts`.
+
+Orchestrator note (2026-11-24): dropped file-ordering dependency on 372 (packages/server/src/jobs/registry.ts).

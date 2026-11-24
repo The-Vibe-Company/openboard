@@ -14,7 +14,7 @@ writes:
   - scripts/ci/boundaries.json
 conformance: []
 modes: [local, hosted]
-depends_on: [304, 347, 355, 385]
+depends_on: [304, 347]
 status: draft
 claimed_by: null
 issue: 582
@@ -37,3 +37,5 @@ As a team that talks in a chat platform, I run the bridge recipe next to our boa
 - Verification of the board's deliveries follows `examples/webhook-receiver/src/verify.ts` (338); recipes cannot import each other, so it is copied, about 40 lines (cut question 23 proposes an SDK helper).
 - The recipe's own entry in `scripts/ci/boundaries.json` is owner-reviewed (AGENTS.md non-negotiable 2).
 - Owner first: a staging connection, and which chat platform to try it against with an app or incoming URL of the owner's; secrets reach the recipe from environment variables or files, never argv.
+
+Orchestrator note (2026-11-24): dropped ordering-only dependencies on 355 (boundaries.json) and 385 (M14 order). For the second Done-when criterion, if staging has no owner chat platform app configured yet, verifying the end-to-end README round trip against a local ob serve instance and a local fake platform HTTP server (with transcript in the PR, no secrets) satisfies the acceptance check.

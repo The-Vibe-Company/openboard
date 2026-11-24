@@ -14,7 +14,7 @@ writes:
   - docs/decisions.md
 conformance: []
 modes: [local, hosted]
-depends_on: [394, 396, 397]
+depends_on: [397]
 status: draft
 claimed_by: null
 issue: 593
@@ -36,3 +36,5 @@ As the operator, a busy board's log stops growing with bookkeeping that no one w
 - docs/data-model.md "Boards and the log" ("Append only: no `UPDATE` or `DELETE` on `events` except the organization hard-delete job") must name this job as the second exception.
 - On Postgres, deletes run in batches under no board lock (they change no fold), with an index on `(board_id, type, actor, id)` if `EXPLAIN` asks for one (165's registry).
 - Depends on 396 and 394, the last tickets before it to change `packages/server/src/jobs/registry.ts` and docs/decisions.md.
+
+Orchestrator note (2026-11-24): dropped file-ordering dependencies on 394 (docs/decisions.md) and 396 (packages/server/src/jobs/registry.ts).

@@ -16,7 +16,7 @@ writes:
   - packages/server/test/reproject.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [389, 393]
+depends_on: [389]
 status: draft
 claimed_by: null
 issue: 592
@@ -42,3 +42,5 @@ As the operator after a release that changes how events fold, I rebuild a board'
 - Depends on 393, the last ticket before it to change `apps/openboard/src/main.ts`.
 
 Orchestrator note (2026-11-24): the dependency on the deferred Railway ticket(s) [215] was dropped; this ticket does not need a deployment.
+
+Orchestrator note (2026-11-24): dropped file-ordering dependency on 393 (apps/openboard/src/main.ts).
