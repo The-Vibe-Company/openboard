@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { createContext, useContext } from "react";
 import { boardErrorText, channelsQuery } from "../../../api/board.ts";
+import { useBoardLive } from "../../../api/live.ts";
 import { ChannelList } from "../../../components/ChannelList.tsx";
 
 export const Route = createFileRoute("/$org/$board")({
@@ -27,6 +28,7 @@ function useChannelFromUrl(channels: readonly { path: string }[]) {
 function BoardLayout() {
   const params = Route.useParams();
   const channels = useQuery(channelsQuery(params));
+  useBoardLive(params, channels.data !== undefined);
   const selected = useChannelFromUrl(channels.data ?? []);
 
   if (channels.isError)
