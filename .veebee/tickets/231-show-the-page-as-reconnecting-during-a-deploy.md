@@ -9,11 +9,15 @@ writes:
   - apps/web/src/routes/$org/$board/route.tsx
   - apps/web/test/live.test.ts
   - apps/web/e2e/reconnect.spec.ts
+  - apps/web/src/components/ConnectionBanner.css
+  - docs/architecture.md
+  - packages/server/src/live/sse.ts
+  - packages/server/test/sse.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [227]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 392
 ---
 
@@ -21,8 +25,8 @@ issue: 392
 As a member watching a board while the server restarts or deploys, I see that the page is reconnecting, then everything posted meanwhile appears without a reload.
 
 ## Done when
-- [ ] `bun run e2e apps/web/e2e/reconnect.spec.ts` passes: with a board open, the spec drains and stops its server (the harness's `drain` and `stop`, 216); within two seconds a quiet "Reconnecting…" banner shows; the spec starts a new server on the same data directory and port and posts two messages through it; when the page reconnects the banner goes and both messages appear once, in order, with no reload
-- [ ] `bun test apps/web/test/live.test.ts` passes with a fake clock: a stream that ends and reconnects within one second (the server's routine end after about 280 s, 102) never sets the reconnecting state, and one still not reconnected after a second does, until it reconnects
+- [x] `bun run e2e apps/web/e2e/reconnect.spec.ts` passes: with a board open, the spec drains and stops its server (the harness's `drain` and `stop`, 216); within two seconds a quiet "Reconnecting…" banner shows; the spec starts a new server on the same data directory and port and posts two messages through it; when the page reconnects the banner goes and both messages appear once, in order, with no reload
+- [x] `bun test apps/web/test/live.test.ts` passes with a fake clock: a stream that ends and reconnects within one second (the server's routine end after about 280 s, 102) never sets the reconnecting state, and one still not reconnected after a second does, until it reconnects
 
 ## Out of scope
 - Offline drafts and retries of posts made while disconnected (not planned).

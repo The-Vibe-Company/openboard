@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { BoardError } from "@the-vibe-company/openboard";
 import { createContext, useContext } from "react";
 import { boardErrorText, channelsQuery } from "../../../api/board.ts";
 import { useBoardLive } from "../../../api/live.ts";
 import { ChannelList } from "../../../components/ChannelList.tsx";
+import { ConnectionBanner } from "../../../components/ConnectionBanner.tsx";
 
 export const Route = createFileRoute("/$org/$board")({
   validateSearch: (search: Record<string, unknown>): { channel?: string } =>
@@ -28,16 +30,19 @@ function useChannelFromUrl(channels: readonly { path: string }[]) {
 function BoardLayout() {
   const params = Route.useParams();
   const channels = useQuery(channelsQuery(params));
-  useBoardLive(params, channels.data !== undefined);
+  const { error } = channels;
+  const denied = error instanceof BoardError && ["unauthorized", "forbidden", "not_found"].includes(error.code);
+  const fatalError = channels.isLoadingError || denied ? error : null;
+  const reconnecting = useBoardLive(params, channels.data !== undefined && !fatalError);
   const selected = useChannelFromUrl(channels.data ?? []);
 
-  if (channels.isError)
+  if (fatalError)
     return (
       <main>
-        <h1>{boardErrorText(channels.error)}</h1>
+        <h1>{boardErrorText(fatalError)}</h1>
       </main>
     );
-  if (channels.isPending)
+  if (channels.data === undefined)
     return (
       <main>
         <p role="status">Loading board…</p>
@@ -48,6 +53,7 @@ function BoardLayout() {
     <main className="board-layout">
       <ChannelList params={params} channels={channels.data} selected={selected} />
       <section className="board-content">
+        <ConnectionBanner reconnecting={reconnecting} />
         <SelectedChannel.Provider value={selected}>
           <Outlet />
         </SelectedChannel.Provider>
