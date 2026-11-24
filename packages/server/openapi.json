@@ -4285,7 +4285,8 @@
                     "cursor": { "type": "string" }
                   }
                 }
-              }
+              },
+              "text/event-stream": { "schema": { "type": "string" } }
             }
           },
           "400": {

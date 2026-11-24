@@ -12,11 +12,17 @@ writes:
   - packages/ports/src/store.ts
   - packages/server/src/live/sse.ts
   - packages/server/test/sse.test.ts
+  - packages/contract/src/operation.ts
+  - packages/server/src/http/openapi.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/live/long-poll.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [98]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t99
 issue: 99
 ---
 
@@ -24,7 +30,7 @@ issue: 99
 As a browser or agent, I keep one stream open and receive every new event.
 
 ## Done when
-- [ ] `curl -N -H 'accept: text/event-stream' 'http://127.0.0.1:8787/api/local/main/events?channel=dev'` prints `: connected`, a first `id:` frame, then an `event: board` frame for each new post
+- [x] `curl -N -H 'accept: text/event-stream' 'http://127.0.0.1:8787/api/local/main/events?channel=dev'` prints `: connected`, a first `id:` frame, then an `event: board` frame for each new post
 
 ## Out of scope
 - Resuming (100), pings (101), stream caps (M7, 206).

@@ -14,7 +14,7 @@ type Page = {
 export async function longPoll<P extends Page>(
   board: BoardView,
   after: number | undefined,
-  seconds: number | undefined,
+  seconds: number | "stream" | undefined,
   signal: AbortSignal,
   schedule: Deps["schedule"],
   read: (after: number | undefined) => Promise<P>,
@@ -33,13 +33,14 @@ export async function longPoll<P extends Page>(
   let cancel: (() => void) | undefined;
   let cursor = after;
   try {
-    cancel = schedule(Math.min(seconds, MAX_WAIT_SECONDS) * 1000, stop);
+    if (seconds !== "stream") cancel = schedule(Math.min(seconds, MAX_WAIT_SECONDS) * 1000, stop);
     while (true) {
       const notified = new Promise<void>((resolve) => {
         wake = resolve;
       });
       const page = await read(cursor);
       if (page.events.length > 0 || stopped) return page;
+      if (seconds === "stream" && !page.retry && page.cursor !== cursor) return page;
       cursor = page.cursor;
       // An empty filtered page can still have more stored rows behind it.
       if (!page.retry && cursor >= page.head) {

@@ -1,4 +1,4 @@
-import { BoardError, type OutputOf, type readEvents } from "@openboard/contract";
+import { BoardError, type InputOf, type OutputOf, type readEvents } from "@openboard/contract";
 import {
   eventAuthors,
   eventMentions,
@@ -11,12 +11,32 @@ import {
 } from "@openboard/core";
 import { canListMentionActors, canReadChannel, withoutMentionDetails } from "../auth/access.ts";
 import { longPoll } from "../live/long-poll.ts";
-import type { Handler } from "./index.ts";
+import { eventStream } from "../live/sse.ts";
+import type { BoardContext, Handler } from "./index.ts";
 
-export const readEventsHandler: Handler<typeof readEvents> = async (
-  { board, by, schedule, signal, reauthorize },
-  { after, last, wait, all, channel, re, label, from, text, by: author, mentions },
-) => {
+type EventInput = InputOf<typeof readEvents>;
+
+export const readEventsHandler: Handler<typeof readEvents> = async (ctx, input) => {
+  const { position, read } = prepareFeed(ctx, input);
+  const page = await longPoll(ctx.board, position, input.wait, ctx.signal, ctx.schedule, read);
+  return { cursor: formatId(page.cursor), events: page.events };
+};
+
+export async function streamEvents(ctx: BoardContext, input: EventInput): Promise<Response> {
+  const { position, read } = prepareFeed(ctx, input, true);
+  let first = await read(position);
+  while (first.retry && !ctx.signal.aborted) first = await read(position);
+  const follow = input.last === undefined ? read : prepareFeed(ctx, { ...input, last: undefined }, true).read;
+  return eventStream(first, ctx.signal, (after, signal) =>
+    longPoll(ctx.board, after, "stream", signal, ctx.schedule, follow),
+  );
+}
+
+function prepareFeed(
+  { board, by, reauthorize }: BoardContext,
+  { after, last, wait, all, channel, re, label, from, text, by: author, mentions }: EventInput,
+  streaming = false,
+) {
   if (last !== undefined && (after !== undefined || wait !== undefined)) {
     throw new BoardError("invalid_request", "`last` reads the newest events at once: it takes no `after` or `wait`");
   }
@@ -35,7 +55,7 @@ export const readEventsHandler: Handler<typeof readEvents> = async (
     text: text?.toLowerCase(),
   };
   let current = by;
-  const page = await longPoll(board, position, wait, signal, schedule, async (after) => {
+  const read = async (after: number | undefined) => {
     const everywhere = canListMentionActors(current);
     const named = mentions === undefined ? undefined : mentionFilter(mentions, current.actor, everywhere);
     const mentionLookup = named?.resolve ? named : undefined;
@@ -59,9 +79,9 @@ export const readEventsHandler: Handler<typeof readEvents> = async (
     if (after !== undefined && after > head) {
       throw new BoardError("invalid_cursor", "after: cursor is ahead of the board");
     }
-    if (wait) {
+    if (wait || streaming) {
       // A write can introduce an actor between lookup and scan. Re-read without advancing the cursor in that case.
-      const latest = after === undefined ? actors : await lookup();
+      const latest = after === undefined && last === undefined ? actors : await lookup();
       current = await reauthorize();
       if ((mentions !== undefined && everywhere !== canListMentionActors(current)) || !sameActors(actors, latest)) {
         return { cursor: after ?? head, head, events: [], retry: true };
@@ -75,9 +95,9 @@ export const readEventsHandler: Handler<typeof readEvents> = async (
         .filter((event) => (event.visibility === 1 ? revealMentions : canReadChannel(current, event.channel)))
         .flatMap((event) => projectEvent(event, revealMentions, text !== undefined || mentions !== undefined)),
     };
-  });
-  return { cursor: formatId(page.cursor), events: page.events };
-};
+  };
+  return { position, read };
+}
 
 type FilterActors = Awaited<ReturnType<Parameters<typeof readEventsHandler>[0]["board"]["findFilterActors"]>>;
 

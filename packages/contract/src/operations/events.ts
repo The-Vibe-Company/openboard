@@ -42,6 +42,7 @@ export const readEvents = defineOperation({
       { additionalProperties: false },
     ),
   },
+  eventStream: "text/event-stream",
   output: Type.Object({ events: Type.Array(Event), cursor: Type.String() }),
   errors: ["invalid_request", "invalid_cursor"],
   access: { permission: "read", channel: "fromInputOrAny" },
