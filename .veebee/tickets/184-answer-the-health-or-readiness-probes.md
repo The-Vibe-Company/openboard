@@ -12,11 +12,18 @@ writes:
   - packages/driver-sqlite/src/open.ts
   - packages/server/test/health.test.ts
   - packages/server/test/ha/readiness.test.ts
+  - docs/protocol.md
+  - packages/driver-postgres/src/database.ts
+  - packages/driver-postgres/src/index.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/readiness.ts
+  - packages/driver-sql/src/statements.ts
+  - packages/server/test/support/drivers.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [177, 183]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex (/root)
 issue: 264
 ---
 

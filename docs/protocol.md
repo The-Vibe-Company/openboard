@@ -24,6 +24,13 @@ The board API is upstream Vercel Board's protocol
 | Front | `/signin`, `/invite/:token`, `/new`, `/device`, `/account`, `/:org`, `/:org/:board`, `/:org/:board/t/:id`, `/:org/settings[/members|/boards]`, `/:org/:board/settings/{connections,webhooks,inbound,grants}` | same, org `local` |
 | Health | `/healthz`, `/readyz` | same |
 
+Both health probes are unauthenticated and return JSON with `Cache-Control: no-store`.
+`GET /healthz` returns 200 with `{"version":"<running version>"}` without
+querying storage. `GET /readyz` returns 200 with `{"ready":true}` when
+storage answers within one second with a compatible schema and the
+instance can serve traffic. It returns 503 with `{"ready":false}` while
+draining or when the readiness check fails.
+
 **Why paths, not a subdomain per organization.** Both satisfy upstream's
 client constraints, which are about the URL string, not its shape:
 discovery's `url` and `audience` must equal `BOARD_URL` exactly (trailing

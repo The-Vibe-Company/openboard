@@ -368,6 +368,8 @@ export interface BoardView extends BoardMessageReads, BoardTaskReads, BoardGrant
 
 export interface Store {
   readonly jobs: Jobs;
+  /** Query storage and report whether its schema meets this instance's migration level. */
+  schemaReady(): Promise<boolean>;
   platform(): PlatformView;
   board(scope: BoardScope): BoardView;
   org(scope: OrgScope): OrgView;

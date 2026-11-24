@@ -1,4 +1,4 @@
-import type { BoardScope, BoardView, Broadcaster, OrgScope, OrgView, PlatformView } from "@openboard/ports";
+import type { Broadcaster, Store } from "@openboard/ports";
 import init from "../migrations/0001-init.sql" with { type: "text" };
 import connectionsDdl from "../migrations/0002-connections.sql" with { type: "text" };
 import actors from "../migrations/0003-actors.sql" with { type: "text" };
@@ -15,6 +15,7 @@ import jobsDdl from "../migrations/0013-jobs.sql" with { type: "text" };
 import connectionGrantOriginDdl from "../migrations/0014-connection-grant-origin.sql" with { type: "text" };
 import storedBytesDdl from "../migrations/0015-stored-bytes.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
+import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
 import { agentReads } from "./views/agents.ts";
@@ -71,8 +72,9 @@ export function createViews(
   dialect: Dialect,
   broadcaster: Broadcaster,
   jobs: JobWrites = { now: () => Number.NEGATIVE_INFINITY, committed() {} },
-): { platform(): PlatformView; board(scope: BoardScope): BoardView; org(scope: OrgScope): OrgView } {
+): Pick<Store, "platform" | "board" | "org" | "schemaReady"> {
   return {
+    schemaReady: () => checkSchema(db, dialect, migrations.at(-1)?.version ?? 0),
     platform: () => ({
       ...platformView(db, dialect),
       ...accountView(db, dialect),

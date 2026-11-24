@@ -1,4 +1,5 @@
 import { type Dialect, postgresText } from "./db.ts";
+import { readinessStatements } from "./readiness.ts";
 import { render, type Statement } from "./sql.ts";
 import { accountPlatformStatements, accountStatements } from "./views/accounts.ts";
 import { actorStatements } from "./views/actors.ts";
@@ -39,6 +40,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...membershipStatements,
   ...messageStatements,
   ...orgStatements,
+  ...readinessStatements,
   ...taskFoldStatements,
   ...taskListStatements,
   ...taskReadStatements,
@@ -78,6 +80,7 @@ export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...boardPlatformStatements,
   ...Object.keys(jobPlatformStatements),
   ...orgPlatformStatements,
+  ...Object.keys(readinessStatements),
   "orgMembership",
   "invitationByHash",
 ]);

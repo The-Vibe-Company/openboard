@@ -1,5 +1,10 @@
 import { afterAll } from "bun:test";
-import { createTestDatabases, interruptTestWrites, postgresDriver } from "@openboard/driver-postgres";
+import {
+  createTestDatabases,
+  interruptTestWrites,
+  postgresDriver,
+  removeLatestTestMigration,
+} from "@openboard/driver-postgres";
 import { type Catalog, postgresCatalog } from "@openboard/driver-postgres/catalog";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { sqliteCatalog } from "@openboard/driver-sqlite/catalog";
@@ -34,6 +39,7 @@ export function shareTemplate(): () => Promise<void> {
 export type TestStore = Store & {
   readonly sibling?: () => Store;
   readonly interruptWrites?: (count: number, startWrites: () => void) => Promise<number>;
+  readonly removeLatestMigration?: () => Promise<void>;
 };
 
 /**
@@ -87,6 +93,7 @@ function postgresStore(url: string, now: () => number): TestStore {
     ...instance(),
     sibling: instance,
     interruptWrites: async (count, startWrites) => interruptTestWrites((await created()).url, count, startWrites),
+    removeLatestMigration: async () => removeLatestTestMigration((await created()).url),
   };
 }
 
@@ -110,6 +117,7 @@ function driverOn(open: () => Promise<Store>): Store {
       release: async (...args) => (await opened()).jobs.release(...args),
       watch: (...args) => subscribeLater(async () => (await opened()).jobs, "watch")(...args),
     },
+    schemaReady: async () => (await opened()).schemaReady(),
     platform: () => deferred(async () => (await opened()).platform()),
     board: (scope) => deferred(async () => (await opened()).board(scope)),
     org: (scope) => deferred(async () => (await opened()).org(scope)),

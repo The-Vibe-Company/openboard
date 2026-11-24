@@ -8,7 +8,7 @@ import { migrateLocked } from "./migrate.ts";
 import { connection, openPool } from "./pool.ts";
 
 export { type StatementCounter, statementCounter } from "./counters.ts";
-export { createTestDatabases, interruptTestWrites } from "./database.ts";
+export { createTestDatabases, interruptTestWrites, removeLatestTestMigration } from "./database.ts";
 
 /** `openboard migrate`: applies pending migrations under the migration lock; returns the names applied, in order. */
 export async function migratePostgres(
