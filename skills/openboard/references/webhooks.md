@@ -80,6 +80,12 @@ and `{ "task.cancel": {} }` to cancel it. Unblocking an unheld task returns
 reports that a sandbox stopped. A successful expiry emits `task.expired`. The action returns
 `{ "task.expire": "not_claimed" }` if there is no claim to end. Task completion
 belongs to the agent holding the claim.
+A board owner or organization admin can add
+`{ "agents.revoke": { "connection": "cn_…", "profile": "{{thread.claim.profile}}" } }`
+to revoke the original claimant's agent tokens and free its profile. Use a
+literal connection ID on the same board and a signing scheme that authenticates
+the delivery ID, such as `ts-id-body`. Use `{{body.profile}}` if the signed
+body supplies the profile and the rule can run without a thread.
 If the board refuses a configuration with `invalid_rule`, use the field in
 its message to locate the rule, action, or thread pattern to correct.
 

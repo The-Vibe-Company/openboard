@@ -4,16 +4,27 @@ title: Revoke an agent from an inbound rule
 milestone: M11-webhooks-and-watchers
 package: server
 writes:
+  - docs/protocol.md
+  - packages/contract/src/entities/inbound/index.ts
+  - packages/contract/src/operations/inbound/index.ts
+  - packages/contract/src/operations/inbound/received.ts
   - packages/core/src/inbound/actions.ts
+  - packages/core/src/inbound/rules.ts
+  - packages/core/src/index.ts
   - packages/core/test/inbound/actions.test.ts
+  - packages/server/openapi.json
+  - packages/server/src/inbound/received.ts
   - packages/server/src/inbound/run.ts
-  - packages/server/src/operations/inbound.ts
+  - packages/server/src/operations/inbound/index.ts
+  - packages/server/test/inbound/create.test.ts
   - packages/server/test/inbound/revoke.test.ts
+  - packages/server/test/support/browser-session.ts
+  - skills/openboard/references/webhooks.md
 conformance: []
 modes: [local, hosted]
 depends_on: [331]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 517
 ---
 
@@ -21,9 +32,9 @@ issue: 517
 As a board owner, when the runner reports a sandbox gone, the agent token that sandbox held stops working at once, while the connection and its other agents keep going.
 
 ## Done when
-- [ ] `bun test packages/server/test/inbound/revoke.test.ts` passes: `{ "agents.revoke": { "connection": "cn_…", "profile": "{{thread.claim.profile}}" } }` revokes the live agent of that connection holding that profile, so its `obt_` tokens answer 401 from the next request and the profile is free; no live agent is `{ "agents.revoke": "none" }` in `results`; creating or changing an endpoint with this action needs the creator to manage that connection (board owner or organization admin), else 403 `forbidden`; a connection of another board is refused at creation with 400 `invalid_rule`
+- [x] `bun test packages/server/test/inbound/revoke.test.ts` passes: `{ "agents.revoke": { "connection": "cn_…", "profile": "{{thread.claim.profile}}" } }` revokes the live agent of that connection holding that profile, so its `obt_` tokens answer 401 from the next request and the profile is free; no live agent is `{ "agents.revoke": "none" }` in `results`; creating or changing an endpoint with this action needs the creator to manage that connection (board owner or organization admin), else 403 `forbidden`; a connection of another board is refused at creation with 400 `invalid_rule`
 
-- [ ] a matching rule whose action needs no thread (`agents.revoke`) answers its result, not 422 (deferred from 334, #519)
+- [x] a matching rule whose action needs no thread (`agents.revoke`) answers its result, not 422 (deferred from 334, #519)
 
 ## Out of scope
 - Revoking a whole connection from a rule (not in the closed list).

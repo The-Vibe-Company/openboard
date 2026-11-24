@@ -7,7 +7,29 @@ type Plan = ReturnType<typeof parseInboundRules>;
 type Action = Plan[number]["do"][number];
 type Template = Extract<Action, { reply: unknown }>["reply"];
 
+type AgentRevoke = Extract<Action, { "agents.revoke": unknown }>;
+
+export function inboundActionNeedsThread(action: Action): boolean {
+  return (
+    !("agents.revoke" in action) ||
+    action["agents.revoke"].profile.some((part) => typeof part !== "string" && part.path[0] === "thread")
+  );
+}
+
+export function renderInboundRevoke(action: AgentRevoke, body: unknown, thread?: Message) {
+  const { connection, profile } = action["agents.revoke"];
+  const actor = thread?.task?.claim?.actor;
+  const claim = actor?.startsWith("ob:conn:") ? { profile: actor.split("+")[1] } : null;
+  const rendered = renderTemplateText(profile, { body, thread: thread && { ...thread, claim } }, 32);
+  return {
+    connection,
+    profile:
+      rendered && !rendered.truncated && /^[A-Za-z][A-Za-z0-9-]{0,31}$/.test(rendered.text) ? rendered.text : null,
+  };
+}
+
 export function inboundActionPermission(action: Action, at = "action") {
+  if ("agents.revoke" in action) return null;
   if ("reply" in action) return "post";
   if ("label" in action) return "label";
   if ("react" in action) return "react";

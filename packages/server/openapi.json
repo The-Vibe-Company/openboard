@@ -5974,7 +5974,12 @@
                                     "type": "object",
                                     "required": ["connection", "profile"],
                                     "properties": {
-                                      "connection": { "type": "string" },
+                                      "connection": {
+                                        "minLength": 1,
+                                        "maxLength": 128,
+                                        "x-ref": "connection",
+                                        "type": "string"
+                                      },
                                       "profile": { "type": "string" }
                                     }
                                   }
@@ -6239,7 +6244,12 @@
                                           "type": "object",
                                           "required": ["connection", "profile"],
                                           "properties": {
-                                            "connection": { "type": "string" },
+                                            "connection": {
+                                              "minLength": 1,
+                                              "maxLength": 128,
+                                              "x-ref": "connection",
+                                              "type": "string"
+                                            },
                                             "profile": { "type": "string" }
                                           }
                                         }
@@ -6554,7 +6564,12 @@
                                             "type": "object",
                                             "required": ["connection", "profile"],
                                             "properties": {
-                                              "connection": { "type": "string" },
+                                              "connection": {
+                                                "minLength": 1,
+                                                "maxLength": 128,
+                                                "x-ref": "connection",
+                                                "type": "string"
+                                              },
                                               "profile": { "type": "string" }
                                             }
                                           }
@@ -6919,7 +6934,12 @@
                                       "type": "object",
                                       "required": ["connection", "profile"],
                                       "properties": {
-                                        "connection": { "type": "string" },
+                                        "connection": {
+                                          "minLength": 1,
+                                          "maxLength": 128,
+                                          "x-ref": "connection",
+                                          "type": "string"
+                                        },
                                         "profile": { "type": "string" }
                                       }
                                     }
@@ -7126,7 +7146,12 @@
                                     "type": "object",
                                     "required": ["connection", "profile"],
                                     "properties": {
-                                      "connection": { "type": "string" },
+                                      "connection": {
+                                        "minLength": 1,
+                                        "maxLength": 128,
+                                        "x-ref": "connection",
+                                        "type": "string"
+                                      },
                                       "profile": { "type": "string" }
                                     }
                                   }
@@ -7383,7 +7408,12 @@
                                       "type": "object",
                                       "required": ["connection", "profile"],
                                       "properties": {
-                                        "connection": { "type": "string" },
+                                        "connection": {
+                                          "minLength": 1,
+                                          "maxLength": 128,
+                                          "x-ref": "connection",
+                                          "type": "string"
+                                        },
                                         "profile": { "type": "string" }
                                       }
                                     }
@@ -7542,6 +7572,11 @@
                                   "type": "object",
                                   "required": ["task.expire"],
                                   "properties": { "task.expire": { "type": "string" } }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": ["agents.revoke"],
+                                  "properties": { "agents.revoke": { "type": "string" } }
                                 }
                               ]
                             }
@@ -25488,6 +25523,11 @@
                             "type": "object",
                             "required": ["task.expire"],
                             "properties": { "task.expire": { "type": "string" } }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["agents.revoke"],
+                            "properties": { "agents.revoke": { "type": "string" } }
                           }
                         ]
                       }

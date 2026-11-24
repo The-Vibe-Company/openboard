@@ -1206,6 +1206,20 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   when it expires the claim, or `{"task.expire":"not_claimed"}` without
   writing a task event if the task has no claim. Writes fenced by the ended
   claim return `claim_lost`.
+- **Agent revocation** takes a literal connection ID on the endpoint's board
+  and a profile, which can be a template. Only a board owner or organization
+  admin may save rules containing this action. The verification scheme must
+  authenticate the delivery ID. The GitHub preset leaves the delivery ID header
+  unsigned, so saving this action with that preset returns `invalid_rule`.
+  A connection absent from the
+  board or already revoked is refused with `invalid_rule`. The action returns
+  `{"agents.revoke":"ag_…"}` when it revokes the profile's live agent, or
+  `{"agents.revoke":"none"}` when no live agent holds the profile. Every token
+  for the revoked agent stops working on its next request. A profile template
+  using `thread.*` requires a readable root. It sees the root as it was when
+  the delivery started, so `{{thread.claim.profile}}` names the original
+  claimant even if an earlier action ended the claim. A literal or body-only
+  profile needs no thread when the other matching actions also need none.
 - **Effects** run in one board transaction together with the dedupe insert, so
   they happen at most once per endpoint and delivery ID while its dedupe record
   is retained, including across instances.

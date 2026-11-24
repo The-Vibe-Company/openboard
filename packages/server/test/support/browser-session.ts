@@ -56,12 +56,12 @@ export function makeBrowserApp(
   store = openStore(() => NOW),
   now = () => NOW,
   schedule: Deps["schedule"] = unexpectedTimer,
-  metrics: Pick<ServerConfig, "metricsTokenHash" | "instanceId"> = {},
+  options: Pick<ServerConfig, "metricsTokenHash" | "instanceId" | "secretKey"> = {},
 ) {
   let drawn = 0;
   return createCluster(
     {
-      ...metrics,
+      ...options,
       mode: "local",
       publicUrl: PUBLIC_URL,
       localOwner: LOCAL_OWNER,

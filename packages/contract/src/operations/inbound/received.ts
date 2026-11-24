@@ -12,6 +12,7 @@ export const InboundActionResult = Type.Union([
   }),
   Type.Object({ "task.cancel": Type.String() }),
   Type.Object({ "task.expire": Type.String() }),
+  Type.Object({ "agents.revoke": Type.String() }),
 ]);
 
 export const listInboundReceived = defineOperation({

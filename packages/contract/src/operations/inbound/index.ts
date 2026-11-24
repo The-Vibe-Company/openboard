@@ -132,6 +132,7 @@ export const receiveInboundEvent = defineOperation({
       "task.unblocked",
       "task.ready",
       "task.canceled",
+      "ob.agent.revoked",
     ],
   },
   cli: false,
