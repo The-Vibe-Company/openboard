@@ -213,7 +213,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
     request.headers.get("accept")?.includes(operation.eventStream)
   ) {
     const input = decodeInput(operation, raw);
-    return streamEvents(await context(input), input);
+    return streamEvents(await context(input), input, request.headers.get("last-event-id"));
   }
   const input = validate(operation, raw);
   const output = await handlerOf(operation)(await context(input), input);
