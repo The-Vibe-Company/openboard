@@ -74,6 +74,22 @@ export const startDeviceSignIn = defineOperation({
   upstream: false,
 });
 
+export const previewDeviceSignIn = defineOperation({
+  name: "previewDeviceSignIn",
+  summary: "Read the client name and expiry of an available terminal sign-in.",
+  route: { method: "GET", mount: "/api/x", path: "/auth/device/:userCode" },
+  scope: "account",
+  input: { params: Type.Object({ userCode: startDeviceSignIn.output.properties.userCode }) },
+  output: Type.Object({ clientName: Type.String(), expiresAt: Type.Integer() }),
+  errors: ["unauthorized", "not_found"],
+  access: null,
+  effects: { readOnly: true, idempotent: true, emits: [] },
+  cli: false,
+  mcp: false,
+  why: "Only a signed-in browser previews a device approval.",
+  upstream: false,
+});
+
 export const approveDeviceSignIn = defineOperation({
   name: "approveDeviceSignIn",
   summary: "Approve a CLI sign-in for a member of the chosen organization.",

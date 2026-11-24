@@ -5,6 +5,7 @@ import {
   type getSession,
   type listPersonalTokens,
   type pollDeviceSignIn,
+  type previewDeviceSignIn,
   type revokeAllSessions,
   type revokePersonalToken,
   type startDeviceSignIn,
@@ -70,6 +71,13 @@ export const startDeviceSignInHandler: Handler<typeof startDeviceSignIn> = async
     interval: POLL_INTERVAL,
     expiresIn: DEVICE_LIFETIME,
   };
+};
+
+export const previewDeviceSignInHandler: Handler<typeof previewDeviceSignIn> = async (ctx, { userCode }) => {
+  signedIn(ctx);
+  const preview = await ctx.platform.previewDevice(userCode, ctx.now());
+  if (!preview) throw new BoardError("not_found", "no available device approval");
+  return preview;
 };
 
 export const approveDeviceSignInHandler: Handler<typeof approveDeviceSignIn> = async (ctx, { userCode, org }) => {

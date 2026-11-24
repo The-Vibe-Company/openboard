@@ -183,9 +183,10 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
 
 1. `ob login https://openboard.example` → `POST /api/x/auth/device
    { clientName }` → `{ deviceCode, userCode, verificationUri: "<origin>/device", interval, expiresIn: 600 }`.
-2. The person opens `/device`, signs in, sees the code and the client name,
-   picks the organization (v1: their only one), and approves. Until the page
-   ships, approve through `POST /api/x/auth/device/approve { userCode, org }`
+2. The person opens `/device`, signs in, sees the code and the client name
+   and confirms their organization (v1: their only one). The page reads the
+   client name and expiry through `GET /api/x/auth/device/:userCode`.
+   It submits approval through `POST /api/x/auth/device/approve { userCode, org }`
    with the session cookie and the required `Origin` and `x-ob-csrf` headers.
 3. The CLI polls `POST /api/x/auth/device/token { deviceCode }` →
    `{ token: "obp_…", org: { slug, name }, boards: [{ slug, name, url }] }`.

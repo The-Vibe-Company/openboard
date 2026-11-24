@@ -1,0 +1,21 @@
+.device-sign-in section {
+  width: min(100%, 40rem);
+  overflow-wrap: anywhere;
+}
+
+.device-sign-in form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.device-sign-in input {
+  font: inherit;
+  max-width: 100%;
+}
+
+.device-sign-in dd {
+  margin: 0 0 0.5rem;
+}

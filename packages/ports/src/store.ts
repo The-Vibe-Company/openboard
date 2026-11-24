@@ -163,6 +163,8 @@ type DevicePoll = { status: "missing" | "pending" | "too_soon" } | { status: "is
 export interface PlatformView extends RateView {
   /** Start a device request and prune prior expired requests using the supplied clock. */
   startDevice(deviceHash: string, userCode: string, clientName: string, now: number, expiresAt: number): Promise<void>;
+  /** Read the display metadata of an unused, live code. */
+  previewDevice(userCode: string, now: number): Promise<{ clientName: string; expiresAt: number } | null>;
   /** Only a current member of the named organization can approve an unused, live code. */
   approveDevice(userCode: string, org: string, personId: string, now: number): Promise<boolean>;
   /** Poll a device capability; consume approval and issue its token in one transaction. */
