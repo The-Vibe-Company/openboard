@@ -11,7 +11,7 @@ writes:
   - docs/protocol.md
 conformance: []
 modes: [local, hosted]
-depends_on: [306, 333]
+depends_on: [333]
 status: draft
 claimed_by: null
 issue: 519
@@ -28,3 +28,5 @@ As the operator of a runner, an event about a run the board does not know answer
 
 ## Notes
 docs/protocol.md "Inbound endpoints" ("422 when a rule needs a thread and none is found (do not retry); 503 on storage failure (retry)"). The error catalogue has no 422 yet: add 422 to `thread_not_found`'s statuses in `packages/contract/src/errors.ts` (a code listed under two statuses takes the first unless the thrower names the other), and add the row to docs/protocol.md "Error envelope". Depends on 306, the last ticket before it to change docs/protocol.md.
+
+No longer waits for 306 (orchestrator, 2026-11-24): that dependency only ordered edits to a shared file; whichever ticket lands second rebases.

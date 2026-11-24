@@ -14,7 +14,7 @@ writes:
   - docs/auth.md
 conformance: []
 modes: [hosted]
-depends_on: [214, 323]
+depends_on: [214]
 status: draft
 claimed_by: null
 issue: 594
@@ -40,3 +40,5 @@ As the operator of the hosted service, I list organizations, look one up, and de
 - Depends on 323, the last ticket before it to change docs/auth.md.
 
 Orchestrator note (2026-11-24): the dependency on the deferred Railway ticket(s) [215] was dropped; this ticket does not need a deployment.
+
+No longer waits for 323 (orchestrator, 2026-11-24): that dependency only ordered edits to a shared file; whichever ticket lands second rebases.

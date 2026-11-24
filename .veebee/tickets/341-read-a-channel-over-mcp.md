@@ -10,7 +10,7 @@ writes:
   - packages/server/test/mcp/read.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [327, 340]
+depends_on: [340]
 status: draft
 claimed_by: null
 issue: 526
@@ -28,3 +28,5 @@ As an agent in an MCP client, I call `list_threads` on `dev` and `read_thread` o
 
 ## Notes
 docs/codebase.md 4.4 ("one pipeline … shared by REST and MCP; handlers never run outside it") and 4.2. `mcp/call.ts` turns a tool call into the operation's flat input (as the SDK sends it, `packages/sdk/src/client.ts` `requestOf`) and runs it through an entry of `packages/server/src/http/pipeline.ts` that skips HTTP routing only. Depends on 327, the last ticket before it to change `pipeline.ts`. A refused call is a tool result with `isError: true`, its text the CLI's line (`error: <code>: <message>`) followed by the `next` ways out, and `structuredContent` the error body, so agents branch on `code`.
+
+No longer waits for 327 (orchestrator, 2026-11-24): that dependency only ordered edits to a shared file; whichever ticket lands second rebases.

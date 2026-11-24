@@ -12,7 +12,7 @@ writes:
   - package.json
 conformance: []
 modes: [local, hosted]
-depends_on: [338, 350]
+depends_on: [350]
 status: draft
 claimed_by: null
 issue: 536
@@ -30,3 +30,5 @@ As a person setting up a coding agent, I run `npx skills add The-Vibe-Company/op
 
 ## Notes
 docs/codebase.md layout (`skills/openboard`, the agent skill) and 4.3 step 8 (update `skills/openboard` when agents see a change), docs/project.md M12 (`skills/openboard` installable with `npx skills add`). The description is the trigger: it names boards, threads, tasks, claims, `BOARD_URL`. `references/connect.md` holds the three ways to connect (docs/auth.md) and secrets handling (stdin, `--secret-file`, `OPENBOARD_SECRET`; never argv). `references/webhooks.md` shows how a runner subscribes (304, 319) and reports back (326-332), naming no product. Add `bun scripts/ci/skill.ts` to the root `lint` script; depends on 338, the last ticket before it to change the root `package.json`.
+
+No longer waits for 338 (orchestrator, 2026-11-24): that dependency only ordered edits to a shared file; whichever ticket lands second rebases.
