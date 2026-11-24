@@ -1206,3 +1206,22 @@ after all replicas support unsigned deliveries and enforce the receiver-origin
 check. A URL change to another origin requires replacing or clearing any stored static
 headers in that request. Same-origin URL changes can retain the headers.
 ([Issue #501](https://github.com/The-Vibe-Company/openboard/issues/501))
+
+### Inbound thread lookup privacy
+
+A signed inbound delivery whose matching rule needs a thread root gets the same
+422 `thread_not_found` body for absent and unreadable roots. This keeps the
+endpoint's response from revealing roots outside its grant.
+([Issue #519](https://github.com/The-Vibe-Company/openboard/issues/519))
+
+Before merging the first release that persists inbound 422 results, the release
+operator must hold automatic hosted deployment by setting `STAGING_DEPLOY` and
+`PRODUCTION_DEPLOY` to values other than `on` wherever enabled. In each hosted
+environment with active inbound endpoints, return 503 for signed inbound event
+POSTs at ingress, including on the direct origin, and drain in-flight deliveries
+before replacing any replica. Resume deliveries and automatic deploys after
+all serving replicas understand persisted 422 results. Environments with no
+active inbound endpoints can roll out without the route pause if endpoints
+stay inactive throughout the transition. If rolling back to an older release
+after any 422 result has been recorded, pause the route before the rollback and
+keep it paused until every serving replica can read those results again.

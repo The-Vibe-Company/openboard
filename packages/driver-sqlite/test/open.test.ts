@@ -250,3 +250,38 @@ test("startup queues one job per board and the backfill drains a soft-deleted or
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("classifies a native busy error as unavailable and rolls back the board write", async () => {
+  const dir = mkdtempSync("openboard-busy-");
+  const scope = testScope({ orgId: 1, boardId: 1 });
+  const actor = "ob:user:local-dev";
+  const driver = sqliteDriver({ dir });
+  try {
+    // This connection has no busy wait. The driver holds the transaction's write lock.
+    using contender = new Database(join(dir, "board.db"));
+    contender.run("PRAGMA busy_timeout = 0");
+    await expect(
+      driver.board(scope).write(async (writer) => {
+        await writer.append([
+          {
+            id: writer.head + 1,
+            type: "channel.created",
+            at: 100,
+            actor,
+            principal: actor,
+            thread: null,
+            message: null,
+            channel: "busy",
+            visibility: 1,
+            payload: { channel: "busy", by: { actor, principal: actor, profile: null } },
+          },
+        ]);
+        contender.run("BEGIN IMMEDIATE");
+      }),
+    ).rejects.toMatchObject({ status: 503, code: "unavailable" });
+    expect(await driver.board(scope).write(async (writer) => writer.head)).toBe(0);
+  } finally {
+    await driver.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

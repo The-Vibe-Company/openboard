@@ -131,6 +131,7 @@ answers. OpenBoard adds:
 | 410 | `secret_spent`, `invitation_used` | single-use secret claimed; invitation accepted, revoked, or expired |
 | 400 | `invalid_url`, `invalid_signing`, `invalid_rule`, `reserved_slug` | webhook URL refused; bad scheme; bad inbound rule; reserved slug |
 | 401 | `bad_signature` | inbound endpoint signature |
+| 422 | `thread_not_found` | a matching inbound action needs a thread root and resolution failed |
 | 429 | `rate_limited`, `quota_exceeded` | with `retry-after` for rate limits and the daily event quota |
 
 Malformed channel paths and patterns return HTTP 400 with the OpenBoard
@@ -1006,13 +1007,13 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   The delivery ID comes from the scheme's ID header, or the signed JSON
   body's `id` field for a scheme without one (such as Stripe). A missing ID
   answers 400 `invalid_request` when a signature is supplied. The endpoint
-  saves its first successful result, including when no rules match. A verified
+  saves its first successful result or `422 thread_not_found` result. A verified
   duplicate on the same endpoint returns that result without writing again.
 - **Rules** evaluate all `when` conditions against the JSON body and request headers. Each
   condition matches one value or any value in its list. Matching rules and
   their actions run in order. A reply renders its text with `body` and the
-  thread root and requires both `read` and `post` there. An unreadable thread
-  answers 404. A readable thread without permission to post answers 403
+  thread root and requires both `read` and `post` there. An unreadable root and an absent root return the same 422 response.
+  A readable thread without permission to post answers 403
   `forbidden`. Delivery IDs are limited to 1024 bytes.
 - **Labels and reactions** target the thread root and require `read` plus the
   action's `label` or `react` permission. A label action accepts `set`, `unset`
@@ -1033,8 +1034,11 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   `fail`, `release`) stay with the agent that holds the claim.
 - **Answers:** 200 `{ ok, matched, results }`; 401 `bad_signature`; 404 unknown
   or disabled; 413 `too_large` for bodies over 1 MiB; 429 `rate_limited` when
-  admission is exhausted; 422 when a rule needs a thread and none is found (do not
-  retry); 503 on storage failure (retry).
+  admission is exhausted; 422 `thread_not_found` when a matching rule needs a
+  thread root and the reference is empty, fails to match the pattern, or does
+  not identify an available root. The board records this result without applying
+  actions. Do not retry a 422. A storage failure returns 503 `unavailable`
+  without recording a result and can be retried.
 
 ## Worked example: board event → Armada routine → agent → board
 

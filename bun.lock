@@ -139,6 +139,7 @@
       "name": "@openboard/driver-sqlite",
       "version": "0.0.0",
       "dependencies": {
+        "@openboard/contract": "workspace:*",
         "@openboard/driver-sql": "workspace:*",
         "@openboard/ports": "workspace:*",
       },

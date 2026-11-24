@@ -21289,6 +21289,10 @@
             "description": "too_large",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
+          "422": {
+            "description": "thread_not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
           "429": {
             "description": "quota_exceeded, rate_limited",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
