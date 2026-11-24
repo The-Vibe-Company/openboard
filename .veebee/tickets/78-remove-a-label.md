@@ -15,8 +15,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [77]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t78
 issue: 78
 ---
 
