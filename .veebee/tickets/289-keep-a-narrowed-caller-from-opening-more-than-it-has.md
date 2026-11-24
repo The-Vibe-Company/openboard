@@ -7,11 +7,14 @@ writes:
   - packages/core/src/access/grant-changes.ts
   - packages/core/test/access/grant-changes.test.ts
   - packages/server/test/grants/narrowed-everyone.test.ts
+  - tools/conformance/score.json
+  - packages/server/src/operations/grants/authority.ts
+  - packages/core/src/channels/create.ts
 conformance: ["grants/lets no caller narrowed with x-board-can let anyone in where everyone gets more than it has"]
 modes: [local, hosted]
 depends_on: [288]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 464
 ---
 
