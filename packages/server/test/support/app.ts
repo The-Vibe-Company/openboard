@@ -19,6 +19,7 @@ export function unexpectedTimer(): never {
 type AppOptions = Pick<ServerConfig, "signup" | "signIn" | "webDir"> &
   Pick<Deps, "fetch"> & {
     readonly mode?: ServerConfig["mode"];
+    readonly publicUrl?: ServerConfig["publicUrl"];
     readonly now?: () => number;
     readonly log?: Logger;
     readonly schedule?: Deps["schedule"];
@@ -43,7 +44,7 @@ export function makeApp(options: AppOptions = {}) {
   let drawn = 0;
   const config: ServerConfig = {
     mode,
-    publicUrl: PUBLIC_URL,
+    publicUrl: options.publicUrl ?? PUBLIC_URL,
     localOwner: LOCAL_OWNER,
     // Keep a configured hash in hosted tests to exercise the verifier's mode guard.
     localOwnerTokenHash: OWNER.hash,

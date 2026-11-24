@@ -32,7 +32,7 @@ export function createApp(
   };
   const pipeline: Pipeline = {
     shutdown: shutdown.signal,
-    staticFiles: staticFiles(config.webDir),
+    staticFiles: staticFiles(config.publicUrl, config.webDir),
     schemaReady: readinessCheck(() => ports.store.schemaReady()),
     track,
     config,

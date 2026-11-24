@@ -4,14 +4,16 @@ title: Serve the front with strict security headers
 milestone: M8-front
 package: server
 writes:
+  - packages/server/src/app.ts
+  - packages/server/test/support/app.ts
   - packages/server/src/http/static.ts
   - packages/server/test/static-headers.test.ts
   - apps/web/e2e/csp.spec.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [216]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 378
 ---
 
