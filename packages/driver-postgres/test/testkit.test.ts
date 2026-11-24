@@ -1,6 +1,6 @@
 import { SQL } from "bun";
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { messagesSuite } from "@openboard/ports/testkit";
+import { runStoreSuite } from "@openboard/ports/testkit";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
 import { migrate } from "../src/migrate.ts";
 import { postgresTestUrl } from "./support/env.ts";
@@ -13,18 +13,18 @@ if (url) {
   });
   afterAll(() => databases?.close());
 
-  // The shared suite opens a clean store for each case.
-  messagesSuite("Postgres", async () => {
+  // Every store case, each on its own database cloned from the migrated template.
+  runStoreSuite("postgres", async () => {
     const database = await databases.create();
     try {
       const store = await postgresDriver({ url: database.url });
-      return {
-        ...store,
-        async close() {
-          await store.close();
-          await database.drop();
-        },
+      // Suites close from a file-level `afterEach`, so a store may be closed again after later cases.
+      let closed: Promise<void> | undefined;
+      const close = async () => {
+        await store.close();
+        await database.drop();
       };
+      return { ...store, close: () => (closed ??= close()) };
     } catch (error) {
       await database.drop();
       throw error;
