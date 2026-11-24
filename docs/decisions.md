@@ -689,6 +689,11 @@ Lease consumption and the database effect commit together.
   operation with an explicit `/api/x` mount uses that mount and sends the
   configured CSRF value for writes. Invitation acceptance declares this mount.
 
+  On issue #366 the owner chose one 30-attempt-per-minute IP budget shared
+  by starts and callbacks across hosted replicas through Postgres, with the
+  same counter in local SQLite. Browser routes use the same client IP
+  resolution as the API rate limits (D40).
+
 ### D49. `org` operations: members read, admins write, under the organization's lock
 
 - **Context.** Ticket 143 added the first `org` operation (creating an

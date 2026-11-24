@@ -336,7 +336,9 @@ CREATE TABLE personal_tokens (
 );
 CREATE INDEX personal_tokens_user ON personal_tokens (user_id);
 
-CREATE TABLE rate_counters (key TEXT NOT NULL, window_start BIGINT NOT NULL, n BIGINT NOT NULL, PRIMARY KEY (key, window_start));
+CREATE TABLE rate_counters (key TEXT NOT NULL, window_start BIGINT NOT NULL, n BIGINT NOT NULL,
+                            expires_at BIGINT NOT NULL, PRIMARY KEY (key, window_start));
+CREATE INDEX rate_counters_expiry ON rate_counters (expires_at);
 CREATE TABLE usage_daily (org_id BIGINT NOT NULL, day TEXT NOT NULL, events BIGINT NOT NULL, bytes BIGINT NOT NULL,
                           deliveries BIGINT NOT NULL, agents BIGINT NOT NULL, PRIMARY KEY (org_id, day));
 CREATE TABLE schema_migrations (version BIGINT PRIMARY KEY, applied_at BIGINT NOT NULL);

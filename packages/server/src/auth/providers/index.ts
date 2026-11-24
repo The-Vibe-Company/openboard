@@ -109,10 +109,16 @@ async function callback(provider: LoginProvider, ctx: SignInContext, request: Re
  * Browser sign-in at `/auth/<provider>/start` and `/auth/<provider>/callback` (docs/codebase.md 2.2, "browser sign-in
  * at /auth"): redirects, outside the `/api` contract. Null for any other path or method.
  */
-export function signInRoute(request: Request, url: URL, ctx: SignInContext): Promise<Response> | null {
+export async function signInRoute(request: Request, url: URL, ctx: SignInContext): Promise<Response | null> {
   const [, id, step] = ROUTE.exec(url.pathname) ?? [];
   const provider = ctx.providers.find((candidate) => candidate.id === id);
   if (request.method !== "GET" || !provider) return null;
+  const seconds = await ctx.rateLimits.takeSignIn(ctx.ip);
+  if (seconds !== undefined) {
+    throw new BoardError("rate_limited", "too many browser sign-in attempts from this IP", {
+      next: [{ kind: "wait", seconds }],
+    });
+  }
   const redirectUri = `${ctx.config.publicUrl}/auth/${provider.id}/callback`;
   return step === "start"
     ? start(provider, ctx, redirectUri, url.searchParams.get("invitation"))

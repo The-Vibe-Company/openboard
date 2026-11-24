@@ -3,7 +3,7 @@ import type { Jobs, Store } from "@openboard/ports";
 import { loginProviders } from "./auth/providers/index.ts";
 import type { Deps, ServerConfig } from "./deps.ts";
 import { readinessCheck } from "./http/health.ts";
-import { instanceRateLimits } from "./http/limits.ts";
+import { requestRateLimits } from "./http/limits.ts";
 import { handle, type Pipeline } from "./http/pipeline.ts";
 import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
@@ -31,6 +31,7 @@ export function createApp(
     active.add(work);
     return work.finally(() => active.delete(work));
   };
+  const platform = ports.store.platform();
   const pipeline: Pipeline = {
     shutdown: shutdown.signal,
     staticFiles: staticFiles(config.publicUrl, config.webDir),
@@ -38,7 +39,7 @@ export function createApp(
     track,
     config,
     deps,
-    rateLimits: instanceRateLimits(deps.now),
+    rateLimits: requestRateLimits(deps.now, platform),
     routes: routeTable(
       operations.filter(({ scope, route }) => scope === "board" || (scope === "public" && !route.mount)),
     ),
@@ -46,7 +47,7 @@ export function createApp(
       operations.filter(({ scope, route }) => scope === "account" || scope === "org" || route.mount),
     ),
     tenants: tenants(ports.store),
-    platform: ports.store.platform(),
+    platform,
     providers: loginProviders(config, deps),
   };
   const stopJobs = startJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, handlers);

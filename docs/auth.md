@@ -397,8 +397,15 @@ must hold across instances (marked †):
 | Writes per organization | 200/s, burst 1,000 (sum across instances ≈ configured × instances) |
 | Org creation per person † / per IP † | 3/day / 10/day |
 | Invitations per organization † | 50/day |
-| Sign-in attempts per IP | 30/min |
+| Browser sign-in attempts per IP † | 30/min |
 | SSE streams per principal / per organization | 20 / 500 |
+
+Browser sign-in starts and callbacks share a 30-attempt fixed window per IP
+that resets at each minute boundary. Hosted replicas use one Postgres counter,
+and local mode uses the same counter in SQLite. A rejected attempt returns
+JSON 429 `rate_limited` with `Retry-After` before contacting the provider.
+The first debit in a window prunes expired counters after a one-minute
+clock-skew grace period.
 
 With `OPENBOARD_TRUSTED_PROXIES` unset, per-IP limits use only the socket
 peer address. Set it to `N` (Railway: `1`) only when every path to the app,
