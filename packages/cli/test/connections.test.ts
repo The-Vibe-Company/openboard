@@ -171,6 +171,18 @@ describe("ob connections rotate", () => {
     expect(lines.err).toEqual(["error: invalid_request: overlap 25h is longer than 24 hours"]);
   });
 
+  test("says the board may have rotated anyway when its answer is lost", async () => {
+    const file = join(dir, "new.secret");
+    const fetch = async () => new Response("<html>bad gateway</html>", { status: 200 });
+    const { lines, output } = capture();
+    const argv = ["connections", "rotate", connection.id, "--overlap", "10m", "--secret-file", file];
+    expect(await runCli(argv, env, { fetch, output })).toBe(1);
+    expect(existsSync(file)).toBe(false);
+    expect(lines.err[0]).toBe(
+      `the board may have rotated ${connection.id} without answering its new secret: rotate it again`,
+    );
+  });
+
   test.each([
     [[connection.id], "--secret-file is required"],
     [["--secret-file", "x"], "expected 1 argument"],

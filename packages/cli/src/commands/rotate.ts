@@ -1,4 +1,5 @@
 import { closeSync, unlinkSync, writeSync } from "node:fs";
+import { BoardError } from "@the-vibe-company/openboard";
 import { createSecretFile } from "./connections.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 
@@ -36,10 +37,14 @@ function parse(ctx: CommandContext): RotateOptions {
   return { id, secretFile, ...(overlap === undefined ? {} : { overlap }) };
 }
 
+/** Errors after which the board may have rotated the secret all the same: no answer, or one that could not be read. */
+const UNSURE = new Set(["unreachable", "remote_error"]);
+
 /**
  * `ob connections rotate`: the board answers the new secret once; it goes to `--secret-file` (mode 0600), never to
- * the terminal. The file is made before the request, so a secret is never replaced with nowhere to keep the new one,
- * and it is removed only when the board refused.
+ * the terminal. The file is made before the request, so a secret is never replaced with nowhere to keep the new one.
+ * When the request fails the file is still empty and is removed; if the board may have rotated anyway, the owner is
+ * told the old secret may have stopped and to rotate again.
  */
 export const rotateConnectionCommand: Command = {
   words: ["connections", "rotate"],
@@ -53,6 +58,9 @@ export const rotateConnectionCommand: Command = {
     } catch (error) {
       closeSync(fd);
       unlinkSync(secretFile);
+      if (!(error instanceof BoardError) || UNSURE.has(error.code)) {
+        ctx.output.err(`the board may have rotated ${id} without answering its new secret: rotate it again`);
+      }
       throw error;
     }
     try {

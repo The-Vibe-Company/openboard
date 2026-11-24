@@ -235,7 +235,8 @@ POST {BOARD_URL}/x/connections
   connections arrives with the M10 grant-change rules.
 - **Rotate** (`…/rotate { overlap }`): new secret, shown once; the old one
   works for `overlap` (≤ 24 h; absent or `0s`, it stops at once), and a second
-  rotation ends the first one's overlap. Claimed agent tokens are unaffected.
+  rotation ends the first one's overlap. Claimed agent tokens are unaffected,
+  and so is the claims count: a spent single-use secret stays spent.
   Use `ob connections rotate <id> --overlap 10m --secret-file <path>` as the
   local owner; the new secret goes to the 0600 file, never to the terminal.
 - Handles: the connection's name (`armada-fixers`); its profiles
