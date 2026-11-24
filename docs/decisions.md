@@ -1264,3 +1264,15 @@ the route. Each scrape reports the serving instance's observations and a
 fresh aggregate of dispatchable jobs from the database. Webhook outcomes
 are counted after the transaction that records the delivery state commits.
 ([Issue #589](https://github.com/The-Vibe-Company/openboard/issues/589))
+
+### D69. Cap queued webhook deliveries per organization (ticket 324)
+
+- **Decision.** An organization has 600 queued delivery attempts per UTC
+  minute, shared by every board and worker. Claiming a delivery job reserves
+  one slot in the same transaction, including retries and queued resends.
+  Postgres shares the counter across replicas, and SQLite uses the same
+  counter locally.
+- **Consequence.** The picker skips capped organizations and continues with
+  other eligible jobs. Pending deliveries keep their state and attempt count
+  and become eligible again at the next minute boundary, subject to their
+  normal due time and lane order.

@@ -1002,6 +1002,10 @@ response. `ob webhooks disable <id>` pauses dispatch and `ob webhooks enable
   subscription, and at most 32 per instance. Any instance may send (leased
   rows). Version 1 requires both a thread and a message and never delivers
   `channel.created`.
+- **Rate:** Each organization has 600 queued delivery attempts per UTC
+  minute across its boards and all instances. Retries and queued resends use
+  the same budget. When the budget is full, pending deliveries wait until
+  the next minute and other organizations' jobs can continue.
 - **Outcomes:** 2xx within 10 s succeeds; network error, timeout, 408, 425,
   429, 5xx retry at 10 s, 30 s, 2 min, 10 min, 30 min, 1 h, 3 h, 6 h, 12 h
   (honouring `retry-after` ≤ 1 h); other 4xx dead at once; 410 disables the

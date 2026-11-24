@@ -11,6 +11,8 @@ const SETTINGS = {
   statement_timeout: "5s",
   lock_timeout: "3s",
   idle_in_transaction_session_timeout: "10s",
+  // Job picks stop at indexed candidates. Backlog estimates can otherwise pay JIT compilation on every pick.
+  jit: "off",
 } as const;
 
 /** Seconds to wait for a connection before a request answers `unavailable` (docs/architecture.md "Availability"). */

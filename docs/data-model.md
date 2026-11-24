@@ -239,6 +239,8 @@ Per connection: `SET statement_timeout = '5s'`, `SET lock_timeout = '3s'`
 retryable code), `SET idle_in_transaction_session_timeout = '10s'`. Default
 isolation `READ COMMITTED` is sufficient because every conditional write holds
 the board lock.
+The request pool also sets `jit = off` so short indexed job picks do not incur
+compilation latency when a large backlog inflates the planner's cost estimate.
 
 ### Accounts and organizations (global)
 
