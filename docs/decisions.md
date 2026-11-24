@@ -554,6 +554,11 @@ Lease consumption and the database effect commit together.
   limits, audit, deletion, and the isolation suite in CI. Billing is out of
   scope.
 
+- **Deletion rollout.** The purge handler and enqueue ship together under the job
+  rollout exception in codebase.md §5.7. The enqueue is first due at `purgeAt`,
+  30 days after soft deletion. A compatible runner can also lease an older
+  deletion without a queue row once its original retention period has elapsed.
+
 - **Write throttling.** Each instance admits up to 1,000 writes per organization
   in a burst and refills at 200 writes per second. The aggregate rate scales
   with the number of instances. Authorized writes debit the bucket after

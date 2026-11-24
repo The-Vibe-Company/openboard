@@ -1,6 +1,8 @@
-import type { BoardJobWriter, BoardKeys, Jobs } from "@openboard/ports";
+import { type BoardJobWriter, type BoardKeys, type Jobs, PURGE_ORG_JOB } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
+
+import { claimLegacyPurge, nextLegacyPurge } from "./legacy-purge.ts";
 
 const leaseMs = 30_000;
 
@@ -45,19 +47,21 @@ export const jobStatements = {
 };
 
 export function claimJob(db: Db, dialect: Dialect): Jobs["claim"] {
-  return async (kinds, { instanceId, claimedAt }) => {
+  return async (kinds, lease) => {
     if (kinds.length === 0) return null;
-    const [row] = await db.transaction((tx) =>
-      query(tx, dialect, jobPlatformStatements.claimJob, {
+    const { instanceId, claimedAt } = lease;
+    const until = claimedAt + leaseMs;
+    return db.transaction(async (tx) => {
+      const [row] = await query(tx, dialect, jobPlatformStatements.claimJob, {
         kinds: JSON.stringify(kinds),
         instanceId,
         now: claimedAt,
-        until: claimedAt + leaseMs,
-      }),
-    );
-    return row
-      ? { id: String(row.id), kind: String(row.kind), orgId: Number(row.org_id), boardId: Number(row.board_id) }
-      : null;
+        until,
+      });
+      if (row)
+        return { id: String(row.id), kind: String(row.kind), orgId: Number(row.org_id), boardId: Number(row.board_id) };
+      return kinds.includes(PURGE_ORG_JOB) ? claimLegacyPurge(tx, dialect, lease, until) : null;
+    });
   };
 }
 
@@ -69,7 +73,9 @@ export function releaseJobs(db: Db, dialect: Dialect): Jobs["release"] {
 
 export async function nextJob(db: Db, dialect: Dialect, kinds: readonly string[]): Promise<number | null> {
   const [row] = await query(db, dialect, jobPlatformStatements.nextJob, { kinds: JSON.stringify(kinds) });
-  return row?.due == null ? null : Number(row.due);
+  const queued = row?.due == null ? null : Number(row.due);
+  const legacy = kinds.includes(PURGE_ORG_JOB) ? await nextLegacyPurge(db, dialect) : null;
+  return queued === null ? legacy : legacy === null ? queued : Math.min(queued, legacy);
 }
 
 export interface JobWrites {

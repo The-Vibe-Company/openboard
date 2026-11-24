@@ -5,9 +5,9 @@ import {
   postgresDriver,
   removeLatestTestMigration,
 } from "@openboard/driver-postgres";
-import { type Catalog, postgresCatalog } from "@openboard/driver-postgres/catalog";
+import { type Catalog, postgresCatalog, postgresPurgeFixture } from "@openboard/driver-postgres/catalog";
 import { sqliteDriver } from "@openboard/driver-sqlite";
-import { sqliteCatalog } from "@openboard/driver-sqlite/catalog";
+import { sqliteCatalog, sqlitePurgeFixture } from "@openboard/driver-sqlite/catalog";
 import type { Store } from "@openboard/ports";
 import { postgresTestUrl } from "./env.ts";
 
@@ -52,7 +52,15 @@ export function openStore(now: () => number): TestStore {
   return url ? postgresStore(url, now) : sqliteDriver({ memory: true }, now);
 }
 
-function postgresStore(url: string, now: () => number): TestStore {
+export function openSnapshotStore(now: () => number) {
+  const url = postgresTestUrl();
+  if (url) return postgresStore(url, now);
+  const store = sqlitePurgeFixture(now);
+  afterAll(() => store.close());
+  return { ...store, sibling: undefined };
+}
+
+function postgresStore(url: string, now: () => number): TestStore & ReturnType<typeof postgresPurgeFixture> {
   // Without a run's template, the store migrates its own and drops it with its database.
   const shared = run;
   let own: Promise<TestDatabases> | undefined;
@@ -92,6 +100,7 @@ function postgresStore(url: string, now: () => number): TestStore {
   return {
     ...instance(),
     sibling: instance,
+    ...postgresPurgeFixture(async () => (await created()).url),
     interruptWrites: async (count, startWrites) => interruptTestWrites((await created()).url, count, startWrites),
     removeLatestMigration: async () => removeLatestTestMigration((await created()).url),
   };

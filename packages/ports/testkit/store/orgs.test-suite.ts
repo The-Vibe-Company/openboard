@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { boards } from "@openboard/core";
-import type { CreateOrgRecord, IdentityRecord, Store } from "../../src/index.ts";
+import { type CreateOrgRecord, type IdentityRecord, PURGE_ORG_JOB, type Store } from "../../src/index.ts";
 import { type OpenStore, testOrgScope, testScope } from "../index.ts";
 
 const at = 1_700_000_000_000;
@@ -85,6 +85,11 @@ async function checkDeletion(db: Store) {
   expect(await platform.findBoard("acme", "main")).toBeNull();
   expect(await platform.memberships(ada)).toEqual([]);
   await expect(platform.createOrg(acme(ada))).rejects.toMatchObject({ code: "slug_taken" });
+  const due = at + 30 * 86_400_000;
+  const lease = { instanceId: "purger", claimedAt: due };
+  expect(await db.jobs.claim([PURGE_ORG_JOB], { ...lease, claimedAt: due - 1 })).toBeNull();
+  expect(await db.jobs.claim([PURGE_ORG_JOB], lease)).toMatchObject({ ...keys, kind: PURGE_ORG_JOB });
+  expect(await db.jobs.claim([PURGE_ORG_JOB], lease)).toBeNull();
 }
 
 export function orgsSuite(driver: string, open: OpenStore): void {

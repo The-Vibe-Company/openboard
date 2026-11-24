@@ -101,6 +101,7 @@ export interface Tenants {
   board(path: BoardPath): Promise<BoardView>;
   /** A background job enters its board using routing keys from the trusted picker. */
   jobBoard(job: Job): BoardView;
+  jobOrg(job: Job): OrgView;
   /** The view of an organization the person administers; 404 for a non-member, 403 `forbidden` for a member. */
   adminOrg(slug: string, personId: string): Promise<OrgView>;
   /** The view of an organization the person belongs to, with any role; 404 for anyone else. */
@@ -110,6 +111,7 @@ export interface Tenants {
 export function tenants(store: Store): Tenants {
   return {
     jobBoard: (job) => store.board(mintBoardScope(job)),
+    jobOrg: ({ orgId }) => store.org({ orgId } as OrgScope),
     async adminOrg(slug, personId) {
       const member = await membership(store, slug, personId);
       if (member.role === "member") throw new BoardError("forbidden", "this organization needs an administrator");

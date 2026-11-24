@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { RefKind } from "@openboard/contract";
-import type { Store } from "@openboard/ports";
+import type { BoardKeys, Store } from "@openboard/ports";
 import type { App } from "../../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "../support/app.ts";
 import { createCluster } from "../support/cluster.ts";
@@ -36,6 +36,7 @@ export interface Seeded {
   readonly aOther: string;
   readonly b: Tenant;
   readonly deleted: Tenant;
+  readonly deletedKeys: BoardKeys;
   /** A message ID, and client ID, both boards hold: on A's URL it must name A's message. */
   readonly sharedMessage: string;
   send(method: string, path: string, headers: Headers, body?: unknown): Promise<Response>;
@@ -199,8 +200,10 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
  * Organization A (`alpha`, boards `main` and `other`) and organization B (`bravo`), each owned by its own person.
  * B holds more messages than A, so its last message ID names nothing on A's board, while A's last exists in both.
  */
-export async function seed(): Promise<Seeded> {
-  const store = openStore(() => NOW);
+export async function seed(
+  store = openStore(() => NOW),
+  beforeArchive?: (send: Send, tenant: Tenant) => Promise<void>,
+): Promise<Seeded> {
   let drawn = 0;
   const randomBytes = (length: number) => {
     drawn++;
@@ -233,6 +236,9 @@ export async function seed(): Promise<Seeded> {
   const events = await ok<{ cursor: string }>(send("GET", "/api/alpha/main/events", a.session), "events");
   if (Number(b.ids.message) <= Number(events.cursor)) throw new Error("seed: B's last message must be past A's head");
   const deleted = await tenant(send, store, "archived", "c", 0);
+  await beforeArchive?.(send, deleted);
+  const deletedKeys = await store.platform().findBoard(deleted.org, deleted.board);
+  if (!deletedKeys) throw new Error("seed: archived board missing");
   await ok(send("POST", "/api/x/orgs/archived/delete", deleted.session), "delete organization");
-  return { app, store, a, aOther, b, deleted, sharedMessage: String(a.ids.message), send };
+  return { app, store, a, aOther, b, deleted, deletedKeys, sharedMessage: String(a.ids.message), send };
 }

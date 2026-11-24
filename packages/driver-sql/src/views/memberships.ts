@@ -1,15 +1,17 @@
 import { BoardError, type Role } from "@openboard/contract";
 import {
   decideMemberRole,
+  ORG_PURGE_RETENTION_MS,
   orgDeletion,
   requireAnotherOwner,
   requireMemberRemoval,
   requireOrgOwner,
 } from "@openboard/core";
-import type { OrgScope, OrgView } from "@openboard/ports";
+import { type OrgScope, type OrgView, PURGE_ORG_JOB } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { forUpdate, query, sql } from "../sql.ts";
 import { invitationStatements } from "./invitations.ts";
+import { type JobWrites, jobWriter } from "./jobs/index.ts";
 import { orgStatements } from "./orgs.ts";
 
 export const membershipStatements = {
@@ -19,6 +21,7 @@ export const membershipStatements = {
   markOrgDeleted: sql`UPDATE orgs SET deleted_at = ${"at"} FROM memberships m
     WHERE orgs.id = m.org_id AND m.org_id = ${"orgId"} AND m.user_id = ${"userId"}
     AND orgs.deleted_at IS NULL RETURNING slug, name`,
+  purgeJobBoard: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} ORDER BY id LIMIT 1`,
   deleteMember: sql`DELETE FROM memberships WHERE org_id = ${"orgId"} AND user_id = ${"userId"}`,
   targetMember: sql`SELECT m.user_id, m.role FROM memberships m
     JOIN users u ON u.id = m.user_id WHERE m.org_id = ${"orgId"} AND u.public_id = ${"targetId"}`,
@@ -28,8 +31,16 @@ export const membershipStatements = {
     WHERE org_id = ${"orgId"} AND user_id = ${"userId"}`,
 };
 
-function deleteOrg(db: Db, dialect: Dialect, orgId: number, personId: string, at: number, admit?: () => void) {
-  return db.transaction(async (tx) => {
+async function deleteOrg(
+  db: Db,
+  dialect: Dialect,
+  jobs: JobWrites,
+  orgId: number,
+  personId: string,
+  at: number,
+  admit?: () => void,
+) {
+  const deleted = await db.transaction(async (tx) => {
     const [actor] = await query(tx, dialect, membershipStatements.lockRemovingMember, { orgId, personId });
     if (!actor) throw new BoardError("not_found", "no such organization");
     requireOrgOwner(String(actor.role) as Role);
@@ -50,17 +61,24 @@ function deleteOrg(db: Db, dialect: Dialect, orgId: number, personId: string, at
       actor: `ob:user:${personId}`,
       payload: JSON.stringify(deleted),
     });
+    const [board] = await query(tx, dialect, membershipStatements.purgeJobBoard, { orgId });
+    if (!board) throw new Error("organization has no board to route its purge job");
+    const writer = jobWriter(tx, dialect, { orgId, boardId: Number(board.id) }, jobs, () => {});
+    await writer.enqueue(PURGE_ORG_JOB, at + ORG_PURGE_RETENTION_MS, { deletedAt: at });
     return deleted;
   });
+  jobs.committed();
+  return deleted;
 }
 
 export function membershipView(
   db: Db,
   dialect: Dialect,
   { orgId }: OrgScope,
+  jobs: JobWrites,
 ): Pick<OrgView, "changeMemberRole" | "removeMember" | "deleteOrg"> {
   return {
-    deleteOrg: (personId, at, admit) => deleteOrg(db, dialect, orgId, personId, at, admit),
+    deleteOrg: (personId, at, admit) => deleteOrg(db, dialect, jobs, orgId, personId, at, admit),
     changeMemberRole: ({ personId, targetId, role, at, admit }) =>
       db.transaction(async (tx) => {
         const [actor] = await query(tx, dialect, invitationStatements.lockInvitationOrg, { orgId, personId });

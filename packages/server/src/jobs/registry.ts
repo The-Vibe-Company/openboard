@@ -1,6 +1,12 @@
-import type { BoardWriter, JobPayload, Jobs } from "@openboard/ports";
+import type { BoardWriter, Job, JobLease, JobPayload, Jobs, OrgView } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
 import type { Tenants } from "../http/scope.ts";
+
+export interface OrgJobHandler {
+  run(org: OrgView, job: Job, lease: JobLease, now: number): Promise<boolean>;
+}
+
+export type JobHandlers = Readonly<Record<string, JobHandler | OrgJobHandler>>;
 
 /** A job effect runs under the board lock, in the same transaction that consumes its lease. */
 export type JobHandler = (writer: BoardWriter, payload: JobPayload) => Promise<void>;
@@ -10,7 +16,7 @@ export function startJobs(
   tenants: Tenants,
   deps: Deps,
   instance: string | undefined,
-  handlers: Readonly<Record<string, JobHandler>>,
+  handlers: JobHandlers,
 ): (release?: boolean) => Promise<void> {
   const registry = new Map(Object.entries(handlers));
   if (registry.size === 0) return async () => {};
@@ -32,12 +38,15 @@ export function startJobs(
       if (!handler) continue;
       currentJob = job.id;
       try {
-        const ran = await tenants.jobBoard(job).write(async (writer) => {
-          const payload = await writer.takeJob(job.id, lease, deps.now());
-          if (payload === null) return false;
-          await handler(writer, payload);
-          return true;
-        });
+        const ran =
+          typeof handler === "function"
+            ? await tenants.jobBoard(job).write(async (writer) => {
+                const payload = await writer.takeJob(job.id, lease, deps.now());
+                if (payload === null) return false;
+                await handler(writer, payload);
+                return true;
+              })
+            : await handler.run(tenants.jobOrg(job), job, lease, deps.now());
         if (ran) deps.log.info("job completed", { kind: job.kind, instanceId });
       } catch {
         // Leave the lease to expire. An unsuccessful transaction rolls back both consumption and the effect.

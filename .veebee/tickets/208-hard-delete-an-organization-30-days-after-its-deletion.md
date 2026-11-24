@@ -12,11 +12,37 @@ writes:
   - packages/driver-sql/src/views/purge.ts
   - packages/driver-sql/src/statements.ts
   - packages/server/test/ha/purge-org.test.ts
+  - apps/openboard/src/compose.ts
+  - docs/codebase.md
+  - docs/decisions.md
+  - packages/driver-postgres/src/catalog.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/purge-test-data.ts
+  - packages/driver-sql/src/views/jobs/purge.ts
+  - packages/driver-sql/src/views/memberships.ts
+  - packages/driver-sqlite/src/catalog.ts
+  - packages/ports/src/index.ts
+  - packages/ports/src/jobs.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/server/src/app.ts
+  - packages/server/src/http/scope.ts
+  - packages/server/src/index.ts
+  - packages/server/test/isolation/seed.ts
+  - packages/server/test/support/drivers.ts
+  - packages/core/src/index.ts
+  - packages/core/src/orgs/delete.ts
+  - packages/driver-sql/migrations/0021-org-purge-state.sql
+  - packages/driver-sql/migrations/0022-org-purge-indexes.sql
+  - packages/driver-sql/src/views/jobs/index.ts
+  - packages/driver-sql/src/views/jobs/legacy-purge.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - docs/data-model.md
+  - packages/driver-sqlite/src/ddl.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [181, 207]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 369
 ---
 
@@ -24,8 +50,8 @@ issue: 369
 As a person who left a hosted OpenBoard, 30 days after my organization's deletion nothing of it remains in the database.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/purge-org.test.ts` passes with both instances' runners polling: an organization deleted at T keeps every row at T + 29 days; at T + 30 days exactly one runner removes every row carrying its `org_id` (events, messages, connections, agents, memberships, invitations, organization events, boards), a second run of the job changes nothing, and the other organization's digest (docs/codebase.md 6.5) is unchanged
-- [ ] the same file passes on SQLite: `bun test packages/server/test/ha/purge-org.test.ts`
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/purge-org.test.ts` passes with both instances' runners polling: an organization deleted at T keeps every row at T + 29 days; at T + 30 days exactly one runner removes every row carrying its `org_id` (events, messages, connections, agents, memberships, invitations, organization events, boards), a second run of the job changes nothing, and the other organization's digest (docs/codebase.md 6.5) is unchanged
+- [x] the same file passes on SQLite: `bun test packages/server/test/ha/purge-org.test.ts`
 
 ## Out of scope
 - Deleting the organization's prefix in the backup bucket (210, which owns the bucket).

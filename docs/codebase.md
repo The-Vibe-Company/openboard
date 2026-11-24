@@ -405,6 +405,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 - Inline lint suppressions give their reason on the same line (armada: `docs/lint-policy.md`).
 - English everywhere.
 - No compatibility layers for OpenBoard-only surfaces: replace, delete the old, update every caller in the same PR (armada: non-negotiable 1). Two things keep an N/N-1 overlap because instances of two versions run side by side during a rolling deploy: the database schema (expand/contract, 7.6) and job payloads (a new job kind is handled by the release before the one that enqueues it). The upstream wire protocol is not ours to change.
+  A job first due later than one full deploy cycle after it is enqueued may ship with its handler.
 
 ## 6. Testing
 

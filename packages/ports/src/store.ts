@@ -30,7 +30,7 @@ import type { PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "
 import type { BoardMessageReads } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
-import type { BoardJobWriter, Jobs } from "./jobs.ts";
+import type { BoardJobWriter, JobLease, Jobs } from "./jobs.ts";
 import type { OrgAuditRecord } from "./org-audit-record.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
 import type { BoardWatcherReads, BoardWatcherWriter } from "./watchers.ts";
@@ -88,6 +88,8 @@ interface RateView {
 
 export interface OrgView extends RateView {
   deleteOrg(personId: string, at: number, admit?: () => void): Promise<DeletedOrg>;
+  /** Consume the purge lease and remove the soft-deleted organization’s data atomically. */
+  purgeOrg(boardId: number, jobId: string, lease: JobLease, now: number): Promise<boolean>;
   listMembers(): Promise<{ principal: string; role: Role }[]>;
   /** The organization's first `limit` events after its event ID `after`, oldest first, and the last event ID read first. */
   auditEvents(after: number, limit: number): Promise<{ events: OrgAuditRecord[]; head: number }>;
