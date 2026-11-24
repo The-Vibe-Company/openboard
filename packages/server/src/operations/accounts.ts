@@ -3,8 +3,10 @@ import {
   BoardError,
   type getAccount,
   type getSession,
+  type listPersonalTokens,
   type pollDeviceSignIn,
   type revokeAllSessions,
+  type revokePersonalToken,
   type startDeviceSignIn,
 } from "@openboard/contract";
 import { base32, hashToken, mintSecret, SECRET_BYTES } from "../auth/secrets.ts";
@@ -36,6 +38,18 @@ export const revokeAllSessionsHandler: Handler<typeof revokeAllSessions> = async
   const { id } = signedIn(ctx);
   await ctx.platform.revokeAllSessions(id, ctx.now());
   return { ok: true };
+};
+
+export const listPersonalTokensHandler: Handler<typeof listPersonalTokens> = async (ctx) => {
+  const { id } = signedIn(ctx);
+  return { tokens: await ctx.platform.listPersonalTokens(id) };
+};
+
+export const revokePersonalTokenHandler: Handler<typeof revokePersonalToken> = async (ctx, { id }) => {
+  const person = signedIn(ctx);
+  const revokedAt = await ctx.platform.revokePersonalToken(person.id, id, ctx.now());
+  if (revokedAt === null) throw new BoardError("not_found", "no such personal token");
+  return { id, revokedAt };
 };
 
 const DEVICE_LIFETIME = 600;

@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { SessionState } from "../entities/accounts.ts";
+import { PersonalToken, PersonalTokenId, SessionState } from "../entities/accounts.ts";
 import { Account, Slug } from "../entities/orgs.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
@@ -115,5 +115,37 @@ export const pollDeviceSignIn = defineOperation({
   cli: false,
   mcp: false,
   why: "Only the interactive login command holds the device code.",
+  upstream: false,
+});
+
+export const listPersonalTokens = defineOperation({
+  name: "listPersonalTokens",
+  summary: "List the signed-in person's personal token metadata.",
+  route: { method: "GET", mount: "/api/x", path: "/tokens" },
+  scope: "account",
+  input: {},
+  output: Type.Object({ tokens: Type.Array(PersonalToken) }),
+  errors: ["unauthorized"],
+  access: null,
+  effects: { readOnly: true, idempotent: true, emits: [] },
+  cli: false,
+  mcp: false,
+  why: "Token management requires a browser session.",
+  upstream: false,
+});
+
+export const revokePersonalToken = defineOperation({
+  name: "revokePersonalToken",
+  summary: "Revoke one of the signed-in person's personal tokens.",
+  route: { method: "POST", mount: "/api/x", path: "/tokens/:id/revoke" },
+  scope: "account",
+  input: { params: Type.Object({ id: PersonalTokenId }) },
+  output: Type.Object({ id: PersonalTokenId, revokedAt: Type.Integer() }),
+  errors: ["unauthorized", "forbidden", "not_found"],
+  access: null,
+  effects: { readOnly: false, idempotent: true, emits: [] },
+  cli: false,
+  mcp: false,
+  why: "Revocation requires a browser session and its CSRF proof.",
   upstream: false,
 });

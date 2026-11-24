@@ -22,6 +22,12 @@ export const accountStatements = {
     WHERE s.id_hash = ${"idHash"} AND s.revoked_at IS NULL AND u.disabled_at IS NULL`,
   touchSession: sql`UPDATE sessions SET seen_at = ${"at"} WHERE id_hash = ${"idHash"}`,
   revokeSession: sql`UPDATE sessions SET revoked_at = ${"at"} WHERE id_hash = ${"idHash"} AND revoked_at IS NULL`,
+  listPersonalTokens: sql`SELECT t.id, t.name, o.slug AS org, t.created_at, t.expires_at, t.revoked_at
+    FROM personal_tokens t JOIN orgs o ON o.id = t.org_id
+    WHERE t.user_id = (SELECT id FROM users WHERE public_id = ${"personId"})
+    ORDER BY t.created_at DESC, t.id`,
+  revokePersonalToken: sql`UPDATE personal_tokens SET revoked_at = COALESCE(revoked_at, ${"at"})
+    WHERE id = ${"id"} AND user_id = (SELECT id FROM users WHERE public_id = ${"personId"}) RETURNING revoked_at`,
   revokeAllSessions: sql`UPDATE sessions SET revoked_at = ${"at"} WHERE revoked_at IS NULL
     AND user_id = (SELECT id FROM users WHERE public_id = ${"personId"})`,
 };
@@ -72,7 +78,16 @@ async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<n
 export function accountView(
   db: Db,
   dialect: Dialect,
-): Pick<PlatformView, "signIn" | "session" | "touchSession" | "revokeSession" | "revokeAllSessions"> {
+): Pick<
+  PlatformView,
+  | "signIn"
+  | "session"
+  | "touchSession"
+  | "revokeSession"
+  | "revokeAllSessions"
+  | "listPersonalTokens"
+  | "revokePersonalToken"
+> {
   return {
     signIn: (record) =>
       db.transaction(async (tx) => {
@@ -102,6 +117,21 @@ export function accountView(
     },
     async revokeSession(idHash, now) {
       await query(db, dialect, accountStatements.revokeSession, { idHash: bytes(idHash), at: now });
+    },
+    async listPersonalTokens(personId) {
+      const rows = await query(db, dialect, accountStatements.listPersonalTokens, { personId });
+      return rows.map((row) => ({
+        id: String(row.id),
+        name: String(row.name),
+        org: String(row.org),
+        createdAt: Number(row.created_at),
+        expiresAt: Number(row.expires_at),
+        revokedAt: row.revoked_at === null ? null : Number(row.revoked_at),
+      }));
+    },
+    async revokePersonalToken(personId, id, now) {
+      const [row] = await query(db, dialect, accountStatements.revokePersonalToken, { personId, id, at: now });
+      return row ? Number(row.revoked_at) : null;
     },
     async revokeAllSessions(personId, now) {
       await query(db, dialect, accountStatements.revokeAllSessions, { personId, at: now });

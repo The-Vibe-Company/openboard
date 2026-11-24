@@ -58,6 +58,7 @@ export {
   listChannels,
   listMembers,
   listMessages,
+  listPersonalTokens,
   listThreads,
   operations,
   pollDeviceSignIn,
@@ -72,6 +73,7 @@ export {
   revokeAllSessions,
   revokeConnection,
   revokeInvitation,
+  revokePersonalToken,
   startDeviceSignIn,
 } from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

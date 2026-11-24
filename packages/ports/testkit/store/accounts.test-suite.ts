@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
+import { orgs } from "@openboard/core";
 import type { IdentityRecord, PlatformView, SignInRecord, Store } from "../../src/index.ts";
 import type { OpenStore } from "../index.ts";
 
@@ -37,6 +38,7 @@ export function accountsSuite(driver: string, open: OpenStore): void {
   }
 
   deviceExpiryCase(driver, platform);
+  personalTokenRevocationCase(driver, platform);
 
   test(`${driver}: a new identity admitted becomes a person with a session`, async () => {
     const accounts = await platform();
@@ -131,5 +133,40 @@ function deviceExpiryCase(driver: string, platform: () => Promise<PlatformView>)
     const issue = { id: "pt_fixture", tokenHash: hash("d"), now: at + 1500, expiresAt: at + DAY };
     expect(await accounts.pollDevice(hash("a"), 1000, issue)).toEqual({ status: "missing" });
     expect(await accounts.pollDevice(hash("b"), 1000, issue)).toEqual({ status: "pending" });
+  });
+}
+
+function personalTokenRevocationCase(driver: string, platform: () => Promise<PlatformView>): void {
+  test(`${driver}: racing revocations preserve the first timestamp and affect only the named token`, async () => {
+    const accounts = await platform();
+    const personId = "u_aaaaaaaaaaaaaaaa";
+    await accounts.signIn(signIn(ada, hash("a")));
+    const by = `ob:user:${personId}`;
+    const org = { name: "Acme", slug: "acme" };
+    await accounts.createOrg({ ...orgs.decideCreate(org, { by, now: at }), personId, now: at });
+
+    const issue = async (id: string, name: string, digit: string) => {
+      const deviceHash = hash(digit);
+      await accounts.startDevice(deviceHash, name, name, at, at + 1000);
+      expect(await accounts.approveDevice(name, org.slug, personId, at)).toBe(true);
+      const token = { id, tokenHash: deviceHash, now: at, expiresAt: at + DAY };
+      expect((await accounts.pollDevice(deviceHash, 1000, token)).status).toBe("issued");
+    };
+    const laptop = `pt_${"a".repeat(16)}`;
+    const desktop = `pt_${"b".repeat(16)}`;
+    await issue(laptop, "laptop", "b");
+    await issue(desktop, "desktop", "c");
+
+    const [first, second] = await Promise.all([
+      accounts.revokePersonalToken(personId, laptop, at + 1),
+      accounts.revokePersonalToken(personId, laptop, at + 2),
+    ]);
+    expect(first === at + 1 || first === at + 2).toBe(true);
+    expect(second).toBe(first);
+    expect(await accounts.revokePersonalToken(personId, laptop, at + 3)).toBe(first);
+    expect(await accounts.listPersonalTokens(personId)).toMatchObject([
+      { id: laptop, revokedAt: first },
+      { id: desktop, revokedAt: null },
+    ]);
   });
 }

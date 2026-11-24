@@ -251,7 +251,8 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | GET | `/api/x/orgs/:org/audit` | admin | organization events |
 | GET | `/api/x/orgs/:org/usage` | admin | daily usage (metering seam) |
 | POST | `/api/x/auth/device`, `/api/x/auth/device/token`, `/api/x/auth/device/approve` | — / — / person | CLI device flow ([auth.md](./auth.md#cli-sign-in-device-flow-and-choosing-org-and-board)) |
-| GET | `/api/x/tokens`; POST `/api/x/tokens/:id/revoke` | person | personal tokens |
+| GET | `/api/x/tokens` | person | `{ tokens: [{ id, name, org, createdAt, expiresAt, revokedAt }] }` for the session holder. Timestamps are epoch milliseconds, and `revokedAt` is null until revoked. |
+| POST | `/api/x/tokens/:id/revoke` | person | Requires the session cookie, Origin and CSRF proof. Returns `{ id, revokedAt }` and preserves the first revocation time on retry. An unknown or unowned ID returns 404 `not_found`. The revoked credential returns 401 `unauthorized` on subsequent board requests. |
 | GET | `/api/x/metrics` | operator | Prometheus; not exposed to tenants |
 
 ## Events

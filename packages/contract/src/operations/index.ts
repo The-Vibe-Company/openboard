@@ -2,8 +2,10 @@ import {
   approveDeviceSignIn,
   getAccount,
   getSession,
+  listPersonalTokens,
   pollDeviceSignIn,
   revokeAllSessions,
+  revokePersonalToken,
   startDeviceSignIn,
 } from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
@@ -50,6 +52,7 @@ export const operations = [
   listChannels,
   listMembers,
   listMessages,
+  listPersonalTokens,
   listThreads,
   pollDeviceSignIn,
   postMessage,
@@ -63,6 +66,7 @@ export const operations = [
   revokeAllSessions,
   revokeConnection,
   revokeInvitation,
+  revokePersonalToken,
   startDeviceSignIn,
 ] as const;
 
@@ -89,6 +93,7 @@ export {
   listChannels,
   listMembers,
   listMessages,
+  listPersonalTokens,
   listThreads,
   pollDeviceSignIn,
   postMessage,
@@ -102,5 +107,6 @@ export {
   revokeAllSessions,
   revokeConnection,
   revokeInvitation,
+  revokePersonalToken,
   startDeviceSignIn,
 };

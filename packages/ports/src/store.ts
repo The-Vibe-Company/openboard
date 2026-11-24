@@ -8,6 +8,7 @@ import type {
   InvitationRole,
   Message,
   Named,
+  PersonalToken,
   Role,
   Thread,
   ThreadSummary,
@@ -164,6 +165,10 @@ export interface PlatformView {
   approveDevice(userCode: string, org: string, personId: string, now: number): Promise<boolean>;
   /** Poll a device capability; consume approval and issue its token in one transaction. */
   pollDevice(deviceHash: string, minInterval: number, issue: DeviceTokenIssue): Promise<DevicePoll>;
+  /** List metadata for the person's tokens across organizations, including revocation timestamps. */
+  listPersonalTokens(personId: string): Promise<PersonalToken[]>;
+  /** Revoke an owned token, preserving its first revocation time. Null if the person does not own the ID. */
+  revokePersonalToken(personId: string, id: string, now: number): Promise<number | null>;
   /** The board `orgSlug/boardSlug` names, or null when either is unknown or deleted. */
   findBoard(orgSlug: string, boardSlug: string): Promise<BoardKeys | null>;
   /**

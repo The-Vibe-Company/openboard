@@ -53,8 +53,10 @@ function requestOf(operation: Operation, input: Readonly<Record<string, unknown>
   const headers: Record<string, string> = { accept: "application/json" };
   if (!platformMount && options.token) headers.authorization = `Bearer ${options.token}`;
   if (!platformMount && options.profile) headers[PROFILE_HEADER] = options.profile;
+  if (platformMount && operation.scope !== "public" && operation.route.method !== "GET" && options.csrf) {
+    headers["x-ob-csrf"] = options.csrf;
+  }
   if (!operation.input.body) return new Request(url, { method: operation.route.method, headers });
-  if (platformMount && operation.scope !== "public" && options.csrf) headers["x-ob-csrf"] = options.csrf;
   headers["content-type"] = "application/json";
   return new Request(url, { method: operation.route.method, headers, body: JSON.stringify(body) });
 }

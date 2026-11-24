@@ -166,7 +166,9 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
    While waiting, the route returns `{ pending: true }`. Polls faster than
    the advertised interval return 429 `rate_limited`. An expired or used
    device code returns 404 `not_found`. The personal token is bound to that organization (30 days, revocable from
-   `/account`).
+   `/account` once the page ships). Until then, list tokens with `GET /api/x/tokens`
+   and revoke one with `POST /api/x/tokens/:id/revoke` using the session cookie,
+   Origin and CSRF proof.
 4. The CLI prints the organization and board slugs and stores the token with
    the context `{ origin, org, board: "main" }` in
    `~/.config/openboard/personal.json` (mode 0600). If both a personal
