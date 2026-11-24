@@ -671,6 +671,7 @@ decide and may append several events; folds never append.
 | `message.deleted` | tombstone; root counters |
 | `labels.changed` | merge labels; replace label terms; `version` |
 | `task.created` | insert `tasks` (`waiting` or `ready`), `task_needs`, `board.task` label |
+| `task.assigned` | update `tasks.for_actor` and the task root view |
 | `task.claimed` | `claimed`, `epoch + 1`, claim columns |
 | `task.completed` | state; decrement `waiting_on` of dependants (the command appended their `task.ready`) |
 | `task.blocked` | set hold kind and reason, clear claim, set state and `board.task` to `blocked` |

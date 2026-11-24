@@ -54,3 +54,14 @@ export function projectTaskUnblocked(event: Extract<TaskEvent, { type: "task.unb
     message,
   };
 }
+
+export function projectTaskAssigned(event: Extract<TaskEvent, { type: "task.assigned" }>, message: Message) {
+  const { id, thread, for: assignee, by } = event.payload;
+  return {
+    cursor: formatId(event.id),
+    type: event.type,
+    createdAt: isoTime(event.at),
+    payload: { id: formatId(id), thread, for: assignee, by },
+    message,
+  };
+}

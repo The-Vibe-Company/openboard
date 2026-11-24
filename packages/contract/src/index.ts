@@ -56,6 +56,7 @@ export {
   ackInbox,
   ackWatcherMatch,
   approveDeviceSignIn,
+  assignTask,
   attachSync,
   blockTask,
   cancelTask,

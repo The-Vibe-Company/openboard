@@ -2,6 +2,7 @@ import { Type } from "@sinclair/typebox";
 import { ChannelPath, Labels, MESSAGE_TEXT_MAX } from "../../entities/messages.ts";
 import { defineOperation, Ref } from "../../operation.ts";
 
+import { TaskAssignee } from "./assign.ts";
 import { TaskClaim, TaskRoot } from "./claim.ts";
 
 export const createTask = defineOperation({
@@ -18,6 +19,7 @@ export const createTask = defineOperation({
         re: Type.Optional(
           Ref("message", { description: "The root of a thread to make a task of as it is, instead of a new thread." }),
         ),
+        for: Type.Optional(TaskAssignee),
         needs: Type.Optional(Type.Array(Ref("task"), { maxItems: 20 })),
         labels: Type.Optional(Labels),
         claim: Type.Optional(Type.Boolean({ description: "Claim the task in the same write." })),
@@ -36,6 +38,7 @@ export const createTask = defineOperation({
     "invalid_request",
     "invalid_needs",
     "task_waiting",
+    "task_assigned",
     "reserved_label",
     "forbidden",
     "message_not_found",

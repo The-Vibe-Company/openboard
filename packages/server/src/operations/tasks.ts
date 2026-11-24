@@ -1,4 +1,4 @@
-import { BoardError, type createTask, type listTasks } from "@openboard/contract";
+import { BoardError, type createTask, type InputOf, type listTasks } from "@openboard/contract";
 import {
   channelFilter,
   checkNeeds,
@@ -39,7 +39,7 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
         "`channel`, `text`, `labels`, `noSync` and `id` are a new thread's: `re` makes a task of a thread as it is",
       );
     }
-    return makeTask(ctx, re, input.claim, input.needs);
+    return makeTask(ctx, re, input);
   }
   if (channel === undefined || text === undefined) {
     throw new BoardError(
@@ -93,7 +93,7 @@ export async function readNeeds(
   return checkNeeds(ids, await writer.taskNeeds(ids), (root) => canReadChannel(ctx.by, root.channel));
 }
 
-async function makeTask(ctx: BoardContext, re: string, claim: boolean | undefined, needs?: readonly string[]) {
+async function makeTask(ctx: BoardContext, re: string, input: InputOf<typeof createTask>) {
   const position = parseId(re);
   const answer = await ctx.board.write(
     async (writer) => {
@@ -104,10 +104,11 @@ async function makeTask(ctx: BoardContext, re: string, claim: boolean | undefine
         by: ctx.by,
         author: authorOf(ctx.by),
         now,
-        needs: await readNeeds(ctx, writer, needs, position),
+        needs: await readNeeds(ctx, writer, input.needs, position),
+        for: input.for,
       });
       ctx.debitWrite();
-      return writeNewTask(ctx, writer, decided, claim, now);
+      return writeNewTask(ctx, writer, decided, input.claim, now);
     },
     ctx.by.actor,
     position,

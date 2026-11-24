@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { ChannelPath, Labels, MESSAGE_TEXT_MAX, Mention } from "../../entities/messages.ts";
 import { defineOperation, Ref } from "../../operation.ts";
+import { TaskAssignee } from "./assign.ts";
 import { TaskRoot } from "./claim.ts";
 
 const BatchId = Type.String({ minLength: 1, maxLength: 200 });
@@ -27,6 +28,7 @@ export const createTaskBatch = defineOperation({
               text: Type.String({ maxLength: MESSAGE_TEXT_MAX }),
               labels: Type.Optional(Labels),
               noSync: Type.Optional(Type.Boolean()),
+              for: Type.Optional(TaskAssignee),
               needs: Type.Optional(
                 Type.Array(Type.Union([Ref("task"), Type.Object({ key: BatchKey }, { additionalProperties: false })]), {
                   maxItems: 20,

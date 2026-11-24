@@ -10,17 +10,18 @@ import {
   type PostState,
   replayPost,
 } from "../messages/post.ts";
+import { taskAssignee } from "./assignment/assign.ts";
 import type { TaskCreated } from "./events.ts";
 import type { TaskNeeds } from "./needs.ts";
 import { readyTask } from "./readiness.ts";
 import { withTask } from "./view.ts";
 
-function initialTask(by: Author, needs: TaskNeeds): Task {
+function initialTask(by: Author, needs: TaskNeeds, assignee?: string | null): Task {
   return {
     state: needs.ids.length > 0 ? "waiting" : "ready",
     owner: by.principal,
     by: by.actor,
-    for: null,
+    for: taskAssignee(by.principal, assignee),
     needs: needs.ids.map(String),
     epoch: 0,
     claim: null,
@@ -30,10 +31,14 @@ function initialTask(by: Author, needs: TaskNeeds): Task {
   };
 }
 
-type CreateTaskCommand = Pick<PostCommand, "text" | "labels" | "noSync" | "id"> & { channel: string };
+type CreateTaskCommand = Pick<PostCommand, "text" | "labels" | "noSync" | "id"> & {
+  channel: string;
+  for?: string | null;
+};
 
 /** A client key can replay a task root using the same author and placement rules as a post. */
 export function replayTask(state: PostState, command: CreateTaskCommand, context: PostContext) {
+  taskAssignee(context.by.principal, command.for);
   const landed = replayPost(state, command, context);
   if (!landed) return null;
   if (!landed.task) {
@@ -53,7 +58,7 @@ export function decideCreateTask(
   if (post?.type !== "message.posted") throw new Error("a task needs a root post");
   const id = post.id + 1;
   const needs = context.needs ?? { ids: [], waitingOn: 0 };
-  const task = withTask(message, initialTask(context.by, needs), id);
+  const task = withTask(message, initialTask(context.by, needs, command.for), id);
   const created: TaskCreated = {
     id,
     type: "task.created",
@@ -69,7 +74,7 @@ export function decideCreateTask(
       thread: message.thread,
       needs: needs.ids,
       waitingOn: needs.waitingOn,
-      for: null,
+      for: task.task.for,
       by: context.by,
       view: task,
       ...(command.id === undefined ? {} : { blind: context.blind ?? false }),
@@ -94,7 +99,7 @@ export interface MakeTaskState {
 export function decideMakeTask(
   { head, target, actor }: MakeTaskState,
   re: string,
-  context: PostContext & { readonly needs?: TaskNeeds },
+  context: PostContext & { readonly needs?: TaskNeeds; readonly for?: string | null },
 ) {
   if (!target) throw new BoardError("message_not_found", `Couldn't find message #${re}.`);
   if (target.re !== null) {
@@ -110,7 +115,7 @@ export function decideMakeTask(
   const seen = actorSeen(actor, context, head + 1);
   const id = head + (seen ? 2 : 1);
   const needs = context.needs ?? { ids: [], waitingOn: 0 };
-  const task = withTask(target, initialTask(context.by, needs), id);
+  const task = withTask(target, initialTask(context.by, needs, context.for), id);
   const created: TaskCreated = {
     id,
     type: "task.created",
@@ -126,7 +131,7 @@ export function decideMakeTask(
       thread: target.thread,
       needs: needs.ids,
       waitingOn: needs.waitingOn,
-      for: null,
+      for: task.task.for,
       by: context.by,
       view: task,
     },

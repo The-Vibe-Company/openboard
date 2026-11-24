@@ -474,6 +474,17 @@ write appends `task.ready`. An already unheld task emits no events. Use
 `unchanged`. The feed and outbound webhooks include `task.unblocked`.
 The writer omits persisted pull-watcher matches for this event.
 
+Task creation accepts optional `for` on `POST /tasks` and on each batch entry.
+`POST /tasks/:id/assign` takes `{ for }` and returns `{ task }`. Use the owner's
+profile actor ID (`<principal>+<lowercase-profile>`) or `null` for the pool.
+An actor outside the owner's profiles returns 400 `invalid_request`. Assignment
+follows the task owner and channel manage rules and preserves an active claim.
+A claim by a different actor returns 409 `task_assigned` for an otherwise
+claimable task. A change emits `task.assigned` with `{ id, thread, for, by }`.
+Upgraded replicas serve the event in the feed. Writers omit persisted watcher
+matches and webhook deliveries so older replicas cannot lease work for an
+assignment event they cannot decode.
+
 `POST /tasks/:id/cancel` takes `{ reason }` and returns `{ task }`. The task's maker profile or
 its principal acting as itself can cancel it with channel read and either post or label access.
 A caller with manage in the channel can also cancel it. Other callers who can read the task get

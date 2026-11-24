@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { BoardError, type CliSpec, createTaskBatch, operations } from "@openboard/contract";
 import { formats } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
+import { profileActor, taskAssignCommand } from "./tasks/assign.ts";
 import { runCancelTask } from "./tasks/cancel.ts";
 import { runTaskCommand } from "./tasks/claim.ts";
 import { runSettleTask } from "./tasks/complete.ts";
@@ -151,6 +152,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   const { command, args, alternative, options: renamed = {}, nullEntryOptions = {} } = operation.cli;
   const nullEntries = new Map(Object.entries(nullEntryOptions));
   const fields = fieldsOf(operation);
+  if (operation.name === "createTask") fields.set("for", { schema: { type: "string" }, required: false });
   // A field's flag is its own name unless the contract gives it upstream's: `--idempotency-key` for `id`.
   const flags = new Map<string, string>();
   const options: string[] = [];
@@ -188,35 +190,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
         post && hasFileOption(ctx, flags, fields)
           ? postFileInput(ctx, fields, flags, nullEntries)
           : inputOf(ctx, args, fields, flags, nullEntries, alternative);
-      if (policy) {
-        if (ctx.profile === undefined || input.can === undefined) throw new Misuse("policy requires --as and --can");
-        input.profile = ctx.profile;
-      }
-      if (operation.name === "blockTask")
-        return runBlockTask(ctx, input as { id: string; reason: string; kind?: string });
-      if (operation.name === "cancelTask") return runCancelTask(ctx, input as { id: string; reason: string });
-      if (operation.name === "renewTask") return runRenewTask(ctx, input as { id: string; lease?: number });
-      if (operation.name === "failTask") {
-        return runSettleTask(ctx, String(input.id), "failed", (proof) =>
-          ctx.client.failTask({ ...(input as { id: string; reason: string }), ...proof }),
-        );
-      }
-      if (operation.name === "completeTask" || operation.name === "releaseTask") {
-        const action = operation.name;
-        return runSettleTask(ctx, String(input.id), action === "completeTask" ? "completed" : "released", (proof) =>
-          ctx.client[action]({ ...(input as { id: string; result?: string }), ...proof }),
-        );
-      }
-      if (operation.name === "claimTask" || operation.name === "createTask") {
-        const invoke = ctx.client[operation.name] as (
-          ...args: Parameters<Invoke>
-        ) => ReturnType<Parameters<typeof runTaskCommand>[2]>;
-        return runTaskCommand(ctx, operation.name === "claimTask" || input.claim === true, () => invoke(input));
-      }
-      const answer = await (ctx.client[operation.name] as Invoke)(input);
-      const format = formats[operation.name];
-      ctx.output.out(ctx.json || !format ? JSON.stringify(answer, null, 2) : format(answer, input));
-      return 0;
+      return runDerived(ctx, operation.name, input);
     },
   };
   if (operation.name !== "createTask") return derived;
@@ -235,6 +209,40 @@ function postFileInput(
   } catch {
     throw new BoardError("invalid_request", "Could not read the message file as text.");
   }
+}
+
+async function runDerived(ctx: CommandContext, name: Contracted["name"], input: Record<string, unknown>) {
+  if (name === "getConnectionPolicy") {
+    if (ctx.profile === undefined || input.can === undefined) throw new Misuse("policy requires --as and --can");
+    input.profile = ctx.profile;
+  }
+  if (name === "blockTask") return runBlockTask(ctx, input as { id: string; reason: string; kind?: string });
+  if (name === "cancelTask") return runCancelTask(ctx, input as { id: string; reason: string });
+  if (name === "renewTask") return runRenewTask(ctx, input as { id: string; lease?: number });
+  if (name === "failTask") {
+    return runSettleTask(ctx, String(input.id), "failed", (proof) =>
+      ctx.client.failTask({ ...(input as { id: string; reason: string }), ...proof }),
+    );
+  }
+  if (name === "completeTask" || name === "releaseTask") {
+    const action = name;
+    return runSettleTask(ctx, String(input.id), action === "completeTask" ? "completed" : "released", (proof) =>
+      ctx.client[action]({ ...(input as { id: string; result?: string }), ...proof }),
+    );
+  }
+  if (name === "createTask" && typeof input.for === "string") {
+    input.for = profileActor((await ctx.client.getMe({})).principal, input.for);
+  }
+  if (name === "claimTask" || name === "createTask") {
+    const invoke = ctx.client[name] as (
+      ...args: Parameters<Invoke>
+    ) => ReturnType<Parameters<typeof runTaskCommand>[2]>;
+    return runTaskCommand(ctx, name === "claimTask" || input.claim === true, () => invoke(input));
+  }
+  const answer = await (ctx.client[name] as Invoke)(input);
+  const format = formats[name];
+  ctx.output.out(ctx.json || !format ? JSON.stringify(answer, null, 2) : format(answer, input));
+  return 0;
 }
 
 function hasFileOption(ctx: CommandContext, flags: ReadonlyMap<string, string>, fields: ReturnType<typeof fieldsOf>) {
@@ -268,10 +276,11 @@ function taskCreateWithBatch(single: Command, usesFile: (ctx: CommandContext) =>
         throw new BoardError("invalid_request", "Could not read the task plan as JSON.");
       }
       if (!Array.isArray(tasks)) throw new BoardError("invalid_request", "The task plan must be a JSON array.");
+      const drafts = await batchAssignees(ctx, tasks);
       const answer = await ctx.client.createTaskBatch({
         channel: String(channel),
         id: id as string | undefined,
-        tasks,
+        tasks: drafts as Parameters<CommandContext["client"]["createTaskBatch"]>[0]["tasks"],
       });
       const rows = answer.tasks.map(({ id, text, task }) => {
         const needs = task.needs.length ? ` (needs ${task.needs.map((need) => `#${need}`).join(", ")})` : "";
@@ -283,8 +292,22 @@ function taskCreateWithBatch(single: Command, usesFile: (ctx: CommandContext) =>
   };
 }
 
+async function batchAssignees(ctx: CommandContext, tasks: unknown[]) {
+  const profile = (task: unknown) => {
+    if (task === null || typeof task !== "object" || !("for" in task) || typeof task.for !== "string") return;
+    if (!task.for.includes(":") && !task.for.includes("+")) return task.for;
+  };
+  if (!tasks.some((task) => profile(task) !== undefined)) return tasks;
+  const { principal } = await ctx.client.getMe({});
+  return tasks.map((task) => {
+    const name = profile(task);
+    return name === undefined ? task : { ...(task as object), for: profileActor(principal, name) };
+  });
+}
+
 export const derivedCommands: readonly Command[] = operations.flatMap((operation) => {
   if (operation.cli === false || operation.name === "createTaskBatch") return [];
+  if (operation.name === "assignTask") return [taskAssignCommand(operation.cli.command)];
   if (operation.name === "setTaskNeeds") return [taskNeedsCommand(operation.cli.command)];
   return [derive({ ...operation, cli: operation.cli })];
 });

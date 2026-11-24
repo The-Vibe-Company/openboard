@@ -97,6 +97,7 @@ import {
   recordSyncReceiptHandler,
   showTypingHandler,
 } from "./sync/stubs.ts";
+import { assignTaskHandler } from "./tasks/assign.ts";
 import { createTaskBatchHandler, getTaskBatchHandler } from "./tasks/batch.ts";
 import { cancelTaskHandler } from "./tasks/cancel.ts";
 import { claimTaskHandler } from "./tasks/claim.ts";
@@ -332,6 +333,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   showTyping: showTypingHandler,
   startDeviceSignIn: startDeviceSignInHandler,
   unblockTask: unblockTaskHandler,
+  assignTask: assignTaskHandler,
   updateGrant: updateGrantHandler,
   updateWebhook: updateWebhookHandler,
 };

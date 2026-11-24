@@ -6,8 +6,8 @@ import { query, sql } from "../../sql.ts";
 import { needIds } from "./tasks.ts";
 
 export const taskFoldStatements = {
-  insertTask: sql`INSERT INTO tasks (org_id, board_id, id, channel, state, owner, by_actor, by_profile, created_at, waiting_on)
-    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"channel"}, ${"state"}, ${"owner"}, ${"actor"}, ${"profile"}, ${"at"}, ${"waitingOn"})`,
+  insertTask: sql`INSERT INTO tasks (org_id, board_id, id, channel, state, owner, by_actor, by_profile, created_at, waiting_on, for_actor)
+    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"channel"}, ${"state"}, ${"owner"}, ${"actor"}, ${"profile"}, ${"at"}, ${"waitingOn"}, ${"assignee"})`,
   insertTaskBatch: sql`INSERT INTO task_batches (org_id, board_id, principal, id, digest, tasks)
     VALUES (${"orgId"}, ${"boardId"}, ${"principal"}, ${"id"}, ${"digest"}, ${"tasks"})`,
   // A decided batch can refer to roots whose positions are later in the same transaction.
@@ -33,6 +33,8 @@ export const taskFoldStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   blockTask: sql`UPDATE tasks SET state = 'blocked', blocked_kind = ${"kind"}, blocked_reason = ${"reason"},
     claim_actor = NULL, claim_until = NULL, claim_token = NULL
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  assignTask: sql`UPDATE tasks SET for_actor = ${"assignee"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   unblockTask: sql`UPDATE tasks SET state = ${"state"}, blocked_kind = NULL, blocked_reason = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
@@ -83,6 +85,7 @@ async function insertTask(
     at: event.at,
     state: event.payload.view.task?.state ?? "ready",
     waitingOn: event.payload.waitingOn ?? 0,
+    assignee: event.payload.for ?? null,
   });
   if (event.payload.needs.length > 0) {
     await query(tx, dialect, taskFoldStatements.insertTaskNeeds, {
@@ -117,6 +120,13 @@ async function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: Tas
     });
   }
   if (event.type === "task.needs_changed") return replaceTaskNeeds(tx, dialect, keys, event);
+  if (event.type === "task.assigned") {
+    return query(tx, dialect, taskFoldStatements.assignTask, {
+      ...keys,
+      id: event.message,
+      assignee: event.payload.for,
+    });
+  }
   if (event.type === "task.unblocked") {
     return query(tx, dialect, taskFoldStatements.unblockTask, {
       ...keys,

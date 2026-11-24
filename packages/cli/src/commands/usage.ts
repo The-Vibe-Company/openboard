@@ -263,6 +263,7 @@ const SAMPLE_IDS: Readonly<Record<string, string>> = {
   task: "42",
 };
 const SAMPLES: Readonly<Record<string, string>> = {
+  for: "fixer",
   channel: "dev",
   emoji: "eyes",
   needs: "40 41",
@@ -316,7 +317,6 @@ function meaningOf(schema: Schema): string {
   if (schema.type === "array") return "A value; repeatable.";
   return "Text.";
 }
-
 const camel = (flag: string) => flag.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
 
 /** The field a flag sets: the contract's renames first, then the field of the same name. */
@@ -344,7 +344,6 @@ function optionsOf(command: AnyCommand, used: readonly Contracted[], given: Read
     return { name: flag, meaning };
   });
 }
-
 function errorsOf(used: readonly Contracted[], own: readonly string[]): string[] {
   const authenticated = used.some((operation) => operation.scope !== "public") ? AUTHENTICATED : [];
   return [...new Set([...ALWAYS, ...authenticated, ...used.flatMap((operation) => operation.errors), ...own])].sort();
@@ -366,6 +365,7 @@ function referenceOf(command: AnyCommand): CommandReference {
   const needed = `${shown} [`.split(" ").findIndex((word) => !word.startsWith("<"));
   const meanings = {
     ...handwritten?.options,
+    ...(derived?.name === "assignTask" && { pool: "Return the task to the pool." }),
     ...(derived?.name === "setTaskNeeds" && { none: "Clear every prerequisite." }),
     ...(derived?.name === "createTask" && { file: "Path to a JSON task array, or - for stdin." }),
     ...(derived?.name === "postMessage" && { file: "Path to the message text, or - for stdin." }),
