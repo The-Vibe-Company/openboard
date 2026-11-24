@@ -10,7 +10,7 @@ writes:
   - packages/contract/src/operation.ts
   - packages/contract/src/index.ts
   - packages/contract/src/operations/index.ts
-  - packages/server/src/operations/sync.ts
+  - packages/server/src/operations/sync/stubs.ts
   - packages/server/src/operations/index.ts
   - packages/server/test/sync/stubs.test.ts
   - packages/server/test/isolation/cases.ts

@@ -18,7 +18,7 @@ import {
   type showTyping,
 } from "@openboard/contract";
 import { parseId } from "@openboard/core";
-import type { BoardContext, Handler } from "./index.ts";
+import type { BoardContext, Handler } from "../index.ts";
 
 /**
  * Sync is deferred (D19): this board syncs nowhere, and each sync route answers as a board with no sync does

@@ -1,4 +1,4 @@
-import { agents, boards, connections, decideInvitation, messages, orgs } from "@openboard/core";
+import { agents, boards, connections, decideCreateTask, decideInvitation, messages, orgs } from "@openboard/core";
 import type { BoardView, OrgView, Store } from "../src/index.ts";
 import { testOrgScope, testScope } from "./index.ts";
 
@@ -14,6 +14,7 @@ export interface StoreTenant {
   /** Its last message, a root; when B's, an ID A's board never reaches. */
   readonly message: number;
   readonly clientId: string;
+  readonly task: number;
   readonly channel: string;
   readonly connection: string;
   readonly agent: string;
@@ -105,6 +106,12 @@ export async function storeTenant(store: Store, slug: string, digit: string, pos
   for (let index = 0; index < posts; index++) {
     message = await post(board, actor, channel, `${marker} note ${index}`, `${marker}-${index}`);
   }
+  const task = await board.write(async (writer) => {
+    const by = { actor, principal: actor, profile: null };
+    const decided = decideCreateTask({ head: writer.head }, { channel, text: `${marker} task` }, { by, now: at });
+    await writer.append(decided.events);
+    return Number(decided.task.id);
+  });
   const claimed = await connectAndClaim(board, actor, marker, digit);
   const invitation = `inv_${digit.repeat(16)}`;
   const record = decideInvitation({ role: "member" }, { by: actor, id: invitation, now: at });
@@ -119,6 +126,7 @@ export async function storeTenant(store: Store, slug: string, digit: string, pos
     org,
     message,
     clientId,
+    task,
     channel,
     ...claimed,
     invitation,

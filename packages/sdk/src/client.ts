@@ -117,6 +117,7 @@ export async function reach(send: (request: Request) => Promise<Response>, reque
   try {
     return await send(request);
   } catch (error) {
+    if (error instanceof BoardError) throw error;
     if (!(error instanceof TypeError || (error instanceof Error && "code" in error))) throw error;
     throw new BoardError("unreachable", `the board at ${new URL(request.url).origin} did not answer: ${error.message}`);
   }

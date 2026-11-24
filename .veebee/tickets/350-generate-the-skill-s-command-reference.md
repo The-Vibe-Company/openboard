@@ -8,11 +8,15 @@ writes:
   - scripts/ci/gen.test.ts
   - packages/cli/src/commands/usage.ts
   - packages/cli/src/index.ts
+  - packages/cli/src/main.ts
+  - skills/openboard/references/commands.md
+  - package.json
+  - bun.lock
 conformance: []
 modes: [local, hosted]
 depends_on: []
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-t350
 issue: 535
 ---
 

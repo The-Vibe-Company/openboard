@@ -56,6 +56,7 @@ import {
   pushInbox,
   recordSyncReceipt,
 } from "./sync/records.ts";
+import { createTask } from "./tasks/create.ts";
 import { listThreads, readThread } from "./threads.ts";
 
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
@@ -71,6 +72,7 @@ export const operations = [
   createConnection,
   createInvitation,
   createOrg,
+  createTask,
   deleteMessage,
   discoverBoard,
   editMessage,
@@ -134,6 +136,7 @@ export {
   createConnection,
   createInvitation,
   createOrg,
+  createTask,
   deleteMessage,
   discoverBoard,
   editMessage,

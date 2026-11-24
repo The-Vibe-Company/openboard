@@ -22,6 +22,12 @@ export interface Dialect {
   readonly lockSuffix: string;
   /** Announces the updated head in the same statement on Postgres, with no extra round trip. */
   readonly notifyHeadSuffix: string;
+  /**
+   * The server's timeline, read with the board lock (D37), `0` where there is none. Postgres reads the timeline WAL is
+   * written on, the first 8 hex digits of the current WAL file name: it changes at promotion, while the checkpoint
+   * timeline (`pg_control_checkpoint()`) lags until the new primary's first checkpoint completes.
+   */
+  readonly serverTimeline: string;
 }
 
 /** The dialect the registry is written in, and the one Postgres runs. */
@@ -30,4 +36,5 @@ export const postgresText: Dialect = Object.freeze({
   placeholder: (index: number) => `$${index}`,
   lockSuffix: " FOR UPDATE",
   notifyHeadSuffix: " RETURNING (SELECT pg_notify('ob_events', boards.id::text || ':' || boards.head::text))",
+  serverTimeline: "('x' || substr(pg_walfile_name(pg_current_wal_lsn()), 1, 8))::bit(32)::bigint",
 });

@@ -79,7 +79,7 @@ async function visibleEvidence(ctx: BoardContext, handles: ReadonlySet<string>) 
 }
 
 // Search for candidate visibility outside the write lock. Check only the selected proof messages under the lock.
-async function writeWithMentionVisibility<T>(
+export async function writeWithMentionVisibility<T>(
   ctx: BoardContext,
   text: string,
   decide: (writer: BoardWriter, visibility: MentionVisibility) => Promise<T>,
@@ -111,14 +111,14 @@ async function visibleReplay(ctx: BoardContext, message: Message): Promise<Messa
   };
 }
 
-async function resolvePostMentions(
+export async function resolvePostMentions(
   writer: BoardWriter,
   ctx: BoardContext,
   text: string,
   channel: string | undefined,
   thread: number | undefined,
   { handles, scoped }: MentionVisibility,
-) {
+): Promise<Parameters<typeof messages.decidePost>[3]> {
   if (handles.size === 0 || channel === undefined) return undefined;
   // A writer that cannot read the channel looks no one up, but its handles stay recorded as mentions of no one.
   if (!canReadChannel(ctx.by, channel)) return messages.settleMentions(text, handles, []);

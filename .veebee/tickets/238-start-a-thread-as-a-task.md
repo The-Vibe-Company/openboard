@@ -4,11 +4,19 @@ title: Start a thread as a task
 milestone: M9-tasks
 package: server
 writes:
+  - .veebee/tickets/238-start-a-thread-as-a-task.md
+  - docs/protocol.md
+  - packages/cli/src/output.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/ports/src/board-message-reads.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
+  - packages/server/src/operations/messages.ts
   - packages/contract/src/entities/tasks.ts
   - packages/contract/src/entities/task-events.ts
   - packages/contract/src/entities/events.ts
   - packages/contract/src/entities/messages.ts
-  - packages/contract/src/operations/tasks.ts
+  - packages/contract/src/operations/tasks/create.ts
   - packages/contract/src/operations/index.ts
   - packages/contract/src/index.ts
   - packages/core/src/tasks/create.ts
@@ -26,8 +34,8 @@ writes:
   - packages/driver-sql/migrations/*-tasks.sql
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
-  - packages/driver-sql/src/views/tasks.ts
-  - packages/driver-sql/src/views/task-folds.ts
+  - packages/driver-sql/src/views/tasks/tasks.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
   - packages/driver-sql/src/views/messages.ts
   - packages/driver-sql/src/views/events.ts
   - packages/server/src/operations/tasks.ts
@@ -42,8 +50,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [99]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 411
 ---
 

@@ -13,6 +13,8 @@ import { invitationStatements } from "./views/invitations.ts";
 import { membershipStatements } from "./views/memberships.ts";
 import { messageStatements } from "./views/messages.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
+import { taskFoldStatements } from "./views/tasks/task-folds.ts";
+import { taskReadStatements } from "./views/tasks/tasks.ts";
 import { threadStatements } from "./views/threads.ts";
 
 /** Every statement the shared views run, by name, as written once (docs/codebase.md 3.2 and 4.4). */
@@ -31,6 +33,8 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...membershipStatements,
   ...messageStatements,
   ...orgStatements,
+  ...taskFoldStatements,
+  ...taskReadStatements,
   ...threadStatements,
 });
 

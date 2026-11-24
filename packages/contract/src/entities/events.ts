@@ -1,6 +1,8 @@
 import { Type } from "@sinclair/typebox";
 import { Author, ChannelPath, Labels, Message, MessageAuthor } from "./messages.ts";
 
+import { TaskCreatedEvent } from "./task-events.ts";
+
 const MessagePostedPayload = Type.Object({
   channel: ChannelPath,
   text: Type.String(),
@@ -87,4 +89,5 @@ export const Event = Type.Union([
   LabelsChangedEvent,
   ActorSeenEvent,
   ChannelCreatedEvent,
+  TaskCreatedEvent,
 ]);

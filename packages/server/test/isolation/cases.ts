@@ -14,6 +14,7 @@ export const authenticated = operations.filter((operation) => operation.scope !=
  * validation. An operation missing here sends no query and no body; `callOf` throws if validation refuses that.
  */
 const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; query?: Fields; body?: Fields }>> = {
+  createTask: (tenant) => ({ body: { channel: "dev", text: `${tenant.marker} task` } }),
   postMessage: (tenant) => ({ body: { re: tenant.ids.message, text: `${tenant.marker} reply` } }),
   editMessage: (tenant) => ({ body: { text: `${tenant.marker} edit` } }),
   reactToMessage: () => ({ body: { emoji: "eyes" } }),
