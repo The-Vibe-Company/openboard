@@ -22,10 +22,10 @@ export function cluster(store: TestStore, build: (store: Store) => App): Cluster
   return {
     instances,
     served,
-    fetch(request) {
+    fetch(request, connection) {
       const index = served.length % instances.length;
       served.push(index + 1);
-      return instances[index]!.fetch(request);
+      return instances[index]!.fetch(request, connection);
     },
     async drain() {
       await Promise.all(instances.map((instance) => instance.drain()));

@@ -6,11 +6,15 @@ package: server
 writes:
   - packages/server/src/operations/orgs.ts
   - packages/server/test/ha/org-creation-limit.test.ts
+  - packages/contract/src/operations/orgs.ts
+  - packages/server/test/support/browser-session.ts
+  - packages/server/test/support/cluster.ts
+  - docs/protocol.md
 conformance: []
 modes: [local, hosted]
 depends_on: [201]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t203
 issue: 364
 ---
 

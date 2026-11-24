@@ -14,19 +14,22 @@ async function fakeProvider(request: Request): Promise<Response> {
   if (origin === "https://api.github.com") {
     const login = request.headers.get("authorization")?.slice("Bearer ".length);
     if (pathname === "/user") {
-      const people = ["ada", "lin", "mei"];
+      const people = ["ada", "lin", "mei", "sam"];
       const id = people.indexOf(login ?? "") + 1;
       return id ? Response.json({ id, login, name: login }) : new Response(null, { status: 401 });
     }
     if (pathname === "/user/emails") {
-      const email = login === "lin" ? "lin@example.com" : "Ada@Example.com";
+      const email = login === "lin" || login === "sam" ? `${login}@example.com` : "Ada@Example.com";
       return Response.json([{ email, primary: true, verified: login !== "mei" }]);
     }
   }
   return new Response(null, { status: 404 });
 }
 
-export async function browserSession(send: (request: Request) => Promise<Response>, code: "ada" | "lin" | "mei") {
+export async function browserSession(
+  send: (request: Request) => Promise<Response>,
+  code: "ada" | "lin" | "mei" | "sam",
+) {
   const started = await send(new Request(`${PUBLIC_URL}/auth/github/start`));
   const location = new URL(started.headers.get("location") ?? "");
   const state = location.searchParams.get("state");
