@@ -95,3 +95,23 @@ test("ob webhooks, show and delete print the board response without credentials"
     expect(capture.errors).toEqual([]);
   }
 });
+
+test("ob webhooks deliveries keeps the status and the failure class when both carry information", async () => {
+  const response = {
+    deliveries: [
+      { id: "dl_timeout", state: "dead", attempt: 10, lastStatus: 200, lastError: "timeout" },
+      { id: "dl_status", state: "dead", attempt: 10, lastStatus: 503, lastError: "status" },
+      { id: "dl_tls", state: "dead", attempt: 10, lastStatus: null, lastError: "tls" },
+    ],
+    older: null,
+  };
+  const args = ["deliveries", webhook.id, "--state", "dead"];
+  const text = fixture(response);
+  expect(await text.run(args)).toBe(0);
+  expect(text.out).toEqual([
+    "dl_timeout  dead  attempt 10  200  timeout\ndl_status  dead  attempt 10  503\ndl_tls  dead  attempt 10  tls",
+  ]);
+  const json = fixture(response);
+  expect(await json.run([...args, "--json"])).toBe(0);
+  expect(JSON.parse(json.out.join("\n"))).toEqual(response);
+});

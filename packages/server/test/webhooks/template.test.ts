@@ -89,9 +89,13 @@ test("marks a rendered body over 256 KB dead without sending it", async () => {
     const body = ["{{event.message.text}}".repeat(35)];
     const created = await call(app, "POST", "/x/webhooks", { ...spec, body });
     expect(created.status).toBe(201);
+    const { webhook } = (await created.json()) as OutputOf<typeof createWebhook>;
     await run("é".repeat(4_000));
     expect(requests).toHaveLength(0);
     expect(await deliveries()).toMatchObject([{ state: "dead", last_error: "too_large" }]);
+    const listed = await call(app, "GET", `/x/webhooks/${webhook.id}/deliveries?state=dead`);
+    expect(listed.status).toBe(200);
+    expect(await listed.json()).toMatchObject({ deliveries: [{ state: "dead", lastError: "too_large" }] });
   } finally {
     await app.close();
   }

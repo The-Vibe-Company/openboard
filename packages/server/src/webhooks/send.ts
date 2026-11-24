@@ -36,6 +36,18 @@ function refused(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ECONNREFUSED";
 }
 
+function transportError(error: unknown): "tls" | "request_failed" {
+  const code = error instanceof Error && "code" in error ? error.code : null;
+  // Bun fetch reports a failed TLS handshake as EPROTO.
+  if (code === "EPROTO") return "tls";
+  return typeof code === "string" &&
+    /^(?:ERR_(?:TLS|SSL)_|CERT_|DEPTH_ZERO_SELF_SIGNED_CERT$|SELF_SIGNED_CERT_IN_CHAIN$|UNABLE_TO_(?:VERIFY_LEAF_SIGNATURE|GET_ISSUER_CERT))/.test(
+      code,
+    )
+    ? "tls"
+    : "request_failed";
+}
+
 async function fetchChecked(
   { url, addresses }: CheckedTarget,
   { headers, body }: SignedWebhookRequest,
@@ -96,7 +108,7 @@ export async function sendWebhook(
   } catch (error) {
     if (error instanceof BoardError && error.code === "invalid_url" && error.reason !== "dns")
       return { status: null, retryAfter: null, error: "invalid_url" };
-    return { status, retryAfter, error: status === null ? "request_failed" : "response_body_failed" };
+    return { status, retryAfter, error: status === null ? transportError(error) : "response_body_failed" };
   } finally {
     cancel();
   }

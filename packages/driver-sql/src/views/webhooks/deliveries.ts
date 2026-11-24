@@ -9,6 +9,7 @@ import {
   mentionFilter,
   messages,
   parseTail,
+  webhookMaxAttempts,
 } from "@openboard/core";
 import { type BoardJobWriter, type BoardKeys, type BoardWebhookWriter, WEBHOOK_DELIVERY_JOB } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
@@ -32,8 +33,12 @@ export const deliveryStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook_id = ${"webhook"} AND id = ${"secretId"}`,
   beginDelivery: sql`UPDATE webhook_deliveries SET state = 'sending', attempt = attempt + 1, instance = ${"instance"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND event IS NOT NULL
-      AND state IN ('pending', 'sending') AND next_at <= ${"now"}
+      AND state IN ('pending', 'sending') AND next_at <= ${"now"} AND attempt < ${"maxAttempts"}
     RETURNING attempt`,
+  expireFinalDelivery: sql`UPDATE webhook_deliveries
+    SET state = 'dead', last_status = NULL, last_error = 'unreachable', done_at = ${"now"}, instance = NULL
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND event IS NOT NULL
+      AND state = 'sending' AND next_at <= ${"now"} AND attempt >= ${"maxAttempts"}`,
   deliveryInput: sql`SELECT w.config, w.secret_id, w.owner_actor, w.owner, w.directory, s.ciphertext, s.key_version, d.root_view,
       d.attempt, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal, e.payload
     FROM webhook_deliveries d
@@ -64,8 +69,11 @@ export function deliveryWriter(
         : null;
     },
     async beginWebhookAttempt(id, instance, now) {
-      const params = { ...keys, id, instance, now };
-      if (!(await query(db, dialect, deliveryStatements.beginDelivery, params)).length) return null;
+      const params = { ...keys, id, instance, now, maxAttempts: webhookMaxAttempts };
+      if (!(await query(db, dialect, deliveryStatements.beginDelivery, params)).length) {
+        await query(db, dialect, deliveryStatements.expireFinalDelivery, params);
+        return null;
+      }
       const [row] = await query(db, dialect, deliveryStatements.deliveryInput, params);
       if (!row) {
         await query(db, dialect, deliveryStatements.skipDelivery, params);

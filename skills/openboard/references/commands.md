@@ -923,6 +923,34 @@ Example:
 ob tasks dev
 ```
 
+## `ob webhooks deliveries`
+
+List a webhook's deliveries newest first.
+
+```sh
+ob webhooks deliveries <id> [--state <state>] [--before <before>] [--limit <limit>]
+```
+
+Arguments:
+
+- `id`: A webhook ID.
+
+Options:
+
+- `--state`: Text.
+- `--before`: The previous page's older cursor.
+- `--limit`: Page size, 50 by default.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob webhooks deliveries id
+```
+
 ## `ob webhooks`
 
 List manageable webhooks without receiver credentials.

@@ -1,4 +1,4 @@
-import type { Message, Webhook } from "@openboard/contract";
+import type { Message, Webhook, WebhookDelivery } from "@openboard/contract";
 import type { QuotaOutcome, TailMessage } from "@openboard/core";
 
 export interface WebhookRecord {
@@ -26,6 +26,10 @@ export interface WebhookAttempt {
 export interface BoardWebhookReads {
   webhooks(): Promise<WebhookRecord[]>;
   webhook(id: string): Promise<WebhookRecord | null>;
+  webhookDeliveries(
+    id: string,
+    options: { state?: WebhookDelivery["state"]; before?: string; limit: number },
+  ): Promise<WebhookDelivery[]>;
 }
 
 export interface BoardWebhookWriter extends BoardWebhookReads {

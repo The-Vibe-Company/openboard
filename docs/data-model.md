@@ -602,6 +602,8 @@ CREATE TABLE webhook_deliveries (                 -- transactional outbox
 );
 CREATE INDEX deliveries_due  ON webhook_deliveries (next_at) WHERE state IN ('pending', 'sending');
 CREATE INDEX deliveries_lane ON webhook_deliveries (webhook, thread, event);
+CREATE INDEX deliveries_history ON webhook_deliveries (org_id, board_id, webhook, created_at DESC, id DESC);
+CREATE INDEX deliveries_history_state ON webhook_deliveries (org_id, board_id, webhook, state, created_at DESC, id DESC);
 
 CREATE TABLE inbound_seen (
   board_id BIGINT NOT NULL, endpoint TEXT NOT NULL, event_id TEXT NOT NULL, at BIGINT NOT NULL, result TEXT NOT NULL,

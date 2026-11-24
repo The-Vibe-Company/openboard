@@ -1138,3 +1138,11 @@ payload changes only in its incrementing attempt field. Each signature covers
 the bytes sent on that attempt. Presets that sign a timestamp use that
 attempt's timestamp.
 ([Issue #492](https://github.com/The-Vibe-Company/openboard/issues/492))
+
+### Webhook delivery history pagination
+
+A delivery history page orders rows by creation time and then by delivery ID,
+both descending. Use the response's `older` value as `before` for the next page.
+The cursor anchors to the scoped delivery row even if its state changes between
+reads. Test pings share this history and carry null event and thread IDs.
+([Issue #493](https://github.com/The-Vibe-Company/openboard/issues/493))
