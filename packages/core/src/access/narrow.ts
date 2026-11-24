@@ -1,26 +1,41 @@
 import { BoardError, type Can, type CanInput } from "@openboard/contract";
 import { allowedAt, matchingPatterns } from "./agents.ts";
-import { compileCan } from "./grants.ts";
+import { compileCan, PERMISSIONS } from "./grants.ts";
 
-/** Parse the wire scope. An unusable scope grants nothing. */
+const CAN_MAX = 4000;
+
+function invalidScope(problem: string): BoardError {
+  return new BoardError(
+    "invalid_scope",
+    `x-board-can ${problem}. Write pattern=permissions;pattern=permissions, for example dev/=read,post;ci/=read.`,
+  );
+}
+
+/** Parse the wire scope, refusing malformed values before applying any narrowing. */
 export function parseCanHeader(header: string): Can {
-  if (header.length > 4000) return {};
+  if (header.length > CAN_MAX) throw invalidScope(`is longer than ${CAN_MAX} characters`);
   const entries = new Map<string, "all" | string[]>();
   for (const field of header.split(";")) {
     const entry = field.trim();
     if (!entry) continue;
     const separator = entry.indexOf("=");
-    if (separator < 0) return {};
+    if (separator < 0) throw invalidScope("has an entry without =");
     const pattern = entry.slice(0, separator).trim();
     const list = entry.slice(separator + 1).trim();
-    if (entries.has(pattern)) return {};
+    if (entries.has(pattern)) throw invalidScope("lists a pattern twice");
     entries.set(pattern, list === "all" ? list : list ? list.split(",").map((item) => item.trim()) : []);
   }
+  if (entries.size === 0) throw invalidScope("is empty");
   try {
     // compileCan validates each permission and pattern before they are used for access.
     return compileCan(Object.fromEntries(entries) as CanInput);
   } catch (error) {
-    if (error instanceof BoardError) return {};
+    if (error instanceof BoardError && error.code === "invalid_grant") {
+      if (error.reason === "invalid_channel") {
+        throw invalidScope("has an invalid pattern (use *, a channel, or a channel/)");
+      }
+      throw invalidScope(`has an unknown permission (use ${PERMISSIONS.join(", ")}, or all)`);
+    }
     throw error;
   }
 }

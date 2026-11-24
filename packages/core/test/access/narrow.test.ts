@@ -26,3 +26,19 @@ test("intersection drops redundant rules and keeps implied read", () => {
   });
   expect(narrowCan(parseCanHeader("*=post"), parseCanHeader("*=read"))).toEqual({});
 });
+
+test.each([
+  ["empty scope", ""],
+  ["separator-only scope", " ; ; "],
+  ["duplicate pattern", "dev=read; dev=post"],
+  ["invalid pattern", "dev/*=read"],
+  ["empty permission in a list", "dev=read,"],
+])("a scope with %s is rejected", (_case, header) => {
+  expect(() => parseCanHeader(header)).toThrow(
+    expect.objectContaining({ code: "invalid_scope", message: expect.stringContaining("pattern=permissions") }),
+  );
+});
+
+test("a valid scope can be exactly 4000 characters", () => {
+  expect(parseCanHeader("dev=read".padEnd(4000, ";"))).toEqual({ dev: ["read"] });
+});

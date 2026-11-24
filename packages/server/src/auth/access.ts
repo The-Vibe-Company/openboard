@@ -9,6 +9,12 @@ export function unrestrictedLocalOwner(by: Principal): boolean {
 }
 
 export function narrowCaller(request: Request, by: Principal): Principal {
+  if (request.headers.has("x-board-scope")) {
+    throw new BoardError(
+      "invalid_scope",
+      "Replace x-board-scope with x-board-can. Write pattern=permissions;pattern=permissions, for example dev/=read,post;ci/=read.",
+    );
+  }
   const header = request.headers.get(CAN_HEADER);
   if (header === null) return by;
   const base = unrestrictedLocalOwner(by) ? { "*": [...grants.PERMISSIONS] } : (by[callerCan] ?? {});
