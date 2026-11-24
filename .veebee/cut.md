@@ -2,7 +2,7 @@
 
 Legend.
 - One line per ticket: `NN  title   ← deps`. Numbers run across the whole project in construction order; a ticket depends only on lower numbers.
-- Ticket files exist for M0-M12 (`.veebee/tickets/NN-slug.md`); from M13 on, these lines are the plan and files are written when the milestone before is nearly done.
+- Ticket files exist for every milestone, M0-M15 (`.veebee/tickets/NN-slug.md`): every line of this cut has its file. A line and its file agree on number, title and arrows; where they were changed while writing a file, the milestone's change list below says why.
 - `[c]` marks a line that claims upstream conformance checks, `[s]` one that records `expectedSkips`; every one of the 91 checks is placed exactly once.
 - `writes` exclude generated files and the shared append points of `docs/project.md` section 5; tickets touching `contract`, `ports` or migrations are also serialized at claim time.
 
@@ -422,53 +422,61 @@ M11 and M12 changes made when their ticket files were written (each ticket's Not
 
 ## M13 Data, files, schedules (21)
 
-361  List the built-in schemas [c]   ← 215
+361  List the built-in schemas [c]   ← 215, 326
 362  Register a schema version once [c]   ← 361
 363  Refuse a built-in's name or an uncheckable definition [c]   ← 362
-364  Check a message's block against its schema [c]   ← 362
+364  Check a message's block against its schema [c]   ← 272, 362
 365  Refuse schema registration by a narrowed caller [c]   ← 286, 362
-366  Show a block as fields in the front   ← 224, 364
-367  Attach a file to a message [c]   ← 215
+366  Show a block as fields in the front   ← 224, 225, 364
+367  Attach a file to a message [c]   ← 215, 296, 305, 339, 364
 368  Refuse a file name that would download as a dotfile [c]   ← 367
-369  Start a task with a file [c]   ← 238, 367
+369  Start a task with a file [c]   ← 238, 268, 291, 367
 370  Answer 501 to direct uploads   ← 367
-371  Store attachments in Postgres   ← 367
+371  Ship new files to the backup bucket   ← 210, 324, 367
 372  Delete files that were never attached   ← 181, 367
-373  Schedule a reply   ← 215
+373  Schedule a reply   ← 215, 364, 367
 374  List a thread's schedules   ← 373
 375  Cancel a schedule [c]   ← 374
 376  Keep noSync on a schedule [c]   ← 375
 377  Repeat a schedule every interval   ← 373
-378  Send a schedule on time from any instance   ← 181, 373
+378  Send a schedule on time from any instance   ← 181, 372, 373, 375, 377
 379  Send an overdue schedule once after downtime   ← 378
 380  Let a profile cancel only its own schedules   ← 375
-381  Trigger a webhook from a recurring schedule   ← 304, 377
+381  Trigger a webhook from a recurring schedule   ← 304, 377, 378
 
 ## M14 External sync (6)
 
 382  Answer sync routes as a board that syncs nowhere   ← 215
-383  Refuse a sync target on a post   ← 382
-384  Refuse a sync entry in a watcher registration   ← 300, 382
-385  Record the sync checks as expected skips while sync is deferred [s]   ← 272, 384
-386  Build sync's records, inbox, receipts   ← 385
-387  Run a platform bridge recipe against staging   ← 304, 386
+383  Refuse a sync target on a post   ← 381, 382
+384  Refuse a sync entry in a watcher registration   ← 300, 301, 382
+385  Record the sync checks as expected skips while sync is deferred [s]   ← 272, 293, 384
+386  Build sync's records, inbox, receipts   ← 378, 385
+387  Run a platform bridge recipe against staging   ← 304, 347, 355, 385
 
 ## M15 Operations (14)
 
-388  Ship a local board's log to a bucket   ← 212
-389  Restore a local board with openboard restore   ← 388
-390  Restore a hosted organization from its backups   ← 210, 211
+388  Ship a local board's log to a bucket   ← 210, 212, 371
+389  Restore a local board with openboard restore   ← 378, 388
+390  Restore a hosted organization from its backups   ← 210, 211, 389
 391  Record a restore drill in both modes   ← 389, 390
-392  Export an organization   ← 210
-393  Import an organization export into ob serve   ← 392
-394  Serve operator metrics at /api/x/metrics   ← 215
-395  Sweep expired operational rows   ← 181
-396  Roll up daily usage per organization   ← 181
-397  Rebuild a board's folds with openboard reproject   ← 215
-398  Apply the event-log compaction policy   ← 397
-399  Run openboard admin commands   ← 215
+392  Export an organization   ← 210, 383
+393  Import an organization export into ob serve   ← 389, 392
+394  Serve operator metrics at /api/x/metrics   ← 215, 341, 393
+395  Sweep expired operational rows   ← 181, 300, 304, 333, 392
+396  Roll up daily usage per organization   ← 181, 304, 395
+397  Rebuild a board's folds with openboard reproject   ← 215, 389, 393
+398  Apply the event-log compaction policy   ← 394, 396, 397
+399  Run openboard admin commands   ← 214, 215, 323
 400  Upgrade a deployment by the runbook   ← 193
-401  Hold the full bench within budgets for seven nightly runs   ← 192, 274
+401  Hold the full bench within budgets for seven nightly runs   ← 192, 237, 274
+
+M13, M14 and M15 changes made when their ticket files were written (each ticket's Notes say why):
+- Retitled: 371 "Store attachments in Postgres" is now "Ship new files to the backup bucket". A check recorded under `local` only fails 171's lint, so 367 lands the `Blobs` port with both drivers (files on disk locally, Postgres `bytea` hosted, D39) and records its check in both modes; 371 takes the blob shipping 210 left to M13 (docs/architecture.md "Backups and recovery").
+- Arrows changed: 387 ← 304, 347, 385 instead of 386 (a bridge needs webhooks out and the SDK in, not sync records, so it does not wait on 386, which D19 may drop); 381 ← 378 added (377 computes repeats, 378 sends them); 378 ← 377 added (the slot after a send comes from 377's `timing.ts`); 373 ← 364 (a schedule's blocks are checked like a post's); 389 lands the fold dispatcher split out of `appendEvent`, so 390 ← 389, 393 ← 389 and 397 ← 389 are added; 388 ← 210, 371 (the bucket port, the shipping job, the blobs in it); 395 ← 300, 304, 333 and 396 ← 304 (the tables they sweep or count); 399 ← 214 (`openboard admin` and `operator.ts`).
+- Arrows added to the earlier tickets that last change a shared file: 361 ← 326 (`core/src/index.ts`); 364 ← 272 (`core/messages/edit.ts`, `server/operations/messages.ts`); 366 ← 225 (`MessageView.tsx`); 367 ← 364, 339, 305, 296 (`core/messages/post.ts`, `http/router.ts`, `apps/openboard/src/compose.ts`, `server/src/app.ts`); 369 ← 291, 268 (`server/operations/tasks.ts`, `cli/commands/tasks.ts`); 371 ← 324 (docs/decisions.md); 373 ← 367 (`views/messages.ts`, `views/purge.ts`, testkit index, isolation seed); 378 ← 375, 372 (`core/src/index.ts`, `jobs/registry.ts`); 383 ← 381 and 392 ← 383 (docs/protocol.md); 384 ← 301 (`core/watchers/register.ts`); 385 ← 293 (`score.json` and its test); 386 ← 378 (`core/src/index.ts`); 387 ← 355 (`scripts/ci/boundaries.json`); 389 ← 378 (`views/messages.ts`); 394 ← 393, 341 (docs/codebase.md, `http/pipeline.ts`); 395 ← 392, 396 ← 395, 398 ← 396 (`jobs/registry.ts`); 397 ← 393 (`apps/openboard/src/main.ts`); 398 ← 394 (docs/decisions.md); 399 ← 323 (docs/auth.md); 401 ← 237 (`nightly.yml`).
+- The schedule contract (373), the schema contract (361) and the attachment contract (367) land whole in their first ticket, as 304 did for webhooks; until the next tickets land, routes not built yet answer upstream's 501 (`no_scheduler`, `no_schemas`), which the kit reads as "not kept here".
+- Scope made explicit, titles unchanged: 377 lifts the refusal of repeat fields and computes slots but sends nothing (378 sends repeats too); 386 is a placeholder until the owner answers question 7: dropped if D19 stands, re-cut into one ticket per sync check if not (as one ticket it is far over the size limit), with `conformance: []` because 385 places those checks.
+- Owner decisions the tickets propose (questions 24 to 33 below).
 
 ## Could not place
 
@@ -486,9 +494,9 @@ M11 and M12 changes made when their ticket files were written (each ticket's Not
    - `packages/driver-sql/src/statements.ts`: the self-check treats it like an append point;
    - `tools/conformance/score.json`, `openapi.json` and the skill's `commands.md`: rewritten by `--update` or `gen`, so left out of `writes`;
    - `packages/contract/src/errors.ts`: landed whole in 36 (upstream codes) and 109 (OpenBoard codes) so later tickets do not compete for it.
-7. **M14.** Should it build sync's records, inbox and receipts (386), or only record `expectedSkips`? D19 and Q8 defer sync, while `docs/project.md` M14 lists "Sync records, inbox, receipts".
-8. **M15 lines without a design.** The event-log compaction policy (398), and the `openboard admin` command set (399), which no doc lists.
-9. **Usage rollups (396).** `docs/codebase.md` 4.5 says "rollups after v1"; `docs/architecture.md` "SaaS seams" says "Rollup job running" is a v1 must.
+7. **M14.** Should it build sync's records, inbox and receipts (386), or only record `expectedSkips`? D19 and Q8 defer sync, while `docs/project.md` M14 lists "Sync records, inbox, receipts". 385 records the skips either way; 386 is dropped if D19 stands, re-cut if not; 387 no longer waits on it.
+8. **M15 lines without a design.** The event-log compaction policy (398), and the `openboard admin` command set (399), which no doc lists. Both tickets now carry a proposal (questions 29 and 30) and stop with `needs-decision` until it is approved.
+9. **Usage rollups (396).** `docs/codebase.md` 4.5 says "rollups after v1"; `docs/architecture.md` "SaaS seams" says "Rollup job running" is a v1 must. 396 follows docs/architecture.md; the owner settles it in review.
 10. **Open product questions Q1-Q8** in `docs/decisions.md`:
     - sandbox credential path;
     - backup bucket;
@@ -520,6 +528,17 @@ M11 and M12 changes made when their ticket files were written (each ticket's Not
 21. **A test ping's payload type (306).** Not in docs. Proposed: `board.ping`, with `delivery` and `board` only.
 22. **`became` on labels.** The owner's example trigger is "label `status=ready` set in `dev`". With 304's filter (`dev --label status=ready`, `labels.changed`) a receiver also gets the change that removes the label, and must check `event.payload.set`. `became` (319) covers only task states. A line "Fire only when a label takes a value" (`became: { labels: { status: "ready" } }`) is not in the cut.
 23. **A webhook verification helper in the SDK.** Receivers (338, 355) each carry ~40 lines of Standard Webhooks verification because recipes cannot import each other. An SDK `verifyWebhook(request, secret)` would make the consumer side one call; no line of the cut builds it.
+
+24. **Where hosted files live (367, 371).** D39, docs/data-model.md "Attachments" and docs/codebase.md 7.5 keep hosted attachments in Postgres `bytea` until about 20 GB, with object storage only past that threshold; D26's status line says "S3-compatible storage hosted". The tickets follow D39, ship each new blob to the backup bucket (371), and correct D26's status line there. No line of the cut builds the S3-compatible `Blobs` driver for when the threshold is reached.
+25. **A post's `sync` targets (383).** No doc names the answer on a board that syncs nowhere. Proposed: 400 `invalid_target`, recorded in docs/protocol.md "Sync (deferred)".
+26. **The import's mapping onto local mode (393).** Local mode serves one organization, `local`. Proposed: one board of the export becomes `local/main` (`--board` picks which, `main` by default), and connections are listed to re-create since no secret is exported.
+27. **Operator metrics' credential (394).** docs/architecture.md says metrics are for operators, not tenants, but names no credential. Proposed: `OPENBOARD_METRICS_TOKEN` (or `_FILE`); unset, the route does not exist. Which scraper reads it is the owner's choice (none is set up).
+28. **Online reprojection (397).** docs/data-model.md describes rebuilding a hosted board into new tables while the old ones serve; 397 rebuilds in place under the board lock, and no line builds the online variant. Add one if 397's measurement says a production board needs it.
+29. **Compaction policy (398).** Proposed: keep the log whole except `actor.seen` bookkeeping, keeping each actor's first and latest and deleting the rest after 30 days, once shipped.
+30. **`openboard admin` commands (399).** Proposed: `orgs`, `show`, `delete`, `undelete`, beside 214's `quota`.
+31. **The bridge recipe's platform (387).** Which chat platform to run it against on staging, with an app or incoming URL of the owner's; the recipe speaks a generic shape and a real platform's adapter wraps it.
+32. **Owner-provided infrastructure for M13-M15.** The backup bucket and its credentials (Q2: 371, 388, 389, 391, 392), a scratch Postgres for the hosted restore drill (391), staging access for the upgrade runbook (400) and the bridge (387), a metrics scraper (394). Each ticket's criteria have a local equivalent (fake bucket or MinIO, test Postgres) and say which step waits for these.
+33. **`schemas` without `org_id`.** docs/data-model.md's `schemas` table has no `org_id`, unlike every other tenant table (D33) and what 208's purge needs; 362 adds it and corrects the doc.
 
 ### Contradictions between docs (decisions.md followed where it speaks)
 
