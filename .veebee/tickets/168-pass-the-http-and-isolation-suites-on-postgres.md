@@ -9,8 +9,6 @@ writes:
   - packages/server/test/support/env.ts
   - packages/server/package.json
   - packages/driver-postgres/test/isolation.test.ts
-  - packages/driver-sql/src/views/**
-  - packages/ports/testkit/store/**
   - bun.lock
 conformance: []
 modes: [local, hosted]
@@ -39,3 +37,5 @@ As the owner of the code base, I know no operation lets one organization read or
 - Storage twin: `packages/driver-postgres/test/isolation.test.ts` runs `packages/ports/testkit/isolation.test-suite.ts` (135) on Postgres, as `packages/driver-sqlite/test/isolation.test.ts` does on SQLite.
 - Depends on 165 and 166 as well as 163: 165 may correct `packages/driver-sql/src/views/**` and 166 changes `packages/server/test/support/drivers.ts`, both files this ticket writes.
 - A failing isolation case is a security bug: stop and report it. A view that misbehaves on Postgres only is fixed in `packages/driver-sql/src/views/**` with a testkit case that shows it.
+
+Orchestrator note: `packages/driver-sql/src/views/**` and `packages/ports/testkit/store/**` were dropped from `writes` so M3 tickets can run alongside. If a suite fails on Postgres because of a view or a store case, fix only that file, add it to `writes` in your branch and name it in the PR; the orchestrator resolves overlaps at merge.
