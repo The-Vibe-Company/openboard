@@ -1,8 +1,9 @@
-import { BoardError } from "@openboard/contract";
+import { BoardError, type Message } from "@openboard/contract";
 import { parseId } from "../ids.ts";
 import { actorSeen, type PostContext } from "../messages/post.ts";
 import type { TaskCompleted, TaskFailed } from "./events.ts";
 import { type HeldTaskState, requireHeldTask } from "./fence.ts";
+import { readyDependants } from "./readiness.ts";
 import { withTask } from "./view.ts";
 
 export function decideCompleteTask(
@@ -19,6 +20,7 @@ export function decideSettlement(
   { head, target: stored, actor, proof }: HeldTaskState,
   settlement: Settlement,
   context: PostContext,
+  dependants?: { readonly any: boolean; readonly ready: readonly Message[] },
 ) {
   const { id, epoch } = settlement;
   const field = "reason" in settlement ? "reason" : "result";
@@ -56,7 +58,10 @@ export function decideSettlement(
   const completed: TaskCompleted = {
     ...eventFields,
     type: "task.completed",
-    payload: { ...payload, result, view },
+    payload: { ...payload, result, view, hasDependants: dependants?.any ?? false },
   };
-  return { task: view, events: seen ? [seen, completed] : [completed] };
+  return {
+    task: view,
+    events: [...(seen ? [seen] : []), completed, ...readyDependants(completed, dependants?.ready ?? [])],
+  };
 }

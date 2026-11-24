@@ -7,7 +7,7 @@ import { TaskClaim, TaskRoot } from "./claim.ts";
 export const createTask = defineOperation({
   name: "createTask",
   operationId: "createTask",
-  summary: "Start a thread as a ready task, or make a ready task of the thread `re` roots.",
+  summary: "Start a thread as a task, or make a task of the thread `re` roots.",
   route: { method: "POST", path: "/tasks" },
   scope: "board",
   input: {
@@ -18,6 +18,7 @@ export const createTask = defineOperation({
         re: Type.Optional(
           Ref("message", { description: "The root of a thread to make a task of as it is, instead of a new thread." }),
         ),
+        needs: Type.Optional(Type.Array(Ref("task"), { maxItems: 20 })),
         labels: Type.Optional(Labels),
         claim: Type.Optional(Type.Boolean({ description: "Claim the task in the same write." })),
         noSync: Type.Optional(Type.Boolean()),
@@ -33,6 +34,8 @@ export const createTask = defineOperation({
   errors: [
     "quota_exceeded",
     "invalid_request",
+    "invalid_needs",
+    "task_waiting",
     "reserved_label",
     "forbidden",
     "message_not_found",

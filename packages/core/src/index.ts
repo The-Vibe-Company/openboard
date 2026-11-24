@@ -152,3 +152,4 @@ export { webhookMaxAttempts, webhookOutcome, webhookRetryAt } from "./webhooks/o
 export { webhookPayload, webhookPing } from "./webhooks/payload.ts";
 export { validateWebhook } from "./webhooks/validate.ts";
 export type { WebhookCreated, WebhookDeleted };
+export { checkNeeds, needPositions, type TaskNeeds } from "./tasks/needs.ts";

@@ -17,6 +17,7 @@ export interface TaskCreated extends Omit<MessagePosted, "type" | "payload"> {
   readonly payload: Omit<TaskCreatedPayload, "id" | "needs"> & {
     readonly id: number;
     readonly needs: readonly number[];
+    readonly waitingOn?: number;
     readonly view: Message;
     /** On a keyed task start, whether the author created it without channel read access. Absent on adoption. */
     readonly blind?: boolean;
@@ -38,7 +39,13 @@ export interface TaskCompleted extends Omit<MessagePosted, "type" | "payload"> {
   readonly payload: Omit<TaskCompletedPayload, "id"> & {
     readonly id: number;
     readonly view: Message;
+    readonly hasDependants?: boolean;
   };
+}
+
+export interface TaskReady extends Omit<MessagePosted, "type" | "payload"> {
+  readonly type: "task.ready";
+  readonly payload: { readonly id: number; readonly view: Message };
 }
 
 export interface TaskRenewed extends Omit<MessagePosted, "type" | "payload"> {
@@ -97,6 +104,7 @@ export type TaskEvent =
   | TaskCreated
   | TaskClaimed
   | TaskCompleted
+  | TaskReady
   | TaskFailed
   | TaskRenewed
   | TaskReleased;

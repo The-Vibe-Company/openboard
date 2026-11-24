@@ -4,31 +4,44 @@ title: Hold a task until what it needs completes
 milestone: M9-tasks
 package: core
 writes:
-  - packages/contract/src/operations/tasks.ts
-  - packages/core/src/tasks/needs.ts
-  - packages/core/test/tasks/needs.test.ts
-  - packages/core/src/tasks/readiness.ts
-  - packages/core/test/tasks/readiness.test.ts
-  - packages/core/src/tasks/create.ts
-  - packages/core/src/tasks/settle.ts
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/contract/src/entities/events.ts
   - packages/contract/src/entities/task-events.ts
+  - packages/contract/src/operations/tasks/complete.ts
+  - packages/contract/src/operations/tasks/create.ts
+  - packages/core/src/events/tail.ts
+  - packages/core/src/index.ts
+  - packages/core/src/tasks/create.ts
   - packages/core/src/tasks/events.ts
-  - packages/driver-sql/src/views/task-folds.ts
-  - packages/driver-sql/src/statements.ts
+  - packages/core/src/tasks/needs.ts
+  - packages/core/src/tasks/readiness.ts
+  - packages/core/src/tasks/settle.ts
+  - packages/driver-postgres/test/task-dependency-rollout.test.ts
+  - packages/driver-sql/migrations/0036-task-dependency-completion.sql
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/views/boards.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/driver-sql/src/views/tasks/tasks.ts
+  - packages/driver-sql/src/views/watchers/index.ts
+  - packages/driver-sql/src/views/webhooks/deliveries.ts
+  - packages/driver-sqlite/test/webhook-migration.test.ts
   - packages/ports/src/tasks.ts
-  - packages/ports/testkit/store/tasks.test-suite.ts
   - packages/ports/testkit/isolation.test-suite.ts
-  - packages/driver-sql/src/views/tasks.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/events.ts
   - packages/server/src/operations/tasks.ts
-  - packages/server/src/operations/task-claims.ts
+  - packages/server/src/operations/tasks/complete.ts
+  - packages/server/test/isolation/cases.ts
   - packages/server/test/tasks/needs.test.ts
-  - packages/cli/src/commands/tasks.ts
-  - packages/cli/test/tasks.test.ts
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
 conformance: ["tasks/holds a task until the tasks it needs complete, which a failed or canceled one never does"]
 modes: [local, hosted]
 depends_on: [251]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 425
 ---
 

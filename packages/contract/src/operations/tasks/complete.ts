@@ -22,7 +22,7 @@ export const completeTask = defineOperation({
   output: Type.Object({ task: TaskRoot }),
   errors: ["invalid_request", "message_not_found", "not_a_task", "claim_lost"],
   access: { permission: "read", channel: "fromMessage" },
-  effects: { readOnly: false, idempotent: false, emits: ["task.completed"] },
+  effects: { readOnly: false, idempotent: false, emits: ["task.completed", "task.ready"] },
   cli: { command: ["tasks", "complete"], args: ["id", "result"], implicit: ["epoch", "token"] },
   mcp: { tool: "task_complete" },
   upstream: true,

@@ -1099,6 +1099,15 @@ The event feed serves `task.reopened` on upgraded replicas. The writer omits
 persisted pull-watcher matches and webhook deliveries for this event because
 an older replica can lease shared work before it can decode the event.
 
+### Task dependency completion during a rolling deploy
+
+When an older replica tries to complete a prerequisite that has dependants,
+Postgres rolls back the write and the replica returns a retryable 503
+`unavailable`. An upgraded replica can retry with the same claim and append
+the completion and readiness events together. The feed serves `task.ready`
+on upgraded replicas. The writer omits persisted pull-watcher matches and
+webhook deliveries because older replicas can lease work they cannot decode.
+
 ### Gateway allowlists for direct connections
 
 The gateway policy takes the routes allowed by the claimed-token guard and
