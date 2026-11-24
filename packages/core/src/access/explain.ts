@@ -60,15 +60,19 @@ export function explainAccess(
   };
 }
 
-/** An everyone pattern can explain a hypothetical subject's restriction when a named grant covers the channel. */
-export function explainSubject(channel: string, views: readonly GrantView[], subject: GrantSubject) {
-  const hypothetical = subject.kind === "project" || subject.kind === "app";
+/** An everyone pattern can restrict a subject only when a principal or group grant covers the channel. */
+export function explainSubject(
+  channel: string,
+  views: readonly GrantView[],
+  subject: GrantSubject,
+  includeEveryone = subject.kind === "project" || subject.kind === "app",
+) {
   const matching = views.flatMap((view) => {
-    const level = matchGrantLevel(view, subject, hypothetical);
+    const level = matchGrantLevel(view, subject, includeEveryone);
     return level ? [{ ...view, level, view }] : [];
   });
   if (
-    hypothetical &&
+    includeEveryone &&
     !matchingPatterns(
       matching.flatMap(({ level, can }) => (level === "everyone" ? [] : Object.keys(can))),
       channel,

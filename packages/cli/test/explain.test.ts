@@ -21,6 +21,12 @@ test("grants explain formats upstream grant details and wraps the JSON output", 
       {
         fetch: async (request) => {
           expect(request.url).toBe(`${BOARD_URL}/grants/explain?channel=dev%2Fweb${query}`);
+          if (query.startsWith("&connection=")) {
+            return Response.json({
+              ...explanation,
+              grants: [{ id: "g5", principals: [{ kind: "connection" }, { kind: "user" }] }],
+            });
+          }
           return Response.json(explanation);
         },
         output: {
@@ -33,6 +39,9 @@ test("grants explain formats upstream grant details and wraps the JSON output", 
     );
   expect(await send(["dev/web"], "")).toBe(0);
   expect(await send(["--user", user, "dev/web", "--json"], `&user=${user}`)).toBe(0);
+  const connection = `cn_${"a".repeat(16)}`;
+  expect(await send(["--connection", connection, "dev/web"], `&connection=${connection}`)).toBe(0);
+  expect(out[2]).toBe(`dev/ wins over *. Closest grant for ${connection}: g5 (--connection): read, post.`);
   expect(out[0]).toBe("dev/ wins over *. Closest grant for you: g5 (--connection): read, post.");
   expect(JSON.parse(out[1] ?? "")).toEqual({ explanation });
 });

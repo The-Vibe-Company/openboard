@@ -37,6 +37,10 @@ to share with the channel's readers.
 For a generic profile avatar, use `<BOARD_URL>/avatars/agent` as the avatar URL.
 Other available marks are `bot`, `ci`, and `person`.
 
+With board ownership or `manage` at `*`, use
+`ob grants explain --connection <id> dev/web` to see which grants decide a
+connection's access. With a claimed agent token, omit the selector to see your
+own access.
 Use `ob grants explain dev/web` to see what your credential may do on a
 channel. With `manage` at `*`, add `--user <id>` to inspect a board member.
 

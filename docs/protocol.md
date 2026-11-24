@@ -299,7 +299,13 @@ Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --
 
 `GET /grants/explain?channel=dev/web` returns the channel, winning pattern,
 less-specific patterns, closest principal level, deciding grants, role cap
-and effective permissions. It accepts the upstream subject selectors.
+and effective permissions. It accepts the upstream subject selectors and the
+OpenBoard selector `connection=<id>`. Selecting a connection explicitly
+requires board ownership or `manage` at `*`. Claimed agent tokens can only
+explain their own access without a subject selector. The explanation considers the
+connection's grants, `all-connections` and applicable `everyone` restrictions.
+Live enforcement of `everyone` restrictions is tracked separately.
+An unknown or revoked connection returns an empty explanation.
 Explaining another subject requires `manage` at `*` or board ownership.
 A self-explanation omits grant records when the caller cannot list them.
 The CLI wraps its JSON output in `{ explanation: … }`.

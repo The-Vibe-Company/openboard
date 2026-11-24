@@ -53,3 +53,34 @@ test("a repository explanation follows live workload access while everyone rules
     can: ["post"],
   });
 });
+
+test("everyone alone cannot give a named connection access", () => {
+  const views: GrantView[] = [
+    {
+      id: "g4",
+      principals: [{ kind: "all-connections" }],
+      can: { "ops/": ["read"] },
+      capped: false,
+      by: null,
+      at: null,
+    },
+    {
+      id: "g5",
+      principals: [{ kind: "everyone" }],
+      can: { "dev/": ["read"] },
+      capped: false,
+      by: null,
+      at: null,
+    },
+  ];
+  const connection = { kind: "connection", id: "cn_aaaaaaaaaaaaaaaa" } as const;
+  expect(explainSubject("dev/web", views, connection, true)).toEqual({
+    channel: "dev/web",
+    pattern: null,
+    over: [],
+    level: null,
+    grants: [],
+    capped: null,
+    can: [],
+  });
+});
