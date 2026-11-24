@@ -40,6 +40,7 @@ import webhookRecentDeadDdl from "../migrations/0038-webhook-recent-dead.sql" wi
 import inboundSeenDdl from "../migrations/0039-inbound-seen.sql" with { type: "text" };
 import webhookWorkloadDdl from "../migrations/0040-webhook-workload.sql" with { type: "text" };
 import operationalRetentionDdl from "../migrations/0041-operational-retention.sql" with { type: "text" };
+import inboundHistoryDdl from "../migrations/0042-inbound-history.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -130,6 +131,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 39, name: "0039-inbound-seen", sql: inboundSeenDdl },
   { version: 40, name: "0040-webhook-workload", sql: webhookWorkloadDdl },
   { version: 41, name: "0041-operational-retention", sql: operationalRetentionDdl },
+  { version: 42, name: "0042-inbound-history", sql: inboundHistoryDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */

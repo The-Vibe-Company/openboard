@@ -631,6 +631,7 @@ CREATE TABLE inbound_seen (
   board_id BIGINT NOT NULL, endpoint TEXT NOT NULL, event_id TEXT NOT NULL, at BIGINT NOT NULL, result TEXT NOT NULL,
   PRIMARY KEY (endpoint, event_id)
 );
+CREATE INDEX inbound_seen_history ON inbound_seen (org_id, board_id, endpoint, at DESC, event_id DESC);
 ```
 
 Retention (job): done/skipped deliveries and `inbound_seen` after 7 days, dead

@@ -6,7 +6,22 @@ export interface InboundRecord {
   readonly grantId: number;
 }
 
+export interface InboundReceiptKey {
+  readonly eventId: string;
+  readonly at: number;
+}
+
+export interface InboundReceipt extends InboundReceiptKey {
+  readonly result: string;
+}
+
 export interface BoardInboundReads {
+  inboundReceived(
+    endpoint: string,
+    since: number,
+    before: InboundReceiptKey | null,
+    limit: number,
+  ): Promise<InboundReceipt[]>;
   inboundEndpoints(): Promise<InboundRecord[]>;
   inboundEndpoint(id: string): Promise<InboundRecord | null>;
   inboundSecret(id: string): Promise<WebhookSecret | null>;

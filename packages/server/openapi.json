@@ -6384,6 +6384,131 @@
         }
       }
     },
+    "/x/inbound/{id}/received": {
+      "get": {
+        "operationId": "listInboundReceived",
+        "summary": "List an inbound endpoint's received events from the last seven days, newest first.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "inbound", "type": "string" }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^-?[0-9]{1,16}\\.[A-Za-z0-9_-]{1,1366}$",
+              "description": "The previous page's older cursor.",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "minimum": 1, "maximum": 200, "description": "Page size, 50 by default.", "type": "integer" }
+          }
+        ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "before": {
+              "pattern": "^-?[0-9]{1,16}\\.[A-Za-z0-9_-]{1,1366}$",
+              "description": "The previous page's older cursor.",
+              "type": "string"
+            },
+            "limit": { "minimum": 1, "maximum": 200, "description": "Page size, 50 by default.", "type": "integer" }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["events", "older"],
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["eventId", "at", "status", "matched", "results"],
+                        "properties": {
+                          "eventId": { "type": "string" },
+                          "at": { "format": "date-time", "type": "string" },
+                          "status": {
+                            "anyOf": [{ "const": 200, "type": "number" }, { "const": 422, "type": "number" }]
+                          },
+                          "matched": { "type": "array", "items": { "type": "integer" } },
+                          "results": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": ["reply"],
+                                  "properties": { "reply": { "type": "string" } }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": ["label"],
+                                  "properties": { "label": { "type": "string" } }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": ["react"],
+                                  "properties": { "react": { "type": "string" } }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "older": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/x/webhooks": {
       "post": {
         "operationId": "createWebhook",

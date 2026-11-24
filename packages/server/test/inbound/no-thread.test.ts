@@ -106,7 +106,7 @@ test("records each unresolved thread result without applying actions", () =>
       expect(response.status).toBe(422);
       const body = await response.text();
       expect(JSON.parse(body)).toEqual({ error: { code: "thread_not_found", message } });
-      expect(await seen(id)).toBe(body);
+      expect(JSON.parse((await seen(id))!)).toEqual({ ...JSON.parse(body), matched: [0] });
     }
     expect(await events()).toEqual(before);
   }));
@@ -120,7 +120,9 @@ test("unreadable and absent roots return byte-identical 422 responses", () =>
     expect(absent.status).toBe(422);
     const body = await unreadable.text();
     expect(body).toBe(await absent.text());
-    expect(await seen("unreadable")).toBe(body);
+    const stored = { ...JSON.parse(body), matched: [0] };
+    expect(JSON.parse((await seen("unreadable"))!)).toEqual(stored);
+    expect(JSON.parse((await seen("absent"))!)).toEqual(stored);
     expect(await events()).toEqual(before);
   }));
 

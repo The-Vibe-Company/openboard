@@ -4,6 +4,7 @@ import type {
   getWebhook,
   listChannels,
   listConnections,
+  listInboundReceived,
   listSchemas,
   listTasks,
   listWebhookDeliveries,
@@ -183,6 +184,20 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
       const { connections } = output as OutputOf<typeof listConnections>;
       return connections.length === 0 ? "no connections" : connections.map(connectionText).join("\n");
     },
+    listInboundReceived: (output) =>
+      (output as OutputOf<typeof listInboundReceived>).events
+        .map(({ eventId, status, matched, results }) => {
+          // The sender supplies this ID. Keep terminal controls and line breaks out of the text view.
+          const id = eventId.replace(
+            /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu,
+            (char) => `\\u{${char.codePointAt(0)?.toString(16)}}`,
+          );
+          const actions = results.flatMap((result) =>
+            Object.entries(result).map(([action, target]) => `${action} ${target}`),
+          );
+          return [id, status, `matched ${matched.length ? matched.join(",") : "none"}`, ...actions].join("  ");
+        })
+        .join("\n"),
     listSchemas: (output) =>
       (output as OutputOf<typeof listSchemas>).schemas
         .map(({ id, builtIn, by, at, description }) =>
