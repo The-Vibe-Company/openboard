@@ -3,6 +3,11 @@ import type { CreatedConnection, ErrorBody, OutputOf, postMessage, readEvents } 
 import { BOARD_URL, call, makeApp, NOW, OWNER } from "./support/app.ts";
 import { openStore } from "./support/drivers.ts";
 
+type FeedPage = OutputOf<typeof readEvents>;
+/** The events that concern a message: every event a feed without `all` serves. */
+type MessageEvent = Extract<FeedPage["events"][number], { message: unknown }>;
+const aboutMessages = (page: FeedPage) => page.events as MessageEvent[];
+
 test("reads a posted message once from its event cursor, its writer's actor.seen left out", async () => {
   const app = makeApp();
   try {
@@ -275,7 +280,9 @@ test("an edit that removes matching text and mentions is still delivered after t
     expect(response.status).toBe(200);
     const page = (await response.json()) as OutputOf<typeof readEvents>;
     expect(page.cursor).toBe("3");
-    expect(page.events.map(({ type, message }) => [type, message.text])).toEqual([["message.edited", "goodbye"]]);
+    expect(aboutMessages(page).map(({ type, message }) => [type, message.text])).toEqual([
+      ["message.edited", "goodbye"],
+    ]);
   } finally {
     await app.close();
   }
@@ -303,8 +310,8 @@ test("a channel-limited credential reads only events it may see", async () => {
     const response = await read("after=0&channel=dev");
     expect(response.status).toBe(200);
     const page = (await response.json()) as OutputOf<typeof readEvents>;
-    expect(page.events.map(({ message }) => message.channel)).toEqual(["dev"]);
-    expect(page.events[0]?.message.mentions).toBeUndefined();
+    expect(aboutMessages(page).map(({ message }) => message.channel)).toEqual(["dev"]);
+    expect(aboutMessages(page)[0]?.message.mentions).toBeUndefined();
     expect((await read("after=0&channel=dev/secret")).status).toBe(403);
   } finally {
     await app.close();
@@ -324,7 +331,7 @@ test("reads the newest channel events oldest first with current views and resume
     expect(response.status).toBe(200);
     const page = (await response.json()) as OutputOf<typeof readEvents>;
     expect(page.cursor).toBe("6");
-    expect(page.events.map(({ cursor, message }) => [cursor, message.text])).toEqual([
+    expect(aboutMessages(page).map(({ cursor, message }) => [cursor, message.text])).toEqual([
       ["3", "second revised"],
       ["4", "second revised"],
       ["5", "second revised"],
@@ -358,3 +365,66 @@ test.each(["last=2&after=0", "last=2&wait=0", "last=0", "last=101", "last=1.5"])
     }
   },
 );
+
+test("serves bookkeeping events only with all=true or all=1, unfiltered", async () => {
+  const app = makeApp();
+  try {
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "hello" })).status).toBe(201);
+    const types = async (query: string) => {
+      const response = await call(app, "GET", `/events?${query}`);
+      expect(response.status).toBe(200);
+      return ((await response.json()) as FeedPage).events.map(({ cursor, type }) => [cursor, type]);
+    };
+    expect(await types("after=0")).toEqual([["2", "message.posted"]]);
+    expect(await types("after=0&all=false")).toEqual([["2", "message.posted"]]);
+    expect(await types("after=0&all=0")).toEqual([["2", "message.posted"]]);
+    const everything = await call(app, "GET", "/events?after=0&all=true");
+    const page = (await everything.json()) as FeedPage;
+    expect(page.cursor).toBe("2");
+    expect(page.events[0]).toEqual({
+      cursor: "1",
+      type: "actor.seen",
+      createdAt: "2023-11-14T22:13:20.000Z",
+      payload: { actor: "ob:user:local-test", kind: "person", handle: "local-test", name: "local-test", avatar: null },
+    });
+    expect(page.events.map(({ type }) => type)).toEqual(["actor.seen", "message.posted"]);
+    expect(await types("after=0&all=1")).toEqual([
+      ["1", "actor.seen"],
+      ["2", "message.posted"],
+    ]);
+    expect(await types("all=1&last=5")).toEqual([
+      ["1", "actor.seen"],
+      ["2", "message.posted"],
+    ]);
+    expect(await types("after=0&all=true&channel=dev")).toEqual([["2", "message.posted"]]);
+    expect(await types("after=0&all=true&text=hello")).toEqual([["2", "message.posted"]]);
+
+    const invalid = await call(app, "GET", "/events?after=0&all=maybe");
+    expect(invalid.status).toBe(400);
+    expect(((await invalid.json()) as { error: ErrorBody }).error.code).toBe("invalid_request");
+  } finally {
+    await app.close();
+  }
+});
+
+test("a caller that does not read every channel never sees bookkeeping", async () => {
+  const app = makeApp();
+  try {
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const connection = await call(app, "POST", "/x/connections", {
+      name: "dev-only",
+      direct: true,
+      can: { dev: ["read"] },
+    });
+    const { secret } = (await connection.json()) as { secret: string };
+    const response = await app.fetch(
+      new Request("http://localhost/api/local/main/events?after=0&all=true&channel=dev", {
+        headers: { authorization: `Bearer ${secret}` },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as FeedPage).events.map(({ type }) => type)).toEqual(["message.posted"]);
+  } finally {
+    await app.close();
+  }
+});

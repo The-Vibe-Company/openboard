@@ -10,11 +10,15 @@ writes:
   - packages/ports/testkit/store/events.test-suite.ts
   - packages/server/test/events.test.ts
   - packages/ports/src/store.ts
+  - packages/ports/src/board-message-reads.ts
+  - packages/contract/src/entities/events.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [53, 97]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-t98
 issue: 98
 ---
 

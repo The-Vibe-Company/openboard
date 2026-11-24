@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { Author, ChannelPath, Labels, Message } from "./messages.ts";
+import { Author, ChannelPath, Labels, Message, MessageAuthor } from "./messages.ts";
 
 const MessagePostedPayload = Type.Object({
   channel: ChannelPath,
@@ -64,4 +64,27 @@ const LabelsChangedEvent = Type.Object({
   message: Message,
 });
 
-export const Event = Type.Union([PostedEvent, EditedEvent, DeletedEvent, LabelsChangedEvent]);
+/** Bookkeeping (served only with `all`): who an actor is, as of its first write or a change in how it shows. */
+const ActorSeenEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("actor.seen"),
+  createdAt: Type.String(),
+  payload: Type.Object({ actor: Type.String(), ...MessageAuthor.properties }),
+});
+
+/** Concerns no message, so it is served only with `all` (docs/data-model.md, `visibility` 1). */
+const ChannelCreatedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("channel.created"),
+  createdAt: Type.String(),
+  payload: Type.Object({ channel: ChannelPath, by: Author }),
+});
+
+export const Event = Type.Union([
+  PostedEvent,
+  EditedEvent,
+  DeletedEvent,
+  LabelsChangedEvent,
+  ActorSeenEvent,
+  ChannelCreatedEvent,
+]);

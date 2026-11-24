@@ -28,6 +28,12 @@ export const readEvents = defineOperation({
             description: "Long-poll timeout in seconds. The server may return early and waits at most 120 seconds.",
           }),
         ),
+        all: Type.Optional(
+          Type.Union([Type.Literal("true"), Type.Literal("1"), Type.Literal("false"), Type.Literal("0")], {
+            description:
+              "`true` or `1` adds bookkeeping events (`actor.seen`, `channel.created`) when no filter is set and the caller reads every channel.",
+          }),
+        ),
         channel: Type.Optional(ChannelFilter),
         re: Type.Optional(Ref("thread", { description: "The root ID of the thread to follow." })),
         from: Type.Optional(Type.String({ pattern: "^[^\\u0000]+$" })),
