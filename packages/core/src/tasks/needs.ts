@@ -44,6 +44,46 @@ export function checkNeeds(
   return { ids, waitingOn };
 }
 
+const NEEDS_WALK_MAX = 500;
+
+interface NeedsWalk {
+  readonly frontier: readonly number[];
+  readonly seen: ReadonlySet<number>;
+}
+
+export function startNeedsWalk(ids: readonly number[], previous: readonly string[]): NeedsWalk {
+  const kept = new Set(previous.map(Number));
+  const frontier = ids.filter((id) => !kept.has(id));
+  return { frontier, seen: new Set(frontier) };
+}
+
+export function advanceNeedsWalk(
+  walk: NeedsWalk,
+  edges: readonly { needs: number; channel: string; completed: boolean }[],
+  target: number,
+  canRead: (channel: string) => boolean,
+): NeedsWalk {
+  const frontier: number[] = [];
+  const seen = new Set(walk.seen);
+  for (const edge of edges) {
+    // A hidden task is traversed in every state so the outcome cannot disclose its completion.
+    if (edge.completed && canRead(edge.channel)) continue;
+    if (edge.needs === target) {
+      throw new BoardError("invalid_needs", `The new prerequisites would make #${target} wait for itself.`);
+    }
+    if (seen.has(edge.needs)) continue;
+    if (seen.size >= NEEDS_WALK_MAX) {
+      throw new BoardError(
+        "invalid_needs",
+        `Too many prerequisites to check whether #${target} would wait for itself.`,
+      );
+    }
+    seen.add(edge.needs);
+    frontier.push(edge.needs);
+  }
+  return { frontier, seen };
+}
+
 export function taskForNeedsChange(
   target: MakeTaskState["target"],
   id: string,

@@ -16,6 +16,13 @@ export const taskReadStatements = {
     JOIN messages m ON m.id = CAST(need.value AS BIGINT)
     JOIN tasks t ON t.org_id = m.org_id AND t.board_id = m.board_id AND t.id = m.id
     WHERE m.org_id = ${"orgId"} AND m.board_id = ${"boardId"}`,
+  taskNeedEdges: sql<"ids" | "orgId" | "boardId">`WITH input AS (SELECT CAST(${"ids"} AS TEXT) AS ids)
+    SELECT e.needs, t.channel, t.state
+    FROM input CROSS JOIN ${needIds} AS need
+    JOIN tasks t ON t.id = CAST(need.value AS BIGINT)
+    JOIN task_needs e ON e.board_id = t.board_id AND e.task = t.id
+      AND (e.org_id = t.org_id OR e.org_id IS NULL)
+    WHERE t.org_id = ${"orgId"} AND t.board_id = ${"boardId"}`,
   taskDependants: sql`SELECT CASE WHEN t.state = 'waiting' AND t.waiting_on = 1 THEN m.view END AS view
     FROM task_needs n
     JOIN tasks t ON t.org_id = n.org_id AND t.board_id = n.board_id AND t.id = n.task
@@ -48,6 +55,14 @@ export function taskWriter(
       if (ids.length === 0) return [];
       const rows = await query(db, dialect, taskReadStatements.taskNeeds, { ...keys, ids: JSON.stringify(ids) });
       return rows.map((row) => JSON.parse(String(row.view)) as Message);
+    },
+    async taskNeedEdges(ids) {
+      const rows = await query(db, dialect, taskReadStatements.taskNeedEdges, { ...keys, ids: JSON.stringify(ids) });
+      return rows.map((row) => ({
+        needs: Number(row.needs),
+        channel: String(row.channel),
+        completed: row.state === "completed",
+      }));
     },
     async taskDependants(id) {
       const preloaded = preloadedProof(id);
