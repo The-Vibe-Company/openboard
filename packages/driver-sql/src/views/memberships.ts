@@ -40,6 +40,7 @@ async function deleteOrg(
   at: number,
   admit?: () => void,
 ) {
+  const dueAt = at + ORG_PURGE_RETENTION_MS;
   const deleted = await db.transaction(async (tx) => {
     const [actor] = await query(tx, dialect, membershipStatements.lockRemovingMember, { orgId, personId });
     if (!actor) throw new BoardError("not_found", "no such organization");
@@ -63,11 +64,11 @@ async function deleteOrg(
     });
     const [board] = await query(tx, dialect, membershipStatements.purgeJobBoard, { orgId });
     if (!board) throw new Error("organization has no board to route its purge job");
-    const writer = jobWriter(tx, dialect, { orgId, boardId: Number(board.id) }, jobs, () => {});
-    await writer.enqueue(PURGE_ORG_JOB, at + ORG_PURGE_RETENTION_MS, { deletedAt: at });
+    const writer = jobWriter(tx, dialect, { orgId, boardId: Number(board.id) }, () => {});
+    await writer.enqueue(PURGE_ORG_JOB, dueAt, { deletedAt: at });
     return deleted;
   });
-  jobs.committed();
+  jobs.committed(PURGE_ORG_JOB, dueAt);
   return deleted;
 }
 

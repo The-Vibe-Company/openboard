@@ -1,3 +1,4 @@
+import { ORG_PURGE_RETENTION_MS } from "@openboard/core";
 import {
   BACKFILL_BOARD_ORG_JOB,
   type BoardJobWriter,
@@ -11,9 +12,10 @@ import type { Db, Dialect } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
 
 import { backfillBoardOrgIds, backfillPlatformStatements, backfillStatements } from "./backfill-board-org.ts";
-import { claimLegacyPurge, nextLegacyPurge } from "./legacy-purge.ts";
+import { claimLegacyPurge, unqueued } from "./legacy-purge.ts";
 
 const leaseMs = 30_000;
+const contentionRetryMs = 100;
 
 const kinds: Fragment = {
   fragment: ({ name }) =>
@@ -22,10 +24,6 @@ const kinds: Fragment = {
 const skipLocked: Fragment = {
   fragment: ({ name }) => (name === "postgres" ? " FOR UPDATE SKIP LOCKED" : ""),
 };
-const notify: Fragment = {
-  fragment: ({ name }) => (name === "postgres" ? "pg_notify('ob_jobs', '')" : "NULL"),
-};
-
 const kindSet: Fragment = {
   fragment: (dialect) => `SELECT value FROM input CROSS JOIN ${kinds.fragment(dialect)} AS job_kind`,
 };
@@ -41,15 +39,19 @@ export const jobPlatformStatements = {
     RETURNING CAST(id AS TEXT) AS id, kind, org_id, board_id`,
   releaseJobs: sql`UPDATE jobs SET available_at = ${"now"}, instance_id = NULL
     WHERE instance_id = ${"instanceId"} AND available_at > ${"now"}
-    AND id IS DISTINCT FROM CAST(${"exceptId"} AS BIGINT)`,
+    AND id IS DISTINCT FROM CAST(${"exceptId"} AS BIGINT)
+    RETURNING kind`,
   nextJob: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds)
-    SELECT MIN(available_at) AS due FROM jobs WHERE kind IN (${kindSet})`,
+    SELECT MIN(due) AS due FROM (
+      SELECT MIN(available_at) AS due FROM jobs WHERE kind IN (${kindSet})
+      UNION ALL
+      SELECT MIN(o.deleted_at) + ${"retention"} AS due FROM orgs o WHERE ${"includeLegacy"} = 1 AND ${unqueued}
+    ) AS due_jobs`,
 };
 
 export const jobStatements = {
   enqueueJob: sql`INSERT INTO jobs (org_id, board_id, kind, available_at, payload)
     VALUES (${"orgId"}, ${"boardId"}, ${"kind"}, ${"dueAt"}, ${"payload"})`,
-  notifyJobs: sql`SELECT ${notify}`,
   readLeasedJob: sql`SELECT payload FROM jobs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
     AND instance_id = ${"instanceId"} AND available_at = ${"until"} AND available_at > ${"now"}`,
   takeJob: sql`DELETE FROM jobs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
@@ -59,7 +61,7 @@ export const jobStatements = {
 
 export function claimJob(db: Db, dialect: Dialect): Jobs["claim"] {
   return async (kinds, lease) => {
-    if (kinds.length === 0) return null;
+    if (kinds.length === 0) return { job: null, nextDue: null };
     const { instanceId, claimedAt } = lease;
     const until = claimedAt + leaseMs;
     return db.transaction(async (tx) => {
@@ -69,29 +71,44 @@ export function claimJob(db: Db, dialect: Dialect): Jobs["claim"] {
         now: claimedAt,
         until,
       });
-      if (row)
-        return { id: String(row.id), kind: String(row.kind), orgId: Number(row.org_id), boardId: Number(row.board_id) };
-      return kinds.includes(PURGE_ORG_JOB) ? claimLegacyPurge(tx, dialect, lease, until) : null;
+      if (row) {
+        return {
+          job: { id: String(row.id), kind: String(row.kind), orgId: Number(row.org_id), boardId: Number(row.board_id) },
+        };
+      }
+      const job = kinds.includes(PURGE_ORG_JOB) ? await claimLegacyPurge(tx, dialect, lease, until) : null;
+      if (job) return { job };
+      const due = await nextJob(tx, dialect, kinds);
+      // SKIP LOCKED can miss a due row that is still visible to the MIN query.
+      const nextDue = due !== null && due <= claimedAt ? claimedAt + contentionRetryMs : due;
+      return { job: null, nextDue };
     });
   };
 }
 
-export function releaseJobs(db: Db, dialect: Dialect): Jobs["release"] {
+export function releaseJobs(db: Db, dialect: Dialect, committed?: JobWrites["committed"]): Jobs["release"] {
   return async (instanceId, now, exceptId) => {
-    await query(db, dialect, jobPlatformStatements.releaseJobs, { instanceId, now, exceptId: exceptId ?? null });
+    const rows = await query(db, dialect, jobPlatformStatements.releaseJobs, {
+      instanceId,
+      now,
+      exceptId: exceptId ?? null,
+    });
+    for (const row of rows) committed?.(String(row.kind), now);
   };
 }
 
 export async function nextJob(db: Db, dialect: Dialect, kinds: readonly string[]): Promise<number | null> {
-  const [row] = await query(db, dialect, jobPlatformStatements.nextJob, { kinds: JSON.stringify(kinds) });
-  const queued = row?.due == null ? null : Number(row.due);
-  const legacy = kinds.includes(PURGE_ORG_JOB) ? await nextLegacyPurge(db, dialect) : null;
-  return queued === null ? legacy : legacy === null ? queued : Math.min(queued, legacy);
+  const [row] = await query(db, dialect, jobPlatformStatements.nextJob, {
+    kinds: JSON.stringify(kinds),
+    retention: ORG_PURGE_RETENTION_MS,
+    includeLegacy: Number(kinds.includes(PURGE_ORG_JOB)),
+  });
+  return row?.due == null ? null : Number(row.due);
 }
 
 export interface JobWrites {
   readonly now: () => number;
-  readonly committed: () => void;
+  readonly committed: (kind: string, dueAt: number) => void;
 }
 
 export async function readLeasedJob(
@@ -112,20 +129,11 @@ export async function readLeasedJob(
   return row ? (JSON.parse(String(row.payload)) as JobPayload) : null;
 }
 
-export function jobWriter(
-  tx: Db,
-  dialect: Dialect,
-  keys: BoardKeys,
-  jobs: JobWrites,
-  enqueued: () => void,
-): BoardJobWriter {
+export function jobWriter(tx: Db, dialect: Dialect, keys: BoardKeys, enqueued: JobWrites["committed"]): BoardJobWriter {
   return {
     async enqueue(kind, dueAt, payload) {
       await query(tx, dialect, jobStatements.enqueueJob, { ...keys, kind, dueAt, payload: JSON.stringify(payload) });
-      if (dialect.name === "postgres" && dueAt <= jobs.now() + 1000) {
-        await query(tx, dialect, jobStatements.notifyJobs, {});
-      }
-      enqueued();
+      enqueued(kind, dueAt);
     },
     readJob: (id, lease, now) => readLeasedJob(tx, dialect, keys, id, lease, now),
     async takeJob(id, { instanceId, claimedAt }, now) {
@@ -169,10 +177,10 @@ async function enqueueBoardOrgBackfill(db: Db, dialect: Dialect, jobs: JobWrites
     const kind = BACKFILL_BOARD_ORG_JOB;
     const [pending] = await query(tx, dialect, backfillStatements.queuedBoardOrgBackfill, { ...keys, kind });
     if (pending) return false;
-    await jobWriter(tx, dialect, keys, jobs, () => {}).enqueue(kind, now, {});
+    await jobWriter(tx, dialect, keys, () => {}).enqueue(kind, now, {});
     return true;
   });
-  if (queued) jobs.committed();
+  if (queued) jobs.committed(BACKFILL_BOARD_ORG_JOB, now);
 }
 
 export async function runBoardOrgBackfill(
@@ -189,13 +197,13 @@ export async function runBoardOrgBackfill(
     // Soft-deleted organizations retain their data until purge. This lock only checks the stored keys.
     const [board] = await query(tx, dialect, backfillStatements.backfillLockBoard, keys);
     if (!board) return false;
-    const writer = jobWriter(tx, dialect, keys, jobs, () => {
+    const writer = jobWriter(tx, dialect, keys, () => {
       enqueued = true;
     });
     if ((await writer.takeJob(id, lease, now)) === null) return false;
     if (await backfillBoardOrgIds(tx, dialect, keys)) await writer.enqueue(BACKFILL_BOARD_ORG_JOB, now, {});
     return true;
   });
-  if (enqueued) jobs.committed();
+  if (enqueued) jobs.committed(BACKFILL_BOARD_ORG_JOB, now);
   return ran;
 }

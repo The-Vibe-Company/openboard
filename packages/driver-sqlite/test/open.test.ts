@@ -225,10 +225,10 @@ test("startup queues one job per board and the backfill drains a soft-deleted or
     database.run(`WITH RECURSIVE ids(id) AS (VALUES (1) UNION ALL SELECT id + 1 FROM ids WHERE id < 1001)
       INSERT INTO task_needs (board_id, task, needs) SELECT 1, id, 0 FROM ids`);
     await Promise.all([driver.platform().queueBoardOrgBackfill(100), driver.platform().queueBoardOrgBackfill(100)]);
-    const job = await driver.jobs.claim([jobKind], lease);
+    const job = (await driver.jobs.claim([jobKind], lease)).job;
     if (!job) throw new Error("missing backfill job");
     expect(job).toMatchObject({ orgId: 1, boardId: 1 });
-    expect(await driver.jobs.claim([jobKind], lease)).toBeNull();
+    expect((await driver.jobs.claim([jobKind], lease)).job).toBeNull();
 
     // Tombstoned boards and organizations still retain their rows after deletion.
     database.run("UPDATE boards SET deleted_at = 100 WHERE id = 1");
@@ -238,13 +238,13 @@ test("startup queues one job per board and the backfill drains a soft-deleted or
     expect(database.query("SELECT count(*) AS remaining FROM task_needs WHERE org_id IS NULL").get()).toEqual({
       remaining: 1,
     });
-    const next = await driver.jobs.claim([jobKind], lease);
+    const next = (await driver.jobs.claim([jobKind], lease)).job;
     if (!next) throw new Error("missing continuation job");
     expect(await org.backfillBoardOrgIds(1, next.id, lease, 100)).toBe(true);
     expect(database.query("SELECT DISTINCT org_id FROM task_needs").all()).toEqual([{ org_id: 1 }]);
     expect(database.query("SELECT org_id FROM grant_principals").get()).toEqual({ org_id: 1 });
     await driver.platform().queueBoardOrgBackfill(100);
-    expect(await driver.jobs.claim([jobKind], lease)).toBeNull();
+    expect((await driver.jobs.claim([jobKind], lease)).job).toBeNull();
   } finally {
     await driver.close();
     rmSync(dir, { recursive: true, force: true });

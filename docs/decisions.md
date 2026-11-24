@@ -486,6 +486,11 @@ picker returns only the job ID, kind, organization ID and board ID. The runner
 uses those keys with the tenant resolver to enter the scoped board writer.
 Lease consumption and the database effect commit together.
 
+Issue #744 supersedes the periodic job poll. A committed enqueue publishes
+the job's due time through an insert trigger so older writers notify as well.
+Each runner keeps one timer for its earliest due job. Startup and re-LISTEN
+reconcile the timer with the queue, including any outstanding lease expiries.
+
 ### D37. Failover must not reuse cursors
 
 - **Context.** With asynchronous replication, a failover can lose the last

@@ -98,7 +98,7 @@ if (url) {
   test("a store on a URL nothing listens on answers a read and a write with unavailable, within the connect timeout", async () => {
     const sql = openPool(deadUrl(url));
     const store: Store = {
-      jobs: postgresJobs(sql, connection(sql)),
+      jobs: postgresJobs(sql, connection(sql), Date.now),
       ...createViews(connection(sql), postgresText, localBroadcaster()),
       close: () => sql.close(),
     };

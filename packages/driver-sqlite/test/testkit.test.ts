@@ -1,12 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
-import { ratesSuite, runJobsSuite, runStoreSuite } from "@openboard/ports/testkit";
+import { ratesSuite, runJobsSuite, runJobWakeSuite, runStoreSuite } from "@openboard/ports/testkit";
 import { renderDdl } from "../src/ddl.ts";
 import { sqliteDriver } from "../src/index.ts";
 
 const open = async () => sqliteDriver({ memory: true }, () => 0);
 runStoreSuite("sqlite", open);
 runJobsSuite("sqlite", open);
+runJobWakeSuite("sqlite", async (now, run) => {
+  const store = sqliteDriver({ memory: true }, now);
+  try {
+    await run(store);
+  } finally {
+    await store.close();
+  }
+});
 ratesSuite("sqlite", async (run) => {
   const dir = mkdtempSync("openboard-rates-");
   try {

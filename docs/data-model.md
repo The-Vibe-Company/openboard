@@ -213,6 +213,7 @@ test:
 | table options none | `STRICT`; `WITHOUT ROWID` on tables with composite keys |
 | `CREATE EXTENSION pg_trgm` and the trigram index | omitted (SQLite searches with `LIKE`, see [Search](#search)) |
 | `CREATE INDEX CONCURRENTLY` in migrations | `CREATE INDEX` |
+| Stored functions and triggers for job wake-up notifications | omitted (the SQLite driver wakes jobs in-process) |
 
 Example of the mapping, `messages` on SQLite:
 `CREATE TABLE messages (org_id INTEGER NOT NULL, board_id INTEGER NOT NULL, id INTEGER NOT NULL, …, PRIMARY KEY (board_id, id)) STRICT, WITHOUT ROWID;`

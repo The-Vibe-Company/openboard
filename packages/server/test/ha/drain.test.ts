@@ -135,7 +135,7 @@ test.each(["job completes", "shutdown cap fires"])("drain releases idle leases w
   const peer = sibling ?? store;
   const jobStarted = Promise.withResolvers<void>();
   const jobProceed = Promise.withResolvers<void>();
-  let wake: (() => Promise<void>) | undefined;
+  let wake: (() => Promise<number | null>) | undefined;
   const idleReleased = Promise.withResolvers<void>();
   const finalRelease = Promise.withResolvers<void>();
   let deadline: (() => void) | undefined;
@@ -175,8 +175,8 @@ test.each(["job completes", "shutdown cap fires"])("drain releases idle leases w
     await store.board(testScope(keys)).write(async (writer) => {
       for (let index = 0; index < 3; index++) await writer.enqueue("drain", NOW, { index });
     });
-    const abandoned = await store.jobs.claim(["drain"], { instanceId: "drain-test", claimedAt: NOW });
-    const foreign = await peer.jobs.claim(["drain"], { instanceId: "first", claimedAt: NOW });
+    const abandoned = (await store.jobs.claim(["drain"], { instanceId: "drain-test", claimedAt: NOW })).job;
+    const foreign = (await peer.jobs.claim(["drain"], { instanceId: "first", claimedAt: NOW })).job;
     expect(abandoned).not.toBeNull();
     expect(foreign).not.toBeNull();
 
@@ -186,7 +186,7 @@ test.each(["job completes", "shutdown cap fires"])("drain releases idle leases w
     const lease = { instanceId: "second", claimedAt: NOW };
     if (sibling) {
       await idleReleased.promise;
-      expect(await peer.jobs.claim(["drain"], lease)).toEqual(abandoned);
+      expect((await peer.jobs.claim(["drain"], lease)).job).toEqual(abandoned);
     }
     if (outcome === "shutdown cap fires") {
       if (!deadline) throw new Error("expected a shutdown deadline");
@@ -198,8 +198,8 @@ test.each(["job completes", "shutdown cap fires"])("drain releases idle leases w
     await running;
     await drained;
     await finalRelease.promise;
-    if (!sibling) expect(await peer.jobs.claim(["drain"], lease)).toEqual(abandoned);
-    expect(await peer.jobs.claim(["drain"], lease)).toBeNull();
+    if (!sibling) expect((await peer.jobs.claim(["drain"], lease)).job).toEqual(abandoned);
+    expect((await peer.jobs.claim(["drain"], lease)).job).toBeNull();
   } finally {
     jobProceed.resolve();
     await Promise.all([app.close(), sibling?.close()]);

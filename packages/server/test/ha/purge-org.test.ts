@@ -163,7 +163,10 @@ for (const legacy of [false, true]) {
       await clock.advance(NOW + 29 * day);
       expect(completed).toEqual([]);
       expect(digest((await snapshot()).rows)).toBe(digest(before.rows));
-      expect(await store.jobs.claim([PURGE_ORG_JOB], { instanceId: "early", claimedAt: due - 1 })).toBeNull();
+      expect(await store.jobs.claim([PURGE_ORG_JOB], { instanceId: "early", claimedAt: due - 1 })).toEqual({
+        job: null,
+        nextDue: due,
+      });
       polls.length = 0;
       await clock.advance(due);
       expect(new Set(polls)).toEqual(new Set(hosted ? ["one", "two"] : ["one"]));

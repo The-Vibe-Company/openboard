@@ -29,7 +29,8 @@ export function migrate(
     database
       .transaction(() => {
         if (applied.get(migration.version)) return;
-        database.run(renderDdl(migration.sql));
+        const ddl = renderDdl(migration.sql);
+        if (ddl) database.run(ddl);
         database.run("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)", [migration.version, now]);
       })
       .immediate();

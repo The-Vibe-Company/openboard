@@ -277,8 +277,17 @@ safety poll**.
 | Inbound events | Processed in the request, not as a job | Dedupe insert and rule effects in one board transaction: exactly once |
 | Watcher match leases, retention, blob GC, usage rollups, log shipping | Same pick pattern | Idempotent |
 
-Each instance polls due work every second with indexed queries and also wakes
-on `NOTIFY ob_jobs` when a new item is due within a second.
+Each runner arms one timer for its earliest known due job. SQLite passes the
+kind and due time to the runner after commit. The Postgres enqueue statement
+fires a trigger that sends the same information to each listening instance
+after commit. The trigger also covers enqueues from older replicas during a
+rolling deploy. A release of outstanding leases and a legacy deletion
+tombstone also generate wake-ups. An earlier due time moves the timer forward
+without a queue read. At startup and after each successful re-LISTEN, the
+runner reads the earliest due time. When dispatch finds no claimable job, its
+transaction returns the next due time, including outstanding lease expiries.
+A due row skipped under a lock triggers a short retry. An empty queue leaves
+the runner with no timer.
 
 ### Migrations without downtime
 

@@ -41,7 +41,7 @@ export async function postgresDriver(
     const db = connection(sql, counter);
     const broadcaster = await postgresBroadcaster(sql, db);
     return {
-      jobs: postgresJobs(sql, db),
+      jobs: postgresJobs(sql, db, now),
       dumpIfMissing: postgresDump(options.url),
       ...createViews(db, postgresText, broadcaster, { now, committed() {} }),
       async close() {
