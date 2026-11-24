@@ -60,7 +60,13 @@ function audit(ctx: BoardContext, id: number, at: number) {
 }
 
 export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, spec) => {
-  const { tail, signing, headers, publicHeaders, body } = validateWebhook(spec);
+  const {
+    tail,
+    signing: { secret: suppliedSecret, ...signing },
+    headers,
+    publicHeaders,
+    body,
+  } = validateWebhook(spec);
   requireManage(ctx, tail.channel);
   if (!ctx.webhookConfig.secretKey) {
     throw new BoardError("not_supported", "webhook signing is unavailable", { hint: "Set OPENBOARD_SECRET_KEY." });
@@ -70,13 +76,13 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
   const now = ctx.now();
   const id = `wh_${base32(ctx.randomBytes(10))}`;
   const secretId = base32(ctx.randomBytes(10));
-  const secret = signing.secret ?? `whsec_${Buffer.from(ctx.randomBytes(32)).toString("base64")}`;
+  const secret = suppliedSecret ?? `whsec_${Buffer.from(ctx.randomBytes(32)).toString("base64")}`;
   const webhook: Webhook = {
     id,
     name: spec.name,
     url: url.href,
     filter: spec.filter,
-    signing: { preset: signing.preset },
+    signing,
     headers: publicHeaders,
     body,
     enabled: spec.enabled ?? true,
@@ -97,7 +103,7 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
       { ...audit(ctx, writer.head + 1, now), type: "ob.webhook.created", payload: { webhook, secretId, directory } },
     ]);
   });
-  return signing.secret === undefined ? { webhook, secret } : { webhook };
+  return suppliedSecret === undefined ? { webhook, secret } : { webhook };
 };
 
 export const listWebhooksHandler: Handler<typeof listWebhooks> = async (ctx) => ({
@@ -138,7 +144,7 @@ export const testWebhookHandler: Handler<typeof testWebhook> = async (ctx, { id 
     name: record.webhook.name,
   });
   const { status, error } = await deliverWebhook(ctx.webhookConfig, ctx, record, secret, (credentials) =>
-    signedWebhookRequest(record.webhook.signing.preset, deliveryId, start, credentials, body),
+    signedWebhookRequest(record.webhook.signing, deliveryId, start, credentials, body),
   );
   const now = ctx.now();
   const outcome = webhookOutcome(status);

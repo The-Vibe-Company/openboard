@@ -8,11 +8,18 @@ writes:
   - packages/core/test/webhooks/signing.test.ts
   - packages/server/src/jobs/sign.ts
   - packages/server/test/webhooks/sign-ts-id-body.test.ts
+  - packages/server/src/operations/webhooks/index.ts
+  - packages/server/src/webhooks/request.ts
+  - packages/server/test/webhooks/sign-github.test.ts
+  - packages/cli/src/commands/webhooks/create.ts
+  - packages/cli/test/webhooks.test.ts
+  - docs/protocol.md
+  - skills/openboard/references/webhooks.md
 conformance: []
 modes: [local, hosted]
 depends_on: [313]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 499
 ---
 
@@ -20,8 +27,8 @@ issue: 499
 As a board admin pointing a webhook at an orchestrator's trigger that signs `v1=` over `timestamp.id.body` with header names of its own, I name those headers and paste its secret, and the trigger accepts the deliveries.
 
 ## Done when
-- [ ] `bun test packages/server/test/webhooks/sign-ts-id-body.test.ts` passes: with `{ "preset": "ts-id-body", "signatureHeader": "x-sig", "timestampHeader": "x-ts", "idHeader": "x-id", "secret": … }` a delivery carries `x-id: dl_…`, `x-ts: <unix seconds>` and `x-sig: v1=<hex HMAC-SHA256 of "<ts>.<id>.<body>">`, which `openssl dgst -sha256 -hmac` reproduces
-- [ ] `bun test packages/core/test/webhooks/signing.test.ts` passes: the preset without any of its three header names, or with a header name that is not a valid token or is one the board sets itself (`content-type`, `content-length`, `host`, `user-agent`), answers 400 `invalid_signing` naming the field
+- [x] `bun test packages/server/test/webhooks/sign-ts-id-body.test.ts` passes: with `{ "preset": "ts-id-body", "signatureHeader": "x-sig", "timestampHeader": "x-ts", "idHeader": "x-id", "secret": … }` a delivery carries `x-id: dl_…`, `x-ts: <unix seconds>` and `x-sig: v1=<hex HMAC-SHA256 of "<ts>.<id>.<body>">`, which `openssl dgst -sha256 -hmac` reproduces
+- [x] `bun test packages/core/test/webhooks/signing.test.ts` passes: the preset without any of its three header names, or with a header name that is not a valid token or is one the board sets itself (`content-type`, `content-length`, `host`, `user-agent`), answers 400 `invalid_signing` naming the field
 
 ## Out of scope
 - Verifying inbound events in this scheme (327 reuses `jobs/sign.ts`); any receiver's name in code: header names are configuration (AGENTS.md non-negotiable 1).

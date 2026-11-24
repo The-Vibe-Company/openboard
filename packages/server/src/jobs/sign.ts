@@ -12,8 +12,8 @@ interface SigningScheme {
   readonly key: (secret: string) => string | Uint8Array;
 }
 
-export function webhookSigningScheme(preset: Webhook["signing"]["preset"]): SigningScheme {
-  switch (preset) {
+export function webhookSigningScheme(signing: Webhook["signing"]): SigningScheme {
+  switch (signing.preset) {
     case "github":
       return {
         algorithm: "hmac-sha256",
@@ -33,6 +33,20 @@ export function webhookSigningScheme(preset: Webhook["signing"]["preset"]): Sign
         signedPayload: "{ts}.{body}",
         key: (secret) => secret,
       };
+    case "ts-id-body": {
+      const { signatureHeader, timestampHeader, idHeader } = signing;
+      if (!signatureHeader || !timestampHeader || !idHeader) throw new Error("missing stored signing headers");
+      return {
+        algorithm: "hmac-sha256",
+        encoding: "hex",
+        signatureHeader,
+        signatureFormat: "v1={sig}",
+        signedPayload: "{ts}.{id}.{body}",
+        timestampHeader,
+        idHeader,
+        key: (secret) => secret,
+      };
+    }
     case undefined:
     case "standard-webhooks":
       return {

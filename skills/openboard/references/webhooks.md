@@ -45,6 +45,12 @@ For a receiver that verifies Stripe-style signatures, set
 timestamp, a period, and the raw request body. Each attempt uses its own
 timestamp. If you supply a secret with `--secret-file`, its bytes are read verbatim.
 
+For a receiver that signs `timestamp.id.body`, set `"preset": "ts-id-body"`
+with `signatureHeader`, `timestampHeader`, and `idHeader` in the `signing`
+object. Supply the receiver's secret with `--secret-file`. The signature is
+`v1=<hex HMAC-SHA256 digest>`. The configured timestamp and ID headers carry
+Unix seconds and the `dl_…` delivery ID.
+
 The agent can reply and complete the task using the
 [command reference](commands.md). To report runner lifecycle events, an
 administrator creates a signed endpoint at `POST {BOARD_URL}/x/inbound`.
