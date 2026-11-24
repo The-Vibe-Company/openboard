@@ -1,4 +1,3 @@
-export type { Explanation, GrantLevel } from "./operations/grants/explain.ts";
 export { invalidChannelInput } from "./channel-input.ts";
 export * from "./entities/accounts.ts";
 export * from "./entities/actors.ts";
@@ -26,7 +25,7 @@ export {
   type NextStep,
 } from "./errors.ts";
 export { principalFlags } from "./grant-display.ts";
-export { PROFILE_HEADER, type ProfileHeader, parseProfileHeader, RETIRED_HEADERS } from "./headers.ts";
+export { CAN_HEADER, PROFILE_HEADER, type ProfileHeader, parseProfileHeader, RETIRED_HEADERS } from "./headers.ts";
 export {
   type CliSpec,
   decodeInput,
@@ -44,6 +43,7 @@ export {
   type Scope,
 } from "./operation.ts";
 export { AuditEvent, OrgAuditEvent } from "./operations/audit.ts";
+export type { Explanation, GrantLevel } from "./operations/grants/explain.ts";
 export {
   acceptInvitation,
   ackInbox,
@@ -67,6 +67,7 @@ export {
   deleteOrg,
   discoverBoard,
   editMessage,
+  explainGrants,
   findLinkedThread,
   findSync,
   getAccount,
@@ -85,7 +86,6 @@ export {
   listChannels,
   listConnections,
   listGrants,
-  explainGrants,
   listMembers,
   listMessages,
   listPersonalTokens,

@@ -1,6 +1,6 @@
 import { BoardError, decodeInput, type operations, type previewInvitation, type RawInput } from "@openboard/contract";
 import type { BoardView, PlatformView, RateLimits } from "@openboard/ports";
-import { keepInsideCan } from "../auth/access.ts";
+import { keepInsideCan, narrowCaller } from "../auth/access.ts";
 import { authenticate, type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
 import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.ts";
@@ -266,7 +266,7 @@ async function runBoard(
   const audience = `${pipeline.config.publicUrl}${path.mount}`;
   const { board, by } = await limitAuthentication(pipeline, async () => {
     const board = await requestBoard(pipeline, path, request, chain);
-    return { board, by: await authenticate(request, chain, board, operation.name, audience) };
+    return { board, by: narrowCaller(request, await authenticate(request, chain, board, operation.name, audience)) };
   });
   logged.actor = by.actor;
   refuseClaimedConfiguration(request, operation);
@@ -283,7 +283,7 @@ async function runBoard(
     const reauthorize = async () => {
       // A parked request may outlive its board or organization. Resolve it again before returning data.
       const liveBoard = implicitBoard ? board : await requestBoard(pipeline, path, request, chain);
-      const current = await authenticate(request, chain, liveBoard, operation.name, audience);
+      const current = narrowCaller(request, await authenticate(request, chain, liveBoard, operation.name, audience));
       await keepInsideCan(operation, input, current, liveBoard);
       return current;
     };

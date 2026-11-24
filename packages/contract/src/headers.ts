@@ -2,6 +2,8 @@ import { BoardError } from "./errors.ts";
 
 /** The header that picks a profile of the caller's principal (docs/auth.md "Upstream's model", point 2). */
 export const PROFILE_HEADER = "x-board-profile";
+/** The header that restricts the caller to a subset of its effective board permissions. */
+export const CAN_HEADER = "x-board-can";
 
 /**
  * Identity headers upstream retired (docs/protocol.md "Request headers"). Old clients still send them; they change

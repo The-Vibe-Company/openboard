@@ -29,10 +29,11 @@ export type {
   MintedSecret,
 } from "./access/connections.ts";
 export * as connections from "./access/connections.ts";
+export { explainAccess, explainSubject, type GrantSubject } from "./access/explain.ts";
 export type { Grant, GrantPrincipal } from "./access/grants.ts";
 export * as grants from "./access/grants.ts";
+export { narrowCan, parseCanHeader } from "./access/narrow.ts";
 export { changeGrantPrincipals, grantPrincipals } from "./access/principals.ts";
-export { explainAccess, explainSubject, type GrantSubject } from "./access/explain.ts";
 export { resolveCan, resolveRankedCan, withinPin } from "./access/resolve.ts";
 export { matchesWorkload, type RepositoryPrincipal } from "./access/workloads.ts";
 export * as channels from "./channels/create.ts";
@@ -70,6 +71,7 @@ export type BoardEvent =
   | WatchersRegistered
   | WatchFailed;
 
+export { matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";
 export { channelInputError, correctedChannel, InvalidGrantPattern } from "./channels/path.ts";
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail } from "./events/tail.ts";
 export { formatId, isoTime, parseId } from "./ids.ts";
@@ -135,4 +137,3 @@ export {
   type WatchFailed,
 } from "./watchers/ack.ts";
 export { validateWatchers, type WatchersRegistered } from "./watchers/register.ts";
-export { matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";

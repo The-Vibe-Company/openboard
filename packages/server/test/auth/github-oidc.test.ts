@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { CAN_HEADER } from "@openboard/contract";
 import { BOARD_URL, call, makeApp, NOW } from "../support/app.ts";
 
 const ISSUER = "https://token.actions.githubusercontent.com";
@@ -156,6 +157,14 @@ test("OIDC posts as the repository only within a matching board grant", async ()
       `acme/web ci.yml refs/heads/main posts to ci/nightly -> ${accepted.status} ${body.message.by.actor}\n`,
     );
     await checkIdentity(instance, valid);
+    const scoped = request(valid, "/me");
+    scoped.headers.set(CAN_HEADER, "ci/nightly=all");
+    const narrowed = await instance.fetch(scoped);
+    expect(narrowed.status).toBe(200);
+    expect(await narrowed.json()).toMatchObject({
+      principal: "github:repo:123456",
+      can: { "ci/nightly": ["post"] },
+    });
     await checkRejectedTokens(instance, valid);
     expect(
       (
