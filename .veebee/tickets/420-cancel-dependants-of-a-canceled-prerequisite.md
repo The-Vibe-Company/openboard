@@ -16,7 +16,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [252, 253, 271]
-status: draft
+status: dropped
 issue: 817
 ---
 
@@ -36,3 +36,6 @@ Notifying the dependants' owners (watchers and webhooks already see `task.cancel
 
 ## Notes
 Gap documented in #805 (ticket 252): "canceling or deleting an unfinished prerequisite can leave its dependants waiting indefinitely". #816 (ticket 253) refuses a canceled prerequisite at creation only.
+
+## Dropped
+Upstream compatibility wins: the pinned conformance kit requires a dependant to stay `waiting` after its prerequisite is canceled (decided on #817, recorded in docs/decisions.md "Dependants of a canceled prerequisite"). #816 refuses a canceled prerequisite at creation; cancel dependants explicitly.

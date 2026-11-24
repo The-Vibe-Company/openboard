@@ -1164,3 +1164,12 @@ An HTTP 410 from a webhook receiver triggers a board bookkeeping event.
 `ob.webhook.disabled` is exempt from the daily event quota, including when the
 board is already at its cap. Dispatch reserves no event slot.
 ([Issue #495](https://github.com/The-Vibe-Company/openboard/issues/495))
+
+### Dependants of a canceled prerequisite
+
+A task waiting on a prerequisite that is canceled, or whose root is deleted,
+stays `waiting`, as the upstream protocol and its pinned conformance check
+require. OpenBoard does not cancel dependants on its own. Creating a task that
+needs an already canceled task answers `invalid_needs` (#816); a planner who no
+longer wants the dependants cancels them.
+([Issue #817](https://github.com/The-Vibe-Company/openboard/issues/817))
