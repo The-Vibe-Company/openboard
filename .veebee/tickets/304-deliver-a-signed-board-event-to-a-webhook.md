@@ -4,48 +4,81 @@ title: Deliver a signed board event to a webhook
 milestone: M11-webhooks-and-watchers
 package: server
 writes:
-  - packages/contract/src/operations/webhooks.ts
-  - packages/contract/src/entities/webhooks.ts
+  - apps/openboard/src/compose.ts
+  - apps/openboard/src/config.ts
+  - apps/openboard/src/serve.ts
+  - apps/openboard/test/config.test.ts
+  - docs/auth.md
+  - docs/data-model.md
+  - docs/protocol.md
+  - packages/cli/src/commands/index.ts
+  - packages/cli/src/commands/usage.ts
+  - packages/cli/src/commands/webhooks/create.ts
+  - packages/cli/test/webhooks.test.ts
+  - packages/contract/src/entities/webhooks/index.ts
+  - packages/contract/src/errors.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/audit.ts
   - packages/contract/src/operations/index.ts
-  - packages/core/src/webhooks/validate.ts
+  - packages/contract/src/operations/webhooks/index.ts
+  - packages/core/src/events/tail.ts
+  - packages/core/src/ids.ts
+  - packages/core/src/index.ts
+  - packages/core/src/orgs/quotas.ts
+  - packages/core/src/webhooks/events.ts
   - packages/core/src/webhooks/filter.ts
-  - packages/core/src/webhooks/signing.ts
-  - packages/core/src/webhooks/payload.ts
   - packages/core/src/webhooks/outcome.ts
+  - packages/core/src/webhooks/payload.ts
+  - packages/core/src/webhooks/signing.ts
+  - packages/core/src/webhooks/validate.ts
+  - packages/core/test/orgs/quotas.test.ts
   - packages/core/test/webhooks/filter.test.ts
   - packages/core/test/webhooks/payload.test.ts
-  - packages/core/src/orgs/quotas.ts
-  - packages/core/src/index.ts
-  - packages/ports/src/store.ts
-  - packages/ports/testkit/store/webhooks.test-suite.ts
-  - packages/ports/testkit/index.ts
   - packages/driver-sql/migrations/*-webhooks.sql
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
-  - packages/driver-sql/src/views/webhooks.ts
-  - packages/driver-sql/src/views/deliveries.ts
-  - packages/server/src/operations/webhooks.ts
-  - packages/server/src/operations/index.ts
-  - packages/server/src/jobs/webhooks.ts
-  - packages/server/src/jobs/sign.ts
-  - packages/server/src/jobs/registry.ts
-  - packages/server/src/webhooks/request.ts
-  - packages/server/src/webhooks/target.ts
-  - packages/server/src/webhooks/send.ts
-  - packages/server/src/webhooks/secret-box.ts
+  - packages/driver-sql/src/views/actors.ts
+  - packages/driver-sql/src/views/boards.ts
+  - packages/driver-sql/src/views/jobs/index.ts
+  - packages/driver-sql/src/views/jobs/purge.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/driver-sql/src/views/messages/storage.ts
+  - packages/driver-sql/src/views/webhooks/deliveries.ts
+  - packages/driver-sql/src/views/webhooks/webhooks.ts
+  - packages/ports/src/board-message-reads.ts
+  - packages/ports/src/index.ts
+  - packages/ports/src/store.ts
+  - packages/ports/src/webhooks/index.ts
+  - packages/ports/testkit/index.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/ports/testkit/store/webhooks.test-suite.ts
+  - packages/server/openapi.json
+  - packages/server/src/app.ts
+  - packages/server/src/auth/access.ts
+  - packages/server/src/auth/secrets.ts
   - packages/server/src/deps.ts
-  - packages/server/test/webhooks/deliver.test.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/jobs/registry.ts
+  - packages/server/src/jobs/sign.ts
+  - packages/server/src/jobs/webhooks.ts
+  - packages/server/src/operations/audit.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/webhooks/index.ts
+  - packages/server/src/webhooks/request.ts
+  - packages/server/src/webhooks/secret-box.ts
+  - packages/server/src/webhooks/send.ts
+  - packages/server/src/webhooks/target.ts
+  - packages/server/test/isolation/cases.ts
   - packages/server/test/isolation/seed.ts
-  - packages/cli/src/commands/webhooks.ts
-  - packages/cli/src/commands/index.ts
-  - packages/cli/test/webhooks.test.ts
-  - apps/openboard/src/config.ts
-  - apps/openboard/test/config.test.ts
+  - packages/server/test/support/app.ts
+  - packages/server/test/webhooks/deliver.test.ts
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [181, 213, 286, 300]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 489
 ---
 

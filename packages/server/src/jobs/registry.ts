@@ -1,4 +1,5 @@
 import {
+  type BoardView,
   type BoardWriter,
   type Bucket,
   type Job,
@@ -16,7 +17,11 @@ export interface OrgJobHandler {
   run(org: OrgView, job: Job, lease: JobLease, now: number, bucket?: Bucket): Promise<boolean>;
 }
 
-export type JobHandlers = Readonly<Record<string, JobHandler | OrgJobHandler>>;
+export interface ExternalBoardJobHandler {
+  runBoard(board: BoardView, job: Job, lease: JobLease): Promise<boolean>;
+}
+
+export type JobHandlers = Readonly<Record<string, JobHandler | OrgJobHandler | ExternalBoardJobHandler>>;
 
 /** A job effect runs under the board lock, in the same transaction that consumes its lease. */
 export type JobHandler = (writer: BoardWriter, payload: JobPayload, now: number) => Promise<void>;
@@ -115,13 +120,16 @@ export function startJobs(
 
 function runEffect(
   tenants: Tenants,
-  handler: JobHandler | OrgJobHandler,
+  handler: JobHandler | OrgJobHandler | ExternalBoardJobHandler,
   job: Job,
   lease: JobLease,
   now: () => number,
   bucket?: Bucket,
 ): Promise<boolean> {
-  if (typeof handler !== "function") return handler.run(tenants.jobOrg(job), job, lease, now(), bucket);
+  if (typeof handler !== "function") {
+    if ("runBoard" in handler) return handler.runBoard(tenants.jobBoard(job), job, lease);
+    return handler.run(tenants.jobOrg(job), job, lease, now(), bucket);
+  }
   return tenants.jobBoard(job).write(async (writer) => {
     const takenAt = now();
     const payload = await writer.takeJob(job.id, lease, takenAt);

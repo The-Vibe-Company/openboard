@@ -49,7 +49,7 @@ export async function lockBoardAs(
   window: Parameters<typeof lockBoard>[4],
   taskId: number | null = null,
 ) {
-  const { head, row, storage, dailyEvents, actorLoaded, hasWatchers } = await lockBoard(
+  const { head, row, storage, dailyEvents, actorLoaded, hasWatchers, hasWebhooks } = await lockBoard(
     tx,
     dialect,
     keys,
@@ -59,7 +59,7 @@ export async function lockBoardAs(
   );
   const [found] =
     actor !== null && !actorLoaded ? await query(tx, dialect, actorStatements.findActor, { ...keys, actor }) : [row];
-  return { head, storage, dailyEvents, hasWatchers, actor: found ? actorView(found) : null, row };
+  return { head, storage, dailyEvents, hasWatchers, hasWebhooks, actor: found ? actorView(found) : null, row };
 }
 
 /** The fold of `actor.seen`: the actor's row, its first sighting kept and its details and last sighting replaced. */

@@ -17,7 +17,7 @@ export function unexpectedTimer(): never {
   throw new Error("unexpected timer");
 }
 
-type AppOptions = Pick<ServerConfig, "signup" | "signIn" | "webDir"> &
+type AppOptions = Pick<ServerConfig, "signup" | "signIn" | "webDir" | "secretKey"> &
   Pick<Deps, "fetch" | "resolveHost"> & {
     readonly mode?: ServerConfig["mode"];
     readonly publicUrl?: ServerConfig["publicUrl"];
@@ -50,6 +50,7 @@ export function makeApp(options: AppOptions = {}) {
     localOwner: LOCAL_OWNER,
     // Keep a configured hash in hosted tests to exercise the verifier's mode guard.
     localOwnerTokenHash: OWNER.hash,
+    ...(options.secretKey && { secretKey: options.secretKey }),
     ...(signup && { signup }),
     ...(options.webDir === undefined ? {} : { webDir: options.webDir }),
     ...(signIn && { signIn }),

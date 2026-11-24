@@ -3982,6 +3982,351 @@
         }
       }
     },
+    "/x/webhooks": {
+      "post": {
+        "operationId": "createWebhook",
+        "summary": "Subscribe to board events and return the signing secret once.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["name", "url", "filter"],
+                "properties": {
+                  "name": { "minLength": 1, "maxLength": 100, "pattern": "^[^\\u0000]+$", "type": "string" },
+                  "url": { "maxLength": 4096, "type": "string" },
+                  "filter": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": ["tail"],
+                    "properties": {
+                      "tail": { "maxLength": 4096, "type": "string" },
+                      "types": { "type": "array", "items": { "type": "string" } },
+                      "became": {
+                        "type": "object",
+                        "required": ["task"],
+                        "properties": { "task": { "type": "string" } }
+                      }
+                    }
+                  },
+                  "signing": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "properties": {
+                      "preset": {
+                        "anyOf": [
+                          { "const": "standard-webhooks", "type": "string" },
+                          { "const": "github", "type": "string" },
+                          { "const": "stripe", "type": "string" },
+                          { "const": "ts-id-body", "type": "string" },
+                          { "const": "none", "type": "string" }
+                        ]
+                      },
+                      "algorithm": {
+                        "anyOf": [
+                          { "const": "hmac-sha256", "type": "string" },
+                          { "const": "hmac-sha512", "type": "string" },
+                          { "const": "none", "type": "string" }
+                        ]
+                      },
+                      "signatureHeader": { "type": "string" },
+                      "signatureFormat": { "type": "string" },
+                      "encoding": {
+                        "anyOf": [
+                          { "const": "hex", "type": "string" },
+                          { "const": "base64", "type": "string" },
+                          { "const": "base64url", "type": "string" }
+                        ]
+                      },
+                      "signedPayload": { "type": "string" },
+                      "timestampHeader": { "type": "string" },
+                      "timestampFormat": {
+                        "anyOf": [
+                          { "const": "unix", "type": "string" },
+                          { "const": "unix_ms", "type": "string" },
+                          { "const": "iso8601", "type": "string" }
+                        ]
+                      },
+                      "idHeader": { "type": "string" },
+                      "secret": { "minLength": 1, "maxLength": 4096, "type": "string" }
+                    }
+                  },
+                  "headers": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
+                  "body": {},
+                  "enabled": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["webhook", "secret"],
+                  "properties": {
+                    "webhook": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "url",
+                        "filter",
+                        "id",
+                        "signing",
+                        "headers",
+                        "body",
+                        "enabled",
+                        "disabledReason",
+                        "createdAt"
+                      ],
+                      "properties": {
+                        "name": { "minLength": 1, "maxLength": 100, "pattern": "^[^\\u0000]+$", "type": "string" },
+                        "url": { "maxLength": 4096, "type": "string" },
+                        "filter": {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": ["tail"],
+                          "properties": {
+                            "tail": { "maxLength": 4096, "type": "string" },
+                            "types": { "type": "array", "items": { "type": "string" } },
+                            "became": {
+                              "type": "object",
+                              "required": ["task"],
+                              "properties": { "task": { "type": "string" } }
+                            }
+                          }
+                        },
+                        "id": { "type": "string" },
+                        "signing": {
+                          "type": "object",
+                          "properties": {
+                            "preset": {
+                              "anyOf": [
+                                { "const": "standard-webhooks", "type": "string" },
+                                { "const": "github", "type": "string" },
+                                { "const": "stripe", "type": "string" },
+                                { "const": "ts-id-body", "type": "string" },
+                                { "const": "none", "type": "string" }
+                              ]
+                            },
+                            "algorithm": {
+                              "anyOf": [
+                                { "const": "hmac-sha256", "type": "string" },
+                                { "const": "hmac-sha512", "type": "string" },
+                                { "const": "none", "type": "string" }
+                              ]
+                            },
+                            "signatureHeader": { "type": "string" },
+                            "signatureFormat": { "type": "string" },
+                            "encoding": {
+                              "anyOf": [
+                                { "const": "hex", "type": "string" },
+                                { "const": "base64", "type": "string" },
+                                { "const": "base64url", "type": "string" }
+                              ]
+                            },
+                            "signedPayload": { "type": "string" },
+                            "timestampHeader": { "type": "string" },
+                            "timestampFormat": {
+                              "anyOf": [
+                                { "const": "unix", "type": "string" },
+                                { "const": "unix_ms", "type": "string" },
+                                { "const": "iso8601", "type": "string" }
+                              ]
+                            },
+                            "idHeader": { "type": "string" }
+                          }
+                        },
+                        "headers": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
+                        "body": {},
+                        "enabled": { "type": "boolean" },
+                        "disabledReason": { "anyOf": [{ "type": "null" }, { "type": "string" }] },
+                        "createdAt": { "type": "string" }
+                      }
+                    },
+                    "secret": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_url, invalid_signing, bad_watcher, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "slug_taken",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "quota_exceeded, rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "501": {
+            "description": "not_supported",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listWebhooks",
+        "summary": "List manageable webhooks without receiver credentials.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["webhooks"],
+                  "properties": {
+                    "webhooks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "name",
+                          "url",
+                          "filter",
+                          "id",
+                          "signing",
+                          "headers",
+                          "body",
+                          "enabled",
+                          "disabledReason",
+                          "createdAt"
+                        ],
+                        "properties": {
+                          "name": { "minLength": 1, "maxLength": 100, "pattern": "^[^\\u0000]+$", "type": "string" },
+                          "url": { "maxLength": 4096, "type": "string" },
+                          "filter": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": ["tail"],
+                            "properties": {
+                              "tail": { "maxLength": 4096, "type": "string" },
+                              "types": { "type": "array", "items": { "type": "string" } },
+                              "became": {
+                                "type": "object",
+                                "required": ["task"],
+                                "properties": { "task": { "type": "string" } }
+                              }
+                            }
+                          },
+                          "id": { "type": "string" },
+                          "signing": {
+                            "type": "object",
+                            "properties": {
+                              "preset": {
+                                "anyOf": [
+                                  { "const": "standard-webhooks", "type": "string" },
+                                  { "const": "github", "type": "string" },
+                                  { "const": "stripe", "type": "string" },
+                                  { "const": "ts-id-body", "type": "string" },
+                                  { "const": "none", "type": "string" }
+                                ]
+                              },
+                              "algorithm": {
+                                "anyOf": [
+                                  { "const": "hmac-sha256", "type": "string" },
+                                  { "const": "hmac-sha512", "type": "string" },
+                                  { "const": "none", "type": "string" }
+                                ]
+                              },
+                              "signatureHeader": { "type": "string" },
+                              "signatureFormat": { "type": "string" },
+                              "encoding": {
+                                "anyOf": [
+                                  { "const": "hex", "type": "string" },
+                                  { "const": "base64", "type": "string" },
+                                  { "const": "base64url", "type": "string" }
+                                ]
+                              },
+                              "signedPayload": { "type": "string" },
+                              "timestampHeader": { "type": "string" },
+                              "timestampFormat": {
+                                "anyOf": [
+                                  { "const": "unix", "type": "string" },
+                                  { "const": "unix_ms", "type": "string" },
+                                  { "const": "iso8601", "type": "string" }
+                                ]
+                              },
+                              "idHeader": { "type": "string" }
+                            }
+                          },
+                          "headers": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
+                          "body": {},
+                          "enabled": { "type": "boolean" },
+                          "disabledReason": { "anyOf": [{ "type": "null" }, { "type": "string" }] },
+                          "createdAt": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/api/x/orgs/{org}/boards/{board}/delete": {
       "post": {
         "operationId": "deleteBoard",
@@ -4208,6 +4553,60 @@
           },
           "429": {
             "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/x/webhooks/{id}/delete": {
+      "post": {
+        "operationId": "deleteWebhook",
+        "summary": "Delete a webhook and stop its queued deliveries.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "webhook", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "quota_exceeded, rate_limited",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
             "headers": {
               "retry-after": {
@@ -5853,6 +6252,138 @@
           },
           "501": {
             "description": "not_supported",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/x/webhooks/{id}": {
+      "get": {
+        "operationId": "getWebhook",
+        "summary": "Show a webhook without receiver credentials.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "webhook", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "url",
+                    "filter",
+                    "id",
+                    "signing",
+                    "headers",
+                    "body",
+                    "enabled",
+                    "disabledReason",
+                    "createdAt"
+                  ],
+                  "properties": {
+                    "name": { "minLength": 1, "maxLength": 100, "pattern": "^[^\\u0000]+$", "type": "string" },
+                    "url": { "maxLength": 4096, "type": "string" },
+                    "filter": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": ["tail"],
+                      "properties": {
+                        "tail": { "maxLength": 4096, "type": "string" },
+                        "types": { "type": "array", "items": { "type": "string" } },
+                        "became": {
+                          "type": "object",
+                          "required": ["task"],
+                          "properties": { "task": { "type": "string" } }
+                        }
+                      }
+                    },
+                    "id": { "type": "string" },
+                    "signing": {
+                      "type": "object",
+                      "properties": {
+                        "preset": {
+                          "anyOf": [
+                            { "const": "standard-webhooks", "type": "string" },
+                            { "const": "github", "type": "string" },
+                            { "const": "stripe", "type": "string" },
+                            { "const": "ts-id-body", "type": "string" },
+                            { "const": "none", "type": "string" }
+                          ]
+                        },
+                        "algorithm": {
+                          "anyOf": [
+                            { "const": "hmac-sha256", "type": "string" },
+                            { "const": "hmac-sha512", "type": "string" },
+                            { "const": "none", "type": "string" }
+                          ]
+                        },
+                        "signatureHeader": { "type": "string" },
+                        "signatureFormat": { "type": "string" },
+                        "encoding": {
+                          "anyOf": [
+                            { "const": "hex", "type": "string" },
+                            { "const": "base64", "type": "string" },
+                            { "const": "base64url", "type": "string" }
+                          ]
+                        },
+                        "signedPayload": { "type": "string" },
+                        "timestampHeader": { "type": "string" },
+                        "timestampFormat": {
+                          "anyOf": [
+                            { "const": "unix", "type": "string" },
+                            { "const": "unix_ms", "type": "string" },
+                            { "const": "iso8601", "type": "string" }
+                          ]
+                        },
+                        "idHeader": { "type": "string" }
+                      }
+                    },
+                    "headers": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
+                    "body": {},
+                    "enabled": { "type": "boolean" },
+                    "disabledReason": { "anyOf": [{ "type": "null" }, { "type": "string" }] },
+                    "createdAt": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           }
         }
@@ -11106,6 +11637,38 @@
                       "type": "array",
                       "items": {
                         "anyOf": [
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.webhook.created", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id", "name"],
+                                "properties": { "id": { "type": "string" }, "name": { "type": "string" } }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.webhook.deleted", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id"],
+                                "properties": { "id": { "type": "string" } }
+                              }
+                            }
+                          },
                           {
                             "type": "object",
                             "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],

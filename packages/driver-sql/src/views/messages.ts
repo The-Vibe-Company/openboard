@@ -2,7 +2,6 @@ import type { Message } from "@openboard/contract";
 import {
   type BoardEvent,
   checkDailyEvents,
-  checkStoredBytes,
   dailyEventWindow,
   type MessageDeleted,
   type MessagePosted,
@@ -10,11 +9,11 @@ import {
   parseId,
 } from "@openboard/core";
 import type { BoardGrantReads, BoardKeys, BoardScope, BoardView, BoardWriter, Broadcaster } from "@openboard/ports";
-import type { Db, Dialect, Row } from "../db.ts";
+import type { Db, Dialect } from "../db.ts";
 import { query } from "../sql.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
 import { findAgent, findAgentByClaimKey, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
-import { type BoardStorage, boardIdentity, repairStoredBytes, setHead } from "./boards.ts";
+import { boardIdentity, repairStoredBytes, setHead } from "./boards.ts";
 import { findChannel, foldChannelCreated } from "./channels.ts";
 import {
   connectionNamed,
@@ -30,11 +29,14 @@ import {
 import { activeGrant, foldGrantEvent, grantReads, otherGrantIssuers } from "./grants.ts";
 import { type JobWrites, jobWriter } from "./jobs/index.ts";
 import { messageStatements } from "./messages/statements.ts";
+import { messageStorage } from "./messages/storage.ts";
 import { orgReads } from "./orgs.ts";
 import { foldSchemaRegistered, schemaWriter } from "./schemas/registry.ts";
 import { foldTaskEvent, notifyTaskExpiry } from "./tasks/task-folds.ts";
 import { taskReads, taskWriter } from "./tasks/tasks.ts";
 import { foldWatchersRegistered, matchWatchers, watcherWriter } from "./watchers/index.ts";
+import { deliveryWriter, matchWebhooks } from "./webhooks/deliveries.ts";
+import { foldWebhook, webhookWriter } from "./webhooks/webhooks.ts";
 
 /**
  * The fold of `message.posted`: the message row with its precomputed view and its channel's row; a reply keeps its
@@ -149,49 +151,9 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   } else if (event.type === "message.posted") await foldMessagePosted(tx, dialect, keys, event);
   else if (event.type === "ob.schema.registered") await foldSchemaRegistered(tx, dialect, keys, event);
   else if (event.type === "ob.watchers.registered") await foldWatchersRegistered(tx, dialect, keys, event);
+  else if (event.type === "ob.webhook.created" || event.type === "ob.webhook.deleted")
+    await foldWebhook(tx, dialect, keys, event);
   else if (event.type !== "watch.failed") await foldTaskEvent(tx, dialect, keys, event);
-}
-
-function contentBytes(message: Pick<Message, "text" | "blocks"> | null): number {
-  if (message === null) return 0;
-  const utf8 = new TextEncoder();
-  return utf8.encode(message.text).length + utf8.encode(JSON.stringify(message.blocks)).length;
-}
-function messageStorage(
-  tx: Db,
-  dialect: Dialect,
-  keys: BoardKeys,
-  storage: BoardStorage,
-  preloaded: (id: number) => Row | undefined,
-) {
-  let { boardBytes } = storage;
-  const sizes = new Map<number, number>();
-  async function readMessage(id: number): Promise<Message | null> {
-    const row = preloaded(id) ?? (await query(tx, dialect, messageStatements.message, { ...keys, id }))[0];
-    const message = typeof row?.view === "string" ? (JSON.parse(row.view) as Message) : null;
-    sizes.set(id, message?.deleted ? 0 : contentBytes(message));
-    return message;
-  }
-  return {
-    readMessage,
-    get boardBytes() {
-      return boardBytes;
-    },
-    async account(event: BoardEvent) {
-      if (event.type !== "message.posted" && event.type !== "message.edited" && event.type !== "message.deleted")
-        return;
-      const id = event.message;
-      if (event.type !== "message.posted" && !sizes.has(id)) await readMessage(id);
-      const next =
-        event.type === "message.deleted"
-          ? 0
-          : contentBytes(event.type === "message.posted" ? messages.messageView(event) : event.payload.view);
-      const delta = next - (sizes.get(id) ?? 0);
-      checkStoredBytes(boardBytes + storage.otherBytes, delta, storage.limit);
-      boardBytes += delta;
-      sizes.set(id, next);
-    },
-  };
 }
 
 /** `committed` collects the appended events, which the broadcaster hands to live tails once the write commits. */
@@ -199,14 +161,14 @@ function eventWriter(
   tx: Db,
   dialect: Dialect,
   keys: BoardKeys,
-  start: number,
+  locked: Awaited<ReturnType<typeof lockBoardAs>>,
   committed: BoardEvent[],
   usage: ReturnType<typeof messageStorage>,
-  dailyEvents: { readonly day: number; readonly count: number; readonly limit: number },
   measured: number,
-  hasWatchers: boolean,
+  jobs: ReturnType<typeof jobWriter>,
 ): Pick<BoardWriter, "append" | "head"> {
-  let head = start;
+  let { head, hasWatchers, hasWebhooks } = locked;
+  const { dailyEvents } = locked;
   let { day, count } = dailyEvents;
   return {
     get head() {
@@ -227,7 +189,9 @@ function eventWriter(
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);
         await usage.account(event);
         if (hasWatchers) await matchWatchers(tx, dialect, keys, event);
+        if (hasWebhooks) await matchWebhooks(tx, dialect, keys, jobs, event, now);
         await appendEvent(tx, dialect, keys, event);
+        if (event.type === "ob.webhook.created" && event.payload.webhook.enabled) hasWebhooks = true;
         if (event.type === "ob.watchers.registered") hasWatchers = true;
         committed.push(event);
         head = event.id;
@@ -248,15 +212,17 @@ function writer(
   now: number,
   taskId: number | null,
 ): BoardWriter {
-  const { head, actor, storage, dailyEvents, hasWatchers } = locked;
+  const { actor, storage } = locked;
   // Once a callback appends events, later reads must see its folds.
   const preloaded = (id: number) => (id === taskId && committed.length === 0 ? locked.row : undefined);
   const usage = messageStorage(tx, dialect, keys, storage, preloaded);
-  const events = eventWriter(tx, dialect, keys, head, committed, usage, dailyEvents, now, hasWatchers);
+  const events = eventWriter(tx, dialect, keys, locked, committed, usage, now, jobs);
   return {
     ...taskWriter(tx, dialect, keys, preloaded),
     ...jobs,
     ...watcherWriter(tx, dialect, keys),
+    ...webhookWriter(tx, dialect, keys),
+    ...deliveryWriter(tx, dialect, keys),
     ...schemaWriter(tx, dialect, keys),
     append: events.append,
     get head() {

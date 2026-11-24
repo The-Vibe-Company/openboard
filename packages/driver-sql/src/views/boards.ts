@@ -57,6 +57,7 @@ export const boardStatements = {
   lockBoard: sql`SELECT boards.head, boards.timeline, ${serverTimeline} AS server_timeline, orgs.quotas, orgs.deleted_at, boards.deleted_at AS board_deleted_at,
     ${eventDay} AS event_day,
     EXISTS (SELECT 1 FROM watcher_registrations w WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"} AND w.watch <> '{}') AS has_watchers,
+    EXISTS (SELECT 1 FROM webhooks w WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"} AND w.enabled = 1) AS has_webhooks,
     CASE WHEN boards.daily_event_day >= quota_clock.day THEN CAST(${eventTally} ->> 'count' AS BIGINT)
       ELSE 0 END +
     CASE WHEN boards.head = 0 OR CAST(${eventTally} ->> 'head' AS BIGINT) = boards.head THEN 0 ELSE (
@@ -171,6 +172,7 @@ export async function lockBoard(
   return {
     row,
     actorLoaded,
+    hasWebhooks: Boolean(row.has_webhooks),
     hasWatchers: Boolean(row.has_watchers),
     head: timeline === 0 || recorded === 0 || timeline === recorded ? head : head + TIMELINE_ADVANCE,
     dailyEvents: {

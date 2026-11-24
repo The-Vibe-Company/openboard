@@ -5,16 +5,17 @@ export * from "./entities/channels.ts";
 export * from "./entities/connections.ts";
 export * from "./entities/discovery.ts";
 export * from "./entities/events.ts";
-export * from "./entities/org/exports.ts";
 export { GrantPrincipal, GrantPrincipalInput, GrantRemovalPrincipal, GrantView } from "./entities/grants.ts";
 export * from "./entities/invitations.ts";
 export * from "./entities/messages.ts";
+export * from "./entities/org/exports.ts";
 export * from "./entities/orgs.ts";
 export * from "./entities/schemas/view.ts";
 export * from "./entities/task-events.ts";
 export * from "./entities/tasks.ts";
 export * from "./entities/threads.ts";
 export { Registration, Watch, WatcherMatch } from "./entities/watchers.ts";
+export * from "./entities/webhooks/index.ts";
 export {
   BoardError,
   type BoardErrorOptions,
@@ -135,4 +136,5 @@ export {
   startDeviceSignIn,
   updateGrant,
 } from "./operations/index.ts";
+export { createWebhook, deleteWebhook, getWebhook, listWebhooks } from "./operations/webhooks/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

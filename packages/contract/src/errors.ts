@@ -123,7 +123,7 @@ export interface ErrorSpec {
 
 /** Finer causes per code; a code absent here takes no `reason`. */
 const REASONS: Partial<Record<ErrorCode, readonly string[]>> = {
-  quota_exceeded: ["boards", "members", "connections", "stored_bytes", "daily_events"],
+  quota_exceeded: ["boards", "members", "connections", "webhooks", "stored_bytes", "daily_events"],
   invalid_request: ["invalid_channel"],
   invalid_grant: ["invalid_channel"],
   bad_watcher: ["invalid_channel"],

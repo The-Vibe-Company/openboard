@@ -10,7 +10,7 @@ import type {
 } from "@openboard/contract";
 import type { BoardView, Bucket, OrgView, PersonRecord, PlatformView } from "@openboard/ports";
 import type { Session } from "../auth/sessions.ts";
-import type { Deps, Principal } from "../deps.ts";
+import type { Deps, Principal, ServerConfig } from "../deps.ts";
 import type { RequestLimits } from "../http/limits.ts";
 import {
   approveDeviceSignInHandler,
@@ -96,12 +96,19 @@ import {
   pullWatcherMatchesHandler,
   registerWatchersHandler,
 } from "./watchers/index.ts";
+import {
+  createWebhookHandler,
+  deleteWebhookHandler,
+  getWebhookHandler,
+  listWebhooksHandler,
+} from "./webhooks/index.ts";
 
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
 export interface BoardContext extends RequestLimits {
   /** Admit a write once its operation-specific permissions have been checked. */
   readonly debitWrite: () => void;
   readonly board: BoardView;
+  readonly webhookConfig: Pick<ServerConfig, "mode" | "secretKey">;
   readonly signal: AbortSignal;
   readonly shutdown: AbortSignal;
   readonly schedule: Deps["schedule"];
@@ -203,9 +210,11 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   createOrg: createOrgHandler,
   createSchema: createSchemaHandler,
   createTask: createTaskHandler,
+  createWebhook: createWebhookHandler,
   deleteBoard: deleteBoardHandler,
   deleteMessage: deleteMessageHandler,
   deleteOrg: deleteOrgHandler,
+  deleteWebhook: deleteWebhookHandler,
   discoverBoard: discoverBoardHandler,
   downloadOrgExport: downloadOrgExportHandler,
   editMessage: editMessageHandler,
@@ -221,6 +230,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   getOrgExport: getOrgExportHandler,
   getSession: getSessionHandler,
   getSyncThread: getSyncThreadHandler,
+  getWebhook: getWebhookHandler,
   importSync: importSyncHandler,
   joinSource: joinSourceHandler,
   labelMessage: labelMessageHandler,
@@ -239,6 +249,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listTasks: listTasksHandler,
   listThreads: listThreadsHandler,
   listWatchers: listWatchersHandler,
+  listWebhooks: listWebhooksHandler,
   pollDeviceSignIn: pollDeviceSignInHandler,
   postMessage: postMessageHandler,
   previewDeviceSignIn: previewDeviceSignInHandler,

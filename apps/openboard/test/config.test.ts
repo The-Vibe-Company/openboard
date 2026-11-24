@@ -174,3 +174,11 @@ describe("hosted backup bucket", () => {
     }
   });
 });
+
+test("decodes a 32-byte webhook key and refuses malformed encodings", () => {
+  const sample = Buffer.alloc(32, 254);
+  for (const encoding of ["base64", "base64url"] as const) {
+    expect(load({ OPENBOARD_SECRET_KEY: sample.toString(encoding) }).secretKey).toEqual(sample);
+  }
+  expect(() => load({ OPENBOARD_SECRET_KEY: "short" })).toThrow("expected 32 bytes encoded as base64 or base64url");
+});

@@ -1,0 +1,74 @@
+import { closeSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import type { WebhookSpec } from "@openboard/contract";
+import { type Command, Misuse } from "../index.ts";
+
+function options(args: readonly string[], optionsEnd: number) {
+  const flags = new Map<string, string>();
+  for (let i = 0; i < args.length; i += 2) {
+    const flag = args[i];
+    const value = args[i + 1];
+    if ((flag !== "--file" && flag !== "--secret-file") || !value || i + 1 >= optionsEnd || flags.has(flag)) {
+      throw new Misuse("expected --file <spec.json> --secret-file <path>");
+    }
+    flags.set(flag, value);
+  }
+  const spec = flags.get("--file");
+  const secret = flags.get("--secret-file");
+  if (!spec || !secret) throw new Misuse("expected --file <spec.json> --secret-file <path>");
+  return { spec, secret };
+}
+
+function readSpec(path: string): WebhookSpec {
+  try {
+    const value: unknown = JSON.parse(readFileSync(path, "utf8"));
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
+    return value as WebhookSpec;
+  } catch {
+    throw new Misuse("expected a readable JSON object in --file");
+  }
+}
+
+function reserveSecret(path: string): { fd: number } | { secret: string } {
+  try {
+    return { fd: openSync(path, "wx", 0o600) };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    const secret = readFileSync(path, "utf8").trim();
+    if (!secret) throw new Misuse("--secret-file is empty");
+    return { secret };
+  }
+}
+
+export const createWebhookCommand: Command = {
+  words: ["webhooks", "create"],
+  usage: "ob webhooks create --file <spec.json> --secret-file <path>",
+  async run(ctx) {
+    const paths = options(ctx.args, ctx.optionsEnd);
+    const spec = readSpec(paths.spec);
+    if (spec.signing?.secret !== undefined) throw new Misuse("put the signing secret in --secret-file");
+    const file = reserveSecret(paths.secret);
+    if ("secret" in file) {
+      const { webhook } = await ctx.client.createWebhook({
+        ...spec,
+        signing: { ...spec.signing, secret: file.secret },
+      });
+      ctx.output.out(webhook.id);
+      return 0;
+    }
+    let created: Awaited<ReturnType<typeof ctx.client.createWebhook>>;
+    try {
+      created = await ctx.client.createWebhook(spec);
+    } catch (error) {
+      closeSync(file.fd);
+      unlinkSync(paths.secret);
+      throw error;
+    }
+    try {
+      writeFileSync(file.fd, `${created.secret}\n`);
+    } finally {
+      closeSync(file.fd);
+    }
+    ctx.output.out(created.webhook.id);
+    return 0;
+  },
+};
