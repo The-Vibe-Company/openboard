@@ -9,11 +9,16 @@ writes:
   - packages/core/src/webhooks/validate.ts
   - packages/server/src/webhooks/request.ts
   - packages/server/test/webhooks/template.test.ts
+  - packages/core/src/webhooks/payload.ts
+  - packages/server/src/operations/webhooks/index.ts
+  - packages/server/src/jobs/webhooks.ts
+  - docs/protocol.md
+  - skills/openboard/references/webhooks.md
 conformance: []
 modes: [local, hosted]
 depends_on: [304]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 502
 ---
 
@@ -21,8 +26,8 @@ issue: 502
 As a board admin pointing a webhook at a receiver that dictates its own body (a remote routine's trigger, a CI dispatch), I give a JSON template and each delivery's body is that template filled from the event.
 
 ## Done when
-- [ ] `bun test packages/core/test/webhooks/template.test.ts` passes: `{ "externalRef": "ob:{{subject.thread}}", "idempotencyKey": "{{delivery.id}}", "input": { "board": "{{board.url}}", "labels": "{{subject.labels}}", "n": "{{delivery.attempt}}" } }` renders `subject.labels` as an object and `delivery.attempt` as a number (a value that is exactly one placeholder keeps its JSON type), and the rest as strings; a path naming nothing renders `null` alone and an empty string inside text; a placeholder never evaluates anything (no logic, no filters)
-- [ ] `bun test packages/server/test/webhooks/template.test.ts` passes: a webhook with that `body` delivers the rendered JSON, signed over the rendered bytes; a rendered body over 256 KB is refused for that delivery with `lastError: "too_large"` and the delivery is dead
+- [x] `bun test packages/core/test/webhooks/template.test.ts` passes: `{ "externalRef": "ob:{{subject.thread}}", "idempotencyKey": "{{delivery.id}}", "input": { "board": "{{board.url}}", "labels": "{{subject.labels}}", "n": "{{delivery.attempt}}" } }` renders `subject.labels` as an object and `delivery.attempt` as a number (a value that is exactly one placeholder keeps its JSON type), and the rest as strings; a path naming nothing renders `null` alone and an empty string inside text; a placeholder never evaluates anything (no logic, no filters)
+- [x] `bun test packages/server/test/webhooks/template.test.ts` passes: a webhook with that `body` delivers the rendered JSON, signed over the rendered bytes; a rendered body over 256 KB is refused for that delivery with `lastError: "too_large"` and the delivery is dead
 
 ## Out of scope
 - Refusing an unknown path at creation (318); the default payload's own cap and truncation (304).

@@ -1,4 +1,13 @@
-import type { CanInput, GrantPrincipal, GrantPrincipalInput, Permission } from "@openboard/contract";
+import { readFileSync } from "node:fs";
+import {
+  BoardError,
+  type CanInput,
+  type createGrants,
+  type GrantPrincipal,
+  type GrantPrincipalInput,
+  type InputOf,
+  type Permission,
+} from "@openboard/contract";
 import { describeGrantPrincipal, readGrantPrincipal } from "../grant-principals.ts";
 import { type Command, Misuse } from "./index.ts";
 
@@ -19,8 +28,10 @@ export const createGrantCommand: Command = {
     "ob grants create --can <pattern=permissions>… [--user <id>] [--project <id> | --all-projects] [--environment <names>] " +
     "[--github <repository-or-subject>] [--workflow <file>] [--git-branch <branch>] [--event <event>] " +
     "[--oidc <issuer>] [--claim <name=value>] [--app <id>] [--all-apps] [--all-users] [--everyone] " +
-    "[--connection <id>] [--all-connections] [--lock-me-out]",
+    "[--connection <id>] [--all-connections] [--lock-me-out]\n" +
+    "ob grants create --file <path|-> [--lock-me-out]",
   async run(ctx) {
+    if (ctx.args.slice(0, ctx.optionsEnd).includes("--file")) return createFromFile(ctx);
     const principals: GrantPrincipalInput[] = [];
     const patterns: [string, CanInput[string]][] = [];
     let lockMeOut: true | undefined;
@@ -52,6 +63,32 @@ export const createGrantCommand: Command = {
     return 0;
   },
 };
+
+async function createFromFile(ctx: Parameters<Command["run"]>[0]): Promise<number> {
+  const args = [...ctx.args];
+  const lockFlag = args.indexOf("--lock-me-out");
+  if (lockFlag >= 0 && lockFlag < ctx.optionsEnd) args.splice(lockFlag, 1);
+  const [flag, path] = args;
+  if (ctx.args.length !== ctx.optionsEnd || flag !== "--file" || !path || path.startsWith("--") || args.length !== 2) {
+    throw new Misuse("use --file <path|-> with only the optional --lock-me-out flag");
+  }
+  let text: string;
+  try {
+    text = readFileSync(path === "-" ? 0 : path, "utf8");
+  } catch {
+    throw new BoardError("invalid_request", path === "-" ? "Could not read stdin." : "Could not read the grant file.");
+  }
+  let grants: InputOf<typeof createGrants>["grants"];
+  try {
+    grants = JSON.parse(text);
+  } catch {
+    throw new BoardError("invalid_request", "the grant file must contain valid JSON");
+  }
+  const result = await ctx.client.createGrants({ grants, ...(lockFlag >= 0 ? { lockMeOut: true } : {}) });
+  if (ctx.json) ctx.output.out(JSON.stringify(result, null, 2));
+  else for (const grant of result.grants) ctx.output.out(grantLine("created", grant));
+  return 0;
+}
 
 function buildCan(patterns: [string, CanInput[string]][]): CanInput {
   const can = new Map<string, CanInput[string]>();

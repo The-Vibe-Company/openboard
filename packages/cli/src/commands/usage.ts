@@ -98,8 +98,9 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
   login: {
     summary: "Sign a person in from the terminal with a device code, and store the personal credential.",
     operations: ["startDeviceSignIn", "pollDeviceSignIn"],
-    example: "ob login https://board.example",
-    errors: ["remote_error", "not_found"],
+    example: "ob login https://board.example --can 'dev=read'",
+    options: { can: "Limit the token to channel patterns and permissions, for example `dev=read`." },
+    errors: ["remote_error", "not_found", "invalid_scope"],
   },
   use: {
     summary: "Point `ob` at another board of the signed-in person's organization.",
@@ -135,9 +136,11 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
   },
   "grants create": {
     summary: "Grant channel permissions to one or more principals.",
-    operations: ["createGrant"],
+    operations: ["createGrant", "createGrants"],
     example: "ob grants create --connection cn_7k2m4q3t5v2w6x7y --can 'deploys/=read,post'",
     options: {
+      file: "Path to a JSON array of grants to create atomically, or - for stdin.",
+      "lock-me-out": "Allow the write even if it leaves you unable to manage the affected patterns.",
       can: "A channel pattern and its permissions, all, none or a comma-separated list. Repeatable.",
       connection: "A connection ID on this board.",
       "all-connections": "Every connection on this board.",

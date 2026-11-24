@@ -12,8 +12,8 @@ async function createOrganization(page: Page, url: string) {
   expect(created.status()).toBe(201);
 }
 
-async function startDevice(page: Page, url: string) {
-  const response = await page.request.post(`${url}/api/x/auth/device`, { data: { clientName: "ob" } });
+async function startDevice(page: Page, url: string, can?: string) {
+  const response = await page.request.post(`${url}/api/x/auth/device`, { data: { clientName: "ob", can } });
   expect(response.ok()).toBe(true);
   return response.json();
 }
@@ -23,18 +23,19 @@ async function checkCode(page: Page, code: string) {
   await page.getByRole("button", { name: "Check code" }).click();
 }
 
-test("a signed-in person checks the code, client and organization, then approves terminal sign-in", async ({
+test("a signed-in person checks the code, client, scope and organization, then approves terminal sign-in", async ({
   page,
 }) => {
   const app = await serve();
   try {
-    const { userCode, deviceCode, verificationUri } = await startDevice(page, app.url);
+    const { userCode, deviceCode, verificationUri } = await startDevice(page, app.url, "dev=read");
     expect(verificationUri).toBe(`${app.url}/device`);
     await createOrganization(page, app.url);
     await page.goto(verificationUri);
     await checkCode(page, userCode);
     await expect(page.getByText(userCode, { exact: true })).toBeVisible();
     await expect(page.locator('[aria-live="polite"]').getByText("ob", { exact: true })).toBeVisible();
+    await expect(page.getByText("dev: read", { exact: true })).toBeVisible();
     await expect(page.getByText("Acme (acme)", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Approve", exact: true }).click();
     await expect(page.getByRole("status")).toHaveText("Sign-in approved. Return to your terminal.");

@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import { PersonalToken, PersonalTokenId, SessionState } from "../entities/accounts.ts";
+import { Can } from "../entities/connections.ts";
 import { Account, Slug } from "../entities/orgs.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
@@ -52,20 +53,27 @@ export const revokeAllSessions = defineOperation({
   upstream: false,
 });
 
+const deviceCode = Type.String({ pattern: "^[A-Za-z0-9_-]{43}n?$" });
+
 export const startDeviceSignIn = defineOperation({
   name: "startDeviceSignIn",
   summary: "Request a short-lived browser approval code for CLI sign-in.",
   route: { method: "POST", mount: "/api/x", path: "/auth/device" },
   scope: "public",
-  input: { body: Type.Object({ clientName: Type.String({ minLength: 1, maxLength: 100, pattern: "^[^\\u0000]+$" }) }) },
+  input: {
+    body: Type.Object({
+      clientName: Type.String({ minLength: 1, maxLength: 100, pattern: "^[^\\u0000]+$" }),
+      can: Type.Optional(Type.String()),
+    }),
+  },
   output: Type.Object({
-    deviceCode: Type.String({ pattern: "^[A-Za-z0-9_-]{43}$" }),
+    deviceCode,
     userCode: Type.String({ pattern: "^[A-Z2-7]{4}(?:-[A-Z2-7]{4}){3}$" }),
     verificationUri: Type.String(),
     interval: Type.Integer({ minimum: 1, maximum: 60 }),
     expiresIn: Type.Literal(600),
   }),
-  errors: [],
+  errors: ["invalid_scope"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: [] },
   cli: false,
@@ -80,7 +88,7 @@ export const previewDeviceSignIn = defineOperation({
   route: { method: "GET", mount: "/api/x", path: "/auth/device/:userCode" },
   scope: "account",
   input: { params: Type.Object({ userCode: startDeviceSignIn.output.properties.userCode }) },
-  output: Type.Object({ clientName: Type.String(), expiresAt: Type.Integer() }),
+  output: Type.Object({ clientName: Type.String(), expiresAt: Type.Integer(), can: Type.Optional(Can) }),
   errors: ["unauthorized", "not_found"],
   access: null,
   effects: { readOnly: true, idempotent: true, emits: [] },
@@ -139,14 +147,15 @@ export const listPersonalTokens = defineOperation({
   summary: "List the signed-in person's personal token metadata.",
   route: { method: "GET", mount: "/api/x", path: "/tokens" },
   scope: "account",
+  accountBearer: "personal",
   input: {},
   output: Type.Object({ tokens: Type.Array(PersonalToken) }),
-  errors: ["unauthorized"],
+  errors: ["unauthorized", "forbidden"],
   access: null,
   effects: { readOnly: true, idempotent: true, emits: [] },
-  cli: false,
+  cli: { command: ["tokens"], args: [] },
   mcp: false,
-  why: "Token management requires a browser session.",
+  why: "Token management requires a session or an unrestricted personal token.",
   upstream: false,
 });
 
@@ -155,6 +164,7 @@ export const revokePersonalToken = defineOperation({
   summary: "Revoke one of the signed-in person's personal tokens.",
   route: { method: "POST", mount: "/api/x", path: "/tokens/:id/revoke" },
   scope: "account",
+  accountBearer: "personal",
   input: { params: Type.Object({ id: PersonalTokenId }) },
   output: Type.Object({ id: PersonalTokenId, revokedAt: Type.Integer() }),
   errors: ["unauthorized", "forbidden", "not_found"],
@@ -162,6 +172,6 @@ export const revokePersonalToken = defineOperation({
   effects: { readOnly: false, idempotent: true, emits: [] },
   cli: false,
   mcp: false,
-  why: "Revocation requires a browser session and its CSRF proof.",
+  why: "Revocation requires a session with CSRF proof or an unrestricted personal token.",
   upstream: false,
 });

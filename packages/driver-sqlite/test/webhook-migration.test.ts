@@ -7,7 +7,7 @@ test("upgrades the SQLite delivery table and preserves existing rows and indexes
   using database = new Database();
   migrate(
     database,
-    migrations.filter(({ version }) => version <= 32),
+    migrations.filter(({ version }) => version <= 33),
     0,
   );
   database.run(`INSERT INTO webhook_deliveries

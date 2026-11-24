@@ -19,7 +19,8 @@ export async function deliverWebhook(
   if (credentials === null) return { status: null, error: "signing_secret_undecryptable" };
   try {
     const request = build(credentials);
-    return request ? await sendWebhook(request, deps) : { status: null, error: "payload_too_large" };
+    if (request) return await sendWebhook(request, deps);
+    return { status: null, error: webhook.body == null ? "payload_too_large" : "too_large" };
   } catch (error) {
     if (error instanceof BoardError && error.code === "invalid_url") return { status: null, error: "invalid_url" };
     throw error;

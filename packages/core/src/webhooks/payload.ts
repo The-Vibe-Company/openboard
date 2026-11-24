@@ -1,5 +1,7 @@
 import type { Message } from "@openboard/contract";
 
+import { renderWebhookTemplate } from "./template.ts";
+
 const limit = 256 * 1024;
 const encoder = new TextEncoder();
 
@@ -61,15 +63,17 @@ export function webhookPayload(
   delivery: Delivery,
   event: { message: Message; payload: object },
   root: Message,
+  template: object | null = null,
 ): string | null {
   const path = `/${org}/${board}`;
   const threadUrl = `${origin}${path}/t/${event.message.thread}`;
-  return encodeWebhookPayload({
+  const payload = {
     type: "board.event",
     version: 1,
     delivery,
     board: { url: `${origin}/api${path}`, org, board },
     subject: webhookSubject(root, event.message.id, threadUrl),
     event,
-  });
+  };
+  return template === null ? encodeWebhookPayload(payload) : renderWebhookTemplate(template, payload, limit);
 }

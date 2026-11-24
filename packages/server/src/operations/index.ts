@@ -41,6 +41,7 @@ import {
 } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
+import { createGrantsHandler } from "./grants/batch.ts";
 import { createGrantHandler } from "./grants/create.ts";
 import { explainGrantsHandler } from "./grants/explain.ts";
 import { listGrantsHandler } from "./grants/list.ts";
@@ -134,6 +135,7 @@ export interface PublicContext {
 export interface AccountContext extends RequestLimits {
   readonly platform: PlatformView;
   readonly session: Session | null;
+  readonly tokenPersonId: string | null;
   readonly now: () => number;
   readonly mode: "local" | "hosted";
   /** The sign-in providers this server offers. */
@@ -208,6 +210,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   createChannel: createChannelHandler,
   createConnection: createConnectionHandler,
   createGrant: createGrantHandler,
+  createGrants: createGrantsHandler,
   createInvitation: createInvitationHandler,
   createOrg: createOrgHandler,
   createSchema: createSchemaHandler,

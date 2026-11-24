@@ -429,6 +429,14 @@ change would leave its maker unable to manage the affected grant patterns.
 The error may include an OpenBoard `next` command to keep the caller in.
 Set `lockMeOut: true` (CLI `--lock-me-out`) to make the change anyway. Local
 owners and organization owners and admins are exempt from the lockout check.
+`POST /grants/batch` takes `{ grants, lockMeOut? }` with 1 to 16 grant drafts
+(`{ principals, can }`). It checks manage against the starting grants and checks
+everyone permissions and lockout against the resulting grants. It commits all
+grants together and returns 200 with `{ grants }` in input order. An out-of-range
+batch size returns 400 `invalid_request`, and a malformed draft returns 400
+`invalid_grant`. Run `ob grants create --file grants.json`
+with a JSON array of drafts, or use `--file -` for stdin.
+
 An empty list contributes no permissions when its pattern decides access. Grants tied
 at that pattern can still add permissions. In the CLI,
 `--can 'ops/=read' --can 'ops/secret/=none'` allows reading under `ops/` and closes `ops/secret/`.
@@ -552,7 +560,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | GET | `/api/x/orgs/:org` | member | |
 | POST | `/api/x/orgs/:org` | admin | rename (display name only) |
 | POST | `/api/x/orgs/:org/delete` | owner | Returns `{ org, deletedAt, purgeAt }` with UTC timestamps 30 days apart and records `ob.org.deleted`. A non-owner member gets 403 `forbidden`. After deletion, board routes answer 404 `not_found` as for an unknown slug, before checking credentials. A signed-in person also receives 404 on organization routes, including repeat deletion. The slug remains reserved, and former memberships no longer count toward the one-organization limit. |
-| POST | `/api/x/orgs/:org/exports` | owner | Queue a hosted export. Returns 202 `{ export: { id, status: "pending", expiresAt: null } }`. |
+| POST | `/api/x/orgs/:org/exports` | owner | Queue a hosted export. A narrowed personal bearer receives 403 `forbidden` on all export routes. Returns 202 `{ export: { id, status: "pending", expiresAt: null } }`. |
 | GET | `/api/x/orgs/:org/exports/:id` | owner | Returns `{ export: { id, status, expiresAt } }`. Status is `pending`, `ready`, or `failed`. A non-null `expiresAt` is an epoch millisecond timestamp. |
 | GET | `/api/x/orgs/:org/exports/:id/download` | owner | Stream a ready archive as `application/gzip` with `Cache-Control: no-store`. Pending, failed, expired, unknown, and foreign IDs return 404 `not_found`. |
 | GET | `/api/x/orgs/:org/members` | member | `{ members: [{ principal, role }] }` |
@@ -566,10 +574,10 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/api/x/orgs/:org/boards/:board/delete` | admin | Returns `{ board, deletedAt }` with an ISO 8601 UTC timestamp and records `ob.board.deleted`. The board leaves the list and its slug remains reserved. Authenticated board routes return 401 `unauthorized` to board-bound credentials and 404 `not_found` to people. Deleting `main` returns 400 `invalid_request` with a hint to delete the organization, and an unknown or already deleted board returns 404 `not_found`. |
 | GET | `/api/x/orgs/:org/audit` | admin | organization events (`org_events`: organization and boards created, invitations created and revoked, members added, role changes, removals), oldest first; a member gets 403 `forbidden`. Query `after` (a cursor it answered) and `limit` (1 to 200, default 100). Returns `{ events, cursor }`, each event `{ cursor, type, createdAt, actor, payload }`; pass `cursor` back as `after`. A cursor past the last event or not decimal answers 400 `invalid_cursor`. No token or hash appears. |
 | GET | `/api/x/orgs/:org/usage` | admin | daily usage (metering seam) |
-| POST | `/api/x/auth/device`, `/api/x/auth/device/token`, `/api/x/auth/device/approve` | — / — / person | CLI device flow ([auth.md](./auth.md#cli-sign-in-device-flow-and-choosing-org-and-board)) |
-| GET | `/api/x/auth/device/:userCode` | person | Session cookie only, `Cache-Control: no-store`. Returns `{ clientName, expiresAt }` with expiry in epoch milliseconds. Unknown, expired, approved or redeemed codes return 404 `not_found`. |
-| GET | `/api/x/tokens` | person | `{ tokens: [{ id, name, org, createdAt, expiresAt, revokedAt }] }` for the session holder. Timestamps are epoch milliseconds, and `revokedAt` is null until revoked. |
-| POST | `/api/x/tokens/:id/revoke` | person | Requires the session cookie, Origin and CSRF proof. Returns `{ id, revokedAt }` and preserves the first revocation time on retry. An unknown or unowned ID returns 404 `not_found`. The revoked credential returns 401 `unauthorized` on subsequent board requests. |
+| POST | `/api/x/auth/device`, `/api/x/auth/device/token`, `/api/x/auth/device/approve` | — / — / person | Device start accepts optional `can` using `x-board-can` syntax. Invalid scope returns 400 `invalid_scope`. See the CLI device flow ([auth.md](./auth.md#cli-sign-in-device-flow-and-choosing-org-and-board)) |
+| GET | `/api/x/auth/device/:userCode` | person | Session cookie only, `Cache-Control: no-store`. Returns `{ clientName, expiresAt, can? }` with the optional requested scope map and expiry in epoch milliseconds. Unknown, expired, approved or redeemed codes return 404 `not_found`. |
+| GET | `/api/x/tokens` | person | `{ tokens: [{ id, name, org, createdAt, expiresAt, revokedAt, can? }] }` for the authenticated person. Accepts a session or an unrestricted personal bearer. The optional scope map describes the requested scope. Timestamps are epoch milliseconds, and `revokedAt` is null until revoked. |
+| POST | `/api/x/tokens/:id/revoke` | person | Accepts an unrestricted personal bearer or a session cookie with Origin and CSRF proof. Returns `{ id, revokedAt }` and preserves the first revocation time on retry. An unknown or unowned ID returns 404 `not_found`. The revoked credential returns 401 `unauthorized` on subsequent board requests. A narrowed personal bearer receives 403 `forbidden` on account routes. |
 | GET | `/api/x/metrics` | operator | Prometheus; not exposed to tenants |
 `GET /api/x/orgs/:org/audit` can return the OpenBoard-only
 `ob.operator.quota_changed` event with actor `ob:operator:<name>` and payload
@@ -729,9 +737,15 @@ A ping is recorded as one attempt and never contributes to disabling a webhook.
 ### Body templates
 
 `body` may be a JSON template with `{{path}}` placeholders over the payload
-above (`{{subject.thread}}`, `{{delivery.id}}`, `{{board.url}}`); a value that is
-exactly one placeholder keeps its JSON type; no logic. Unknown paths are 400
-at creation. This serves receivers that dictate the body.
+above (`{{subject.thread}}`, `{{delivery.id}}`, `{{board.url}}`). Supply a JSON
+object or array of at most 16 KB, measured as UTF-8 JSON. Placeholders in
+string values use dot-separated paths. A value that is exactly one placeholder
+keeps its JSON type. A missing value renders as `null` on its own and as an empty
+string inside text. Templates support no logic or filters. Unknown paths are 400
+at creation once path validation is enabled.
+
+The signature covers the rendered JSON. If it exceeds 256 KB in UTF-8, the
+delivery is dead with `lastError: "too_large"`.
 
 ### Signing (receiver-dictated)
 

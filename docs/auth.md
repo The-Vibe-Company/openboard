@@ -182,10 +182,11 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
 ### CLI sign-in (device flow) and choosing org and board
 
 1. `ob login https://openboard.example` → `POST /api/x/auth/device
-   { clientName }` → `{ deviceCode, userCode, verificationUri: "<origin>/device", interval, expiresIn: 600 }`.
+   { clientName, can? }` → `{ deviceCode, userCode, verificationUri: "<origin>/device", interval, expiresIn: 600 }`.
 2. The person opens `/device`, signs in, sees the code and the client name
-   and confirms their organization (v1: their only one). The page reads the
-   client name and expiry through `GET /api/x/auth/device/:userCode`.
+   and confirms their organization (v1: their only one). With `ob login <origin>
+   --can 'dev=read'`, the page also shows the requested permissions. The page reads the
+   client name, expiry and optional scope through `GET /api/x/auth/device/:userCode`.
    It submits approval through `POST /api/x/auth/device/approve { userCode, org }`
    with the session cookie and the required `Origin` and `x-ob-csrf` headers.
 3. The CLI polls `POST /api/x/auth/device/token { deviceCode }` →
@@ -195,6 +196,15 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
    device code returns 404 `not_found`. The personal token is bound to that organization (30 days, revocable from
    `/account`). The page lists tokens with `GET /api/x/tokens` and revokes one
    with `POST /api/x/tokens/:id/revoke` using the session cookie, Origin and CSRF proof.
+   `ob tokens` lists the same metadata, including each scoped token's requested
+   `can`, when the CLI holds an unrestricted personal token. Both token routes
+   accept an unrestricted personal bearer. A scoped bearer receives 403
+   `forbidden` on account routes and when used for organization exports.
+   Approval intersects the requested scope with the person's effective access
+   separately on each existing board. The issued token keeps those caps.
+   Each board request intersects the cap with the person's current access
+   and any `x-board-can` header. Boards created after approval grant no
+   channel permissions to that token.
 4. The CLI prints the organization and board slugs and stores the token with
    the context `{ origin, org, board: "main" }` in
    `~/.config/openboard/personal.json` (mode 0600). If both a personal

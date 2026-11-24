@@ -1,3 +1,4 @@
+export { parseCanScope } from "./can-scope.ts";
 export { invalidChannelInput } from "./channel-input.ts";
 export * from "./entities/accounts.ts";
 export * from "./entities/actors.ts";
@@ -60,6 +61,7 @@ export {
   createChannel,
   createConnection,
   createGrant,
+  createGrants,
   createInvitation,
   createOrg,
   createSchema,

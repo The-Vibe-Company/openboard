@@ -61,7 +61,7 @@ function audit(ctx: BoardContext, id: number, at: number) {
 
 export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, spec) => {
   const url = webhookTarget(spec.url, ctx.webhookConfig.mode);
-  const { tail, signing, headers, publicHeaders } = validateWebhook(spec);
+  const { tail, signing, headers, publicHeaders, body } = validateWebhook(spec);
   requireManage(ctx, tail.channel);
   if (!ctx.webhookConfig.secretKey) {
     throw new BoardError("not_supported", "webhook signing is unavailable", { hint: "Set OPENBOARD_SECRET_KEY." });
@@ -78,7 +78,7 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
     filter: spec.filter,
     signing: { preset: signing.preset },
     headers: publicHeaders,
-    body: null,
+    body,
     enabled: spec.enabled ?? true,
     disabledReason: null,
     createdAt: isoTime(now),

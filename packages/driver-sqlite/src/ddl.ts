@@ -22,7 +22,7 @@ export function renderDdl(postgres: string): string {
 
 /** Rebuild the table for system SQLite versions without ALTER COLUMN DROP NOT NULL. */
 export function renderMigration(migration: Migration): string {
-  if (migration.name !== "0033-webhook-pings") return renderDdl(migration.sql);
+  if (migration.name !== "0034-webhook-pings") return renderDdl(migration.sql);
   const original = migrations.find(({ name }) => name === "0032-webhooks");
   const schema = splitStatements(original?.sql ?? "");
   const table = schema.find((statement) => statement.startsWith("CREATE TABLE webhook_deliveries "));

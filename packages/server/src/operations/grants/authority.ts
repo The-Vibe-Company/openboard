@@ -2,12 +2,13 @@ import { BoardError, type GrantView } from "@openboard/contract";
 import {
   type GrantAuthority,
   missingEveryonePermission,
+  narrowCan,
   resolveRankedCan,
   subjectGrants,
   unmanagedGrantPattern,
 } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
-import { personGrantCan } from "../../auth/access.ts";
+import { isNarrowedPersonal, personGrantCan } from "../../auth/access.ts";
 import { currentWorkload } from "../../auth/oidc.ts";
 import { callerCan, credentialKind, type Deps, memberOf, type Principal, workloadOf } from "../../deps.ts";
 import { canListGrants } from "./list.ts";
@@ -29,10 +30,13 @@ export async function currentAuthority(
     const current = await writer.grantMember(by.principal.slice("ob:user:".length));
     if (!current) throw unreachable(action);
     const { grants, role } = current;
+    const cap = isNarrowedPersonal(by) ? (by[callerCan] ?? {}) : undefined;
     const effective = personGrantCan(grants, role);
+    const own = personGrantCan(withoutEveryone(grants), role);
+    const authority = cap ? { effective: narrowCan(effective, cap), own: narrowCan(own, cap) } : { effective, own };
     return {
-      by: { ...by, [memberOf]: { ...member, role }, [callerCan]: effective },
-      authority: role === "owner" ? null : { effective, own: personGrantCan(withoutEveryone(grants), role) },
+      by: { ...by, [memberOf]: { ...member, role }, [callerCan]: authority.effective },
+      authority: role === "owner" && cap === undefined ? null : authority,
     };
   }
   if (kind === "connection") {
@@ -84,13 +88,29 @@ export async function requireNewGrantManage(
   replacing?: string,
 ) {
   if (!authority) return;
-  const pattern = unmanagedGrantPattern(authority, next.can);
+  requireGrantPatternManage(authority, next.can, namesIssuer);
+  const active = await writer.listGrants();
+  requireEveryoneManage(authority, [...active.filter(({ id }) => id !== replacing), next]);
+}
+
+export function requireGrantPatternManage(
+  authority: GrantAuthority | null,
+  can: GrantView["can"],
+  namesIssuer: boolean,
+) {
+  if (!authority) return;
+  const pattern = unmanagedGrantPattern(authority, can);
   if (pattern !== undefined) throw new BoardError("forbidden", `changing this grant needs manage at ${pattern}`);
-  if (namesIssuer && unmanagedGrantPattern(authority, next.can, true) !== undefined) {
+  if (namesIssuer && unmanagedGrantPattern(authority, can, true) !== undefined) {
     throw new BoardError("forbidden", "naming an oidc issuer needs manage on every channel");
   }
-  const active = await writer.listGrants();
-  const missing = missingEveryonePermission(authority, [...active.filter(({ id }) => id !== replacing), next]);
+}
+
+export function requireEveryoneManage(
+  authority: GrantAuthority,
+  after: readonly Pick<GrantView, "can" | "principals">[],
+) {
+  const missing = missingEveryonePermission(authority, after);
   if (missing) {
     throw new BoardError(
       "forbidden",

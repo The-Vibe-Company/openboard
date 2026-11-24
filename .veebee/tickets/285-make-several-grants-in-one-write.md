@@ -14,11 +14,25 @@ writes:
   - packages/server/test/isolation/cases.ts
   - packages/cli/src/commands/grants.ts
   - packages/cli/test/grants.test.ts
+  - docs/protocol.md
+  - packages/cli/src/commands/usage.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/grants/batch.ts
+  - packages/contract/src/operations/grants/create.ts
+  - packages/contract/src/operations/index.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/grants/authority.ts
+  - packages/server/src/operations/grants/batch.ts
+  - packages/server/src/operations/grants/create.ts
+  - packages/server/src/operations/index.ts
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
 conformance: ["grants/makes several grants in one write, or none of them, a lock with the grant that keeps its maker in"]
 modes: [local, hosted]
 depends_on: [284]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 460
 ---
 

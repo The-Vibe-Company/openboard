@@ -328,7 +328,8 @@ CREATE TABLE device_codes (
   org_id      BIGINT,                           -- chosen at approval
   approved_at BIGINT,
   expires_at  BIGINT  NOT NULL,
-  polled_at   BIGINT
+  polled_at   BIGINT,
+  can         TEXT                             -- requested scope and, after approval, its per-board caps
 );
 
 CREATE TABLE personal_tokens (
@@ -338,7 +339,7 @@ CREATE TABLE personal_tokens (
   board_id    BIGINT,                           -- optional: one board only
   name        TEXT    NOT NULL,
   token_hash  BYTEA   NOT NULL UNIQUE,
-  can         TEXT,                             -- optional narrowing
+  can         TEXT,                             -- optional requested scope and per-board approval caps
   created_at  BIGINT  NOT NULL,
   expires_at  BIGINT  NOT NULL,
   last_used_at BIGINT,

@@ -3,6 +3,11 @@ import { CanInput } from "../../entities/connections.ts";
 import { GrantPrincipalInput, GrantView } from "../../entities/grants.ts";
 import { defineOperation } from "../../operation.ts";
 
+export const GrantDraft = {
+  principals: Type.Array(GrantPrincipalInput, { minItems: 1, maxItems: 32 }),
+  can: CanInput,
+};
+
 export const createGrant = defineOperation({
   name: "createGrant",
   summary: "Grant permissions on board channels to one or more principals.",
@@ -12,8 +17,7 @@ export const createGrant = defineOperation({
   input: {
     body: Type.Object(
       {
-        principals: Type.Array(GrantPrincipalInput, { minItems: 1, maxItems: 32 }),
-        can: CanInput,
+        ...GrantDraft,
         lockMeOut: Type.Optional(Type.Boolean()),
       },
       { additionalProperties: false },

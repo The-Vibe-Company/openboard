@@ -11,8 +11,9 @@ writes:
   - packages/driver-sql/src/views/webhooks/deliveries.ts
   - packages/server/src/jobs/webhooks.ts
   - packages/server/test/webhooks/ping.test.ts
+  - packages/server/test/isolation/cases.ts
   - docs/protocol.md
-  - packages/driver-sql/migrations/0033-webhook-pings.sql
+  - packages/driver-sql/migrations/0034-webhook-pings.sql
   - .veebee/tickets/306-send-a-test-ping-to-a-webhook.md
   - docs/data-model.md
   - docs/decisions.md

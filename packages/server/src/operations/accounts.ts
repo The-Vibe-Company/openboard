@@ -4,12 +4,14 @@ import {
   type getAccount,
   type getSession,
   type listPersonalTokens,
+  parseCanScope,
   type pollDeviceSignIn,
   type previewDeviceSignIn,
   type revokeAllSessions,
   type revokePersonalToken,
   type startDeviceSignIn,
 } from "@openboard/contract";
+import { grants } from "@openboard/core";
 import { base32, hashToken, mintSecret, SECRET_BYTES } from "../auth/secrets.ts";
 import { base64url } from "../auth/sessions.ts";
 import type { Handler } from "./index.ts";
@@ -42,13 +44,13 @@ export const revokeAllSessionsHandler: Handler<typeof revokeAllSessions> = async
 };
 
 export const listPersonalTokensHandler: Handler<typeof listPersonalTokens> = async (ctx) => {
-  const { id } = signedIn(ctx);
+  const id = ctx.tokenPersonId ?? signedIn(ctx).id;
   return { tokens: await ctx.platform.listPersonalTokens(id) };
 };
 
 export const revokePersonalTokenHandler: Handler<typeof revokePersonalToken> = async (ctx, { id }) => {
-  const person = signedIn(ctx);
-  const revokedAt = await ctx.platform.revokePersonalToken(person.id, id, ctx.now());
+  const personId = ctx.tokenPersonId ?? signedIn(ctx).id;
+  const revokedAt = await ctx.platform.revokePersonalToken(personId, id, ctx.now());
   if (revokedAt === null) throw new BoardError("not_found", "no such personal token");
   return { id, revokedAt };
 };
@@ -57,13 +59,15 @@ const DEVICE_LIFETIME = 600;
 const POLL_INTERVAL = 5;
 const TOKEN_LIFETIME = 30 * 86_400_000;
 
-export const startDeviceSignInHandler: Handler<typeof startDeviceSignIn> = async (ctx, { clientName }) => {
-  const deviceCode = base64url(ctx.randomBytes(32));
+export const startDeviceSignInHandler: Handler<typeof startDeviceSignIn> = async (ctx, { clientName, can }) => {
+  const scope = can === undefined ? undefined : grants.compileCan(parseCanScope(can));
+  // Older servers reject the longer code instead of exchanging it for an unrestricted token.
+  const deviceCode = base64url(ctx.randomBytes(32)) + (scope === undefined ? "" : "n");
   const userCode = base32(ctx.randomBytes(10))
     .toUpperCase()
     .replace(/(.{4})(?=.)/g, "$1-");
   const now = ctx.now();
-  await ctx.platform.startDevice(hashToken(deviceCode), userCode, clientName, now, now + DEVICE_LIFETIME * 1000);
+  await ctx.platform.startDevice(hashToken(deviceCode), userCode, clientName, now, now + DEVICE_LIFETIME * 1000, scope);
   return {
     deviceCode,
     userCode,

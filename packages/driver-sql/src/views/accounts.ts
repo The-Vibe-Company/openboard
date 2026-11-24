@@ -1,4 +1,4 @@
-import { BoardError } from "@openboard/contract";
+import { BoardError, type Can } from "@openboard/contract";
 import { countQuotaError } from "@openboard/core";
 import type { PersonRecord, PlatformView, SessionRecord, SignedInPerson, SignInRecord } from "@openboard/ports";
 import type { Db, Dialect, Row, SqlValue } from "../db.ts";
@@ -26,7 +26,13 @@ export const accountStatements = {
     WHERE s.id_hash = ${"idHash"} AND s.revoked_at IS NULL AND u.disabled_at IS NULL`,
   touchSession: sql`UPDATE sessions SET seen_at = ${"at"} WHERE id_hash = ${"idHash"}`,
   revokeSession: sql`UPDATE sessions SET revoked_at = ${"at"} WHERE id_hash = ${"idHash"} AND revoked_at IS NULL`,
-  listPersonalTokens: sql`SELECT t.id, t.name, o.slug AS org, t.created_at, t.expires_at, t.revoked_at
+  accountPersonalToken: sql`SELECT u.public_id, t.can, t.board_id
+    FROM personal_tokens t JOIN users u ON u.id = t.user_id
+    JOIN memberships m ON m.org_id = t.org_id AND m.user_id = t.user_id
+    JOIN orgs o ON o.id = t.org_id
+    WHERE t.token_hash = ${"tokenHash"} AND t.expires_at > ${"now"} AND t.revoked_at IS NULL
+    AND u.disabled_at IS NULL AND o.deleted_at IS NULL`,
+  listPersonalTokens: sql`SELECT t.id, t.name, o.slug AS org, t.created_at, t.expires_at, t.revoked_at, t.can
     FROM personal_tokens t JOIN orgs o ON o.id = t.org_id
     WHERE t.user_id = (SELECT id FROM users WHERE public_id = ${"personId"})
     ORDER BY t.created_at DESC, t.id`,
@@ -102,6 +108,7 @@ export function accountView(
   | "touchSession"
   | "revokeSession"
   | "revokeAllSessions"
+  | "accountPersonalToken"
   | "listPersonalTokens"
   | "revokePersonalToken"
 > {
@@ -146,10 +153,15 @@ export function accountView(
     async revokeSession(idHash, now) {
       await query(db, dialect, accountStatements.revokeSession, { idHash: bytes(idHash), at: now });
     },
+    async accountPersonalToken(hash, now) {
+      const [row] = await query(db, dialect, accountStatements.accountPersonalToken, { tokenHash: bytes(hash), now });
+      return row ? { personId: String(row.public_id), restricted: row.can !== null || row.board_id !== null } : null;
+    },
     async listPersonalTokens(personId) {
       const rows = await query(db, dialect, accountStatements.listPersonalTokens, { personId });
       return rows.map((row) => ({
         id: String(row.id),
+        ...(row.can === null ? {} : { can: (JSON.parse(String(row.can)) as { requested: Can }).requested }),
         name: String(row.name),
         org: String(row.org),
         createdAt: Number(row.created_at),

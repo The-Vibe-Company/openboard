@@ -27,7 +27,7 @@ writes:
   - packages/cli/test/inbound.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [181, 304]
+depends_on: [181, 304, 314]
 status: draft
 claimed_by: null
 issue: 511
@@ -50,3 +50,5 @@ As a board admin, I create an inbound endpoint for an external runner's status e
 - The endpoint's grant reuses 276's grant creation and 284's lockout rules (`packages/core/src/access/grant-changes.ts`); revoking it with the endpoint is one board write.
 - An inbound endpoint is a new `Ref` kind (`ib_`).
 - Depends on 304 for the secret box and the signing validator, and for `core/orgs/quotas.ts`, which both change.
+
+Waits for 314 (orchestrator, 2026-11-24, #511): the criterion's documented request is signed with `ts-id-body`, whose validator 314 adds. A first draft is on branch `t/326-create-an-inbound-endpoint`.
