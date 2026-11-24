@@ -34,6 +34,9 @@ export function backupBucket(config: BackupConfig, now: () => number): NonNullab
       await response.body?.cancel();
       if (!response.ok) throw new Error("Backup upload failed");
     },
+    async putStream(key, stream) {
+      await client.write(key, new Response(stream), { type: "application/octet-stream" });
+    },
     list,
     async deletePrefix(prefix) {
       for await (const key of list(prefix)) await client.delete(key);

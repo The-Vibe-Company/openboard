@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { delimiter, join } from "node:path";
+
 // `bun run verify:pg`: the Postgres test run and two-instance conformance on a real Postgres (docs/codebase.md 6.2).
 // Uses OPENBOARD_TEST_DATABASE_URL when set; otherwise starts docker-compose.test.yml and uses its database.
 // An unreachable database fails the run: Postgres suites never skip.
@@ -51,24 +55,38 @@ function run(label: string, command: string[], env: Record<string, string | unde
   }
 }
 
-async function verifyPg(): Promise<number> {
-  let url = process.env.OPENBOARD_TEST_DATABASE_URL;
-  if (!url) {
-    const started = run("docker compose", ["docker", "compose", "-f", composeFile, "up", "-d", "--wait"], process.env);
-    if (!started) {
-      console.error(`Could not start Postgres from ${composeFile}; start Docker or set OPENBOARD_TEST_DATABASE_URL.`);
-      return 1;
-    }
-    url = composeUrl;
+function startCompose(): string | undefined {
+  if (!run("docker compose", ["docker", "compose", "-f", composeFile, "up", "-d", "--wait"], process.env)) {
+    console.error(`Could not start Postgres from ${composeFile}; start Docker or set OPENBOARD_TEST_DATABASE_URL.`);
+    return undefined;
   }
+  const service = Bun.spawnSync(["docker", "compose", "-f", composeFile, "ps", "-q", "postgres"]);
+  if (!service.success) return undefined;
+  return service.stdout.toString().trim();
+}
 
+async function verifyPg(): Promise<number> {
+  const external = process.env.OPENBOARD_TEST_DATABASE_URL;
+  if (external) return await verifyAt(external, process.env);
+  const service = startCompose();
+  if (!service) return 1;
+  const clients = mkdtempSync(join(tmpdir(), "openboard-pg-client-"));
+  try {
+    if (!run("Postgres clients", ["bash", "scripts/ci/postgres-clients.sh", service, clients], process.env)) return 1;
+    return await verifyAt(composeUrl, { ...process.env, PATH: [clients, process.env.PATH].join(delimiter) });
+  } finally {
+    rmSync(clients, { recursive: true, force: true });
+  }
+}
+
+async function verifyAt(url: string, environment: Record<string, string | undefined>): Promise<number> {
   const { hostname, port } = databaseAddress(url);
   if (!(await reachable(hostname, port))) {
     console.error(`Postgres is unreachable at ${hostname}:${port}; the Postgres suites fail rather than skip.`);
     return 1;
   }
 
-  const env = { ...process.env, OPENBOARD_TEST_DRIVER: "postgres", OPENBOARD_TEST_DATABASE_URL: url };
+  const env = { ...environment, OPENBOARD_TEST_DRIVER: "postgres", OPENBOARD_TEST_DATABASE_URL: url };
   const steps: [string, string[]][] = [
     [
       "Postgres tests",

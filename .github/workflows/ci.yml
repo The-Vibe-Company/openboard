@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  BUN_VERSION: 1.4.2
+  BUN_VERSION: 1.4.3
 
 jobs:
   static:
@@ -121,6 +121,8 @@ jobs:
           key: bun-${{ runner.os }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
           restore-keys: bun-${{ runner.os }}-${{ env.BUN_VERSION }}-
       - run: bun install --frozen-lockfile
+      - name: Use the Postgres service clients
+        run: bash scripts/ci/postgres-clients.sh '${{ job.services.postgres.id }}'
       - run: bun run --filter @openboard/driver-postgres --filter @openboard/server --filter @openboard/bench test
 
   conformance-postgres:

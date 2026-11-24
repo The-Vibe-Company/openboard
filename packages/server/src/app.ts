@@ -8,6 +8,7 @@ import { handle, type Pipeline } from "./http/pipeline.ts";
 import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
 import { staticFiles } from "./http/static.ts";
+import { startDumpJob } from "./jobs/dump.ts";
 import { type JobHandlers, startJobs } from "./jobs/registry.ts";
 import { logShippingJobs } from "./jobs/ship-log.ts";
 
@@ -50,6 +51,7 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
   const bucket = config.mode === "hosted" ? ports.bucket : undefined;
   if (config.mode === "hosted" && !bucket) deps.log.info("log shipping is off", {});
   const stopJobs = startJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, handlers, bucket);
+  const stopDump = startDumpJob(ports.store.dumpIfMissing, bucket, deps);
   // Large bucket purges can outlive a lease. Give shipping its own runner so purges cannot occupy every poller.
   const stopShipping =
     bucket &&
@@ -61,7 +63,7 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
       logShippingJobs(bucket, platform, pipeline.tenants, deps, shutdown.signal),
     );
   const stopBackground = async (release = false) => {
-    await Promise.all([stopJobs(release), stopShipping?.(release)]);
+    await Promise.all([stopJobs(release), stopShipping?.(release), stopDump()]);
   };
   let draining: Promise<void> | undefined;
   let closing: Promise<void> | undefined;
