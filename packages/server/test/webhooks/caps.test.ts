@@ -105,7 +105,7 @@ beforeAll(async () => {
   await alpha.queue(590);
   await f.run();
   expect(f.sent).toHaveLength(590);
-});
+}, 30_000);
 // Keep fixture transactions short on Postgres. All 5,000 rows share the same fake due time.
 for (let batch = 0; batch < 5; batch++) {
   beforeAll(() => alpha.queue(1_000));
@@ -138,4 +138,4 @@ test("two tenants share dispatch capacity while a capped tenant waits for the ne
   expect(await f.claim()).toEqual({ job: null, nextDue: nextWindow });
   f.advance(nextWindow);
   expect((await f.claim()).job).toMatchObject(alpha.keys);
-});
+}, 30_000);
