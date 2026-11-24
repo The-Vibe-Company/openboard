@@ -369,9 +369,15 @@ test("ob tasks claim keeps polling until its wait budget runs out without holdin
     };
     const lines: string[] = [];
     const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+    const timeouts: number[] = [];
+    const timeoutSignal = (ms: number) => {
+      timeouts.push(ms);
+      return new AbortController().signal;
+    };
     const args = ["tasks", "claim", "--next", "--channel", "dev", "--wait", "210"];
-    expect(await runCli(args, { ...ENV, HOME: home }, { fetch, now: () => now, output })).toBe(0);
+    expect(await runCli(args, { ...ENV, HOME: home }, { fetch, now: () => now, output, timeoutSignal })).toBe(0);
     expect(holds).toEqual([120, 110, 10]);
+    expect(timeouts).toEqual([121_000, 111_000, 11_000]);
     expect(lines).toEqual(["no ready task in dev"]);
   } finally {
     rmSync(home, { recursive: true, force: true });

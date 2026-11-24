@@ -54,12 +54,12 @@ function removeOwner(lock: string, owner: string) {
   }
 }
 
-async function lockClaims(lock: string): Promise<() => void> {
+async function lockClaims(lock: string, attempts = 100): Promise<() => void> {
   const pending = mkdtempSync(join(dirname(lock), ".claim-lock-"));
   const owner = `owner-${pid}-${basename(pending)}`;
   try {
     writeFileSync(join(pending, owner), "", { mode: 0o600, flag: "wx" });
-    for (let attempt = 0; attempt <= 100; attempt++) {
+    for (let attempt = 0; attempt <= attempts; attempt++) {
       try {
         renameSync(pending, lock);
         return () => removeOwner(lock, owner);
@@ -114,7 +114,8 @@ export async function withClaimStorage<T>(
     if (!entry) return result;
     try {
       if (unlockDuringWrite) {
-        release = await lockClaims(`${path}.lock`);
+        // The board has granted the claim. Keep its credential until a competing local write releases the lock.
+        release = await lockClaims(`${path}.lock`, Infinity);
         claims = readClaims(path);
       }
       const key = keyOf(entry.key);

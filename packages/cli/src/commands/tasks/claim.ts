@@ -36,10 +36,10 @@ export async function runClaimNext(ctx: CommandContext, input: Parameters<Client
       const deadline = ctx.now() + wait * 1000;
       while (true) {
         const asked = ctx.now();
-        const result = await ctx.client.claimNextTask({
-          ...query,
-          wait: Math.max(0, Math.min(120, (deadline - asked) / 1000)),
-        });
+        const hold = Math.max(0, Math.min(120, (deadline - asked) / 1000));
+        // Leave a short transport grace period for the answer to a server-side wait.
+        const signal = ctx.timeoutSignal(Math.ceil(hold * 1000) + 1000);
+        const result = await ctx.client.claimNextTask({ ...query, wait: hold }, { signal });
         if (result.task || ctx.now() >= deadline) return result;
         // Throttle retries if a draining server or proxy returns an empty response early.
         const pause = Math.min(250 - (ctx.now() - asked), deadline - ctx.now());
