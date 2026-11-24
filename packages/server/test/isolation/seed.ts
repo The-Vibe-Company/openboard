@@ -17,6 +17,7 @@ export interface Tenant {
   readonly connection: Headers;
   readonly agent: Headers;
   /** One ID per `Ref` kind the seed creates; a message's client ID is its own ID. */
+  readonly firstThread: string;
   readonly ids: Readonly<Partial<Record<RefKind, string>>>;
   /** The secret of its invitation link, a capability: whoever holds it may preview and accept it. */
   readonly invitationToken: string;
@@ -89,13 +90,17 @@ async function messages(send: Send, base: string, session: Headers, marker: stri
     if (posted.message.id !== id) throw new Error(`seed: reply ${id} landed at ${posted.message.id}`);
     last = id;
   }
-  return last;
+  return { last, firstThread: root.message.id };
 }
 
 /** Messages, two connections, an agent and an invitation on the organization's board `main`. */
 async function resources(send: Send, org: string, session: Headers, marker: string, replies: number) {
   const base = `/api/${org}/main`;
-  const message = await messages(send, base, session, marker, replies);
+  const { last: message, firstThread } = await messages(send, base, session, marker, replies);
+  const thread = await ok<{ message: { id: string } }>(
+    send("POST", `${base}/messages`, session, { channel: "dev", text: `${marker} second root` }),
+    "second thread",
+  );
   const can = { "*": "all" };
   const direct = await ok<{ secret: string; connection: { id: string } }>(
     send("POST", `${base}/x/connections`, session, { name: `${marker}-direct`, can, direct: true }),
@@ -117,7 +122,14 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
     invitationToken: invited.url.slice(invited.url.lastIndexOf("/") + 1),
     connection: { authorization: `Bearer ${direct.secret}` },
     agent: { authorization: `Bearer ${claimed.token}` },
-    ids: { message, connection: fleet.connection.id, agent: claimed.agent.id, invitation: invited.invitation.id },
+    firstThread,
+    ids: {
+      message,
+      thread: thread.message.id,
+      connection: fleet.connection.id,
+      agent: claimed.agent.id,
+      invitation: invited.invitation.id,
+    },
   };
 }
 
@@ -125,7 +137,13 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
   const marker = `${org}-only`;
   const { headers: session, personId } = await signIn(store, `${org}-owner`, digit);
   await ok(send("POST", "/api/x/orgs", session, { slug: org, name: marker }), "organization");
-  const { invitationToken, connection, agent, ids: made } = await resources(send, org, session, marker, replies);
+  const {
+    invitationToken,
+    connection,
+    agent,
+    firstThread,
+    ids: made,
+  } = await resources(send, org, session, marker, replies);
   const personal = { authorization: `Bearer ${await personalToken(send, session, org)}` };
   const pending = await ok<{ userCode: string }>(
     send("POST", "/api/x/auth/device", {}, { clientName: marker }),
@@ -133,7 +151,7 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
   );
   const ids = { ...made, member: `ob:user:${personId}`, org };
   const credentials = { session, personal, connection, agent };
-  return { org, board: "main", ...credentials, ids, invitationToken, userCode: pending.userCode, marker };
+  return { org, board: "main", ...credentials, ids, firstThread, invitationToken, userCode: pending.userCode, marker };
 }
 
 /**

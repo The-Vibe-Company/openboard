@@ -72,7 +72,7 @@ describe("path cases: A's credentials off A's board or organization", () => {
 });
 
 describe("ID cases: B's IDs on A's own URL", () => {
-  for (const { name, call, nowhere } of ids) {
+  for (const { name, call, nowhere, startsAtHead, eventThread } of ids) {
     test(name, async () => {
       const response = await send(call, a.session);
       const text = await response.clone().text();
@@ -80,11 +80,28 @@ describe("ID cases: B's IDs on A's own URL", () => {
       expect(holdsB(text), answered).toBe(false);
       if (nowhere) {
         // B's ID must be indistinguishable from one no board holds.
-        expect(await outcome(response), answered).toBe(await outcome(await send(nowhere, a.session)));
+        const absent = await send(nowhere, a.session);
+        expect(await outcome(response), answered).toBe(await outcome(absent));
+        if (call.path.includes("/events?")) expect(JSON.parse(text), answered).toMatchObject({ events: [] });
       } else {
         // An ID both boards hold names A's message.
         expect(response.status, answered).toBe(200);
-        expect(text.includes(a.marker), answered).toBe(true);
+        if (startsAtHead) {
+          expect(JSON.parse(text), answered).toMatchObject({ events: [] });
+        } else {
+          expect(text.includes(a.marker), answered).toBe(true);
+          if (eventThread !== undefined) {
+            const { events } = JSON.parse(text) as { events: { message: { thread: string; text: string } }[] };
+            expect(
+              events.map(({ message }) => message.thread),
+              answered,
+            ).toEqual([eventThread, eventThread]);
+            expect(
+              events.every(({ message }) => message.text.includes(a.marker)),
+              answered,
+            ).toBe(true);
+          }
+        }
       }
       counted.id++;
     });

@@ -72,9 +72,19 @@ interface Override {
  * `tenant`'s own call of `operation` on `board`: its IDs in every path `Ref`, its sample input, then `override`. Throws
  * when the contract would refuse the input, so no case passes by stopping at validation.
  */
-export function callOf(operation: Operation, tenant: Tenant, override?: Override, board = tenant.board): Call {
+export function callOf(
+  operation: Operation,
+  tenant: Tenant,
+  override?: Override,
+  board = tenant.board,
+  queryOverrides?: Fields,
+): Call {
   const sample = SAMPLES[operation.name]?.(tenant) ?? {};
-  const parts: Record<Part, Fields> = { params: {}, query: { ...sample.query }, body: { ...sample.body } };
+  const parts: Record<Part, Fields> = {
+    params: {},
+    query: { ...sample.query, ...queryOverrides },
+    body: { ...sample.body },
+  };
   for (const { part, field, kind } of refFields(operation)) {
     if (part === "params") parts.params[field] = tenant.ids[kind];
   }
@@ -131,6 +141,8 @@ export interface IdCase {
   readonly call: Call;
   /** The same call with an ID no board holds, which B's ID must answer exactly as; absent for an ID A also holds. */
   readonly nowhere?: Call;
+  readonly startsAtHead?: true;
+  readonly eventThread?: string;
 }
 
 /** An ID of the same shape as `id` that no board holds. */
@@ -150,11 +162,20 @@ export function idCases(seeded: Seeded): IdCase[] {
       const value = seeded.b.ids[kind];
       if (value === undefined) throw new Error(`${operation.name}.${field}: the seed creates no ${kind} for B`);
       const label = `${operation.name}: B's ${kind} in ${part}.${field}`;
-      const nowhere = callOf(operation, seeded.a, { part, field, value: nowhereLike(value) });
-      cases.push({ name: label, call: callOf(operation, seeded.a, { part, field, value }), nowhere });
-      if (kind === "message" && operation.effects.readOnly) {
-        const shared = { part, field, value: seeded.sharedMessage };
-        cases.push({ name: `${label}, an ID both boards hold`, call: callOf(operation, seeded.a, shared) });
+      const history = operation.name === "readEvents" ? { after: "0" } : undefined;
+      const callWith = (id: string, query?: Fields) =>
+        callOf(operation, seeded.a, { part, field, value: id }, seeded.a.board, query);
+      const nowhere = callWith(nowhereLike(value), history);
+      cases.push({ name: label, call: callWith(value, history), nowhere });
+      if (history && kind === "thread") {
+        // Feeds start at the head by default. Read from zero as well to prove the shared ID selects A's thread.
+        const eventThread = seeded.a.firstThread;
+        if (eventThread !== seeded.b.firstThread) throw new Error("seed: the feed needs a thread ID both boards hold");
+        const name = `${label}, an ID both boards hold`;
+        cases.push({ name: `${name} at the head`, call: callWith(eventThread), startsAtHead: true });
+        cases.push({ name, call: callWith(eventThread, history), eventThread });
+      } else if (kind === "message" && operation.effects.readOnly) {
+        cases.push({ name: `${label}, an ID both boards hold`, call: callWith(seeded.sharedMessage) });
       }
     }
   }

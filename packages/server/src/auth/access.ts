@@ -108,13 +108,13 @@ export function withoutMentionDetails(message: Message): Message {
 
 async function checkPermission(by: Principal, can: Can, access: Access, input: unknown, board: BoardView) {
   const { permission } = access;
-  if (access.channel === "any") {
-    if (allowedEverywhere(can, permission)) return;
-    throw outsideCan(by, permission, EVERY);
-  }
   const named = input as { channel?: unknown; path?: unknown; re?: unknown; id?: unknown };
   if (access.channel === "fromMessage") return checkMessage(by, can, permission, board, named.id);
   const channel = named.channel ?? named.path;
+  if (access.channel === "any" || (access.channel === "fromInputOrAny" && channel === undefined)) {
+    if (allowedEverywhere(can, permission)) return;
+    throw outsideCan(by, permission, EVERY);
+  }
   if (typeof channel === "string" && !allowedThroughout(can, channel, permission)) {
     throw outsideCan(by, permission, `in ${channel}`);
   }
