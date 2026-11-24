@@ -7,12 +7,14 @@ writes:
   - packages/server/test/isolation/**
   - packages/ports/testkit/isolation.test-suite.ts
   - packages/ports/testkit/index.ts
+  - packages/ports/testkit/isolation-seed.ts
+  - docs/decisions.md
   - packages/driver-sqlite/test/isolation.test.ts
 conformance: []
 modes: [local]
 depends_on: [134]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-5.5-t135
 issue: 136
 ---
 
