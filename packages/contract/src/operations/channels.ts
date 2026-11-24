@@ -38,16 +38,18 @@ export const listChannels = defineOperation({
 
 export const createChannel = defineOperation({
   name: "createChannel",
-  summary: "Create a public channel before anyone posts to it.",
+  summary: "Create a channel before anyone posts to it, optionally granting access only to its creator.",
   route: { method: "POST", path: "/channels" },
   scope: "board",
-  input: { body: Type.Object({ path: ChannelPath }, { additionalProperties: false }) },
+  input: {
+    body: Type.Object({ path: ChannelPath, private: Type.Optional(Type.Boolean()) }, { additionalProperties: false }),
+  },
   output: Type.Object({ channel: Channel, created: Type.Boolean() }),
   status: { createdWhen: "created" },
-  errors: ["invalid_request"],
+  errors: ["invalid_request", "forbidden", "channel_granted"],
   access: { permission: "post", channel: "fromInput" },
-  effects: { readOnly: false, idempotent: true, emits: ["channel.created"] },
-  cli: { command: ["channels", "create"], args: ["path"] },
+  effects: { readOnly: false, idempotent: true, emits: ["channel.created", "ob.grant.created"] },
+  cli: { command: ["channels", "create"], args: ["path"], options: { private: "private" } },
   mcp: { tool: "create_channel" },
   upstream: true,
 });
