@@ -22,27 +22,40 @@ export const readEventsHandler: Handler<typeof readEvents> = async (ctx, input) 
   return { cursor: formatId(page.cursor), events: page.events };
 };
 
-export async function streamEvents(ctx: BoardContext, input: EventInput): Promise<Response> {
-  const { position, read } = prepareFeed(ctx, input, true);
+export async function streamEvents(
+  ctx: BoardContext,
+  input: EventInput,
+  lastEventId: string | null,
+): Promise<Response> {
+  const { position, read, newest } = prepareFeed(ctx, input, true, lastEventId);
   let first = await read(position);
   while (first.retry && !ctx.signal.aborted) first = await read(position);
-  const follow = input.last === undefined ? read : prepareFeed(ctx, { ...input, last: undefined }, true).read;
+  const follow = newest ? prepareFeed(ctx, { ...input, last: undefined }, true).read : read;
   return eventStream(first, ctx.signal, (after, signal) =>
     longPoll(ctx.board, after, "stream", signal, ctx.schedule, follow),
   );
 }
 
-function prepareFeed(
-  { board, by, reauthorize }: BoardContext,
-  { after, last, wait, all, channel, re, label, from, text, by: author, mentions }: EventInput,
-  streaming = false,
-) {
+function eventStart({ after, last, wait }: EventInput, lastEventId?: string | null) {
   if (last !== undefined && (after !== undefined || wait !== undefined)) {
     throw new BoardError("invalid_request", "`last` reads the newest events at once: it takes no `after` or `wait`");
   }
-  const position = after === undefined ? undefined : parseId(after);
-  if (position === null) throw new BoardError("invalid_cursor", "after: expected a decimal board cursor");
 
+  // Upstream treats a nonempty header of up to 128 characters as an event reference.
+  const cursor = after ?? (lastEventId && lastEventId.length <= 128 ? lastEventId : undefined);
+  const position = cursor === undefined ? undefined : parseId(cursor);
+  if (position === null) throw new BoardError("invalid_cursor", "after: expected a decimal board cursor");
+  return { position, last: cursor === undefined ? last : undefined };
+}
+
+function prepareFeed(
+  { board, by, reauthorize }: BoardContext,
+  input: EventInput,
+  streaming = false,
+  lastEventId?: string | null,
+) {
+  const { wait, all, channel, re, label, from, text, by: author, mentions } = input;
+  const { position, last } = eventStart(input, lastEventId);
   const thread = re === undefined ? undefined : parseId(re);
   if (thread === null) throw new BoardError("invalid_request", "re: expected a decimal thread ID");
   const authorLookup = author === "me" ? undefined : author;
@@ -96,7 +109,7 @@ function prepareFeed(
         .flatMap((event) => projectEvent(event, revealMentions, text !== undefined || mentions !== undefined)),
     };
   };
-  return { position, read };
+  return { position, read, newest: last !== undefined };
 }
 
 type FilterActors = Awaited<ReturnType<Parameters<typeof readEventsHandler>[0]["board"]["findFilterActors"]>>;

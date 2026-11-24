@@ -5,12 +5,15 @@ milestone: M3-live-tail
 package: server
 writes:
   - packages/server/src/live/sse.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/events.ts
   - packages/server/test/sse.test.ts
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [99]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 100
 ---
 

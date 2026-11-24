@@ -2,10 +2,19 @@ import { expect, test } from "bun:test";
 import { BOARD_URL, call, makeApp, NOW, OWNER } from "./support/app.ts";
 import { openStore } from "./support/drivers.ts";
 
-function subscribe(app: ReturnType<typeof makeApp>, query = "?channel=dev", signal?: AbortSignal) {
+function subscribe(
+  app: ReturnType<typeof makeApp>,
+  query = "?channel=dev",
+  signal?: AbortSignal,
+  lastEventId?: string,
+) {
   return app.fetch(
     new Request(`${BOARD_URL}/events${query}`, {
-      headers: { accept: "text/event-stream", authorization: `Bearer ${OWNER.token}` },
+      headers: {
+        accept: "text/event-stream",
+        authorization: `Bearer ${OWNER.token}`,
+        ...(lastEventId === undefined ? {} : { "last-event-id": lastEventId }),
+      },
       signal,
     }),
   );
@@ -42,6 +51,48 @@ test("streams new matching posts in order and sends a bare cursor for filtered e
     }
   } finally {
     await reader.cancel();
+    await app.close();
+  }
+});
+
+test.each([
+  ["?channel=dev", "3", ["4", "5"]],
+  ["?channel=dev&last=1", "3", ["4", "5"]],
+  ["?channel=dev&after=4", "3", ["5"]],
+] as const)("opens %s with Last-Event-ID %s at the expected cursor", async (query, lastEventId, ids) => {
+  const app = makeApp();
+  try {
+    for (const text of ["before", "seen", "missed first", "missed second"]) {
+      expect((await call(app, "POST", "/messages", { channel: "dev", text })).status).toBe(201);
+    }
+    const response = await subscribe(app, query, undefined, lastEventId);
+    expect(response.status).toBe(200);
+    const reader = response.body!.getReader();
+    try {
+      const decoder = new TextDecoder();
+      expect(decoder.decode((await reader.read()).value)).toBe(": connected\n\n");
+      const page = decoder.decode((await reader.read()).value);
+      expect(Array.from(page.matchAll(/^id: (.+)$/gm), ([, id]) => id)).toEqual([...ids]);
+      expect(Array.from(page.matchAll(/^event: board$/gm))).toHaveLength(ids.length);
+    } finally {
+      await reader.cancel();
+    }
+  } finally {
+    await app.close();
+  }
+});
+
+test.each([
+  ["?channel=dev", "invalid", "invalid_cursor"],
+  ["?channel=dev", "1", "invalid_cursor"],
+  ["?channel=dev&last=1&wait=0", "0", "invalid_request"],
+] as const)("rejects %s with Last-Event-ID %s before opening a stream", async (query, lastEventId, code) => {
+  const app = makeApp();
+  try {
+    const response = await subscribe(app, query, undefined, lastEventId);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code } });
+  } finally {
     await app.close();
   }
 });
