@@ -1,5 +1,5 @@
 import { BoardError, createTask, type createTaskBatch, type getTaskBatch, type Message } from "@openboard/contract";
-import { batchNeedPositions, decideTaskBatch, effectiveTask, messages } from "@openboard/core";
+import { batchNeedPositions, decideTaskBatch, effectiveTask, messages, taskAssignee } from "@openboard/core";
 import { canReadChannel, keepInsideCan } from "../../auth/access.ts";
 import { authorOf } from "../../auth/author.ts";
 import { hashToken } from "../../auth/secrets.ts";
@@ -20,7 +20,7 @@ function requestDigest(channel: string, tasks: import("@openboard/contract").Inp
         task.noSync ?? false,
         [],
         task.needs ?? [],
-        null,
+        task.for ?? null,
       ]),
     ]),
   ).slice(0, 32);
@@ -61,6 +61,7 @@ export const createTaskBatchHandler: Handler<typeof createTaskBatch> = async (ct
     async (writer, visibility) => {
       const landed = key && (await writer.taskBatch(ctx.by.principal, key.id));
       if (landed) {
+        for (const task of tasks) taskAssignee(ctx.by.principal, task.for);
         if (landed.digest !== key?.digest) throw duplicate();
         return { roots: landed.roots };
       }

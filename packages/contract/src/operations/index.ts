@@ -78,6 +78,7 @@ import {
   pushInbox,
   recordSyncReceipt,
 } from "./sync/records.ts";
+import { assignTask } from "./tasks/assign.ts";
 import { createTaskBatch, getTaskBatch } from "./tasks/batch.ts";
 import { cancelTask } from "./tasks/cancel.ts";
 import { claimTask } from "./tasks/claim.ts";
@@ -177,6 +178,7 @@ export const operations = [
   listWebhooks,
   testWebhook,
   unblockTask,
+  assignTask,
   pollDeviceSignIn,
   postMessage,
   previewDeviceSignIn,
@@ -222,6 +224,7 @@ export {
   ackInbox,
   ackWatcherMatch,
   approveDeviceSignIn,
+  assignTask,
   attachSync,
   blockTask,
   cancelTask,

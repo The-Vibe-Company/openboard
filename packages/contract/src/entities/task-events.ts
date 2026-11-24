@@ -19,6 +19,15 @@ export const TaskCreatedEvent = Type.Object({
   message: Message,
 });
 
+export const TaskAssignedPayload = Type.Pick(TaskCreatedPayload, ["id", "thread", "for", "by"]);
+export type TaskAssignedPayload = Static<typeof TaskAssignedPayload>;
+
+export const TaskAssignedEvent = Type.Object({
+  ...TaskCreatedEvent.properties,
+  type: Type.Literal("task.assigned"),
+  payload: TaskAssignedPayload,
+});
+
 export const TaskClaimedPayload = Type.Object({
   id: Type.String(),
   thread: Type.String(),

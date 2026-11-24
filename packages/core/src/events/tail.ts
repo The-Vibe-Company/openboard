@@ -119,6 +119,7 @@ export function isTailMessage(
       event.type === "task.needs_changed" ||
       event.type === "task.blocked" ||
       event.type === "task.unblocked" ||
+      event.type === "task.assigned" ||
       event.type === "task.ready" ||
       event.type === "task.expired" ||
       event.type === "task.released" ||
@@ -143,6 +144,7 @@ export type TailMessage = Extract<
       | "task.needs_changed"
       | "task.blocked"
       | "task.unblocked"
+      | "task.assigned"
       | "task.ready"
       | "task.expired"
       | "task.released"

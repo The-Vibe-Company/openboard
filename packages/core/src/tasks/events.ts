@@ -1,5 +1,6 @@
 import type {
   Message,
+  TaskAssignedPayload,
   TaskBlockedPayload,
   TaskCanceledPayload,
   TaskClaimedPayload,
@@ -128,7 +129,16 @@ export interface TaskUnblocked extends Omit<MessagePosted, "type" | "payload"> {
   };
 }
 
+export interface TaskAssigned extends Omit<MessagePosted, "type" | "payload"> {
+  readonly type: "task.assigned";
+  readonly payload: Omit<TaskAssignedPayload, "id"> & {
+    readonly id: number;
+    readonly view: Message & { task: NonNullable<Message["task"]> };
+  };
+}
+
 export type TaskEvent =
+  | TaskAssigned
   | TaskUnblocked
   | TaskBlocked
   | TaskReopened

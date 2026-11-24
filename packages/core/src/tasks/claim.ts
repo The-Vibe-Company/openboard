@@ -23,11 +23,13 @@ export function decideClaimTask(
   const target = expired?.payload.view ?? stored;
   const { task } = target;
   if (!task || target.deleted) throw new BoardError("not_a_task", `#${id} is not a task.`);
-  if (task.state === "claimed") throw new BoardError("task_claimed", `#${id} is claimed until ${task.claim?.until}.`);
   if (task.state === "waiting") throw new BoardError("task_waiting", `#${id} is waiting.`);
   if (task.state === "blocked") throw new BoardError("task_blocked", `#${id} is blocked.`);
-  if (task.state !== "ready") throw new BoardError("task_finished", `#${id} is ${task.state}.`);
-  if (task.for !== null) throw new BoardError("task_assigned", `#${id} is assigned to ${task.for}.`);
+  if (task.state !== "ready" && task.state !== "claimed")
+    throw new BoardError("task_finished", `#${id} is ${task.state}.`);
+  if (task.for !== null && (task.owner !== context.by.principal || task.for !== context.by.actor))
+    throw new BoardError("task_assigned", `#${id} is assigned to ${task.for}.`);
+  if (task.state === "claimed") throw new BoardError("task_claimed", `#${id} is claimed until ${task.claim?.until}.`);
   const message = parseId(target.id);
   if (message === null) throw new Error("invalid stored task position");
   const position = (expired?.id ?? beforeExpiry) + 1;
