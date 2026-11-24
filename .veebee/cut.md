@@ -2,7 +2,7 @@
 
 Legend.
 - One line per ticket: `NN  title   ← deps`. Numbers run across the whole project in construction order; a ticket depends only on lower numbers.
-- Ticket files exist for M0-M8 (`.veebee/tickets/NN-slug.md`); from M9 on, these lines are the plan and files are written when the milestone before is nearly done.
+- Ticket files exist for M0-M10 (`.veebee/tickets/NN-slug.md`); from M11 on, these lines are the plan and files are written when the milestone before is nearly done.
 - `[c]` marks a line that claims upstream conformance checks, `[s]` one that records `expectedSkips`; every one of the 91 checks is placed exactly once.
 - `writes` exclude generated files and the shared append points of `docs/project.md` section 5; tickets touching `contract`, `ports` or migrations are also serialized at claim time.
 
@@ -273,32 +273,32 @@ Legend.
 
 ## M9 Tasks (38)
 
-238  Start a thread as a task   ← 215
+238  Start a thread as a task   ← 215, 99, 198
 239  List a channel's tasks   ← 238
-240  Make a task of a thread that was there [c]   ← 239
+240  Make a task of a thread that was there   ← 239
 241  Make a task once for a client ID [c]   ← 240
-242  Claim a task   ← 238
+242  Claim a task [c]   ← 241
 243  Complete a claimed task [c]   ← 242
-244  Renew a claim's lease [c]   ← 243
-245  Return an unrenewed task to the queue   ← 244
+244  Renew a claim's lease   ← 243, 175
+245  Return an unrenewed task to the queue   ← 244, 211
 246  Claim on one instance a task whose lease ran out on another   ← 177, 245
-247  Release a claim   ← 244
+247  Release a claim [c]   ← 245
 248  Fail a task   ← 247
-249  Refuse a write by a lost claim [c]   ← 248
+249  Refuse a write by a lost claim   ← 248
 250  Cancel a task   ← 249
-251  Reopen a failed task   ← 250
+251  Reopen a failed task [c]   ← 250
 252  Hold a task until what it needs completes [c]   ← 251
 253  Refuse a canceled prerequisite [c]   ← 252
-254  Say task.ready when a waiting task becomes ready [c]   ← 253
+254  Say task.ready when a waiting task becomes ready   ← 253
 255  List the tasks that wait for one [c]   ← 254
 256  List the last active tasks [c]   ← 255
-257  Change what a task needs [c]   ← 256
+257  Change what a task needs   ← 256
 258  Refuse needs that make a task wait for itself [c]   ← 257
 259  Refuse a change of needs on a held or finished task [c]   ← 258
 260  Make several tasks in one write [c]   ← 259
 261  Make none of a batch when one task fails [c]   ← 260
-262  Hold a task for a person   ← 249
-263  Lift a hold on a task [c]   ← 262
+262  Hold a task for a person   ← 261
+263  Lift a hold on a task [c] (3 checks)   ← 262
 264  Assign a task to a profile [c]   ← 263
 265  Claim the next ready task in a channel   ← 264
 266  Claim the next ready task with a label   ← 265
@@ -307,36 +307,42 @@ Legend.
 269  Follow a feed of tasks becoming ready [c]   ← 267
 270  Refuse a label under board. [c]   ← 238
 271  Cancel a task when its root is deleted   ← 250
-272  Hold a task when someone else edits its root   ← 262
-273  See a channel's tasks in the front   ← 222, 239
-274  Measure 500 task cycles in the bench   ← 243
+272  Hold a task when someone else edits its root   ← 262, 271
+273  See a channel's tasks in the front   ← 222, 229, 239
+274  Measure 500 task cycles in the bench   ← 243, 108
 275  Mirror ready tickets as board tasks   ← 267
+
+M9 and M10 changes made when their ticket files were written (each ticket's Notes say why):
+- `[c]` moved where every route a check uses exists: 240 to 242 (the check claims a plain thread), 244 to 247 (it releases), 249 to 251 (it reopens), 254 and 257 to 263 (they hold and unblock), 283 to 288 (it narrows with `x-board-can`). Counts are unchanged: tasks 20 in M9, 3 in M10; grants 10; core 1.
+- Arrows added where parallel tickets would share a file that is no append point, or a check needs a route: 242 ← 241 (not 238), 247 ← 245 (not 244), 262 ← 261 (not 249), 272 ← 271, 276 ← 238, 288 ← 285, 290 ← 268, 291 ← 264, 292 ← 272 (the profile check ends with an edit of the root).
+- Arrows added to the earlier tickets that last change a shared file, since they are on no path to M9 or M10: 238 ← 99, 198 (the feed, `views/messages.ts`; M3 is not upstream of M7); 244 ← 175; 245 ← 211; 273 ← 229; 274 ← 108; 281 ← 213, 214; 282 ← 221, 226; 286 ← 115, 216; 296 ← 200, 210; 298 ← 221.
+- Owner decisions the tickets propose (questions 14 to 17 below).
 
 ## M10 Access (24)
 
-276  Grant a principal on a board   ← 215
+276  Grant a principal on a board   ← 215, 238
 277  List a board's grants   ← 276
 278  Revoke a grant [c]   ← 277
 279  Change a grant by its ID [c]   ← 278
 280  Keep a grant's can as written [c]   ← 279
-281  Explain what a caller may do on a channel [c]   ← 280
-282  Let everyone's grant narrow what others let in [c]   ← 281
-283  Take manage to change grants [c]   ← 282
+281  Explain what a caller may do on a channel [c]   ← 280, 213, 214
+282  Let everyone's grant narrow what others let in [c]   ← 281, 221, 226
+283  Take manage to change grants   ← 282
 284  Refuse a grant that would lock its maker out [c]   ← 283
 285  Make several grants in one write [c]   ← 284
-286  Narrow a request with x-board-can [c]   ← 281
+286  Narrow a request with x-board-can [c]   ← 281, 115, 216
 287  Refuse a malformed x-board-can   ← 286
-288  Keep a narrowed caller from granting past its can [c]   ← 283, 286
+288  Keep a narrowed caller from granting past its can [c] (2 checks)   ← 283, 285, 286
 289  Keep a narrowed caller from opening more than it has [c]   ← 288
-290  Refuse a claim by a caller without label [c]   ← 267, 286
-291  Refuse a prerequisite a narrowed caller cannot read [c]   ← 261, 286
-292  Let a profile change only the tasks it made [c]   ← 264, 286
+290  Refuse a claim by a caller without label [c]   ← 267, 268, 286
+291  Refuse a prerequisite a narrowed caller cannot read [c]   ← 261, 264, 286
+292  Let a profile change only the tasks it made [c]   ← 264, 272, 286
 293  Record upstream's four permanent grant skips [s]   ← 285
 294  Create a private channel only its grant opens   ← 283
 295  Explain a connection's access   ← 281
-296  Post from GitHub Actions with no secret   ← 276
+296  Post from GitHub Actions with no secret   ← 276, 200, 210
 297  Accept a grant naming another OIDC issuer   ← 296
-298  Narrow a personal token   ← 286
+298  Narrow a personal token   ← 286, 221
 299  Edit grants in board settings   ← 216, 279
 
 ## M11 Webhooks and watchers (39)
@@ -494,6 +500,11 @@ Legend.
     - deleting the board `main` (209): proposed refused, `main` goes only with its organization;
     - how an invite-only instance gets its first person (215): proposed one sign-up while `OPENBOARD_SIGNUP=open`.
 13. **M3 is not upstream of M5-M8.** No dependency path leads from the live-tail tickets (94-108) to M5 onward, although 177, 183, 206, 227 and 231 build on SSE. 206 and 227 now depend on 102; 177 and 183 were left as written.
+
+14. **A second conformance run as a person (281).** Upstream's grant checks keep their run inside a closed pattern with a grant naming the run, which can name a person, project or app, never a connection, so D43's connection skips five of the ten grant checks M10 must pass (281, 282, 285, 288, 289). Proposed: run the kit a second time as a person, counted only where the first run skipped.
+15. **Discovery's `team_id` (282).** Upstream's `everyone` check stops with "this board names no team" while `team_id` is null (docs/protocol.md "Discovery"). Proposed: answer the organization's slug; otherwise the check joins 293's `expectedSkips` and M10 passes nine grant checks.
+16. **Child connections.** docs/auth.md "Connections" says an orchestrator holding `manage` mints child connections, that revoking a parent revokes descendants, and that this arrives "with the M10 grant-change rules"; no line of the cut builds it.
+17. **Lease floor.** docs/data-model.md says a lease is granted at least 300 s; upstream's check renews for 60 s and expects 60 s. 244 corrects docs/data-model.md to upstream's reading (a board's cap is never under 300 s).
 
 ### Contradictions between docs (decisions.md followed where it speaks)
 
