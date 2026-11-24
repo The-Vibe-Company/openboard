@@ -191,3 +191,13 @@ h1 {
     grid-column: 2;
   }
 }
+
+.invitation section {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+
+.invitation button {
+  max-inline-size: 100%;
+}

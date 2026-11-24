@@ -1,9 +1,22 @@
 import type { Page } from "@playwright/test";
 
-export async function signIn(page: Page, url: string, name: string, startSignIn?: () => Promise<void>) {
-  const start = `${url}/auth/github/start`;
+export async function signIn(
+  page: Page,
+  url: string,
+  name: string,
+  startSignIn?: () => Promise<void>,
+  {
+    invitation,
+    destination = "/new",
+    beforeCallback,
+  }: { invitation?: string; destination?: string; beforeCallback?: () => Promise<void> } = {},
+) {
+  const startUrl = new URL("/auth/github/start", url);
+  if (invitation) startUrl.searchParams.set("invitation", invitation);
+  const start = startUrl.href;
   await page.route(start, async (route) => {
-    const response = await route.fetch({ maxRedirects: 0 });
+    const original = await route.request().allHeaders();
+    const response = await route.fetch({ maxRedirects: 0, headers: original });
     const headers = response.headers();
     const authorize = new URL(headers.location ?? "", url);
     const state = authorize.searchParams.get("state");
@@ -14,12 +27,13 @@ export async function signIn(page: Page, url: string, name: string, startSignIn?
     const callback = new URL("/auth/github/callback", url);
     callback.searchParams.set("state", state);
     callback.searchParams.set("code", name);
+    await beforeCallback?.();
     await route.fulfill({ response, headers: { ...headers, location: callback.href } });
   });
   try {
     if (startSignIn) {
       await Promise.all([
-        page.waitForURL((current) => current.origin === url && current.pathname === "/new"),
+        page.waitForURL((current) => current.origin === url && current.pathname === destination),
         startSignIn(),
       ]);
     } else {

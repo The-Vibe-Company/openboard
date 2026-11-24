@@ -2,9 +2,10 @@ import { BoardError, type SignInProvider } from "@openboard/contract";
 import type { PlatformView } from "@openboard/ports";
 import type { Deps, ServerConfig } from "../../deps.ts";
 import type { RequestLimits } from "../../http/limits.ts";
-import { base32, hashToken } from "../secrets.ts";
+import { base32 } from "../secrets.ts";
 import { base64url, cookieOf, hostCookie, mintSession, sameText } from "../sessions.ts";
 import { githubProvider } from "./github/index.ts";
+import { signInWithInvitation } from "./invitation.ts";
 
 /** Who a provider says signed in (docs/auth.md "Sign-in providers"); `subject` is its stable ID for them. */
 export interface ExternalIdentity {
@@ -79,16 +80,16 @@ async function callback(provider: LoginProvider, ctx: SignInContext, request: Re
   const session = mintSession(ctx.deps.randomBytes, now);
   const verified = emailVerified ? (email ?? null) : null;
   const signup = ctx.config.signup ?? "closed";
-  const invitationHash =
-    signup === "invite" && INVITATION_TOKEN.test(invitation) ? Buffer.from(hashToken(invitation), "hex") : undefined;
-  const person = await ctx.platform.signIn({
+  const record = {
     identity: { provider: provider.id, subject, login, name, email: verified, avatar: avatar ?? null },
     admitNew: signup === "open",
-    ...(invitationHash && { invitationHash }),
     newPersonId: `u_${base32(ctx.deps.randomBytes(10))}`,
     session: session.record,
     now,
-  });
+  };
+  const { person, next } = INVITATION_TOKEN.test(invitation)
+    ? await signInWithInvitation(ctx.platform, signup, record, invitation)
+    : { person: await ctx.platform.signIn(record), next: undefined };
   if (!person) {
     throw new BoardError(
       "forbidden",
@@ -98,8 +99,8 @@ async function callback(provider: LoginProvider, ctx: SignInContext, request: Re
       },
     );
   }
-  const [membership] = await ctx.platform.memberships(person.id);
-  const headers = new Headers({ location: membership ? `/${membership.org.slug}/main` : "/new" });
+  const [membership] = next ? [] : await ctx.platform.memberships(person.id);
+  const headers = new Headers({ location: next ?? (membership ? `/${membership.org.slug}/main` : "/new") });
   headers.append("set-cookie", session.cookie);
   headers.append("set-cookie", hostCookie(SIGN_IN_COOKIE, "", 0));
   return new Response(null, { status: 302, headers });
@@ -114,7 +115,18 @@ export function signInRoute(request: Request, url: URL, ctx: SignInContext): Pro
   const provider = ctx.providers.find((candidate) => candidate.id === id);
   if (request.method !== "GET" || !provider) return null;
   const redirectUri = `${ctx.config.publicUrl}/auth/${provider.id}/callback`;
-  return step === "start"
-    ? start(provider, ctx, redirectUri, url.searchParams.get("invitation"))
-    : callback(provider, ctx, request, redirectUri);
+  if (step !== "start") return callback(provider, ctx, request, redirectUri);
+
+  const invitation = url.searchParams.get("invitation");
+  if (invitation) {
+    // The browser only sends the invitation page URL as the referrer for a same-origin request.
+    const page = URL.parse(request.headers.get("referer") ?? "");
+    if (
+      page?.origin !== new URL(ctx.config.publicUrl).origin ||
+      page.pathname.replace(/\/$/, "") !== `/invite/${invitation}`
+    ) {
+      throw new BoardError("forbidden", "open the invitation page before starting sign-in");
+    }
+  }
+  return start(provider, ctx, redirectUri, invitation);
 }

@@ -24,7 +24,7 @@ import type {
   OrgQuotaOverrides,
   QuotaOutcome,
 } from "@openboard/core";
-import type { PersonRecord, SessionRecord, SignInRecord } from "./account-records.ts";
+import type { PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
 import type { BoardMessageReads } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
@@ -173,7 +173,7 @@ export interface PlatformView {
    * `admitNew` or a live invitation admits them. A supplied invitation is redeemed for a new person before opening
    * their session. Null when the identity is new and not admitted, or the person is disabled.
    */
-  signIn(record: SignInRecord): Promise<PersonRecord | null>;
+  signIn(record: SignInRecord): Promise<SignedInPerson | null>;
   /** The session whose cookie value hashes to `idHash`, or null when none, revoked, or its person is disabled. */
   session(idHash: string): Promise<SessionRecord | null>;
   /** Records that the session was used at `now`, for its idle lifetime. */

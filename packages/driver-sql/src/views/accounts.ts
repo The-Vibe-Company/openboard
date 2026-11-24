@@ -1,6 +1,6 @@
 import { BoardError } from "@openboard/contract";
 import { countQuotaError } from "@openboard/core";
-import type { PersonRecord, PlatformView, SessionRecord, SignInRecord } from "@openboard/ports";
+import type { PersonRecord, PlatformView, SessionRecord, SignedInPerson, SignInRecord } from "@openboard/ports";
 import type { Db, Dialect, Row, SqlValue } from "../db.ts";
 import { query, sql } from "../sql.ts";
 import { redeemInvitation } from "./invitations.ts";
@@ -58,7 +58,11 @@ async function personOf(db: Db, dialect: Dialect, userId: number, row: Row): Pro
 class IdentityCreatedConcurrently extends Error {}
 
 /** The person holding the identity, refreshed from it, or a new one if admitted; null if refused or disabled. */
-async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<number | null> {
+async function holder(
+  tx: Db,
+  dialect: Dialect,
+  record: SignInRecord,
+): Promise<{ userId: number; invitedOrg?: string } | null> {
   const { identity, now } = record;
   const details = { handle: identity.login, name: identity.name, email: identity.email, avatar: identity.avatar };
   const [known] = await query(tx, dialect, accountStatements.identityUser, identity);
@@ -67,7 +71,7 @@ async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<n
     const userId = Number(known.id);
     await query(tx, dialect, accountStatements.refreshUser, { ...details, userId });
     await query(tx, dialect, accountStatements.refreshIdentity, identity);
-    return userId;
+    return { userId };
   }
   if (!record.admitNew && !record.invitationHash) return null;
   const [created] = await query(tx, dialect, accountStatements.insertUser, {
@@ -82,8 +86,9 @@ async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<n
     const outcome = await redeemInvitation(tx, dialect, record.invitationHash, record.newPersonId, now);
     if (!outcome) throw new BoardError("forbidden", "a live invitation is required to sign up with this link");
     if ("quota" in outcome) throw countQuotaError("members", outcome.quota);
+    return { userId, invitedOrg: outcome.org.slug };
   }
-  return userId;
+  return { userId };
 }
 
 /** The platform's account methods, written once for both engines. */
@@ -101,9 +106,10 @@ export function accountView(
   | "revokePersonalToken"
 > {
   const signIn = (record: SignInRecord) =>
-    db.transaction(async (tx) => {
-      const userId = await holder(tx, dialect, record);
-      if (userId === null) return null;
+    db.transaction(async (tx): Promise<SignedInPerson | null> => {
+      const account = await holder(tx, dialect, record);
+      if (!account) return null;
+      const { userId, invitedOrg } = account;
       const { idHash, csrf, expiresAt } = record.session;
       const at = record.now;
       await query(tx, dialect, accountStatements.insertSession, {
@@ -115,7 +121,8 @@ export function accountView(
       });
       const [row] = await query(tx, dialect, accountStatements.userById, { userId });
       if (!row) throw new Error(`user ${userId} vanished during its sign-in`);
-      return personOf(tx, dialect, userId, row);
+      const person = await personOf(tx, dialect, userId, row);
+      return invitedOrg ? { ...person, invitedOrg } : person;
     });
   return {
     async signIn(record) {
