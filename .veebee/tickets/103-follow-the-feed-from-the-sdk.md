@@ -7,11 +7,12 @@ writes:
   - packages/sdk/src/live.ts
   - packages/sdk/src/index.ts
   - packages/sdk/test/live.test.ts
+  - packages/sdk/src/client.ts
 conformance: []
 modes: [local]
 depends_on: [99]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-t103
 issue: 103
 ---
 

@@ -32,7 +32,7 @@ export interface ClientOptions {
 const fieldsOf = (schema: { properties: object } | undefined) => new Set(Object.keys(schema?.properties ?? {}));
 
 /** The request an operation's flat input makes: path params in the path, query fields in the query, the rest in the body. */
-function requestOf(operation: Operation, input: Readonly<Record<string, unknown>>, options: ClientOptions) {
+export function requestOf(operation: Operation, input: Readonly<Record<string, unknown>>, options: ClientOptions) {
   const params = fieldsOf(operation.input.params);
   const query = fieldsOf(operation.input.query);
   const path = operation.route.path.replace(/:([A-Za-z]+)/g, (_, name: string) =>
@@ -83,7 +83,7 @@ function isNextStep(value: unknown): value is NextStep {
 }
 
 /** The board's answer, or its error envelope thrown as a `BoardError`. */
-async function answerOf(response: Response): Promise<unknown> {
+export async function answerOf(response: Response): Promise<unknown> {
   const text = await response.text();
   let parsed: unknown;
   try {
@@ -105,7 +105,7 @@ async function answerOf(response: Response): Promise<unknown> {
 }
 
 /** Sends the request; a board that does not answer is upstream's `unreachable`, not a transport exception. */
-async function reach(send: (request: Request) => Promise<Response>, request: Request): Promise<Response> {
+export async function reach(send: (request: Request) => Promise<Response>, request: Request): Promise<Response> {
   try {
     return await send(request);
   } catch (error) {
