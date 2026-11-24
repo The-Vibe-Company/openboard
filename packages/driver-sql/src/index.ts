@@ -27,7 +27,7 @@ import { threadReads } from "./views/threads.ts";
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
 export { postgresText } from "./db.ts";
 export { splitStatements } from "./ddl.ts";
-export { platformStatements, statements } from "./statements.ts";
+export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
 
 /** A migration of the one DDL source, in Postgres syntax (docs/data-model.md "DDL"). */
 export interface Migration {

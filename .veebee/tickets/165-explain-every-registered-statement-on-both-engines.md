@@ -5,13 +5,14 @@ milestone: M5-postgres-driver
 package: driver-sql
 writes:
   - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/src/index.ts
   - packages/driver-sqlite/test/explain.test.ts
   - packages/driver-postgres/test/explain.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [163]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-t165
 issue: 245
 ---
 
