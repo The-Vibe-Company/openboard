@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  BUN_VERSION: 1.4.2
+  BUN_VERSION: 1.4.3
   IMAGE: ghcr.io/the-vibe-company/openboard
   DEPLOYMENT_TAG: main-${{ github.sha }}
 

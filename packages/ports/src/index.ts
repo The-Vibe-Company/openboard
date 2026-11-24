@@ -18,6 +18,7 @@ export type {
   ChannelsQuery,
   ConnectionRecord,
   CreateOrgRecord,
+  DatabaseDump,
   MembershipRecord,
   MentionEvidence,
   OrgScope,

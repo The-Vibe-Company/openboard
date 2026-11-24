@@ -127,6 +127,7 @@ function driverOn(open: () => Promise<Store>): Store {
       watch: (...args) => subscribeLater(async () => (await opened()).jobs, "watch")(...args),
     },
     schemaReady: async () => (await opened()).schemaReady(),
+    dumpIfMissing: async (...args) => (await opened()).dumpIfMissing?.(...args) ?? false,
     platform: () => deferred(async () => (await opened()).platform()),
     board: (scope) => deferred(async () => (await opened()).board(scope)),
     org: (scope) => deferred(async () => (await opened()).org(scope)),

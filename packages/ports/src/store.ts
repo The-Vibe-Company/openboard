@@ -30,7 +30,7 @@ import type {
 import type { PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
 import type { BoardMessageReads } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
-import type { OrgLogMaintenance } from "./bucket.ts";
+import type { Bucket, OrgLogMaintenance } from "./bucket.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
 import type { BoardJobWriter, JobLease, Jobs } from "./jobs.ts";
 import type { OrgAuditRecord } from "./org-audit-record.ts";
@@ -377,8 +377,12 @@ export interface BoardView extends RateView, BoardMessageReads, BoardTaskReads, 
   member(personId: string): Promise<BoardMemberRecord | null>;
 }
 
+/** Ensure an archive exists, returning false when another instance holds the dump lock. */
+export type DatabaseDump = (bucket: Bucket, key: string, signal: AbortSignal) => Promise<boolean>;
+
 export interface Store {
   readonly jobs: Jobs;
+  readonly dumpIfMissing?: DatabaseDump;
   /** Query storage and report whether its schema meets this instance's migration level. */
   schemaReady(): Promise<boolean>;
   platform(): PlatformView;

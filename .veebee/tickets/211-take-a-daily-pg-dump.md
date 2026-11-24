@@ -11,12 +11,25 @@ writes:
   - packages/server/src/jobs/dump.ts
   - packages/server/src/jobs/registry.ts
   - packages/server/test/ha/dump.test.ts
+  - packages/ports/src/bucket.ts
+  - apps/openboard/src/bucket.ts
+  - packages/server/src/app.ts
+  - packages/server/test/ha/ship-log.test.ts
+  - packages/server/test/support/drivers.ts
+  - .github/workflows/ci.yml
+  - .github/workflows/nightly.yml
+  - scripts/ci/postgres-clients.sh
+  - docs/codebase.md
+  - packages/ports/src/index.ts
+  - scripts/ci/verify-pg.ts
+  - .github/workflows/release.yml
+  - .github/workflows/web.yml
   - Dockerfile
 conformance: []
 modes: [hosted]
 depends_on: [210]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 372
 ---
 
@@ -24,9 +37,9 @@ issue: 372
 As the owner of the hosted service, every day a full dump of the database lands in the bucket, so account and operational tables can be restored even if Railway's volume backups are gone.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/driver-postgres/test/dump.test.ts` passes: the driver's dump of a seeded test database, restored with `pg_restore` into a fresh database, holds the same rows in every table
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/dump.test.ts` passes with a fake bucket and both runners polling: one dump per UTC day is written to `dumps/<YYYY-MM-DD>.dump`, by exactly one instance, and a missed day is taken once when the runners come back, not once per missed day
-- [ ] `docker run --rm --entrypoint pg_dump openboard:dev --version` prints the same major version as the Postgres pinned in `docker-compose.test.yml`
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/driver-postgres/test/dump.test.ts` passes: the driver's dump of a seeded test database, restored with `pg_restore` into a fresh database, holds the same rows in every table
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/dump.test.ts` passes with a fake bucket and both runners polling: one dump per UTC day is written to `dumps/<YYYY-MM-DD>.dump`, by exactly one instance, and a missed day is taken once when the runners come back, not once per missed day
+- [x] `docker run --rm --entrypoint pg_dump openboard:dev --version` prints the same major version as the Postgres pinned in `docker-compose.test.yml`
 
 ## Out of scope
 - Restoring from a dump (M15, 390, 391).

@@ -3,6 +3,8 @@ import type { JobLease } from "./jobs.ts";
 /** A private backup bucket. Keys and prefixes are relative to its root. */
 export interface Bucket {
   put(key: string, bytes: Uint8Array, deadline: number): Promise<void>;
+  /** Publish only after the stream ends successfully. */
+  putStream(key: string, stream: ReadableStream<Uint8Array>): Promise<void>;
   list(prefix: string): AsyncIterable<string>;
   deletePrefix(prefix: string): Promise<void>;
 }

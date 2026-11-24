@@ -1,4 +1,5 @@
-FROM oven/bun:1.4.2 AS build
+# syntax=docker/dockerfile:1
+FROM oven/bun:1.4.3 AS build
 WORKDIR /build
 COPY . .
 RUN bun install --frozen-lockfile
@@ -6,6 +7,14 @@ RUN bun -e 'import { buildBinary, hostTarget } from "./scripts/build/index.ts"; 
     && mv "dist/openboard-bun-linux-$(bun -p process.arch)" "dist/openboard-linux-$(bun -p process.arch)"
 
 FROM debian:bookworm-slim
+ADD --checksum=sha256:0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76 https://www.postgresql.org/media/keys/ACCC4CF8.asc /usr/share/keyrings/postgresql.asc
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && chmod 0644 /usr/share/keyrings/postgresql.asc \
+    && echo "deb [signed-by=/usr/share/keyrings/postgresql.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/postgresql.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-17 \
+    && rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/postgresql.list /usr/share/keyrings/postgresql.asc
 RUN useradd --uid 10001 --user-group --create-home openboard \
     && install -d -o openboard -g openboard /data
 COPY --from=build /build/dist/openboard-linux-* /usr/local/bin/openboard

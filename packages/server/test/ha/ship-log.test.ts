@@ -43,6 +43,10 @@ function fakeBucket() {
       objects.set(key, bytes);
       writes.push(key);
     },
+    async putStream(key, stream) {
+      objects.set(key, await new Response(stream).bytes());
+      writes.push(key);
+    },
     async *list(prefix) {
       for (const key of objects.keys()) if (key.startsWith(prefix)) yield key;
     },
