@@ -31,7 +31,7 @@ export const readEvents = defineOperation({
         all: Type.Optional(
           Type.Union([Type.Literal("true"), Type.Literal("1"), Type.Literal("false"), Type.Literal("0")], {
             description:
-              "`true` or `1` adds bookkeeping events (`actor.seen`, `channel.created`) when no filter is set and the caller reads every channel.",
+              "`true` or `1` adds `task.renewed`. It also adds `actor.seen` and `channel.created` when no filter is set and the caller reads every channel.",
           }),
         ),
         channel: Type.Optional(ChannelFilter),

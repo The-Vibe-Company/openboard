@@ -48,6 +48,7 @@ export {
   claimConnection,
   claimTask,
   completeTask,
+  renewTask,
   createBoard,
   createChannel,
   createConnection,

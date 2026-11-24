@@ -623,10 +623,9 @@ byte.
   (upstream, `03-http.md`, "Tasks"). With `wait`, the request parks on the
   board tail and retries on `task.created|ready|released|expired|reopened|unblocked`
   in that subtree, whichever instance wrote it.
-- **Leases:** input 30 to 3600 s (400 outside), default 900, granted at least
-  300 (`LEASE_MIN_S = 30`, `LEASE_CAP_S = 3600` in upstream's
-  `src/server/tasks.ts`; "never under 300 seconds" in `03-http.md`).
-  `claim_until = tx.now + lease`. Instance clocks must be NTP-synced; skew of a
+- **Leases:** claims and renewals grant the requested 30 to 3600 s (400 outside),
+  or 900 s if omitted. Both set `claim_until = tx.now + lease`.
+  Instance clocks must be NTP-synced; skew of a
   few milliseconds only moves expiry by that much.
 - **Lazy expiry:** a claim is live only while `claim_until > now`; every
   command expires a dead claim first; reads compute the effective state; the

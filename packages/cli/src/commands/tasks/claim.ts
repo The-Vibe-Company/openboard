@@ -18,15 +18,22 @@ export async function runTaskCommand(ctx: CommandContext, saveClaim: boolean, in
 
   if (claim) {
     if (!saveClaim) throw new Error("task claim storage was not prepared");
-    const { epoch, until } = claim;
-    const remaining = Math.max(0, Math.ceil((Date.parse(until) - ctx.now()) / 60_000));
-    ctx.output.out(
-      ctx.json
-        ? JSON.stringify({ task, claim: { epoch, until } }, null, 2)
-        : `#${task.id}  yours for ${remaining}m  ${task.text}`,
-    );
-    return 0;
+    return printClaim(ctx, task, claim);
   }
   ctx.output.out(ctx.json ? JSON.stringify({ task }, null, 2) : task.id);
+  return 0;
+}
+
+export function printClaim(
+  ctx: CommandContext,
+  task: TaskAnswer["task"],
+  { epoch, until }: { epoch: number; until: string },
+) {
+  const remaining = Math.max(0, Math.ceil((Date.parse(until) - ctx.now()) / 60_000));
+  ctx.output.out(
+    ctx.json
+      ? JSON.stringify({ task, claim: { epoch, until } }, null, 2)
+      : `#${task.id}  yours for ${remaining}m  ${task.text}`,
+  );
   return 0;
 }

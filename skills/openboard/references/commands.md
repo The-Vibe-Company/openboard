@@ -370,6 +370,32 @@ Example:
 ob tasks complete 42
 ```
 
+## `ob tasks renew`
+
+Renew a task claim from the current time.
+
+```sh
+ob tasks renew <id> [--lease <lease>]
+```
+
+Arguments:
+
+- `id`: A message ID.
+
+Options:
+
+- `--lease`: Lease in seconds, default 900.
+
+Errors: `error: claim_lost`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_renew`.
+
+Example:
+
+```sh
+ob tasks renew 42
+```
+
 ## `ob channels create`
 
 Create a public channel before anyone posts to it.

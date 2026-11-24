@@ -1164,6 +1164,268 @@
         }
       }
     },
+    "/tasks/{id}/renew": {
+      "post": {
+        "operationId": "renewTask",
+        "summary": "Renew a task claim from the current time.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["epoch", "token"],
+                "properties": {
+                  "epoch": { "minimum": 1, "type": "integer" },
+                  "token": { "minLength": 1, "maxLength": 128, "type": "string" },
+                  "lease": {
+                    "minimum": 30,
+                    "maximum": 3600,
+                    "description": "Lease in seconds, default 900.",
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["task", "until"],
+                  "properties": {
+                    "task": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "channel",
+                        "text",
+                        "re",
+                        "replyTo",
+                        "thread",
+                        "labels",
+                        "reactions",
+                        "by",
+                        "noSync",
+                        "origin",
+                        "from",
+                        "createdAt",
+                        "editedAt",
+                        "deleted",
+                        "undelivered",
+                        "attachments",
+                        "links",
+                        "version",
+                        "task",
+                        "revision",
+                        "author",
+                        "blocks"
+                      ],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "channel": { "type": "string" },
+                        "text": { "type": "string" },
+                        "mentions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["written", "actor", "candidates"],
+                            "properties": {
+                              "written": { "type": "string" },
+                              "actor": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": ["id", "handle", "name"],
+                                    "properties": {
+                                      "id": { "type": "string" },
+                                      "handle": { "type": "string" },
+                                      "name": { "type": "string" }
+                                    }
+                                  },
+                                  { "type": "null" }
+                                ]
+                              },
+                              "candidates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["id", "handle", "name"],
+                                  "properties": {
+                                    "id": { "type": "string" },
+                                    "handle": { "type": "string" },
+                                    "name": { "type": "string" }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "thread": { "type": "string" },
+                        "labels": {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
+                        },
+                        "reactions": {
+                          "type": "object",
+                          "patternProperties": { "^(.*)$": { "type": "array", "items": { "type": "string" } } }
+                        },
+                        "by": {
+                          "type": "object",
+                          "required": ["actor", "principal", "profile"],
+                          "properties": {
+                            "actor": { "type": "string" },
+                            "principal": { "type": "string" },
+                            "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                          }
+                        },
+                        "noSync": { "type": "boolean" },
+                        "origin": { "type": "null" },
+                        "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "createdAt": { "type": "string" },
+                        "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "deleted": { "type": "boolean" },
+                        "undelivered": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
+                        "attachments": { "type": "array", "items": {} },
+                        "links": { "type": "array", "items": {} },
+                        "version": { "type": "integer" },
+                        "task": {
+                          "type": "object",
+                          "required": [
+                            "state",
+                            "owner",
+                            "by",
+                            "for",
+                            "needs",
+                            "epoch",
+                            "claim",
+                            "blocked",
+                            "result",
+                            "reason"
+                          ],
+                          "properties": {
+                            "state": {
+                              "anyOf": [
+                                { "const": "blocked", "type": "string" },
+                                { "const": "canceled", "type": "string" },
+                                { "const": "claimed", "type": "string" },
+                                { "const": "completed", "type": "string" },
+                                { "const": "failed", "type": "string" },
+                                { "const": "ready", "type": "string" },
+                                { "const": "waiting", "type": "string" }
+                              ]
+                            },
+                            "owner": { "type": "string" },
+                            "by": { "type": "string" },
+                            "for": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                            "needs": { "type": "array", "items": { "type": "string" } },
+                            "epoch": { "minimum": 0, "type": "integer" },
+                            "claim": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": ["actor", "until"],
+                                  "properties": { "actor": { "type": "string" }, "until": { "type": "string" } }
+                                },
+                                { "type": "null" }
+                              ]
+                            },
+                            "blocked": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": ["kind", "reason"],
+                                  "properties": {
+                                    "kind": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                    "reason": { "type": "string" }
+                                  }
+                                },
+                                { "type": "null" }
+                              ]
+                            },
+                            "result": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                            "reason": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                          }
+                        },
+                        "revision": { "type": "integer" },
+                        "author": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": ["kind", "handle", "name", "avatar"],
+                              "properties": {
+                                "kind": {
+                                  "anyOf": [
+                                    { "const": "person", "type": "string" },
+                                    { "const": "workflow", "type": "string" },
+                                    { "const": "agent", "type": "string" }
+                                  ]
+                                },
+                                "handle": { "type": "string" },
+                                "name": { "type": "string" },
+                                "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                "via": {
+                                  "type": "object",
+                                  "required": ["name", "environment"],
+                                  "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                                }
+                              }
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "blocks": { "type": "array", "items": {} }
+                      }
+                    },
+                    "until": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "message_not_found, not_a_task, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "claim_lost",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/api/x/orgs/{org}/boards": {
       "post": {
         "operationId": "createBoard",
@@ -7119,7 +7381,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "description": "`true` or `1` adds bookkeeping events (`actor.seen`, `channel.created`) when no filter is set and the caller reads every channel.",
+              "description": "`true` or `1` adds `task.renewed`. It also adds `actor.seen` and `channel.created` when no filter is set and the caller reads every channel.",
               "anyOf": [
                 { "const": "true", "type": "string" },
                 { "const": "1", "type": "string" },
@@ -7214,7 +7476,7 @@
               "type": "number"
             },
             "all": {
-              "description": "`true` or `1` adds bookkeeping events (`actor.seen`, `channel.created`) when no filter is set and the caller reads every channel.",
+              "description": "`true` or `1` adds `task.renewed`. It also adds `actor.seen` and `channel.created` when no filter is set and the caller reads every channel.",
               "anyOf": [
                 { "const": "true", "type": "string" },
                 { "const": "1", "type": "string" },
@@ -8734,6 +8996,232 @@
                                   "thread": { "type": "string" },
                                   "epoch": { "minimum": 1, "type": "integer" },
                                   "result": { "anyOf": [{ "maxLength": 1000, "type": "string" }, { "type": "null" }] },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  }
+                                }
+                              },
+                              "message": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "channel",
+                                  "text",
+                                  "re",
+                                  "replyTo",
+                                  "thread",
+                                  "labels",
+                                  "reactions",
+                                  "by",
+                                  "noSync",
+                                  "origin",
+                                  "from",
+                                  "createdAt",
+                                  "editedAt",
+                                  "deleted",
+                                  "undelivered",
+                                  "attachments",
+                                  "links",
+                                  "version",
+                                  "revision",
+                                  "author",
+                                  "blocks"
+                                ],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "channel": { "type": "string" },
+                                  "text": { "type": "string" },
+                                  "mentions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["written", "actor", "candidates"],
+                                      "properties": {
+                                        "written": { "type": "string" },
+                                        "actor": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "required": ["id", "handle", "name"],
+                                              "properties": {
+                                                "id": { "type": "string" },
+                                                "handle": { "type": "string" },
+                                                "name": { "type": "string" }
+                                              }
+                                            },
+                                            { "type": "null" }
+                                          ]
+                                        },
+                                        "candidates": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "required": ["id", "handle", "name"],
+                                            "properties": {
+                                              "id": { "type": "string" },
+                                              "handle": { "type": "string" },
+                                              "name": { "type": "string" }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "thread": { "type": "string" },
+                                  "labels": {
+                                    "additionalProperties": false,
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                                    }
+                                  },
+                                  "reactions": {
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^(.*)$": { "type": "array", "items": { "type": "string" } }
+                                    }
+                                  },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "noSync": { "type": "boolean" },
+                                  "origin": { "type": "null" },
+                                  "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "createdAt": { "type": "string" },
+                                  "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "deleted": { "type": "boolean" },
+                                  "undelivered": {
+                                    "type": "object",
+                                    "patternProperties": { "^(.*)$": { "type": "string" } }
+                                  },
+                                  "attachments": { "type": "array", "items": {} },
+                                  "links": { "type": "array", "items": {} },
+                                  "version": { "type": "integer" },
+                                  "task": {
+                                    "type": "object",
+                                    "required": [
+                                      "state",
+                                      "owner",
+                                      "by",
+                                      "for",
+                                      "needs",
+                                      "epoch",
+                                      "claim",
+                                      "blocked",
+                                      "result",
+                                      "reason"
+                                    ],
+                                    "properties": {
+                                      "state": {
+                                        "anyOf": [
+                                          { "const": "blocked", "type": "string" },
+                                          { "const": "canceled", "type": "string" },
+                                          { "const": "claimed", "type": "string" },
+                                          { "const": "completed", "type": "string" },
+                                          { "const": "failed", "type": "string" },
+                                          { "const": "ready", "type": "string" },
+                                          { "const": "waiting", "type": "string" }
+                                        ]
+                                      },
+                                      "owner": { "type": "string" },
+                                      "by": { "type": "string" },
+                                      "for": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "needs": { "type": "array", "items": { "type": "string" } },
+                                      "epoch": { "minimum": 0, "type": "integer" },
+                                      "claim": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "required": ["actor", "until"],
+                                            "properties": {
+                                              "actor": { "type": "string" },
+                                              "until": { "type": "string" }
+                                            }
+                                          },
+                                          { "type": "null" }
+                                        ]
+                                      },
+                                      "blocked": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "required": ["kind", "reason"],
+                                            "properties": {
+                                              "kind": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                              "reason": { "type": "string" }
+                                            }
+                                          },
+                                          { "type": "null" }
+                                        ]
+                                      },
+                                      "result": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                      "reason": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "revision": { "type": "integer" },
+                                  "author": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": ["kind", "handle", "name", "avatar"],
+                                        "properties": {
+                                          "kind": {
+                                            "anyOf": [
+                                              { "const": "person", "type": "string" },
+                                              { "const": "workflow", "type": "string" },
+                                              { "const": "agent", "type": "string" }
+                                            ]
+                                          },
+                                          "handle": { "type": "string" },
+                                          "name": { "type": "string" },
+                                          "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                          "via": {
+                                            "type": "object",
+                                            "required": ["name", "environment"],
+                                            "properties": {
+                                              "name": { "type": "string" },
+                                              "environment": { "type": "null" }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      { "type": "null" }
+                                    ]
+                                  },
+                                  "blocks": { "type": "array", "items": {} }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "payload", "message"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "task.renewed", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id", "thread", "epoch", "until", "by"],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "thread": { "type": "string" },
+                                  "epoch": { "minimum": 1, "type": "integer" },
+                                  "until": { "type": "string" },
                                   "by": {
                                     "type": "object",
                                     "required": ["actor", "principal", "profile"],

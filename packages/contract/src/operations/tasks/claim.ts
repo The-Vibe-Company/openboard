@@ -3,6 +3,10 @@ import { Message } from "../../entities/messages.ts";
 import { Task } from "../../entities/tasks.ts";
 import { defineOperation, Ref } from "../../operation.ts";
 
+export const TaskLease = Type.Optional(
+  Type.Integer({ minimum: 30, maximum: 3600, description: "Lease in seconds, default 900." }),
+);
+
 export const TaskRoot = Type.Object({ ...Message.properties, task: Task });
 export const TaskClaim = Type.Object({
   epoch: Type.Integer({ minimum: 1 }),
@@ -20,9 +24,7 @@ export const claimTask = defineOperation({
     params: Type.Object({ id: Ref("message") }),
     body: Type.Object(
       {
-        lease: Type.Optional(
-          Type.Integer({ minimum: 30, maximum: 3600, description: "Lease in seconds, default 900." }),
-        ),
+        lease: TaskLease,
       },
       { additionalProperties: false },
     ),
