@@ -9,9 +9,9 @@ import { postgresTestUrl } from "./support/env.ts";
 // test or not. `NULL` is bound for every parameter, so a parameter Postgres cannot type needs a cast in the statement.
 const url = postgresTestUrl();
 if (url) {
-  let databases: Awaited<ReturnType<typeof createTestDatabases>>;
-  let clone: { url: string; drop: () => Promise<void> };
-  let sql: SQL;
+  let databases: Awaited<ReturnType<typeof createTestDatabases>> | undefined;
+  let clone: { url: string; drop: () => Promise<void> } | undefined;
+  let sql: SQL | undefined;
   beforeAll(async () => {
     databases = await createTestDatabases(url);
     clone = await databases.create();
@@ -19,15 +19,19 @@ if (url) {
   });
   afterAll(async () => {
     try {
-      await sql.close();
-      await clone.drop();
+      await sql?.close();
     } finally {
-      await databases.close();
+      try {
+        await clone?.drop();
+      } finally {
+        await databases?.close();
+      }
     }
   });
 
   describe("EXPLAIN on Postgres", () => {
     test.each(Object.entries(renderStatements(postgresText)))("%s", async (_name, { text, params }) => {
+      if (!sql) throw new Error("the migrated database is not open");
       const rows = await connection(sql).query(
         `EXPLAIN ${text}`,
         Array.from({ length: params }, () => null),
