@@ -11,13 +11,14 @@ writes:
   - packages/server/test/support/drivers.ts
   - packages/server/test/support/env.ts
   - packages/server/package.json
+  - packages/server/tsconfig.json
   - bun.lock
   - packages/server/test/schema-parity.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [163]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-166
 issue: 246
 ---
 
