@@ -144,6 +144,8 @@ and the cross-instance parts are in-process.
   links to a view that uses `GET {BOARD_URL}/messages/:id` to show the root and
   replies in order with author, time, labels, reactions, edit markers, and
   deletion tombstones. Back navigation restores the channel's scroll position.
+  Long channels render a window of thread rows and load older pages as people
+  scroll down.
   When there are no threads, the board shows a copyable board API URL, CLI
   commands for the first post, and a link to connection settings. The example
   uses `general` when the board has no channels.
