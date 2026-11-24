@@ -80,7 +80,7 @@ export function createViews(
     board: (scope) => ({
       ...boardView(db, dialect, scope, broadcaster),
       subscribeEvents: (fromPosition, wake) =>
-        broadcaster.subscribe(scope, fromPosition, (page) => wake(page && committedEvents(page))),
+        broadcaster.subscribe(scope, fromPosition, (page, head) => wake(page && committedEvents(page), head)),
       ...personalTokenView(db, dialect, scope),
       ...agentReads(db, dialect, scope),
       ...auditReads(db, dialect, scope),

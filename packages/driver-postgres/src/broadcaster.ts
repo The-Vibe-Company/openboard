@@ -4,12 +4,18 @@ import type { SQL } from "bun";
 
 interface Subscription {
   position: number;
-  readonly wake: (page?: CommittedPage) => void;
+  readonly wake: (page: CommittedPage | undefined, head: number) => void;
 }
 
 interface Board {
   readonly subscribers: Set<Subscription>;
   pending?: { position: number; readonly flush: ReturnType<typeof setImmediate> };
+}
+
+interface PendingCommit {
+  readonly after: number;
+  readonly head: number;
+  observed: number;
 }
 
 type Repeat = (tick: () => Promise<void>, milliseconds: number) => () => void;
@@ -97,13 +103,45 @@ function onNotification(
   };
 }
 
+function pendingCommits(publish: (scope: Pick<BoardScope, "boardId">, position: number) => void) {
+  const committing = new Map<number, Set<PendingCommit>>();
+
+  function wakeHead(scope: Pick<BoardScope, "boardId">, position: number) {
+    // LISTEN and the request pool use separate connections. A committed head can arrive before COMMIT returns.
+    for (const commit of committing.get(scope.boardId) ?? []) {
+      if (position > commit.after && position <= commit.head) {
+        commit.observed = Math.max(commit.observed, position);
+        return;
+      }
+    }
+    publish(scope, position);
+  }
+
+  return {
+    wakeHead,
+    prepareCommit(scope: BoardScope, { after, head }: CommittedPage) {
+      const pending = committing.get(scope.boardId) ?? new Set<PendingCommit>();
+      committing.set(scope.boardId, pending);
+      const commit = { after, head, observed: after };
+      pending.add(commit);
+      return () => {
+        pending.delete(commit);
+        if (pending.size === 0) committing.delete(scope.boardId);
+        // Successful local publication advanced the subscribers already. A lost COMMIT reply can still
+        // leave a committed write, so replay any observed head even when the transaction appeared to fail.
+        if (commit.observed > after) wakeHead(scope, commit.observed);
+      };
+    },
+  };
+}
+
 /**
  * Bun's LISTEN uses a dedicated connection, outside the request pool.
  * Board IDs are globally unique and subscribe() receives a scope minted by the tenant resolver.
  * A local commit's wake carries its page; a notification or a polled head does not, so its subscribers read the store.
  */
 export async function postgresBroadcaster(
-  sql: SQL,
+  sql: Pick<SQL, "listen">,
   db: Db,
   schedule: Repeat = repeat,
 ): Promise<Broadcaster & { close(): Promise<void> }> {
@@ -116,6 +154,8 @@ export async function postgresBroadcaster(
     stopPoll = undefined;
   }
 
+  const { prepareCommit, wakeHead } = pendingCommits(publish);
+  // A confirmed head is the safety net if the writer loses or stalls on its COMMIT reply.
   const { poll, onListen } = reconnectPoll(pollBoardHeads(db, boards, publish));
 
   function remove(id: number, board: Board, subscription: Subscription) {
@@ -133,16 +173,17 @@ export async function postgresBroadcaster(
       if (position <= subscription.position || !board.subscribers.has(subscription)) continue;
       subscription.position = position;
       try {
-        subscription.wake(page);
+        subscription.wake(page, position);
       } catch {
         remove(boardId, board, subscription);
       }
     }
   }
 
-  const listener = await sql.listen("ob_events", onNotification(boards, publish), onListen);
+  const listener = await sql.listen("ob_events", onNotification(boards, wakeHead), onListen);
 
   return {
+    prepareCommit,
     publish: (scope, page) => publish(scope, page.head, page),
     subscribe({ boardId }, fromPosition, wake) {
       if (closed) return () => {};

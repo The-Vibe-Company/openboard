@@ -25,11 +25,17 @@ export interface CommittedEvents {
 
 /** Board-scoped wake-ups. The event store is the source of truth. */
 export interface Broadcaster {
+  /** Before COMMIT, mark the local page as pending. Release after publish or on transaction failure. */
+  prepareCommit?(scope: BoardScope, page: CommittedPage): () => void;
   /** Announce a new head and the events that reached it, only after their write commits. */
   publish(scope: BoardScope, page: CommittedPage): void;
   /**
    * Wake on heads above the given cursor. Register before reading; subscriptions do not replay. A wake carries the
-   * committed page when the commit's events are in memory, and nothing when the subscriber must read the store.
+   * head and, when available in memory, the committed page. The head lets a subscriber skip already covered events.
    */
-  subscribe(scope: BoardScope, fromPosition: number, wake: (page?: CommittedPage) => void): () => void;
+  subscribe(
+    scope: BoardScope,
+    fromPosition: number,
+    wake: (page: CommittedPage | undefined, head: number) => void,
+  ): () => void;
 }
