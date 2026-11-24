@@ -33,3 +33,8 @@ describe("creating a board", () => {
     expect(refusal(() => boards.decideCreateBoard({ slug: "ops", name: "   " }, { by, now }))).toBe("invalid_request");
   });
 });
+
+test("only an organization deletion can take its main board", () => {
+  expect(refusal(() => boards.requireDeletableBoard("main"))).toBe("invalid_request");
+  expect(() => boards.requireDeletableBoard("ops")).not.toThrow();
+});

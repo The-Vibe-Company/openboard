@@ -1,15 +1,26 @@
-import { BoardError, type Named } from "@openboard/contract";
-import { type BoardCreation, dailyEventsLimit, type OrgQuotaOverrides, storedBytesLimit } from "@openboard/core";
-import type { BoardKeys, OrgScope, OrgView, PlatformView } from "@openboard/ports";
+import { BoardError, type DeletedBoard, type Named } from "@openboard/contract";
+import {
+  type BoardCreation,
+  boards,
+  dailyEventsLimit,
+  isoTime,
+  type OrgQuotaOverrides,
+  storedBytesLimit,
+} from "@openboard/core";
+import type { BoardKeys, Broadcaster, OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
 import { invitationStatements } from "./invitations.ts";
 import { exhaustedQuota, orgStatements } from "./orgs.ts";
 
 const notifyHead: Fragment = Object.freeze({ fragment: (dialect: Dialect) => dialect.notifyHeadSuffix });
-// Board writes share the organization lock so deletion cannot commit while they append.
+// Lock the organization before the board, in the same order as board deletion.
 const boardLock: Fragment = Object.freeze({
-  fragment: (dialect: Dialect) => (dialect.lockSuffix ? `${dialect.lockSuffix} OF boards FOR SHARE OF orgs` : ""),
+  fragment: (dialect: Dialect) => (dialect.lockSuffix ? ` FOR SHARE OF orgs${dialect.lockSuffix} OF boards` : ""),
+});
+const notifyDeletion: Fragment = Object.freeze({
+  fragment: ({ name }: Dialect) =>
+    name === "postgres" ? ", (SELECT pg_notify('ob_events', boards.id::text || ':deleted'))" : "",
 });
 const messageBytes: Fragment = Object.freeze({
   fragment: ({ name }: Dialect) =>
@@ -38,8 +49,10 @@ export const TIMELINE_ADVANCE = 1_000_000;
 /** Statements on organizations and boards themselves. `orgBySlug` runs before any tenant is known. */
 export const boardStatements = {
   orgBySlug: sql`SELECT id FROM orgs WHERE slug = ${"slug"} AND deleted_at IS NULL`,
-  boardBySlug: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"} AND deleted_at IS NULL`,
-  lockBoard: sql`SELECT boards.head, boards.timeline, ${serverTimeline} AS server_timeline, orgs.quotas, orgs.deleted_at,
+  boardBySlug: sql`SELECT id, deleted_at FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"}`,
+  softDeleteBoard: sql`UPDATE boards SET deleted_at = ${"at"}
+    WHERE org_id = ${"orgId"} AND slug = ${"slug"} AND deleted_at IS NULL RETURNING id, name${notifyDeletion}`,
+  lockBoard: sql`SELECT boards.head, boards.timeline, ${serverTimeline} AS server_timeline, orgs.quotas, orgs.deleted_at, boards.deleted_at AS board_deleted_at,
     ${eventDay} AS event_day,
     EXISTS (SELECT 1 FROM watcher_registrations w WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"} AND w.watch <> '{}') AS has_watchers,
     CASE WHEN boards.daily_event_day >= quota_clock.day THEN CAST(${eventTally} ->> 'count' AS BIGINT)
@@ -62,7 +75,7 @@ export const boardStatements = {
       SELECT COALESCE(SUM(${messageBytes}), 0)
       FROM messages m WHERE m.org_id = ${"orgId"} AND m.board_id = sibling.id AND m.deleted = 0
     ) END), 0) FROM boards sibling WHERE sibling.org_id = ${"orgId"} AND sibling.id <> ${"boardId"}) AS other_bytes
-    FROM boards JOIN orgs ON orgs.id = boards.org_id
+    FROM orgs JOIN boards ON boards.org_id = orgs.id
     CROSS JOIN (SELECT CAST(${"day"} AS BIGINT) AS day, CAST(${"nextDay"} AS BIGINT) AS next_day) quota_clock
     LEFT JOIN actors ON actors.org_id = boards.org_id AND actors.board_id = boards.id AND actors.id = ${"actor"}
     WHERE boards.org_id = ${"orgId"} AND boards.id = ${"boardId"}${boardLock}`,
@@ -91,12 +104,14 @@ export const boardPlatformStatements: readonly (keyof typeof boardStatements)[] 
 
 export function platformView(db: Db, dialect: Dialect): Pick<PlatformView, "findBoard"> {
   return {
-    async findBoard(orgSlug, boardSlug): Promise<BoardKeys | null> {
+    async findBoard(orgSlug, boardSlug, includeDeleted) {
       const [org] = await query(db, dialect, boardStatements.orgBySlug, { slug: orgSlug });
       if (!org) return null;
       const orgId = Number(org.id);
       const [board] = await query(db, dialect, boardStatements.boardBySlug, { orgId, slug: boardSlug });
-      return board ? { orgId, boardId: Number(board.id) } : null;
+      if (!board || (board.deleted_at != null && !includeDeleted)) return null;
+      const keys = { orgId, boardId: Number(board.id) };
+      return board.deleted_at == null ? keys : { ...keys, deleted: true };
     },
   };
 }
@@ -132,7 +147,8 @@ export async function lockBoard(
     actorLoaded = true;
   }
   if (!row) throw new Error(`board ${keys.boardId} of organization ${keys.orgId} is missing`);
-  if (row.deleted_at != null) throw new BoardError("not_found", "no such board or route");
+  if (row.deleted_at != null || row.board_deleted_at != null)
+    throw new BoardError("not_found", "no such board or route");
   const head = Number(row.head);
   const recorded = Number(row.timeline ?? 0);
   const timeline = Number(row.server_timeline ?? 0);
@@ -184,11 +200,17 @@ export function orgBoardsView(
   db: Db,
   dialect: Dialect,
   { orgId }: OrgScope,
-): Pick<OrgView, "listBoards" | "createBoard"> {
+  broadcaster: Broadcaster,
+): Pick<OrgView, "listBoards" | "createBoard" | "deleteBoard"> {
   return {
     async listBoards(): Promise<Named[]> {
       const rows = await query(db, dialect, boardStatements.orgBoards, { orgId });
       return rows.map((row) => ({ slug: String(row.slug), name: String(row.name) }));
+    },
+    async deleteBoard(slug, personId, at, admit) {
+      const { boardId, result } = await deleteBoard(db, dialect, { orgId, slug, personId, at }, admit);
+      if (dialect.name === "sqlite") broadcaster.invalidate({ orgId, boardId });
+      return result;
     },
     createBoard: ({ board, event }: BoardCreation, personId: string, admit?: () => void) =>
       db.transaction(async (tx) => {
@@ -216,4 +238,33 @@ export function orgBoardsView(
         return "created" as const;
       }),
   };
+}
+
+/** Serialize deletion with organization audit events and board writers. */
+function deleteBoard(
+  db: Db,
+  dialect: Dialect,
+  params: { orgId: number; slug: string; personId: string; at: number },
+  admit?: () => void,
+): Promise<{ boardId: number; result: DeletedBoard }> {
+  return db.transaction(async (tx) => {
+    const { orgId, slug, personId, at } = params;
+    const [admin] = await query(tx, dialect, invitationStatements.lockInvitationOrg, { orgId, personId });
+    if (!admin) throw new BoardError("forbidden", "this organization needs an administrator");
+    boards.requireDeletableBoard(slug);
+    admit?.();
+    const [row] = await query(tx, dialect, boardStatements.softDeleteBoard, { orgId, slug, at });
+    if (!row) throw new BoardError("not_found", "no such board or route");
+    const result = { board: { slug, name: String(row.name) }, deletedAt: isoTime(at) };
+    const [next] = await query(tx, dialect, invitationStatements.nextInvitationEvent, { orgId });
+    await query(tx, dialect, orgStatements.insertOrgEvent, {
+      orgId,
+      id: Number(next?.id),
+      type: "ob.board.deleted",
+      at,
+      actor: `ob:user:${personId}`,
+      payload: JSON.stringify(result),
+    });
+    return { boardId: Number(row.id), result };
+  });
 }

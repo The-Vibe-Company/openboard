@@ -62,13 +62,6 @@ export function boardPath(pathname: string, mode: "local" | "hosted"): BoardPath
   return { org, board, mount: `/api/${org}/${board}`, rest };
 }
 
-/** Unknown and deleted slugs answer the same 404 before board authentication (docs/codebase.md 4.4). */
-async function resolveBoard(store: Store, path: BoardPath): Promise<BoardKeys> {
-  const keys = await store.platform().findBoard(path.org, path.board);
-  if (!keys) throw notFound();
-  return keys;
-}
-
 /**
  * Mints the scope a handler's views are opened with: the only place one is made (D33). Credentials arrive with the
  * local owner token; until then the board the path resolved to is the scope.
@@ -98,7 +91,7 @@ async function membership(store: Store, slug: string, personId: string) {
 /** The tenant resolver: the one holder of the `Store`, handing out views of minted scopes only. */
 export interface Tenants {
   /** The view of the board a path names, or 404 `not_found`. */
-  board(path: BoardPath): Promise<BoardView>;
+  board(path: BoardPath, provesOwnership: (board: BoardView) => Promise<boolean>): Promise<BoardView>;
   /** A background job enters its board using routing keys from the trusted picker. */
   jobBoard(job: Job): BoardView;
   jobOrg(job: Job): OrgView;
@@ -121,8 +114,14 @@ export function tenants(store: Store): Tenants {
       const member = await membership(store, slug, personId);
       return store.org({ orgId: member.orgId } as OrgScope);
     },
-    async board(path) {
-      return store.board(mintBoardScope(await resolveBoard(store, path)));
+    async board(path, provesOwnership) {
+      const keys = await store.platform().findBoard(path.org, path.board, true);
+      if (!keys) throw notFound();
+      const board = store.board(mintBoardScope(keys));
+      if (!keys.deleted) return board;
+      if (await provesOwnership(board))
+        throw new BoardError("unauthorized", "the credential is not valid on this board");
+      throw notFound();
     },
   };
 }

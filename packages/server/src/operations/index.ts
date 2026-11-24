@@ -26,7 +26,7 @@ import {
 import { getMeHandler, listActorsHandler } from "./actors.ts";
 import { readBoardAuditHandler, readOrgAuditHandler } from "./audit.ts";
 import { getAvatarHandler } from "./avatars/get.ts";
-import { createBoardHandler, listBoardsHandler } from "./boards.ts";
+import { createBoardHandler, deleteBoardHandler, listBoardsHandler } from "./boards.ts";
 import { createChannelHandler, listChannelsHandler } from "./channels.ts";
 import {
   claimConnectionHandler,
@@ -189,6 +189,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   claimTask: claimTaskHandler,
   completeTask: completeTaskHandler,
   createBoard: createBoardHandler,
+  deleteBoard: deleteBoardHandler,
   createChannel: createChannelHandler,
   createConnection: createConnectionHandler,
   createGrant: createGrantHandler,

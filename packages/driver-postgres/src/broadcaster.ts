@@ -5,6 +5,7 @@ import type { SQL } from "bun";
 interface Subscription {
   position: number;
   readonly wake: (page: CommittedPage | undefined, head: number) => void;
+  readonly invalidated?: () => void;
 }
 
 interface Board {
@@ -29,6 +30,7 @@ function pollBoardHeads(
   db: Db,
   boards: ReadonlyMap<number, Board>,
   publish: (scope: Pick<BoardScope, "boardId">, position: number) => void,
+  invalidate: (keys: Pick<BoardScope, "boardId">) => void,
 ) {
   return async () => {
     if (boards.size === 0) return;
@@ -36,12 +38,15 @@ function pollBoardHeads(
     // Platform query: board IDs are globally unique and come only from active scoped subscriptions.
     const ids = `{${Array.from(subscribed.keys()).join(",")}}`;
     // A failed background read leaves positions intact, so the next tick can retry.
-    const heads = await db.query("SELECT id, head FROM boards WHERE id = ANY($1::bigint[])", [ids]).catch(() => []);
+    const heads = await db
+      .query("SELECT id, head, deleted_at FROM boards WHERE id = ANY($1::bigint[])", [ids])
+      .catch(() => []);
 
     for (const row of heads) {
       const boardId = Number(row.id);
       if (boards.get(boardId) === subscribed.get(boardId)) {
-        publish({ boardId }, Number(row.head));
+        if (row.deleted_at != null) invalidate({ boardId });
+        else publish({ boardId }, Number(row.head));
       }
     }
   };
@@ -81,13 +86,19 @@ function reconnectPoll(readHeads: () => Promise<void>) {
 function onNotification(
   boards: ReadonlyMap<number, Board>,
   publish: (scope: Pick<BoardScope, "boardId">, position: number) => void,
+  invalidate: (keys: Pick<BoardScope, "boardId">) => void,
 ) {
   return (payload: string) => {
-    const match = /^(\d+):(\d+)$/.exec(payload);
+    const match = /^(\d+):(\d+|deleted)$/.exec(payload);
     if (!match) return;
     const boardId = Number(match[1]);
+    if (!Number.isSafeInteger(boardId)) return;
+    if (match[2] === "deleted") {
+      invalidate({ boardId });
+      return;
+    }
     const position = Number(match[2]);
-    if (!Number.isSafeInteger(boardId) || !Number.isSafeInteger(position)) return;
+    if (!Number.isSafeInteger(position)) return;
     const board = boards.get(boardId);
     if (!board) return;
     if (board.pending) {
@@ -156,7 +167,7 @@ export async function postgresBroadcaster(
 
   const { prepareCommit, wakeHead } = pendingCommits(publish);
   // A confirmed head is the safety net if the writer loses or stalls on its COMMIT reply.
-  const { poll, onListen } = reconnectPoll(pollBoardHeads(db, boards, publish));
+  const { poll, onListen } = reconnectPoll(pollBoardHeads(db, boards, publish, invalidate));
 
   function remove(id: number, board: Board, subscription: Subscription) {
     if (!board.subscribers.delete(subscription) || board.subscribers.size !== 0) return;
@@ -180,16 +191,29 @@ export async function postgresBroadcaster(
     }
   }
 
-  const listener = await sql.listen("ob_events", onNotification(boards, wakeHead), onListen);
+  function invalidate({ boardId }: Pick<BoardScope, "boardId">) {
+    const board = boards.get(boardId);
+    if (!board) return;
+    for (const subscription of Array.from(board.subscribers)) {
+      try {
+        subscription.invalidated?.();
+      } catch {
+        remove(boardId, board, subscription);
+      }
+    }
+  }
+
+  const listener = await sql.listen("ob_events", onNotification(boards, wakeHead, invalidate), onListen);
 
   return {
     prepareCommit,
     publish: (scope, page) => publish(scope, page.head, page),
-    subscribe({ boardId }, fromPosition, wake) {
+    invalidate,
+    subscribe({ boardId }, fromPosition, wake, invalidated) {
       if (closed) return () => {};
       const board = boards.get(boardId) ?? { subscribers: new Set<Subscription>() };
       boards.set(boardId, board);
-      const subscription = { position: fromPosition, wake };
+      const subscription = { position: fromPosition, wake, invalidated };
       board.subscribers.add(subscription);
       stopPoll ??= schedule(poll, 2_000);
       return () => remove(boardId, board, subscription);

@@ -38,3 +38,12 @@ export function decideCreateBoard(
   const board = { slug: command.slug, name };
   return { board, event: { type: "ob.board.created", at: now, actor: by, payload: { board } } };
 }
+
+/** The default board goes with its organization. */
+export function requireDeletableBoard(slug: string): void {
+  if (slug === "main") {
+    throw new BoardError("invalid_request", "the default board cannot be deleted", {
+      hint: "Delete the organization instead.",
+    });
+  }
+}

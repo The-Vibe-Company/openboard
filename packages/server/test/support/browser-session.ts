@@ -1,5 +1,6 @@
 import { expect } from "bun:test";
 import type { SessionState } from "@openboard/contract";
+import type { Deps } from "../../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./app.ts";
 import { createCluster } from "./cluster.ts";
 import { openStore } from "./drivers.ts";
@@ -50,7 +51,12 @@ export async function browserSession(
   return { headers: { cookie, "x-ob-csrf": session.csrf, origin: PUBLIC_URL }, principal: session.person.principal };
 }
 
-export function makeBrowserApp(localOwnerTokenHash?: string, store = openStore(() => NOW), now = () => NOW) {
+export function makeBrowserApp(
+  localOwnerTokenHash?: string,
+  store = openStore(() => NOW),
+  now = () => NOW,
+  schedule: Deps["schedule"] = unexpectedTimer,
+) {
   let drawn = 0;
   return createCluster(
     {
@@ -65,7 +71,7 @@ export function makeBrowserApp(localOwnerTokenHash?: string, store = openStore((
     {
       now,
       requestId: () => "req-1",
-      schedule: unexpectedTimer,
+      schedule,
       randomBytes: (length) => new Uint8Array(length).fill(++drawn),
       fetch: fakeProvider,
       log: { info() {}, error() {} },

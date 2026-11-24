@@ -105,7 +105,7 @@ export function createViews(
     }),
     org: (scope) => ({
       ...invitationView(db, dialect, scope),
-      ...orgBoardsView(db, dialect, scope),
+      ...orgBoardsView(db, dialect, scope, broadcaster),
       ...rateView(db, dialect, `org:${scope.orgId}:`),
       ...membershipView(db, dialect, scope, jobs),
       ...purgeOrgView(db, dialect, scope, jobs),
@@ -114,8 +114,13 @@ export function createViews(
     board: (scope) => ({
       ...boardView(db, dialect, scope, broadcaster, jobs),
       ...rateView(db, dialect, `board:${scope.orgId}:${scope.boardId}:`),
-      subscribeEvents: (fromPosition, wake) =>
-        broadcaster.subscribe(scope, fromPosition, (page, head) => wake(page && committedEvents(page), head)),
+      subscribeEvents: (fromPosition, wake, invalidated) =>
+        broadcaster.subscribe(
+          scope,
+          fromPosition,
+          (page, head) => wake(page && committedEvents(page), head),
+          invalidated,
+        ),
       ...personalTokenView(db, dialect, scope),
       ...agentReads(db, dialect, scope),
       ...auditReads(db, dialect, scope),

@@ -78,6 +78,7 @@ const ORG_PAYLOAD: { readonly [Type in OrgAuditEvent["type"]]: readonly string[]
   "ob.org.created": ["org", "owner"],
   "ob.org.deleted": ["org", "deletedAt", "purgeAt"],
   "ob.board.created": ["board"],
+  "ob.board.deleted": ["board", "deletedAt"],
   "ob.invitation.created": ["id", "role"],
   "ob.invitation.revoked": ["id"],
   "ob.member.added": ["principal", "role"],

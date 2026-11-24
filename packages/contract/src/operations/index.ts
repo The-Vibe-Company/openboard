@@ -12,7 +12,7 @@ import {
 import { getMe, listActors } from "./actors.ts";
 import { readBoardAudit, readOrgAudit } from "./audit.ts";
 import { getAvatar } from "./avatars/get.ts";
-import { createBoard, listBoards } from "./boards.ts";
+import { createBoard, deleteBoard, listBoards } from "./boards.ts";
 import { createChannel, listChannels } from "./channels.ts";
 import {
   claimConnection,
@@ -83,6 +83,7 @@ export const operations = [
   claimTask,
   completeTask,
   createBoard,
+  deleteBoard,
   createChannel,
   createConnection,
   createGrant,
@@ -172,6 +173,7 @@ export {
   createOrg,
   createSchema,
   createTask,
+  deleteBoard,
   deleteMessage,
   deleteOrg,
   discoverBoard,
