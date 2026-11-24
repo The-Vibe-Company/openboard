@@ -64,6 +64,7 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
   ackInbox: () => ({ params: { key: "elsewhere", id: "event" }, body: { lease: "lease" } }),
   readInbox: () => ({ params: { key: "elsewhere" } }),
   leaseInbox: () => ({ params: { key: "elsewhere" } }),
+  createSchema: () => ({ body: { name: "isolation", version: 1, schema: { type: "object" } } }),
   importSync: () => ({ body: { op: "post", from: null } }),
   recordSyncReceipt: (tenant) => ({ body: { kind: "message", message: tenant.ids.message } }),
 };
@@ -209,7 +210,8 @@ export interface IdCase {
 }
 
 /** An ID of the same shape as `id` that no board holds. */
-function nowhereLike(id: string): string {
+function nowhereLike(id: string, kind: RefKind): string {
+  if (kind === "schema") return "missing@99999";
   if (/^\d+$/.test(id)) return "999999";
   return id.slice(0, -1) + (id.endsWith("a") ? "b" : "a");
 }
@@ -228,7 +230,7 @@ export function idCases(seeded: Seeded): IdCase[] {
       const history = operation.name === "readEvents" ? { after: "0" } : undefined;
       const callWith = (id: string, query?: Fields) =>
         callOf(operation, seeded.a, { part, field, value: id }, seeded.a.board, query);
-      const nowhere = callWith(nowhereLike(value), history);
+      const nowhere = callWith(nowhereLike(value, kind), history);
       cases.push({ name: label, call: callWith(value, history), nowhere });
       if (history && kind === "thread") {
         // Feeds start at the head by default. Read from zero as well to prove the shared ID selects A's thread.

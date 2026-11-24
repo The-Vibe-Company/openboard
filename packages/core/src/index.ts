@@ -93,6 +93,8 @@ export {
   storedBytesLimit,
 } from "./orgs/quotas.ts";
 export { decideMemberRole, requireAnotherOwner, requireMemberRemoval } from "./orgs/roles.ts";
+export { builtInSchemas } from "./schemas/builtins.ts";
+export { parseSchemaId } from "./schemas/id.ts";
 export {
   channelFilter,
   type EventFilters,

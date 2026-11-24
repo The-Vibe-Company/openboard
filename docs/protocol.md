@@ -257,7 +257,11 @@ Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --
 | POST | `/tasks/claim` | U | `wait` held ≤ 120 s |
 | POST | `/tasks/:id/{claim,renew,release,complete,fail,block,unblock,reopen,assign,needs,cancel}` | U | |
 | GET, POST | `/grants`; POST `/grants/batch`; PATCH `/grants/:id`; GET `/grants/explain`; POST `/grants/:id/revoke` | U | plus principal kinds `connection`, `all-connections`; `explain` takes `connection=` |
-| GET | `/schemas`, `/schemas/:id`; POST `/schemas` | U | built-ins `git-commit@1`, `vercel-deployment@1` (data from upstream's `src/contract/data-schemas.ts`, Apache-2.0) |
+| GET | `/schemas`, `/schemas/:id` | U | every board caller can read built-ins `git-commit@1`, `vercel-deployment@1` (upstream data, Apache-2.0) |
+| POST | `/schemas` | U-stub | 501 `no_schemas` for callers with board-wide manage access |
+
+Schema reads take a `name@version` ID. An invalid ID answers 400 `invalid_schema_id`,
+and an unknown version answers 404 `schema_not_found`.
 
 `POST /tasks` with `{ channel, text, labels?, noSync?, id? }` starts a thread as a ready task.
 It requires `post` in the channel and also `label` when the caller supplies labels.

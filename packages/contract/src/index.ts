@@ -8,6 +8,7 @@ export { GrantPrincipal, GrantPrincipalInput, GrantRemovalPrincipal, GrantView }
 export * from "./entities/invitations.ts";
 export * from "./entities/messages.ts";
 export * from "./entities/orgs.ts";
+export * from "./entities/schemas/view.ts";
 export * from "./entities/task-events.ts";
 export * from "./entities/tasks.ts";
 export * from "./entities/threads.ts";
@@ -55,6 +56,7 @@ export {
   createGrant,
   createInvitation,
   createOrg,
+  createSchema,
   createTask,
   deleteMessage,
   discoverBoard,
@@ -79,6 +81,7 @@ export {
   listMembers,
   listMessages,
   listPersonalTokens,
+  listSchemas,
   listSyncCopies,
   listSyncTargets,
   listTasks,
@@ -94,6 +97,7 @@ export {
   readInbox,
   readOrgAudit,
   readPost,
+  readSchema,
   readSource,
   readThread,
   receiveWebhook,

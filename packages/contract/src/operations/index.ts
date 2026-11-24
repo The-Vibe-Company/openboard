@@ -40,6 +40,7 @@ import {
   readPost,
 } from "./messages.ts";
 import { createOrg } from "./orgs.ts";
+import { createSchema, listSchemas, readSchema } from "./schemas/registry.ts";
 import {
   attachSync,
   findLinkedThread,
@@ -84,6 +85,7 @@ export const operations = [
   createGrant,
   createInvitation,
   createOrg,
+  createSchema,
   createTask,
   deleteMessage,
   discoverBoard,
@@ -108,6 +110,7 @@ export const operations = [
   listMembers,
   listMessages,
   listPersonalTokens,
+  listSchemas,
   listSyncCopies,
   listSyncTargets,
   listTasks,
@@ -122,6 +125,7 @@ export const operations = [
   readInbox,
   readOrgAudit,
   readPost,
+  readSchema,
   readSource,
   readThread,
   receiveWebhook,
@@ -156,6 +160,7 @@ export {
   createGrant,
   createInvitation,
   createOrg,
+  createSchema,
   createTask,
   deleteMessage,
   discoverBoard,
@@ -180,6 +185,7 @@ export {
   listMembers,
   listMessages,
   listPersonalTokens,
+  listSchemas,
   listSyncCopies,
   listSyncTargets,
   listTasks,
@@ -194,6 +200,7 @@ export {
   readInbox,
   readOrgAudit,
   readPost,
+  readSchema,
   readSource,
   readThread,
   receiveWebhook,

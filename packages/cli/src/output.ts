@@ -3,6 +3,7 @@ import type {
   getConnection,
   listChannels,
   listConnections,
+  listSchemas,
   listTasks,
   ManagedConnection,
   OutputOf,
@@ -159,6 +160,12 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
       const { connections } = output as OutputOf<typeof listConnections>;
       return connections.length === 0 ? "no connections" : connections.map(connectionText).join("\n");
     },
+    listSchemas: (output) =>
+      (output as OutputOf<typeof listSchemas>).schemas
+        .map(({ id, builtIn, at, description }) =>
+          [id, builtIn ? "built in" : at, description].filter(Boolean).join("  "),
+        )
+        .join("\n"),
     listTasks: tasksText,
     revokeGrant: (output, { id }) =>
       (output as OutputOf<typeof revokeGrant>).revoked ? `revoked ${String(id)}` : `${String(id)} is already gone`,
