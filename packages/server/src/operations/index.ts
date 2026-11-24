@@ -40,7 +40,6 @@ import {
   rotateConnectionHandler,
 } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
-import { downloadOrgExportHandler, getOrgExportHandler, requestOrgExportHandler } from "./org/exports.ts";
 import { readEventsHandler } from "./events.ts";
 import { createGrantHandler } from "./grants/create.ts";
 import { explainGrantsHandler } from "./grants/explain.ts";
@@ -64,6 +63,7 @@ import {
   reactToMessageHandler,
   readPostHandler,
 } from "./messages.ts";
+import { downloadOrgExportHandler, getOrgExportHandler, requestOrgExportHandler } from "./org/exports.ts";
 import { createOrgHandler, deleteOrgHandler } from "./orgs.ts";
 import { createSchemaHandler, listSchemasHandler, readSchemaHandler } from "./schemas/registry.ts";
 import {
@@ -115,6 +115,7 @@ export interface BoardContext extends RequestLimits {
 
 /** What a public board operation's handler sees: no store and no credential, only the board URL the request named. */
 export interface PublicContext {
+  readonly orgSlug: string;
   /** `OPENBOARD_PUBLIC_URL` + `/api/<org>/<board>`, whether or not that board exists. */
   readonly boardUrl: string;
   readonly now: () => number;

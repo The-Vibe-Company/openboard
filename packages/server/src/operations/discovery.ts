@@ -11,7 +11,7 @@ export const discoverBoardHandler: Handler<typeof discoverBoard> = async (ctx) =
   version: VERSION,
   url: ctx.boardUrl,
   audience: ctx.boardUrl,
-  team_id: null,
+  team_id: ctx.orgSlug,
   project_id: null,
   sync: [],
 });

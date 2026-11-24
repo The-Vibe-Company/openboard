@@ -85,7 +85,7 @@ async function runPublic(
 ): Promise<Response> {
   const input = validate(operation, { params, query: readQuery(operation, url.searchParams) });
   const boardUrl = `${pipeline.config.publicUrl}${path.mount}`;
-  const output = await handlerOf(operation)({ boardUrl, now: pipeline.deps.now }, input);
+  const output = await handlerOf(operation)({ boardUrl, orgSlug: path.org, now: pipeline.deps.now }, input);
   return operationResponse(operation, output);
 }
 

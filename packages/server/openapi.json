@@ -4235,7 +4235,7 @@
                     "version": { "type": "string" },
                     "url": { "type": "string" },
                     "audience": { "type": "string" },
-                    "team_id": { "type": "null" },
+                    "team_id": { "type": "string" },
                     "project_id": { "type": "null" },
                     "sync": { "maxItems": 0, "type": "array", "items": {} }
                   }
@@ -16925,6 +16925,10 @@
             "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
+          "409": {
+            "description": "grant_lockout",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
           "429": {
             "description": "quota_exceeded, rate_limited",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
@@ -17795,6 +17799,10 @@
           },
           "404": {
             "description": "grant_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "grant_lockout",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "429": {
