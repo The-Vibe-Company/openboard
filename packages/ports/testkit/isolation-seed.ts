@@ -3,8 +3,8 @@ import {
   boards,
   connections,
   decideClaimTask,
-  decideCreateTask,
   decideInvitation,
+  decideTaskBatch,
   grants,
   isoTime,
   messages,
@@ -119,17 +119,28 @@ export async function storeTenant(store: Store, slug: string, digit: string, pos
   }
   const task = await board.write(async (writer) => {
     const by = { actor, principal: actor, profile: null };
-    const decided = decideCreateTask({ head: writer.head }, { channel, text: `${marker} task` }, { by, now: at });
-    await writer.append(decided.events);
+    const { tasks, events } = decideTaskBatch(
+      writer,
+      channel,
+      [{ text: `${marker} task` }],
+      { by, now: at, blind: false },
+      [],
+      () => true,
+      [],
+      { id: marker, digest: marker },
+    );
+    const [root] = tasks;
+    if (!root) throw new Error("seed: no batch task");
+    await writer.append(events);
     if (slug === "bravo") {
       const claim = decideClaimTask(
-        { head: writer.head, actor: writer.actor, target: decided.task },
-        { id: decided.task.id, tokenHash: hex("3") },
+        { head: writer.head, actor: writer.actor, target: root },
+        { id: root.id, tokenHash: hex("3") },
         { by, now: at },
       );
       await writer.append(claim.events);
     }
-    return Number(decided.task.id);
+    return Number(root.id);
   });
   const claimed = await connectAndClaim(board, actor, marker, digit);
   await seedPersonGrant(board, personId, actor, channel, slug === "bravo" ? "https://bravo.example" : undefined);

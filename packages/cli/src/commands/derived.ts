@@ -1,4 +1,5 @@
-import { type CliSpec, operations } from "@openboard/contract";
+import { readFileSync } from "node:fs";
+import { BoardError, type CliSpec, createTaskBatch, operations } from "@openboard/contract";
 import { formats } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 import { runCancelTask } from "./tasks/cancel.ts";
@@ -165,7 +166,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   // Two forms each take all their arguments: `(<channel> <text> | <re>)`.
   const forms = [args, alternative ?? []].map((form) => form.map((arg) => `<${arg}>`).join(" "));
   if (alternative !== undefined) shown.splice(0, shown.length, `(${forms.join(" | ")})`);
-  return {
+  const derived: Command = {
     words: command,
     ...(operation.name === "listWebhookDeliveries" && { help: operation.summary }),
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
@@ -200,14 +201,58 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
       return 0;
     },
   };
+  if (operation.name !== "createTask") return derived;
+  return taskCreateWithBatch(derived, (ctx) => hasFileOption(ctx, flags, fields));
 }
 
-export const derivedCommands: readonly Command[] = operations.flatMap((operation) =>
-  operation.cli === false
-    ? []
-    : [
-        operation.name === "setTaskNeeds"
-          ? taskNeedsCommand(operation.cli.command)
-          : derive({ ...operation, cli: operation.cli }),
-      ],
-);
+function hasFileOption(ctx: CommandContext, flags: ReadonlyMap<string, string>, fields: ReturnType<typeof fieldsOf>) {
+  for (let index = 0; index < ctx.optionsEnd; index++) {
+    const word = ctx.args[index];
+    if (word === "--file") return true;
+    if (!word?.startsWith("--")) continue;
+    const name = flags.get(word.slice(2));
+    if (name && fields.get(name)?.schema.type !== "boolean") index++;
+  }
+  return false;
+}
+
+function taskCreateWithBatch(single: Command, usesFile: (ctx: CommandContext) => boolean): Command {
+  const spec = createTaskBatch.cli;
+  if (!spec) throw new Error("task batch CLI metadata is missing");
+  const flags = new Map(Object.entries(spec.options ?? {}).map(([field, option]) => [option, field]));
+  const fields = fieldsOf(createTaskBatch);
+  fields.set("tasks", { schema: { type: "string" }, required: true });
+  return {
+    ...single,
+    usage: `${single.usage}\nob tasks create <channel> --file <path> [--idempotency-key <id>]`,
+    async run(ctx) {
+      if (!usesFile(ctx)) return single.run(ctx);
+      const { channel, id, tasks: file } = inputOf(ctx, spec.args, fields, flags, new Map());
+      let tasks: unknown;
+      try {
+        const source = readFileSync(file === "-" ? 0 : String(file), "utf8");
+        tasks = JSON.parse(source);
+      } catch {
+        throw new BoardError("invalid_request", "Could not read the task plan as JSON.");
+      }
+      if (!Array.isArray(tasks)) throw new BoardError("invalid_request", "The task plan must be a JSON array.");
+      const answer = await ctx.client.createTaskBatch({
+        channel: String(channel),
+        id: id as string | undefined,
+        tasks,
+      });
+      const rows = answer.tasks.map(({ id, text, task }) => {
+        const needs = task.needs.length ? ` (needs ${task.needs.map((need) => `#${need}`).join(", ")})` : "";
+        return `${id} ${task.state}${needs} ${text.split("\n")[0]}`;
+      });
+      ctx.output.out(ctx.json ? JSON.stringify(answer, null, 2) : rows.join("\n"));
+      return 0;
+    },
+  };
+}
+
+export const derivedCommands: readonly Command[] = operations.flatMap((operation) => {
+  if (operation.cli === false || operation.name === "createTaskBatch") return [];
+  if (operation.name === "setTaskNeeds") return [taskNeedsCommand(operation.cli.command)];
+  return [derive({ ...operation, cli: operation.cli })];
+});

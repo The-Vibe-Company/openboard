@@ -40,6 +40,7 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
   failTask: () => ({ body: { epoch: 1, token: "unused", reason: "test" } }),
   releaseTask: () => ({ body: { epoch: 1, token: "unused" } }),
   renewTask: () => ({ body: { epoch: 1, token: "unused" } }),
+  createTaskBatch: (tenant) => ({ body: { channel: "dev", tasks: [{ text: `${tenant.marker} task` }] } }),
   createTask: (tenant) => ({ body: { channel: "dev", text: `${tenant.marker} task` } }),
   postMessage: (tenant) => ({ body: { re: tenant.ids.message, text: `${tenant.marker} reply` } }),
   editMessage: (tenant) => ({ body: { text: `${tenant.marker} edit` } }),
@@ -104,6 +105,9 @@ export function refFields(operation: Operation): { part: Part; field: string; ki
     for (const [field, property] of Object.entries(schema?.properties ?? {})) {
       const kind = refKind(property);
       if (kind) found.push({ part, field, kind });
+      if (operation.name === "createTaskBatch" && part === "body" && field === "tasks") {
+        found.push({ part, field: "tasks.0.needs", kind: "task", array: true });
+      }
       if (part === "body" && property.type === "array" && property.items && !Array.isArray(property.items)) {
         const itemKind = refKind(property.items);
         if (itemKind) found.push({ part, field, kind: itemKind, array: true });
@@ -172,7 +176,10 @@ export function callOf(
   for (const { part, field, kind } of refFields(operation)) {
     if (part === "params") parts.params[field] = tenant.ids[kind];
   }
-  if (override?.field.includes(".")) {
+  if (override?.field === "tasks.0.needs") {
+    const [task] = parts.body.tasks as [Fields];
+    task.needs = [override.value];
+  } else if (override?.field.includes(".")) {
     const [field, key] = override.field.split(".").slice(-2) as [string, string];
     const target = override.field.startsWith("grants.") ? (parts.body.grants as [Fields])[0] : parts.body;
     const variant = GrantPrincipalInput.anyOf.find((principal) => key in principal.properties);

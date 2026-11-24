@@ -106,9 +106,11 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
     send("POST", `${base}/messages`, session, { channel: "dev", text: `${marker} second root` }),
     "second thread",
   );
-  const task = await ok<{ task: { id: string } }>(
-    send("POST", `${base}/tasks`, session, { channel: "dev", text: `${marker} task` }),
-    "task",
+  const {
+    tasks: [task],
+  } = await ok<{ tasks: [{ id: string }] }>(
+    send("POST", `${base}/tasks/batch`, session, { channel: "dev", id: marker, tasks: [{ text: `${marker} task` }] }),
+    "task batch",
   );
   const can = { "*": "all" };
   const direct = await ok<{ secret: string; connection: { id: string } }>(
@@ -166,7 +168,8 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
       message,
       watcherMatch: match.id,
       thread: thread.message.id,
-      task: task.task.id,
+      task: task.id,
+      taskBatch: marker,
       grant: granted.grant.id,
       schema: registered.schema.id,
       connection: fleet.connection.id,

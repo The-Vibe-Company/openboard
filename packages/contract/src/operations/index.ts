@@ -77,16 +77,17 @@ import {
   pushInbox,
   recordSyncReceipt,
 } from "./sync/records.ts";
+import { createTaskBatch, getTaskBatch } from "./tasks/batch.ts";
 import { cancelTask } from "./tasks/cancel.ts";
 import { claimTask } from "./tasks/claim.ts";
 import { completeTask } from "./tasks/complete.ts";
 import { createTask } from "./tasks/create.ts";
 import { failTask } from "./tasks/fail.ts";
 import { listTasks } from "./tasks/list.ts";
+import { setTaskNeeds } from "./tasks/needs.ts";
 import { releaseTask } from "./tasks/release.ts";
 import { renewTask } from "./tasks/renew.ts";
 import { reopenTask } from "./tasks/reopen.ts";
-import { setTaskNeeds } from "./tasks/needs.ts";
 import { listThreads, readThread } from "./threads.ts";
 import { ackWatcherMatch, listWatchers, pullWatcherMatches, registerWatchers } from "./watchers/index.ts";
 import { listWebhookDeliveries, retryWebhookDelivery } from "./webhooks/deliveries.ts";
@@ -121,6 +122,7 @@ export const operations = [
   createOrg,
   createSchema,
   createTask,
+  createTaskBatch,
   createInbound,
   deleteInbound,
   getInbound,
@@ -163,6 +165,7 @@ export const operations = [
   listSchemas,
   listSyncCopies,
   listSyncTargets,
+  getTaskBatch,
   listTasks,
   listThreads,
   listWatchers,
@@ -230,6 +233,7 @@ export {
   createOrg,
   createSchema,
   createTask,
+  createTaskBatch,
   createWebhook,
   deleteBoard,
   deleteInbound,
@@ -253,6 +257,7 @@ export {
   getOrgExport,
   getSession,
   getSyncThread,
+  getTaskBatch,
   getWebhook,
   importSync,
   joinSource,
@@ -300,7 +305,6 @@ export {
   removeMember,
   renewTask,
   reopenTask,
-  setTaskNeeds,
   requestOrgExport,
   retryWebhookDelivery,
   revokeAgent,
@@ -310,6 +314,7 @@ export {
   revokeInvitation,
   revokePersonalToken,
   rotateConnection,
+  setTaskNeeds,
   showTyping,
   startDeviceSignIn,
   testWebhook,

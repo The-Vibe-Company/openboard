@@ -4,6 +4,7 @@ import {
   channelFilter,
   decideCreateTask,
   decideDelete,
+  decideTaskBatch,
   labelFilters,
   messages,
   OPEN_TASK_STATES,
@@ -41,7 +42,7 @@ function post(board: BoardView, as: Actor, command: { channel: string } | { re: 
   }, as.id);
 }
 
-export function tasksSuite(driver: string, open: OpenStore): void {
+function taskListSuite(driver: string, open: OpenStore): void {
   describe(`${driver}: tasks`, () => {
     let store: Store | undefined;
     afterEach(() => store?.close());
@@ -120,4 +121,58 @@ export function tasksSuite(driver: string, open: OpenStore): void {
       expect(await ids(board, { for: "ada" })).toEqual([]);
     });
   });
+}
+
+function taskBatchReplay(driver: string, open: OpenStore) {
+  test(`${driver}: recovers a batch key, digest and forward needs by replaying its events`, async () => {
+    const original = await open();
+    try {
+      const scope = await original.platform().findBoard("local", "main");
+      if (!scope) throw new Error("the implicit board local/main is missing");
+      const source = original.board(testScope(scope));
+      const ada = person("ada");
+      const by = { actor: ada.id, principal: ada.id, profile: null };
+      const key = { id: "plan-1", digest: "plan digest" };
+      await source.write(async (writer) => {
+        const batch = decideTaskBatch(
+          writer,
+          "dev",
+          [
+            { text: "review", needs: [{ key: "fix" }] },
+            { key: "fix", text: "fix" },
+          ],
+          { by, now: at, blind: false },
+          [],
+          () => true,
+          [],
+          key,
+        );
+        await writer.append(batch.events);
+      });
+      const replay = await open();
+      try {
+        const scope = await replay.platform().findBoard("local", "main");
+        if (!scope) throw new Error("the implicit board local/main is missing");
+        const target = replay.board(testScope(scope));
+        const { events } = await source.readEvents(0, { all: true });
+        await target.write((writer) => writer.append(events));
+        const restored = await target.taskBatch(ada.id, key.id);
+        expect(restored).toEqual(await source.taskBatch(ada.id, key.id));
+        expect(restored?.digest).toBe(key.digest);
+        expect(restored?.roots.map(({ text }) => text)).toEqual(["review", "fix"]);
+        expect(await target.write((writer) => writer.taskNeedEdges([Number(restored?.roots[0]?.id)]))).toEqual([
+          { needs: Number(restored?.roots[1]?.id), channel: "dev", completed: false },
+        ]);
+      } finally {
+        await replay.close();
+      }
+    } finally {
+      await original.close();
+    }
+  });
+}
+
+export function tasksSuite(driver: string, open: OpenStore): void {
+  taskListSuite(driver, open);
+  taskBatchReplay(driver, open);
 }

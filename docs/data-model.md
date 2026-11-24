@@ -475,7 +475,7 @@ CREATE INDEX tasks_for    ON tasks (board_id, for_actor, state, id) WHERE for_ac
 
 CREATE TABLE task_needs (org_id BIGINT, board_id BIGINT NOT NULL, task BIGINT NOT NULL, needs BIGINT NOT NULL, PRIMARY KEY (board_id, task, needs));
 CREATE INDEX task_needs_reverse ON task_needs (board_id, needs, task);
-CREATE TABLE task_batches (board_id BIGINT NOT NULL, principal TEXT NOT NULL, id TEXT NOT NULL,
+CREATE TABLE task_batches (org_id BIGINT NOT NULL, board_id BIGINT NOT NULL, principal TEXT NOT NULL, id TEXT NOT NULL,
                            digest TEXT NOT NULL, tasks TEXT NOT NULL, PRIMARY KEY (board_id, principal, id));
 
 CREATE TABLE schedules (
@@ -693,7 +693,9 @@ byte.
   completed tasks the caller can read, up to 500 tasks (upstream's bound),
   else 400 `invalid_needs`.
 - **Batches:** all tasks of `POST /tasks/batch` in one transaction;
-  `task_batches` holds `id` and digest for retries and 409 `duplicate_id`.
+  the last `task.created` event carries the batch key, request digest and
+  ordered root IDs. Replay folds these into `task_batches`, scoped by board and
+  caller principal, for retries and 409 `duplicate_id`.
 
 ## Search
 

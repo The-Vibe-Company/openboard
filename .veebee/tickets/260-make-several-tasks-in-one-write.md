@@ -4,29 +4,47 @@ title: Make several tasks in one write
 milestone: M9-tasks
 package: server
 writes:
-  - packages/contract/src/operations/task-batches.ts
   - packages/contract/src/operations/index.ts
-  - packages/core/src/tasks/batch.ts
   - packages/core/test/tasks/batch.test.ts
   - packages/ports/src/tasks.ts
   - packages/ports/testkit/store/tasks.test-suite.ts
   - packages/ports/testkit/isolation.test-suite.ts
   - packages/driver-sql/migrations/*-task-batches.sql
   - packages/driver-sql/src/index.ts
-  - packages/driver-sql/src/views/tasks.ts
-  - packages/driver-sql/src/views/task-folds.ts
   - packages/driver-sql/src/statements.ts
-  - packages/server/src/operations/task-batches.ts
   - packages/server/src/operations/index.ts
   - packages/server/test/tasks/batch.test.ts
   - packages/server/test/isolation/cases.ts
-  - packages/cli/src/commands/tasks.ts
   - packages/cli/test/tasks.test.ts
+  - docs/data-model.md
+  - docs/protocol.md
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/src/commands/usage.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/tasks/batch.ts
+  - packages/core/src/index.ts
+  - packages/core/src/messages/post.ts
+  - packages/core/src/tasks/batches/create.ts
+  - packages/core/src/tasks/events.ts
+  - packages/driver-sql/src/views/jobs/purge.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/driver-sql/src/views/tasks/tasks.ts
+  - packages/ports/testkit/isolation-seed.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/messages.ts
+  - packages/server/src/operations/tasks/batch.ts
+  - packages/server/test/isolation/seed.ts
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
 conformance: ["tasks/makes several tasks in one write, in the order given: each waits for the ones it names, of the batch or there already, and an id makes them once"]
 modes: [local, hosted]
 depends_on: [259]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 434
 ---
 
@@ -34,9 +52,9 @@ issue: 434
 As a planner, I lay out a small plan as tasks in one write, `ob tasks create dev --file plan.json`, each waiting for the ones it names.
 
 ## Done when
-- [ ] with `plan.json` holding `[{"key":"fix","text":"fix it"},{"text":"review it","needs":[{"key":"fix"}]}]`, `ob tasks create dev --file plan.json --idempotency-key plan-1` prints a row per task in the order given, `fix it` `ready` and `review it` `waiting` on `fix it`'s ID; run again, it prints the same tasks and makes none
-- [ ] the same key with another plan, or one more task, prints `error: duplicate_id: …`; `bun test packages/server/test/tasks/batch.test.ts` passes, `GET /tasks/batch/plan-1` answering the batch's roots as they are now and 404 `batch_not_found` for an ID the caller made none under
-- [ ] `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `tasks/makes several tasks in one write, in the order given: each waits for the ones it names, of the batch or there already, and an id makes them once`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
+- [x] with `plan.json` holding `[{"key":"fix","text":"fix it"},{"text":"review it","needs":[{"key":"fix"}]}]`, `ob tasks create dev --file plan.json --idempotency-key plan-1` prints a row per task in the order given, `fix it` `ready` and `review it` `waiting` on `fix it`'s ID; run again, it prints the same tasks and makes none
+- [x] the same key with another plan, or one more task, prints `error: duplicate_id: …`; `bun test packages/server/test/tasks/batch.test.ts` passes, `GET /tasks/batch/plan-1` answering the batch's roots as they are now and 404 `batch_not_found` for an ID the caller made none under
+- [x] `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `tasks/makes several tasks in one write, in the order given: each waits for the ones it names, of the batch or there already, and an id makes them once`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
 
 ## Out of scope
 - A batch that cannot be made in full (261).

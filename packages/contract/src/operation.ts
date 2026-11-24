@@ -11,6 +11,7 @@ export type RefKind =
   | "message"
   | "thread"
   | "task"
+  | "taskBatch"
   | "grant"
   | "schema"
   | "file"

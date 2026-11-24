@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { withClaimStorage } from "../src/claims.ts";
 import { runCli } from "../src/main.ts";
 
-test("ob tasks create sends a task root and prints its ID", async () => {
+test.each(["build-fix", "--file"])("ob tasks create sends a task with key %s and prints its ID", async (id) => {
   const env = { BOARD_URL: "http://127.0.0.1:8787/api/local/main" };
   const lines: string[] = [];
   const fetch = async (request: Request) => {
@@ -16,21 +16,11 @@ test("ob tasks create sends a task root and prints its ID", async () => {
       text: "fix the build",
       labels: { repo: "web" },
       noSync: true,
-      id: "build-fix",
+      id,
     });
     return Response.json({ task: { id: "2" } }, { status: 201 });
   };
-  const args = [
-    "tasks",
-    "create",
-    "dev",
-    "fix the build",
-    "--label",
-    "repo=web",
-    "--no-sync",
-    "--idempotency-key",
-    "build-fix",
-  ];
+  const args = ["tasks", "create", "dev", "fix the build", "--label", "repo=web", "--no-sync", "--idempotency-key", id];
   expect(
     await runCli(args, env, { fetch, output: { out: (line) => lines.push(line), err: (line) => lines.push(line) } }),
   ).toBe(0);

@@ -9,6 +9,13 @@ export const needIds = {
 };
 
 export const taskReadStatements = {
+  taskBatch: sql<"orgId" | "boardId" | "principal" | "id">`WITH input AS (
+    SELECT digest, tasks AS ids FROM task_batches
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND principal = ${"principal"} AND id = ${"id"}
+  )
+    SELECT input.digest, input.ids, m.id, m.view FROM input CROSS JOIN ${needIds} AS root
+    JOIN messages m ON m.id = CAST(root.value AS BIGINT)
+    WHERE m.org_id = ${"orgId"} AND m.board_id = ${"boardId"}`,
   taskClaimProof: sql`SELECT claim_token, claim_until FROM tasks
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   taskNeeds: sql<"ids" | "orgId" | "boardId">`WITH input AS (SELECT CAST(${"ids"} AS TEXT) AS ids)
@@ -34,8 +41,20 @@ export const taskReadStatements = {
     WHERE t.org_id = ${"orgId"} AND t.board_id = ${"boardId"} AND t.id = ${"id"}`,
 };
 
-export function taskReads(db: Db, dialect: Dialect, keys: BoardKeys): Pick<BoardTaskReads, "taskRoot"> {
+export function taskReads(db: Db, dialect: Dialect, keys: BoardKeys): Pick<BoardTaskReads, "taskRoot" | "taskBatch"> {
   return {
+    async taskBatch(principal, id) {
+      const rows = await query(db, dialect, taskReadStatements.taskBatch, { ...keys, principal, id });
+      const [first] = rows;
+      if (!first) return null;
+      const byId = new Map(rows.map((row) => [String(row.id), JSON.parse(String(row.view)) as Message]));
+      const roots = (JSON.parse(String(first.ids)) as string[]).map((root) => {
+        const message = byId.get(root);
+        if (!message) throw new Error("missing stored batch root");
+        return message;
+      });
+      return { digest: String(first.digest), roots };
+    },
     async taskRoot(id) {
       const [row] = await query(db, dialect, taskReadStatements.taskRoot, { ...keys, id });
       return row ? (JSON.parse(String(row.view)) as Message) : null;

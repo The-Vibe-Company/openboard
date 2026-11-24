@@ -304,7 +304,7 @@ Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --
 | GET | `/attachments/:id` | U | streamed, never redirected |
 | POST | `/attachments/uploads`, `/attachments/uploads/:id` | U-stub | 501 `no_direct_uploads` |
 | POST, GET | `/schedules`; POST `/schedules/:id/cancel` | U | |
-| POST, GET | `/tasks`; POST `/tasks/batch`; GET `/tasks/batch/:id` | U | |
+| POST, GET | `/tasks`; POST `/tasks/batch`; GET `/tasks/batch/:id` | U | Batch roots in request order. Use a caller-scoped batch ID to retry or read current roots. A proxy can pass its upstream `request` digest in the POST body or GET query. A changed request under the same ID returns 409 `duplicate_id`. A missing batch returns 404 `batch_not_found`. |
 | POST | `/tasks/claim` | U | `wait` held ≤ 120 s |
 | POST | `/tasks/:id/{claim,renew,release,complete,fail,block,unblock,reopen,assign,needs,cancel}` | U | |
 | GET, POST | `/grants`; POST `/grants/batch`; PATCH `/grants/:id`; GET `/grants/explain`; POST `/grants/:id/revoke` | U | plus principal kinds `connection`, `all-connections` |
@@ -622,7 +622,8 @@ effects supply the read-only, idempotent and destructive annotations.
 - Threads and messages: `list_threads`, `read_thread`, `list_messages`,
   `read_post`, `post_message`, `edit_message`, `delete_message`,
   `react_to_message`, `label_message`. A reply uses `post_message` with `re`.
-- Tasks: `task_create`, `list_tasks`, `task_claim`, `task_renew`,
+- Tasks: `task_create`, `task_create_batch`, `task_get_batch`, `list_tasks`,
+  `task_claim`, `task_renew`,
   `task_complete`, `task_fail`, `task_release`, `task_cancel`,
   `task_reopen`, `task_needs`.
 - Events and watchers: `read_events`, `register_watchers`, `list_watchers`,

@@ -6,10 +6,10 @@ import type {
   TaskCreatedPayload,
   TaskExpiredPayload,
   TaskFailedPayload,
-  TaskReleasedPayload,
-  TaskReopenedPayload,
   TaskNeedsChangedPayload,
+  TaskReleasedPayload,
   TaskRenewedPayload,
+  TaskReopenedPayload,
 } from "@openboard/contract";
 import type { MessagePosted } from "../messages/post.ts";
 
@@ -22,6 +22,8 @@ export interface TaskCreated extends Omit<MessagePosted, "type" | "payload"> {
     readonly view: Message;
     /** On a keyed task start, whether the author created it without channel read access. Absent on adoption. */
     readonly blind?: boolean;
+    /** The final creation records the caller's key and ordered roots for replay. */
+    readonly batch?: { readonly id: string; readonly digest: string; readonly tasks: readonly string[] };
   };
 }
 
