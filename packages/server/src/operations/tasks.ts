@@ -130,21 +130,28 @@ export const listTasksHandler: Handler<typeof listTasks> = async ({ board, by },
   const after = input.after === undefined ? undefined : parseId(input.after);
   if (after === null) throw new BoardError("invalid_cursor", "after: expected a page's cursor or a task ID");
   const limit = input.limit ?? 50;
-  const { tasks: page, head } = await board.listTasks({
+  const needs = input.needs === undefined ? undefined : (parseId(input.needs) ?? -1);
+  const { tasks: matched, head } = await board.listTasks({
     ...(input.channel === undefined ? {} : channelFilter(input.channel)),
     states: taskStates(input.state),
     labels: labelFilters(input.label),
     by: input.by === "me" ? by.actor : input.by,
     owner: input.owner,
     for: input.for,
-    // An ID that does not name a position has no dependants, as in the upstream list.
-    needs: input.needs === undefined ? undefined : (parseId(input.needs) ?? -1),
+    needs,
     after,
     latest: input.latest,
     limit,
   });
   if ((after ?? 0) > head) throw new BoardError("invalid_cursor", "after: cursor is ahead of the board");
-  const tasks = canListMentionActors(by)
+  const boardWideRead = canListMentionActors(by);
+  let page = matched;
+  // Check only after a match, so a prerequisite created before the page snapshot can still be found.
+  if (!boardWideRead && needs !== undefined && matched.length > 0) {
+    const prerequisite = await board.taskRoot(needs);
+    if (!prerequisite || !canReadChannel(by, prerequisite.channel)) page = [];
+  }
+  const tasks = boardWideRead
     ? page
     : page.map(({ message, last, replies }) => ({
         message: withoutMentionDetails(message),
