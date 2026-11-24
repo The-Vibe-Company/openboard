@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [101]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t102
 issue: 102
 ---
 

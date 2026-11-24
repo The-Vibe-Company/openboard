@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
 import { BOARD_URL, call, makeApp, NOW, OWNER } from "./support/app.ts";
 import { openStore } from "./support/drivers.ts";
+import { PING_INTERVAL_MS, STREAM_MAX_MS } from "../src/live/sse.ts";
 
-/** A scheduler the test fires by hand: every stream arms a ping timer, and no test waits on the wall clock. */
+/** A scheduler the test fires by hand: every stream arms a ping and a deadline timer; no test waits on the wall clock. */
 function manualTimers() {
   const pending = new Map<number, { delayMs: number; run: () => void }>();
   let armed = 0;
@@ -13,11 +14,14 @@ function manualTimers() {
       pending.set(id, { delayMs, run });
       return () => pending.delete(id);
     },
-    /** Fires every timer due now, as the clock would after their delay. */
-    fire() {
-      const due = [...pending.values()];
-      pending.clear();
-      for (const timer of due) timer.run();
+    /** Fires the timers armed with this delay, as the clock would once it elapses. */
+    fire(delayMs = PING_INTERVAL_MS) {
+      const due = [...pending].filter(([, timer]) => timer.delayMs === delayMs);
+      for (const [id] of due) pending.delete(id);
+      for (const [, timer] of due) timer.run();
+    },
+    delays() {
+      return [...pending.values()].map((timer) => timer.delayMs).sort((a, b) => a - b);
     },
   };
 }
@@ -206,7 +210,7 @@ test("pings a quiet stream every 15 seconds", async () => {
     expect(await frame()).toBe(": connected\n\n");
     expect(await frame()).toBe("id: 0\n\n");
     for (let round = 0; round < 2; round++) {
-      expect([...timers.pending.values()].map(({ delayMs }) => delayMs)).toEqual([15_000]);
+      expect(timers.delays()).toEqual([15_000, 280_000]);
       timers.fire();
       expect(await frame()).toBe(": ping\n\n");
     }
@@ -231,7 +235,7 @@ test("skips a ping while the client has a frame left to read", async () => {
     expect(decoder.decode((await reader.read()).value)).toBe("id: 0\n\n");
     expect((await call(app, "POST", "/messages", { channel: "dev", text: "next frame" })).status).toBe(201);
     expect(decoder.decode((await reader.read()).value)).toStartWith("id: 2\nevent: board\n");
-    expect(timers.pending.size).toBe(1);
+    expect(timers.delays()).toEqual([PING_INTERVAL_MS, STREAM_MAX_MS]);
   } finally {
     await reader.cancel();
     await app.close();
@@ -247,7 +251,7 @@ test("stops pinging when the request aborts", async () => {
   try {
     await reader.read();
     await reader.read();
-    expect(timers.pending.size).toBe(1);
+    expect(timers.pending.size).toBe(2);
     abort.abort();
     expect(await reader.read()).toEqual({ done: true, value: undefined });
     expect(timers.pending.size).toBe(0);
@@ -284,9 +288,71 @@ test("stops pinging when a stream read fails", async () => {
   try {
     await reader.read();
     await reader.read();
-    expect(timers.pending.size).toBe(1);
+    expect(timers.pending.size).toBe(2);
     await expect(reader.read()).rejects.toThrow("storage failed");
     expect(timers.pending.size).toBe(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test("ends a stream after about 280 seconds and resumes from its last id without a gap", async () => {
+  const timers = manualTimers();
+  const app = makeApp({ schedule: timers.schedule });
+  const decoder = new TextDecoder();
+  try {
+    const reader = (await subscribe(app)).body!.getReader();
+    const frame = async () => decoder.decode((await reader.read()).value);
+    expect(await frame()).toBe(": connected\n\n");
+    expect(await frame()).toBe("id: 0\n\n");
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "before the deadline" })).status).toBe(201);
+    expect(await frame()).toStartWith("id: 2\nevent: board\n");
+    const waiting = reader.read();
+    expect(timers.delays()).toEqual([PING_INTERVAL_MS, STREAM_MAX_MS]);
+    timers.fire(STREAM_MAX_MS);
+    expect(await waiting).toEqual({ done: true, value: undefined });
+    expect(timers.pending.size).toBe(0);
+
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "while away" })).status).toBe(201);
+    const resumed = (await subscribe(app, "?channel=dev", undefined, "2")).body!.getReader();
+    try {
+      expect(decoder.decode((await resumed.read()).value)).toBe(": connected\n\n");
+      const page = decoder.decode((await resumed.read()).value);
+      expect(page).toStartWith("id: 3\nevent: board\n");
+      expect(JSON.parse(page.split("\n")[2]!.slice("data: ".length))).toMatchObject({
+        message: { text: "while away" },
+      });
+    } finally {
+      await resumed.cancel();
+    }
+  } finally {
+    await app.close();
+  }
+});
+
+test("misses nothing when a post races the deadline", async () => {
+  const timers = manualTimers();
+  const app = makeApp({ schedule: timers.schedule });
+  const decoder = new TextDecoder();
+  const ids = (text: string) => Array.from(text.matchAll(/^id: (.+)$/gm), ([, id]) => id!);
+  try {
+    const reader = (await subscribe(app)).body!.getReader();
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "racing the deadline" })).status).toBe(201);
+    timers.fire(STREAM_MAX_MS);
+    let before = "";
+    for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read())
+      before += decoder.decode(chunk.value);
+    const last = ids(before).at(-1)!;
+    const resumed = (await subscribe(app, "?channel=dev", undefined, last)).body!.getReader();
+    try {
+      await resumed.read();
+      const after = decoder.decode((await resumed.read()).value);
+      const delivered = [...before.matchAll(/^event: board$/gm), ...after.matchAll(/^event: board$/gm)];
+      expect(delivered).toHaveLength(1);
+      expect(`${before}${after}`).toContain("id: 2\nevent: board\n");
+    } finally {
+      await resumed.cancel();
+    }
   } finally {
     await app.close();
   }
