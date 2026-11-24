@@ -14,6 +14,7 @@ import { readBoardAudit, readOrgAudit } from "./audit.ts";
 import { getAvatar } from "./avatars/get.ts";
 import { createBoard, deleteBoard, listBoards } from "./boards.ts";
 import { createChannel, listChannels } from "./channels.ts";
+import { getConnectionPolicy } from "./connection-policy/policy.ts";
 import {
   claimConnection,
   createConnection,
@@ -102,6 +103,7 @@ export const operations = [
   getAccount,
   getAvatar,
   getConnection,
+  getConnectionPolicy,
   getMe,
   getOpenApi,
   getSession,
@@ -188,6 +190,7 @@ export {
   getAccount,
   getAvatar,
   getConnection,
+  getConnectionPolicy,
   getMe,
   getOpenApi,
   getSession,

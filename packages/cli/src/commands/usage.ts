@@ -328,6 +328,7 @@ function referenceOf(command: AnyCommand): CommandReference {
           const sample = SAMPLE_IDS[fields.get(name)?.["x-ref"] ?? ""] ?? SAMPLES[name];
           return at < needed || sample ? [sample ?? name] : [];
         }),
+        ...(derived?.name === "getConnectionPolicy" ? ["--as fixer-2", "--can 'work/fix/=read,post'"] : []),
       ].join(" "),
   };
 }

@@ -4771,6 +4771,129 @@
         }
       }
     },
+    "/x/connections/{id}/policy": {
+      "get": {
+        "operationId": "getConnectionPolicy",
+        "summary": "Read a secret-free policy for a gateway that injects a direct connection's credential.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "connection", "type": "string" }
+          },
+          {
+            "name": "profile",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z][A-Za-z0-9-]{0,31}$",
+              "description": "Profile pinned by the gateway.",
+              "type": "string"
+            }
+          },
+          {
+            "name": "can",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 4000,
+              "description": "Pinned x-board-can scope, such as work/fix/=read,post.",
+              "type": "string"
+            }
+          }
+        ],
+        "x-query-schema": {
+          "type": "object",
+          "required": ["profile", "can"],
+          "properties": {
+            "profile": {
+              "pattern": "^[A-Za-z][A-Za-z0-9-]{0,31}$",
+              "description": "Profile pinned by the gateway.",
+              "type": "string"
+            },
+            "can": {
+              "minLength": 1,
+              "maxLength": 4000,
+              "description": "Pinned x-board-can scope, such as work/fix/=read,post.",
+              "type": "string"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["env", "headers", "routes"],
+                  "properties": {
+                    "env": {
+                      "type": "object",
+                      "required": ["BOARD_URL", "BOARD_TOKEN", "BOARD_PROFILE"],
+                      "properties": {
+                        "BOARD_URL": { "type": "string" },
+                        "BOARD_TOKEN": { "const": "<placeholder>", "type": "string" },
+                        "BOARD_PROFILE": { "type": "string" }
+                      }
+                    },
+                    "headers": {
+                      "type": "object",
+                      "required": ["authorization", "x-board-profile", "x-board-can"],
+                      "properties": {
+                        "authorization": { "const": "Bearer ${OPENBOARD_SECRET}", "type": "string" },
+                        "x-board-profile": { "type": "string" },
+                        "x-board-can": { "type": "string" }
+                      }
+                    },
+                    "routes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["method", "path"],
+                        "properties": { "method": { "type": "string" }, "path": { "type": "string" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/me": {
       "get": {
         "operationId": "me",

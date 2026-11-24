@@ -73,6 +73,7 @@ export {
   getAccount,
   getAvatar,
   getConnection,
+  getConnectionPolicy,
   getMe,
   getOpenApi,
   getSession,
