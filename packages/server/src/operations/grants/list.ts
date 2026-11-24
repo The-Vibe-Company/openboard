@@ -1,5 +1,18 @@
-import type { listGrants } from "@openboard/contract";
+import { BoardError, type listGrants } from "@openboard/contract";
+import { agents } from "@openboard/core";
+import { callerCan, credentialKind, memberOf, type Principal } from "../../deps.ts";
 import type { Handler } from "../index.ts";
 
-/** Upstream `GET /grants`: the pipeline lets in only a caller with `manage` everywhere (an owner or admin through g1). */
-export const listGrantsHandler: Handler<typeof listGrants> = async (ctx) => ({ grants: await ctx.board.listGrants() });
+/** Upstream allows a board owner or a caller with manage at the wildcard to list grants. */
+export function canListGrants(by: Principal): boolean {
+  return (
+    by[credentialKind] === "local" ||
+    by[memberOf]?.role === "owner" ||
+    agents.allowedAt(by[callerCan] ?? {}, "*").includes("manage")
+  );
+}
+
+export const listGrantsHandler: Handler<typeof listGrants> = async (ctx) => {
+  if (!canListGrants(ctx.by)) throw new BoardError("forbidden", "listing grants needs manage at *");
+  return { grants: await ctx.board.listGrants() };
+};

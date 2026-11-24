@@ -119,6 +119,16 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
     send("POST", `${base}/x/connections/claim`, { authorization: `Bearer ${fleet.secret}` }, { profile: marker }),
     "claim",
   );
+  if (org === "bravo") {
+    // B's grant ID must name no grant on A's board for the foreign-ID case.
+    await ok(
+      send("POST", `${base}/grants`, session, {
+        principals: [{ kind: "connection", connection: fleet.connection.id }],
+        can: { dev: ["read"] },
+      }),
+      "extra grant",
+    );
+  }
   const granted = await ok<{ grant: { id: string } }>(
     send("POST", `${base}/grants`, session, {
       principals: [{ kind: "connection", connection: direct.connection.id }],

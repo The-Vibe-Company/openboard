@@ -100,6 +100,7 @@ export {
   revokeAgent,
   revokeAllSessions,
   revokeConnection,
+  revokeGrant,
   revokeInvitation,
   revokePersonalToken,
   rotateConnection,

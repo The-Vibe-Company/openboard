@@ -76,6 +76,8 @@ export type Operation<
   readonly route: { readonly method: Method; readonly path: string; readonly mount?: "/api/x" };
   readonly scope: S;
   readonly input: I;
+  /** The route accepts an omitted request body as well as a JSON body. */
+  readonly bodyOptional?: true;
   readonly output: O;
   readonly invalidInputCode?: ErrorCode;
   /** Optional alternate HTTP representation, negotiated through Accept. */

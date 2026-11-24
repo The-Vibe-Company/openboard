@@ -22,7 +22,8 @@ export function refuseClaimedConfiguration(
     scope !== "org" &&
     !route.mount &&
     !route.path.startsWith("/x/") &&
-    route.path !== "/grants"
+    route.path !== "/grants" &&
+    !route.path.startsWith("/grants/")
   )
     return;
   if (bearer(request)?.startsWith(PREFIX)) {

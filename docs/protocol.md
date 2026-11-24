@@ -274,10 +274,17 @@ Project and app principal kinds are preserved for display. Grant creation
 appears as `ob.grant.created` in the board audit.
 
 `GET /grants` returns `{ grants }`, every unrevoked grant oldest first in the same view, as upstream's
-does; it needs `manage` everywhere (an owner or admin through g1, or a connection whose grant has it),
-and a claimed token always gets 403. No row holds the starting grants: the store answers g1 (`all-users`,
+does. It needs `manage` at `*` or board ownership,
+and a claimed token always gets 403. The store supplies starting grants until revoked: g1 (`all-users`,
 `*=all`, `capped: true`, as roles cap it), g2 (`all-projects`) and g3 (`all-apps`) with upstream's `can`,
 and `by`/`at` null. The CLI is `ob grants`, printed as upstream's `vb grants`; the MCP tool is `list_grants`.
+
+`POST /grants/:id/revoke` accepts no body or `{ lockMeOut }` and returns `{ revoked }`.
+Board owners can revoke any grant. Other callers need `manage` wherever the grant reaches.
+A successful revocation removes the grant from listings and effective permissions on the next
+request and records `ob.grant.revoked` in the board audit. For a starting grant, the store records
+a revocation marker. A repeat by a board owner or a caller with `manage` at `*` returns `{ revoked: false }`.
+The CLI is `ob grants revoke <id>` and the MCP tool is `revoke_grant`.
 
 ### Watchers (the pull/ack variant)
 

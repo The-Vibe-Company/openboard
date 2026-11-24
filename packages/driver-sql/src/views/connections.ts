@@ -44,8 +44,6 @@ export const connectionStatements = {
     ORDER BY token_expires DESC LIMIT 1`,
   revokeConnection: sql`UPDATE connections SET revoked_at = ${"at"}, revoked_by = ${"by"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
-  revokeConnectionGrant: sql`UPDATE grants SET revoked = 1
-    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"grant"}`,
   revokeConnectionAgents: sql`UPDATE connection_agents SET revoked_at = ${"at"}, revoked_by = ${"by"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND connection = ${"id"} AND revoked_at IS NULL`,
   revokeAgent: sql`UPDATE connection_agents SET revoked_at = ${"at"}, revoked_by = ${"by"}
@@ -264,7 +262,7 @@ export async function foldConnectionRevoked(tx: Db, dialect: Dialect, keys: Boar
   const { connection: id, grant } = event.payload;
   const params = { ...keys, id, at: event.at, by: event.actor };
   await query(tx, dialect, connectionStatements.revokeConnection, params);
-  await query(tx, dialect, connectionStatements.revokeConnectionGrant, { ...keys, grant });
+  await query(tx, dialect, grantStatements.revokeGrant, { ...keys, id: grant });
   await query(tx, dialect, connectionStatements.revokeConnectionAgents, params);
 }
 

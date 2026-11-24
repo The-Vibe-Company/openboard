@@ -31,7 +31,7 @@ function writtenCan(written: GrantCan): GrantCan {
   return Object.fromEntries(entries.map(([pattern, can]) => [pattern, written[pattern] === "all" ? "all" : can]));
 }
 
-async function requireGrantManage(ctx: GrantContext, channels: string[], oidc: boolean) {
+export async function requireGrantManage(ctx: GrantContext, channels: string[], oidc: boolean) {
   if (oidc || channels.includes("*")) {
     await keepInsideCan({ access: { permission: "manage", channel: "any" } }, {}, ctx.by, ctx.board);
   } else {

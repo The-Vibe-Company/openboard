@@ -10,7 +10,7 @@ export const listGrants = defineOperation({
   input: {},
   output: Type.Object({ grants: Type.Array(GrantView) }),
   errors: ["unauthorized", "forbidden"],
-  access: { permission: "manage", channel: "any" },
+  access: null,
   effects: { readOnly: true, idempotent: true, emits: [] },
   cli: { command: ["grants"], args: [] },
   mcp: { tool: "list_grants" },

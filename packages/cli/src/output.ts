@@ -6,6 +6,7 @@ import type {
   listTasks,
   ManagedConnection,
   OutputOf,
+  revokeGrant,
 } from "@openboard/contract";
 import type { BoardError } from "@the-vibe-company/openboard";
 import { grantsText } from "./grant-views.ts";
@@ -160,5 +161,7 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
     },
     createTask: (output: unknown) => (output as { task: { id: string } }).task.id,
     listTasks: tasksText,
+    revokeGrant: (output, { id }) =>
+      (output as OutputOf<typeof revokeGrant>).revoked ? `revoked ${String(id)}` : `${String(id)} is already gone`,
     postMessage: (output: unknown) => (output as { message: { id: string } }).message.id,
   });

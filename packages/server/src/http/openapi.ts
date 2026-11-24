@@ -86,7 +86,9 @@ function describeOperation(operation: Operation) {
     ...(operation.route.mount && { servers: [{ url: "/" }] }),
     ...(fields.length > 0 && { parameters: fields }),
     ...(query && { "x-query-schema": query }),
-    ...(body && { requestBody: { required: true, content: { "application/json": { schema: body } } } }),
+    ...(body && {
+      requestBody: { required: !operation.bodyOptional, content: { "application/json": { schema: body } } },
+    }),
     responses,
   };
 }
