@@ -5,13 +5,21 @@ milestone: M11-webhooks-and-watchers
 package: server
 writes:
   - packages/server/src/jobs/webhooks.ts
-  - packages/driver-sql/src/views/webhooks.ts
+  - packages/server/src/webhooks/send.ts
+  - packages/ports/src/webhooks/index.ts
+  - packages/contract/src/entities/webhooks/index.ts
+  - packages/contract/src/operations/audit.ts
+  - packages/core/src/webhooks/events.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/webhooks.md
+  - docs/protocol.md
+  - docs/decisions.md
   - packages/server/test/webhooks/creator-access.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [281, 320]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 506
 ---
 

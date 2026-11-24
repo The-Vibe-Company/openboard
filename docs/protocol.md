@@ -749,8 +749,18 @@ POST {BOARD_URL}/x/webhooks
   `types` narrows event types; `became` fires on a state transition computed
   in the writing transaction (the common "a task is workable now" trigger).
 - **Who may create:** `manage` at every pattern the tail can match on that
-  board; deliveries re-check the creator's read access at send time
-  (unreadable events are skipped); a creator that loses access disables it.
+  board. At send time, the subscription is disabled with
+  `disabledReason: "creator_access"` and an `ob.webhook.disabled` audit event
+  if the creator no longer has `manage` at the filter's own pattern
+  (for example, `dev/`, or `*` for a board-wide filter). A more specific
+  pattern does not affect that check. Each event also requires `read` on its
+  channel at send time. Unreadable events are marked `skipped` without
+  sending a request, and readable events continue to be delivered while
+  the subscription is enabled. If current access cannot be resolved for the
+  stored creator, the worker treats the creator as having no access. Workload
+  credentials can carry OIDC claims that cannot be recovered from the stored
+  owner ID. A mention filter that used the actor directory is also skipped
+  when its creator loses board-wide read access.
 - **Schedules are a source.** A schedule posts a message as its creator at
   each slot with `schedule: { id, n }` (`docs/01-board/07-schedules.md`). A
   subscription with `"tail": "cron/nightly-deps", "types": ["message.posted"]`

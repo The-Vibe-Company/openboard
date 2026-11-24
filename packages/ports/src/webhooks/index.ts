@@ -57,6 +57,7 @@ export interface BoardWebhookWriter extends BoardWebhookReads {
       now: number;
     } & (
       | { state: "done" | "dead"; nextAt?: never; revokedLease?: { jobId: string; instanceId: string } }
+      | { state: "skipped"; nextAt?: never; revokedLease?: never }
       | { state: "pending"; nextAt: number; revokedLease?: never }
     ),
   ): Promise<boolean>;

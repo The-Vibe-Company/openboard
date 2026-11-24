@@ -4,6 +4,7 @@ import { GrantView } from "../entities/grants.ts";
 import { InvitationRole } from "../entities/invitations.ts";
 import { Author } from "../entities/messages.ts";
 import { DeletedBoard, DeletedOrg, Named, Role, Slug } from "../entities/orgs.ts";
+import { WebhookDisabledReason } from "../entities/webhooks/index.ts";
 import { defineOperation } from "../operation.ts";
 
 /** One audit entry: its log position as a cursor, when and by whom, and what changed; never a secret or its hash. */
@@ -25,7 +26,7 @@ export const AuditEvent = Type.Union([
   entry("ob.inbound.deleted", { id: Type.String() }),
   entry("ob.webhook.disabled", {
     id: Type.String(),
-    reason: Type.Union([Type.Literal("gone"), Type.Literal("dead_deliveries")]),
+    reason: WebhookDisabledReason,
   }),
   entry("ob.webhook.updated", { id: Type.String(), name: Type.String(), enabled: Type.Boolean() }),
   entry("ob.webhook.created", { id: Type.String(), name: Type.String() }),

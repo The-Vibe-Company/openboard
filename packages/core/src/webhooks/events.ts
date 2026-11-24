@@ -1,4 +1,4 @@
-import type { Webhook } from "@openboard/contract";
+import type { Webhook, WebhookDisabledReason } from "@openboard/contract";
 
 interface Audit {
   readonly id: number;
@@ -24,7 +24,7 @@ export type WebhookUpdated =
   | (WebhookChange & { readonly type: "ob.webhook.updated" })
   | (WebhookChange & {
       readonly type: "ob.webhook.disabled";
-      readonly payload: { readonly webhook: Webhook & { readonly disabledReason: "gone" | "dead_deliveries" } };
+      readonly payload: { readonly webhook: Webhook & { readonly disabledReason: WebhookDisabledReason } };
     });
 
 export interface WebhookDeleted extends Audit {
