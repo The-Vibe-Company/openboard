@@ -14,8 +14,9 @@ export const listChannelsHandler: Handler<typeof listChannels> = async (ctx, inp
   return { channels: page, cursor: formatId(head), next: channels.length > limit ? (page.at(-1)?.path ?? null) : null };
 };
 
-export const createChannelHandler: Handler<typeof createChannel> = async (ctx, { path }) =>
-  ctx.board.write(async (writer) => {
+export const createChannelHandler: Handler<typeof createChannel> = async (ctx, { path }) => {
+  ctx.debitWrite();
+  return ctx.board.write(async (writer) => {
     const existing = await writer.channel(path);
     const { events, ...result } = channels.decideCreate({ head: writer.head, existing }, path, {
       by: ctx.by,
@@ -24,3 +25,4 @@ export const createChannelHandler: Handler<typeof createChannel> = async (ctx, {
     if (events.length > 0) await writer.append(events);
     return result;
   });
+};

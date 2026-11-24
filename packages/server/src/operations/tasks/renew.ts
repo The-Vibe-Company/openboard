@@ -20,6 +20,7 @@ export const renewTaskHandler: Handler<typeof renewTask> = async (ctx, { id, epo
       { id, epoch, lease },
       { by: ctx.by, author: authorOf(ctx.by), now: ctx.now() },
     );
+    ctx.debitWrite();
     await writer.append(decided.events);
     const { task, until } = decided;
     return { until, task: canListMentionActors(ctx.by) ? task : { ...withoutMentionDetails(task), task: task.task } };

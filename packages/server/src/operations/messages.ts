@@ -22,6 +22,7 @@ import type { BoardContext, Handler } from "./index.ts";
  */
 export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input) => {
   messages.checkPost(input, ctx.by);
+  ctx.debitWrite();
   const { message, replay } = await writeWithMentionVisibility(
     ctx,
     input.text,
@@ -168,6 +169,7 @@ export const editMessageHandler: Handler<typeof editMessage> = async (ctx, input
       mentions,
     );
     const event = decideEdit({ head: writer.head, target }, input, { by: ctx.by, now: ctx.now() }, settled);
+    ctx.debitWrite();
     await writer.append([event]);
     const { mentions: resolved } = event.payload.view;
     return { ok: true, ...(resolved === undefined ? {} : { mentions: resolved }) };
@@ -179,6 +181,7 @@ export const deleteMessageHandler: Handler<typeof deleteMessage> = async (ctx, i
   await ctx.board.write(async (writer) => {
     const target = position === null ? null : await writer.message(position);
     const event = decideDelete({ head: writer.head, target }, input, { by: ctx.by, now: ctx.now() });
+    ctx.debitWrite();
     if (event) await writer.append([event]);
   });
   return { ok: true };
@@ -187,6 +190,7 @@ export const deleteMessageHandler: Handler<typeof deleteMessage> = async (ctx, i
 /** The reaction is decided with the message and the board's record of the writer read under the board's lock. */
 export const reactToMessageHandler: Handler<typeof reactToMessage> = async (ctx, input) => {
   const position = parseId(input.id);
+  ctx.debitWrite();
   await ctx.board.write(async (writer) => {
     const target = position === null ? null : await writer.message(position);
     const state = { head: writer.head, target, actor: writer.actor };
@@ -198,6 +202,7 @@ export const reactToMessageHandler: Handler<typeof reactToMessage> = async (ctx,
 
 /** The label write is decided with the message and the board's record of the writer read under the board's lock. */
 export const labelMessageHandler: Handler<typeof labelMessage> = async (ctx, input) => {
+  ctx.debitWrite();
   const position = parseId(input.id);
   await ctx.board.write(async (writer) => {
     const target = position === null ? null : await writer.message(position);

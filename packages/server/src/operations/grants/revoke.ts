@@ -57,6 +57,7 @@ export const revokeGrantHandler: Handler<typeof revokeGrant> = (ctx, { id }) =>
     const position = /^g[1-9]\d*$/.test(id) ? Number(id.slice(1)) : NaN;
     const grant = Number.isSafeInteger(position) ? await writer.activeGrant(position) : null;
     await authorizeExistingGrantChange(ctx, by, grant, "revoking");
+    ctx.debitWrite();
     if (!grant) return { revoked: false };
     const { actor, principal } = by;
     const event: GrantRevoked = {

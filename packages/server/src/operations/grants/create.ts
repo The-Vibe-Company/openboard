@@ -18,6 +18,7 @@ export const createGrantHandler: Handler<typeof createGrant> = async (ctx, input
       throw new BoardError("not_found", "no such board member");
     }
   }
+  ctx.debitWrite();
   return appendGrant(ctx, can, principals);
 };
 

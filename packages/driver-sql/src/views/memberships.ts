@@ -25,7 +25,7 @@ export function membershipView(
   { orgId }: OrgScope,
 ): Pick<OrgView, "changeMemberRole" | "removeMember"> {
   return {
-    changeMemberRole: ({ personId, targetId, role, at }) =>
+    changeMemberRole: ({ personId, targetId, role, at, admit }) =>
       db.transaction(async (tx) => {
         const [actor] = await query(tx, dialect, invitationStatements.lockInvitationOrg, { orgId, personId });
         if (!actor) throw new BoardError("forbidden", "this organization needs an administrator");
@@ -35,7 +35,9 @@ export function membershipView(
 
         const principal = `ob:user:${targetId}`;
         const previousRole = String(target.role) as Role;
-        if (decideMemberRole(String(actor.role) as Role, previousRole, role)) {
+        const changed = decideMemberRole(String(actor.role) as Role, previousRole, role);
+        admit?.();
+        if (changed) {
           const userId = Number(target.user_id);
           if (previousRole === "owner") {
             const [other] = await query(tx, dialect, membershipStatements.anotherOwner, { orgId, userId });
@@ -58,7 +60,7 @@ export function membershipView(
         }
         return { principal, role };
       }),
-    removeMember: ({ personId, targetId, at }) =>
+    removeMember: ({ personId, targetId, at, admit }) =>
       db.transaction(async (tx) => {
         const [actor] = await query(tx, dialect, membershipStatements.lockRemovingMember, { orgId, personId });
         if (!actor) throw new BoardError("not_found", "no such organization");
@@ -67,6 +69,7 @@ export function membershipView(
 
         const role = String(target.role) as Role;
         requireMemberRemoval(String(actor.role) as Role, role, personId === targetId);
+        admit?.();
         const userId = Number(target.user_id);
         if (role === "owner") {
           const [other] = await query(tx, dialect, membershipStatements.anotherOwner, { orgId, userId });

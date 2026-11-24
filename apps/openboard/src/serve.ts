@@ -32,7 +32,7 @@ export async function serve(config: Config): Promise<void> {
       port: config.port,
       fetch(request, server) {
         if (request.method === "GET" && /\/events\/*$/.test(new URL(request.url).pathname)) server.timeout(request, 0);
-        return app.fetch(request);
+        return app.fetch(request, { ip: server.requestIP(request)?.address });
       },
     });
     try {

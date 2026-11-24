@@ -1,6 +1,7 @@
 import { BoardError, type SignInProvider } from "@openboard/contract";
 import type { PlatformView } from "@openboard/ports";
 import type { Deps, ServerConfig } from "../../deps.ts";
+import type { RequestLimits } from "../../http/limits.ts";
 import { base32, hashToken } from "../secrets.ts";
 import { base64url, cookieOf, hostCookie, mintSession, sameText } from "../sessions.ts";
 import { githubProvider } from "./github/index.ts";
@@ -42,7 +43,7 @@ export function providerLinks(providers: readonly LoginProvider[], publicUrl: st
   return providers.map(({ id }) => ({ id, start: `${publicUrl}/auth/${id}/start` }));
 }
 
-export interface SignInContext {
+export interface SignInContext extends RequestLimits {
   readonly config: ServerConfig;
   readonly deps: Deps;
   readonly platform: PlatformView;

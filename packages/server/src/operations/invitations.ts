@@ -22,7 +22,13 @@ export const createInvitationHandler: Handler<typeof createInvitation> = async (
   const token = base64url(ctx.randomBytes(32));
   const personId = ctx.person.id;
   const record = decideInvitation(input, { id, by: `ob:user:${personId}`, now: at });
-  const created = await ctx.org.createInvitation({ ...record, tokenHash: digest(token), personId, at });
+  const created = await ctx.org.createInvitation({
+    ...record,
+    tokenHash: digest(token),
+    personId,
+    at,
+    admit: ctx.debitWrite,
+  });
   if (!created) throw new BoardError("not_found", "no such organization or route");
   return { invitation: record.invitation, url: `${ctx.publicUrl}/invite/${token}` };
 };
@@ -44,7 +50,7 @@ export const acceptInvitationHandler: Handler<typeof acceptInvitation> = async (
 
 export const revokeInvitationHandler: Handler<typeof revokeInvitation> = async (ctx, { id }) => {
   const at = ctx.now();
-  const outcome = await ctx.org.revokeInvitation(id, ctx.person.id, at);
+  const outcome = await ctx.org.revokeInvitation(id, ctx.person.id, at, ctx.debitWrite);
   if (outcome === "not_admin") throw new BoardError("forbidden", "this organization needs an administrator");
   if (outcome === "not_found") throw new BoardError("not_found", "no such invitation");
   if (outcome === "used") throw new BoardError("invitation_used", "this invitation was already accepted or revoked");

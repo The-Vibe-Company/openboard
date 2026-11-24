@@ -43,6 +43,7 @@ export const claimTaskHandler: Handler<typeof claimTask> = async (ctx, { id, lea
       ctx.now(),
       lease,
     );
+    ctx.debitWrite();
     await writer.append(events);
     return answer;
   }, ctx.by.actor);

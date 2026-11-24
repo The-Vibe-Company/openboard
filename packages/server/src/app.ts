@@ -3,6 +3,7 @@ import type { Jobs, Store } from "@openboard/ports";
 import { loginProviders } from "./auth/providers/index.ts";
 import type { Deps, ServerConfig } from "./deps.ts";
 import { readinessCheck } from "./http/health.ts";
+import { instanceRateLimits } from "./http/limits.ts";
 import { handle, type Pipeline } from "./http/pipeline.ts";
 import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
@@ -37,6 +38,7 @@ export function createApp(
     track,
     config,
     deps,
+    rateLimits: instanceRateLimits(deps.now),
     routes: routeTable(
       operations.filter(({ scope, route }) => scope === "board" || (scope === "public" && !route.mount)),
     ),
@@ -60,7 +62,8 @@ export function createApp(
     }
   }
   return {
-    fetch: (request: Request): Promise<Response> => track(handle(request, pipeline)),
+    fetch: (request: Request, connection?: { readonly ip?: string | undefined }): Promise<Response> =>
+      track(handle(request, pipeline, connection?.ip)),
     drain() {
       if (!draining) {
         draining = finishDrain();
