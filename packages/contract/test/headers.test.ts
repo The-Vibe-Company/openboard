@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { BoardError } from "../src/errors.ts";
-import { parseProfileHeader } from "../src/headers.ts";
+import { Me } from "../src/entities/actors.ts";
+import { Event } from "../src/entities/events.ts";
+import { Message } from "../src/entities/messages.ts";
+import { PROFILE_HEADER, parseProfileHeader, RETIRED_HEADERS } from "../src/headers.ts";
 
 function codeOf(value: string): string {
   try {
@@ -97,4 +100,29 @@ test("refuses what is not a profile name as 400 invalid_profile", () => {
   for (const value of NOT_A_PROFILE) {
     expect(codeOf(value)).toBe("invalid_profile");
   }
+});
+
+describe("retired identity headers", () => {
+  test("are the four upstream retired, none of them the profile header", () => {
+    expect([...RETIRED_HEADERS].sort()).toEqual([
+      "x-board-avatar",
+      "x-board-handle",
+      "x-board-name",
+      "x-board-session",
+    ]);
+    expect(RETIRED_HEADERS).not.toContain(PROFILE_HEADER);
+  });
+
+  test("leave no session field on a message, an event, or /me", () => {
+    /** Every property name anywhere in a TypeBox schema, through objects, unions, arrays and records. */
+    const keys = (schema: unknown): string[] => {
+      if (typeof schema !== "object" || schema === null) return [];
+      const node = schema as Record<string, unknown>;
+      const own = typeof node.properties === "object" && node.properties !== null ? Object.keys(node.properties) : [];
+      return [...own, ...Object.values(node).flatMap(keys)];
+    };
+    for (const schema of [Message, Event, Me]) {
+      expect(keys(schema)).not.toContain("session");
+    }
+  });
 });
