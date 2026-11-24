@@ -1,10 +1,16 @@
-import hosted from "../../railway.hosted.json" with { type: "json" };
-
 const API = "https://backboard.railway.com/graphql/v2";
 const PROJECT = "d2f79d2f-64b8-4c30-b922-3b9502e6ea4e";
 const ORIGIN = "https://openboard-staging.up.railway.app";
 const REGION = "europe-west4-drams3a";
 const IMAGE = "ghcr.io/the-vibe-company/openboard";
+
+export const STAGING_DEPLOY_SETTINGS = {
+  healthcheckPath: "/readyz",
+  healthcheckTimeout: 120,
+  restartPolicyType: "ON_FAILURE",
+  preDeployCommand: ["openboard migrate"],
+  multiRegionConfig: { [REGION]: { numReplicas: 2 } },
+} as const;
 
 const targetQuery = `query StagingTarget {
   projectToken { projectId environmentId }
@@ -122,7 +128,11 @@ async function waitForReplicas(
         seen.add(health.instanceId);
     }
     pending = deployment.instances.filter(({ id }) => !seen.has(id));
-    if (status === "SUCCESS" && deployment.instances.length === hosted.deploy.numReplicas && !pending.length)
+    if (
+      status === "SUCCESS" &&
+      deployment.instances.length === STAGING_DEPLOY_SETTINGS.multiRegionConfig[REGION].numReplicas &&
+      !pending.length
+    )
       return deployment.instances.map(({ id }) => id);
     if (terminalStatuses.includes(status)) break;
     await runtime.sleep(1_000);
@@ -157,13 +167,11 @@ export async function deployStaging(
   if (!service) throw new Error("Railway staging has no openboard service");
 
   const ids = { environmentId, serviceId: service.node.serviceId };
-  const { numReplicas, ...settings } = hosted.deploy;
   const { serviceInstanceUpdate } = await api<{ serviceInstanceUpdate: boolean }>(updateMutation, {
     ...ids,
     input: {
-      ...settings,
+      ...STAGING_DEPLOY_SETTINGS,
       source: { image: `${IMAGE}:${tag}` },
-      multiRegionConfig: { [REGION]: { numReplicas } },
       startCommand: `/bin/sh -c "export OPENBOARD_INSTANCE_ID=$RAILWAY_REPLICA_ID OPENBOARD_DEPLOYMENT_TAG=${tag}; exec openboard serve"`,
     },
   });
