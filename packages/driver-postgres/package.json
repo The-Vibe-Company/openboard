@@ -9,6 +9,7 @@
     "./catalog": "./src/catalog.ts"
   },
   "dependencies": {
+    "@openboard/contract": "workspace:*",
     "@openboard/driver-sql": "workspace:*",
     "@openboard/ports": "workspace:*"
   },
