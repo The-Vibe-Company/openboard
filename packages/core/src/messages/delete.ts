@@ -1,5 +1,6 @@
 import { type Author, BoardError, type Message } from "@openboard/contract";
 import { parseId } from "../ids.ts";
+import { checkMessageOwnership } from "./ownership.ts";
 import { checkRevision } from "./revision.ts";
 
 export interface MessageDeleted {
@@ -28,9 +29,7 @@ export function decideDelete(
   { by, now }: { readonly by: Author; readonly now: number },
 ): MessageDeleted | null {
   if (!target) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
-  if (target.by.principal !== by.principal || (by.profile !== null && target.by.actor !== by.actor)) {
-    throw new BoardError("forbidden", "only the author can delete a message");
-  }
+  checkMessageOwnership(target.by, by, "delete");
   checkRevision(target, revision);
   if (target.deleted) return null;
   const message = parseId(target.id);

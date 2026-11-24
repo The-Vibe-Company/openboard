@@ -2,6 +2,7 @@ import { type Author, BoardError, type Message } from "@openboard/contract";
 import { isoTime, parseId } from "../ids.ts";
 import type { SettledMentions } from "./mentions.ts";
 import { checkMessageText } from "./post.ts";
+import { checkMessageOwnership } from "./ownership.ts";
 import { checkRevision } from "./revision.ts";
 
 export interface MessageEdited {
@@ -34,6 +35,7 @@ export function decideEdit(
   checkMessageText(written);
   const text = settled?.text ?? written;
   if (!target) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
+  checkMessageOwnership(target.by, by, "edit");
   checkRevision(target, revision);
   if (target.deleted) throw new BoardError("message_deleted", `Message #${id} is deleted.`);
   const message = parseId(target.id);

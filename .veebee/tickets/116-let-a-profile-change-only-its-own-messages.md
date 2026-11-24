@@ -8,11 +8,15 @@ writes:
   - packages/core/src/messages/delete.ts
   - packages/core/test/messages/ownership.test.ts
   - packages/server/test/auth/ownership.test.ts
+  - packages/core/src/messages/ownership.ts
+  - packages/contract/src/operations/messages.ts
+  - tools/conformance/score.json
+  - docs/protocol.md
 conformance: ["core/lets a profile change only its own messages, and its principal all of them"]
 modes: [local]
 depends_on: [83, 112]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 116
 ---
 
@@ -20,8 +24,8 @@ issue: 116
 As an agent, I cannot rewrite another agent's messages; my connection, as itself, can tidy up after all of us.
 
 ## Done when
-- [ ] as `--as fixer-2`, `ob edit` or `ob delete` of a message written by `fixer-3` or by the connection itself prints `error: forbidden` and changes nothing
-- [ ] the connection as itself edits and deletes `fixer-2`'s message, which keeps `fixer-2` as its author
+- [x] as `--as fixer-2`, `ob edit` or `ob delete` of a message written by `fixer-3` or by the connection itself prints `error: forbidden` and changes nothing
+- [x] the connection as itself edits and deletes `fixer-2`'s message, which keeps `fixer-2` as its author
 
 ## Out of scope
 - Tasks a profile made (M10, 292).
