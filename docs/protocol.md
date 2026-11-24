@@ -983,15 +983,17 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   period, which separates signed fields. The receiver generates its own
   request ID. Board bearer credentials are ignored. SDK clients send a pre-signed
   request with `receiveInboundEvent({ id }, { signed: { headers, body } })`.
-  Dedupe uses the sender's
-  event ID, and a duplicate answers 200 with the first result.
+  The delivery ID comes from the scheme's ID header, or the signed JSON
+  body's `id` field for a scheme without one (such as Stripe). A missing ID
+  answers 400 `invalid_request` when a signature is supplied. The endpoint
+  saves its first successful result, including when no rules match. A verified
+  duplicate on the same endpoint returns that result without writing again.
 - **Reply rules** evaluate all `when` conditions against the JSON body and request headers. Each
   condition matches one value or any value in its list. Matching rules and
   their actions run in order. A reply renders its text with `body` and the
   thread root and requires both `read` and `post` there. An unreadable thread
   answers 404. A readable thread without permission to post answers 403
-  `forbidden`. Stripe supplies its
-  delivery ID in the signed body's `id` field. Delivery IDs are limited to 1024 bytes.
+  `forbidden`. Delivery IDs are limited to 1024 bytes.
 - **Effects** run in one board transaction together with the dedupe insert, so
   they happen at most once per endpoint and delivery ID, including across instances.
 - **Principal** `ob:hook:ib_…` with its own grant (created under grant-change

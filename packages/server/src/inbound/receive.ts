@@ -1,12 +1,13 @@
-import { BoardError, type receiveInboundEvent } from "@openboard/contract";
+import { BoardError, type OutputOf, type receiveInboundEvent } from "@openboard/contract";
 import type { BoardView } from "@openboard/ports";
 import { limitAuthentication } from "../auth/chain.ts";
 import { limitWrite, type RequestLimits } from "../http/limits.ts";
 import type { Pipeline } from "../http/pipeline.ts";
 import type { BoardPath } from "../http/scope.ts";
+import { webhookSigningScheme } from "../jobs/sign.ts";
 import type { Handler } from "../operations/index.ts";
 import { INBOUND_VERIFY_INFO, openSecret } from "../webhooks/secret-box.ts";
-import { runInbound } from "./run.ts";
+import { parseInboundBody, runInbound } from "./run.ts";
 import { verifyInbound } from "./verify.ts";
 
 const maxBodyBytes = 1024 * 1024;
@@ -46,6 +47,19 @@ export interface SignatureContext {
 
 const missingEndpoint = () => new BoardError("not_found", "no such inbound endpoint");
 
+const maxEventIdBytes = 1024;
+
+function eventId(header: string | undefined, headers: Headers, body: unknown): string {
+  const id = header ? headers.get(header) : (body as { id?: unknown } | null)?.id;
+  if (typeof id !== "string" || !id || id.includes("\0") || !id.isWellFormed()) {
+    throw new BoardError("invalid_request", "an inbound event requires a delivery ID");
+  }
+  if (Buffer.byteLength(id) > maxEventIdBytes) {
+    throw new BoardError("invalid_request", "the inbound delivery ID exceeds 1024 bytes");
+  }
+  return id;
+}
+
 export const receiveInboundEventHandler: Handler<typeof receiveInboundEvent> = async (ctx, { id }) => {
   const record = await ctx.board.inboundEndpoint(id);
   if (!record?.inbound.enabled) throw missingEndpoint();
@@ -55,13 +69,22 @@ export const receiveInboundEventHandler: Handler<typeof receiveInboundEvent> = a
   if (!credentials) throw new BoardError("unavailable", "inbound verification is unavailable");
   verifyInbound(record.inbound.verify, credentials.secret, ctx.headers, ctx.body, ctx.url, ctx.now());
   ctx.debitWrite();
-  if (record.inbound.rules.length === 0) return { ok: true, matched: [], results: [] };
+  const header = webhookSigningScheme(record.inbound.verify).idHeader;
+  const body = header ? undefined : parseInboundBody(ctx.body);
+  const delivery = eventId(header, ctx.headers, body);
   return ctx.board.write(async (writer) => {
     const current = await writer.inboundEndpoint(id);
     if (!current?.inbound.enabled) throw missingEndpoint();
-    return current.inbound.rules.length === 0
-      ? { ok: true, matched: [], results: [] }
-      : runInbound(writer, current, ctx.headers, ctx.body, ctx.now());
+    const seen = await writer.inboundSeen(id, delivery);
+    if (seen !== null) return JSON.parse(seen) as OutputOf<typeof receiveInboundEvent>;
+
+    const now = ctx.now();
+    const answer =
+      current.inbound.rules.length === 0
+        ? { ok: true as const, matched: [], results: [] }
+        : await runInbound(writer, current, ctx.headers, header ? parseInboundBody(ctx.body) : body, now);
+    await writer.recordInboundSeen(id, delivery, now, JSON.stringify(answer));
+    return answer;
   }, record.inbound.principal);
 };
 

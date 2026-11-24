@@ -60,7 +60,10 @@ For example, configure `thread.from` as `{{body.externalRef}}` and
 `thread.pattern` as `^ob:(\d+)$`. Map `turn.finished` to a reply with
 `{{body.summary}}`. Send the signed event to the endpoint's returned URL
 with a stable event ID and an `externalRef` of `ob:<task-id>`. The endpoint
-verifies the signature and applies the matching rules. Rules can also label
+verifies the signature and applies the matching rules. Retry a 503 with the
+same event ID and a fresh signature if required by the scheme. Once a delivery
+succeeds, a verified retry on the same endpoint returns the first result without
+applying the rules again. Rules can also label
 the thread, block or unblock a task, cancel a task, expire a claim, or revoke
 the agent. Task completion belongs to the agent holding the claim.
 If the board refuses a configuration with `invalid_rule`, use the field in
