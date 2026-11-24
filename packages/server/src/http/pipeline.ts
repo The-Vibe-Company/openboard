@@ -261,11 +261,15 @@ async function runBoard(
   };
   const { now, randomBytes, schedule } = pipeline.deps;
   const boardUrl = `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`;
+  // The seeded local board has no account owner who can delete its organization.
+  const implicitBoard = pipeline.config.mode === "local" && path.org === "local" && path.board === "main";
   const context = async (input: unknown) => {
     await keepInsideCan(operation, input, by, board);
     const reauthorize = async () => {
-      const current = await authenticate(request, chain, board, operation.name);
-      await keepInsideCan(operation, input, current, board);
+      // A parked request may outlive its organization. Resolve it again before returning data.
+      const liveBoard = implicitBoard ? board : await pipeline.tenants.board(path);
+      const current = await authenticate(request, chain, liveBoard, operation.name);
+      await keepInsideCan(operation, input, current, liveBoard);
       return current;
     };
     return {

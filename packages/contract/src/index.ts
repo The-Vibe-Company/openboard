@@ -61,6 +61,7 @@ export {
   createSchema,
   createTask,
   deleteMessage,
+  deleteOrg,
   discoverBoard,
   editMessage,
   findLinkedThread,

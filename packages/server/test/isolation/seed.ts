@@ -35,6 +35,7 @@ export interface Seeded {
   /** A second board of A's organization, where A's board-bound credentials must not work. */
   readonly aOther: string;
   readonly b: Tenant;
+  readonly deleted: Tenant;
   /** A message ID, and client ID, both boards hold: on A's URL it must name A's message. */
   readonly sharedMessage: string;
   send(method: string, path: string, headers: Headers, body?: unknown): Promise<Response>;
@@ -60,7 +61,7 @@ async function ok<T>(response: Promise<Response>, what: string): Promise<T> {
 }
 
 /** A personal token for `org`, through the device sign-in its owner approves. */
-async function personalToken(send: Send, session: Headers, org: string): Promise<string> {
+export async function personalToken(send: Send, session: Headers, org: string): Promise<string> {
   const start = await ok<{ deviceCode: string; userCode: string }>(
     send("POST", "/api/x/auth/device", {}, { clientName: `${org}-laptop` }),
     "device start",
@@ -231,5 +232,7 @@ export async function seed(): Promise<Seeded> {
   const b = await tenant(send, store, "bravo", "b", 11);
   const events = await ok<{ cursor: string }>(send("GET", "/api/alpha/main/events", a.session), "events");
   if (Number(b.ids.message) <= Number(events.cursor)) throw new Error("seed: B's last message must be past A's head");
-  return { app, store, a, aOther, b, sharedMessage: String(a.ids.message), send };
+  const deleted = await tenant(send, store, "archived", "c", 0);
+  await ok(send("POST", "/api/x/orgs/archived/delete", deleted.session), "delete organization");
+  return { app, store, a, aOther, b, deleted, sharedMessage: String(a.ids.message), send };
 }

@@ -717,7 +717,10 @@ Lease consumption and the database effect commit together.
   exempted from the scope check. The write then numbers its event
   `MAX(id) + 1`, and it writes nothing if the writer is no longer an admin.
 - **Consequence.** Later organization writes (members, roles, deletion)
-  take the same lock before numbering an organization event, and read
+  take the same lock before numbering an organization event. Soft deletion
+  needs an owner under that lock. The tenant resolver treats a deleted slug
+  as unknown, with 404 for every credential on its board routes (issue #368).
+  Read
   operations declare `access: { permission: "read", … }` to be open to
   members.
 

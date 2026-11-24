@@ -2,6 +2,7 @@ export type { IdentityRecord, PersonRecord, SessionRecord, SignedInPerson, SignI
 export type { Broadcaster, CommittedEvents, CommittedPage } from "./broadcaster.ts";
 export type { BoardGrantReads, BoardGrantWriter, PersonGrant } from "./grants.ts";
 export type { BoardJobWriter, Job, JobLease, JobPayload, JobSchedule, Jobs } from "./jobs.ts";
+export type { OrgAuditRecord } from "./org-audit-record.ts";
 export type { RateLimits } from "./seams.ts";
 export type {
   AgentRecord,
@@ -17,7 +18,6 @@ export type {
   CreateOrgRecord,
   MembershipRecord,
   MentionEvidence,
-  OrgAuditRecord,
   OrgScope,
   OrgView,
   PlatformView,

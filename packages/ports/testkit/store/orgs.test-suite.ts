@@ -57,6 +57,36 @@ async function checkQuotaOverride(store: Store) {
   expect(await create(first.orgId, ada)).toBe("created");
 }
 
+async function checkDeletion(db: Store) {
+  const ada = await person(db, "ada", "a");
+  const platform = db.platform();
+  await platform.createOrg(acme(ada));
+  const keys = await platform.findBoard("acme", "main");
+  if (!keys) throw new Error("missing organization");
+  const org = db.org(testOrgScope(keys.orgId));
+  const attempts = await Promise.allSettled([org.deleteOrg(ada, at), org.deleteOrg(ada, at)]);
+  expect(attempts.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
+  expect(attempts.find(({ status }) => status === "rejected")).toMatchObject({ reason: { code: "not_found" } });
+  const { events, head } = await org.auditEvents(2, 10);
+  expect(head).toBe(3);
+  expect(events).toEqual([
+    {
+      id: 3,
+      type: "ob.org.deleted",
+      at,
+      actor: `ob:user:${ada}`,
+      payload: {
+        org: { slug: "acme", name: "Acme" },
+        deletedAt: "2023-11-14T22:13:20.000Z",
+        purgeAt: "2023-12-14T22:13:20.000Z",
+      },
+    },
+  ]);
+  expect(await platform.findBoard("acme", "main")).toBeNull();
+  expect(await platform.memberships(ada)).toEqual([]);
+  await expect(platform.createOrg(acme(ada))).rejects.toMatchObject({ code: "slug_taken" });
+}
+
 export function orgsSuite(driver: string, open: OpenStore): void {
   let store: Store | undefined;
   afterEach(() => store?.close());
@@ -112,6 +142,11 @@ export function orgsSuite(driver: string, open: OpenStore): void {
     expect(membership?.org.slug).toBe(results.find(({ code }) => code === "created")?.slug);
     const refused = results.find(({ code }) => code === "already_in_org");
     expect(await platform.findBoard(refused?.slug ?? "", "main")).toBeNull();
+  });
+
+  test(`${driver}: concurrent deletions retain one organization audit event and reserve its slug`, async () => {
+    store = await open();
+    await checkDeletion(store);
   });
 
   test(`${driver}: an organization whose slug is taken is not created, and nothing of it is kept`, async () => {

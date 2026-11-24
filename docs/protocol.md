@@ -469,7 +469,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/api/x/orgs` | person | `{ name, slug }` → organization, owner membership, board `main`; 409 `already_in_org` in v1 if already a member |
 | GET | `/api/x/orgs/:org` | member | |
 | POST | `/api/x/orgs/:org` | admin | rename (display name only) |
-| POST | `/api/x/orgs/:org/delete` | owner | soft delete; hard delete after 30 days |
+| POST | `/api/x/orgs/:org/delete` | owner | Returns `{ org, deletedAt, purgeAt }` with UTC timestamps 30 days apart and records `ob.org.deleted`. A non-owner member gets 403 `forbidden`. After deletion, board routes answer 404 `not_found` as for an unknown slug, before checking credentials. A signed-in person also receives 404 on organization routes, including repeat deletion. The slug remains reserved, and former memberships no longer count toward the one-organization limit. |
 | POST | `/api/x/orgs/:org/export` | owner | export job; `GET /api/x/orgs/:org/exports/:id` |
 | GET | `/api/x/orgs/:org/members` | member | `{ members: [{ principal, role }] }` |
 | POST | `/api/x/orgs/:org/members/:user/role` | admin (owner to grant `owner`) | `{ role }` → `{ principal, role }`; only an owner can demote another owner or themself; 409 `last_owner` if no other owner remains |
