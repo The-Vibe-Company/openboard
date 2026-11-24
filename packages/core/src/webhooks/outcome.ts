@@ -4,6 +4,8 @@ export function webhookOutcome(status: number | null) {
 
 const retrySeconds = [10, 30, 120, 600, 1_800, 3_600, 10_800, 21_600, 43_200];
 
+export const webhookMaxAttempts = retrySeconds.length + 1;
+
 function retryAfterMs(header: string | null | undefined, now: number): number | null {
   const value = header?.trim();
   if (!value) return null;
@@ -35,6 +37,7 @@ export function webhookRetryAt({
     retryableClientStatus ||
     error === "timeout" ||
     error === "request_failed" ||
+    error === "tls" ||
     (status !== null && status >= 500 && status < 600);
   return retryable ? now + (retryAfterMs(retryAfter, now) ?? seconds * 1_000) : null;
 }

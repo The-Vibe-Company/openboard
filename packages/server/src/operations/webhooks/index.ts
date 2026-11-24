@@ -40,7 +40,7 @@ function requireManage(ctx: BoardContext, channel: string | undefined) {
   if (!canManage(ctx, channel)) throw new BoardError("forbidden", "webhooks require manage throughout the tail");
 }
 
-function requireWebhook(ctx: BoardContext, record: WebhookRecord | null): WebhookRecord {
+export function requireWebhook(ctx: BoardContext, record: WebhookRecord | null): WebhookRecord {
   if (!record) throw new BoardError("not_found", "no such webhook");
   requireManage(ctx, parseTail(record.webhook.filter.tail).channel);
   return record;

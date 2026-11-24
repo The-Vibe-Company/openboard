@@ -37,6 +37,13 @@ const boardCases: Cases<BoardView> = {
     if (!foreign) throw new Error("missing foreign webhook");
     return expectNull(await a.board.webhook(foreign.webhook.id));
   },
+  webhookDeliveries: async (a, b) => {
+    const [foreign] = await b.board.webhooks();
+    if (!foreign) throw new Error("missing foreign webhook");
+    const id = foreign.webhook.id;
+    expect(await b.board.webhookDeliveries(id, { limit: 1 })).toHaveLength(1);
+    expect(await a.board.webhookDeliveries(id, { limit: 1 })).toEqual([]);
+  },
   takeRate: (a, b) => isolatedRates(a.board, b.board),
   identity: async (a) => {
     const result = await a.board.identity();
@@ -139,6 +146,13 @@ const writerCases: Cases<BoardWriter> = {
     const [foreign] = await b.board.webhooks();
     if (!foreign) throw new Error("missing foreign webhook");
     return expectNull(await inWrite(a, (writer) => writer.webhook(foreign.webhook.id)));
+  },
+  webhookDeliveries: async (a, b) => {
+    const [foreign] = await b.board.webhooks();
+    if (!foreign) throw new Error("missing foreign webhook");
+    const id = foreign.webhook.id;
+    expect(await b.board.webhookDeliveries(id, { limit: 1 })).toHaveLength(1);
+    expect(await inWrite(a, (writer) => writer.webhookDeliveries(id, { limit: 1 }))).toEqual([]);
   },
   webhookQuota: (a) => inWrite(a, async (writer) => expectNull(await writer.webhookQuota())),
   storeWebhookSecret: (a) => seedWebhook(a.board, a.marker, a.actor),
@@ -472,6 +486,27 @@ async function checkExportFailure(store: Store) {
   }
 }
 
+async function seedCase(method: string, a: StoreTenant, b: StoreTenant) {
+  if (["watcherRegistrations", "watcherRegistrationHash", "pullWatcherMatches", "ackWatcherMatch"].includes(method)) {
+    await seedWatcher(a.board, a.actor, a.channel, at);
+    await seedWatcher(b.board, b.actor, b.channel, at);
+  }
+  if (["schema", "schemas", "schemaCount"].includes(method)) {
+    await inWrite(a, (writer) => appendSchema(writer, a.actor, a.marker, at));
+    await inWrite(b, (writer) => appendSchema(writer, b.actor, b.marker, at));
+  }
+  if (["readExport", "auditExportDownload", "runExport", "exportAudit"].includes(method)) {
+    await b.org.requestExport("foreign", b.personId, at, () => {});
+  }
+  if (["webhooks", "webhook", "removeWebhookSecret", "beginWebhookPing"].includes(method)) {
+    await seedWebhook(b.board, b.marker, b.actor);
+  }
+  if (method === "webhookDeliveries") {
+    const foreign = await seedWebhook(b.board, b.marker, b.actor);
+    await inWrite(b, (writer) => writer.beginWebhookPing(foreign, "foreign-ping", at));
+  }
+}
+
 /**
  * Every scoped store method, called on organization A's views with B's IDs, answers nothing of B and changes nothing
  * of B (docs/codebase.md 6.5): the storage twin of the server's isolation suite.
@@ -533,22 +568,7 @@ export function isolationSuite(driver: string, open: OpenStore): void {
         store = await open();
         const a = await storeTenant(store, "alpha", "a", 2);
         const b = await storeTenant(store, "bravo", "b", 12);
-        if (
-          ["watcherRegistrations", "watcherRegistrationHash", "pullWatcherMatches", "ackWatcherMatch"].includes(method)
-        ) {
-          await seedWatcher(a.board, a.actor, a.channel, at);
-          await seedWatcher(b.board, b.actor, b.channel, at);
-        }
-        if (["schema", "schemas", "schemaCount"].includes(method)) {
-          await inWrite(a, (writer) => appendSchema(writer, a.actor, a.marker, at));
-          await inWrite(b, (writer) => appendSchema(writer, b.actor, b.marker, at));
-        }
-        if (["readExport", "auditExportDownload", "runExport", "exportAudit"].includes(method)) {
-          await b.org.requestExport("foreign", b.personId, at, () => {});
-        }
-        if (["webhooks", "webhook", "removeWebhookSecret", "beginWebhookPing"].includes(method)) {
-          await seedWebhook(b.board, b.marker, b.actor);
-        }
+        await seedCase(method, a, b);
         const before = await digestOf(b);
         holdsNothingOf(b, await run(a, b, store), `${view}.${method}`);
         expect(await digestOf(b)).toBe(before);

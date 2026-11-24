@@ -558,7 +558,8 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/x/connections/refresh` | X | Bearer: agent token. Per-instance token bucket per agent (six per minute, burst six). A limited request answers 429 `rate_limited` with `retry-after` in seconds and leaves the token unchanged. |
 | POST | `/x/connections/:id/agents/:agent/revoke` | X | Board owner or organization admin. Returns `{ id, connection, revokedAt }`; the agent's tokens answer 401 from the next request, its profile is free, and the connection and its other agents keep working. An unknown or already revoked agent, or one of another connection, answers 404 `not_found`. |
 | POST, GET | `/x/webhooks`; GET, POST `/x/webhooks/:id`; POST `/x/webhooks/:id/delete`, `/test` | X | |
-| GET | `/x/webhooks/:id/deliveries`; POST `/x/webhooks/:id/deliveries/:dl/retry` | X | |
+| GET | `/x/webhooks/:id/deliveries` | X | Requires manage throughout the subscription tail. Returns 404 `not_found` for an unknown webhook or one on another board. |
+| POST | `/x/webhooks/:id/deliveries/:dl/retry` | X | |
 | POST, GET | `/x/inbound`; GET, POST `/x/inbound/:id`; POST `/x/inbound/:id/delete` | X | |
 | POST | `/x/inbound/:id/events` | X | the receiving route; signature, no bearer |
 | GET | `/x/inbound/:id/received` | X | |
@@ -825,7 +826,19 @@ Invalid names return HTTP 400 `invalid_signing` and identify the field.
   429, 5xx retry at 10 s, 30 s, 2 min, 10 min, 30 min, 1 h, 3 h, 6 h, 12 h
   (honouring `retry-after` ≤ 1 h); other 4xx dead at once; 410 disables the
   subscription; more than 100 dead in 24 h disables it.
-- **Dead letters:** listed and retried through the deliveries routes.
+- **Dead letters:** a delivery that still fails on its tenth attempt is marked
+  `dead`. List delivery history with `GET /x/webhooks/:id/deliveries` or
+  `ob webhooks deliveries <id> --state dead`. The response is
+  `{ deliveries, older }`, newest first by creation time, with delivery ID
+  breaking ties. Each row has `id`, `event`, `thread`, `state`, `attempt`,
+  `lastStatus`, `lastError`, `createdAt`, and `doneAt`. Event and thread IDs
+  are numbers, or null for test pings. Timestamps use UTC ISO 8601, with null
+  `doneAt` while unfinished. Missing status and error values are null.
+  Errors report a short class (`timeout`, `unreachable`, `tls`, `status`,
+  or `too_large` when the rendered body exceeds the size limit).
+  Use `state` to filter, `limit` for 1 to 200 rows (default 50), and pass
+  `older` as `before` to fetch the next page when `older` is non-null.
+  The CLI prints one line per row or the full response with `--json`.
 - **Pull instead of push:** upstream's watcher routes.
 
 ## Inbound endpoints

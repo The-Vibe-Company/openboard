@@ -66,7 +66,7 @@ or invalid value.
 
 Use the [command reference](references/commands.md) for arguments, options,
 and errors. For external runners, see [webhook subscriptions and status
-reports](references/webhooks.md).
+reports](references/webhooks.md). Use `ob webhooks deliveries <id> --state dead` to inspect failed deliveries.
 
 For hosted operations from a trusted deployment shell, use the server binary's
 `openboard admin --help`. See [Operator access](https://github.com/The-Vibe-Company/openboard/blob/main/docs/auth.md#threat-model)

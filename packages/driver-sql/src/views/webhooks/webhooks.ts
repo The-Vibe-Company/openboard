@@ -1,5 +1,5 @@
-import type { Webhook } from "@openboard/contract";
-import type { WebhookCreated, WebhookDeleted } from "@openboard/core";
+import type { Webhook, WebhookDelivery } from "@openboard/contract";
+import { isoTime, type WebhookCreated, type WebhookDeleted } from "@openboard/core";
 import type { BoardKeys, BoardWebhookReads, BoardWebhookWriter, WebhookRecord } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../../db.ts";
 import { query, sql } from "../../sql.ts";
@@ -10,6 +10,18 @@ export const webhookStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} ORDER BY id`,
   webhook: sql`SELECT config, secret_id, owner_actor, owner, directory FROM webhooks
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  deliveryCursor: sql`SELECT created_at FROM webhook_deliveries
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook = ${"id"} AND id = ${"before"}`,
+  webhookDeliveries: sql`SELECT id, event, thread, state, attempt, last_status, last_error, created_at, done_at
+    FROM webhook_deliveries
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook = ${"id"}
+      AND (created_at, id) < (${"beforeAt"}, ${"beforeId"})
+    ORDER BY created_at DESC, id DESC LIMIT ${"limit"}`,
+  webhookDeliveriesByState: sql`SELECT id, event, thread, state, attempt, last_status, last_error, created_at, done_at
+    FROM webhook_deliveries
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook = ${"id"} AND state = ${"state"}
+      AND (created_at, id) < (${"beforeAt"}, ${"beforeId"})
+    ORDER BY created_at DESC, id DESC LIMIT ${"limit"}`,
   webhookQuota: sql`SELECT o.quotas, (SELECT COUNT(*) FROM webhooks
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"}) AS count
     FROM boards b JOIN orgs o ON o.id = b.org_id WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"}`,
@@ -32,10 +44,50 @@ export function webhookRecord(row: Row): WebhookRecord {
   };
 }
 
+function deliveryError(error: unknown, status: number | null): WebhookDelivery["lastError"] {
+  if (error === "timeout" || error === "tls" || error === "too_large") return error;
+  if (status !== null && (status < 200 || status >= 300)) return "status";
+  return error == null ? null : "unreachable";
+}
+
+function delivery(row: Row): WebhookDelivery {
+  const lastStatus = row.last_status === null ? null : Number(row.last_status);
+  return {
+    id: String(row.id),
+    event: row.event === null ? null : Number(row.event),
+    thread: row.thread === null ? null : Number(row.thread),
+    state: row.state as WebhookDelivery["state"],
+    attempt: Number(row.attempt),
+    lastStatus,
+    lastError: deliveryError(row.last_error, lastStatus),
+    createdAt: isoTime(Number(row.created_at)),
+    doneAt: row.done_at === null ? null : isoTime(Number(row.done_at)),
+  };
+}
+
 export function webhookReads(db: Db, dialect: Dialect, keys: BoardKeys): BoardWebhookReads {
   return {
     async webhooks() {
       return (await query(db, dialect, webhookStatements.webhooks, keys)).map(webhookRecord);
+    },
+    async webhookDeliveries(id, { state, before, limit }) {
+      const scope = { ...keys, id };
+      const anchor =
+        before === undefined
+          ? undefined
+          : (await query(db, dialect, webhookStatements.deliveryCursor, { ...scope, before }))[0];
+      if (before !== undefined && !anchor) return [];
+      const page = {
+        ...scope,
+        beforeAt: anchor ? Number(anchor.created_at) : Number.MAX_SAFE_INTEGER,
+        beforeId: before ?? "",
+        limit,
+      };
+      const rows =
+        state === undefined
+          ? await query(db, dialect, webhookStatements.webhookDeliveries, page)
+          : await query(db, dialect, webhookStatements.webhookDeliveriesByState, { ...page, state });
+      return rows.map(delivery);
     },
     async webhook(id) {
       const [row] = await query(db, dialect, webhookStatements.webhook, { ...keys, id });

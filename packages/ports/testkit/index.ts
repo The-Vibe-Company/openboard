@@ -2,6 +2,7 @@ import { webhooksSuite } from "./store/webhooks.test-suite.ts";
 
 export { runBroadcasterSuite } from "./broadcaster.test-suite.ts";
 export { ratesSuite } from "./store/rates.test-suite.ts";
+export { seedWebhook } from "./store/webhooks.test-suite.ts";
 
 import type { BoardKeys, BoardScope, OrgScope, Store } from "../src/index.ts";
 import { isolationSuite } from "./isolation.test-suite.ts";

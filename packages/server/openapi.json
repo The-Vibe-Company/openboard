@@ -9134,6 +9134,165 @@
         }
       }
     },
+    "/x/webhooks/{id}/deliveries": {
+      "get": {
+        "operationId": "listWebhookDeliveries",
+        "summary": "List a webhook's deliveries newest first.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "webhook", "type": "string" }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "anyOf": [
+                { "const": "pending", "type": "string" },
+                { "const": "sending", "type": "string" },
+                { "const": "done", "type": "string" },
+                { "const": "dead", "type": "string" },
+                { "const": "skipped", "type": "string" }
+              ]
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^dl_[a-z2-7]{16}$",
+              "description": "The previous page's older cursor.",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "minimum": 1, "maximum": 200, "description": "Page size, 50 by default.", "type": "integer" }
+          }
+        ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "anyOf": [
+                { "const": "pending", "type": "string" },
+                { "const": "sending", "type": "string" },
+                { "const": "done", "type": "string" },
+                { "const": "dead", "type": "string" },
+                { "const": "skipped", "type": "string" }
+              ]
+            },
+            "before": {
+              "pattern": "^dl_[a-z2-7]{16}$",
+              "description": "The previous page's older cursor.",
+              "type": "string"
+            },
+            "limit": { "minimum": 1, "maximum": 200, "description": "Page size, 50 by default.", "type": "integer" }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["deliveries", "older"],
+                  "properties": {
+                    "deliveries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "event",
+                          "thread",
+                          "state",
+                          "attempt",
+                          "lastStatus",
+                          "lastError",
+                          "createdAt",
+                          "doneAt"
+                        ],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "event": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                          "thread": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                          "state": {
+                            "type": "string",
+                            "anyOf": [
+                              { "const": "pending", "type": "string" },
+                              { "const": "sending", "type": "string" },
+                              { "const": "done", "type": "string" },
+                              { "const": "dead", "type": "string" },
+                              { "const": "skipped", "type": "string" }
+                            ]
+                          },
+                          "attempt": { "type": "integer" },
+                          "lastStatus": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                          "lastError": {
+                            "anyOf": [
+                              { "const": "timeout", "type": "string" },
+                              { "const": "unreachable", "type": "string" },
+                              { "const": "tls", "type": "string" },
+                              { "const": "status", "type": "string" },
+                              { "const": "too_large", "type": "string" },
+                              { "type": "null" }
+                            ]
+                          },
+                          "createdAt": { "format": "date-time", "type": "string" },
+                          "doneAt": { "anyOf": [{ "format": "date-time", "type": "string" }, { "type": "null" }] }
+                        }
+                      }
+                    },
+                    "older": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/x/webhooks/{id}/test": {
       "post": {
         "operationId": "testWebhook",

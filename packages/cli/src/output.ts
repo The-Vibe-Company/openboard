@@ -5,6 +5,7 @@ import type {
   listConnections,
   listSchemas,
   listTasks,
+  listWebhookDeliveries,
   ManagedConnection,
   OutputOf,
   reopenTask,
@@ -178,6 +179,14 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
       const { task, outcome } = output as OutputOf<typeof reopenTask>;
       return outcome === "reopened" ? `reopened ${task.id}` : "unchanged";
     },
+    listWebhookDeliveries: (output) =>
+      (output as OutputOf<typeof listWebhookDeliveries>).deliveries
+        .map(({ id, state, attempt, lastStatus, lastError }) =>
+          [id, state, `attempt ${attempt}`, lastStatus, lastError === "status" ? null : lastError]
+            .filter((part) => part !== null)
+            .join("  "),
+        )
+        .join("\n"),
     testWebhook: (output) => {
       const { delivery } = output as OutputOf<typeof testWebhook>;
       if (delivery.status === null) throw new BoardError("unreachable", "the receiver could not be reached");

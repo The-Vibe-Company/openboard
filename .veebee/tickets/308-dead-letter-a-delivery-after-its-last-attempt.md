@@ -4,18 +4,38 @@ title: Dead-letter a delivery after its last attempt
 milestone: M11-webhooks-and-watchers
 package: server
 writes:
-  - packages/contract/src/operations/webhook-deliveries.ts
+  - docs/data-model.md
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/cli/src/output.ts
+  - packages/cli/test/webhooks.test.ts
+  - packages/contract/src/entities/webhooks/delivery.ts
+  - packages/contract/src/index.ts
   - packages/contract/src/operations/index.ts
+  - packages/contract/src/operations/webhooks/deliveries.ts
+  - packages/core/src/index.ts
   - packages/core/src/webhooks/outcome.ts
-  - packages/driver-sql/src/views/deliveries.ts
-  - packages/server/src/operations/webhook-deliveries.ts
+  - packages/driver-sql/migrations/0035-webhook-delivery-history.sql
+  - packages/driver-sql/src/views/webhooks/deliveries.ts
+  - packages/driver-sql/src/views/webhooks/webhooks.ts
+  - packages/ports/src/webhooks/index.ts
+  - packages/ports/testkit/index.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/ports/testkit/store/webhooks.test-suite.ts
+  - packages/server/openapi.json
   - packages/server/src/operations/index.ts
+  - packages/server/src/operations/webhooks/deliveries.ts
+  - packages/server/src/operations/webhooks/index.ts
+  - packages/server/src/webhooks/send.ts
   - packages/server/test/webhooks/dead.test.ts
+  - packages/server/test/webhooks/template.test.ts
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [307]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-308
 issue: 493
 ---
 
