@@ -6,6 +6,7 @@ import type { Output } from "../output.ts";
 /** What a command runs with: the client of the board at `BOARD_URL`, its arguments, and where to print. */
 export interface CommandContext {
   readonly client: Client;
+  readonly home?: string;
   readonly boardUrl: string;
   readonly now: () => number;
   readonly timeoutSignal: (ms: number) => AbortSignal;

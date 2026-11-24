@@ -271,6 +271,16 @@ does, a list without `channel` needs `read` on every channel, and a subtree need
 `needs` and `latest` are not served yet. The CLI is `ob tasks [channel]`, the SDK method `listTasks`,
 the MCP tool `list_tasks`.
 
+`POST /tasks/:id/claim` takes an optional `lease` in seconds (30–3600, default 900).
+It requires `label` in the task's channel and answers
+`{ task, claim: { epoch, token, until } }`. `POST /tasks` with `claim: true` also requires `label` and
+returns the same claim fields when it creates and claims a task in one write. If the idempotency key
+already names a ready task, a request with `claim: true` answers 409 `duplicate_id`; use its task ID
+to claim it. Subsequent reads
+show the claim's actor and expiry on the task. The token appears only in the successful claim
+response. The CLI stores it in `~/.config/openboard/claims.json` (mode 0600), keyed by board URL,
+actor and task ID. Its JSON output includes the epoch and expiry and omits the token.
+
 `POST /grants` returns 200 with `{ grant }` in the upstream grant view.
 OpenBoard accepts `connection` (a board connection ID) and `all-connections`.
 A `user` takes a board member's OpenBoard person ID. For a `github` principal

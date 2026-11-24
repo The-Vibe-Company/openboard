@@ -46,6 +46,7 @@ export {
   attachSync,
   changeMemberRole,
   claimConnection,
+  claimTask,
   createBoard,
   createChannel,
   createConnection,

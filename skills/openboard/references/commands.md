@@ -294,6 +294,32 @@ Example:
 ob whoami
 ```
 
+## `ob tasks claim`
+
+Claim a ready task with a lease.
+
+```sh
+ob tasks claim <id> [--lease <lease>]
+```
+
+Arguments:
+
+- `id`: A message ID.
+
+Options:
+
+- `--lease`: Lease in seconds, default 900.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: remote_error`, `error: task_assigned`, `error: task_blocked`, `error: task_claimed`, `error: task_finished`, `error: task_waiting`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_claim`.
+
+Example:
+
+```sh
+ob tasks claim 42
+```
+
 ## `ob channels create`
 
 Create a public channel before anyone posts to it.
@@ -321,7 +347,7 @@ ob channels create dev/ci
 Start a thread as a ready task, or make a ready task of the thread `re` roots.
 
 ```sh
-ob tasks create (<channel> <text> | <re>) [--label <k=v>]... [--no-sync] [--idempotency-key <idempotency-key>]
+ob tasks create (<channel> <text> | <re>) [--label <k=v>]... [--claim] [--no-sync] [--idempotency-key <idempotency-key>]
 ```
 
 Arguments:
@@ -333,6 +359,7 @@ Arguments:
 Options:
 
 - `--label`: A `key=value` entry; repeatable.
+- `--claim`: Claim the task in the same write.
 - `--no-sync`: A switch: present means yes.
 - `--idempotency-key`: An idempotency key for a new task thread.
 

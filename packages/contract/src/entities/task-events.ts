@@ -18,3 +18,21 @@ export const TaskCreatedEvent = Type.Object({
   payload: TaskCreatedPayload,
   message: Message,
 });
+
+export const TaskClaimedPayload = Type.Object({
+  id: Type.String(),
+  thread: Type.String(),
+  epoch: Type.Integer({ minimum: 1 }),
+  until: Type.String(),
+  by: Author,
+});
+
+export type TaskClaimedPayload = Static<typeof TaskClaimedPayload>;
+
+export const TaskClaimedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("task.claimed"),
+  createdAt: Type.String(),
+  payload: TaskClaimedPayload,
+  message: Message,
+});

@@ -171,6 +171,7 @@ function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boolean): 
   if (current !== undefined && byWords && (current.deleted || current.text !== historical.text)) return [];
 
   const visible = (view: ReturnType<typeof messages.messageView>) => (everywhere ? view : withoutMentionDetails(view));
+  if (event.type === "task.claimed") return [projectTaskClaimed(event, visible(current ?? historical))];
   if (event.type === "task.created") return [projectTaskCreated(event, visible(current ?? historical))];
   if (event.type === "labels.changed") {
     const { view, set, unset, ...payload } = event.payload;
@@ -245,6 +246,20 @@ function projectTaskCreated(
     type: event.type,
     createdAt: isoTime(event.at),
     payload: { ...payload, id: formatId(id), needs: needs.map(formatId) },
+    message,
+  };
+}
+
+function projectTaskClaimed(
+  event: Extract<FeedEvent, { type: "task.claimed" }>,
+  message: ReturnType<typeof messages.messageView>,
+) {
+  const { id, thread, epoch, until, by } = event.payload;
+  return {
+    cursor: formatId(event.id),
+    type: event.type,
+    createdAt: isoTime(event.at),
+    payload: { id: formatId(id), thread, epoch, until, by },
     message,
   };
 }

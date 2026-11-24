@@ -159,7 +159,6 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
       const { connections } = output as OutputOf<typeof listConnections>;
       return connections.length === 0 ? "no connections" : connections.map(connectionText).join("\n");
     },
-    createTask: (output: unknown) => (output as { task: { id: string } }).task.id,
     listTasks: tasksText,
     revokeGrant: (output, { id }) =>
       (output as OutputOf<typeof revokeGrant>).revoked ? `revoked ${String(id)}` : `${String(id)} is already gone`,

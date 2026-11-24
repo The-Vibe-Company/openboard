@@ -15,6 +15,7 @@ import { canListMentionActors, canReadChannel, withoutMentionDetails } from "../
 import { authorOf } from "../auth/author.ts";
 import type { BoardContext, Handler } from "./index.ts";
 import { resolvePostMentions, visibleReplay, writeWithMentionVisibility } from "./messages.ts";
+import { writeNewTask } from "./tasks/claim.ts";
 
 /**
  * Starts a thread as a ready task (`channel` and `text`), or makes one of the thread `re` roots as it is: that write
@@ -35,7 +36,7 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
         "`channel`, `text`, `labels`, `noSync` and `id` are a new thread's: `re` makes a task of a thread as it is",
       );
     }
-    return makeTask(ctx, re);
+    return makeTask(ctx, re, input.claim);
   }
   if (channel === undefined || text === undefined) {
     throw new BoardError(
@@ -45,7 +46,7 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
   }
   const command = { ...input, channel, text };
   messages.checkPost(command, ctx.by);
-  const { task, replay } = await writeWithMentionVisibility(
+  const { replay, ...answer } = await writeWithMentionVisibility(
     ctx,
     text,
     async (writer, visibility) => {
@@ -53,37 +54,44 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
       const state = { head: writer.head, actor: writer.actor, landed };
       const context = { by: ctx.by, author: authorOf(ctx.by), now: ctx.now() };
       const replayed = landed && replayTask(state, command, context);
-      if (replayed) return { task: replayed, replay: true };
+      if (replayed) {
+        if (input.claim && replayed.task.state === "ready") {
+          throw new BoardError("duplicate_id", `id: ${id} already names a ready task; claim it by its task ID`);
+        }
+        return { task: replayed, replay: true };
+      }
       const mentions = await resolvePostMentions(writer, ctx, text, channel, undefined, visibility);
-      const { events, task } = decideCreateTask(
+      const decided = decideCreateTask(
         state,
         command,
         { ...context, blind: !canReadChannel(ctx.by, channel) },
         mentions,
       );
-      await writer.append(events);
-      return { task, replay: false };
+      return { ...(await writeNewTask(ctx, writer, decided, input.claim, context.now)), replay: false };
     },
     ctx.by.actor,
   );
-  if (!replay) return { task };
-  const visible = await visibleReplay(ctx, task);
+  if (!replay) return answer;
+  const visible = await visibleReplay(ctx, answer.task);
   if (!visible.task) {
     throw new BoardError("duplicate_id", `id: ${id} was already used for a post that is not a task`);
   }
   return { task: { ...visible, task: visible.task } };
 };
 
-async function makeTask(ctx: BoardContext, re: string) {
+async function makeTask(ctx: BoardContext, re: string, claim: boolean | undefined) {
   const position = parseId(re);
-  const task = await ctx.board.write(async (writer) => {
+  const answer = await ctx.board.write(async (writer) => {
     const target = position === null ? null : await writer.message(position);
     const state = { head: writer.head, target, actor: writer.actor };
-    const decided = decideMakeTask(state, re, { by: ctx.by, author: authorOf(ctx.by), now: ctx.now() });
-    await writer.append(decided.events);
-    return decided.task;
+    const now = ctx.now();
+    const decided = decideMakeTask(state, re, { by: ctx.by, author: authorOf(ctx.by), now });
+    return writeNewTask(ctx, writer, decided, claim, now);
   }, ctx.by.actor);
-  return { task: canListMentionActors(ctx.by) ? task : { ...withoutMentionDetails(task), task: task.task } };
+  const { task } = answer;
+  return canListMentionActors(ctx.by)
+    ? answer
+    : { ...answer, task: { ...withoutMentionDetails(task), task: task.task } };
 }
 
 /**

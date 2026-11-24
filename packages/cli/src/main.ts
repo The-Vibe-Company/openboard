@@ -91,6 +91,7 @@ export async function runCli(
       tail: (input) => tail({ ...input, ...connection }),
       interrupt: () => (options.interrupt ? { signal: options.interrupt, release: () => {} } : nextSigint()),
       boardUrl: config.boardUrl,
+      home: env.HOME,
       now: options.now ?? Date.now,
       timeoutSignal: options.timeoutSignal ?? AbortSignal.timeout,
     });
