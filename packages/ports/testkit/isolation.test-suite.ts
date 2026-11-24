@@ -201,6 +201,11 @@ const writerCases: Cases<BoardWriter> = {
 
 /** One case per `OrgView` method, on A's organization, with B's people and IDs. */
 const orgCases: Cases<OrgView> = {
+  purgeOrg: async (a, b, store) => {
+    const keys = await store.platform().findBoard(b.marker.slice(0, -"-only".length), "main");
+    if (!keys) throw new Error("missing second organization board");
+    expect(await a.org.purgeOrg(keys.boardId, "1", { instanceId: "b", claimedAt: at }, at)).toBe(false);
+  },
   deleteOrg: async (a, b) => await expect(a.org.deleteOrg(b.personId, at)).rejects.toMatchObject({ code: "not_found" }),
   takeRate: (a, b) => isolatedRates(a.org, b.org),
   listMembers: (a) => a.org.listMembers(),

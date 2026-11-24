@@ -19,6 +19,8 @@ import dailyEventsIndexDdl from "../migrations/0017-index-daily-events.sql" with
 import watchersDdl from "../migrations/0018-watchers.sql" with { type: "text" };
 import rateCountersDdl from "../migrations/0019-rate-counters.sql" with { type: "text" };
 import schemasDdl from "../migrations/0020-schemas.sql" with { type: "text" };
+import purgeStateDdl from "../migrations/0021-org-purge-state.sql" with { type: "text" };
+import purgeIndexesDdl from "../migrations/0022-org-purge-indexes.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -32,6 +34,7 @@ import { deviceView, personalTokenView } from "./views/device.ts";
 import { committedEvents, eventReads } from "./views/events.ts";
 import { invitationPlatform, invitationView } from "./views/invitations.ts";
 import type { JobWrites } from "./views/jobs/index.ts";
+import { purgeOrgView } from "./views/jobs/purge.ts";
 import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
@@ -46,6 +49,7 @@ export type { Db, Dialect, Row, SqlValue } from "./db.ts";
 export { postgresText } from "./db.ts";
 export { splitStatements } from "./ddl.ts";
 export { localBroadcaster } from "./local-broadcaster.ts";
+export { seedTaskNeed, simulateLegacyDeletion, tenantRows } from "./purge-test-data.ts";
 export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
 export { claimJob, nextJob, releaseJobs } from "./views/jobs/index.ts";
 
@@ -78,6 +82,8 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 18, name: "0018-watchers", sql: watchersDdl },
   { version: 19, name: "0019-rate-counters", sql: rateCountersDdl },
   { version: 20, name: "0020-schemas", sql: schemasDdl },
+  { version: 21, name: "0021-org-purge-state", sql: purgeStateDdl },
+  { version: 22, name: "0022-org-purge-indexes", sql: purgeIndexesDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -101,7 +107,8 @@ export function createViews(
       ...invitationView(db, dialect, scope),
       ...orgBoardsView(db, dialect, scope),
       ...rateView(db, dialect, `org:${scope.orgId}:`),
-      ...membershipView(db, dialect, scope),
+      ...membershipView(db, dialect, scope, jobs),
+      ...purgeOrgView(db, dialect, scope, jobs),
       ...orgAuditReads(db, dialect, scope),
     }),
     board: (scope) => ({

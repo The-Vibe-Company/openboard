@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { migrations } from "@openboard/driver-sql";
 import { testScope } from "@openboard/ports/testkit";
 import { sqliteDriver } from "../src/index.ts";
 
@@ -61,7 +62,7 @@ test("keeps a posted message and the migration records on reopen", async () => {
       ]);
       expect(database.query("PRAGMA journal_mode").get()).toEqual({ journal_mode: "wal" });
       expect(database.query("SELECT version, applied_at FROM schema_migrations ORDER BY version").all()).toEqual(
-        Array.from({ length: 20 }, (_, index) => ({ version: index + 1, applied_at: 100 })),
+        migrations.map(({ version }) => ({ version, applied_at: 100 })),
       );
     } finally {
       database.close();

@@ -1,5 +1,7 @@
 import type { BoardKeys } from "./store.ts";
 
+export const PURGE_ORG_JOB = "purge-org";
+
 export interface Job extends BoardKeys {
   readonly id: string;
   readonly kind: string;

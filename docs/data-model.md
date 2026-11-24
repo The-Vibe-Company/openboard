@@ -202,6 +202,8 @@ test:
 | --- | --- |
 | `BIGINT`, `INTEGER`, `SMALLINT` | `INTEGER` |
 | `BYTEA` | `BLOB` |
+| `strpos(text, text)` in a view or expression index | `instr(text, text)` |
+| A deletable view with `COMMENT ON VIEW … IS 'sqlite delete from <table> by <key columns>'` | An `INSTEAD OF DELETE` trigger that deletes the corresponding base row by its declared key |
 | `BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY` | `INTEGER PRIMARY KEY` |
 | table options none | `STRICT`; `WITHOUT ROWID` on tables with composite keys |
 | `CREATE EXTENSION pg_trgm` and the trigram index | omitted (SQLite searches with `LIKE`, see [Search](#search)) |

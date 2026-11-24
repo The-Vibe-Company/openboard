@@ -8,7 +8,7 @@ import { handle, type Pipeline } from "./http/pipeline.ts";
 import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
 import { staticFiles } from "./http/static.ts";
-import { type JobHandler, startJobs } from "./jobs/registry.ts";
+import { type JobHandlers, startJobs } from "./jobs/registry.ts";
 
 export const DRAIN_TIMEOUT_MS = 10_000;
 
@@ -19,12 +19,7 @@ export interface Ports {
 }
 
 /** One server instance: everything hangs off it, so two apps in one process share nothing (5.6). */
-export function createApp(
-  config: ServerConfig,
-  ports: Ports,
-  deps: Deps,
-  handlers: Readonly<Record<string, JobHandler>> = {},
-) {
+export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handlers: JobHandlers = {}) {
   const shutdown = new AbortController();
   const active = new Set<Promise<unknown>>();
   const track = <T>(work: Promise<T>) => {

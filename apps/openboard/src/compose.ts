@@ -1,6 +1,6 @@
 import { migratePostgres, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
-import { createApp, type Deps, jsonLogger } from "@openboard/server";
+import { createApp, type Deps, jsonLogger, maintenanceJobs } from "@openboard/server";
 import type { Config } from "./config.ts";
 
 async function hostedStore(url: string, now: () => number) {
@@ -68,5 +68,6 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
     },
     { store, jobs: store.jobs },
     deps,
+    maintenanceJobs,
   );
 }

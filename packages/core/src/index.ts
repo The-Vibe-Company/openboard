@@ -86,7 +86,7 @@ export type { BoardCreation, CreateBoardCommand } from "./orgs/boards.ts";
 export * as boards from "./orgs/boards.ts";
 export type { CreateOrgCommand, OrgCreation, OrgEvent } from "./orgs/create.ts";
 export * as orgs from "./orgs/create.ts";
-export { orgDeletion, requireOrgOwner } from "./orgs/delete.ts";
+export { ORG_PURGE_RETENTION_MS, orgDeletion, requireOrgOwner } from "./orgs/delete.ts";
 export { decideInvitation, previewInvite } from "./orgs/invite.ts";
 export {
   type CountQuota,

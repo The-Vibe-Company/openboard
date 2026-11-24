@@ -13,6 +13,8 @@ import { eventStatements } from "./views/events.ts";
 import { grantStatements } from "./views/grants.ts";
 import { invitationStatements } from "./views/invitations.ts";
 import { jobPlatformStatements, jobStatements } from "./views/jobs/index.ts";
+import { legacyPurgePlatform, legacyPurgeScoped } from "./views/jobs/legacy-purge.ts";
+import { purgeStatements } from "./views/jobs/purge.ts";
 import { membershipStatements } from "./views/memberships.ts";
 import { messageStatements } from "./views/messages/statements.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
@@ -41,11 +43,14 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...invitationStatements,
   ...jobPlatformStatements,
   ...jobStatements,
+  ...legacyPurgePlatform,
+  ...legacyPurgeScoped,
   ...membershipStatements,
   ...messageStatements,
   ...orgStatements,
   ...rateStatements,
   ...readinessStatements,
+  ...purgeStatements,
   ...schemaStatements,
   ...taskFoldStatements,
   ...taskListStatements,
@@ -86,6 +91,7 @@ export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...Object.keys(devicePlatform),
   ...boardPlatformStatements,
   ...Object.keys(jobPlatformStatements),
+  ...Object.keys(legacyPurgePlatform),
   ...orgPlatformStatements,
   ...Object.keys(rateStatements),
   ...Object.keys(readinessStatements),
