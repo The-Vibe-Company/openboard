@@ -62,6 +62,7 @@ export {
   cancelTask,
   changeMemberRole,
   claimConnection,
+  claimNextTask,
   claimTask,
   completeTask,
   createBoard,

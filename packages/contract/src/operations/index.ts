@@ -81,6 +81,7 @@ import {
 import { assignTask } from "./tasks/assign.ts";
 import { createTaskBatch, getTaskBatch } from "./tasks/batch.ts";
 import { cancelTask } from "./tasks/cancel.ts";
+import { claimNextTask } from "./tasks/queue.ts";
 import { claimTask } from "./tasks/claim.ts";
 import { completeTask } from "./tasks/complete.ts";
 import { createTask } from "./tasks/create.ts";
@@ -115,6 +116,7 @@ export const operations = [
   changeMemberRole,
   claimConnection,
   claimTask,
+  claimNextTask,
   completeTask,
   failTask,
   createBoard,
@@ -231,6 +233,7 @@ export {
   changeMemberRole,
   claimConnection,
   claimTask,
+  claimNextTask,
   completeTask,
   createBoard,
   createChannel,

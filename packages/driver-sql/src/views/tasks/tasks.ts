@@ -1,14 +1,30 @@
 import type { Message } from "@openboard/contract";
 import type { BoardKeys, BoardTaskReads, BoardTaskWriter } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../../db.ts";
-import { query, sql } from "../../sql.ts";
+import { type Fragment, query, sql } from "../../sql.ts";
+import { splice } from "../threads.ts";
 
 export const needIds = {
   fragment: ({ name }: Dialect) =>
     name === "sqlite" ? "json_each(input.ids)" : "jsonb_array_elements_text(input.ids::jsonb)",
 };
 
+const CHANNELS: Fragment = { fragment: () => "" };
+const readyTask = sql`SELECT m.view FROM tasks t
+  JOIN messages m ON m.org_id = t.org_id AND m.board_id = t.board_id AND m.id = t.id
+  WHERE t.org_id = ${"orgId"} AND t.board_id = ${"boardId"} AND m.deleted = 0
+    AND ${CHANNELS} AND t.state IN ('ready', 'claimed')
+    AND (t.state = 'ready' OR (t.claim_until <= CAST(${"now"} AS BIGINT) AND t.blocked_reason IS NULL))
+    AND t.owner = ${"principal"} AND (t.for_actor = ${"actor"} OR t.for_actor IS NULL)
+  ORDER BY CASE WHEN t.for_actor IS NULL THEN 1 ELSE 0 END, t.id LIMIT 1`;
+
 export const taskReadStatements = {
+  nextReadyTask: splice(readyTask, CHANNELS, sql`t.channel = ${"channel"}`),
+  nextReadySubtreeTask: splice(
+    readyTask,
+    CHANNELS,
+    sql`(t.channel = ${"channel"} OR t.channel LIKE ${"under"} ESCAPE '\\')`,
+  ),
   taskBatch: sql<"orgId" | "boardId" | "principal" | "id">`WITH input AS (
     SELECT digest, tasks AS ids FROM task_batches
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND principal = ${"principal"} AND id = ${"id"}
@@ -70,6 +86,12 @@ export function taskWriter(
 ): BoardTaskWriter {
   return {
     ...taskReads(db, dialect, keys),
+    async nextReadyTask({ under, ...input }) {
+      const statement =
+        under === undefined ? taskReadStatements.nextReadyTask : taskReadStatements.nextReadySubtreeTask;
+      const [row] = await query(db, dialect, statement, { ...keys, ...input, under: under ?? null });
+      return row ? (JSON.parse(String(row.view)) as Message) : null;
+    },
     async taskNeeds(ids) {
       if (ids.length === 0) return [];
       const rows = await query(db, dialect, taskReadStatements.taskNeeds, { ...keys, ids: JSON.stringify(ids) });

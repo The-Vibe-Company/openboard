@@ -29,6 +29,7 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
   assignTask: () => ({ body: { for: null } }),
   blockTask: () => ({ body: { reason: "test" } }),
   setTaskNeeds: () => ({ body: { needs: [] } }),
+  claimNextTask: () => ({ body: { channel: "dev" } }),
   claimTask: () => ({ body: {} }),
   updateGrant: (tenant) => ({
     body: {

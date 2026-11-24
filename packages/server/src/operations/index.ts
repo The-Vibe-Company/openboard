@@ -100,6 +100,7 @@ import {
 import { assignTaskHandler } from "./tasks/assign.ts";
 import { createTaskBatchHandler, getTaskBatchHandler } from "./tasks/batch.ts";
 import { cancelTaskHandler } from "./tasks/cancel.ts";
+import { claimNextTaskHandler } from "./tasks/queue.ts";
 import { claimTaskHandler } from "./tasks/claim.ts";
 import { completeTaskHandler, failTaskHandler } from "./tasks/complete.ts";
 import { blockTaskHandler, unblockTaskHandler } from "./tasks/hold.ts";
@@ -234,6 +235,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   setTaskNeeds: setTaskNeedsHandler,
   changeMemberRole: changeMemberRoleHandler,
   claimConnection: claimConnectionHandler,
+  claimNextTask: claimNextTaskHandler,
   claimTask: claimTaskHandler,
   completeTask: completeTaskHandler,
   failTask: failTaskHandler,
