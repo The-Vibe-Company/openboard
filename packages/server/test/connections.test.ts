@@ -118,6 +118,19 @@ test("GET /x/connections lists each connection with its live agents, last use an
     clock.now = NOW + 60_000;
     const claimed = await bearer(app, fixers.secret, "/x/connections/claim", "POST", { profile: "Fixer-2" });
     const { agent, token } = (await claimed.json()) as ClaimResult;
+    clock.now = NOW + 90_000;
+    const posted = await app.fetch(
+      new Request(`${BOARD_URL}/messages`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${laptop.secret}`,
+          "x-board-profile": "me",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ channel: "dev", text: "hello" }),
+      }),
+    );
+    expect(posted.status).toBe(201);
     clock.now = NOW + 120_000;
 
     const response = await call(app, "GET", "/x/connections");
@@ -127,7 +140,7 @@ test("GET /x/connections lists each connection with its live agents, last use an
     expect(JSON.parse(text)).toEqual({
       connections: [
         { ...fixers.connection, lastUsedAt, agents: [{ ...agent, profile: "Fixer-2", createdAt: lastUsedAt }] },
-        { ...laptop.connection, lastUsedAt: null, agents: [] },
+        { ...laptop.connection, lastUsedAt: "2023-11-14T22:14:50.000Z", agents: [] },
       ],
     });
     expect(fixers.connection.secretHint).toBe(`…${fixers.secret.slice(-4)}`);
@@ -152,10 +165,14 @@ test("GET /x/connections is for the people who manage the board, not its connect
   try {
     const created = await call(app, "POST", "/x/connections", { name: "laptop", can: { "*": "all" }, direct: true });
     const { secret, connection } = (await created.json()) as CreatedConnection;
+    const claimed = await bearer(app, secret, "/x/connections/claim", "POST", { profile: "fixer-1" });
+    const { token } = (await claimed.json()) as ClaimResult;
     for (const path of ["/x/connections", `/x/connections/${connection.id}`]) {
-      const refused = await bearer(app, secret, path);
-      expect(refused.status).toBe(403);
-      expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
+      for (const credential of [secret, token]) {
+        const refused = await bearer(app, credential, path);
+        expect(refused.status).toBe(403);
+        expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
+      }
       expect((await app.fetch(new Request(BOARD_URL + path))).status).toBe(401);
     }
   } finally {

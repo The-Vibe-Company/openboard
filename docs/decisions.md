@@ -708,12 +708,14 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
 - **Decision.** Last use is the time of the latest event whose principal is
   the connection: a write by its secret or one of its agents, or a claim or
   refresh. Reads do not count. A partial index on `events`, limited to
-  connection principals, finds it (SQLite names it with `INDEXED BY`, as it
-  plans without statistics). The hint is `…` and the secret's last four
+  connection principals and built concurrently, finds it (SQLite names it with
+  `INDEXED BY`, as it plans without statistics). The hint is `…` and the secret's last four
   characters; a rotation keeps the secret's ID, so its first characters never
   told two secrets apart.
 - **Consequence.** A connection whose agents only read shows its last claim
-  or refresh. Hints stored before this change keep their old form.
+  or refresh. A hint stored before this change, with the prefix, is shown in
+  the new form. The listed agents are the live ones (D50): unrevoked, token
+  unexpired.
 
 ## Hard blockers found
 

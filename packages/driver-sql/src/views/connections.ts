@@ -78,10 +78,10 @@ export const connectionStatements = {
     WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.revoked_at IS NULL
       AND (c.id = ${"id"} OR ${"all"} = 1)
     ORDER BY c.name${codePointOrder}`,
-  /** The live agents of the board's active connections, or of one of them, oldest first. */
+  /** The live agents (unrevoked, token unexpired: D50) of the board's active connections, or of one, oldest first. */
   managedAgents: sql`SELECT a.id, a.connection, a.profile, a.profile_key, a.can, a.token_expires, a.hard_expires,
     a.created_at FROM connection_agents a
-    WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"} AND a.revoked_at IS NULL AND a.hard_expires > ${"now"}
+    WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"} AND a.revoked_at IS NULL AND a.token_expires > ${"now"}
       AND (a.connection = ${"id"} OR ${"all"} = 1)
     ORDER BY a.created_at, a.id`,
 };
@@ -135,6 +135,11 @@ export async function foldConnectionCreated(tx: Db, dialect: Dialect, keys: Boar
   });
 }
 
+/** The hint as shown: `…` and the secret's last four characters, also for hints stored with the `obc_` prefix (D51). */
+function hintOf(row: Row): string {
+  return `…${String(row.secret_hint).slice(-4)}`;
+}
+
 function recordOf(row: Row): ConnectionRecord {
   const id = String(row.id);
   const grantId = Number(row.grant_id);
@@ -147,7 +152,7 @@ function recordOf(row: Row): ConnectionRecord {
     can,
     direct: Number(row.direct) === 1,
     profiles: JSON.parse(String(row.profiles)) as string[],
-    secretHint: String(row.secret_hint),
+    secretHint: hintOf(row),
     createdBy: String(row.created_by),
     createdAt: isoTime(Number(row.created_at)),
   };
@@ -207,7 +212,7 @@ function managedOf(row: Row, agents: readonly ConnectionAgent[]): ManagedConnect
     can: JSON.parse(String(row.can)) as Can,
     direct: Number(row.direct) === 1,
     profiles: JSON.parse(String(row.profiles)) as string[],
-    secretHint: String(row.secret_hint),
+    secretHint: hintOf(row),
     createdBy: String(row.created_by),
     createdAt: isoTime(Number(row.created_at)),
     lastUsedAt: row.last_used == null ? null : isoTime(Number(row.last_used)),

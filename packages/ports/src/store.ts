@@ -321,8 +321,8 @@ export interface BoardView {
   /** The unrevoked connection of this board with the ID, or null when the board has none with it. */
   connection(id: string): Promise<ConnectionRecord | null>;
   /**
-   * The board's unrevoked connections by name, each with its agents unrevoked and not past their hard expiry at `now`
-   * (epoch milliseconds) and the time of its latest event; never a secret or a secret's hash.
+   * The board's unrevoked connections by name, each with its agents unrevoked and whose token lives at `now` (epoch
+   * milliseconds), and the time of its latest event; never a secret or a secret's hash.
    */
   listConnections(now: number): Promise<ManagedConnection[]>;
   /** One unrevoked connection of this board as `listConnections` shows it, or null when the board has none with it. */

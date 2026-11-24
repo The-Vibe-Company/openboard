@@ -5,10 +5,14 @@ import { type OpenStore, testScope } from "../index.ts";
 
 const by = { actor: "ob:user:local-test", principal: "ob:user:local-test", profile: null };
 const claims = { max: null, used: 0 };
-const secret = (letter: string) => ({ id: `cn_${letter.repeat(16)}`, hash: "cd".repeat(32), hint: "obc_…" });
+const secret = (letter: string, hint = `…${letter.repeat(4)}`) => ({
+  id: `cn_${letter.repeat(16)}`,
+  hash: "cd".repeat(32),
+  hint,
+});
 
 /** Creates a connection named `name` the way the server does: decided under the lock from what the writer reads. */
-function create(board: BoardView, name: string, letter: string, claims: number | null = null) {
+function create(board: BoardView, name: string, letter: string, claims: number | null = null, hint?: string) {
   return board.write(async (writer) => {
     const state = {
       head: writer.head,
@@ -16,7 +20,11 @@ function create(board: BoardView, name: string, letter: string, claims: number |
       nameTaken: await writer.connectionNamed(name),
     };
     const command = { name, can: { "*": "all" as const }, direct: claims === null, claims };
-    const decided = connections.decideCreate(state, command, { by, now: 1_700_000_000_000, secret: secret(letter) });
+    const decided = connections.decideCreate(state, command, {
+      by,
+      now: 1_700_000_000_000,
+      secret: secret(letter, hint),
+    });
     await writer.append(decided.events);
     return decided.connection;
   });
@@ -247,7 +255,7 @@ function agentRefreshSuite(driver: string, open: OpenStore): void {
 function rotate(board: BoardView, id: string, hash: string, now: number, overlap?: string) {
   return board.write(async (writer) => {
     const command = { connection: id, ...(overlap === undefined ? {} : { overlap }) };
-    const secret = { hash, hint: `obc_…${hash.slice(0, 4)}` };
+    const secret = { hash, hint: `…${hash.slice(0, 4)}` };
     await writer.append([connections.decideRotate(writer.head, command, { by, now, secret })]);
   });
 }
@@ -265,7 +273,7 @@ function rotationSuite(driver: string, open: OpenStore): void {
       await rotate(board, laptop.id, "12".repeat(32), 1000, "10m");
       const record = await board.connection(laptop.id);
       expect(record?.secretHash).toBe("12".repeat(32));
-      expect(record?.connection.secretHint).toBe("obc_…1212");
+      expect(record?.connection.secretHint).toBe("…1212");
       expect(record?.previous).toEqual({ secretHash: "cd".repeat(32), until: 601_000 });
       expect((await board.connection(other.id))?.secretHash).toBe("cd".repeat(32));
       await rotate(board, laptop.id, "34".repeat(32), 2000);
@@ -287,7 +295,7 @@ function listingSuite(driver: string, open: OpenStore): void {
       const keys = await store.platform().findBoard("local", "main");
       if (!keys) throw new Error("the implicit board local/main is missing");
       const board = store.board(testScope(keys));
-      const laptop = await create(board, "laptop", "a");
+      const laptop = await create(board, "laptop", "a", null, "obc_…wxyz");
       const ci = await create(board, "ci", "b");
       const gone = await create(board, "gone", "c");
       const asCi = { by: { ...by, actor: ci.principal, principal: ci.principal } };
@@ -315,13 +323,17 @@ function listingSuite(driver: string, open: OpenStore): void {
         lastUsedAt: "1970-01-02T01:00:00.000Z",
         agents: [{ ...late, profile: "late", createdAt: "1970-01-02T01:00:00.000Z" }],
       });
-      expect(listed[1]).toEqual({ ...laptop, lastUsedAt: null, agents: [] });
+      // A hint stored with the secret's prefix shows without it (D51).
+      expect(listed[1]).toEqual({ ...laptop, secretHint: "…wxyz", lastUsedAt: null, agents: [] });
+      expect(JSON.stringify(listed)).not.toContain("obc_");
       expect(JSON.stringify(listed)).not.toContain("cd".repeat(32));
       const earlier = await board.managedConnection(ci.id, 2_000);
       expect(earlier?.agents).toEqual([
         { ...early, profile: "early", createdAt: "1970-01-01T00:00:01.000Z" },
         { ...late, profile: "late", createdAt: "1970-01-02T01:00:00.000Z" },
       ]);
+      // A token expired before its hard expiry leaves an agent that can neither act nor refresh (D50): not listed.
+      expect((await board.managedConnection(ci.id, 93_600_000))?.agents).toEqual([]);
       expect(await board.managedConnection(gone.id, 2_000)).toBeNull();
       expect(await board.managedConnection("cn_zzzzzzzzzzzzzzzz", 2_000)).toBeNull();
       const otherOrg = store.board(testScope({ ...keys, orgId: keys.orgId + 1 }));

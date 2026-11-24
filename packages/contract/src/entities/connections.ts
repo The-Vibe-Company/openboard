@@ -87,7 +87,7 @@ export const ManagedConnection = Type.Object({
   ...Connection.properties,
   /** When the connection or one of its agents last wrote on the board, a claim included; null when never. */
   lastUsedAt: Type.Union([Type.String(), Type.Null()]),
-  /** Its unrevoked agents whose hard expiry has not passed, oldest first. */
+  /** Its live agents, unrevoked with an unexpired token, oldest first. */
   agents: Type.Array(ConnectionAgent),
 });
 export type ManagedConnection = Static<typeof ManagedConnection>;
