@@ -31,7 +31,7 @@ writes:
   - packages/cli/test/schedule.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [215, 364, 367]
+depends_on: [364, 367]
 status: draft
 claimed_by: null
 issue: 568
@@ -57,3 +57,5 @@ As a person, I schedule a nudge in a thread for tomorrow, `ob schedule 812 "@ada
 - `ob schedule` is hand-written for upstream's one-line summary (`docs/01-board/07-schedules.md`); it reads the text from stdin for `-` like `ob post`, passes `--every`, `--until`, `--for` and `--times` through, and already prints a repeat's summary (`every 30m until …`) from the view, so 377 does not touch the CLI.
 - Depends on 364 so a schedule's blocks are checked like a post's (upstream checks `POST /schedules` too).
 - Depends on 367, the last ticket before it to change `packages/core/src/index.ts`, `packages/ports/testkit/index.ts`, `packages/driver-sql/src/views/messages.ts`, `views/purge.ts` and `packages/server/test/isolation/seed.ts`.
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets.

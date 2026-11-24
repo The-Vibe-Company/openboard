@@ -12,7 +12,7 @@ writes:
   - docs/protocol.md
 conformance: []
 modes: [local, hosted]
-depends_on: [209, 215, 282, 334]
+depends_on: [209, 282, 334]
 status: draft
 claimed_by: null
 issue: 524
@@ -32,3 +32,5 @@ As an agent in an MCP client configured with `{ "url": "<origin>/mcp/acme/main",
 - docs/protocol.md "MCP" (Streamable HTTP, stateless JSON responses, same auth chain with `x-board-profile` and `x-board-can`), D28, docs/codebase.md 4.2 (MCP: one tool per `mcp` block; schema from `input`; annotations from `effects`; same pipeline as REST) and 5.2 (tool names are the `snake_case` of the operation). docs/protocol.md's tool list (`post`, `reply`, `read_channel`, `task_claim_next`, …) predates the contract's names: replace it with the contract's (`post_message`, `read_thread`, `list_messages`, …) and say that a reply is `post_message` with `re`.
 - Stateless: no session ID header, no server-initiated messages; each POST carries one JSON-RPC request (or a notification, answered 202). `annotations`: `readOnlyHint` from `effects.readOnly`, `idempotentHint` from `effects.idempotent`, `destructiveHint` for deletes and revokes.
 - The tenant resolver (`packages/server/src/http/scope.ts`) already parses `/mcp/<org>/<board>` in docs/architecture.md; check it does in code. Depends on 209 and 282, the last tickets before it to change `packages/server/src/http/scope.ts` and docs/protocol.md, and on 334, which changes docs/protocol.md in M11.
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets.

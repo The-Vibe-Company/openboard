@@ -10,7 +10,7 @@ writes:
   - packages/sdk/README.md
 conformance: []
 modes: [local, hosted]
-depends_on: [103, 215]
+depends_on: [103]
 status: draft
 claimed_by: null
 issue: 532
@@ -28,3 +28,5 @@ As a developer writing a runner or an agent, I write `const board = await openbo
 
 ## Notes
 docs/auth.md "One-line UX per surface" (SDK: `openboard({ url, secret: process.env.OPENBOARD_SECRET, as: 'fixer-2' })` claims and refreshes, or `token:`), "Mode 2" (claim answer `{ agent, token, env }`) and "Refresh" (new token with the same pins, the previous one valid 60 s, never past `hardExpiresAt`). Built on `createClient` (`packages/sdk/src/client.ts`); time and timers come from options so tests use a fake clock (the SDK reads nothing from the environment, docs/codebase.md 5.5). Depends on 103, the last ticket before it to change `packages/sdk/src/index.ts` (it adds `tail`). `ob connect` (`packages/cli/src/commands/connect.ts`) keeps its own storage; it may call this later.
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets.
