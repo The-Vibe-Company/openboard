@@ -43,7 +43,7 @@ writes:
   - apps/openboard/test/config.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [181, 213, 245, 286, 300]
+depends_on: [181, 213, 286, 300]
 status: draft
 claimed_by: null
 issue: 489
@@ -71,3 +71,5 @@ As a board admin, I subscribe a URL to the board's events with `ob webhooks crea
 - `ob webhooks create` is hand-written because the answer holds a secret, as `ob connections create` is (`packages/cli/src/commands/connections.ts`): a secret never reaches argv or standard output. The other `ob webhooks` commands derive from the contract's `cli` blocks.
 - A webhook and a delivery are new `Ref` kinds (`wh_`, `dl_`; docs/codebase.md 6.5 seeds a webhook).
 - Depends on 300 for the tail parser and the write-path hook; on 213 and 245, the last tickets before it to change `apps/openboard/src/config.ts` and `packages/server/src/jobs/registry.ts`; on 286, the last to change `packages/server/src/deps.ts`. The webhook count quota is the `webhooks` key of 196's `packages/core/src/orgs/quotas.ts` (20 per board, docs/architecture.md "SaaS seams").
+
+No longer waits for 245 (orchestrator, 2026-11-24): it only ordered edits to `apps/openboard/src/config.ts` and `packages/server/src/jobs/registry.ts`, which take one entry per ticket; whichever lands second rebases.
