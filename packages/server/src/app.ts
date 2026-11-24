@@ -7,6 +7,8 @@ import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
 import { type JobHandler, startJobs } from "./jobs/registry.ts";
 
+export const DRAIN_TIMEOUT_MS = 10_000;
+
 /** The ports the server runs on; it never sees a driver. */
 export interface Ports {
   readonly store: Store;
@@ -20,7 +22,15 @@ export function createApp(
   deps: Deps,
   handlers: Readonly<Record<string, JobHandler>> = {},
 ) {
+  const shutdown = new AbortController();
+  const active = new Set<Promise<unknown>>();
+  const track = <T>(work: Promise<T>) => {
+    active.add(work);
+    return work.finally(() => active.delete(work));
+  };
   const pipeline: Pipeline = {
+    shutdown: shutdown.signal,
+    track,
     config,
     deps,
     routes: routeTable(
@@ -33,14 +43,31 @@ export function createApp(
     platform: ports.store.platform(),
     providers: loginProviders(config, deps),
   };
-  const stopJobs = startJobs(ports.jobs, pipeline.tenants, deps, config.instanceId ?? deps.requestId, handlers);
+  const stopJobs = startJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, handlers);
+  let draining: Promise<void> | undefined;
+  let closing: Promise<void> | undefined;
+  async function finishDrain() {
+    const timeout = Promise.withResolvers<void>();
+    const cancel = deps.schedule(DRAIN_TIMEOUT_MS, timeout.resolve);
+    try {
+      await Promise.race([Promise.allSettled([...active, stopJobs(true)]), timeout.promise]);
+    } finally {
+      cancel();
+    }
+  }
   return {
-    fetch: (request: Request): Promise<Response> => handle(request, pipeline),
-    async drain() {},
+    fetch: (request: Request): Promise<Response> => track(handle(request, pipeline)),
+    drain() {
+      if (!draining) {
+        draining = finishDrain();
+        shutdown.abort();
+      }
+      return draining;
+    },
     /** Releases the ports it was given. */
-    async close() {
-      await stopJobs();
-      await ports.store.close();
+    close() {
+      closing ??= (draining ?? stopJobs()).finally(() => ports.store.close());
+      return closing;
     },
   };
 }

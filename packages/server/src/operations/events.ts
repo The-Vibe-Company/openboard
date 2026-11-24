@@ -33,7 +33,8 @@ async function waitForEvents(
   const tail = tailBoard(ctx.board, position);
   try {
     // A new tail reads the store first, so the wait always resolves a page; the read only satisfies the type.
-    return (await longPoll(tail, position, seconds, ctx.signal, ctx.schedule, read)) ?? (await read(position));
+    const signal = AbortSignal.any([ctx.signal, ctx.shutdown]);
+    return (await longPoll(tail, position, seconds, signal, ctx.schedule, read)) ?? (await read(position));
   } finally {
     tail.close();
   }
@@ -43,6 +44,7 @@ export async function streamEvents(
   ctx: BoardContext,
   input: EventInput,
   lastEventId: string | null,
+  track: <T>(work: Promise<T>) => Promise<T>,
 ): Promise<Response> {
   const { position, read, newest } = prepareFeed(ctx, input, true, lastEventId);
   // Subscribe before the first read: the stream then follows from memory, and reads the store only when behind.
@@ -50,14 +52,16 @@ export async function streamEvents(
   try {
     tail.take(position);
     let first = await read(position);
-    while (first.retry && !ctx.signal.aborted) first = await read(position);
+    while (first.retry && !ctx.signal.aborted && !ctx.shutdown.aborted) first = await read(position);
+    if (ctx.shutdown.aborted) throw new BoardError("unavailable", "the instance is draining");
     tail.settle(first);
     const follow = newest ? prepareFeed(ctx, { ...input, last: undefined }, true).read : read;
     return eventStream(
       first,
       ctx.signal,
+      ctx.shutdown,
       ctx.schedule,
-      (after, signal) => longPoll(tail, after, "stream", signal, ctx.schedule, follow),
+      (after, signal) => track(longPoll(tail, after, "stream", signal, ctx.schedule, follow)),
       tail.close,
     );
   } catch (error) {

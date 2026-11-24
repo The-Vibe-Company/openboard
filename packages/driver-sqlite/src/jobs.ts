@@ -1,4 +1,4 @@
-import { claimJob, type Db, nextJob } from "@openboard/driver-sql";
+import { claimJob, type Db, nextJob, releaseJobs } from "@openboard/driver-sql";
 import type { Jobs } from "@openboard/ports";
 import { sqliteDialect } from "./dialect.ts";
 
@@ -7,6 +7,7 @@ export function sqliteJobs(db: Db, now: () => number): Jobs & { committed(): voi
   let stop: (() => void) | undefined;
   return {
     claim: claimJob(db, sqliteDialect),
+    release: releaseJobs(db, sqliteDialect),
     committed: () => refresh?.(),
     close: () => stop?.(),
     watch(kinds, schedule, wake) {

@@ -37,7 +37,7 @@ export { postgresText } from "./db.ts";
 export { splitStatements } from "./ddl.ts";
 export { localBroadcaster } from "./local-broadcaster.ts";
 export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
-export { claimJob, nextJob } from "./views/jobs/index.ts";
+export { claimJob, nextJob, releaseJobs } from "./views/jobs/index.ts";
 
 /** A migration of the one DDL source, in Postgres syntax (docs/data-model.md "DDL"). */
 export interface Migration {

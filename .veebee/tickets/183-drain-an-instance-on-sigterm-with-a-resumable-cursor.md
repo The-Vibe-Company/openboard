@@ -10,11 +10,25 @@ writes:
   - packages/server/src/jobs/registry.ts
   - packages/server/test/ha/drain.test.ts
   - apps/openboard/src/serve.ts
+  - docs/protocol.md
+  - packages/server/src/index.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/events.ts
+  - packages/ports/src/jobs.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/views/jobs/index.ts
+  - packages/driver-postgres/src/jobs.ts
+  - packages/driver-sqlite/src/jobs.ts
+  - packages/server/test/support/drivers.ts
+  - packages/server/test/ha/jobs.test.ts
+  - tools/bench/src/counters.ts
+  - docs/codebase.md
 conformance: []
 modes: [local, hosted]
 depends_on: [177, 181]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 263
 ---
 
@@ -22,8 +36,8 @@ issue: 263
 As an agent following a board, when the instance I am connected to is stopped for a deploy, my stream ends cleanly and I resume on another instance without missing or repeating an event.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/drain.test.ts` passes: an SSE stream on instance 1 ends with `retry: 1000` and its last `id:` when `app.drain()` runs; the client resumes on instance 2 with `Last-Event-ID` and receives the posts made in between, each once, in order; instance 1 then refuses new streams and long-polls, finishes an in-flight write, and its job leases are free for instance 2
-- [ ] `openboard serve` (local mode, `bun apps/openboard/src/main.ts serve`) with `curl -N` following `/api/local/main/events` exits within 10 s of `kill -TERM <pid>`, and the curl output ends with a `retry: 1000` frame
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/drain.test.ts` passes: an SSE stream on instance 1 ends with `retry: 1000` and its last `id:` when `app.drain()` runs; the client resumes on instance 2 with `Last-Event-ID` and receives the posts made in between, each once, in order; instance 1 then refuses new streams and long-polls, finishes an in-flight write, and its job leases are free for instance 2
+- [x] `openboard serve` (local mode, `bun apps/openboard/src/main.ts serve`) with `curl -N` following `/api/local/main/events` exits within 10 s of `kill -TERM <pid>`, and the curl output ends with a `retry: 1000` frame
 
 ## Out of scope
 - `/readyz` answering 503 while draining (184).

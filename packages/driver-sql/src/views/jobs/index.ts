@@ -20,7 +20,7 @@ const kindSet: Fragment = {
 };
 
 export const jobPlatformStatements = {
-  // Discovery runs before a board is known. Neither query returns payload or other board content.
+  // Dispatch runs before a board is known. These statements expose no payload or other board content.
   claimJob: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds)
     UPDATE jobs SET available_at = ${"until"}, instance_id = ${"instanceId"}
     WHERE id = (
@@ -28,6 +28,9 @@ export const jobPlatformStatements = {
       ORDER BY available_at, id LIMIT 1${skipLocked}
     )
     RETURNING CAST(id AS TEXT) AS id, kind, org_id, board_id`,
+  releaseJobs: sql`UPDATE jobs SET available_at = ${"now"}, instance_id = NULL
+    WHERE instance_id = ${"instanceId"} AND available_at > ${"now"}
+    AND id IS DISTINCT FROM CAST(${"exceptId"} AS BIGINT)`,
   nextJob: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds)
     SELECT MIN(available_at) AS due FROM jobs WHERE kind IN (${kindSet})`,
 };
@@ -55,6 +58,12 @@ export function claimJob(db: Db, dialect: Dialect): Jobs["claim"] {
     return row
       ? { id: String(row.id), kind: String(row.kind), orgId: Number(row.org_id), boardId: Number(row.board_id) }
       : null;
+  };
+}
+
+export function releaseJobs(db: Db, dialect: Dialect): Jobs["release"] {
+  return async (instanceId, now, exceptId) => {
+    await query(db, dialect, jobPlatformStatements.releaseJobs, { instanceId, now, exceptId: exceptId ?? null });
   };
 }
 
