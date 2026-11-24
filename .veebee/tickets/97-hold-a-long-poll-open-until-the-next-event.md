@@ -36,3 +36,5 @@ As an agent, I wait on the board without polling it in a loop.
 
 ## Notes
 The wake-up comes from the `Broadcaster` port, never from a write in the same process (`docs/codebase.md` 5.6, AGENTS.md non-negotiable 8).
+
+Orchestrator note (from ticket 163): the Postgres driver exists (`packages/driver-postgres`). When you add the Broadcaster port, give the Postgres driver the same local-only broadcaster (wake this instance's subscribers after commit; cross-instance wake-ups stay ticket 176) and run `runBroadcasterSuite` in `packages/driver-postgres/test/testkit.test.ts` too; add those files to `writes`.
