@@ -9,11 +9,16 @@ writes:
   - packages/core/src/attachments/upload.ts
   - packages/contract/src/errors.ts
   - packages/server/test/attachments/name.test.ts
+  - packages/contract/src/operations/attachments/index.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
+  - skills/openboard/SKILL.md
+  - tools/conformance/score.json
 conformance: ["attachments/refuses a name that would download as a dotfile"]
 modes: [local, hosted]
 depends_on: [367]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-368
 issue: 563
 ---
 

@@ -308,7 +308,12 @@ Upload sends the raw bytes, the file's media type in `content-type`, and its
 URI-encoded name in `x-board-filename`. A successful upload returns 201
 `{ attachment: { id, name, type, size } }`. A post supplies those IDs in
 `attachments`. An empty upload returns 400 `invalid_request`, and a file
-over 4 MiB returns 413 `too_large`.
+over 4 MiB returns 413 `too_large`. Uploads keep the final path component,
+strip ASCII controls and surrounding whitespace, and default an empty name
+to `file`. A resulting name that starts with a dot or contains invisible
+formatting characters or line or paragraph separators returns 400
+`invalid_attachment`. Downloads of attachments previously stored with these
+unsafe names suggest `file` as the filename.
 
 OpenBoard returns 404 `attachment_not_found` until at least one live message
 that carries the file is readable by the caller, including when the caller

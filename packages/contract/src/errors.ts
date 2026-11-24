@@ -9,6 +9,7 @@ import { type Static, Type } from "@sinclair/typebox";
 const CODES = {
   400: [
     "invalid_request",
+    "invalid_attachment",
     "text_too_long",
     "invalid_cursor",
     "invalid_after",
