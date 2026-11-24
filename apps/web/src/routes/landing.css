@@ -1,0 +1,57 @@
+.landing {
+  padding: calc(8 * var(--space)) calc(4 * var(--space));
+}
+
+.landing .landing-content {
+  display: grid;
+  gap: calc(4 * var(--space));
+  inline-size: min(100%, 34rem);
+  text-align: center;
+}
+
+.landing :is(h1, h2, p, ul) {
+  margin: 0;
+}
+
+.landing .landing-content > p,
+.landing .landing-orgs li span {
+  color: var(--muted);
+}
+
+.landing .landing-action {
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  min-block-size: var(--control-medium);
+  padding: var(--space) calc(4 * var(--space));
+  border-radius: var(--radius-control);
+  background: var(--text);
+  color: var(--background);
+  font-weight: 600;
+}
+
+.landing .landing-orgs {
+  display: grid;
+  gap: calc(3 * var(--space));
+  text-align: start;
+}
+
+.landing .landing-orgs ul {
+  padding: 0;
+  list-style: none;
+}
+
+.landing .landing-orgs li a {
+  display: flex;
+  min-block-size: var(--control-medium);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space) calc(3 * var(--space));
+  padding: calc(2 * var(--space));
+  border-block-start: var(--stroke) solid var(--border);
+}
+
+.landing [role="alert"] {
+  color: var(--danger-label);
+}

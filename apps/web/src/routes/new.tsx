@@ -4,6 +4,8 @@ import { BoardError } from "@the-vibe-company/openboard";
 import { type FormEvent, useEffect, useState } from "react";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
+import { AuthPage } from "../components/AuthPage.tsx";
+import { Button, Field, Input } from "../ui/index.ts";
 
 export const Route = createFileRoute("/new")({ component: NewOrganization });
 
@@ -17,18 +19,18 @@ function NewOrganization() {
 
 function AccountStatus({ failed, retry }: { failed: boolean; retry: () => void }) {
   return (
-    <main className="sign-in">
+    <AuthPage title="Create an organization" description="Set up a shared space for your team and agents.">
       {failed ? (
-        <section>
+        <>
           <p role="alert">Could not load your account.</p>
-          <button type="button" onClick={retry}>
+          <Button type="button" onClick={retry}>
             Try again
-          </button>
-        </section>
+          </Button>
+        </>
       ) : (
         <p role="status">Loading your account…</p>
       )}
-    </main>
+    </AuthPage>
   );
 }
 
@@ -70,9 +72,12 @@ function proposeSlug(name: string) {
     .replace(/-$/, "");
 }
 
+const slugFormat = "Use 2–39 lowercase letters, numbers, or hyphens. Start with a letter or number.";
+
 function OrganizationForm({ refreshAccount }: { refreshAccount: () => Promise<void> }) {
   const [name, setName] = useState("");
   const [editedSlug, setEditedSlug] = useState<string | null>(null);
+  const [slugValidationError, setSlugValidationError] = useState<string | null>(null);
   const slug = editedSlug ?? proposeSlug(name);
   const create = useMutation({
     mutationFn: (input: { name: string; slug: string }) => browserClient(window.location.origin).createOrg(input),
@@ -85,7 +90,7 @@ function OrganizationForm({ refreshAccount }: { refreshAccount: () => Promise<vo
   });
   const code = create.error instanceof BoardError ? create.error.code : undefined;
   const slugError =
-    code === "slug_taken" ? `${slug} is taken` : code === "reserved_slug" ? `${slug} is reserved` : null;
+    code === "slug_taken" ? `${slug} is taken` : code === "reserved_slug" ? `${slug} is reserved` : slugValidationError;
   const submitting = create.isPending || create.isSuccess;
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -94,49 +99,54 @@ function OrganizationForm({ refreshAccount }: { refreshAccount: () => Promise<vo
   }
 
   return (
-    <main className="sign-in">
-      <section aria-labelledby="new-org-title">
-        <h1 id="new-org-title">Create an organization</h1>
-        <form className="new-org-form" onSubmit={submit}>
-          <label htmlFor="org-name">Organization name</label>
-          <input
-            id="org-name"
-            required
-            maxLength={80}
-            value={name}
-            disabled={submitting}
-            onChange={(event) => {
-              setName(event.target.value);
-              create.reset();
-            }}
-          />
-          <label htmlFor="org-slug">Slug</label>
-          <input
-            id="org-slug"
-            required
-            pattern={"x|[a-z0-9][a-z0-9\\-]{1,38}"}
-            maxLength={39}
-            title="Use 2–39 lowercase letters, numbers, or hyphens. Start with a letter or number."
-            value={slug}
-            disabled={submitting}
-            aria-invalid={slugError ? true : undefined}
-            aria-describedby={slugError ? "org-slug-error" : undefined}
-            onChange={(event) => {
-              setEditedSlug(event.target.value);
-              create.reset();
-            }}
-          />
-          {slugError && (
-            <p id="org-slug-error" role="alert">
-              {slugError}
-            </p>
+    <AuthPage title="Create an organization" description="Set up a shared space for your team and agents.">
+      <form onSubmit={submit}>
+        <Field label="Organization name">
+          {(props) => (
+            <Input
+              {...props}
+              required
+              maxLength={80}
+              value={name}
+              disabled={submitting}
+              onChange={(event) => {
+                setName(event.target.value);
+                if (editedSlug === null) setSlugValidationError(null);
+                create.reset();
+              }}
+            />
           )}
-          {create.isError && !slugError && <p role="alert">Could not create your organization. Try again.</p>}
-          <button type="submit" disabled={submitting || !name.trim()}>
-            {submitting ? "Creating…" : "Create organization"}
-          </button>
-        </form>
-      </section>
-    </main>
+        </Field>
+        <Field label="Slug" error={slugError && <span role="alert">{slugError}</span>}>
+          {(props) => (
+            <Input
+              {...props}
+              required
+              pattern={"x|[a-z0-9][a-z0-9\\-]{1,38}"}
+              maxLength={39}
+              title={slugFormat}
+              value={slug}
+              onInvalid={(event) => {
+                event.preventDefault();
+                setSlugValidationError(
+                  event.currentTarget.validity.valueMissing ? "Enter an organization slug." : slugFormat,
+                );
+                event.currentTarget.focus();
+              }}
+              disabled={submitting}
+              onChange={(event) => {
+                setEditedSlug(event.target.value);
+                setSlugValidationError(null);
+                create.reset();
+              }}
+            />
+          )}
+        </Field>
+        {create.isError && !slugError && <p role="alert">Could not create your organization. Try again.</p>}
+        <Button type="submit" pending={submitting} disabled={!name.trim()}>
+          {submitting ? "Creating…" : "Create organization"}
+        </Button>
+      </form>
+    </AuthPage>
   );
 }

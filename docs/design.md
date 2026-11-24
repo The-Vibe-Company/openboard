@@ -24,3 +24,5 @@ Import primitives from `src/ui/index.ts`. Button defaults to a medium primary ac
 Input, Textarea and Select accept native control props. With Field, spread the render callback's props onto the control to connect its label, hint and error. Card groups content, Badge labels status, Table retains native table semantics, EmptyState contains content for an empty view, and Avatar takes a name and optional image URL.
 
 Put page and component styles in a sibling CSS file and scope them to a root class. Use shared variables for colors, radii, shadows and font sizes. Keep `styles.css` for fonts, tokens, resets and base element styles. Move existing page rules into the scoped stylesheets as each page adopts the primitives.
+
+The landing page links visitors to sign-in and signed-in people to their organizations. Sign-in, organization creation, invitations and terminal approval share the same card layout. Keep field errors below their controls and connect them to the input with `Field`.
