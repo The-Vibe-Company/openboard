@@ -4,24 +4,36 @@ title: List a channel's tasks
 milestone: M9-tasks
 package: server
 writes:
-  - packages/contract/src/operations/tasks.ts
+  - .veebee/tickets/239-list-a-channel-s-tasks.md
+  - docs/protocol.md
+  - packages/contract/src/operations/tasks/list.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
   - packages/core/src/tasks/filters.ts
+  - packages/core/src/index.ts
   - packages/core/test/tasks/filters.test.ts
   - packages/ports/src/tasks.ts
+  - packages/ports/src/index.ts
+  - packages/ports/testkit/index.ts
   - packages/ports/testkit/store/tasks.test-suite.ts
   - packages/ports/testkit/isolation.test-suite.ts
-  - packages/driver-sql/src/views/tasks.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/views/tasks/list.ts
+  - packages/driver-sql/src/views/tasks/tasks.ts
+  - packages/driver-sql/src/views/threads.ts
   - packages/driver-sql/src/statements.ts
+  - packages/server/openapi.json
   - packages/server/src/operations/tasks.ts
+  - packages/server/src/operations/index.ts
   - packages/server/test/tasks/list.test.ts
-  - packages/server/test/isolation/cases.ts
-  - packages/cli/src/commands/tasks.ts
+  - packages/cli/src/output.ts
   - packages/cli/test/tasks.test.ts
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [238]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus
 issue: 412
 ---
 

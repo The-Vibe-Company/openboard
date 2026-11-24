@@ -75,6 +75,7 @@ export {
   listPersonalTokens,
   listSyncCopies,
   listSyncTargets,
+  listTasks,
   listThreads,
   operations,
   pollDeviceSignIn,
