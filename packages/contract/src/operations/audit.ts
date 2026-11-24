@@ -1,6 +1,8 @@
 import { type Static, type TObject, type TProperties, Type } from "@sinclair/typebox";
 import { ClaimedAgent, Connection } from "../entities/connections.ts";
+import { InvitationRole } from "../entities/invitations.ts";
 import { Author } from "../entities/messages.ts";
+import { Named, Role, Slug } from "../entities/orgs.ts";
 import { defineOperation } from "../operation.ts";
 
 /** One audit entry: its log position as a cursor, when and by whom, and what changed; never a secret or its hash. */
@@ -67,5 +69,57 @@ export const readBoardAudit = defineOperation({
   cli: { command: ["audit"], args: [] },
   mcp: false,
   why: "The audit is for the people who administer the board, like listing its connections.",
+  upstream: false,
+});
+
+/** One organization audit entry: its organization cursor, when and by whom, and what changed. */
+function orgEntry<Kind extends string, Payload extends TProperties>(type: Kind, payload: Payload) {
+  return Type.Object({
+    cursor: Type.String(),
+    type: Type.Literal(type),
+    createdAt: Type.String(),
+    actor: Type.String(),
+    payload: Type.Object(payload) as TObject<Payload>,
+  });
+}
+
+/** An organization event (`org_events`) as the audit shows it (docs/auth.md "Audit"). */
+export const OrgAuditEvent = Type.Union([
+  orgEntry("ob.org.created", { org: Named, owner: Type.String() }),
+  orgEntry("ob.board.created", { board: Named }),
+  orgEntry("ob.invitation.created", { id: Type.String(), role: InvitationRole }),
+  orgEntry("ob.invitation.revoked", { id: Type.String() }),
+  orgEntry("ob.member.added", { principal: Type.String(), role: Role }),
+  orgEntry("ob.member.role_changed", { principal: Type.String(), previousRole: Role, role: Role }),
+  orgEntry("ob.member.removed", { principal: Type.String(), role: Role }),
+]);
+export type OrgAuditEvent = Static<typeof OrgAuditEvent>;
+
+export const readOrgAudit = defineOperation({
+  name: "readOrgAudit",
+  summary: "Read the organization's audit events (members, roles, invitations, boards) after a cursor, oldest first.",
+  route: { method: "GET", path: "/orgs/:org/audit" },
+  scope: "org",
+  input: {
+    params: Type.Object({ org: Slug }),
+    query: Type.Object(
+      {
+        after: Type.Optional(Type.String({ description: "A cursor this route answered; absent, from the start." })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 200, default: 100 })),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  output: Type.Object({
+    events: Type.Array(OrgAuditEvent),
+    /** Where the next page starts: pass it back as `after`. */
+    cursor: Type.String(),
+  }),
+  errors: ["invalid_cursor", "not_found", "unauthorized", "forbidden"],
+  access: null,
+  effects: { readOnly: true, idempotent: true, emits: [] },
+  cli: false,
+  mcp: false,
+  why: "Organization administrators read the audit with a browser session.",
   upstream: false,
 });

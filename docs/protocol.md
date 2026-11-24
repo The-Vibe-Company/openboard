@@ -325,7 +325,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/api/x/invitations/accept` | person | `{ token }` → `{ org, role }`. A bound invitation requires a matching verified email (case-insensitive), or returns 403 `invitation_email_mismatch` without consuming the link. |
 | GET, POST | `/api/x/orgs/:org/boards` | member / admin | list; create `{ slug, name }` with seeded grants |
 | POST | `/api/x/orgs/:org/boards/:board/delete` | admin | soft delete |
-| GET | `/api/x/orgs/:org/audit` | admin | organization events |
+| GET | `/api/x/orgs/:org/audit` | admin | organization events (`org_events`: organization and boards created, invitations created and revoked, members added, role changes, removals), oldest first; a member gets 403 `forbidden`. Query `after` (a cursor it answered) and `limit` (1 to 200, default 100). Returns `{ events, cursor }`, each event `{ cursor, type, createdAt, actor, payload }`; pass `cursor` back as `after`. A cursor past the last event or not decimal answers 400 `invalid_cursor`. No token or hash appears. |
 | GET | `/api/x/orgs/:org/usage` | admin | daily usage (metering seam) |
 | POST | `/api/x/auth/device`, `/api/x/auth/device/token`, `/api/x/auth/device/approve` | — / — / person | CLI device flow ([auth.md](./auth.md#cli-sign-in-device-flow-and-choosing-org-and-board)) |
 | GET | `/api/x/tokens` | person | `{ tokens: [{ id, name, org, createdAt, expiresAt, revokedAt }] }` for the session holder. Timestamps are epoch milliseconds, and `revokedAt` is null until revoked. |

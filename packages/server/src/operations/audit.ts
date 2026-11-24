@@ -1,6 +1,12 @@
-import { type AuditEvent, BoardError, type readBoardAudit } from "@openboard/contract";
+import {
+  type AuditEvent,
+  BoardError,
+  type OrgAuditEvent,
+  type readBoardAudit,
+  type readOrgAudit,
+} from "@openboard/contract";
 import { formatId, grants, isoTime, parseId } from "@openboard/core";
-import type { AuditRecord } from "@openboard/ports";
+import type { AuditRecord, OrgAuditRecord } from "@openboard/ports";
 import { requireManager } from "./connections.ts";
 import type { Handler } from "./index.ts";
 
@@ -56,4 +62,37 @@ function auditEntry(event: AuditRecord): AuditEvent {
       return { ...common, type: event.type, payload: { connection, agent } };
     }
   }
+}
+
+/** The payload fields each organization event shows; anything else its record holds stays in the log. */
+const ORG_PAYLOAD: { readonly [Type in OrgAuditEvent["type"]]: readonly string[] } = {
+  "ob.org.created": ["org", "owner"],
+  "ob.board.created": ["board"],
+  "ob.invitation.created": ["id", "role"],
+  "ob.invitation.revoked": ["id"],
+  "ob.member.added": ["principal", "role"],
+  "ob.member.role_changed": ["principal", "previousRole", "role"],
+  "ob.member.removed": ["principal", "role"],
+};
+
+/**
+ * The organization's events, oldest first, for its owners and admins (docs/auth.md "Audit"): who joined, who invited
+ * whom, who changed roles. The pipeline answers 403 `forbidden` to a member and 404 to anyone outside it.
+ */
+export const readOrgAuditHandler: Handler<typeof readOrgAudit> = async (ctx, { after, limit = 100 }) => {
+  const position = after === undefined ? 0 : parseId(after);
+  if (position === null) throw new BoardError("invalid_cursor", "after: expected a decimal organization cursor");
+  const { events, head } = await ctx.org.auditEvents(position, limit);
+  if (position > head) throw new BoardError("invalid_cursor", "after: cursor is ahead of the organization");
+  const last = events.at(-1);
+  const cursor = events.length === limit && last ? last.id : head;
+  return { events: events.map(orgAuditEntry), cursor: formatId(cursor) };
+};
+
+function orgAuditEntry({ id, type, at, actor, payload }: OrgAuditRecord): OrgAuditEvent {
+  const fields = Object.hasOwn(ORG_PAYLOAD, type) ? ORG_PAYLOAD[type as OrgAuditEvent["type"]] : undefined;
+  // A new organization event type needs its audit shape here before it is written.
+  if (!fields) throw new Error(`organization event ${type} has no audit shape`);
+  const shown = Object.fromEntries(fields.map((field) => [field, payload[field]]));
+  return { cursor: formatId(id), type, createdAt: isoTime(at), actor, payload: shown } as OrgAuditEvent;
 }

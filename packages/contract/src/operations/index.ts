@@ -9,7 +9,7 @@ import {
   startDeviceSignIn,
 } from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
-import { readBoardAudit } from "./audit.ts";
+import { readBoardAudit, readOrgAudit } from "./audit.ts";
 import { createBoard, listBoards } from "./boards.ts";
 import { createChannel, listChannels } from "./channels.ts";
 import {
@@ -72,6 +72,7 @@ export const operations = [
   reactToMessage,
   readBoardAudit,
   readEvents,
+  readOrgAudit,
   readPost,
   readThread,
   refreshAgentToken,
@@ -118,6 +119,7 @@ export {
   reactToMessage,
   readBoardAudit,
   readEvents,
+  readOrgAudit,
   readPost,
   readThread,
   refreshAgentToken,

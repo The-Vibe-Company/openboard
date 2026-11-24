@@ -14,7 +14,7 @@ import type { Db, Dialect } from "./db.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
 import { agentReads } from "./views/agents.ts";
-import { auditReads } from "./views/audit.ts";
+import { auditReads, orgAuditReads } from "./views/audit.ts";
 import { orgBoardsView, platformView } from "./views/boards.ts";
 import { channelReads } from "./views/channels.ts";
 import { connectionReads } from "./views/connections.ts";
@@ -72,6 +72,7 @@ export function createViews(
       ...invitationView(db, dialect, scope),
       ...orgBoardsView(db, dialect, scope),
       ...membershipView(db, dialect, scope),
+      ...orgAuditReads(db, dialect, scope),
     }),
     board: (scope) => ({
       ...boardView(db, dialect, scope, broadcaster),

@@ -8,6 +8,15 @@ writes:
   - packages/server/src/operations/audit.ts
   - packages/driver-sql/src/views/audit.ts
   - packages/server/test/audit.test.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/ports/src/index.ts
+  - packages/ports/src/store.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/driver-sql/src/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [132, 143, 149]
