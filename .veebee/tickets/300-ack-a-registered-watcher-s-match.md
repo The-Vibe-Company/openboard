@@ -4,7 +4,10 @@ title: Ack a registered watcher's match
 milestone: M11-webhooks-and-watchers
 package: server
 writes:
-  - packages/contract/src/operations/watchers.ts
+  - docs/data-model.md
+  - docs/protocol.md
+  - skills/openboard/references/commands.md
+  - packages/contract/src/operations/watchers/index.ts
   - packages/contract/src/entities/watchers.ts
   - packages/contract/src/operations/index.ts
   - packages/core/src/events/tail.ts
@@ -19,18 +22,33 @@ writes:
   - packages/driver-sql/migrations/*-watchers.sql
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
-  - packages/driver-sql/src/views/watchers.ts
+  - packages/driver-sql/src/views/watchers/index.ts
   - packages/driver-sql/src/views/boards.ts
   - packages/driver-sql/src/views/messages.ts
-  - packages/server/src/operations/watchers.ts
+  - packages/server/src/operations/watchers/index.ts
   - packages/server/src/operations/index.ts
   - packages/server/test/watchers/matches.test.ts
   - packages/server/test/isolation/seed.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/audit.ts
+  - packages/driver-sql/src/views/actors.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/ports/src/watchers.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/server/openapi.json
+  - packages/server/src/auth/access.ts
+  - packages/server/src/operations/audit.ts
+  - packages/server/src/operations/events.ts
+  - packages/server/test/isolation/cases.ts
+  - packages/server/test/rate-limits.test.ts
+  - tools/conformance/score.json
+  - packages/driver-sqlite/test/open.test.ts
 conformance: ["watchers/matches a registered tail, hands the match to a pull, and takes its ack"]
 modes: [local, hosted]
 depends_on: [97, 198, 276]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 485
 ---
 

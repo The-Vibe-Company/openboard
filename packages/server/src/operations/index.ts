@@ -85,6 +85,12 @@ import { completeTaskHandler } from "./tasks/complete.ts";
 import { renewTaskHandler } from "./tasks/renew.ts";
 import { createTaskHandler, listTasksHandler } from "./tasks.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
+import {
+  ackWatcherMatchHandler,
+  listWatchersHandler,
+  pullWatcherMatchesHandler,
+  registerWatchersHandler,
+} from "./watchers/index.ts";
 
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
 export interface BoardContext extends RequestLimits {
@@ -174,13 +180,13 @@ export type OrgOperation = Extract<Contracted, { readonly scope: "org" }>;
 export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> } = {
   acceptInvitation: acceptInvitationHandler,
   ackInbox: ackInboxHandler,
+  ackWatcherMatch: ackWatcherMatchHandler,
   approveDeviceSignIn: approveDeviceSignInHandler,
   attachSync: attachSyncHandler,
   changeMemberRole: changeMemberRoleHandler,
   claimConnection: claimConnectionHandler,
   claimTask: claimTaskHandler,
   completeTask: completeTaskHandler,
-  renewTask: renewTaskHandler,
   createBoard: createBoardHandler,
   createChannel: createChannelHandler,
   createConnection: createConnectionHandler,
@@ -218,9 +224,11 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listSyncTargets: listSyncTargetsHandler,
   listTasks: listTasksHandler,
   listThreads: listThreadsHandler,
+  listWatchers: listWatchersHandler,
   pollDeviceSignIn: pollDeviceSignInHandler,
   postMessage: postMessageHandler,
   previewInvitation: previewInvitationHandler,
+  pullWatcherMatches: pullWatcherMatchesHandler,
   pushInbox: pushInboxHandler,
   reactToMessage: reactToMessageHandler,
   readBoardAudit: readBoardAuditHandler,
@@ -234,7 +242,9 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   receiveWebhook: receiveWebhookHandler,
   recordSyncReceipt: recordSyncReceiptHandler,
   refreshAgentToken: refreshAgentTokenHandler,
+  registerWatchers: registerWatchersHandler,
   removeMember: removeMemberHandler,
+  renewTask: renewTaskHandler,
   revokeAgent: revokeAgentHandler,
   revokeAllSessions: revokeAllSessionsHandler,
   revokeConnection: revokeConnectionHandler,

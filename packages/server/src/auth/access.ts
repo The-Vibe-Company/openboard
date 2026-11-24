@@ -82,7 +82,7 @@ export async function keepInsideCan(
   }
 }
 
-function allowedEverywhere(can: Can, permission: Permission): boolean {
+export function allowedEverywhere(can: Can, permission: Permission): boolean {
   return (
     agents.allowedAt(can, "*").includes(permission) &&
     Object.values(can).every((given) => grants.withImplied(given).includes(permission))
@@ -121,6 +121,10 @@ async function checkPermission(by: Principal, can: Can, access: Access, input: u
   const { permission } = access;
   const named = input as { channel?: unknown; path?: unknown; re?: unknown; id?: unknown };
   if (access.channel === "fromMessage") return checkMessage(by, can, permission, board, named.id);
+  if (access.channel === "some") {
+    if (Object.values(can).some((given) => grants.withImplied(given).includes(permission))) return;
+    throw outsideCan(by, permission, "in any channel");
+  }
   const channel = named.channel ?? named.path;
   if (access.channel === "any" || (access.channel === "fromInputOrAny" && channel === undefined)) {
     if (allowedEverywhere(can, permission)) return;

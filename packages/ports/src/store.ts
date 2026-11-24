@@ -30,6 +30,7 @@ import type { CommittedEvents } from "./broadcaster.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
 import type { BoardJobWriter, Jobs } from "./jobs.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
+import type { BoardWatcherReads, BoardWatcherWriter } from "./watchers.ts";
 
 /** A board configuration event (`ob.*`, visibility 2), as stored: its payload may hold hashes the audit strips. */
 export type AuditRecord = Extract<BoardEvent, { readonly visibility: 2 }>;
@@ -213,7 +214,7 @@ export interface PlatformView {
 }
 
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */
-export interface BoardWriter extends BoardTaskWriter, BoardGrantWriter, BoardJobWriter {
+export interface BoardWriter extends BoardTaskWriter, BoardGrantWriter, BoardJobWriter, BoardWatcherWriter {
   readonly head: number;
   /** The actors available to resolve handles under the write lock. */
   mentionActors(handles: ReadonlySet<string>): Promise<MentionActor[]>;
@@ -317,7 +318,7 @@ export interface MentionEvidence {
 }
 
 /** One board's storage; every statement it runs is bound to its scope. */
-export interface BoardView extends BoardMessageReads, BoardTaskReads, BoardGrantReads {
+export interface BoardView extends BoardMessageReads, BoardTaskReads, BoardGrantReads, BoardWatcherReads {
   /**
    * Wake when a write advances this board past the cursor, with the head it reached and its events when in memory.
    * Returns an unsubscribe.

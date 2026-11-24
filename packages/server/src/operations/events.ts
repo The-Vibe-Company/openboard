@@ -163,12 +163,14 @@ function sameActors(before: FilterActors, after: FilterActors): boolean {
 
 type FeedEvent = Awaited<ReturnType<Parameters<typeof readEventsHandler>[0]["board"]["readEvents"]>>["events"][number];
 
-function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boolean): OutputOf<typeof readEvents>["events"] {
+type WireEvents = OutputOf<typeof readEvents>["events"];
+
+export function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boolean): WireEvents {
   if (event.visibility === 1) {
     const common = { cursor: formatId(event.id), createdAt: isoTime(event.at) };
     return event.type === "actor.seen"
-      ? [{ ...common, type: event.type, payload: { ...event.payload } }]
-      : [{ ...common, type: event.type, payload: { ...event.payload } }];
+      ? [{ ...common, type: event.type, payload: event.payload }]
+      : [{ ...common, type: event.type, payload: event.payload }];
   }
   const current = event.current;
   const historical = event.type === "message.posted" ? messages.messageView(event) : event.payload.view;

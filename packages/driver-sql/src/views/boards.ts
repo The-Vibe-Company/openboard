@@ -40,6 +40,7 @@ export const boardStatements = {
   boardBySlug: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"} AND deleted_at IS NULL`,
   lockBoard: sql`SELECT boards.head, boards.timeline, ${serverTimeline} AS server_timeline, orgs.quotas,
     ${eventDay} AS event_day,
+    EXISTS (SELECT 1 FROM watcher_registrations w WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"} AND w.watch <> '{}') AS has_watchers,
     CASE WHEN boards.daily_event_day >= quota_clock.day THEN CAST(${eventTally} ->> 'count' AS BIGINT)
       ELSE 0 END +
     CASE WHEN boards.head = 0 OR CAST(${eventTally} ->> 'head' AS BIGINT) = boards.head THEN 0 ELSE (
@@ -137,6 +138,7 @@ export async function lockBoard(
   return {
     row,
     actorLoaded,
+    hasWatchers: Boolean(row.has_watchers),
     head: timeline === 0 || recorded === 0 || timeline === recorded ? head : head + TIMELINE_ADVANCE,
     dailyEvents: {
       day: Number(row.event_day),

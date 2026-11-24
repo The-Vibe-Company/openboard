@@ -64,22 +64,23 @@ import {
 } from "./sync/records.ts";
 import { claimTask } from "./tasks/claim.ts";
 import { completeTask } from "./tasks/complete.ts";
-import { renewTask } from "./tasks/renew.ts";
 import { createTask } from "./tasks/create.ts";
 import { listTasks } from "./tasks/list.ts";
+import { renewTask } from "./tasks/renew.ts";
 import { listThreads, readThread } from "./threads.ts";
+import { ackWatcherMatch, listWatchers, pullWatcherMatches, registerWatchers } from "./watchers/index.ts";
 
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
 export const operations = [
   acceptInvitation,
   ackInbox,
+  ackWatcherMatch,
   approveDeviceSignIn,
   attachSync,
   changeMemberRole,
   claimConnection,
   claimTask,
   completeTask,
-  renewTask,
   createBoard,
   createChannel,
   createConnection,
@@ -117,9 +118,11 @@ export const operations = [
   listSyncTargets,
   listTasks,
   listThreads,
+  listWatchers,
   pollDeviceSignIn,
   postMessage,
   previewInvitation,
+  pullWatcherMatches,
   pushInbox,
   reactToMessage,
   readBoardAudit,
@@ -133,7 +136,9 @@ export const operations = [
   receiveWebhook,
   recordSyncReceipt,
   refreshAgentToken,
+  registerWatchers,
   removeMember,
+  renewTask,
   revokeAgent,
   revokeAllSessions,
   revokeConnection,
@@ -149,13 +154,13 @@ export const operations = [
 export {
   acceptInvitation,
   ackInbox,
+  ackWatcherMatch,
   approveDeviceSignIn,
   attachSync,
   changeMemberRole,
   claimConnection,
   claimTask,
   completeTask,
-  renewTask,
   createBoard,
   createChannel,
   createConnection,
@@ -193,9 +198,11 @@ export {
   listSyncTargets,
   listTasks,
   listThreads,
+  listWatchers,
   pollDeviceSignIn,
   postMessage,
   previewInvitation,
+  pullWatcherMatches,
   pushInbox,
   reactToMessage,
   readBoardAudit,
@@ -209,7 +216,9 @@ export {
   receiveWebhook,
   recordSyncReceipt,
   refreshAgentToken,
+  registerWatchers,
   removeMember,
+  renewTask,
   revokeAgent,
   revokeAllSessions,
   revokeConnection,

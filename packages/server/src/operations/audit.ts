@@ -34,6 +34,8 @@ function auditEntry(event: AuditRecord): AuditEvent {
     principal: event.principal,
   };
   switch (event.type) {
+    case "ob.watchers.registered":
+      return { ...common, type: event.type, payload: { owner: event.payload.owner } };
     case "ob.grant.revoked":
       return { ...common, type: event.type, payload: { grant: event.payload.grant } };
     case "ob.grant.created":

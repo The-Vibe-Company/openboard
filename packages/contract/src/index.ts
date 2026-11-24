@@ -12,6 +12,7 @@ export * from "./entities/schemas/view.ts";
 export * from "./entities/task-events.ts";
 export * from "./entities/tasks.ts";
 export * from "./entities/threads.ts";
+export { Registration, Watch, WatcherMatch } from "./entities/watchers.ts";
 export {
   BoardError,
   type BoardErrorOptions,
@@ -43,13 +44,13 @@ export { AuditEvent, OrgAuditEvent } from "./operations/audit.ts";
 export {
   acceptInvitation,
   ackInbox,
+  ackWatcherMatch,
   approveDeviceSignIn,
   attachSync,
   changeMemberRole,
   claimConnection,
   claimTask,
   completeTask,
-  renewTask,
   createBoard,
   createChannel,
   createConnection,
@@ -87,10 +88,12 @@ export {
   listSyncTargets,
   listTasks,
   listThreads,
+  listWatchers,
   operations,
   pollDeviceSignIn,
   postMessage,
   previewInvitation,
+  pullWatcherMatches,
   pushInbox,
   reactToMessage,
   readBoardAudit,
@@ -104,7 +107,9 @@ export {
   receiveWebhook,
   recordSyncReceipt,
   refreshAgentToken,
+  registerWatchers,
   removeMember,
+  renewTask,
   revokeAgent,
   revokeAllSessions,
   revokeConnection,

@@ -1,8 +1,9 @@
 import { afterEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
 import type { BoardView, BoardWriter, OrgView, Store } from "../src/index.ts";
-import type { OpenStore } from "./index.ts";
+import { type OpenStore, testScope } from "./index.ts";
 import { at, boardCreation, type StoreTenant, storeTenant } from "./isolation-seed.ts";
+import { pull, seedWatcher } from "./store/watchers.test-suite.ts";
 
 /** Fails when a result carries any of B's names or text. */
 function holdsNothingOf(b: StoreTenant, result: unknown, method: string): void {
@@ -18,6 +19,10 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  * case does not compile. A case answers what the view gave, which must hold nothing of B.
  */
 const boardCases: Cases<BoardView> = {
+  watcherRegistrations: async (a, b) => {
+    expect(await a.board.watcherRegistrations(b.actor)).toEqual([]);
+    return a.board.watcherRegistrations(null);
+  },
   personGrants: async (a, b) => {
     expect(await a.board.personGrants(b.personId)).toEqual([]);
     const own = await a.board.personGrants(a.personId);
@@ -95,6 +100,23 @@ const boardCases: Cases<BoardView> = {
 
 /** One case per `BoardWriter` member, inside A's write with B's IDs. */
 const writerCases: Cases<BoardWriter> = {
+  watcherRegistrationHash: (a, b) =>
+    inWrite(a, async (writer) => {
+      expect(await writer.watcherRegistrationHash(a.actor)).toBe(a.channel);
+      return expectNull(await writer.watcherRegistrationHash(b.actor));
+    }),
+  pullWatcherMatches: async (a, b) => {
+    await expect(pull(a.board, b.actor, at)).rejects.toMatchObject({ code: "no_registration" });
+    return pull(a.board, a.actor, at);
+  },
+  ackWatcherMatch: async (a, b) => {
+    const [foreign] = await pull(b.board, b.actor, at);
+    if (!foreign) throw new Error("bravo watcher has no match");
+    const { id, lease } = foreign;
+    await expect(inWrite(a, (writer) => writer.ackWatcherMatch({ owner: b.actor, id, lease }))).rejects.toMatchObject({
+      code: "no_match",
+    });
+  },
   enqueue: (a) => inWrite(a, (writer) => writer.enqueue("test", at, { marker: a.marker })),
   takeJob: (a) => inWrite(a, (writer) => writer.takeJob("1", { instanceId: "test", claimedAt: at }, at)),
   head: (a, b) => inWrite(a, async (writer) => expect(writer.head).toBeLessThan(b.message)),
@@ -206,6 +228,7 @@ async function digestOf(b: StoreTenant): Promise<string> {
     await b.board.listActors(),
     await b.board.listChannels({ limit: 500 }),
     await b.board.listConnections(at),
+    await b.board.watcherRegistrations(null),
     await b.board.readEvents(0),
     await b.board.auditEvents(0, 500),
     await b.board.thread(b.message),
@@ -239,6 +262,26 @@ export function isolationSuite(driver: string, open: OpenStore): void {
     expect(await a.board.write((writer) => writer.takeJob(job.id, lease, at))).toBeNull();
     expect(await b.board.write((writer) => writer.takeJob(job.id, lease, at))).toEqual({ marker: b.marker });
   });
+  test(`${driver}: isolation: a board ID under another organization exposes neither registrations nor matches`, async () => {
+    store = await open();
+    await storeTenant(store, "alpha", "a", 2);
+    const b = await storeTenant(store, "bravo", "b", 12);
+    const platform = store.platform();
+    const aKeys = await platform.findBoard("alpha", "main");
+    const bKeys = await platform.findBoard("bravo", "main");
+    if (!aKeys || !bKeys) throw new Error("missing isolation board");
+    await seedWatcher(b.board, b.actor, b.channel, at);
+
+    const foreign = store.board(testScope({ orgId: aKeys.orgId, boardId: bKeys.boardId }));
+    expect(await foreign.watcherRegistrations(null)).toEqual([]);
+    expect(await foreign.watcherRegistrations(b.actor)).toEqual([]);
+    await expect(pull(foreign, b.actor, at)).rejects.toThrow(
+      `board ${bKeys.boardId} of organization ${aKeys.orgId} is missing`,
+    );
+
+    expect(await b.board.watcherRegistrations(b.actor)).toMatchObject([{ owner: b.actor }]);
+    expect(await pull(b.board, b.actor, at)).toMatchObject([{ watcher: "seed", attempt: 0 }]);
+  });
   const groups = [
     ["BoardView", boardCases],
     ["BoardWriter", writerCases],
@@ -250,6 +293,12 @@ export function isolationSuite(driver: string, open: OpenStore): void {
         store = await open();
         const a = await storeTenant(store, "alpha", "a", 2);
         const b = await storeTenant(store, "bravo", "b", 12);
+        if (
+          ["watcherRegistrations", "watcherRegistrationHash", "pullWatcherMatches", "ackWatcherMatch"].includes(method)
+        ) {
+          await seedWatcher(a.board, a.actor, a.channel, at);
+          await seedWatcher(b.board, b.actor, b.channel, at);
+        }
         const before = await digestOf(b);
         holdsNothingOf(b, await run(a, b, store), `${view}.${method}`);
         expect(await digestOf(b)).toBe(before);

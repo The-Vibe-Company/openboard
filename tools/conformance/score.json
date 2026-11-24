@@ -40,7 +40,8 @@
     "tasks/gives a task to one of the claims that race for it, and takes its result",
     "tasks/keeps labels under board. its own: a label write or a post that sets one is refused",
     "tasks/makes a task once for a client ID, and none under an ID a reply or a plain thread landed with",
-    "tasks/starts a thread as a task, or makes one of a thread that was there: it reads as its thread, and board.task finds it"
+    "tasks/starts a thread as a task, or makes one of a thread that was there: it reads as its thread, and board.task finds it",
+    "watchers/matches a registered tail, hands the match to a pull, and takes its ack"
   ],
   "hosted": [
     "core/answers 400 for a request that does not validate",
@@ -83,6 +84,7 @@
     "tasks/gives a task to one of the claims that race for it, and takes its result",
     "tasks/keeps labels under board. its own: a label write or a post that sets one is refused",
     "tasks/makes a task once for a client ID, and none under an ID a reply or a plain thread landed with",
-    "tasks/starts a thread as a task, or makes one of a thread that was there: it reads as its thread, and board.task finds it"
+    "tasks/starts a thread as a task, or makes one of a thread that was there: it reads as its thread, and board.task finds it",
+    "watchers/matches a registered tail, hands the match to a pull, and takes its ack"
   ]
 }

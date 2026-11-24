@@ -1,4 +1,4 @@
-import type { Actor, Message } from "@openboard/contract";
+import type { Message } from "@openboard/contract";
 import {
   type BoardEvent,
   checkDailyEvents,
@@ -33,6 +33,7 @@ import { messageStatements } from "./messages/statements.ts";
 import { orgReads } from "./orgs.ts";
 import { foldTaskEvent } from "./tasks/task-folds.ts";
 import { taskReads, taskWriter } from "./tasks/tasks.ts";
+import { foldWatchersRegistered, matchWatchers, watcherWriter } from "./watchers/index.ts";
 
 /**
  * The fold of `message.posted`: the message row with its precomputed view and its channel's row; a reply keeps its
@@ -145,6 +146,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
       view: JSON.stringify(view),
     });
   } else if (event.type === "message.posted") await foldMessagePosted(tx, dialect, keys, event);
+  else if (event.type === "ob.watchers.registered") await foldWatchersRegistered(tx, dialect, keys, event);
   else await foldTaskEvent(tx, dialect, keys, event);
 }
 
@@ -195,6 +197,7 @@ function eventWriter(
   usage: ReturnType<typeof messageStorage>,
   dailyEvents: { readonly day: number; readonly count: number; readonly limit: number },
   measured: number,
+  hasWatchers: boolean,
 ): Pick<BoardWriter, "append" | "head"> {
   let head = start;
   let { day, count } = dailyEvents;
@@ -216,7 +219,9 @@ function eventWriter(
       for (const event of events) {
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);
         await usage.account(event);
+        if (hasWatchers) await matchWatchers(tx, dialect, keys, event);
         await appendEvent(tx, dialect, keys, event);
+        if (event.type === "ob.watchers.registered") hasWatchers = true;
         committed.push(event);
         head = event.id;
       }
@@ -230,19 +235,18 @@ function writer(
   tx: Db,
   dialect: Dialect,
   keys: BoardKeys,
-  start: number,
-  actor: Actor | null,
+  locked: Awaited<ReturnType<typeof lockBoardAs>>,
   committed: BoardEvent[],
   jobs: ReturnType<typeof jobWriter>,
-  storage: BoardStorage,
-  dailyEvents: { readonly day: number; readonly count: number; readonly limit: number },
   now: number,
 ): BoardWriter {
+  const { head, actor, storage, dailyEvents, hasWatchers } = locked;
   const usage = messageStorage(tx, dialect, keys, storage);
-  const events = eventWriter(tx, dialect, keys, start, committed, usage, dailyEvents, now);
+  const events = eventWriter(tx, dialect, keys, head, committed, usage, dailyEvents, now, hasWatchers);
   return {
     ...taskWriter(tx, dialect, keys),
     ...jobs,
+    ...watcherWriter(tx, dialect, keys),
     append: events.append,
     get head() {
       return events.head;
@@ -320,12 +324,13 @@ export function boardView(
         const { result, page } = await db.transaction(async (tx) => {
           const now = jobs.now();
           const window = dailyEventWindow(Number.isFinite(now) ? now : 0);
-          const { head, actor, storage, dailyEvents } = await lockBoardAs(tx, dialect, keys, as ?? null, window);
+          const locked = await lockBoardAs(tx, dialect, keys, as ?? null, window);
+          const { head, storage } = locked;
           const events: BoardEvent[] = [];
           const queue = jobWriter(tx, dialect, keys, jobs, () => {
             enqueued = true;
           });
-          const boardWriter = writer(tx, dialect, keys, head, actor, events, queue, storage, dailyEvents, now);
+          const boardWriter = writer(tx, dialect, keys, locked, events, queue, now);
           const result = await fn(boardWriter);
           const page = boardWriter.head > head ? { after: head, head: boardWriter.head, events } : undefined;
           if (page !== undefined && storage.staleSiblings) await repairStoredBytes(tx, dialect, keys);

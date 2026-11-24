@@ -16,6 +16,7 @@ import connectionGrantOriginDdl from "../migrations/0014-connection-grant-origin
 import storedBytesDdl from "../migrations/0015-stored-bytes.sql" with { type: "text" };
 import dailyEventsDdl from "../migrations/0016-daily-events.sql" with { type: "text" };
 import dailyEventsIndexDdl from "../migrations/0017-index-daily-events.sql" with { type: "text" };
+import watchersDdl from "../migrations/0018-watchers.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -34,6 +35,8 @@ import { boardView } from "./views/messages.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
 import { taskListReads } from "./views/tasks/list.ts";
 import { threadReads } from "./views/threads.ts";
+
+import { watcherReads } from "./views/watchers/index.ts";
 
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
 export { postgresText } from "./db.ts";
@@ -68,6 +71,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 15, name: "0015-stored-bytes", sql: storedBytesDdl },
   { version: 16, name: "0016-daily-events", sql: dailyEventsDdl },
   { version: 17, name: "0017-index-daily-events", sql: dailyEventsIndexDdl },
+  { version: 18, name: "0018-watchers", sql: watchersDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -100,6 +104,7 @@ export function createViews(
       ...agentReads(db, dialect, scope),
       ...auditReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),
+      ...watcherReads(db, dialect, scope),
       ...taskListReads(db, dialect, scope),
       ...channelReads(db, dialect, scope),
       ...connectionReads(db, dialect, scope),
