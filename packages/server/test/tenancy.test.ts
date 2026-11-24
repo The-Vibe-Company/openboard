@@ -2,8 +2,9 @@ import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import type { ErrorBody } from "@openboard/contract";
 import type { Store } from "@openboard/ports";
-import { type App, createApp } from "../src/index.ts";
+import type { App } from "../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
+import { createCluster } from "./support/cluster.ts";
 import { openStore } from "./support/drivers.ts";
 
 let app: App | undefined;
@@ -39,7 +40,7 @@ async function twoOrganizations(): Promise<{ app: App; ada: Signed; bea: Signed 
     randomBytes,
     log: { info() {}, error() {} },
   };
-  app = createApp(config, { store }, deps);
+  app = createCluster(config, { store }, deps);
   const [ada, bea] = people as [Signed, Signed];
   expect((await send(app, "POST", "/api/x/orgs", ada, { name: "Acme", slug: "acme" })).status).toBe(201);
   expect((await send(app, "POST", "/api/x/orgs", bea, { name: "Beta", slug: "beta" })).status).toBe(201);

@@ -2,8 +2,9 @@ import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import type { ErrorBody } from "@openboard/contract";
 import type { Store } from "@openboard/ports";
-import { type App, createApp } from "../../src/index.ts";
+import type { App } from "../../src/index.ts";
 import { BOARD_URL, LOCAL_OWNER, NOW, OWNER, PUBLIC_URL, unexpectedTimer } from "../support/app.ts";
+import { createCluster } from "../support/cluster.ts";
 import { openStore } from "../support/drivers.ts";
 
 const DAY = 86_400_000;
@@ -39,7 +40,7 @@ async function start() {
     randomBytes,
     log: { info() {}, error() {} },
   };
-  app = createApp(config, { store }, deps);
+  app = createCluster(config, { store }, deps);
   return { app, clock, cookie: `__Host-ob_session=${value}`, csrf };
 }
 
