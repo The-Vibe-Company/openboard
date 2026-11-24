@@ -13,6 +13,7 @@ import type { BoardView, Bucket, OrgView, PersonRecord, PlatformView } from "@op
 import type { Session } from "../auth/sessions.ts";
 import type { Deps, Principal, ServerConfig } from "../deps.ts";
 import type { RequestLimits } from "../http/limits.ts";
+import { listInboundReceivedHandler } from "../inbound/received.ts";
 import { receiveInboundEventHandler, type SignatureContext } from "../inbound/receive.ts";
 import {
   approveDeviceSignInHandler,
@@ -243,6 +244,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   deleteInbound: deleteInboundHandler,
   getInbound: getInboundHandler,
   listInbound: listInboundHandler,
+  listInboundReceived: listInboundReceivedHandler,
   updateInbound: updateInboundHandler,
   createWebhook: createWebhookHandler,
   deleteBoard: deleteBoardHandler,

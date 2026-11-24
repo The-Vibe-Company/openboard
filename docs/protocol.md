@@ -600,7 +600,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/x/webhooks/:id/deliveries/:dl/retry` | X | Requires webhook manage access. Queues a dead delivery and returns `{ id }`. A delivery outside the webhook or board returns 404 `not_found`. Any other state returns 400 `invalid_request`. |
 | POST, GET | `/x/inbound`; GET, POST `/x/inbound/:id`; POST `/x/inbound/:id/delete` | X | |
 | POST | `/x/inbound/:id/events` | X | the receiving route; signature, no bearer |
-| GET | `/x/inbound/:id/received` | X | |
+| GET | `/x/inbound/:id/received` | X | Board owner or organization admin with board-wide manage access. See [Inbound endpoints](#inbound-endpoints) for paging and the receipt shape. |
 | GET | `/x/audit` | X | board `ob.*` events, oldest first. Board owner or organization admin (403 `forbidden` otherwise, connections and agents included). Query `after` (a cursor it answered) and `limit` (1 to 200, default 100). Returns `{ events, cursor }`, each event `{ cursor, type, createdAt, actor, principal, payload }`; pass `cursor` back as `after` for the next page. Payloads carry no secret, hash or claim key. A cursor past the board's head or not decimal answers 400 `invalid_cursor`. CLI: `ob audit [--after] [--limit]`. |
 
 ### MCP
@@ -1045,6 +1045,19 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   duplicate on the same endpoint returns that result without writing again while
   the record is retained. Job activity can sweep records older than seven days.
   A verified delivery whose record was swept is processed as new.
+- **Receipt history** at `GET {BOARD_URL}/x/inbound/:id/received` returns
+  `{ events, older }` for the last seven days. Each event contains
+  `{ eventId, at, status, matched, results }` with an ISO 8601 receipt time.
+  Matched rules are zero-based indices, and each result names the action
+  (`reply`, `label`, or `react`) and its message ID. A stored 422 has no
+  action results. Receipts recorded before match indices were stored return
+  an empty `matched` array. Sender bodies, headers, and refused signatures
+  do not appear. Events sort by time descending, with event ID as the
+  descending tie-breaker. Use `limit` (1 to 200, default 50) and pass the
+  previous page's opaque `older` as `before` until `older` is null. An endpoint outside
+  the board or missing answers 404 `not_found`. Agent tokens get 403
+  `forbidden`. Use `ob inbound received <id> [--before] [--limit]` for one line
+  per event, or add `--json` for the full page and cursor.
 - **Rules** evaluate all `when` conditions against the JSON body and request headers. Each
   condition matches one value or any value in its list. Matching rules and
   their actions run in order. A reply renders its text with `body` and the

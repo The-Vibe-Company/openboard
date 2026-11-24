@@ -55,6 +55,9 @@ Unix seconds and the `dl_…` delivery ID.
 The agent can reply and complete the task using the
 [command reference](commands.md). To report runner lifecycle events, an
 administrator runs `ob inbound create --file runner-status.json --secret-file inbound.secret` and registers the URL it prints.
+Run `ob inbound received <id>` to see the last seven days of signed receipts,
+including missing-thread 422 responses. Add `--json` to get the page cursor,
+and pass a non-null `older` value as `--before` to continue.
 Give the endpoint `read` and the permissions its actions need on the thread's
 channel. Replies need `post`, labels need `label`, and reactions need `react`.
 For example, configure `thread.from` as `{{body.externalRef}}` and

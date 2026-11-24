@@ -723,6 +723,33 @@ Example:
 ob inbound
 ```
 
+## `ob inbound received`
+
+List an inbound endpoint's received events from the last seven days, newest first.
+
+```sh
+ob inbound received <id> [--before <before>] [--limit <limit>]
+```
+
+Arguments:
+
+- `id`: An inbound ID.
+
+Options:
+
+- `--before`: The previous page's older cursor.
+- `--limit`: Page size, 50 by default.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob inbound received id
+```
+
 ## `ob delete`
 
 Delete your message, leaving a tombstone in its thread.

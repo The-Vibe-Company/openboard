@@ -42,6 +42,7 @@ import {
   receiveInboundEvent,
   updateInbound,
 } from "./inbound/index.ts";
+import { listInboundReceived } from "./inbound/received.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
 import { changeMemberRole, removeMember } from "./memberships.ts";
 import {
@@ -126,6 +127,7 @@ export const operations = [
   deleteInbound,
   getInbound,
   listInbound,
+  listInboundReceived,
   updateInbound,
   createWebhook,
   deleteBoard,
@@ -267,6 +269,7 @@ export {
   listConnections,
   listGrants,
   listInbound,
+  listInboundReceived,
   listMembers,
   listMessages,
   listPersonalTokens,

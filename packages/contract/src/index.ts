@@ -50,6 +50,7 @@ export {
 export { AuditEvent, OrgAuditEvent, OrgExportAuditEvent } from "./operations/audit.ts";
 export type { Explanation, GrantLevel } from "./operations/grants/explain.ts";
 export { createInbound, deleteInbound, getInbound, listInbound, updateInbound } from "./operations/inbound/index.ts";
+export { listInboundReceived } from "./operations/inbound/received.ts";
 export {
   acceptInvitation,
   ackInbox,
