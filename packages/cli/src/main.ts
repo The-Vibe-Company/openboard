@@ -23,6 +23,7 @@ export interface CliOptions {
   readonly fetch?: (request: Request) => Promise<Response>;
   readonly wait?: (ms: number) => Promise<void>;
   readonly now?: () => number;
+  readonly timeoutSignal?: (ms: number) => AbortSignal;
   readonly readStdin?: () => string;
 }
 
@@ -103,7 +104,13 @@ export async function runCli(
       ...(profile === undefined ? {} : { profile }),
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });
-    return await command.run({ ...context, client, boardUrl: config.boardUrl, now: options.now ?? Date.now });
+    return await command.run({
+      ...context,
+      client,
+      boardUrl: config.boardUrl,
+      now: options.now ?? Date.now,
+      timeoutSignal: options.timeoutSignal ?? AbortSignal.timeout,
+    });
   } catch (error) {
     if (error instanceof Misuse) return usage(output, `${error.message}: ${command.usage}`);
     if (!(error instanceof BoardError)) throw error;

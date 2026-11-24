@@ -15,7 +15,10 @@ type Contracted = (typeof operations)[number];
 
 /** One method per contract operation: `client.postMessage({ channel, text })` (docs/codebase.md 4.2). */
 export type Client = {
-  readonly [Op in Contracted as Op["name"]]: (input: InputOf<Op>) => Promise<OutputOf<Op>>;
+  readonly [Op in Contracted as Op["name"]]: (
+    input: InputOf<Op>,
+    options?: { readonly signal?: AbortSignal },
+  ) => Promise<OutputOf<Op>>;
 };
 
 export interface ClientOptions {
@@ -32,7 +35,12 @@ export interface ClientOptions {
 const fieldsOf = (schema: { properties: object } | undefined) => new Set(Object.keys(schema?.properties ?? {}));
 
 /** The request an operation's flat input makes: path params in the path, query fields in the query, the rest in the body. */
-export function requestOf(operation: Operation, input: Readonly<Record<string, unknown>>, options: ClientOptions) {
+export function requestOf(
+  operation: Operation,
+  input: Readonly<Record<string, unknown>>,
+  options: ClientOptions,
+  signal?: AbortSignal,
+) {
   const params = fieldsOf(operation.input.params);
   const query = fieldsOf(operation.input.query);
   const path = operation.route.path.replace(/:([A-Za-z]+)/g, (_, name: string) =>
@@ -56,9 +64,9 @@ export function requestOf(operation: Operation, input: Readonly<Record<string, u
   if (platformMount && operation.scope !== "public" && operation.route.method !== "GET" && options.csrf) {
     headers["x-ob-csrf"] = options.csrf;
   }
-  if (!operation.input.body) return new Request(url, { method: operation.route.method, headers });
+  if (!operation.input.body) return new Request(url, { method: operation.route.method, headers, signal });
   headers["content-type"] = "application/json";
-  return new Request(url, { method: operation.route.method, headers, body: JSON.stringify(body) });
+  return new Request(url, { method: operation.route.method, headers, signal, body: JSON.stringify(body) });
 }
 
 function isNextStep(value: unknown): value is NextStep {
@@ -120,8 +128,8 @@ export function createClient(options: ClientOptions): Client {
   const send = options.fetch ?? ((request: Request) => fetch(request));
   const methods = operations.map((operation) => [
     operation.name,
-    async (input: Readonly<Record<string, unknown>>) =>
-      answerOf(await reach(send, requestOf(operation, input, options))),
+    async (input: Readonly<Record<string, unknown>>, request?: { readonly signal?: AbortSignal }) =>
+      answerOf(await reach(send, requestOf(operation, input, options, request?.signal))),
   ]);
   return Object.freeze(Object.fromEntries(methods)) as Client;
 }

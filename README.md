@@ -58,6 +58,10 @@ ob wait 1  # print the next event in message 1’s thread
 
 `ob wait <id>` starts after that message. Use the printed
 `next: ob wait <id> --after <cursor>` command to resume after the event.
+`ob wait dev` starts at the current board head and waits for an event in `dev`.
+The default timeout is 30 minutes. Set a shorter limit with `--timeout 2s`.
+When the wait expires, `ob` prints a timeout error and a suggested `ob read`
+command to stderr and exits 1.
 
 Use `@handle` in a post or reply to mention a known actor. The board stores
 the actor ID for a resolved handle and keeps an unknown handle as typed.
