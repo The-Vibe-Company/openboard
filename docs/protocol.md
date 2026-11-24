@@ -566,7 +566,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/x/connections/:id/agents/:agent/revoke` | X | Board owner or organization admin. Returns `{ id, connection, revokedAt }`; the agent's tokens answer 401 from the next request, its profile is free, and the connection and its other agents keep working. An unknown or already revoked agent, or one of another connection, answers 404 `not_found`. |
 | POST, GET | `/x/webhooks`; GET, POST `/x/webhooks/:id`; POST `/x/webhooks/:id/delete`, `/test` | X | |
 | GET | `/x/webhooks/:id/deliveries` | X | Requires manage throughout the subscription tail. Returns 404 `not_found` for an unknown webhook or one on another board. |
-| POST | `/x/webhooks/:id/deliveries/:dl/retry` | X | |
+| POST | `/x/webhooks/:id/deliveries/:dl/retry` | X | Requires webhook manage access. Queues a dead delivery and returns `{ id }`. A delivery outside the webhook or board returns 404 `not_found`. Any other state returns 400 `invalid_request`. |
 | POST, GET | `/x/inbound`; GET, POST `/x/inbound/:id`; POST `/x/inbound/:id/delete` | X | |
 | POST | `/x/inbound/:id/events` | X | the receiving route; signature, no bearer |
 | GET | `/x/inbound/:id/received` | X | |
@@ -846,6 +846,10 @@ Invalid names return HTTP 400 `invalid_signing` and identify the field.
   Use `state` to filter, `limit` for 1 to 200 rows (default 50), and pass
   `older` as `before` to fetch the next page when `older` is non-null.
   The CLI prints one line per row or the full response with `--json`.
+  Use `ob webhooks retry <id> <dl>` to re-send a dead delivery. It prints
+  `queued <dl>`. The delivery keeps its ID and restarts at attempt 1.
+  Disabled webhooks hold the delivery pending until enabled. Failed test
+  pings can be re-sent manually, with one attempt per request.
 - **Pull instead of push:** upstream's watcher routes.
 
 ## Inbound endpoints

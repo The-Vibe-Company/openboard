@@ -32,3 +32,19 @@ export const listWebhookDeliveries = defineOperation({
   why: "Webhook delivery history is a board administration command.",
   upstream: false,
 });
+
+export const retryWebhookDelivery = defineOperation({
+  name: "retryWebhookDelivery",
+  summary: "Queue a dead webhook delivery again.",
+  route: { method: "POST", path: "/x/webhooks/:id/deliveries/:dl/retry" },
+  scope: "board",
+  input: { params: Type.Object({ id: Ref("webhook"), dl: Ref("delivery") }) },
+  output: Type.Object({ id: Type.String() }),
+  errors: ["not_found", "forbidden", "invalid_request"],
+  access: { permission: "manage", channel: "some" },
+  effects: { readOnly: false, idempotent: false, emits: [] },
+  cli: { command: ["webhooks", "retry"], args: ["id", "dl"] },
+  mcp: false,
+  why: "Retrying a delivery is a board administration command.",
+  upstream: false,
+});

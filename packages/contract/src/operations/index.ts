@@ -80,7 +80,7 @@ import { listThreads, readThread } from "./threads.ts";
 import { ackWatcherMatch, listWatchers, pullWatcherMatches, registerWatchers } from "./watchers/index.ts";
 
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
-import { listWebhookDeliveries } from "./webhooks/deliveries.ts";
+import { listWebhookDeliveries, retryWebhookDelivery } from "./webhooks/deliveries.ts";
 import { createWebhook, deleteWebhook, getWebhook, listWebhooks, testWebhook } from "./webhooks/index.ts";
 
 export const operations = [
@@ -144,6 +144,7 @@ export const operations = [
   listThreads,
   listWatchers,
   listWebhookDeliveries,
+  retryWebhookDelivery,
   listWebhooks,
   testWebhook,
   pollDeviceSignIn,
@@ -268,6 +269,7 @@ export {
   renewTask,
   reopenTask,
   requestOrgExport,
+  retryWebhookDelivery,
   revokeAgent,
   revokeAllSessions,
   revokeConnection,

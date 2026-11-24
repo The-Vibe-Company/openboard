@@ -1,5 +1,12 @@
 import { operations } from "@openboard/contract";
-import { BACKFILL_BOARD_ORG_JOB, type Bucket, type Jobs, type Store, WEBHOOK_DELIVERY_JOB } from "@openboard/ports";
+import {
+  BACKFILL_BOARD_ORG_JOB,
+  type Bucket,
+  type Jobs,
+  type Store,
+  WEBHOOK_DELIVERY_JOB,
+  WEBHOOK_RESEND_JOB,
+} from "@openboard/ports";
 import { verifiers } from "./auth/chain.ts";
 import { loginProviders } from "./auth/providers/index.ts";
 import type { Deps, ServerConfig } from "./deps.ts";
@@ -56,7 +63,9 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     providers: loginProviders(config, deps),
   };
   if (config.mode === "hosted" && !bucket) deps.log.info("log shipping is off", {});
-  const boardJobs = { ...handlers, [WEBHOOK_DELIVERY_JOB]: webhookJob(config, deps) };
+  const delivery = webhookJob(config, deps);
+  // Older workers only claim event deliveries and cannot send a re-queued ping.
+  const boardJobs = { ...handlers, [WEBHOOK_DELIVERY_JOB]: delivery, [WEBHOOK_RESEND_JOB]: delivery };
   const stopJobs = startBoardJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, boardJobs, bucket);
   const stopExports = bucket && startExportJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, bucket);
   const stopDump = startDumpJob(ports.store.dumpIfMissing, bucket, deps);
