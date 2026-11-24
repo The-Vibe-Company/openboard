@@ -942,3 +942,13 @@ Only product choices; each has a recommendation.
   exact subject of their locally linked GitHub identity.
 - **Consequence.** GitHub remains the only people sign-in provider. Grant
   creation and resolution use local data, with no GitHub API calls.
+
+### D59. Apply staging image settings through Railway's API
+
+- **Decision.** The staging deploy script reads `railway.hosted.json` and applies
+  its deploy settings through Railway's service instance API. The staging
+  replicas run in `europe-west4-drams3a`.
+- **Reason.** A config file uploaded through `railway up` left the healthcheck
+  and replica settings unset during the owner's staging setup.
+- **Consequence.** The deploy command needs a staging-scoped Railway project
+  token. It verifies the deployment tag on each replica returned by the API.

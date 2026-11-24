@@ -3,6 +3,7 @@ import type { Author, Can, Named, Role } from "@openboard/contract";
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
   readonly instanceId?: string | undefined;
+  readonly deploymentTag?: string | undefined;
   readonly mode: "local" | "hosted";
   /** `OPENBOARD_PUBLIC_URL`: the canonical origin, no trailing slash; board URLs are built on it, never on `Host`. */
   readonly publicUrl: string;

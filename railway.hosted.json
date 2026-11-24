@@ -1,0 +1,10 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "deploy": {
+    "healthcheckPath": "/readyz",
+    "healthcheckTimeout": 120,
+    "numReplicas": 2,
+    "restartPolicyType": "ON_FAILURE",
+    "preDeployCommand": ["openboard migrate"]
+  }
+}

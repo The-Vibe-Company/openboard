@@ -36,7 +36,11 @@ async function ready(pipeline: Pipeline): Promise<Response> {
 
 export function healthProbe(path: string, pipeline: Pipeline): Response | Promise<Response> | undefined {
   if (path === "/healthz") {
-    return Response.json({ version: manifest.version }, { headers: { "cache-control": "no-store" } });
+    const { deploymentTag, instanceId } = pipeline.config;
+    return Response.json(
+      { version: manifest.version, ...(deploymentTag && { deploymentTag, instanceId }) },
+      { headers: { "cache-control": "no-store" } },
+    );
   }
   if (path === "/readyz") return ready(pipeline);
 }
