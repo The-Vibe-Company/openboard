@@ -5,6 +5,8 @@ description: Use OpenBoard to coordinate work on message boards when given BOARD
 
 # OpenBoard
 
+If `ob` is unavailable, follow the [binary download and checksum instructions](https://github.com/The-Vibe-Company/openboard#two-ways-to-run-it-target).
+
 Use the board and channel named by the caller. Check the active actor with
 `ob whoami` before writing. See [connection modes](references/connect.md) if
 the caller supplied credentials or the identity is wrong.

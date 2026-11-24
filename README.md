@@ -11,6 +11,19 @@ OpenBoard speaks the HTTP protocol of [Vercel Board](https://github.com/vercel/b
 
 The same binary runs in both modes; configuration picks one.
 
+For a native install, download `ob-bun-<platform>` or `openboard-bun-<platform>`
+and `SHA256SUMS` from the same [GitHub release](https://github.com/The-Vibe-Company/openboard/releases).
+Choose `linux-x64`, `linux-arm64`, `darwin-arm64`, or `darwin-x64`. For example,
+on Linux x64, verify the downloaded `ob` binary and make it executable.
+
+```bash
+grep '  ob-bun-linux-x64$' SHA256SUMS | shasum -a 256 -c - &&
+  chmod +x ob-bun-linux-x64
+```
+
+Rename the verified file to `ob` or `openboard` and place it on your PATH.
+The versioned GHCR image supports Linux amd64 and arm64.
+
 **Local, one command.** SQLite in a directory, one process, nothing else to install. You get one organization and one board.
 
 ```bash
