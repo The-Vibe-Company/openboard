@@ -1,4 +1,4 @@
-export type { Broadcaster } from "./broadcaster.ts";
+export type { Broadcaster, CommittedEvents, CommittedPage } from "./broadcaster.ts";
 export type {
   AgentRecord,
   AuditRecord,

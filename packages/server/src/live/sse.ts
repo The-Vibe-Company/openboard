@@ -18,15 +18,17 @@ function pageFrames(page: Page): string {
 }
 
 /**
- * Keep at most one page queued. A disconnect wakes and unsubscribes any pending read and stops the timers. A ping is
+ * Keep at most one page queued. A disconnect wakes any pending read, stops the timers and calls `close`. A ping is
  * skipped while a frame is still queued: the client has unread bytes, so the connection is not idle. At the deadline
- * the stream ends cleanly: a page read after it is dropped unsent, so the client's last `id:` misses nothing.
+ * the stream ends cleanly: a page read after it is dropped unsent, so the client's last `id:` misses nothing. A read
+ * that resolves no page was stopped, and ends the stream the same way.
  */
 export function eventStream(
   first: Page,
   requestSignal: AbortSignal,
   schedule: Deps["schedule"],
-  read: (after: number, signal: AbortSignal) => Promise<Page>,
+  read: (after: number, signal: AbortSignal) => Promise<Page | undefined>,
+  close: () => void,
 ): Response {
   const abort = new AbortController();
   const deadline = new AbortController();
@@ -35,14 +37,13 @@ export function eventStream(
   let cursor = first.cursor;
   let cancelPing = () => {};
   let cancelDeadline = () => {};
-  signal.addEventListener(
-    "abort",
-    () => {
-      cancelPing();
-      cancelDeadline();
-    },
-    { once: true },
-  );
+  const stop = () => {
+    cancelPing();
+    cancelDeadline();
+    close();
+  };
+  if (signal.aborted) stop();
+  else signal.addEventListener("abort", stop, { once: true });
 
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -67,7 +68,7 @@ export function eventStream(
         abort.abort();
         throw error;
       });
-      if (signal.aborted) {
+      if (signal.aborted || page === undefined) {
         if (!abort.signal.aborted) controller.close();
         return;
       }

@@ -227,7 +227,15 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   else await foldTaskEvent(tx, dialect, keys, event);
 }
 
-function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor: Actor | null): BoardWriter {
+/** `committed` collects the appended events, which the broadcaster hands to live tails once the write commits. */
+function writer(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  start: number,
+  actor: Actor | null,
+  committed: BoardEvent[],
+): BoardWriter {
   let head = start;
   return {
     ...taskReads(tx, dialect, keys),
@@ -283,6 +291,7 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor:
       for (const event of events) {
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);
         await appendEvent(tx, dialect, keys, event);
+        committed.push(event);
         head = event.id;
       }
       await setHead(tx, dialect, keys, head);
@@ -301,16 +310,17 @@ export function boardView(
   return {
     ...taskReads(db, dialect, keys),
     async write(fn, as) {
-      const { result, position } = await db.transaction(async (tx) => {
+      const { result, page } = await db.transaction(async (tx) => {
         const { head, actor } =
           as === undefined
             ? { head: await lockBoard(tx, dialect, keys), actor: null }
             : await lockBoardAs(tx, dialect, keys, as);
-        const boardWriter = writer(tx, dialect, keys, head, actor);
+        const events: BoardEvent[] = [];
+        const boardWriter = writer(tx, dialect, keys, head, actor, events);
         const result = await fn(boardWriter);
-        return { result, position: boardWriter.head > head ? boardWriter.head : undefined };
+        return { result, page: boardWriter.head > head ? { after: head, head: boardWriter.head, events } : undefined };
       });
-      if (position !== undefined) broadcaster.publish(scope, position);
+      if (page !== undefined) broadcaster.publish(scope, page);
       return result;
     },
     async mentionEvidence(handles) {

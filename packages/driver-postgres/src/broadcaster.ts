@@ -1,10 +1,10 @@
 import type { Db } from "@openboard/driver-sql";
-import type { BoardScope, Broadcaster } from "@openboard/ports";
+import type { BoardScope, Broadcaster, CommittedPage } from "@openboard/ports";
 import type { SQL } from "bun";
 
 interface Subscription {
   position: number;
-  readonly wake: () => void;
+  readonly wake: (page?: CommittedPage) => void;
 }
 
 interface Board {
@@ -100,6 +100,7 @@ function onNotification(
 /**
  * Bun's LISTEN uses a dedicated connection, outside the request pool.
  * Board IDs are globally unique and subscribe() receives a scope minted by the tenant resolver.
+ * A local commit's wake carries its page; a notification or a polled head does not, so its subscribers read the store.
  */
 export async function postgresBroadcaster(
   sql: SQL,
@@ -124,7 +125,7 @@ export async function postgresBroadcaster(
     if (boards.size === 0) stopPolling();
   }
 
-  function publish({ boardId }: Pick<BoardScope, "boardId">, position: number) {
+  function publish({ boardId }: Pick<BoardScope, "boardId">, position: number, page?: CommittedPage) {
     const board = boards.get(boardId);
     if (!board) return;
     // A callback may unsubscribe or register a new waiter. Only wake existing subscriptions.
@@ -132,7 +133,7 @@ export async function postgresBroadcaster(
       if (position <= subscription.position || !board.subscribers.has(subscription)) continue;
       subscription.position = position;
       try {
-        subscription.wake();
+        subscription.wake(page);
       } catch {
         remove(boardId, board, subscription);
       }
@@ -142,7 +143,7 @@ export async function postgresBroadcaster(
   const listener = await sql.listen("ob_events", onNotification(boards, publish), onListen);
 
   return {
-    publish,
+    publish: (scope, page) => publish(scope, page.head, page),
     subscribe({ boardId }, fromPosition, wake) {
       if (closed) return () => {};
       const board = boards.get(boardId) ?? { subscribers: new Set<Subscription>() };

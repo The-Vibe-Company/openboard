@@ -9,7 +9,9 @@ import {
   messages,
   parseId,
 } from "@openboard/core";
+import type { CommittedEvents } from "@openboard/ports";
 import { canListMentionActors, canReadChannel, withoutMentionDetails } from "../auth/access.ts";
+import { tailBoard } from "../live/fan-out.ts";
 import { longPoll } from "../live/long-poll.ts";
 import { eventStream } from "../live/sse.ts";
 import type { BoardContext, Handler } from "./index.ts";
@@ -18,9 +20,24 @@ type EventInput = InputOf<typeof readEvents>;
 
 export const readEventsHandler: Handler<typeof readEvents> = async (ctx, input) => {
   const { position, read } = prepareFeed(ctx, input);
-  const page = await longPoll(ctx.board, position, input.wait, ctx.signal, ctx.schedule, read);
+  const page = input.wait ? await waitForEvents(ctx, position, input.wait, read) : await read(position);
   return { cursor: formatId(page.cursor), events: page.events };
 };
+
+async function waitForEvents(
+  ctx: BoardContext,
+  position: number | undefined,
+  seconds: number,
+  read: ReturnType<typeof prepareFeed>["read"],
+) {
+  const tail = tailBoard(ctx.board, position);
+  try {
+    // A new tail reads the store first, so the wait always resolves a page; the read only satisfies the type.
+    return (await longPoll(tail, position, seconds, ctx.signal, ctx.schedule, read)) ?? (await read(position));
+  } finally {
+    tail.close();
+  }
+}
 
 export async function streamEvents(
   ctx: BoardContext,
@@ -28,12 +45,25 @@ export async function streamEvents(
   lastEventId: string | null,
 ): Promise<Response> {
   const { position, read, newest } = prepareFeed(ctx, input, true, lastEventId);
-  let first = await read(position);
-  while (first.retry && !ctx.signal.aborted) first = await read(position);
-  const follow = newest ? prepareFeed(ctx, { ...input, last: undefined }, true).read : read;
-  return eventStream(first, ctx.signal, ctx.schedule, (after, signal) =>
-    longPoll(ctx.board, after, "stream", signal, ctx.schedule, follow),
-  );
+  // Subscribe before the first read: the stream then follows from memory, and reads the store only when behind.
+  const tail = tailBoard(ctx.board, position);
+  try {
+    tail.take(position);
+    let first = await read(position);
+    while (first.retry && !ctx.signal.aborted) first = await read(position);
+    tail.settle(first);
+    const follow = newest ? prepareFeed(ctx, { ...input, last: undefined }, true).read : read;
+    return eventStream(
+      first,
+      ctx.signal,
+      ctx.schedule,
+      (after, signal) => longPoll(tail, after, "stream", signal, ctx.schedule, follow),
+      tail.close,
+    );
+  } catch (error) {
+    tail.close();
+    throw error;
+  }
 }
 
 function eventStart({ after, last, wait }: EventInput, lastEventId?: string | null) {
@@ -68,7 +98,7 @@ function prepareFeed(
     text: text?.toLowerCase(),
   };
   let current = by;
-  const read = async (after: number | undefined) => {
+  const read = async (after: number | undefined, committed?: CommittedEvents) => {
     const everywhere = canListMentionActors(current);
     const named = mentions === undefined ? undefined : mentionFilter(mentions, current.actor, everywhere);
     const mentionLookup = named?.resolve ? named : undefined;
@@ -82,13 +112,16 @@ function prepareFeed(
       : mentions === "me"
         ? actors.filter(({ id }) => id === current.actor)
         : [];
-    const { events, cursor, head } = await board.readEvents(after, {
+    const scan = {
       ...filters,
       // Events about no message show only to a caller that reads every channel (upstream `03-http.md`).
       all: (all === "true" || all === "1") && everywhere,
       authors: author === undefined ? undefined : eventAuthors(author, current.actor, actors),
       mentions: mentions === undefined ? undefined : eventMentions(mentions, current.actor, mentionActors),
-    });
+    };
+    // A committed page that starts at the cursor answers from memory; access is still applied below, per caller.
+    const fromMemory = committed !== undefined && committed.after === after ? committed.read(scan) : undefined;
+    const { events, cursor, head } = fromMemory ?? (await board.readEvents(after, scan));
     if (after !== undefined && after > head) {
       throw new BoardError("invalid_cursor", "after: cursor is ahead of the board");
     }

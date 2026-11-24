@@ -1,5 +1,6 @@
-import type { BoardView } from "@openboard/ports";
+import type { CommittedEvents } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
+import type { Tail } from "./fan-out.ts";
 
 const MAX_WAIT_SECONDS = 120;
 
@@ -10,47 +11,49 @@ type Page = {
   readonly retry?: boolean;
 };
 
-/** Read from storage on each wake, carrying the last scanned cursor across filtered pages. */
+/**
+ * Serve the tail's next page, waiting for one with events, carrying the last scanned cursor across filtered pages.
+ * A page comes from the commit in memory when the tail holds it, else from storage. Resolves undefined only when
+ * stopped before any read, which a tail's first call never is: a new tail starts with a store read.
+ */
 export async function longPoll<P extends Page>(
-  board: BoardView,
+  tail: Tail,
   after: number | undefined,
-  seconds: number | "stream" | undefined,
+  seconds: number | "stream",
   signal: AbortSignal,
   schedule: Deps["schedule"],
-  read: (after: number | undefined) => Promise<P>,
-): Promise<P> {
-  if (!seconds || signal.aborted) return read(after);
+  read: (after: number | undefined, committed?: CommittedEvents) => Promise<P>,
+): Promise<P | undefined> {
+  if (signal.aborted) return read(after);
 
   let stopped = false;
-  let wake: () => void = () => {};
   const stop = () => {
     stopped = true;
-    wake();
+    tail.interrupt();
   };
-  // Register before reading so a commit between the read and the wait cannot be lost.
-  const unsubscribe = board.subscribeEvents(after ?? 0, () => wake());
   signal.addEventListener("abort", stop, { once: true });
   let cancel: (() => void) | undefined;
   let cursor = after;
+  let last: P | undefined;
   try {
     if (seconds !== "stream") cancel = schedule(Math.min(seconds, MAX_WAIT_SECONDS) * 1000, stop);
     while (true) {
-      const notified = new Promise<void>((resolve) => {
-        wake = resolve;
-      });
-      const page = await read(cursor);
+      const next = tail.take(cursor);
+      if (next === "wait") {
+        if (stopped) return last;
+        await tail.wait();
+        if (stopped) return last;
+        continue;
+      }
+      const page = await read(cursor, next === "store" ? undefined : next.committed);
+      tail.settle(page);
+      last = page;
       if (page.events.length > 0 || stopped) return page;
       if (seconds === "stream" && !page.retry && page.cursor !== cursor) return page;
       cursor = page.cursor;
-      // An empty filtered page can still have more stored rows behind it.
-      if (!page.retry && cursor >= page.head) {
-        await notified;
-        if (stopped) return page;
-      }
     }
   } finally {
     cancel?.();
     signal.removeEventListener("abort", stop);
-    unsubscribe();
   }
 }
