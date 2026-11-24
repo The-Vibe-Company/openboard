@@ -1,3 +1,32 @@
 .task-details {
   overflow-wrap: anywhere;
 }
+
+.task-state-badge.ui-badge {
+  border-color: var(--task-state-color, var(--control-border));
+  border-inline-start-width: calc(3 * var(--stroke));
+}
+
+.task-state-badge[data-state="ready"] {
+  --task-state-color: var(--text);
+}
+
+.task-state-badge[data-state="claimed"] {
+  --task-state-color: var(--accent);
+}
+
+.task-state-badge[data-state="completed"] {
+  --task-state-color: var(--success);
+}
+
+.task-state-badge[data-state="failed"] {
+  --task-state-color: var(--danger);
+}
+
+.task-state-badge[data-state="canceled"] {
+  --task-state-color: var(--muted);
+}
+
+.task-state-badge[data-state="expired"] {
+  --task-state-color: var(--warning);
+}

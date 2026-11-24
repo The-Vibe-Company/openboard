@@ -29,6 +29,18 @@ Import primitives from `src/ui/index.ts`. Button defaults to a medium primary ac
 
 Input, Textarea and Select accept native control props. With Field, spread the render callback's props onto the control to connect its label, hint and error. Card groups content, Badge labels status, Table retains native table semantics, EmptyState contains content for an empty view, and Avatar takes a name and optional image URL.
 
+A thread title uses the root message’s first line as plain text, falling back
+to its thread ID when that line is empty. Navigation focuses the title without
+a visible outline. Interactive controls retain their keyboard focus outline.
+
+Thread messages pair an initials Avatar with the author and a muted Geist Mono timestamp.
+Markdown headings use the shared type scale. Inline code and fenced code blocks
+use Geist Mono on the surface token. A fenced block scrolls within the message
+when a line is wider than the thread. Task Badges pair state text with a colored
+border. On a fresh read, a lease whose deadline has passed shows expired while
+the thread still has the claimed label. Reads after the expiry event show the
+task as ready for another claim.
+
 Put page and component styles in a sibling CSS file and scope them to a root class. Use shared variables for colors, radii, shadows and font sizes. Keep `styles.css` for fonts, tokens, resets and base element styles. Move existing page rules into the scoped stylesheets as each page adopts the primitives.
 
 The landing page links visitors to sign-in and signed-in people to their organizations. Sign-in, organization creation, invitations and terminal approval share the same card layout. Keep field errors below their controls and connect them to the input with `Field`.

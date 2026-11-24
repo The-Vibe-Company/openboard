@@ -1,6 +1,8 @@
 import type { ThreadMessage } from "../api/thread.ts";
 import { renderMarkdown } from "../markdown.ts";
+import { Avatar } from "../ui/index.ts";
 import "./MessageView.css";
+import "./markdown.css";
 
 export function MessageView({ message }: { message: ThreadMessage }) {
   const author = message.author?.name ?? message.from ?? message.by.profile ?? message.by.actor;
@@ -9,9 +11,14 @@ export function MessageView({ message }: { message: ThreadMessage }) {
   return (
     <article className="thread-message">
       <header>
+        <Avatar name={author} />
         <strong>{author}</strong>
         <time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleString()}</time>
-        {message.editedAt && <span title={new Date(message.editedAt).toLocaleString()}>edited</span>}
+        {message.editedAt && (
+          <span className="message-edited" title={new Date(message.editedAt).toLocaleString()}>
+            edited
+          </span>
+        )}
       </header>
       {message.deleted ? (
         <p>

@@ -9,6 +9,9 @@ import { threadErrorText, threadQuery } from "../../../../api/thread.ts";
 import { Composer } from "../../../../components/Composer.tsx";
 import { MessageView } from "../../../../components/MessageView.tsx";
 import { TaskState } from "../../../../components/TaskState.tsx";
+import { markdownPreview } from "../../../../markdown.ts";
+
+import "./thread.css";
 
 export const Route = createFileRoute("/$org/$board/t/$id")({
   beforeLoad: ({ params }) => {
@@ -51,21 +54,29 @@ function ThreadPage() {
   }
 
   const heading = useRef<HTMLHeadingElement>(null);
-  const title = data ? `Thread #${data.message.id}` : thread.isError ? threadErrorText(thread.error) : null;
+  const root = data?.message;
+  const title = root
+    ? markdownPreview(root.deleted ? "" : root.text, root.mentions) || `Thread #${root.id}`
+    : thread.isError
+      ? threadErrorText(thread.error)
+      : null;
+  const focusTarget = root ? params.id : title;
   useLayoutEffect(() => {
-    if (title) heading.current?.focus({ preventScroll: true });
-  }, [title]);
+    if (focusTarget !== null) heading.current?.focus({ preventScroll: true });
+  }, [focusTarget]);
   if (title === null) return <p role="status">Loading thread…</p>;
 
   return (
-    <>
+    <section className="thread-page">
       <h1 ref={heading} tabIndex={-1}>
         {title}
       </h1>
       {data && (
         <>
-          {!data.message.deleted && data.message.task && <TaskState board={params} task={data.message.task} />}
-          <ol className="board-threads" aria-label="Thread messages">
+          {!data.message.deleted && data.message.task && (
+            <TaskState board={params} task={data.message.task} recordedState={data.message.labels["board.task"]} />
+          )}
+          <ol className="thread-messages" aria-label="Thread messages">
             {[data.message, ...data.replies].map((item) => (
               <li key={item.id}>
                 <MessageView message={item} />
@@ -81,6 +92,6 @@ function ThreadPage() {
           )}
         </>
       )}
-    </>
+    </section>
   );
 }

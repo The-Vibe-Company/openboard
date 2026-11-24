@@ -1,0 +1,55 @@
+.thread-message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.thread-message-text > * {
+  margin-block: calc(3 * var(--space));
+}
+
+.thread-message-text > :is(h1, h2, h3, h4, h5, h6) {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.thread-message-text > h1 {
+  font-size: var(--type-title);
+  letter-spacing: -0.04em;
+}
+
+.thread-message-text > h2 {
+  font-size: var(--type-subheading);
+}
+
+.thread-message-text > :is(h3, h4, h5, h6) {
+  font-size: var(--type-base);
+}
+
+.thread-message-text :is(ol, ul) {
+  padding-inline-start: calc(6 * var(--space));
+}
+
+.thread-message-text a {
+  font-weight: 600;
+}
+
+.thread-message-text code {
+  font-family: var(--font-mono);
+}
+
+.thread-message-text :not(pre) > code {
+  padding-inline: var(--space);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.thread-message-text pre {
+  max-inline-size: 100%;
+  overflow-x: auto;
+  white-space: pre;
+  overflow-wrap: normal;
+  padding: calc(3 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
