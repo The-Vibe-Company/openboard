@@ -14,10 +14,10 @@ export const agentStatements = {
   agentCredential: sql`SELECT a.id, a.connection, a.profile, a.profile_key, a.can, a.token_hash, a.prev_hash,
     a.prev_until, a.token_expires, a.hard_expires, a.revoked_at, c.name, c.profiles, c.token_ttl_s,
     (SELECT ${grantCanArray} FROM (
-      SELECT g.board_id, g.can, MIN(CASE WHEN p.kind = 'connection' THEN 0 ELSE 1 END) AS rank
+      SELECT g.board_id, g.can, MIN(CASE WHEN p.kind = 'connection' THEN 0 WHEN p.kind = 'all-connections' THEN 1 ELSE 2 END) AS rank
       FROM grants g JOIN grant_principals p ON p.board_id = g.board_id AND p.grant_id = g.id
       WHERE g.org_id = ${"orgId"} AND g.board_id = ${"boardId"} AND g.revoked = 0
-        AND ((p.kind = 'connection' AND p.key = c.id) OR (p.kind = 'all-connections' AND p.key = ''))
+        AND ((p.kind = 'connection' AND p.key = c.id) OR (p.kind IN ('all-connections', 'everyone') AND p.key = ''))
       GROUP BY g.board_id, g.id, g.can) matched WHERE matched.board_id = ${"boardId"}) AS grant_cans
     FROM connection_agents a JOIN connections c ON c.board_id = a.board_id AND c.id = a.connection
     WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"}

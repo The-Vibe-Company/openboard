@@ -2,9 +2,10 @@ import { BoardError, type updateGrant } from "@openboard/contract";
 import { changeGrantPrincipals, type GrantUpdated, grantPrincipals, isoTime } from "@openboard/core";
 import { credentialKind, memberOf } from "../../deps.ts";
 import type { Handler } from "../index.ts";
-import { checkIssuerLimit, validateGrantIssuers } from "./oidc.ts";
+import { currentAuthority } from "./authority.ts";
 import { requireGrantManage, writtenCan } from "./create.ts";
-import { authorizeExistingGrantChange, currentAuthority } from "./revoke.ts";
+import { checkIssuerLimit, validateGrantIssuers } from "./oidc.ts";
+import { authorizeExistingGrantChange } from "./revoke.ts";
 
 export const updateGrantHandler: Handler<typeof updateGrant> = (ctx, input) =>
   ctx.board.write(async (writer) => {

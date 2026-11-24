@@ -6,17 +6,31 @@ package: core
 writes:
   - packages/core/src/access/resolve.ts
   - packages/core/test/access/resolve.test.ts
-  - packages/contract/src/entities/discovery.ts
-  - packages/server/src/operations/discovery.ts
-  - packages/server/test/discovery.test.ts
   - packages/server/test/grants/everyone.test.ts
   - docs/protocol.md
-  - docs/decisions.md
+  - packages/core/src/access/explain.ts
+  - packages/core/test/access/explain.test.ts
+  - packages/core/src/index.ts
+  - packages/ports/src/store.ts
+  - packages/ports/src/grants.ts
+  - packages/driver-sql/src/views/agents.ts
+  - packages/driver-sql/src/views/connections.ts
+  - packages/driver-sql/src/views/grants.ts
+  - packages/server/src/auth/oidc.ts
+  - packages/contract/src/operations/grants/create.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
+  - packages/server/src/operations/grants/authority.ts
+  - packages/server/src/operations/grants/create.ts
+  - packages/server/src/operations/grants/explain.ts
+  - packages/server/src/operations/grants/revoke.ts
+  - packages/server/src/operations/grants/update.ts
+  - packages/server/test/grants/lockout.test.ts
 conformance: ["grants/lets everyone narrow what something else lets in, and lets no one in itself"]
 modes: [local, hosted]
 depends_on: [281, 221, 226]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 457
 ---
 
@@ -26,11 +40,14 @@ As a board owner, I narrow or close a channel for everyone, `ob grants create --
 ## Done when
 - [ ] after `ob grants create --everyone --can 'ops/=read'`, a connection whose own grant gives `*=read,post` reads `ops/x` but posting there prints `error: forbidden: …`, until a grant naming it at `ops/` gives `post`; `ob grants explain --github acme/web ops/x` for a repository nothing else lets in shows `pattern: null` and `can: []`
 - [ ] with an `--all-projects --environment production` grant at `*` and the everyone grant at `ops/`, `ob grants explain --project prj_x --environment production ops/x` shows `level: "everyone"` and `can: ["read"]`; adding an `--all-projects` grant at `ops/` makes it `level: "group"` with that grant's permissions alone
-- [ ] `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `grants/lets everyone narrow what something else lets in, and lets no one in itself`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
+- [ ] `bun run conformance` and `bun run conformance --driver postgres --instances 2` retain all recorded checks. The everyone narrowing check stays skipped and unrecorded.
+
+- [ ] A grant that would leave its creator unable to manage it returns `409 grant_lockout` without persisting unless the creator set `lockMeOut`.
 
 ## Out of scope
 - Callers narrowed with `x-board-can` against `everyone` (288, 289).
 
 ## Notes
 - Upstream `docs/01-board/09-access.md` "How grants combine" (`everyone` is "everyone something else lets in").
-- **Proposal for the owner: discovery's `team_id`.** Upstream's check stops with "this board names no team" while discovery's `team_id` is null, as docs/protocol.md "Discovery" makes it, so it can only be skipped. Proposed: discovery answers `team_id` with the organization's slug (the organization is upstream's team, docs/data-model.md "Tenancy"), recorded in docs/decisions.md and docs/protocol.md; `all-projects` then groups projects for `explain`, though no project ever signs in. If the owner refuses, this ticket records no check and the check joins 293's `expectedSkips` with that reason. Depends on 221 and 226, the last tickets before it to change docs/protocol.md.
+- Orchestrator decision on #457: keep discovery `team_id` and `project_id` null. Verify narrowing through the CLI and server tests. Leave the upstream check unrecorded while it skips because discovery names no team.
+- Revised decision on #457: reject create-time lockout with `409 grant_lockout` unless `lockMeOut` is set. Ticket 284 owns PATCH, revoke, and error guidance.

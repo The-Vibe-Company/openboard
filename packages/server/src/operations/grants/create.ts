@@ -1,9 +1,9 @@
 import { BoardError, type createGrant } from "@openboard/contract";
 import { type GrantCreated, grantPrincipals, grants, isoTime } from "@openboard/core";
 import { keepInsideCan } from "../../auth/access.ts";
-import { currentWorkload } from "../../auth/oidc.ts";
-import { memberOf, workloadOf } from "../../deps.ts";
+import { credentialKind, memberOf } from "../../deps.ts";
 import type { Handler } from "../index.ts";
+import { currentAuthority } from "./authority.ts";
 import { checkIssuerLimit, validateGrantIssuers } from "./oidc.ts";
 
 export const createGrantHandler: Handler<typeof createGrant> = async (ctx, input) => {
@@ -22,7 +22,7 @@ export const createGrantHandler: Handler<typeof createGrant> = async (ctx, input
   }
   validateGrantIssuers(principals);
   ctx.debitWrite();
-  return appendGrant(ctx, can, principals);
+  return appendGrant(ctx, can, principals, input.lockMeOut ?? false);
 };
 
 type GrantContext = Parameters<Handler<typeof createGrant>>[0];
@@ -45,13 +45,20 @@ export async function requireGrantManage(ctx: GrantContext, channels: string[], 
   }
 }
 
-function appendGrant(ctx: GrantContext, can: GrantCan, principals: ReturnType<typeof grantPrincipals>) {
+function appendGrant(
+  ctx: GrantContext,
+  can: GrantCan,
+  principals: ReturnType<typeof grantPrincipals>,
+  lockMeOut: boolean,
+) {
   return ctx.board.write(async (writer) => {
-    if (ctx.by[workloadOf]) {
-      const by = await currentWorkload(ctx.by, writer, ctx.now);
+    const by = await currentAuthority(ctx.by, writer, "creating", ctx.now);
+    const channels = Object.keys(can);
+    const role = by[memberOf]?.role;
+    if (role !== "owner") {
       await requireGrantManage(
         { ...ctx, by },
-        Object.keys(can),
+        channels,
         principals.some(({ kind }) => kind === "oidc"),
       );
     }
@@ -84,6 +91,16 @@ function appendGrant(ctx: GrantContext, can: GrantCan, principals: ReturnType<ty
       payload: { grant },
     };
     await writer.append([event]);
+    if (!lockMeOut && by[credentialKind] !== "local" && role !== "owner" && role !== "admin") {
+      // A failed check rolls back the grant and event together. Read the folded grant in the same board transaction.
+      const after = await currentAuthority(by, writer, "creating", ctx.now);
+      try {
+        await requireGrantManage({ ...ctx, by: after }, channels, false);
+      } catch (error) {
+        if (!(error instanceof BoardError) || error.code !== "forbidden") throw error;
+        throw new BoardError("grant_lockout", "this grant would take away your ability to manage it");
+      }
+    }
     return { grant };
   });
 }

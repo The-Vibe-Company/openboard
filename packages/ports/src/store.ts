@@ -8,6 +8,7 @@ import type {
   Connection,
   DeletedBoard,
   DeletedOrg,
+  GrantLevel,
   Invitation,
   InvitationRole,
   ManagedConnection,
@@ -290,7 +291,7 @@ export interface ConnectionRecord {
 /** An agent claimed with a connection's secret, with its connection and the SHA-256 (hex) of its token. */
 export interface AgentRecord {
   readonly agent: ClaimedAgent;
-  readonly grantCans: readonly { can: CanInput; level: "principal" | "group"; capped: false }[];
+  readonly grantCans: readonly { can: CanInput; level: GrantLevel; capped: false }[];
   readonly connection: {
     readonly id: string;
     readonly name: string;

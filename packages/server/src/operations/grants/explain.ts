@@ -64,7 +64,7 @@ export const explainGrantsHandler: Handler<typeof explainGrants> = async (ctx, q
     const views = await ctx.board.listGrants();
     // Revocation can commit between the initial lookup and the grant read.
     if (!(await ctx.board.connection(connection))) return explainAccess(channel, []);
-    return explainSubject(channel, views, { kind: "connection", id: connection }, true);
+    return explainSubject(channel, views, { kind: "connection", id: connection });
   }
   if (self && kind === "local") {
     return { ...explainAccess(channel, []), can: [...grants.PERMISSIONS] };
