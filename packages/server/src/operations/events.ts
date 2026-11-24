@@ -15,7 +15,7 @@ import { tailBoard } from "../live/fan-out.ts";
 import { longPoll } from "../live/long-poll.ts";
 import { eventStream } from "../live/sse.ts";
 import type { BoardContext, Handler } from "./index.ts";
-import { projectTaskNeedsChanged, projectTaskReady, projectTaskReopened } from "./tasks/feed.ts";
+import { projectTaskBlocked, projectTaskNeedsChanged, projectTaskReady, projectTaskReopened } from "./tasks/feed.ts";
 
 type EventInput = InputOf<typeof readEvents>;
 
@@ -197,6 +197,7 @@ export function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boo
   if (event.type === "task.ready") return [projectTaskReady(event, visible(current ?? historical))];
   if (event.type === "task.reopened") return [projectTaskReopened(event, visible(current ?? historical))];
   if (event.type === "task.needs_changed") return [projectTaskNeedsChanged(event, visible(current ?? historical))];
+  if (event.type === "task.blocked") return [projectTaskBlocked(event, visible(current ?? historical))];
   if (event.type === "task.canceled") return [projectTaskCanceled(event, visible(current ?? historical))];
   if (event.type === "task.failed") return [projectTaskFailed(event, visible(current ?? historical))];
   if (event.type === "task.completed") return [projectTaskCompleted(event, visible(current ?? historical))];
@@ -223,18 +224,7 @@ export function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boo
       },
     ];
   }
-  if (event.type === "message.deleted") {
-    const { view, ...payload } = event.payload;
-    return [
-      {
-        cursor: formatId(event.id),
-        type: event.type,
-        createdAt: isoTime(event.at),
-        payload,
-        message: visible(current ?? view),
-      },
-    ];
-  }
+  if (event.type === "message.deleted") return [projectDeletion(event, visible(current ?? historical))];
   if (event.type === "message.edited") {
     const { view, ...payload } = event.payload;
     return [
@@ -273,6 +263,14 @@ function projectBookkeepingEvent(
   if (event.type === "watch.failed") return { ...common, type: event.type, payload: event.payload };
   if (event.type === "actor.seen") return { ...common, type: event.type, payload: event.payload };
   return { ...common, type: event.type, payload: event.payload };
+}
+
+function projectDeletion(
+  event: Extract<FeedEvent, { type: "message.deleted" }>,
+  message: ReturnType<typeof messages.messageView>,
+) {
+  const { view: _view, ...payload } = event.payload;
+  return { cursor: formatId(event.id), type: event.type, createdAt: isoTime(event.at), payload, message };
 }
 
 function projectTaskExpired(

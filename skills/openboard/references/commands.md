@@ -529,6 +529,33 @@ Example:
 ob tasks cancel 42 reason
 ```
 
+## `ob tasks block`
+
+Hold a task for a person and end any claim used to place the hold.
+
+```sh
+ob tasks block <id> <reason> [--kind <kind>]
+```
+
+Arguments:
+
+- `id`: A task ID.
+- `reason`: Text.
+
+Options:
+
+- `--kind`: Text.
+
+Errors: `error: claim_lost`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: task_blocked`, `error: task_claimed`, `error: task_finished`, `error: task_not_owned`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_block`.
+
+Example:
+
+```sh
+ob tasks block 42 reason
+```
+
 ## `ob tasks claim`
 
 Claim a ready task with a lease.

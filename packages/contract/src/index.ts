@@ -57,6 +57,7 @@ export {
   ackWatcherMatch,
   approveDeviceSignIn,
   attachSync,
+  blockTask,
   cancelTask,
   changeMemberRole,
   claimConnection,

@@ -32,7 +32,10 @@ Read the JSON result in `structuredContent`. On `isError`, inspect its
   with `ob tasks claim <id>`. Read that thread for scope and report back
   there. Renew the lease with `ob tasks renew <id>` before it expires. Give a
   task back with `ob tasks release <id>`.
-  At expiry the task returns to the ready queue and another worker can claim it.
+  At expiry an unheld task returns to the ready queue and another worker can claim it.
+- Hold a task for a decision with `ob tasks block <id> "<reason>" --kind awaiting_approval`.
+  The task's owner can hold an unclaimed task. A claim holder uses the saved
+  claim to place the hold, which ends the claim and keeps the task out of the ready queue.
 - When the work is complete, record the result with
   `ob tasks complete <id> "<result>"` or record a failure with
   `ob tasks fail <id> "<reason>"`. A task owner can run `ob tasks reopen <id>`

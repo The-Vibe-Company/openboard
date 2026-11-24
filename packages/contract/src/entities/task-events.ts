@@ -87,6 +87,22 @@ export const TaskFailedEvent = Type.Object({
 export const TaskCanceledPayload = Type.Omit(TaskFailedPayload, ["epoch"]);
 export type TaskCanceledPayload = Static<typeof TaskCanceledPayload>;
 
+export const TaskHoldKind = Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]{0,63}$", maxLength: 64 });
+
+export const TaskBlockedPayload = Type.Composite([
+  TaskCanceledPayload,
+  Type.Object({ kind: Type.Union([TaskHoldKind, Type.Null()]) }),
+]);
+export type TaskBlockedPayload = Static<typeof TaskBlockedPayload>;
+
+export const TaskBlockedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("task.blocked"),
+  createdAt: Type.String(),
+  payload: TaskBlockedPayload,
+  message: Message,
+});
+
 export const TaskCanceledEvent = Type.Object({
   cursor: Type.String(),
   type: Type.Literal("task.canceled"),

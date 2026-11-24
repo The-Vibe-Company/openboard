@@ -274,3 +274,32 @@ test("ob tasks needs sends prerequisite IDs or an empty list with --none", async
   }
   expect(bodies).toHaveLength(2);
 });
+
+test("ob tasks block clears a stale claim before the owner retries without proof", async () => {
+  const home = mkdtempSync(join(tmpdir(), "ob-hold-"));
+  const key = { boardUrl: ENV.BOARD_URL, actor: "agent-a", id: "2" };
+  const claim = { epoch: 1, token: "fixture", until: "2026-01-01T00:00:00.000Z" };
+  const input = { reason: "approve?", kind: "awaiting_approval" };
+  const bodies: unknown[] = [];
+  const lines: string[] = [];
+  const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  const fetch = async (request: Request) => {
+    if (request.url === `${ENV.BOARD_URL}/me`) return Response.json({ actor: key.actor });
+    expect(`${request.method} ${request.url}`).toBe(`POST ${ENV.BOARD_URL}/tasks/2/block`);
+    bodies.push(await request.json());
+    return bodies.length === 1
+      ? Response.json({ error: { code: "claim_lost", message: "expired" } }, { status: 409 })
+      : Response.json({ task: { id: "2" } });
+  };
+  try {
+    await withClaimStorage(home, async () => ({ result: null, entry: { key, claim } }));
+    const run = () =>
+      runCli(["tasks", "block", "2", input.reason, "--kind", input.kind], { ...ENV, HOME: home }, { fetch, output });
+    expect(await run()).toBe(1);
+    expect(await run()).toBe(0);
+    expect(bodies).toEqual([{ ...input, epoch: 1, token: "fixture" }, input]);
+    expect(lines).toEqual(["error: claim_lost: expired", "blocked 2"]);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});

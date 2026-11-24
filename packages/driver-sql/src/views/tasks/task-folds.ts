@@ -31,7 +31,10 @@ export const taskFoldStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   renewTask: sql`UPDATE tasks SET claim_until = ${"until"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
-  readyTask: sql`UPDATE tasks SET state = 'ready', reason = NULL, claim_actor = NULL, claim_until = NULL, claim_token = NULL
+  blockTask: sql`UPDATE tasks SET state = 'blocked', blocked_kind = ${"kind"}, blocked_reason = ${"reason"},
+    claim_actor = NULL, claim_until = NULL, claim_token = NULL
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  releaseTask: sql`UPDATE tasks SET state = ${"state"}, reason = NULL, claim_actor = NULL, claim_until = NULL, claim_token = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   completeTask: sql`UPDATE tasks SET state = 'completed', result = ${"result"},
     claim_actor = NULL, claim_until = NULL, claim_token = NULL
@@ -61,6 +64,43 @@ async function replaceTaskNeeds(
   await query(tx, dialect, taskFoldStatements.updateTaskNeeds, { ...scoped, state: view.task.state, waitingOn });
 }
 
+async function insertTask(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  event: Extract<TaskEvent, { type: "task.created" }>,
+) {
+  const { by } = event.payload;
+  await query(tx, dialect, taskFoldStatements.insertTask, {
+    ...keys,
+    id: event.message,
+    channel: event.channel,
+    owner: by.principal,
+    actor: by.actor,
+    profile: by.profile,
+    at: event.at,
+    state: event.payload.view.task?.state ?? "ready",
+    waitingOn: event.payload.waitingOn ?? 0,
+  });
+  if (event.payload.needs.length > 0) {
+    await query(tx, dialect, taskFoldStatements.insertTaskNeeds, {
+      ...keys,
+      id: event.message,
+      ids: JSON.stringify(event.payload.needs),
+    });
+  }
+  const { batch } = event.payload;
+  if (batch) {
+    await query(tx, dialect, taskFoldStatements.insertTaskBatch, {
+      ...keys,
+      principal: event.principal,
+      id: batch.id,
+      digest: batch.digest,
+      tasks: JSON.stringify(batch.tasks),
+    });
+  }
+}
+
 async function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: TaskEvent) {
   if (
     event.type === "task.expired" ||
@@ -68,41 +108,27 @@ async function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: Tas
     event.type === "task.reopened" ||
     event.type === "task.ready"
   ) {
-    return query(tx, dialect, taskFoldStatements.readyTask, { ...keys, id: event.message });
-  }
-  if (event.type === "task.needs_changed") return replaceTaskNeeds(tx, dialect, keys, event);
-  const { by } = event.payload;
-  if (event.type === "task.created") {
-    await query(tx, dialect, taskFoldStatements.insertTask, {
+    return query(tx, dialect, taskFoldStatements.releaseTask, {
       ...keys,
       id: event.message,
-      channel: event.channel,
-      owner: by.principal,
-      actor: by.actor,
-      profile: by.profile,
-      at: event.at,
-      state: event.payload.view.task?.state ?? "ready",
-      waitingOn: event.payload.waitingOn ?? 0,
+      state: event.type === "task.expired" ? event.payload.view.task.state : "ready",
     });
-    if (event.payload.needs.length > 0) {
-      await query(tx, dialect, taskFoldStatements.insertTaskNeeds, {
-        ...keys,
-        id: event.message,
-        ids: JSON.stringify(event.payload.needs),
-      });
-    }
-    const { batch } = event.payload;
-    if (batch) {
-      await query(tx, dialect, taskFoldStatements.insertTaskBatch, {
-        ...keys,
-        principal: event.principal,
-        id: batch.id,
-        digest: batch.digest,
-        tasks: JSON.stringify(batch.tasks),
-      });
-    }
-    return;
   }
+  if (event.type === "task.needs_changed") return replaceTaskNeeds(tx, dialect, keys, event);
+  if (event.type === "task.blocked") {
+    const { kind, reason } = event.payload;
+    return query(tx, dialect, taskFoldStatements.blockTask, { ...keys, id: event.message, kind, reason });
+  }
+  if (event.type === "task.failed" || event.type === "task.canceled") {
+    const statement = event.type === "task.failed" ? taskFoldStatements.failTask : taskFoldStatements.cancelTask;
+    return query(tx, dialect, statement, {
+      ...keys,
+      id: event.message,
+      reason: event.payload.reason,
+    });
+  }
+  const { by } = event.payload;
+  if (event.type === "task.created") return insertTask(tx, dialect, keys, event);
   if (event.type === "task.renewed") {
     return query(tx, dialect, taskFoldStatements.renewTask, {
       ...keys,
@@ -120,14 +146,6 @@ async function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: Tas
       await query(tx, dialect, taskFoldStatements.decrementTaskNeeds, { ...keys, id: event.message });
     }
     return;
-  }
-  if (event.type === "task.failed" || event.type === "task.canceled") {
-    const statement = event.type === "task.failed" ? taskFoldStatements.failTask : taskFoldStatements.cancelTask;
-    return query(tx, dialect, statement, {
-      ...keys,
-      id: event.message,
-      reason: event.payload.reason,
-    });
   }
   const { epoch, untilMs, tokenHash } = event.payload;
   return query(tx, dialect, taskFoldStatements.claimTask, {

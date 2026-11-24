@@ -435,6 +435,23 @@ read access and a live claim. Failure clears the claim, records the reason,
 sets `board.task=failed`, and emits `task.failed` with `{ id, thread, epoch, reason, by }`.
 `ob tasks fail <id> "<reason>"` uses the saved claim.
 
+`POST /tasks/:id/block` takes `{ reason, kind?, epoch?, token? }` and returns `{ task }`.
+Use `ob tasks block <id> "<reason>" [--kind <kind>]`, SDK `blockTask`, or MCP `task_block`.
+The reason must contain 1–1,000 characters of text. Kind is optional and takes up
+to 64 lowercase letters, digits, underscores, dots, and hyphens, starting with
+a letter or digit. The board reserves `edited`. An omitted kind is stored as `null`.
+The caller needs channel read access. Without a live claim, the cancellation
+ownership rule applies. With a live claim, only the holder can place a hold,
+using both the current epoch and token. The CLI supplies its saved claim and
+removes it on success. A live claim without the holder's proof returns
+409 `task_claimed`. Stale or incorrect proof from the holder returns 409 `claim_lost`.
+A hold ends the claim, preserves prerequisites and epoch, sets `board.task=blocked`,
+and emits `task.blocked` with `{ id, thread, reason, kind, by }`.
+A task already on hold returns 409 `task_blocked`; completed, failed and
+canceled tasks return 409 `task_finished` to an authorized owner.
+The event feed serves `task.blocked` on upgraded replicas.
+The writer omits persisted pull-watcher matches and webhook deliveries during rollout.
+
 `POST /tasks/:id/cancel` takes `{ reason }` and returns `{ task }`. The task's maker profile or
 its principal acting as itself can cancel it with channel read and either post or label access.
 A caller with manage in the channel can also cancel it. Other callers who can read the task get
@@ -460,8 +477,8 @@ after fixing the cause. The CLI prints `reopened <id>` or `unchanged`.
 During a rolling deploy, upgraded replicas serve `task.reopened` in the feed.
 The writer omits [persisted pull-watcher matches and webhook deliveries](decisions.md#task-reopening-during-a-rolling-deploy) for this event.
 
-At the lease deadline, the thread's task state reads `ready` and
-`GET /tasks?state=ready` includes it. A background job or the next successful
+At the lease deadline, the thread and task list use the effective state
+`ready`, or `blocked` if the task has a hold. A background job or the next successful
 claim or prerequisite replacement appends `task.expired` with `{ id, epoch }` and updates the reserved
 `board.task` label. The next claim increments the epoch. Renew, release,
 complete, and fail require a live claim with the current epoch and matching

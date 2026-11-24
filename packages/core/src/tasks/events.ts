@@ -1,5 +1,6 @@
 import type {
   Message,
+  TaskBlockedPayload,
   TaskCanceledPayload,
   TaskClaimedPayload,
   TaskCompletedPayload,
@@ -64,7 +65,7 @@ export interface TaskExpired extends Omit<MessagePosted, "type" | "payload"> {
   readonly type: "task.expired";
   readonly payload: Omit<TaskExpiredPayload, "id"> & {
     readonly id: number;
-    readonly view: Message;
+    readonly view: Message & { task: NonNullable<Message["task"]> };
   };
 }
 
@@ -110,7 +111,16 @@ export interface TaskNeedsChanged extends Omit<MessagePosted, "type" | "payload"
   };
 }
 
+export interface TaskBlocked extends Omit<MessagePosted, "type" | "payload"> {
+  readonly type: "task.blocked";
+  readonly payload: Omit<TaskBlockedPayload, "id"> & {
+    readonly id: number;
+    readonly view: Message & { task: NonNullable<Message["task"]> };
+  };
+}
+
 export type TaskEvent =
+  | TaskBlocked
   | TaskReopened
   | TaskNeedsChanged
   | TaskCanceled
