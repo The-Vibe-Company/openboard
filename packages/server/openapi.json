@@ -11101,7 +11101,7 @@
     "/x/webhooks/{id}/deliveries": {
       "get": {
         "operationId": "listWebhookDeliveries",
-        "summary": "List a webhook's deliveries newest first.",
+        "summary": "List a webhook's deliveries newest first. Done and skipped deliveries are kept for 7 days, and dead deliveries for 30 days.",
         "parameters": [
           {
             "name": "id",

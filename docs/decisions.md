@@ -1230,3 +1230,12 @@ active inbound endpoints can roll out without the route pause if endpoints
 stay inactive throughout the transition. If rolling back to an older release
 after any 422 result has been recorded, pause the route before the rollback and
 keep it paused until every serving replica can read those results again.
+
+### Operational retention runs during job activity
+
+The existing job runners reclaim bounded batches of expired operational rows
+during due work. Each instance runs at most one sweep per minute while jobs
+are active. An idle server arms no retention timer. Done and skipped
+webhook deliveries age out after seven days and dead deliveries after 30 days.
+A swept history cursor returns an empty page with no older cursor.
+([Issue #590](https://github.com/The-Vibe-Company/openboard/issues/590))

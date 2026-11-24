@@ -1049,7 +1049,7 @@ ob tasks dev
 
 ## `ob webhooks deliveries`
 
-List a webhook's deliveries newest first.
+List a webhook's deliveries newest first. Done and skipped deliveries are kept for 7 days, and dead deliveries for 30 days.
 
 ```sh
 ob webhooks deliveries <id> [--state <state>] [--before <before>] [--limit <limit>]

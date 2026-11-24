@@ -39,6 +39,7 @@ import inboundDdl from "../migrations/0037-inbound.sql" with { type: "text" };
 import webhookRecentDeadDdl from "../migrations/0038-webhook-recent-dead.sql" with { type: "text" };
 import inboundSeenDdl from "../migrations/0039-inbound-seen.sql" with { type: "text" };
 import webhookWorkloadDdl from "../migrations/0040-webhook-workload.sql" with { type: "text" };
+import operationalRetentionDdl from "../migrations/0041-operational-retention.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -57,6 +58,7 @@ import { exportsView } from "./views/jobs/exports.ts";
 import { type JobWrites, queueBoardOrgBackfill, runBoardOrgBackfill } from "./views/jobs/index.ts";
 import { purgeOrgView } from "./views/jobs/purge.ts";
 import { shippingPlatform, shippingView } from "./views/jobs/shipping.ts";
+import { sweepView } from "./views/jobs/sweep.ts";
 import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
 import { operatorView } from "./views/operator/index.ts";
@@ -74,6 +76,7 @@ export { splitStatements } from "./ddl.ts";
 export { localBroadcaster } from "./local-broadcaster.ts";
 export { seedTaskNeed, simulateLegacyDeletion, tenantRows } from "./purge-test-data.ts";
 export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
+export { seedSweep, sweepSnapshot } from "./sweep-test-data.ts";
 export { claimJob, nextJob, releaseJobs } from "./views/jobs/index.ts";
 export { jobWake } from "./views/jobs/wake.ts";
 
@@ -126,6 +129,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 38, name: "0038-webhook-recent-dead", sql: webhookRecentDeadDdl },
   { version: 39, name: "0039-inbound-seen", sql: inboundSeenDdl },
   { version: 40, name: "0040-webhook-workload", sql: webhookWorkloadDdl },
+  { version: 41, name: "0041-operational-retention", sql: operationalRetentionDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -139,6 +143,7 @@ export function createViews(
     schemaReady: () => checkSchema(db, dialect, migrations.at(-1)?.version ?? 0),
     platform: () => ({
       ...platformView(db, dialect),
+      ...sweepView(db, dialect),
       ...oidcKeysView(db, dialect),
       ...shippingPlatform(db, dialect),
       queueBoardOrgBackfill: (now, signal) => queueBoardOrgBackfill(db, dialect, jobs, now, signal),

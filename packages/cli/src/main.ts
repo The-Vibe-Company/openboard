@@ -65,6 +65,7 @@ export async function runCli(
   if (!command) return usage(output, words.length === 0 ? "usage:" : `unknown command: ${words.join(" ")}`);
   if (end === -1 && words.length === command.words.length + 1 && words.at(-1) === "--help") {
     output.out(command.usage);
+    if ("help" in command && command.help) output.out(command.help);
     return 0;
   }
   try {

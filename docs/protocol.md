@@ -948,6 +948,10 @@ response. `ob webhooks disable <id>` pauses dispatch and `ob webhooks enable
   or `too_large` when the rendered body exceeds the size limit).
   Use `state` to filter, `limit` for 1 to 200 rows (default 50), and pass
   `older` as `before` to fetch the next page when `older` is non-null.
+  Done and skipped deliveries expire seven days after completion. Dead deliveries
+  expire after 30 days and can be retried during that window. OpenBoard reclaims
+  expired rows during job activity. If a cursor anchor has been swept, the next
+  request returns `{ deliveries: [], older: null }`.
   The CLI prints one line per row or the full response with `--json`.
   Use `ob webhooks retry <id> <dl>` to re-send a dead delivery. It prints
   `queued <dl>`. The delivery keeps its ID and restarts at attempt 1.
@@ -1020,7 +1024,9 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   body's `id` field for a scheme without one (such as Stripe). A missing ID
   answers 400 `invalid_request` when a signature is supplied. The endpoint
   saves its first successful result or `422 thread_not_found` result. A verified
-  duplicate on the same endpoint returns that result without writing again.
+  duplicate on the same endpoint returns that result without writing again while
+  the record is retained. Job activity can sweep records older than seven days.
+  A verified delivery whose record was swept is processed as new.
 - **Rules** evaluate all `when` conditions against the JSON body and request headers. Each
   condition matches one value or any value in its list. Matching rules and
   their actions run in order. A reply renders its text with `body` and the
@@ -1037,7 +1043,8 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   as the message API. Successful results include `{ "label": "<root id>" }`
   or `{ "react": "<root id>" }` in action order.
 - **Effects** run in one board transaction together with the dedupe insert, so
-  they happen at most once per endpoint and delivery ID, including across instances.
+  they happen at most once per endpoint and delivery ID while its dedupe record
+  is retained, including across instances.
 - **Principal** `ob:hook:ib_…` with its own grant (created under grant-change
   rules).
 - **Actions** (closed list): `reply`, `label`, `react`, `task.block`,

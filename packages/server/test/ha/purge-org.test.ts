@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { type BoardKeys, PURGE_ORG_JOB, type Store } from "@openboard/ports";
 import { testOrgScope, testScope } from "@openboard/ports/testkit";
 import { createApp, maintenanceJobs } from "../../src/index.ts";
-import { type Seeded, seed, type Tenant } from "../isolation/seed.ts";
+import { type Seeded, seed, signIn, type Tenant } from "../isolation/seed.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL } from "../support/app.ts";
 import { openSnapshotStore } from "../support/drivers.ts";
 import { postgresTestUrl } from "../support/env.ts";
@@ -174,7 +174,9 @@ for (const legacy of [false, true]) {
       const after = await snapshot();
       expect(Object.values(after.rows).flat()).toEqual([]);
       expect(await otherDigest()).toBe(surviving);
-      const reuse = await send("POST", "/api/x/orgs", deleted.session, { slug: deleted.org, name: "Reuse" });
+      // The retention sweep can remove the original sessions before the slug-reuse check.
+      const newcomer = await signIn(store, "newcomer", "g");
+      const reuse = await send("POST", "/api/x/orgs", newcomer.headers, { slug: deleted.org, name: "Reuse" });
       expect(reuse.status).toBe(409);
       expect(await reuse.json()).toMatchObject({ error: { code: "slug_taken" } });
       const [job] = before.rows.jobs ?? [];

@@ -287,7 +287,9 @@ without a queue read. At startup and after each successful re-LISTEN, the
 runner reads the earliest due time. When dispatch finds no claimable job, its
 transaction returns the next due time, including outstanding lease expiries.
 A due row skipped under a lock triggers a short retry. An empty queue leaves
-the runner with no timer.
+the runner with no timer. Operational retention runs on that runner’s due-job
+activity, reclaiming bounded batches without a dedicated timer. Expired rows
+can remain on disk until the next job runs.
 
 ### Migrations without downtime
 
