@@ -2,6 +2,30 @@ import { expect, test } from "bun:test";
 import { BOARD_URL, call, makeApp, NOW, OWNER } from "./support/app.ts";
 import { openStore } from "./support/drivers.ts";
 
+/** A scheduler the test fires by hand: every stream arms a ping timer, and no test waits on the wall clock. */
+function manualTimers() {
+  const pending = new Map<number, { delayMs: number; run: () => void }>();
+  let armed = 0;
+  return {
+    pending,
+    schedule(delayMs: number, run: () => void) {
+      const id = ++armed;
+      pending.set(id, { delayMs, run });
+      return () => pending.delete(id);
+    },
+    /** Fires every timer due now, as the clock would after their delay. */
+    fire() {
+      const due = [...pending.values()];
+      pending.clear();
+      for (const timer of due) timer.run();
+    },
+  };
+}
+
+function streamingApp(options: Parameters<typeof makeApp>[0] = {}) {
+  return makeApp({ schedule: manualTimers().schedule, ...options });
+}
+
 function subscribe(
   app: ReturnType<typeof makeApp>,
   query = "?channel=dev",
@@ -21,7 +45,7 @@ function subscribe(
 }
 
 test("streams new matching posts in order and sends a bare cursor for filtered events", async () => {
-  const app = makeApp();
+  const app = streamingApp();
   const response = await subscribe(app);
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toBe("text/event-stream");
@@ -60,7 +84,7 @@ test.each([
   ["?channel=dev&last=1", "3", ["4", "5"]],
   ["?channel=dev&after=4", "3", ["5"]],
 ] as const)("opens %s with Last-Event-ID %s at the expected cursor", async (query, lastEventId, ids) => {
-  const app = makeApp();
+  const app = streamingApp();
   try {
     for (const text of ["before", "seen", "missed first", "missed second"]) {
       expect((await call(app, "POST", "/messages", { channel: "dev", text })).status).toBe(201);
@@ -87,7 +111,7 @@ test.each([
   ["?channel=dev", "1", "invalid_cursor"],
   ["?channel=dev&last=1&wait=0", "0", "invalid_request"],
 ] as const)("rejects %s with Last-Event-ID %s before opening a stream", async (query, lastEventId, code) => {
-  const app = makeApp();
+  const app = streamingApp();
   try {
     const response = await subscribe(app, query, undefined, lastEventId);
     expect(response.status).toBe(400);
@@ -98,7 +122,7 @@ test.each([
 });
 
 test("ends a pending stream read when the request aborts", async () => {
-  const app = makeApp();
+  const app = streamingApp();
   const abort = new AbortController();
   const response = await subscribe(app, "", abort.signal);
   const reader = response.body!.getReader();
@@ -115,7 +139,7 @@ test("ends a pending stream read when the request aborts", async () => {
 });
 
 test("returns JSON errors before opening a stream", async () => {
-  const app = makeApp();
+  const app = streamingApp();
   try {
     const invalid = await subscribe(app, "?after=1");
     expect(invalid.status).toBe(400);
@@ -132,7 +156,7 @@ test("rechecks an author registered during the first newest-page scan", async ()
   const store = openStore(() => NOW);
   const lookedUp = Promise.withResolvers<void>();
   const continueRead = Promise.withResolvers<void>();
-  const app = makeApp({
+  const app = streamingApp({
     store: {
       ...store,
       board(scope) {
@@ -167,6 +191,68 @@ test("rechecks an author registered during the first newest-page scan", async ()
     }
   } finally {
     continueRead.resolve();
+    await app.close();
+  }
+});
+
+test("pings a quiet stream every 15 seconds", async () => {
+  const timers = manualTimers();
+  const app = makeApp({ schedule: timers.schedule });
+  const response = await subscribe(app);
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  const frame = async () => decoder.decode((await reader.read()).value);
+  try {
+    expect(await frame()).toBe(": connected\n\n");
+    expect(await frame()).toBe("id: 0\n\n");
+    for (let round = 0; round < 2; round++) {
+      expect([...timers.pending.values()].map(({ delayMs }) => delayMs)).toEqual([15_000]);
+      timers.fire();
+      expect(await frame()).toBe(": ping\n\n");
+    }
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "after pings" })).status).toBe(201);
+    expect(await frame()).toStartWith("id: 2\nevent: board\n");
+  } finally {
+    await reader.cancel();
+    await app.close();
+  }
+  expect(timers.pending.size).toBe(0);
+});
+
+test("skips a ping while the client has a frame left to read", async () => {
+  const timers = manualTimers();
+  const app = makeApp({ schedule: timers.schedule });
+  const response = await subscribe(app);
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  try {
+    timers.fire();
+    expect(decoder.decode((await reader.read()).value)).toBe(": connected\n\n");
+    expect(decoder.decode((await reader.read()).value)).toBe("id: 0\n\n");
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "next frame" })).status).toBe(201);
+    expect(decoder.decode((await reader.read()).value)).toStartWith("id: 2\nevent: board\n");
+    expect(timers.pending.size).toBe(1);
+  } finally {
+    await reader.cancel();
+    await app.close();
+  }
+});
+
+test("stops pinging when the request aborts", async () => {
+  const timers = manualTimers();
+  const app = makeApp({ schedule: timers.schedule });
+  const abort = new AbortController();
+  const response = await subscribe(app, "", abort.signal);
+  const reader = response.body!.getReader();
+  try {
+    await reader.read();
+    await reader.read();
+    expect(timers.pending.size).toBe(1);
+    abort.abort();
+    expect(await reader.read()).toEqual({ done: true, value: undefined });
+    expect(timers.pending.size).toBe(0);
+  } finally {
+    await reader.cancel();
     await app.close();
   }
 });

@@ -6,11 +6,12 @@ package: server
 writes:
   - packages/server/src/live/sse.ts
   - packages/server/test/sse.test.ts
+  - packages/server/src/operations/events.ts
 conformance: []
 modes: [local]
 depends_on: [100]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-t101
 issue: 101
 ---
 

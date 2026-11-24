@@ -31,7 +31,7 @@ export async function streamEvents(
   let first = await read(position);
   while (first.retry && !ctx.signal.aborted) first = await read(position);
   const follow = newest ? prepareFeed(ctx, { ...input, last: undefined }, true).read : read;
-  return eventStream(first, ctx.signal, (after, signal) =>
+  return eventStream(first, ctx.signal, ctx.schedule, (after, signal) =>
     longPoll(ctx.board, after, "stream", signal, ctx.schedule, follow),
   );
 }
