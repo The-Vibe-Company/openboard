@@ -6,11 +6,12 @@ package: server
 writes:
   - packages/server/test/**
   - packages/server/src/live/**
+  - .veebee/tickets/177-run-the-http-suites-on-two-instances.md
 conformance: []
 modes: [local, hosted]
 depends_on: [176]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-t177
 issue: 257
 ---
 
@@ -18,8 +19,8 @@ issue: 257
 As the owner of the code base, every HTTP and isolation behaviour holds when consecutive requests land on different instances.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun run --filter @openboard/server test` passes with every `makeApp()` a cluster of two apps on one fresh database whose `fetch` alternates between them, the long-poll and SSE tests and `packages/server/test/isolation` included
-- [ ] `bun test packages/server/test/support/cluster.test.ts` (with the same variables) shows request 1 served by instance 1 and request 2 by instance 2, and `bun test packages/server` without them still runs one SQLite app
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun run --filter @openboard/server test` passes with every `makeApp()` a cluster of two apps on one fresh database whose `fetch` alternates between them, the long-poll and SSE tests and `packages/server/test/isolation` included
+- [x] `bun test packages/server/test/support/cluster.test.ts` (with the same variables) shows request 1 served by instance 1 and request 2 by instance 2, and `bun test packages/server` without them still runs one SQLite app
 
 ## Out of scope
 - The cases alternation cannot reach, under `packages/server/test/ha/` (180-184).

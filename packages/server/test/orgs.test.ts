@@ -2,8 +2,9 @@ import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import type { ErrorBody } from "@openboard/contract";
 import type { Store } from "@openboard/ports";
-import { type App, createApp } from "../src/index.ts";
+import type { App } from "../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
+import { createCluster } from "./support/cluster.ts";
 import { openStore } from "./support/drivers.ts";
 
 let app: App | undefined;
@@ -36,7 +37,7 @@ async function start(people: string[], mode: "local" | "hosted" = "local") {
     randomBytes,
     log: { info() {}, error() {} },
   };
-  app = createApp(config, { store }, deps);
+  app = createCluster(config, { store }, deps);
   const at = (index: number): Person => {
     const person = sessions[index];
     if (!person) throw new Error(`no person ${index} signed in`);

@@ -1,6 +1,6 @@
-import type { Store } from "@openboard/ports";
-import { createApp, type Deps, type Logger, mintLocalOwnerToken, type ServerConfig } from "../../src/index.ts";
-import { openStore } from "./drivers.ts";
+import { type Deps, type Logger, mintLocalOwnerToken, type ServerConfig } from "../../src/index.ts";
+import { createCluster } from "./cluster.ts";
+import { openStore, type TestStore } from "./drivers.ts";
 
 /** `OPENBOARD_PUBLIC_URL` of every test app. */
 export const PUBLIC_URL = "http://127.0.0.1:8787";
@@ -22,12 +22,13 @@ type AppOptions = Pick<ServerConfig, "signup" | "signIn"> &
     readonly now?: () => number;
     readonly log?: Logger;
     readonly schedule?: Deps["schedule"];
-    readonly store?: Store;
+    readonly store?: TestStore;
   };
 
 /**
- * One app on the test store (in-memory SQLite, or a fresh Postgres database with `OPENBOARD_TEST_DRIVER=postgres`),
- * with a fixed clock unless one is given, a logger that keeps the errors it is told unless one is given, request IDs
+ * The app a test runs on (`createCluster`): one app on in-memory SQLite, or with `OPENBOARD_TEST_DRIVER=postgres` two
+ * instances on one fresh Postgres database whose `fetch` alternates between them. Its instances share
+ * a fixed clock unless one is given, a logger that keeps the errors it is told unless one is given, request IDs
  * `req-1`, `req-2`, … in the order requests arrive, and random bytes all 1, then all 2, ….
  */
 export function makeApp(options: AppOptions = {}) {
@@ -40,27 +41,25 @@ export function makeApp(options: AppOptions = {}) {
   };
   let minted = 0;
   let drawn = 0;
-  const app = createApp(
-    {
-      mode,
-      publicUrl: PUBLIC_URL,
-      localOwner: LOCAL_OWNER,
-      // Keep a configured hash in hosted tests to exercise the verifier's mode guard.
-      localOwnerTokenHash: OWNER.hash,
-      ...(signup && { signup }),
-      ...(signIn && { signIn }),
-    },
-    { store: options.store ?? openStore(now) },
-    {
-      now,
-      log,
-      requestId: () => `req-${++minted}`,
-      schedule: options.schedule ?? unexpectedTimer,
-      randomBytes: (length) => new Uint8Array(length).fill(++drawn),
-      ...(fetch && { fetch }),
-    },
-  );
-  return { ...app, logged };
+  const config: ServerConfig = {
+    mode,
+    publicUrl: PUBLIC_URL,
+    localOwner: LOCAL_OWNER,
+    // Keep a configured hash in hosted tests to exercise the verifier's mode guard.
+    localOwnerTokenHash: OWNER.hash,
+    ...(signup && { signup }),
+    ...(signIn && { signIn }),
+  };
+  const deps: Deps = {
+    now,
+    log,
+    requestId: () => `req-${++minted}`,
+    schedule: options.schedule ?? unexpectedTimer,
+    randomBytes: (length) => new Uint8Array(length).fill(++drawn),
+    ...(fetch && { fetch }),
+  };
+  const app = createCluster(config, { store: options.store ?? openStore(now) }, deps);
+  return Object.assign(app, { logged });
 }
 
 /** Sends one request to `app` as the local owner, relative to the local board's URL. */

@@ -1,7 +1,7 @@
 import { expect } from "bun:test";
 import type { SessionState } from "@openboard/contract";
-import { createApp } from "../../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./app.ts";
+import { createCluster } from "./cluster.ts";
 import { openStore } from "./drivers.ts";
 
 /** Fake the provider's HTTP endpoints while running the browser sign-in and session flow. */
@@ -49,7 +49,7 @@ export async function browserSession(send: (request: Request) => Promise<Respons
 
 export function makeBrowserApp(localOwnerTokenHash?: string) {
   let drawn = 0;
-  return createApp(
+  return createCluster(
     {
       mode: "local",
       publicUrl: PUBLIC_URL,

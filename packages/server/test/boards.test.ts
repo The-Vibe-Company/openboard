@@ -2,8 +2,9 @@ import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import type { ErrorBody } from "@openboard/contract";
 import type { Store } from "@openboard/ports";
-import { type App, createApp } from "../src/index.ts";
+import type { App } from "../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
+import { createCluster } from "./support/cluster.ts";
 import { openStore } from "./support/drivers.ts";
 
 let app: App | undefined;
@@ -28,7 +29,7 @@ async function start(people: readonly string[], orgs: readonly string[]) {
     randomBytes,
     log: { info() {}, error() {} },
   };
-  const server = createApp(config, { store }, deps);
+  const server = createCluster(config, { store }, deps);
   app = server;
   const signedIn: Person[] = [];
   for (const [index, login] of people.entries()) {

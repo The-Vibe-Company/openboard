@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import type { RefKind } from "@openboard/contract";
 import type { Store } from "@openboard/ports";
-import { type App, createApp } from "../../src/index.ts";
+import type { App } from "../../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "../support/app.ts";
+import { createCluster } from "../support/cluster.ts";
 import { openStore } from "../support/drivers.ts";
 
 export type Headers = Readonly<Record<string, string>>;
@@ -178,7 +179,8 @@ export async function seed(): Promise<Seeded> {
     drawn++;
     return Uint8Array.from({ length }, (_, index) => (drawn * 31 + index * 7) % 256);
   };
-  const app = createApp(
+  // As every HTTP test's app: two instances on one Postgres database, requests alternating, or one app on SQLite.
+  const app = createCluster(
     { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, signup: "open" },
     { store },
     {
