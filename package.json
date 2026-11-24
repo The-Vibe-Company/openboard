@@ -20,7 +20,7 @@
     "gen:check": "bun scripts/ci/gen.ts --check",
     "pr-size": "bun scripts/ci/pr-size.ts",
     "typecheck": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' typecheck",
-    "test": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' test && bun test ./scripts/ci",
+    "test": "bun run --filter './packages/*' --filter './apps/*' --filter './tools/*' test && bun test ./scripts/ci ./scripts/release",
     "conformance": "bun tools/conformance/src/run.ts",
     "bench": "bun tools/bench/src/run.ts",
     "build": "bun scripts/build/index.ts",

@@ -7,12 +7,15 @@ writes:
   - scripts/release/rolling-check.ts
   - scripts/release/rolling-check.test.ts
   - scripts/release/railway-deploy.ts
+  - scripts/release/railway-deploy.test.ts
   - .github/workflows/release.yml
+  - package.json
+  - docs/codebase.md
 conformance: []
 modes: [hosted]
 depends_on: [183, 190]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 271
 ---
 
