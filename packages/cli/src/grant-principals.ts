@@ -1,8 +1,8 @@
-import type { GrantPrincipalInput } from "@openboard/contract";
+import type { GrantPrincipal, GrantPrincipalInput } from "@openboard/contract";
 import { Misuse } from "./commands/index.ts";
 
 /** Reads a principal flag and any modifiers immediately following it. */
-export function readGrantPrincipal(args: readonly string[], start: number, end: number) {
+export function readGrantPrincipal(args: readonly string[], start: number, end: number, removing = false) {
   let next = start + 1;
   function take(flag: string) {
     const value = args[next];
@@ -13,6 +13,7 @@ export function readGrantPrincipal(args: readonly string[], start: number, end: 
   function environments() {
     const values: string[] = [];
     while (next < end && ["--environment", "-e"].includes(args[next] ?? "")) {
+      if (removing) throw new Misuse("remove the project principal and re-add it with the environments to keep");
       const flag = args[next++] ?? "";
       values.push(...take(flag).split(","));
     }
@@ -95,16 +96,16 @@ function readClaims(nextClaim: () => string | undefined): Record<string, string 
   );
 }
 
-export function describeGrantPrincipal(principal: GrantPrincipalInput): string {
+export function describeGrantPrincipal(principal: GrantPrincipalInput | GrantPrincipal): string {
   switch (principal.kind) {
     case "user":
       return `--user ${principal.userId}`;
     case "connection":
       return `--connection ${principal.connection}`;
     case "app":
-      return `--app ${principal.app}`;
+      return `--app ${"app" in principal ? principal.app : principal.clientId}`;
     case "project":
-      return `--project ${principal.project}${describeEnvironments(principal.environments)}`;
+      return `--project ${"project" in principal ? principal.project : principal.projectId}${describeEnvironments(principal.environments)}`;
     case "all-projects":
       return `--all-projects${describeEnvironments(principal.environments)}`;
     case "github":

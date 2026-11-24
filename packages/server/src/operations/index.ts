@@ -40,6 +40,7 @@ import { readEventsHandler } from "./events.ts";
 import { createGrantHandler } from "./grants/create.ts";
 import { listGrantsHandler } from "./grants/list.ts";
 import { revokeGrantHandler } from "./grants/revoke.ts";
+import { updateGrantHandler } from "./grants/update.ts";
 import {
   acceptInvitationHandler,
   createInvitationHandler,
@@ -228,6 +229,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   rotateConnection: rotateConnectionHandler,
   showTyping: showTypingHandler,
   startDeviceSignIn: startDeviceSignInHandler,
+  updateGrant: updateGrantHandler,
 };
 
 /** The handler of an operation the router matched, its input already validated against the same contract. */

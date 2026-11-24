@@ -51,6 +51,33 @@ Example:
 ob login https://board.example
 ```
 
+## `ob grants update`
+
+Change a grant by its ID.
+
+```sh
+ob grants update <id> [--add-connection <id>] [--remove-connection <id>] [--add-project <id> --environment <names>] [--can <pattern=permissions>…] [--lock-me-out]
+```
+
+Options:
+
+- `--add-connection`: Add a board connection. Prefix other principal flags with add- to add those kinds.
+- `--remove-connection`: Remove a board connection. Prefix other principal flags with remove- to remove those kinds.
+- `--add-project`: Add a project by ID, optionally with environments.
+- `--environment`: Comma-separated environments for a project. Adding a named project joins its environments.
+- `--can`: Replace the grant’s channel patterns and permissions. Repeat for multiple patterns.
+- `--lock-me-out`: A switch: present means yes.
+
+Errors: `error: forbidden`, `error: grant_empty`, `error: grant_not_found`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: not_in_grant`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `update_grant`.
+
+Example:
+
+```sh
+ob grants update g5 --add-connection cn_7k2m4q3t5v2w6x7y --can 'deploys/=read'
+```
+
 ## `ob use`
 
 Point `ob` at another board of the signed-in person's organization.

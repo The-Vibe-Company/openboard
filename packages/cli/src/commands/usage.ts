@@ -11,6 +11,7 @@ import {
   replyCommand,
   rotateConnectionCommand,
   tailCommand,
+  updateGrantCommand,
   useCommand,
   waitCommand,
   whoamiCommand,
@@ -22,6 +23,7 @@ export type AnyCommand = Command | typeof connectCommand | typeof loginCommand |
 export const commands: readonly AnyCommand[] = [
   connectCommand,
   loginCommand,
+  updateGrantCommand,
   useCommand,
   createConnectionCommand,
   createGrantCommand,
@@ -84,6 +86,19 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     tools: [],
     example: "ob use main",
     errors: ["not_found", "unauthorized"],
+  },
+  "grants update": {
+    summary: "Change a grant by its ID.",
+    operations: ["updateGrant"],
+    example: "ob grants update g5 --add-connection cn_7k2m4q3t5v2w6x7y --can 'deploys/=read'",
+    options: {
+      "add-connection": "Add a board connection. Prefix other principal flags with add- to add those kinds.",
+      "add-project": "Add a project by ID, optionally with environments.",
+      "remove-connection":
+        "Remove a board connection. Prefix other principal flags with remove- to remove those kinds.",
+      environment: "Comma-separated environments for a project. Adding a named project joins its environments.",
+      can: "Replace the grant’s channel patterns and permissions. Repeat for multiple patterns.",
+    },
   },
   "grants create": {
     summary: "Grant channel permissions to one or more principals.",

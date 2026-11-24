@@ -29,17 +29,30 @@ const Groups = [
   principal("all-connections", {}),
 ] as const;
 
-export const GrantPrincipalInput = Type.Union([
-  principal("user", { userId: Ref("member") }),
-  principal("project", { project: Name, environments: Environments }),
-  principal("all-projects", { environments: Environments }),
+const UserInput = principal("user", { userId: Ref("member") });
+const NamedInputs = [
   principal("github", GitHubFields),
   Oidc,
   principal("app", { app: Name }),
   principal("connection", { connection: Ref("connection") }),
   ...Groups,
+] as const;
+
+export const GrantPrincipalInput = Type.Union([
+  UserInput,
+  principal("project", { project: Name, environments: Environments }),
+  principal("all-projects", { environments: Environments }),
+  ...NamedInputs,
 ]);
 export type GrantPrincipalInput = Static<typeof GrantPrincipalInput>;
+
+export const GrantRemovalPrincipal = Type.Union([
+  UserInput,
+  principal("project", { project: Name, environments: Type.Optional(Environments) }),
+  principal("all-projects", { environments: Type.Optional(Environments) }),
+  ...NamedInputs,
+]);
+export type GrantRemovalPrincipal = Static<typeof GrantRemovalPrincipal>;
 
 export const GrantPrincipal = Type.Union([
   principal("user", { userId: Type.String(), email: NullableName }),
