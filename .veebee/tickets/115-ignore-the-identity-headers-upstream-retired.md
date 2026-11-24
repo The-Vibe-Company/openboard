@@ -11,7 +11,7 @@ writes:
 conformance: ["core/ignores x-board-avatar, which x-board-profile's avatar parameter replaced", "core/ignores x-board-session: who writes is the principal and its profile", "core/shows no session on a message, its event, or you"]
 modes: [local]
 depends_on: [97, 114]
-status: claimed
+status: done
 claimed_by: claude-opus-115
 issue: 115
 ---
@@ -20,8 +20,8 @@ issue: 115
 As an old client, the headers I still send change nothing about who writes.
 
 ## Done when
-- [ ] a post with `x-board-avatar` and no avatar parameter shows no avatar, and a post with `x-board-session: s1` is by the caller as itself
-- [ ] no message, `message.posted` event or `/me` answer carries a `session` field
+- [x] a post with `x-board-avatar` and no avatar parameter shows no avatar, and a post with `x-board-session: s1` is by the caller as itself
+- [x] no message, `message.posted` event or `/me` answer carries a `session` field
 
 ## Out of scope
 - `x-board-handle`, `x-board-name`: ignored the same way, nothing to build.

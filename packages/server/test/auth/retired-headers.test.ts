@@ -59,7 +59,8 @@ test("x-board-session: s1 posts as the caller itself, with no session anywhere",
 test("GET /me with every retired header answers the caller as itself, with no session", async () => {
   app = makeApp();
   const plain = await (await call(app, "GET", "/me")).json();
-  const retired = Object.fromEntries(RETIRED_HEADERS.map((name) => [name, "s1"]));
+  const retired: Record<string, string> = Object.fromEntries(RETIRED_HEADERS.map((name) => [name, "s1"]));
+  retired["x-board-avatar"] = "https://example.com/old.png";
   const response = await withHeaders(app, retired, "GET", "/me");
   expect(response.status).toBe(200);
   const me = await response.json();
