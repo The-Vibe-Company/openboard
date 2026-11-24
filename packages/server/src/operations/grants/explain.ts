@@ -1,6 +1,6 @@
 import { BoardError, type explainGrants, type GrantView, type InputOf } from "@openboard/contract";
 import { agents, explainAccess, explainSubject, type GrantSubject, grants } from "@openboard/core";
-import { callerCan, credentialKind, memberOf, workloadOf } from "../../deps.ts";
+import { callerCan, credentialKind, memberOf, requestScope, workloadOf } from "../../deps.ts";
 import type { Handler } from "../index.ts";
 import { canListGrants } from "./list.ts";
 
@@ -67,7 +67,8 @@ export const explainGrantsHandler: Handler<typeof explainGrants> = async (ctx, q
     return explainSubject(channel, views, { kind: "connection", id: connection });
   }
   if (self && kind === "local") {
-    return { ...explainAccess(channel, []), can: [...grants.PERMISSIONS] };
+    const can = by[requestScope] === undefined ? grants.PERMISSIONS : agents.allowedAt(by[callerCan] ?? {}, channel);
+    return { ...explainAccess(channel, []), can: [...can] };
   }
   const subject =
     named ??
@@ -78,7 +79,9 @@ export const explainGrantsHandler: Handler<typeof explainGrants> = async (ctx, q
   const views = subject || canList ? await ctx.board.listGrants() : [];
   if (user || (self && person)) {
     const explanation = await explainPerson(ctx, channel, user ?? person ?? "", views, self);
-    return self ? { ...explanation, can: [...agents.allowedAt(by[callerCan] ?? {}, channel)] } : explanation;
+    if (self) explanation.can = [...agents.allowedAt(by[callerCan] ?? {}, channel)];
+    if (!canList) explanation.grants = [];
+    return explanation;
   }
   const explanation = subject ? explainSubject(channel, views, subject) : explainAccess(channel, []);
   if (self) explanation.can = [...agents.allowedAt(by[callerCan] ?? {}, channel)];

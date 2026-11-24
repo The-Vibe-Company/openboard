@@ -6,13 +6,22 @@ package: server
 writes:
   - packages/core/src/access/grant-changes.ts
   - packages/core/test/access/grant-changes.test.ts
-  - packages/server/src/operations/grants.ts
+  - packages/server/src/auth/access.ts
+  - packages/server/src/auth/personal-tokens.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/operations/grants/authority.ts
+  - packages/server/src/operations/grants/batch.ts
+  - packages/server/src/operations/grants/create.ts
+  - packages/server/src/operations/grants/explain.ts
+  - packages/server/src/operations/grants/list.ts
+  - tools/conformance/score.json
+  - docs/protocol.md
   - packages/server/test/grants/narrowed.test.ts
 conformance: ["grants/takes manage at each pattern a grant names to change it, and at * to list them", "grants/lets no caller narrowed with x-board-can grant past its can, even where everyone's grant closes it"]
 modes: [local, hosted]
 depends_on: [283, 285, 286]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 463
 ---
 
