@@ -30,7 +30,8 @@ function auditEntry(event: AuditRecord): AuditEvent {
   switch (event.type) {
     case "ob.connection.created": {
       const { connection, claims, by } = event.payload;
-      return { ...common, type: event.type, payload: { connection, claims, by } };
+      // Creations recorded before `claims` existed carry none: no limit.
+      return { ...common, type: event.type, payload: { connection, claims: claims ?? null, by } };
     }
     case "ob.connection.revoked": {
       const { connection, grant } = event.payload;

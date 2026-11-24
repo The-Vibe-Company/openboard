@@ -27,7 +27,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [98, 131]
-status: claimed
+status: done
 claimed_by: claude-opus-t132
 issue: 133
 ---
@@ -36,7 +36,7 @@ issue: 133
 As an owner, I see who changed my board's configuration and when.
 
 ## Done when
-- [ ] `curl http://127.0.0.1:8787/api/local/main/x/audit` as the owner lists `ob.connection.created`, `ob.agent.claimed` and `ob.connection.revoked` with their actors and no secret, while `GET /events` shows none of them
+- [x] `curl http://127.0.0.1:8787/api/local/main/x/audit` as the owner lists `ob.connection.created`, `ob.agent.claimed` and `ob.connection.revoked` with their actors and no secret, while `GET /events` shows none of them
 
 ## Out of scope
 - Organization audit (161).
