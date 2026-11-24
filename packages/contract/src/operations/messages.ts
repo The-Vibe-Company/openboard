@@ -99,7 +99,7 @@ export const editMessage = defineOperation({
     "quota_exceeded",
   ],
   access: { permission: "post", channel: "fromMessage" },
-  effects: { readOnly: false, idempotent: false, emits: ["message.edited"] },
+  effects: { readOnly: false, idempotent: false, emits: ["message.edited", "task.blocked"] },
   cli: { command: ["edit"], args: ["id", "text"], options: { revision: "if-revision" } },
   mcp: { tool: "edit_message" },
   upstream: true,

@@ -19,6 +19,7 @@ import {
   decideReaction,
   findBlocks,
   formatId,
+  holdTaskAfterEdit,
   type MessageBlock,
   messages,
   parseId,
@@ -210,7 +211,8 @@ export const editMessageHandler: Handler<typeof editMessage> = async (ctx, input
     const event = decideEdit({ head: writer.head, target }, input, { by: ctx.by, now: ctx.now() }, settled);
     event.payload.view.blocks = await validateBlocks(writer, event.payload.text);
     ctx.debitWrite();
-    await writer.append([event]);
+    const hold = holdTaskAfterEdit(event);
+    await writer.append(hold ? [event, hold] : [event]);
     const { mentions: resolved } = event.payload.view;
     return { ok: true, ...(resolved === undefined ? {} : { mentions: resolved }) };
   });

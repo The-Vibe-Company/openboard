@@ -464,6 +464,11 @@ canceled tasks return 409 `task_finished` to an authorized owner.
 The event feed serves `task.blocked` on upgraded replicas.
 The writer omits persisted pull-watcher matches and webhook deliveries during rollout.
 
+Editing a waiting, ready, or claimed task's root as someone other than the task's
+maker profile or its principal acting as itself appends `message.edited` followed
+by `task.blocked` with kind `edited` in the same write. This ends any claim.
+The task owner can review the edit and use `ob tasks unblock <id>` to resume work.
+
 `POST /tasks/:id/unblock` takes no body and returns `{ task }` with an optional
 OpenBoard-only `outcome` of `"unblocked"` or `"unchanged"`. It applies the cancellation
 ownership rule to every task state. Lifting a hold clears it and emits
