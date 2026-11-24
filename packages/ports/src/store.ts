@@ -87,7 +87,12 @@ export interface OrgScope {
   readonly [minted]: "org";
 }
 
-export interface OrgView {
+interface RateView {
+  /** Consume one attempt in this scope's fixed window, or return the retry delay in seconds. */
+  takeRate(key: string, limit: number, windowMs: number, now: number): Promise<number | undefined>;
+}
+
+export interface OrgView extends RateView {
   listMembers(): Promise<{ principal: string; role: Role }[]>;
   /** The organization's first `limit` events after its event ID `after`, oldest first, and the last event ID read first. */
   auditEvents(after: number, limit: number): Promise<{ events: OrgAuditRecord[]; head: number }>;
@@ -155,9 +160,7 @@ interface DeviceTokenIssue {
 type DevicePoll = { status: "missing" | "pending" | "too_soon" } | { status: "issued"; org: Named; boards: Named[] };
 
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
-export interface PlatformView {
-  /** Consume one platform-wide attempt in a fixed window, or return the retry delay in seconds. */
-  takeRate(key: string, limit: number, windowMs: number, now: number): Promise<number | undefined>;
+export interface PlatformView extends RateView {
   /** Start a device request and prune prior expired requests using the supplied clock. */
   startDevice(deviceHash: string, userCode: string, clientName: string, now: number, expiresAt: number): Promise<void>;
   /** Only a current member of the named organization can approve an unused, live code. */
@@ -320,7 +323,7 @@ export interface MentionEvidence {
 }
 
 /** One board's storage; every statement it runs is bound to its scope. */
-export interface BoardView extends BoardMessageReads, BoardTaskReads, BoardGrantReads, BoardWatcherReads {
+export interface BoardView extends RateView, BoardMessageReads, BoardTaskReads, BoardGrantReads, BoardWatcherReads {
   /**
    * Wake when a write advances this board past the cursor, with the head it reached and its events when in memory.
    * Returns an unsubscribe.
