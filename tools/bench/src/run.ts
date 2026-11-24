@@ -29,8 +29,12 @@ for (const mode of selected) {
   const report = await measure(mode, sizes, { includeSse: true, taskCycles });
   tables.push(formatTable(report));
   // The required check holds both modes' counters and local latencies only (docs/codebase.md 6.7): hosted latencies
-  // are held by the full bench, since a quick run's round trips to a shared runner's Postgres jitter too much.
-  const modeFailures = compareBudgets(report, { latency: !values.quick || mode === "local" });
+  // are held by the full bench, since a quick run's round trips to a shared runner's Postgres jitter too much. The
+  // SSE fan-out's p99 (50 tails, a 3 ms budget) moves with the shared runner too, so the nightly full bench holds it.
+  const modeFailures = compareBudgets(report, {
+    latency: !values.quick || mode === "local",
+    sseLatency: !values.quick,
+  });
   failures.push(...modeFailures);
   if (values.json !== undefined) {
     writeFileSync(values.json, JSON.stringify({ report, quick: values.quick, failures: modeFailures }) + "\n");

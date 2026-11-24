@@ -27,7 +27,10 @@ const measuredNoiseFloorMs = { p50: 0.5, p99: 1 } as const;
  * Returns diagnostics for increased exact counters and, when `latency` holds, measured values more than 20% and the
  * noise floor over budget.
  */
-export function compareBudgets(report: ModeReport, { latency }: { readonly latency: boolean }): string[] {
+export function compareBudgets(
+  report: ModeReport,
+  { latency, sseLatency = latency }: { readonly latency: boolean; readonly sseLatency?: boolean },
+): string[] {
   const budget = modeBudgets[report.mode];
 
   const failures: string[] = [];
@@ -48,7 +51,7 @@ export function compareBudgets(report: ModeReport, { latency }: { readonly laten
     if (!latency) continue;
     compareLatency(name, { p50, p99 }, budget.measured[workload], failures);
   }
-  if (latency && report.mode === "local" && report.sse) {
+  if (sseLatency && report.mode === "local" && report.sse) {
     compareLatency("local SSE fan-out", report.sse, budgets.local.sseFanOut, failures);
   }
   if (report.idleTimers > budget.counters.idleTimers) {
