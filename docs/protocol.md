@@ -130,7 +130,7 @@ answers. OpenBoard adds:
 | Method | Path | | Notes |
 | --- | --- | --- | --- |
 | GET | `/messages` | U | |
-| GET | `/threads` | U | all filters, `before`/`older` |
+| GET | `/threads` | U | all filters, `before`/`older`, `after`; not `before` with `after` (400 `invalid_request`) |
 | GET | `/messages/:id` | U | Root and replies, oldest first. `after` must name a message in the same thread (400 `invalid_request` otherwise). `limit` (1–500) selects the first replies after it, or the newest replies when no `after` is given. |
 | GET | `/posts/:id` | U | `{ message }` as it landed, by the caller's client ID; 404 `post_not_found` for missing or foreign IDs |
 | POST | `/messages` | U | `sync` targets: 400 `invalid_request` "this board syncs nowhere" |
