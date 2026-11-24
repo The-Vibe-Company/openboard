@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { BOARD_URL, call, makeApp } from "./support/app.ts";
+import { BOARD_URL, call, LOCAL_OWNER, makeApp, OWNER } from "./support/app.ts";
 
 let app: ReturnType<typeof makeApp>;
 afterEach(() => app.close());
@@ -233,4 +233,44 @@ describe("listing the threads of every channel under a pattern", () => {
     expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
     expect((await read("dev/web/")).status).toBe(200);
   });
+});
+
+test("GET /threads filters roots and replies by author before paging", async () => {
+  app = makeApp();
+  const post = async (body: object, profile?: string) => {
+    const response = profile
+      ? await app.fetch(
+          new Request(`${BOARD_URL}/messages`, {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${OWNER.token}`,
+              "content-type": "application/json",
+              "x-board-profile": profile,
+            },
+            body: JSON.stringify(body),
+          }),
+        )
+      : await call(app, "POST", "/messages", body);
+    expect(response.status).toBe(201);
+    return ((await response.json()) as Thread).message.id;
+  };
+  const found = async (by: string, query = "") => {
+    const read = await call(app, "GET", `/threads?channel=dev&by=${encodeURIComponent(by)}${query}`);
+    expect(read.status).toBe(200);
+    return ((await read.json()) as { threads: Thread[] }).threads.map(({ message }) => message.id);
+  };
+
+  const authored = await post({ channel: "dev", text: "fix" }, "bot");
+  const replied = await post({ channel: "dev", text: "fix by the owner" });
+  const reply = await post({ re: replied, text: "review" }, "bot");
+  const unrelated = await post({ channel: "dev", text: "other" });
+  expect(await found("LOCAL-TEST/BOT")).toEqual([authored, replied]);
+  expect(await found(`${LOCAL_OWNER}+bot`, "&limit=1")).toEqual([replied]);
+  expect(await found("local-test")).toEqual([authored, replied, unrelated]);
+  expect(await found("me")).toEqual([replied, unrelated]);
+  expect(await found("local-test/bot", "&text=fix")).toEqual([authored]);
+  expect(await found("someone-else")).toEqual([]);
+  expect((await call(app, "POST", `/messages/${reply}/delete`, {})).status).toBe(200);
+  expect(await found("local-test/bot")).toEqual([authored, replied]);
+  expect(await found("local-test/bot", "&text=review")).toEqual([]);
 });

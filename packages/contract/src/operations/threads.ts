@@ -55,6 +55,12 @@ export const listThreads = defineOperation({
     query: Type.Object(
       {
         channel: ChannelFilter,
+        by: Type.Optional(
+          Type.String({
+            pattern: "^[^\\u0000]+$",
+            description: "Only threads with a message by this handle, actor ID, or `me` for the caller's actor.",
+          }),
+        ),
         label: Type.Optional(Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }))),
         text: Type.Optional(
           Type.String({

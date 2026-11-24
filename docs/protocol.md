@@ -163,6 +163,12 @@ characters, as upstream); `%` and `_` match only themselves, and an edited messa
 is found by its new text, not its old one. With labels, one message must say the
 text and have the labels (its own or its root's). It combines with paging.
 
+Use `ob read <channel> --by <handle>` to list threads with a matching root or reply.
+`GET /threads` accepts `by` as a case-insensitive handle, an exact actor ID, or
+`me` for the caller's own actor. A person also matches their agents when named
+by handle or ID. Tombstones retain their author for this filter. The same
+message must satisfy the other filters.
+
 Use `ob read dev/` (a trailing slash) to list the threads of `dev` and of every
 channel under it (`dev/web`, `dev/web/api`) as one list, by activity, as upstream's
 "Filters" reads `channel`. Every other filter and paging works the same. The

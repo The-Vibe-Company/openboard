@@ -11,11 +11,17 @@ writes:
   - packages/server/test/threads.test.ts
   - packages/ports/src/store.ts
   - packages/core/src/threads/filters.ts
+  - packages/cli/src/commands/read.ts
+  - packages/cli/src/commands/index.ts
+  - packages/cli/src/main.ts
+  - packages/cli/test/read-channel.test.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
 conformance: []
 modes: [local]
 depends_on: [88]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 89
 ---
 
@@ -23,7 +29,7 @@ issue: 89
 As a person, I find what one agent or person has been writing.
 
 ## Done when
-- [ ] `ob read dev --by <handle>` lists only threads with a message by that actor
+- [x] `ob read dev --by <handle>` lists only threads with a message by that actor
 
 ## Out of scope
 - Mentions (90).

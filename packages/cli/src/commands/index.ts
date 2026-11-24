@@ -9,6 +9,8 @@ export interface CommandContext {
   readonly boardUrl: string;
   readonly now: () => number;
   readonly args: readonly string[];
+  /** The explicit `--as` override. */
+  readonly profile: string | undefined;
   /** How many of `args` came before `--`: only those may be `--name value` options. */
   readonly optionsEnd: number;
   readonly json: boolean;
@@ -17,7 +19,6 @@ export interface CommandContext {
 
 export interface StandaloneContext extends Omit<CommandContext, "client" | "boardUrl" | "now"> {
   readonly env: CliEnvironment;
-  readonly profile: string | undefined;
   readonly options: CliOptions;
 }
 

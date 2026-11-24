@@ -52,6 +52,7 @@ export const listThreadsHandler: Handler<typeof listThreads> = async ({ board, b
   } = await board.listThreads(channel, labels, {
     before,
     after,
+    author: input.by === "me" ? { actor: by.actor } : input.by === undefined ? undefined : { query: input.by },
     limit,
     text: text === undefined ? undefined : textPattern(text),
     under,
