@@ -33,6 +33,9 @@ export interface BoardWebhookReads {
 }
 
 export interface BoardWebhookWriter extends BoardWebhookReads {
+  waitingWebhookDeliveries(id: string): Promise<{ id: string; nextAt: number }[]>;
+  webhookDeliveryChannels(id: string): Promise<(string | null)[]>;
+  webhookSecret(record: WebhookRecord): Promise<WebhookSecret | null>;
   webhookQuota(): Promise<QuotaOutcome | null>;
   storeWebhookSecret(id: string, secretId: string, secret: WebhookSecret, now: number): Promise<void>;
   removeWebhookSecret(record: WebhookRecord): Promise<void>;
@@ -46,8 +49,11 @@ export interface BoardWebhookWriter extends BoardWebhookReads {
       status: number | null;
       error: string | null;
       now: number;
-    } & ({ state: "done" | "dead"; nextAt?: never } | { state: "pending"; nextAt: number }),
-  ): Promise<void>;
+    } & (
+      | { state: "done" | "dead"; nextAt?: never; revokedLease?: { jobId: string; instanceId: string } }
+      | { state: "pending"; nextAt: number; revokedLease?: never }
+    ),
+  ): Promise<boolean>;
 }
 
 export const WEBHOOK_DELIVERY_JOB = "webhook-delivery";

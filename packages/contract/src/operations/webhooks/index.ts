@@ -70,6 +70,28 @@ export const listWebhooks = defineOperation({
   cli: { command: ["webhooks"], args: [] },
 });
 
+export const updateWebhook = defineOperation({
+  ...common,
+  name: "updateWebhook",
+  summary: "Update a webhook or change its enabled state.",
+  route: { method: "POST", path: "/x/webhooks/:id" },
+  input: { params, body: Type.Partial(WebhookSpec, { additionalProperties: false }) },
+  output: createWebhook.output,
+  errors: [
+    "not_found",
+    "forbidden",
+    "invalid_request",
+    "invalid_url",
+    "invalid_signing",
+    "bad_watcher",
+    "not_supported",
+    "slug_taken",
+  ],
+  effects: { readOnly: false, idempotent: false, emits: ["ob.webhook.updated"] },
+  cli: false,
+  why: "Enable and disable submit fixed patches without changing signing credentials.",
+});
+
 export const testWebhook = defineOperation({
   ...common,
   name: "testWebhook",

@@ -1,6 +1,7 @@
 import type {
   createChannel,
   getConnection,
+  getWebhook,
   listChannels,
   listConnections,
   listSchemas,
@@ -12,6 +13,7 @@ import type {
   retryWebhookDelivery,
   revokeGrant,
   testWebhook,
+  Webhook,
 } from "@openboard/contract";
 import { BoardError } from "@the-vibe-company/openboard";
 import { grantsText } from "./grant-views.ts";
@@ -26,6 +28,15 @@ export const consoleOutput: Output = Object.freeze({
   out: (line: string) => console.log(line),
   err: (line: string) => console.error(line),
 });
+
+export function webhookText(webhook: Webhook): string {
+  const state = webhook.enabled ? "enabled" : ["disabled", webhook.disabledReason].filter(Boolean).join(": ");
+  const line = `${webhook.id}  ${webhook.name}  ${webhook.url}  ${state}`;
+  return line.replace(
+    /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu,
+    (character) => `\\u{${(character.codePointAt(0) ?? 0).toString(16)}}`,
+  );
+}
 
 function shellArg(arg: string): string {
   return /^[\w./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", "'\"'\"'")}'`;
@@ -180,6 +191,7 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
       const { task, outcome } = output as OutputOf<typeof reopenTask>;
       return outcome === "reopened" ? `reopened ${task.id}` : "unchanged";
     },
+    getWebhook: (output) => webhookText(output as OutputOf<typeof getWebhook>),
     listWebhookDeliveries: (output) =>
       (output as OutputOf<typeof listWebhookDeliveries>).deliveries
         .map(({ id, state, attempt, lastStatus, lastError }) =>

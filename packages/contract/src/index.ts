@@ -144,5 +144,12 @@ export {
   updateGrant,
 } from "./operations/index.ts";
 export { listWebhookDeliveries, retryWebhookDelivery } from "./operations/webhooks/deliveries.ts";
-export { createWebhook, deleteWebhook, getWebhook, listWebhooks, testWebhook } from "./operations/webhooks/index.ts";
+export {
+  createWebhook,
+  deleteWebhook,
+  getWebhook,
+  listWebhooks,
+  testWebhook,
+  updateWebhook,
+} from "./operations/webhooks/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

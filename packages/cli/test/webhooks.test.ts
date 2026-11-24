@@ -86,7 +86,7 @@ test.each(["github", "stripe", "ts-id-body"])(
 test("ob webhooks, show and delete print the board response without credentials", async () => {
   const commands = [
     { args: [], response: { webhooks: [webhook] }, path: "", method: "GET" },
-    { args: ["show", webhook.id], response: webhook, path: `/${webhook.id}`, method: "GET" },
+    { args: ["show", webhook.id, "--json"], response: webhook, path: `/${webhook.id}`, method: "GET" },
     { args: ["delete", webhook.id], response: { id: webhook.id }, path: `/${webhook.id}/delete`, method: "POST" },
   ];
   for (const { args, response, path, method } of commands) {
@@ -117,4 +117,22 @@ test("ob webhooks deliveries keeps the status and the failure class when both ca
   const json = fixture(response);
   expect(await json.run([...args, "--json"])).toBe(0);
   expect(JSON.parse(json.out.join("\n"))).toEqual(response);
+});
+
+test.each([true, false])("webhooks updates and displays enabled=%s without leaking credentials", async (enabled) => {
+  const changed = { ...webhook, enabled, disabledReason: enabled ? null : "gone" };
+  const capture = fixture({ webhook: changed, secret });
+  expect(await capture.run([enabled ? "enable" : "disable", webhook.id])).toBe(0);
+  expect(capture.requests[0]?.url).toBe(`${env.BOARD_URL}/x/webhooks/${webhook.id}`);
+  expect(capture.requests[0]?.method).toBe("POST");
+  expect(await capture.requests[0]?.json()).toEqual({ enabled });
+  expect(capture.out).toEqual([
+    `${webhook.id}  ${webhook.name}  ${webhook.url}  ${enabled ? "enabled" : "disabled: gone"}`,
+  ]);
+});
+
+test("webhooks show escapes terminal controls in a stored name", async () => {
+  const capture = fixture({ ...webhook, name: "line\n\u001b[2K", enabled: false, disabledReason: "gone" });
+  expect(await capture.run(["show", webhook.id])).toBe(0);
+  expect(capture.out).toEqual([`${webhook.id}  line\\u{a}\\u{1b}[2K  ${webhook.url}  disabled: gone`]);
 });

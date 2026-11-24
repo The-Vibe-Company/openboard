@@ -12,9 +12,9 @@ import {
 import { type OpenStore, testScope } from "./index.ts";
 import { seedCase } from "./isolation-case-seeds.ts";
 import { at, boardCreation, type StoreTenant, seedPersonGrant, storeTenant } from "./isolation-seed.ts";
+import { webhookWriterCases } from "./isolation-webhooks.ts";
 import { inboundCipher, inboundId } from "./store/inbound.test-suite.ts";
 import { pull, seedWatcher } from "./store/watchers.test-suite.ts";
-import { seedWebhook } from "./store/webhooks.test-suite.ts";
 
 /** Fails when a result carries any of B's names or text. */
 function holdsNothingOf(b: StoreTenant, result: unknown, method: string): void {
@@ -150,48 +150,7 @@ const writerCases: Cases<BoardWriter> = {
     expectNull(await inWrite(a, (writer) => writer.inboundSecret(inboundId)));
   },
   storeInboundSecret: (a) => inWrite(a, (writer) => writer.storeInboundSecret("ib_local", inboundCipher)),
-  webhooks: async (a) => {
-    expect(await inWrite(a, (writer) => writer.webhooks())).toEqual([]);
-  },
-  webhook: async (a, b) => {
-    const [foreign] = await b.board.webhooks();
-    if (!foreign) throw new Error("missing foreign webhook");
-    return expectNull(await inWrite(a, (writer) => writer.webhook(foreign.webhook.id)));
-  },
-  webhookDeliveries: async (a, b) => {
-    const [foreign] = await b.board.webhooks();
-    if (!foreign) throw new Error("missing foreign webhook");
-    const id = foreign.webhook.id;
-    expect(await b.board.webhookDeliveries(id, { limit: 1 })).toHaveLength(1);
-    expect(await inWrite(a, (writer) => writer.webhookDeliveries(id, { limit: 1 }))).toEqual([]);
-  },
-  webhookQuota: (a) => inWrite(a, async (writer) => expectNull(await writer.webhookQuota())),
-  storeWebhookSecret: (a) => seedWebhook(a.board, a.marker, a.actor),
-  removeWebhookSecret: async (a, b) => {
-    const [foreign] = await b.board.webhooks();
-    if (!foreign) throw new Error("missing foreign webhook");
-    await inWrite(a, (writer) => writer.removeWebhookSecret(foreign));
-    expect(await b.board.webhook(foreign.webhook.id)).toEqual(foreign);
-  },
-  beginWebhookPing: async (a, b) => {
-    const [foreign] = await b.board.webhooks();
-    if (!foreign) throw new Error("missing foreign webhook");
-    await inWrite(a, async (writer) => expectNull(await writer.beginWebhookPing(foreign, "foreign-ping", at)));
-  },
-  retryWebhookDelivery: async (a, b) => {
-    const [foreign] = await b.board.webhooks();
-    if (!foreign) throw new Error("missing foreign webhook");
-    const { id } = foreign.webhook;
-    const [delivery] = await b.board.webhookDeliveries(id, { limit: 1 });
-    if (!delivery) throw new Error("missing foreign delivery");
-    expect(await inWrite(a, (writer) => writer.retryWebhookDelivery(id, delivery.id, at))).toBe("missing");
-  },
-  beginWebhookAttempt: (a) =>
-    inWrite(a, async (writer) => expectNull(await writer.beginWebhookAttempt("missing", "fixture", at))),
-  finishWebhookAttempt: (a) =>
-    inWrite(a, (writer) =>
-      writer.finishWebhookAttempt("missing", 1, { state: "dead", status: 400, error: null, now: at }),
-    ),
+  ...webhookWriterCases,
 
   listGrants: async (a) => {
     const expected = await a.board.listGrants();

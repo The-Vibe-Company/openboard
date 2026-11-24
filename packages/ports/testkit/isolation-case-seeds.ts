@@ -1,3 +1,4 @@
+import { messages } from "@openboard/core";
 import type { StoreTenant } from "./isolation-seed.ts";
 import { at } from "./isolation-seed.ts";
 import { seedInbound } from "./store/inbound.test-suite.ts";
@@ -18,13 +19,34 @@ export async function seedCase(method: string, a: StoreTenant, b: StoreTenant) {
   if (["readExport", "auditExportDownload", "runExport", "exportAudit"].includes(method)) {
     await b.org.requestExport("foreign", b.personId, at, () => {});
   }
-  if (["webhooks", "webhook", "removeWebhookSecret", "beginWebhookPing"].includes(method)) {
+  if (["webhooks", "webhook", "removeWebhookSecret", "beginWebhookPing", "webhookSecret"].includes(method)) {
     await seedWebhook(b.board, b.marker, b.actor);
   }
-  if (method === "webhookDeliveries" || method === "retryWebhookDelivery") {
+  if (method === "webhookDeliveryChannels") {
+    await seedWebhook(b.board, b.marker, b.actor, true);
+    await b.board.write((writer) =>
+      writer.append(
+        messages.decidePost(
+          { head: writer.head },
+          { channel: "dev", text: "foreign delivery" },
+          { by: { actor: b.actor, principal: b.actor, profile: null }, now: at },
+        ).events,
+      ),
+    );
+  }
+  if (["webhookDeliveries", "retryWebhookDelivery", "waitingWebhookDeliveries"].includes(method)) {
     const foreign = await seedWebhook(b.board, b.marker, b.actor);
     await b.board.write(async (writer) => {
       await writer.beginWebhookPing(foreign, "foreign-ping", at);
+      if (method === "waitingWebhookDeliveries") {
+        await writer.finishWebhookAttempt("foreign-ping", 1, {
+          state: "pending",
+          status: 503,
+          error: "status",
+          now: at,
+          nextAt: at,
+        });
+      }
       if (method === "retryWebhookDelivery") {
         await writer.finishWebhookAttempt("foreign-ping", 1, { state: "dead", status: 422, error: "status", now: at });
       }

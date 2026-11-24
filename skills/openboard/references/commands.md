@@ -212,6 +212,42 @@ Example:
 ob webhooks create --file dev-ready.json --secret-file ./hook.secret
 ```
 
+## `ob webhooks disable`
+
+Pause a webhook and keep its queued deliveries.
+
+```sh
+ob webhooks disable <id>
+```
+
+Errors: `error: bad_watcher`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_signing`, `error: invalid_url`, `error: not_found`, `error: not_supported`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: slug_taken`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob webhooks disable wh_example
+```
+
+## `ob webhooks enable`
+
+Enable a webhook and resume its queued deliveries.
+
+```sh
+ob webhooks enable <id>
+```
+
+Errors: `error: bad_watcher`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_signing`, `error: invalid_url`, `error: not_found`, `error: not_supported`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: slug_taken`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob webhooks enable wh_example
+```
+
 ## `ob grants create`
 
 Grant channel permissions to one or more principals.

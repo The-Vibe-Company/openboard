@@ -1,5 +1,9 @@
 export function webhookOutcome(status: number | null) {
-  return { state: status !== null && status >= 200 && status < 300 ? "done" : "dead", status } as const;
+  return {
+    state: status !== null && status >= 200 && status < 300 ? "done" : "dead",
+    status,
+    gone: status === 410,
+  } as const;
 }
 
 const retrySeconds = [10, 30, 120, 600, 1_800, 3_600, 10_800, 21_600, 43_200];

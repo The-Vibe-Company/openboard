@@ -50,6 +50,12 @@ function auditEntry(event: AuditRecord): AuditEvent {
         type: event.type,
         payload: { id: event.payload.webhook.id, name: event.payload.webhook.name },
       };
+    case "ob.webhook.disabled":
+      return { ...common, type: event.type, payload: { id: event.payload.webhook.id, reason: "gone" } };
+    case "ob.webhook.updated": {
+      const { id, name, enabled } = event.payload.webhook;
+      return { ...common, type: event.type, payload: { id, name, enabled } };
+    }
     case "ob.webhook.deleted":
       return { ...common, type: event.type, payload: { id: event.payload.id } };
     case "ob.schema.registered":

@@ -16,6 +16,14 @@ export interface WebhookCreated extends Audit {
   readonly payload: { readonly webhook: Webhook; readonly directory: boolean; readonly secretId: string };
 }
 
+interface WebhookChange extends Audit {
+  readonly payload: { readonly webhook: Webhook; readonly secretId: string };
+}
+
+export type WebhookUpdated =
+  | (WebhookChange & { readonly type: "ob.webhook.updated" })
+  | (WebhookChange & { readonly type: "ob.webhook.disabled" });
+
 export interface WebhookDeleted extends Audit {
   readonly type: "ob.webhook.deleted";
   readonly payload: { readonly id: string; readonly secretId: string };

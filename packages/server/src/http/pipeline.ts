@@ -327,7 +327,7 @@ async function runBoard(
   const input = validate(operation, raw);
   const output = await handlerOf(operation)(await context(input), input).catch(recoverGrant(operation, input));
   const response = operationResponse(operation, output);
-  if (operation.name === "createWebhook" || operation.name === "createInbound") {
+  if (operation.name === "createWebhook" || operation.name === "updateWebhook" || operation.name === "createInbound") {
     response.headers.set("cache-control", "no-store");
   }
   if (operation.eventStream) response.headers.set("vary", "Accept");

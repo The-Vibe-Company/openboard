@@ -5,18 +5,22 @@ import {
   type getWebhook,
   type listWebhooks,
   type testWebhook,
+  type updateWebhook,
   type Webhook,
+  type WebhookSpec,
 } from "@openboard/contract";
 import {
   base32,
   countQuotaError,
   isoTime,
+  matchesEventChannel,
   parseTail,
   validateWebhook,
+  validateWebhookContent,
   webhookOutcome,
   webhookPing,
 } from "@openboard/core";
-import type { WebhookRecord } from "@openboard/ports";
+import { type BoardWriter, WEBHOOK_DELIVERY_JOB, type WebhookRecord } from "@openboard/ports";
 import {
   allowedEverywhere,
   allowedThroughout,
@@ -26,7 +30,7 @@ import {
 import { callerCan } from "../../deps.ts";
 import { deliverWebhook } from "../../jobs/webhooks.ts";
 import { signedWebhookRequest } from "../../webhooks/request.ts";
-import { sealWebhookSecret } from "../../webhooks/secret-box.ts";
+import { openWebhookSecret, sealWebhookSecret } from "../../webhooks/secret-box.ts";
 import { webhookTarget, withDnsDeadline } from "../../webhooks/target.ts";
 import type { BoardContext, Handler } from "../index.ts";
 
@@ -59,6 +63,17 @@ function audit(ctx: BoardContext, id: number, at: number) {
   };
 }
 
+function signingKey(ctx: BoardContext) {
+  if (!ctx.webhookConfig.secretKey) {
+    throw new BoardError("not_supported", "webhook signing is unavailable", { hint: "Set OPENBOARD_SECRET_KEY." });
+  }
+  return ctx.webhookConfig.secretKey;
+}
+
+function newSecret(ctx: BoardContext) {
+  return `whsec_${Buffer.from(ctx.randomBytes(32)).toString("base64")}`;
+}
+
 export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, spec) => {
   const {
     tail,
@@ -68,15 +83,13 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
     body,
   } = validateWebhook(spec);
   requireManage(ctx, tail.channel);
-  if (!ctx.webhookConfig.secretKey) {
-    throw new BoardError("not_supported", "webhook signing is unavailable", { hint: "Set OPENBOARD_SECRET_KEY." });
-  }
+  const key = signingKey(ctx);
   ctx.debitWrite();
   const { url } = await webhookTarget(spec.url, ctx.webhookConfig, withDnsDeadline(ctx.resolveHost, ctx.schedule));
   const now = ctx.now();
   const id = `wh_${base32(ctx.randomBytes(10))}`;
   const secretId = base32(ctx.randomBytes(10));
-  const secret = suppliedSecret ?? `whsec_${Buffer.from(ctx.randomBytes(32)).toString("base64")}`;
+  const secret = suppliedSecret ?? newSecret(ctx);
   const webhook: Webhook = {
     id,
     name: spec.name,
@@ -90,7 +103,7 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
     createdAt: isoTime(now),
   };
   const credentials = { secret, headers };
-  const sealed = sealWebhookSecret(ctx.webhookConfig.secretKey, `${id}.${secretId}`, credentials, ctx.randomBytes(12));
+  const sealed = sealWebhookSecret(key, `${id}.${secretId}`, credentials, ctx.randomBytes(12));
   const directory = canListMentionActors(ctx.by);
   await ctx.board.write(async (writer) => {
     const quota = await writer.webhookQuota();
@@ -104,6 +117,120 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
     ]);
   });
   return suppliedSecret === undefined ? { webhook, secret } : { webhook };
+};
+
+async function updateCredentials(
+  ctx: BoardContext,
+  writer: BoardWriter,
+  record: WebhookRecord,
+  spec: WebhookSpec,
+  patch: Partial<WebhookSpec>,
+  now: number,
+) {
+  if (patch.signing === undefined && patch.headers === undefined) {
+    return { secretId: record.secretId, signing: record.webhook.signing, headers: record.webhook.headers };
+  }
+  const key = signingKey(ctx);
+  let saved: ReturnType<typeof openWebhookSecret> | undefined;
+  if (patch.signing === undefined || (patch.headers === undefined && Object.keys(record.webhook.headers).length)) {
+    const sealed = await writer.webhookSecret(record);
+    saved = sealed && openWebhookSecret(key, `${record.webhook.id}.${record.secretId}`, sealed);
+    if (!saved) throw new BoardError("not_supported", "the existing webhook credentials are unavailable");
+  }
+  const {
+    signing: { secret: supplied, ...signing },
+    headers,
+    publicHeaders,
+  } = validateWebhook({
+    ...spec,
+    signing: patch.signing ?? { ...record.webhook.signing, secret: saved?.secret },
+    headers: patch.headers ?? saved?.headers,
+  });
+  const secret = supplied ?? newSecret(ctx);
+  const secretId = base32(ctx.randomBytes(10));
+  const id = record.webhook.id;
+  const sealed = sealWebhookSecret(key, `${id}.${secretId}`, { secret, headers }, ctx.randomBytes(12));
+  await writer.storeWebhookSecret(id, secretId, sealed, now);
+  await writer.removeWebhookSecret(record);
+  return { secretId, signing, headers: publicHeaders, secret: supplied === undefined ? secret : undefined };
+}
+
+function requireWebhookDirectory(ctx: BoardContext, record: WebhookRecord, patch: Partial<WebhookSpec>) {
+  const editsDelivery =
+    patch.url !== undefined ||
+    patch.filter !== undefined ||
+    patch.body !== undefined ||
+    patch.signing !== undefined ||
+    patch.headers !== undefined;
+  if (editsDelivery && record.directory && !canListMentionActors(ctx.by)) {
+    throw new BoardError("forbidden", "editing delivery settings for this webhook requires board-wide read access");
+  }
+}
+
+export const updateWebhookHandler: Handler<typeof updateWebhook> = async (ctx, { id, ...patch }) => {
+  // Resolve a changed target before taking the board lock. Recheck access against the current row inside it.
+  let target: URL | undefined;
+  if (patch.url !== undefined) {
+    const record = requireWebhook(ctx, await ctx.board.webhook(id));
+    requireWebhookDirectory(ctx, record, patch);
+    const { tail } = validateWebhookContent({ filter: patch.filter ?? record.webhook.filter, body: patch.body });
+    requireManage(ctx, tail.channel);
+    ctx.debitWrite();
+    target = (await webhookTarget(patch.url, ctx.webhookConfig, withDnsDeadline(ctx.resolveHost, ctx.schedule))).url;
+  }
+  return ctx.board.write(async (writer) => {
+    const record = requireWebhook(ctx, await writer.webhook(id));
+    requireWebhookDirectory(ctx, record, patch);
+    const current = record.webhook;
+    const filter = patch.filter ?? current.filter;
+    const { tail, body } = validateWebhookContent({
+      filter,
+      body: patch.body === undefined ? current.body : patch.body,
+    });
+    requireManage(ctx, tail.channel);
+    if (target === undefined) ctx.debitWrite();
+    if (tail.channel !== undefined && tail.channel !== parseTail(current.filter.tail).channel) {
+      const channels = await writer.webhookDeliveryChannels(id);
+      if (channels.some((channel) => channel === null || !matchesEventChannel(channel, tail.channel))) {
+        throw new BoardError("invalid_request", "the new tail must cover the channels of existing webhook deliveries");
+      }
+    }
+    const name = patch.name ?? current.name;
+    if (name !== current.name && (await writer.webhooks()).some(({ webhook }) => webhook.name === name)) {
+      throw new BoardError("slug_taken", "a webhook already has that name");
+    }
+    const now = ctx.now();
+    const url = target?.href ?? current.url;
+    const { secretId, signing, headers, secret } = await updateCredentials(
+      ctx,
+      writer,
+      record,
+      { name, url, filter, body },
+      patch,
+      now,
+    );
+    const enabled = patch.enabled ?? current.enabled;
+    const webhook = {
+      ...current,
+      name,
+      url,
+      filter,
+      body,
+      enabled,
+      signing,
+      headers,
+      disabledReason: enabled ? null : current.disabledReason,
+    };
+    await writer.append([
+      { ...audit(ctx, writer.head + 1, now), type: "ob.webhook.updated", payload: { webhook, secretId } },
+    ]);
+    if (enabled && !current.enabled) {
+      for (const delivery of await writer.waitingWebhookDeliveries(id)) {
+        await writer.enqueue(WEBHOOK_DELIVERY_JOB, Math.max(now, delivery.nextAt), { id: delivery.id });
+      }
+    }
+    return secret === undefined ? { webhook } : { webhook, secret };
+  });
 };
 
 export const listWebhooksHandler: Handler<typeof listWebhooks> = async (ctx) => ({

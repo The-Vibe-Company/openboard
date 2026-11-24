@@ -1,6 +1,13 @@
 import type { Webhook, WebhookDelivery } from "@openboard/contract";
-import { isoTime, type WebhookCreated, type WebhookDeleted } from "@openboard/core";
-import type { BoardKeys, BoardWebhookReads, BoardWebhookWriter, WebhookRecord } from "@openboard/ports";
+import { isoTime, type WebhookCreated, type WebhookDeleted, type WebhookUpdated } from "@openboard/core";
+import {
+  type BoardKeys,
+  type BoardWebhookReads,
+  type BoardWebhookWriter,
+  type WebhookRecord,
+  WEBHOOK_DELIVERY_JOB,
+  WEBHOOK_RESEND_JOB,
+} from "@openboard/ports";
 import type { Db, Dialect, Row } from "../../db.ts";
 import { query, sql } from "../../sql.ts";
 import { exhaustedQuota } from "../orgs.ts";
@@ -27,6 +34,33 @@ export const webhookStatements = {
     FROM boards b JOIN orgs o ON o.id = b.org_id WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"}`,
   insertWebhook: sql`INSERT INTO webhooks (org_id, board_id, id, name, owner_actor, owner, secret_id, enabled, directory, config)
     VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"name"}, ${"ownerActor"}, ${"owner"}, ${"secretId"}, ${"enabled"}, ${"directory"}, ${"config"})`,
+  updateWebhook: sql`UPDATE webhooks SET name = ${"name"}, secret_id = ${"secretId"}, enabled = ${"enabled"}, config = ${"config"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  waitingWebhookDeliveries: sql`SELECT d.id, d.next_at FROM webhook_deliveries d
+    WHERE d.org_id = ${"orgId"} AND d.board_id = ${"boardId"} AND d.webhook = ${"id"}
+      AND (d.state = 'pending' OR (d.state = 'sending' AND d.instance IS NOT NULL)) AND NOT EXISTS (
+        SELECT 1 FROM jobs j WHERE j.org_id = ${"orgId"} AND j.board_id = ${"boardId"}
+          AND j.kind IN (${"deliveryJob"}, ${"resendJob"}) AND j.payload = ('{"id":"' || d.id || '"}')
+      )
+    ORDER BY d.next_at, d.created_at, d.id`,
+  webhookDeliveryChannels: sql`SELECT DISTINCT e.channel FROM webhook_deliveries d
+    LEFT JOIN events e ON e.org_id = d.org_id AND e.board_id = d.board_id AND e.id = d.event
+    WHERE d.org_id = ${"orgId"} AND d.board_id = ${"boardId"} AND d.webhook = ${"id"} AND d.event IS NOT NULL`,
+  deferSendingWebhookDeliveries: sql`UPDATE webhook_deliveries SET next_at = COALESCE((
+      SELECT MAX(j.available_at) FROM jobs j WHERE j.org_id = ${"orgId"} AND j.board_id = ${"boardId"}
+        AND j.kind IN (${"deliveryJob"}, ${"resendJob"})
+        AND j.instance_id = webhook_deliveries.instance AND j.available_at > webhook_deliveries.next_at
+        AND j.payload = ('{"id":"' || webhook_deliveries.id || '"}')
+    ), next_at)
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook = ${"id"} AND state = 'sending'
+      AND instance IS NOT NULL`,
+  parkWebhookJobs: sql`DELETE FROM jobs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"}
+    AND kind IN (${"deliveryJob"}, ${"resendJob"}) AND payload IN (
+      SELECT '{"id":"' || d.id || '"}' FROM webhook_deliveries d
+      WHERE d.org_id = ${"orgId"} AND d.board_id = ${"boardId"} AND d.webhook = ${"id"}
+    )`,
+  webhookSecret: sql`SELECT ciphertext, key_version FROM webhook_secrets
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook_id = ${"id"} AND id = ${"secretId"}`,
   deleteWebhook: sql`DELETE FROM webhooks WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   storeWebhookSecret: sql`INSERT INTO webhook_secrets (org_id, board_id, id, webhook_id, key_version, ciphertext, created_at)
     VALUES (${"orgId"}, ${"boardId"}, ${"secretId"}, ${"id"}, ${"keyVersion"}, ${"ciphertext"}, ${"now"})`,
@@ -106,6 +140,25 @@ export function webhookWriter(
 > {
   return {
     ...webhookReads(db, dialect, keys),
+    async waitingWebhookDeliveries(id) {
+      const rows = await query(db, dialect, webhookStatements.waitingWebhookDeliveries, {
+        ...keys,
+        id,
+        deliveryJob: WEBHOOK_DELIVERY_JOB,
+        resendJob: WEBHOOK_RESEND_JOB,
+      });
+      return rows.map((row) => ({ id: String(row.id), nextAt: Number(row.next_at) }));
+    },
+    async webhookDeliveryChannels(id) {
+      const rows = await query(db, dialect, webhookStatements.webhookDeliveryChannels, { ...keys, id });
+      return rows.map(({ channel }) => (typeof channel === "string" ? channel : null));
+    },
+    async webhookSecret({ webhook, secretId }) {
+      const [row] = await query(db, dialect, webhookStatements.webhookSecret, { ...keys, id: webhook.id, secretId });
+      return typeof row?.ciphertext === "string"
+        ? { ciphertext: row.ciphertext, keyVersion: Number(row.key_version) }
+        : null;
+    },
     async webhookQuota() {
       const [row] = await query(db, dialect, webhookStatements.webhookQuota, keys);
       return exhaustedQuota("webhooks", row?.quotas, row?.count);
@@ -125,21 +178,40 @@ export function webhookWriter(
   };
 }
 
-export async function foldWebhook(db: Db, dialect: Dialect, keys: BoardKeys, event: WebhookCreated | WebhookDeleted) {
+export async function foldWebhook(
+  db: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  event: WebhookCreated | WebhookDeleted | WebhookUpdated,
+) {
   if (event.type === "ob.webhook.deleted") {
     await query(db, dialect, webhookStatements.deleteWebhook, { ...keys, id: event.payload.id });
     return;
   }
-  const { webhook, secretId, directory } = event.payload;
-  await query(db, dialect, webhookStatements.insertWebhook, {
+  const { webhook, secretId } = event.payload;
+  const config = {
     ...keys,
     id: webhook.id,
     name: webhook.name,
+    secretId,
+    enabled: Number(webhook.enabled),
+    config: JSON.stringify(webhook),
+  };
+  if (event.type !== "ob.webhook.created") {
+    await query(db, dialect, webhookStatements.updateWebhook, config);
+    if (!webhook.enabled) {
+      const jobs = { ...keys, id: webhook.id, deliveryJob: WEBHOOK_DELIVERY_JOB, resendJob: WEBHOOK_RESEND_JOB };
+      // A resumed send must wait for the original attempt's lease to end.
+      await query(db, dialect, webhookStatements.deferSendingWebhookDeliveries, jobs);
+      // Revoke queued and leased dispatch jobs so older workers cannot skip paused deliveries.
+      await query(db, dialect, webhookStatements.parkWebhookJobs, jobs);
+    }
+    return;
+  }
+  await query(db, dialect, webhookStatements.insertWebhook, {
+    ...config,
     ownerActor: event.actor,
     owner: event.principal,
-    secretId,
-    enabled: webhook.enabled ? 1 : 0,
-    directory: directory ? 1 : 0,
-    config: JSON.stringify(webhook),
+    directory: Number(event.payload.directory),
   });
 }

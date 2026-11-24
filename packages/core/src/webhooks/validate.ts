@@ -16,10 +16,13 @@ function validateBody(value: unknown): object | null {
   return value;
 }
 
+export function validateWebhookContent(spec: Pick<WebhookSpec, "body" | "filter">) {
+  return { tail: validateWebhookFilter(spec.filter), body: validateBody(spec.body) };
+}
+
 export function validateWebhook(spec: WebhookSpec) {
-  const tail = validateWebhookFilter(spec.filter);
+  const { tail, body } = validateWebhookContent(spec);
   const signing = validateWebhookSigning(spec);
-  const body = validateBody(spec.body);
   const headers = spec.headers ?? {};
   const publicHeaders = Object.fromEntries(Object.keys(headers).map((name) => [name, "…"]));
   return { tail, signing, headers, publicHeaders, body };
