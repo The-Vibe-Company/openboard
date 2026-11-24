@@ -13,11 +13,36 @@ import {
 } from "@openboard/core";
 import { type BoardJobWriter, type BoardKeys, type BoardWebhookWriter, WEBHOOK_DELIVERY_JOB } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
-import { query, sql } from "../../sql.ts";
+import { type Fragment, query, sql } from "../../sql.ts";
 import { actorReads } from "../actors.ts";
 import { messageEvent } from "../events.ts";
 import { messageStatements } from "../messages/statements.ts";
 import { webhookReads, webhookRecord, webhookStatements } from "./webhooks.ts";
+
+// Event positions establish order even if the clock stalls or moves backwards.
+// Keep the normal thread equality indexable. The separate null lane also
+// handles jobs with no board event position, ordered by creation time and ID.
+const earlierThreaded: Fragment = {
+  fragment: () => "prior.thread = d.thread AND prior.event < d.event",
+};
+const earlierThreadless: Fragment = {
+  fragment: () => `prior.thread IS NULL AND (prior.event < d.event
+    OR (d.event IS NULL AND prior.event IS NULL AND (prior.created_at, prior.id) < (d.created_at, d.id)
+      AND (prior.state = 'pending' OR prior.instance IS NOT NULL)))`,
+};
+const unfinishedDelivery: Fragment = {
+  fragment: () => "prior.webhook = d.webhook AND prior.state IN ('pending', 'sending')",
+};
+export const earlierDelivery: Fragment = {
+  fragment: (dialect) => {
+    const exists = (lane: Fragment) => `EXISTS (
+      SELECT 1 FROM webhook_deliveries prior
+      WHERE prior.org_id = d.org_id AND prior.board_id = d.board_id AND ${unfinishedDelivery.fragment(dialect)}
+        AND ${lane.fragment(dialect)}
+    )`;
+    return `(CASE WHEN d.thread IS NULL THEN ${exists(earlierThreadless)} ELSE ${exists(earlierThreaded)} END)`;
+  },
+};
 
 export const deliveryStatements = {
   addDelivery: sql`INSERT INTO webhook_deliveries
@@ -37,14 +62,46 @@ export const deliveryStatements = {
     RETURNING id`,
   findDelivery: sql`SELECT id FROM webhook_deliveries
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook = ${"webhook"} AND id = ${"id"}`,
-  beginDelivery: sql`UPDATE webhook_deliveries SET state = 'sending', attempt = attempt + 1, instance = ${"instance"}
-    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
-      AND state IN ('pending', 'sending') AND next_at <= ${"now"} AND attempt < CASE WHEN event IS NULL THEN 1 ELSE ${"maxAttempts"} END
+  // Under the board lock, recheck the lane and reserve capacity across instances.
+  // A manual resend can reopen an older row while a later attempt is on the wire.
+  beginDelivery: sql`WITH candidate AS MATERIALIZED (
+    SELECT d.id, d.org_id, (NOT EXISTS (
+      SELECT 1 FROM webhooks w
+      WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"} AND w.id = d.webhook
+    ) OR (
+      NOT (CASE WHEN d.thread IS NULL THEN EXISTS (
+        SELECT 1 FROM webhook_deliveries prior
+        WHERE prior.org_id = ${"orgId"} AND prior.board_id = ${"boardId"} AND ${unfinishedDelivery}
+          AND ${earlierThreadless}
+      ) ELSE EXISTS (
+        SELECT 1 FROM webhook_deliveries prior
+        WHERE prior.org_id = ${"orgId"} AND prior.board_id = ${"boardId"} AND ${unfinishedDelivery}
+          AND ${earlierThreaded}
+      ) END)
+      AND (
+        SELECT COUNT(*) < 4 AND COUNT(CASE WHEN prior.thread IS NOT DISTINCT FROM d.thread THEN 1 END) = 0
+        FROM webhook_deliveries prior
+        WHERE prior.org_id = ${"orgId"} AND prior.board_id = ${"boardId"} AND prior.webhook = d.webhook
+          AND prior.id <> d.id AND prior.state = 'sending' AND prior.lease_until > ${"now"}
+      )
+    )) AS ready
+    FROM webhook_deliveries d
+    WHERE d.org_id = ${"orgId"} AND d.board_id = ${"boardId"} AND d.id = ${"id"}
+      AND d.state IN ('pending', 'sending') AND d.next_at <= ${"now"}
+      AND d.attempt < CASE WHEN d.event IS NULL THEN 1 ELSE ${"maxAttempts"} END
       AND NOT EXISTS (
         SELECT 1 FROM webhooks w WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"}
-          AND w.id = webhook_deliveries.webhook AND w.enabled = 0
+          AND w.id = d.webhook AND w.enabled = 0
       )
-    RETURNING attempt`,
+  )
+    UPDATE webhook_deliveries AS d
+    SET state = CASE WHEN candidate.ready THEN 'sending' ELSE d.state END,
+        attempt = d.attempt + CASE WHEN candidate.ready THEN 1 ELSE 0 END,
+        instance = CASE WHEN candidate.ready THEN ${"instance"} ELSE d.instance END,
+        lease_until = CASE WHEN candidate.ready THEN ${"leaseUntil"} ELSE d.lease_until END
+    FROM candidate
+    WHERE d.org_id = ${"orgId"} AND d.board_id = ${"boardId"} AND d.id = candidate.id
+    RETURNING (SELECT ready FROM candidate WHERE id = ${"id"} AND org_id = ${"orgId"}) AS ready`,
   expireFinalDelivery: sql`UPDATE webhook_deliveries
     SET state = 'dead', last_status = NULL, last_error = 'unreachable', done_at = ${"now"}, instance = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
@@ -106,12 +163,14 @@ export function deliveryWriter(
       const [row] = await query(db, dialect, deliveryStatements.findDelivery, params);
       return row ? "not_dead" : "missing";
     },
-    async beginWebhookAttempt(id, instance, now) {
-      const params = { ...keys, id, instance, now, maxAttempts: webhookMaxAttempts };
-      if (!(await query(db, dialect, deliveryStatements.beginDelivery, params)).length) {
+    async beginWebhookAttempt(id, instance, now, leaseUntil = now) {
+      const params = { ...keys, id, instance, now, leaseUntil, maxAttempts: webhookMaxAttempts };
+      const [started] = await query(db, dialect, deliveryStatements.beginDelivery, params);
+      if (!started) {
         const [expired] = await query(db, dialect, deliveryStatements.expireFinalDelivery, params);
         return expired && expired.event !== null ? { expiredWebhookId: String(expired.webhook) } : null;
       }
+      if (!started.ready) return { deferred: true };
       const [row] = await query(db, dialect, deliveryStatements.deliveryInput, params);
       if (!row) {
         await query(db, dialect, deliveryStatements.skipDelivery, params);

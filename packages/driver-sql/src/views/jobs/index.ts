@@ -3,6 +3,7 @@ import {
   BACKFILL_BOARD_ORG_JOB,
   type BoardJobWriter,
   type BoardKeys,
+  JOB_LEASE_MS,
   type JobLease,
   type JobPayload,
   type Jobs,
@@ -10,11 +11,10 @@ import {
 } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
 import { type Fragment, forUpdate, query, sql } from "../../sql.ts";
-
+import { earlierDelivery } from "../webhooks/deliveries.ts";
 import { backfillBoardOrgIds, backfillPlatformStatements, backfillStatements } from "./backfill-board-org.ts";
 import { claimLegacyPurge, unqueued } from "./legacy-purge.ts";
 
-const leaseMs = 30_000;
 const contentionRetryMs = 100;
 
 const kinds: Fragment = {
@@ -36,12 +36,44 @@ const activeExpiryBoard: Fragment = {
 ))`,
 };
 
+const webhookJobKinds = "('webhook-delivery', 'webhook-resend')";
+const jobDelivery: Fragment = {
+  fragment: ({ name }) => `FROM webhook_deliveries d
+    JOIN webhooks w ON w.org_id = d.org_id AND w.board_id = d.board_id AND w.id = d.webhook AND w.enabled = 1
+    WHERE d.org_id = jobs.org_id AND d.board_id = jobs.board_id
+      AND d.id = ${name === "postgres" ? "jobs.payload::jsonb ->> 'id'" : "json_extract(jobs.payload, '$.id')"}`,
+};
+
+// A blocked follower must not keep the timer awake while its lane head waits.
+const readyDeliveryLane: Fragment = {
+  fragment: (dialect) => `(jobs.kind NOT IN ${webhookJobKinds} OR NOT EXISTS (
+    SELECT 1 ${jobDelivery.fragment(dialect)} AND ${earlierDelivery.fragment(dialect)}
+  ))`,
+};
+
+// A finishing runner immediately picks again. A waiting peer can sleep until
+// the first slot could expire, unless newly enqueued work wakes it sooner.
+const dispatchAt: Fragment = {
+  fragment: (dialect) => `CASE WHEN jobs.kind IN ${webhookJobKinds} THEN
+    ${dialect.name === "postgres" ? "GREATEST" : "MAX"}(jobs.available_at, COALESCE((
+      SELECT (
+        SELECT CASE WHEN COUNT(*) >= 4 OR COUNT(CASE WHEN active.thread IS NOT DISTINCT FROM d.thread THEN 1 END) > 0
+          THEN MIN(active.lease_until) END
+        FROM webhook_deliveries active
+        WHERE active.org_id = d.org_id AND active.board_id = d.board_id AND active.webhook = d.webhook
+          AND active.id <> d.id AND active.state = 'sending' AND active.lease_until > (SELECT at FROM input)
+      ) ${jobDelivery.fragment(dialect)}
+    ), jobs.available_at))
+    ELSE jobs.available_at END`,
+};
+
 export const jobPlatformStatements = {
   // Dispatch runs before a board is known. These statements expose no payload or other board content.
-  claimJob: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds)
+  claimJob: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds, CAST(${"now"} AS BIGINT) AS at)
     UPDATE jobs SET available_at = ${"until"}, instance_id = ${"instanceId"}
     WHERE id = (
-      SELECT id FROM jobs WHERE kind IN (${kindSet}) AND available_at <= ${"now"} AND ${activeExpiryBoard}
+      SELECT id FROM jobs WHERE kind IN (${kindSet}) AND available_at <= ${"now"} AND ${activeExpiryBoard} AND ${readyDeliveryLane}
+      AND (${dispatchAt}) <= ${"now"}
       ORDER BY available_at, id LIMIT 1${skipLocked}
     )
     RETURNING CAST(id AS TEXT) AS id, kind, org_id, board_id`,
@@ -49,9 +81,9 @@ export const jobPlatformStatements = {
     WHERE instance_id = ${"instanceId"} AND available_at > ${"now"}
     AND id IS DISTINCT FROM CAST(${"exceptId"} AS BIGINT)
     RETURNING kind`,
-  nextJob: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds)
+  nextJob: sql`WITH input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds, CAST(${"now"} AS BIGINT) AS at)
     SELECT MIN(due) AS due FROM (
-      SELECT MIN(available_at) AS due FROM jobs WHERE kind IN (${kindSet}) AND ${activeExpiryBoard}
+      SELECT MIN(${dispatchAt}) AS due FROM jobs WHERE kind IN (${kindSet}) AND ${activeExpiryBoard} AND ${readyDeliveryLane}
       UNION ALL
       SELECT MIN(o.deleted_at) + ${"retention"} AS due FROM orgs o WHERE ${"includeLegacy"} = 1 AND ${unqueued}
     ) AS due_jobs`,
@@ -75,7 +107,7 @@ export function claimJob(db: Db, dialect: Dialect): Jobs["claim"] {
   return async (kinds, lease) => {
     if (kinds.length === 0) return { job: null, nextDue: null };
     const { instanceId, claimedAt } = lease;
-    const until = claimedAt + leaseMs;
+    const until = claimedAt + JOB_LEASE_MS;
     return db.transaction(async (tx) => {
       const [row] = await query(tx, dialect, jobPlatformStatements.claimJob, {
         kinds: JSON.stringify(kinds),
@@ -90,7 +122,7 @@ export function claimJob(db: Db, dialect: Dialect): Jobs["claim"] {
       }
       const job = kinds.includes(PURGE_ORG_JOB) ? await claimLegacyPurge(tx, dialect, lease, until) : null;
       if (job) return { job };
-      const due = await nextJob(tx, dialect, kinds);
+      const due = await nextJob(tx, dialect, kinds, claimedAt);
       // SKIP LOCKED can miss a due row that is still visible to the MIN query.
       const nextDue = due !== null && due <= claimedAt ? claimedAt + contentionRetryMs : due;
       return { job: null, nextDue };
@@ -109,9 +141,10 @@ export function releaseJobs(db: Db, dialect: Dialect, committed?: JobWrites["com
   };
 }
 
-export async function nextJob(db: Db, dialect: Dialect, kinds: readonly string[]): Promise<number | null> {
+export async function nextJob(db: Db, dialect: Dialect, kinds: readonly string[], now: number): Promise<number | null> {
   const [row] = await query(db, dialect, jobPlatformStatements.nextJob, {
     kinds: JSON.stringify(kinds),
+    now,
     retention: ORG_PURGE_RETENTION_MS,
     includeLegacy: Number(kinds.includes(PURGE_ORG_JOB)),
   });
@@ -135,7 +168,7 @@ export async function readLeasedJob(
     ...keys,
     id,
     instanceId: lease.instanceId,
-    until: lease.claimedAt + leaseMs,
+    until: lease.claimedAt + JOB_LEASE_MS,
     now,
   });
   return row ? (JSON.parse(String(row.payload)) as JobPayload) : null;
@@ -155,12 +188,12 @@ export async function extendLeasedJob(
     ...keys,
     id,
     instanceId,
-    until: claimedAt + leaseMs,
+    until: claimedAt + JOB_LEASE_MS,
     now,
     extendedUntil,
   });
   return row
-    ? { payload: JSON.parse(String(row.payload)), lease: { instanceId, claimedAt: extendedUntil - leaseMs } }
+    ? { payload: JSON.parse(String(row.payload)), lease: { instanceId, claimedAt: extendedUntil - JOB_LEASE_MS } }
     : null;
 }
 
@@ -176,7 +209,7 @@ export function jobWriter(tx: Db, dialect: Dialect, keys: BoardKeys, enqueued: J
         ...keys,
         id,
         instanceId,
-        until: claimedAt + leaseMs,
+        until: claimedAt + JOB_LEASE_MS,
         now,
       });
       return row ? JSON.parse(String(row.payload)) : null;

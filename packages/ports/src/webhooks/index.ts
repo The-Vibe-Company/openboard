@@ -45,7 +45,8 @@ export interface BoardWebhookWriter extends BoardWebhookReads {
     id: string,
     instance: string,
     now: number,
-  ): Promise<WebhookAttempt | { expiredWebhookId: string } | null>;
+    leaseUntil?: number,
+  ): Promise<WebhookAttempt | { expiredWebhookId: string } | { deferred: true } | null>;
   countRecentDeadWebhookDeliveries(webhook: string, cutoff: number): Promise<number>;
   finishWebhookAttempt(
     id: string,

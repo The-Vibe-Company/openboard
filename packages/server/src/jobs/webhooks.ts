@@ -1,5 +1,11 @@
 import { webhookDeadDeliveryCutoff, webhookDeadDeliveryLimit, webhookOutcome, webhookRetryAt } from "@openboard/core";
-import { type BoardWriter, WEBHOOK_DELIVERY_JOB, type WebhookRecord, type WebhookSecret } from "@openboard/ports";
+import {
+  type BoardWriter,
+  JOB_LEASE_MS,
+  WEBHOOK_DELIVERY_JOB,
+  type WebhookRecord,
+  type WebhookSecret,
+} from "@openboard/ports";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { type SignedWebhookRequest, webhookRequest } from "../webhooks/request.ts";
 import { openWebhookSecret } from "../webhooks/secret-box.ts";
@@ -13,6 +19,7 @@ export async function deliverWebhook(
   { webhook, secretId }: WebhookRecord,
   secret: WebhookSecret | null,
   build: (credentials: NonNullable<ReturnType<typeof openWebhookSecret>>) => SignedWebhookRequest | null,
+  remainingLeaseMs?: () => number,
 ) {
   const key = config.secretKey;
   if (!key || !secret) return { status: null, retryAfter: null, error: "signing_secret_missing" };
@@ -21,7 +28,7 @@ export async function deliverWebhook(
   const payload = build(credentials);
   if (!payload)
     return { status: null, retryAfter: null, error: webhook.body == null ? "payload_too_large" : "too_large" };
-  return sendWebhook(webhook.url, config, deps, payload);
+  return sendWebhook(webhook.url, config, deps, payload, remainingLeaseMs?.());
 }
 
 async function disableWebhook(
@@ -60,12 +67,17 @@ async function checkDeadDeliveries(writer: BoardWriter, id: string, now: number)
 export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHandler {
   return {
     async runBoard(board, job, lease) {
+      const leaseUntil = lease.claimedAt + JOB_LEASE_MS;
       const identity = await board.identity();
       const prepared = await board.write(async (writer) => {
         const now = deps.now();
         const payload = await writer.readJob(job.id, lease, now);
         if (typeof payload?.id !== "string") return null;
-        const input = await writer.beginWebhookAttempt(payload.id, lease.instanceId, now);
+        const input = await writer.beginWebhookAttempt(payload.id, lease.instanceId, now, leaseUntil);
+        if (input && "deferred" in input) {
+          if (await writer.takeJob(job.id, lease, now)) await writer.enqueue(job.kind, now + 100, payload);
+          return null;
+        }
         if (!input || "expiredWebhookId" in input) {
           await writer.takeJob(job.id, lease, now);
           if (input) await checkDeadDeliveries(writer, input.expiredWebhookId, now);
@@ -82,6 +94,7 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
         input.secret,
         (credentials) =>
           webhookRequest(config, input, id, deps.now(), credentials, identity.org.slug, identity.board.slug),
+        () => leaseUntil - deps.now(),
       );
       return board.write(async (writer) => {
         const now = deps.now();
