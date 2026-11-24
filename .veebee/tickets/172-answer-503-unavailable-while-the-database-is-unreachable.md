@@ -13,7 +13,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [164]
-status: claimed
+status: done
 claimed_by: claude-opus-t172
 issue: 252
 ---

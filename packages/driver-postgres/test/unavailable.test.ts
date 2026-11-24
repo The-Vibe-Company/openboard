@@ -63,7 +63,7 @@ function postgresError(code: string, errno?: string): Error {
 }
 
 test("the three timeouts and lost connections are unavailable; a constraint violation stays a bug", () => {
-  for (const errno of ["57014", "55P03", "25P03", "57P01", "08006"]) {
+  for (const errno of ["57014", "55P03", "25P03", "57P01", "53300", "08006"]) {
     expect(isUnavailable(postgresError("ERR_POSTGRES_SERVER_ERROR", errno))).toBe(true);
   }
   expect(isUnavailable(postgresError("ERR_POSTGRES_CONNECTION_REFUSED"))).toBe(true);

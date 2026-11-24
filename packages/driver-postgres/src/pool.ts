@@ -30,10 +30,11 @@ const LOST = new Set([
 ]);
 
 /**
- * Server SQLSTATEs that mean "try again": shutdown or startup (57P01-57P03), the three timeouts (statement 57014,
- * lock 55P03, idle in transaction 25P03), and class 08, connection exceptions.
+ * Server SQLSTATEs that mean "try again": shutdown or startup (57P01-57P03), no free connection slot (53300, as
+ * instances reconnect after a restart), the three timeouts (statement 57014, lock 55P03, idle in transaction 25P03),
+ * and class 08, connection exceptions.
  */
-const RETRYABLE = new Set(["57P01", "57P02", "57P03", "57014", "55P03", "25P03"]);
+const RETRYABLE = new Set(["57P01", "57P02", "57P03", "53300", "57014", "55P03", "25P03"]);
 
 /** The request pool: the settings above on every connection, failing fast when the database cannot be reached. */
 export function openPool(url: string): SQL {
