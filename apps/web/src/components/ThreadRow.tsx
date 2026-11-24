@@ -1,3 +1,4 @@
+import { Link, useParams } from "@tanstack/react-router";
 import type { ThreadSummary } from "../api/board.ts";
 
 const relativeTime = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
@@ -14,6 +15,7 @@ function relativeDate(date: string, now: number) {
 }
 
 export function ThreadRow({ thread, now }: { thread: ThreadSummary; now: number }) {
+  const board = useParams({ from: "/$org/$board" });
   const { message, last, replies } = thread;
   const author = message.author?.name ?? message.from ?? message.by.profile ?? message.by.actor;
   const initials = author
@@ -25,29 +27,33 @@ export function ThreadRow({ thread, now }: { thread: ThreadSummary; now: number 
     .toUpperCase();
   const date = (last ?? message).createdAt;
   return (
-    <li className="board-thread">
-      <span className="board-avatar" aria-hidden="true">
-        {initials}
-        {message.author?.avatar && (
-          <img
-            src={message.author.avatar}
-            alt=""
-            onError={(event) => {
-              event.currentTarget.hidden = true;
-            }}
-          />
-        )}
-      </span>
-      <div>
-        <strong>{message.text.split(/\r?\n/, 1)[0]}</strong>
-        <div>{author}</div>
-      </div>
-      <span>
-        {replies} {replies === 1 ? "reply" : "replies"}
-      </span>
-      <time dateTime={date} title={date}>
-        {relativeDate(date, now)}
-      </time>
+    <li>
+      <Link className="board-thread" to="/$org/$board/t/$id" params={{ ...board, id: message.id }} search={true}>
+        <span className="board-avatar" aria-hidden="true">
+          {initials}
+          {message.author?.avatar && (
+            <img
+              src={message.author.avatar}
+              alt=""
+              onError={(event) => {
+                event.currentTarget.hidden = true;
+              }}
+            />
+          )}
+        </span>
+        <div>
+          <strong>
+            {message.deleted ? "Message deleted" : message.text.split(/\r?\n/, 1)[0] || `Thread #${message.id}`}
+          </strong>
+          <div>{author}</div>
+        </div>
+        <span>
+          {replies} {replies === 1 ? "reply" : "replies"}
+        </span>
+        <time dateTime={date} title={date}>
+          {relativeDate(date, now)}
+        </time>
+      </Link>
     </li>
   );
 }

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useElementScrollRestoration } from "@tanstack/react-router";
+import { useLayoutEffect } from "react";
 import { boardErrorText, threadsQuery } from "../../../api/board.ts";
 import { ThreadList } from "../../../components/ThreadList.tsx";
 import { useSelectedChannel } from "./route.tsx";
@@ -12,6 +13,11 @@ function BoardThreads() {
   const board = Route.useParams();
   const channel = useSelectedChannel();
   const threads = useQuery(threadsQuery(board, channel));
+  const scroll = useElementScrollRestoration({ getElement: () => window });
+  useLayoutEffect(() => {
+    // The router can restore before the list has loaded on a cold history entry.
+    if (threads.isSuccess && scroll) window.scrollTo(scroll.scrollX, scroll.scrollY);
+  }, [scroll, threads.isSuccess]);
   if (!channel) return null;
 
   return (
