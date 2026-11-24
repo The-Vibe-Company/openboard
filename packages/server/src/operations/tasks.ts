@@ -7,25 +7,32 @@ import {
   labelFilters,
   messages,
   parseId,
+  replayTask,
   taskCursor,
   taskStates,
 } from "@openboard/core";
-import { canListMentionActors, withoutMentionDetails } from "../auth/access.ts";
+import { canListMentionActors, canReadChannel, withoutMentionDetails } from "../auth/access.ts";
 import { authorOf } from "../auth/author.ts";
 import type { BoardContext, Handler } from "./index.ts";
-import { resolvePostMentions, writeWithMentionVisibility } from "./messages.ts";
+import { resolvePostMentions, visibleReplay, writeWithMentionVisibility } from "./messages.ts";
 
 /**
  * Starts a thread as a ready task (`channel` and `text`), or makes one of the thread `re` roots as it is: that write
  * reads the root under the board's lock, so of two racing to make it a task one lands and the other is 409.
  */
 export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) => {
-  const { channel, text, re } = input;
+  const { channel, text, re, id } = input;
   if (re !== undefined) {
-    if (channel !== undefined || text !== undefined || input.labels !== undefined || input.noSync !== undefined) {
+    if (
+      channel !== undefined ||
+      text !== undefined ||
+      input.labels !== undefined ||
+      input.noSync !== undefined ||
+      id !== undefined
+    ) {
       throw new BoardError(
         "invalid_request",
-        "`channel`, `text`, `labels` and `noSync` are a new thread's: `re` makes a task of a thread as it is",
+        "`channel`, `text`, `labels`, `noSync` and `id` are a new thread's: `re` makes a task of a thread as it is",
       );
     }
     return makeTask(ctx, re);
@@ -36,20 +43,35 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
       "a task needs `channel` and `text` for a new thread, or `re` for a thread that's there",
     );
   }
-  messages.checkPost({ ...input, channel, text }, ctx.by);
-  return writeWithMentionVisibility(
+  const command = { ...input, channel, text };
+  messages.checkPost(command, ctx.by);
+  const { task, replay } = await writeWithMentionVisibility(
     ctx,
     text,
     async (writer, visibility) => {
-      const mentions = await resolvePostMentions(writer, ctx, text, channel, undefined, visibility);
-      const state = { head: writer.head, actor: writer.actor };
+      const landed = id === undefined ? null : await writer.clientPost(id);
+      const state = { head: writer.head, actor: writer.actor, landed };
       const context = { by: ctx.by, author: authorOf(ctx.by), now: ctx.now() };
-      const { events, task } = decideCreateTask(state, { ...input, channel, text }, context, mentions);
+      const replayed = landed && replayTask(state, command, context);
+      if (replayed) return { task: replayed, replay: true };
+      const mentions = await resolvePostMentions(writer, ctx, text, channel, undefined, visibility);
+      const { events, task } = decideCreateTask(
+        state,
+        command,
+        { ...context, blind: !canReadChannel(ctx.by, channel) },
+        mentions,
+      );
       await writer.append(events);
-      return { task };
+      return { task, replay: false };
     },
     ctx.by.actor,
   );
+  if (!replay) return { task };
+  const visible = await visibleReplay(ctx, task);
+  if (!visible.task) {
+    throw new BoardError("duplicate_id", `id: ${id} was already used for a post that is not a task`);
+  }
+  return { task: { ...visible, task: visible.task } };
 };
 
 async function makeTask(ctx: BoardContext, re: string) {

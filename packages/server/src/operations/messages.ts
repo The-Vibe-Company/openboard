@@ -91,7 +91,25 @@ export async function writeWithMentionVisibility<T>(
   return ctx.board.write((writer) => decide(writer, { handles, scoped }), actor);
 }
 
-async function visibleReplay(ctx: BoardContext, message: Message): Promise<Message> {
+/** A post-only author can recover their original keyed write, free of later changes such as adoption. */
+async function blindRootSnapshot(ctx: BoardContext, message: Message): Promise<Message | null> {
+  const root = parseId(message.id);
+  if (root === null) throw new Error("invalid stored task position");
+  const { events } = await ctx.board.readEvents(root - 1, { thread: message.id });
+  const [posted, created] = events;
+  if (created?.type === "task.created" && created.id === root + 1 && created.payload.blind !== undefined) {
+    return created.payload.blind ? created.payload.view : null;
+  }
+  if (posted?.type !== "message.posted" || posted.id !== root) return null;
+  return withoutMentionDetails(messages.messageView(posted));
+}
+
+export async function visibleReplay(ctx: BoardContext, message: Message): Promise<Message> {
+  if (message.task && !canReadChannel(ctx.by, message.channel)) {
+    const original = await blindRootSnapshot(ctx, message);
+    if (!original) throw new BoardError("duplicate_id", "the client ID was already used for a different post");
+    return original;
+  }
   if (!message.mentions || canListMentionActors(ctx.by)) return message;
   if (!canReadChannel(ctx.by, message.channel)) return withoutMentionDetails(message);
   const handles = new Set(
@@ -214,7 +232,9 @@ export const listMessagesHandler: Handler<typeof listMessages> = async (ctx, inp
 };
 
 export const readPostHandler: Handler<typeof readPost> = async (ctx, { id }) => {
-  const message = await ctx.board.ownClientPost(id, ctx.by);
+  const landed = await ctx.board.ownClientPost(id, ctx.by);
+  const message =
+    landed?.task && !canReadChannel(ctx.by, landed.channel) ? await blindRootSnapshot(ctx, landed) : landed;
   if (!message) throw new BoardError("post_not_found", "no post of yours has that client ID");
   return { message: canListMentionActors(ctx.by) ? message : withoutMentionDetails(message) };
 };

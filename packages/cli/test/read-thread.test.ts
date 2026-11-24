@@ -39,9 +39,9 @@ test("ob reply <id> <text> posts in the thread and prints the reply's ID", async
     return new Response(JSON.stringify(answer), { status: 201, headers: { "content-type": "application/json" } });
   };
   const output = { out: (line: string) => lines.push(line), err: () => {} };
-  expect(await runCli(["reply", "1", "on it"], env, { fetch, output })).toBe(0);
+  expect(await runCli(["reply", "1", "on it", "--idempotency-key", "reply-1"], env, { fetch, output })).toBe(0);
   expect(lines).toEqual(["2"]);
-  expect(requests).toEqual([{ url: `${env.BOARD_URL}/messages`, body: { re: "1", text: "on it" } }]);
+  expect(requests).toEqual([{ url: `${env.BOARD_URL}/messages`, body: { re: "1", text: "on it", id: "reply-1" } }]);
 });
 
 test("ob post --help shows the channel as required, since a post without one reads text as the channel", async () => {
