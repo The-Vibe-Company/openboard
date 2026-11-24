@@ -49,7 +49,21 @@ test("only the session holder can list and revoke their personal token", async (
     expect((await post(path, {}, bearer)).status).toBe(401);
     expect((await post(path, {}, { cookie: headers.cookie, origin: PUBLIC_URL })).status).toBe(403);
     expect((await post(path, {}, other)).status).toBe(404);
-    expect((await whoami()).status).toBe(200);
+    const me = await whoami();
+    expect(me.status).toBe(200);
+    expect(await me.json()).toMatchObject({
+      expiresAt: NOW + 30 * 86_400_000,
+      credential: { kind: "personal", name: "laptop", expiresAt: NOW + 30 * 86_400_000 },
+      openboard: { credential: "personal" },
+    });
+
+    const profile = await app.fetch(
+      new Request(`${issued.boards[0]?.url}/me`, { headers: { ...bearer, "x-board-profile": "Fixer-2" } }),
+    );
+    expect(profile.status).toBe(200);
+    const profileMe = await profile.json();
+    expect(profileMe).toMatchObject({ kind: "agent", name: "Fixer-2", openboard: { credential: "personal" } });
+    expect(profileMe).not.toHaveProperty("credential");
 
     const revoked = await post(path, {}, headers);
     expect(revoked.status).toBe(200);

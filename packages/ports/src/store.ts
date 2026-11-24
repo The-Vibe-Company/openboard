@@ -310,7 +310,11 @@ export interface BoardView {
   personalToken(
     tokenHash: string,
     now: number,
-  ): Promise<(Pick<PersonRecord, "id" | "handle" | "name" | "avatar"> & { expiresAt: number }) | "inactive" | null>;
+  ): Promise<
+    | (Pick<PersonRecord, "id" | "handle" | "name" | "avatar"> & { tokenName: string; expiresAt: number })
+    | "inactive"
+    | null
+  >;
   /**
    * Locks the board, runs `fn`, and commits what it appended, or rolls everything back if it throws. With `actor`,
    * the board's record of that actor is read at the start of the write, after the lock.

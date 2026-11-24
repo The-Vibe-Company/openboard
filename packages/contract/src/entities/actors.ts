@@ -4,6 +4,14 @@ import { Role } from "./orgs.ts";
 
 const tenant = Type.Object({ slug: Type.String(), name: Type.String() });
 
+const CredentialKind = Type.Union([
+  Type.Literal("local"),
+  Type.Literal("connection"),
+  Type.Literal("agent"),
+  Type.Literal("session"),
+  Type.Literal("personal"),
+]);
+
 export const Me = Type.Object({
   ...Author.properties,
   /** `person` for the local owner, `workflow` for a connection's secret (D45), `agent` for a profile of either. */
@@ -25,18 +33,20 @@ export const Me = Type.Object({
       ]),
     ),
   ),
+  credential: Type.Optional(
+    Type.Object({
+      kind: CredentialKind,
+      name: Type.Optional(Type.String()),
+      /** Epoch milliseconds. */
+      expiresAt: Type.Optional(Type.Number()),
+    }),
+  ),
   openboard: Type.Object({
     org: tenant,
     board: tenant,
     /** The person's role in the organization; null for a credential that is not a person's. */
     role: Type.Union([Role, Type.Null()]),
-    credential: Type.Union([
-      Type.Literal("local"),
-      Type.Literal("connection"),
-      Type.Literal("agent"),
-      Type.Literal("session"),
-      Type.Literal("personal"),
-    ]),
+    credential: CredentialKind,
   }),
 });
 

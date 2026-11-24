@@ -26,7 +26,7 @@ export const deviceScoped = {
     WHERE m.org_id = ${"orgId"} AND m.user_id = ${"userId"} AND o.deleted_at IS NULL AND u.disabled_at IS NULL`,
   issuePersonalToken: sql`INSERT INTO personal_tokens (id, user_id, org_id, name, token_hash, created_at, expires_at)
     VALUES (${"id"}, ${"userId"}, ${"orgId"}, ${"name"}, ${"tokenHash"}, ${"now"}, ${"expiresAt"})`,
-  personalToken: sql`SELECT u.public_id, u.handle, u.name, u.avatar, t.expires_at,
+  personalToken: sql`SELECT u.public_id, u.handle, u.name, u.avatar, t.name AS token_name, t.expires_at,
     CASE WHEN t.expires_at > ${"now"} AND t.revoked_at IS NULL AND t.can IS NULL AND u.disabled_at IS NULL
     THEN 1 ELSE 0 END AS usable FROM personal_tokens t JOIN users u ON u.id = t.user_id
     WHERE t.org_id = ${"orgId"} AND (t.board_id IS NULL OR t.board_id = ${"boardId"})
@@ -110,6 +110,7 @@ export function personalTokenView(
         handle: String(row.handle),
         name: String(row.name),
         avatar: row.avatar === null ? null : String(row.avatar),
+        tokenName: String(row.token_name),
         expiresAt: Number(row.expires_at),
       };
     },

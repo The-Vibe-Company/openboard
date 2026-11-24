@@ -7,6 +7,7 @@ import type { Output } from "../output.ts";
 export interface CommandContext {
   readonly client: Client;
   readonly boardUrl: string;
+  readonly now: () => number;
   readonly args: readonly string[];
   /** How many of `args` came before `--`: only those may be `--name value` options. */
   readonly optionsEnd: number;
@@ -14,7 +15,7 @@ export interface CommandContext {
   readonly output: Output;
 }
 
-export interface StandaloneContext extends Omit<CommandContext, "client" | "boardUrl"> {
+export interface StandaloneContext extends Omit<CommandContext, "client" | "boardUrl" | "now"> {
   readonly env: CliEnvironment;
   readonly profile: string | undefined;
   readonly options: CliOptions;

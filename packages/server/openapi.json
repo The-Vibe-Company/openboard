@@ -1495,6 +1495,23 @@
                         }
                       }
                     },
+                    "credential": {
+                      "type": "object",
+                      "required": ["kind"],
+                      "properties": {
+                        "kind": {
+                          "anyOf": [
+                            { "const": "local", "type": "string" },
+                            { "const": "connection", "type": "string" },
+                            { "const": "agent", "type": "string" },
+                            { "const": "session", "type": "string" },
+                            { "const": "personal", "type": "string" }
+                          ]
+                        },
+                        "name": { "type": "string" },
+                        "expiresAt": { "type": "number" }
+                      }
+                    },
                     "openboard": {
                       "type": "object",
                       "required": ["org", "board", "role", "credential"],

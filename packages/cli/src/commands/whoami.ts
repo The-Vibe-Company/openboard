@@ -1,5 +1,14 @@
 import { type Command, Misuse } from "./index.ts";
 
+function expiryText(expiresAt: number, now: number): string {
+  const remaining = expiresAt - now;
+  if (remaining <= 0) return ", expired";
+  const minutes = Math.floor(remaining / 60_000);
+  if (minutes >= 1440) return `, expires in ${Math.floor(minutes / 1440)}d`;
+  if (minutes >= 60) return `, expires in ${Math.floor(minutes / 60)}h`;
+  return `, expires in ${minutes === 0 ? "<1" : minutes}m`;
+}
+
 export const whoamiCommand: Command = {
   words: ["whoami"],
   usage: "ob whoami",
@@ -13,6 +22,11 @@ export const whoamiCommand: Command = {
       if (credential === "agent") {
         const connection = me.handle.split("/")[0];
         ctx.output.out(`${me.name} via ${connection} (credential: agent)`);
+      } else if (me.kind === "person" && me.credential?.kind === "personal") {
+        const { name, expiresAt } = me.credential;
+        const label = name === undefined ? "" : ` ${JSON.stringify(name)}`;
+        const expiry = expiresAt === undefined ? "" : expiryText(expiresAt, ctx.now());
+        ctx.output.out(`${me.handle} (${me.actor}) via personal token${label}${expiry}`);
       } else {
         ctx.output.out(`${me.name} (${me.actor}) via ${credential}`);
       }

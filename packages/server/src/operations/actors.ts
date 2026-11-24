@@ -1,7 +1,15 @@
 import { BoardError, type getMe, type listActors, type OutputOf } from "@openboard/contract";
 import { formatId, grants } from "@openboard/core";
 import { authorOf } from "../auth/author.ts";
-import { agentOf, credentialExpiry, credentialKind, memberOf, type Principal, type SessionMember } from "../deps.ts";
+import {
+  agentOf,
+  credentialExpiry,
+  credentialKind,
+  credentialName,
+  memberOf,
+  type Principal,
+  type SessionMember,
+} from "../deps.ts";
 import type { BoardContext, Handler } from "./index.ts";
 
 type Me = OutputOf<typeof getMe>;
@@ -45,6 +53,7 @@ function personMe(by: Principal, member: SessionMember, credential: "session" | 
   const { kind, handle, name, avatar } = authorOf(by);
   const { role, org, board } = member;
   const can = grants.allUsersCan(role);
+  const { [credentialExpiry]: expiresAt, [credentialName]: tokenName } = by;
   return {
     actor,
     principal,
@@ -53,7 +62,16 @@ function personMe(by: Principal, member: SessionMember, credential: "session" | 
     name,
     avatar,
     profile,
-    expiresAt: by[credentialExpiry] ?? null,
+    expiresAt: expiresAt ?? null,
+    ...(kind === "person"
+      ? {
+          credential: {
+            kind: credential,
+            ...(tokenName === undefined ? {} : { name: tokenName }),
+            ...(expiresAt === undefined ? {} : { expiresAt }),
+          },
+        }
+      : {}),
     can,
     openboard: { org, board, role, credential },
   };
