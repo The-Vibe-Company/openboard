@@ -15,6 +15,10 @@ export function renderDdl(postgres: string): string {
 
 function renderStatement(statement: string): string {
   const rendered = statement
+    .replace(
+      /\bBIGINT\s+GENERATED ALWAYS AS IDENTITY \(NO CYCLE\) PRIMARY KEY\b/gi,
+      "INTEGER PRIMARY KEY AUTOINCREMENT",
+    )
     .replace(/\bBIGINT\s+GENERATED\s+ALWAYS\s+AS\s+IDENTITY\s+PRIMARY\s+KEY\b/gi, "INTEGER PRIMARY KEY")
     .replace(/\b(?:BIGINT|SMALLINT|INTEGER)\b/g, "INTEGER")
     .replace(/\bBYTEA\b/g, "BLOB")

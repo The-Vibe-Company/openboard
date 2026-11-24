@@ -53,11 +53,12 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
       mode,
       publicUrl,
       localOwner,
+      instanceId: config.instanceId,
       ...(mode === "local" && localOwnerTokenHash && { localOwnerTokenHash }),
       signup,
       ...(github && { signIn: { github } }),
     },
-    { store },
+    { store, jobs: store.jobs },
     deps,
   );
 }

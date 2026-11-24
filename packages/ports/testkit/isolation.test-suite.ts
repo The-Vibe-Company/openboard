@@ -95,6 +95,8 @@ const boardCases: Cases<BoardView> = {
 
 /** One case per `BoardWriter` member, inside A's write with B's IDs. */
 const writerCases: Cases<BoardWriter> = {
+  enqueue: (a) => inWrite(a, (writer) => writer.enqueue("test", at, { marker: a.marker })),
+  takeJob: (a) => inWrite(a, (writer) => writer.takeJob("1", { instanceId: "test", claimedAt: at }, at)),
   head: (a, b) => inWrite(a, async (writer) => expect(writer.head).toBeLessThan(b.message)),
   actor: (a, b) => a.board.write(async (writer) => expectNull(writer.actor), b.actor),
   mentionActors: (a, b) => inWrite(a, (writer) => writer.mentionActors(new Set([b.marker.replace("only", "owner")]))),
@@ -218,6 +220,21 @@ async function digestOf(b: StoreTenant): Promise<string> {
 export function isolationSuite(driver: string, open: OpenStore): void {
   let store: Store | undefined;
   afterEach(() => store?.close());
+  test(`${driver}: isolation: the platform job picker exposes only routing metadata`, async () => {
+    store = await open();
+    const a = await storeTenant(store, "alpha", "a", 2);
+    const b = await storeTenant(store, "bravo", "b", 12);
+    const keys = await store.platform().findBoard("bravo", "main");
+    const lease = { instanceId: "picker", claimedAt: at };
+    await b.board.write((writer) => writer.enqueue("test", at, { marker: b.marker }));
+    const job = await store.jobs.claim(["test"], lease);
+    if (!job) throw new Error("due job is missing");
+    if (!keys) throw new Error("bravo board is missing");
+    expect(job).toEqual({ ...keys, id: expect.any(String), kind: "test" });
+    holdsNothingOf(b, job, "Jobs.claim");
+    expect(await a.board.write((writer) => writer.takeJob(job.id, lease, at))).toBeNull();
+    expect(await b.board.write((writer) => writer.takeJob(job.id, lease, at))).toEqual({ marker: b.marker });
+  });
   const groups = [
     ["BoardView", boardCases],
     ["BoardWriter", writerCases],

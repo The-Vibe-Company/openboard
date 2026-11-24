@@ -19,6 +19,7 @@ import {
   profileHolder,
 } from "./connections.ts";
 import { activeGrant, foldGrantEvent, grantReads } from "./grants.ts";
+import { type JobWrites, jobWriter } from "./jobs/index.ts";
 import { orgReads } from "./orgs.ts";
 import { foldTaskEvent } from "./tasks/task-folds.ts";
 import { taskReads } from "./tasks/tasks.ts";
@@ -240,10 +241,12 @@ function writer(
   start: number,
   actor: Actor | null,
   committed: BoardEvent[],
+  jobs: ReturnType<typeof jobWriter>,
 ): BoardWriter {
   let head = start;
   return {
     ...taskReads(tx, dialect, keys),
+    ...jobs,
     get head() {
       return head;
     },
@@ -317,6 +320,7 @@ export function boardView(
   dialect: Dialect,
   scope: BoardScope,
   broadcaster: Broadcaster,
+  jobs: JobWrites,
 ): Pick<
   BoardView,
   "write" | "channelMessages" | "ownClientPost" | "mentionEvidence" | "taskRoot" | keyof BoardGrantReads
@@ -327,6 +331,7 @@ export function boardView(
     ...grantReads(db, dialect, keys),
     async write(fn, as) {
       let release: (() => void) | undefined;
+      let enqueued = false;
       try {
         const { result, page } = await db.transaction(async (tx) => {
           const { head, actor } =
@@ -334,12 +339,16 @@ export function boardView(
               ? { head: await lockBoard(tx, dialect, keys), actor: null }
               : await lockBoardAs(tx, dialect, keys, as);
           const events: BoardEvent[] = [];
-          const boardWriter = writer(tx, dialect, keys, head, actor, events);
+          const queue = jobWriter(tx, dialect, keys, jobs, () => {
+            enqueued = true;
+          });
+          const boardWriter = writer(tx, dialect, keys, head, actor, events, queue);
           const result = await fn(boardWriter);
           const page = boardWriter.head > head ? { after: head, head: boardWriter.head, events } : undefined;
           if (page !== undefined) release = broadcaster.prepareCommit?.(scope, page);
           return { result, page };
         });
+        if (enqueued) jobs.committed();
         if (page !== undefined) broadcaster.publish(scope, page);
         return result;
       } finally {

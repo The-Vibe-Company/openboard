@@ -1,0 +1,27 @@
+import type { BoardKeys } from "./store.ts";
+
+export interface Job extends BoardKeys {
+  readonly id: string;
+  readonly kind: string;
+}
+
+export interface JobLease {
+  readonly instanceId: string;
+  readonly claimedAt: number;
+}
+
+export type JobSchedule = (delayMs: number, run: () => void | Promise<void>) => () => void;
+
+/** Cross-board dispatch exposes routing metadata only. Effects re-enter the scoped board writer. */
+export interface Jobs {
+  claim(kinds: readonly string[], lease: JobLease): Promise<Job | null>;
+  watch(kinds: readonly string[], schedule: JobSchedule, wake: () => Promise<void>): () => void;
+}
+
+export type JobPayload = Readonly<Record<string, unknown>>;
+
+export interface BoardJobWriter {
+  enqueue(kind: string, dueAt: number, payload: JobPayload): Promise<void>;
+  /** Consume the live lease in this transaction. An effect that throws rolls consumption back as well. */
+  takeJob(id: string, lease: JobLease, now: number): Promise<JobPayload | null>;
+}

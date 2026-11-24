@@ -39,7 +39,7 @@ async function bootApp(
         ? { signup: "open", signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } } }
         : { localOwnerTokenHash: backend.owner.hash }),
     },
-    { store },
+    { store, jobs: store.jobs },
     {
       now,
       ...(hosted && { fetch: fakeGitHub }),

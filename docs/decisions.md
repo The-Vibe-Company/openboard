@@ -474,6 +474,11 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
 - **Consequence.** Any instance serves SSE and long-polls; no sticky
   sessions; a lost notification costs at most 2 s.
 
+The driver registers cross-board job discovery as a platform statement. The
+picker returns only the job ID, kind, organization ID and board ID. The runner
+uses those keys with the tenant resolver to enter the scoped board writer.
+Lease consumption and the database effect commit together.
+
 ### D37. Failover must not reuse cursors
 
 - **Context.** With asynchronous replication, a failover can lose the last

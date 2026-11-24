@@ -28,6 +28,7 @@ import type { PersonRecord, SessionRecord, SignInRecord } from "./account-record
 import type { BoardMessageReads } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
+import type { BoardJobWriter, Jobs } from "./jobs.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
 
 /** A board configuration event (`ob.*`, visibility 2), as stored: its payload may hold hashes the audit strips. */
@@ -203,7 +204,7 @@ export interface PlatformView {
 }
 
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */
-export interface BoardWriter extends BoardTaskWriter, BoardGrantWriter {
+export interface BoardWriter extends BoardTaskWriter, BoardGrantWriter, BoardJobWriter {
   readonly head: number;
   /** The actors available to resolve handles under the write lock. */
   mentionActors(handles: ReadonlySet<string>): Promise<MentionActor[]>;
@@ -366,6 +367,7 @@ export interface BoardView extends BoardMessageReads, BoardTaskReads, BoardGrant
 }
 
 export interface Store {
+  readonly jobs: Jobs;
   platform(): PlatformView;
   board(scope: BoardScope): BoardView;
   org(scope: OrgScope): OrgView;

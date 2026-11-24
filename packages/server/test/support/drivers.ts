@@ -105,6 +105,10 @@ function driverOn(open: () => Promise<Store>): Store {
     await store?.close();
   };
   return {
+    jobs: {
+      claim: async (...args) => (await opened()).jobs.claim(...args),
+      watch: (...args) => subscribeLater(async () => (await opened()).jobs, "watch")(...args),
+    },
     platform: () => deferred(async () => (await opened()).platform()),
     board: (scope) => deferred(async () => (await opened()).board(scope)),
     org: (scope) => deferred(async () => (await opened()).org(scope)),

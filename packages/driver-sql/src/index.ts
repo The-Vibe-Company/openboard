@@ -11,6 +11,7 @@ import connectionUseDdl from "../migrations/0009-connection-use.sql" with { type
 import eventMessageHistoryDdl from "../migrations/0010-event-message-history.sql" with { type: "text" };
 import auditDdl from "../migrations/0011-audit.sql" with { type: "text" };
 import tasksDdl from "../migrations/0012-tasks.sql" with { type: "text" };
+import jobsDdl from "../migrations/0013-jobs.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
@@ -22,6 +23,7 @@ import { connectionReads } from "./views/connections.ts";
 import { deviceView, personalTokenView } from "./views/device.ts";
 import { committedEvents, eventReads } from "./views/events.ts";
 import { invitationPlatform, invitationView } from "./views/invitations.ts";
+import type { JobWrites } from "./views/jobs/index.ts";
 import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
@@ -33,6 +35,7 @@ export { postgresText } from "./db.ts";
 export { splitStatements } from "./ddl.ts";
 export { localBroadcaster } from "./local-broadcaster.ts";
 export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
+export { claimJob, nextJob } from "./views/jobs/index.ts";
 
 /** A migration of the one DDL source, in Postgres syntax (docs/data-model.md "DDL"). */
 export interface Migration {
@@ -55,6 +58,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 10, name: "0010-event-message-history", sql: eventMessageHistoryDdl },
   { version: 11, name: "0011-audit", sql: auditDdl },
   { version: 12, name: "0012-tasks", sql: tasksDdl },
+  { version: 13, name: "0013-jobs", sql: jobsDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -62,6 +66,7 @@ export function createViews(
   db: Db,
   dialect: Dialect,
   broadcaster: Broadcaster,
+  jobs: JobWrites = { now: () => Number.NEGATIVE_INFINITY, committed() {} },
 ): { platform(): PlatformView; board(scope: BoardScope): BoardView; org(scope: OrgScope): OrgView } {
   return {
     platform: () => ({
@@ -78,7 +83,7 @@ export function createViews(
       ...orgAuditReads(db, dialect, scope),
     }),
     board: (scope) => ({
-      ...boardView(db, dialect, scope, broadcaster),
+      ...boardView(db, dialect, scope, broadcaster, jobs),
       subscribeEvents: (fromPosition, wake) =>
         broadcaster.subscribe(scope, fromPosition, (page, head) => wake(page && committedEvents(page), head)),
       ...personalTokenView(db, dialect, scope),

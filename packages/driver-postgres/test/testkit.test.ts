@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { type OpenStore, runBroadcasterSuite, runStoreSuite } from "@openboard/ports/testkit";
+import { type OpenStore, runBroadcasterSuite, runJobsSuite, runStoreSuite } from "@openboard/ports/testkit";
 import { SQL } from "bun";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
 import { migrate } from "../src/migrate.ts";
@@ -34,6 +34,7 @@ if (url) {
     }
   };
   runStoreSuite("postgres", open);
+  runJobsSuite("postgres", open);
   runBroadcasterSuite("postgres", open);
 
   test("retries an unrecorded concurrent migration and replaces a failed build", async () => {

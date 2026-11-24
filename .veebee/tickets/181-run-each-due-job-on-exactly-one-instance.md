@@ -11,7 +11,7 @@ writes:
   - packages/driver-sql/migrations/*-jobs.sql
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
-  - packages/driver-sql/src/views/jobs.ts
+  - packages/driver-sql/src/views/jobs/index.ts
   - packages/driver-sqlite/src/jobs.ts
   - packages/driver-sqlite/src/index.ts
   - packages/driver-sqlite/test/testkit.test.ts
@@ -26,11 +26,23 @@ writes:
   - apps/openboard/src/compose.ts
   - tools/conformance/src/drivers.ts
   - tools/bench/src/drivers.ts
+  - packages/ports/src/store.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/driver-sqlite/src/open.ts
+  - packages/driver-sqlite/src/ddl.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/driver-postgres/test/unavailable.test.ts
+  - packages/server/src/http/scope.ts
+  - packages/server/src/deps.ts
+  - packages/server/test/support/cluster.ts
+  - apps/openboard/src/config.ts
+  - docs/decisions.md
 conformance: []
 modes: [local, hosted]
 depends_on: [177, 180]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 261
 ---
 
@@ -38,8 +50,8 @@ issue: 261
 As the operator of a hosted board, work due later runs once, on whichever instance is free, even with several instances polling.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/jobs.test.ts` passes: twenty jobs enqueued in board writes through instance 1 each run exactly once when both instances' runners poll, and a job whose lease expired on an instance that stopped is run by the other
-- [ ] `bun test packages/driver-sqlite/test/testkit.test.ts` and the Postgres testkit run (`OPENBOARD_TEST_DRIVER=postgres … bun test packages/driver-postgres/test/testkit.test.ts`) pass `runJobsSuite`
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/jobs.test.ts` passes: twenty jobs enqueued in board writes through instance 1 each run exactly once when both instances' runners poll, and a job whose lease expired on an instance that stopped is run by the other
+- [x] `bun test packages/driver-sqlite/test/testkit.test.ts` and the Postgres testkit run (`OPENBOARD_TEST_DRIVER=postgres … bun test packages/driver-postgres/test/testkit.test.ts`) pass `runJobsSuite`
 
 ## Out of scope
 - Any production job kind: schedule sends (M13, 378), webhook deliveries (M11), hard deletion, log shipping and dumps (M7, 208, 210, 211) each register their own.

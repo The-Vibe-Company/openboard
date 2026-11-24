@@ -1,5 +1,5 @@
 import process from "node:process";
-import { createTestDatabases, postgresDriver, statementCounter as postgresCounter } from "@openboard/driver-postgres";
+import { createTestDatabases, statementCounter as postgresCounter, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver, statementCounter } from "@openboard/driver-sqlite";
 import { type App, createApp, type Deps, mintLocalOwnerToken, type ServerConfig } from "@openboard/server";
 import { fakeGitHub, hostedBoard, hostedConfig } from "./hosted";
@@ -47,7 +47,8 @@ function bootLocal() {
     localOwnerTokenHash: owner.hash,
   };
   const counters = Object.assign(statementCounter(), { roundTrips: 0 });
-  const app = createApp(config, { store: sqliteDriver({ memory: true }, Date.now, counters) }, deps());
+  const store = sqliteDriver({ memory: true }, Date.now, counters);
+  const app = createApp(config, { store, jobs: store.jobs }, deps());
   return { instances: [{ app, counters }], board: { url: `${ORIGIN}/api/local/main`, token: owner.token } };
 }
 
@@ -71,7 +72,7 @@ async function bootHosted(cleanup: (() => Promise<void>)[]) {
     const store = await postgresDriver({ url: database.url }, Date.now, counters);
     let app: App;
     try {
-      app = createApp(config, { store }, deps());
+      app = createApp(config, { store, jobs: store.jobs }, deps());
     } catch (error) {
       await store.close();
       throw error;
