@@ -35,6 +35,9 @@ export interface SignInRecord {
   readonly now: number;
 }
 
+/** The person signed in, with the organization slug if this sign-in redeemed an invitation. */
+export type SignedInPerson = PersonRecord & { readonly invitedOrg?: string };
+
 /** A session that is not revoked, of a person who is not disabled; its times are checked by the caller. */
 export interface SessionRecord {
   readonly person: PersonRecord;

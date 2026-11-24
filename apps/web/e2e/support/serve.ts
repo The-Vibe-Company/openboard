@@ -28,17 +28,28 @@ async function fakeProvider(request: Request): Promise<Response> {
   return new Response(null, { status: 404 });
 }
 
+export async function temporaryDataDir() {
+  const path = await mkdtemp(join(tmpdir(), "openboard-browser-"));
+  return { path, remove: () => rm(path, { recursive: true, force: true }) };
+}
+
 interface ServeOptions {
   signup?: NonNullable<ServerConfig["signup"]>;
   dataDir?: string;
   port?: number;
   withProvider?: boolean;
+  now?: () => number;
 }
 
-export async function serve({ signup = "open", dataDir, port = 0, withProvider = true }: ServeOptions = {}) {
-  const temporary = dataDir === undefined;
-  const directory = dataDir ?? (await mkdtemp(join(tmpdir(), "openboard-browser-")));
-  const clean = () => (temporary ? rm(directory, { recursive: true, force: true }) : Promise.resolve());
+export async function serve({
+  signup = "open",
+  dataDir,
+  port = 0,
+  withProvider = true,
+  now = Date.now,
+}: ServeOptions = {}) {
+  const { path, remove: clean } =
+    dataDir === undefined ? await temporaryDataDir() : { path: dataDir, remove: () => Promise.resolve() };
   let app: App | undefined;
   let server: Bun.Server<undefined>;
   try {
@@ -53,7 +64,7 @@ export async function serve({ signup = "open", dataDir, port = 0, withProvider =
   }
   const url = `http://localhost:${server.port}`;
   try {
-    const store = sqliteDriver({ dir: directory });
+    const store = sqliteDriver({ dir: path }, now);
     try {
       app = createApp(
         {
@@ -68,7 +79,7 @@ export async function serve({ signup = "open", dataDir, port = 0, withProvider =
         },
         { store, jobs: store.jobs },
         {
-          now: Date.now,
+          now,
           requestId: () => crypto.randomUUID(),
           schedule(delay, run) {
             const timer = setTimeout(run, delay);

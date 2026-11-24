@@ -51,6 +51,26 @@ async function expectRefused(back: Response, status: number, code: string) {
   expect(cookiesOf(back)["__Host-ob_session"]).toBeUndefined();
 }
 
+test.each(["https://other.example.test/", PUBLIC_URL, undefined])(
+  "invitation sign-in refuses navigation from outside the invitation page (%s)",
+  async (referer) => {
+    const fixture = setup("invite");
+    try {
+      const token = await invitation(fixture);
+      const started = await fixture.app.fetch(
+        new Request(`${PUBLIC_URL}/auth/github/start?invitation=${token}`, {
+          headers: referer ? { referer } : {},
+        }),
+      );
+      expect(started.status).toBe(403);
+      expect(started.headers.has("location")).toBe(false);
+      expect(cookiesOf(started)["__Host-ob_signin"]).toBeUndefined();
+    } finally {
+      await fixture.app.close();
+    }
+  },
+);
+
 test("invite sign-up refuses a new identity without a link and joins a new person with a live link", async () => {
   const fixture = setup("invite");
   const { app } = fixture;
@@ -134,30 +154,33 @@ test.each([
   }
 });
 
-test("open sign-up admits a new identity even when a stale invitation was supplied", async () => {
+test("open sign-up opens a session and returns to a stale invitation", async () => {
   const fixture = setup("open");
   try {
     const token = await invitation(fixture);
     fixture.advance(604_800_000);
     const { back } = await signIn(fixture.app, token);
     expect(back.status).toBe(302);
-    expect(back.headers.get("location")).toBe("/new");
+    expect(back.headers.get("location")).toBe(`/invite/${token}?error=invitation_used`);
     expect(cookiesOf(back)["__Host-ob_session"]).toBeDefined();
   } finally {
     await fixture.app.close();
   }
 });
 
-test("concurrent first sign-ins of the same invited identity open sessions for the same person", async () => {
+test("concurrent first sign-ins open sessions for the same person while only one redeems the invitation", async () => {
   const fixture = setup("invite");
   const { app } = fixture;
   try {
     const token = await invitation(fixture);
     const attempts = await Promise.all([signIn(app, token), signIn(app, token)]);
+    expect(attempts.map(({ back }) => back.headers.get("location")).sort()).toEqual([
+      "/acme/main",
+      `/invite/${token}?error=invitation_used`,
+    ]);
     const people: string[] = [];
     for (const { back, session } of attempts) {
       expect(back.status).toBe(302);
-      expect(back.headers.get("location")).toBe("/acme/main");
       const response = await app.fetch(new Request(`${PUBLIC_URL}/api/x/session`, { headers: { cookie: session } }));
       const { person } = (await response.json()) as SessionState;
       expect(person?.handle).toBe("ada");

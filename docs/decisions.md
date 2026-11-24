@@ -671,11 +671,18 @@ Lease consumption and the database effect commit together.
   their context. A signed-in member lands on `/<org>/main`, and a person
   without a membership lands on `/new`.
   Ticket 195 extends the pending cookie with the optional `invitation`
-  parameter from the start route. In invite mode the callback hashes the token and
-  redeems the invitation in the same transaction as creating the person and session.
-  In `invite` mode this is the only way to create a person. In `closed` mode
-  only existing identities sign in. Expired, revoked and used invitations
-  produce a JSON 410 `invitation_used` at the callback.
+  parameter from the start route. The invitation page's GitHub link records
+  the person's intent to join (#381). The start request requires the
+  same-origin invitation page as its browser referrer.
+  The callback redeems the invitation
+  in the person and session transaction for new people, or after committing
+  a returning person's session to preserve the redemption lock order.
+  On redemption failure it opens a session where sign-up policy allows and
+  redirects to `/invite/:token?error=<code>` so the page can show the reason.
+  In `invite` mode new people still need a successful redemption. An expired,
+  revoked or used invitation for a new person in that mode still produces
+  a JSON 410 `invitation_used` at the callback. In `closed` mode only existing
+  identities sign in.
   `account` operations declare paths relative to `/api/x`, are matched
   before the local `/api` alias, and see `ctx.platform` and `ctx.session`
   (the live `__Host-ob_session`, read only without `authorization`); their

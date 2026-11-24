@@ -75,13 +75,13 @@ Verified against `docs/01-board/03-identity.md`, `docs/01-board/09-access.md`,
 ### Sign-up and sign-in
 
 ```
-/invite/:token ─> /signin ─> /auth/github/start?invitation=<token>
+/invite/:token ────────────> /auth/github/start?invitation=<token>
 /signin ───────────────────> /auth/github/start
                                 └─> pending sign-in cookie ─> GitHub ─> /auth/github/callback
                                                                          ├─ known identity ─> session
                                                                          └─ new identity ─> check sign-up policy
                                                                                               ├─ admitted ─> person + session
-                                                                                              │              + membership in invite mode
+                                                                                              │              + membership when an invitation is redeemed
                                                                                               └─ refused ──> JSON error
 Session ─> /<org>/main if a member, or /new to create an organization
 ```
@@ -130,12 +130,21 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
 
 ### Invitations
 
-- A signed-out recipient starts sign-in with `?invitation=<token>`. The
-  token travels in the ten-minute pending sign-in cookie, then the callback
-  hashes it for lookup. In invite mode, successful redemption creates the
-  person, membership and session and consumes the invitation in one
-  transaction. An expired, revoked or used link returns 410 `invitation_used`
-  at the callback. A bound email requires a matching verified address.
+- Open the invitation link to see the organization, role and expiry. If
+  signed in, choose **Join** followed by the organization's name to join and
+  open its main board. Otherwise choose **Sign in with GitHub to join**.
+
+- A signed-out recipient starts sign-in with `?invitation=<token>` from the
+  invitation page. The server checks that the browser referrer is the same-origin
+  invitation page to prevent cross-site enrollment. The token travels in the ten-minute pending sign-in cookie, then the callback
+  hashes it for lookup. For a new person, successful redemption creates
+  the person, membership and session and consumes the invitation in one
+  transaction. For a returning person, redemption follows session creation.
+  If redemption fails after the person qualifies for sign-in, the callback
+  opens a session and returns to the invitation with the reason. In invite
+  mode, a new person still needs a live invitation to sign up. An expired,
+  revoked or used link returns 410 `invitation_used` at the callback in that
+  case. A bound email requires a matching verified address.
 
 - `POST /api/x/orgs/:org/invitations { role, email? , send? }` (admin+) →
   `{ invitation, url: "<origin>/invite/<token>" }`. Token: 256 bits, stored
