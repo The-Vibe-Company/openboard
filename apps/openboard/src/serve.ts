@@ -21,17 +21,35 @@ async function writeTokenFile(port: number, url: string, token: string): Promise
   await rename(partial, file);
 }
 
-/** `ob serve`: the local board on loopback; prints its `BOARD_URL`, never its token, and runs until interrupted. */
+/** `ob serve`: listens on loopback and runs until interrupted. */
 export async function serve(config: Config): Promise<void> {
-  const owner = mintLocalOwnerToken(crypto.getRandomValues(new Uint8Array(42)));
-  const app = compose(config, owner.hash);
-  const server = Bun.serve({ hostname: HOST, port: config.port, fetch: app.fetch });
-  const url = `http://${HOST}:${server.port}/api/local/main`;
-  await writeTokenFile(server.port ?? config.port, url, owner.token);
-  process.stdout.write(`BOARD_URL=${url}\n`);
+  const owner = config.mode === "local" ? mintLocalOwnerToken(crypto.getRandomValues(new Uint8Array(42))) : undefined;
+  const app = await compose(config, owner?.hash);
+  try {
+    const server = Bun.serve({ hostname: HOST, port: config.port, fetch: app.fetch });
+    try {
+      if (owner) {
+        const url = `http://${HOST}:${server.port}/api/local/main`;
+        await writeTokenFile(server.port ?? config.port, url, owner.token);
+        process.stdout.write(`BOARD_URL=${url}\n`);
+      } else {
+        process.stdout.write(`OpenBoard listening on http://${HOST}:${server.port} (hosted mode)\n`);
+      }
+    } catch (error) {
+      await server.stop();
+      throw error;
+    }
+    registerShutdown(server, app.close);
+  } catch (error) {
+    await app.close();
+    throw error;
+  }
+}
+
+function registerShutdown(server: { stop(): Promise<void> }, close: () => Promise<void>): void {
   const stop = async () => {
     await server.stop();
-    await app.close();
+    await close();
     process.exit(130);
   };
   process.once("SIGINT", stop);

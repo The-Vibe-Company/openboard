@@ -4,7 +4,12 @@ title: Post a message on Postgres through OPENBOARD_DATABASE_URL
 milestone: M5-postgres-driver
 package: driver-postgres
 writes:
+  - docs/decisions.md
+  - packages/driver-sql/src/ddl.ts
+  - packages/driver-sqlite/src/ddl.ts
+  - packages/driver-postgres/src/concurrent-indexes.ts
   - packages/driver-postgres/src/index.ts
+  - packages/driver-sql/src/index.ts
   - packages/driver-postgres/src/pool.ts
   - packages/driver-postgres/src/dialect.ts
   - packages/driver-postgres/src/migrate.ts
@@ -15,18 +20,20 @@ writes:
   - packages/driver-postgres/package.json
   - packages/driver-postgres/tsconfig.json
   - packages/ports/testkit/index.ts
+  - packages/ports/testkit/store/messages.test-suite.ts
   - apps/openboard/src/config.ts
   - apps/openboard/src/compose.ts
   - apps/openboard/src/serve.ts
   - apps/openboard/test/config.test.ts
   - apps/openboard/package.json
+  - apps/openboard/tsconfig.json
   - .oxlintrc.json
   - bun.lock
 conformance: []
 modes: [local, hosted]
 depends_on: [35, 135]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 242
 ---
 

@@ -8,7 +8,7 @@ const SIGNUP_MODES = ["open", "invite", "closed"] as const;
 type Signup = (typeof SIGNUP_MODES)[number];
 
 /** The server's configuration, parsed once at startup (docs/codebase.md 5.5). */
-export interface Config {
+interface CommonConfig {
   readonly port: number;
   /** `OPENBOARD_PUBLIC_URL`: the origin board URLs are built on, never `Host`; default `http://127.0.0.1:<port>`. */
   readonly publicUrl: string;
@@ -21,6 +21,9 @@ export interface Config {
   /** `OPENBOARD_GITHUB_CLIENT_ID` and `OPENBOARD_GITHUB_CLIENT_SECRET`: GitHub sign-in, when both are set. */
   readonly github?: { readonly clientId: string; readonly clientSecret: string };
 }
+
+export type Config = CommonConfig &
+  ({ readonly mode: "local" } | { readonly mode: "hosted"; readonly databaseUrl: string });
 
 export class ConfigError extends Error {}
 
@@ -42,6 +45,12 @@ function publicOrigin(text: string): string | null {
   const url = new URL(text);
   const bare = url.pathname === "/" && !url.search && !url.hash && !url.username && !url.password;
   return bare && (url.protocol === "http:" || url.protocol === "https:") ? url.origin : null;
+}
+
+function validDatabaseUrl(text: string): boolean {
+  if (!URL.canParse(text)) return false;
+  const url = new URL(text);
+  return !!url.hostname && (url.protocol === "postgres:" || url.protocol === "postgresql:");
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -80,15 +89,19 @@ export function loadConfig(env: Env = process.env): Config {
   }
   const port = Number(env.PORT ?? "8787");
   if (!Number.isInteger(port) || port < 1 || port > 65_535) problems.push(`PORT: expected 1 to 65535, got ${env.PORT}`);
-  if (env.OPENBOARD_DATABASE_URL) {
-    problems.push("OPENBOARD_DATABASE_URL: hosted mode on Postgres is not built yet; unset it to run locally");
+  const databaseUrl = secretOf(env, "OPENBOARD_DATABASE_URL", problems);
+  if (databaseUrl !== undefined && !validDatabaseUrl(databaseUrl)) {
+    const name =
+      env.OPENBOARD_DATABASE_URL_FILE === undefined ? "OPENBOARD_DATABASE_URL" : "OPENBOARD_DATABASE_URL_FILE";
+    problems.push(`${name}: expected a postgres or postgresql URL with a host`);
   }
   const publicUrl = publicOrigin(env.OPENBOARD_PUBLIC_URL ?? `http://127.0.0.1:${port}`);
   // Unset, it follows PORT, so a bad PORT is reported once, as itself.
   if (!publicUrl && env.OPENBOARD_PUBLIC_URL !== undefined)
     problems.push("OPENBOARD_PUBLIC_URL: expected an http or https origin, such as https://board.example");
   const dataDir = env.OPENBOARD_DATA_DIR ?? "./.openboard";
-  if (!validDataDir(dataDir)) problems.push("OPENBOARD_DATA_DIR: expected a directory path");
+  if (databaseUrl === undefined && !validDataDir(dataDir))
+    problems.push("OPENBOARD_DATA_DIR: expected a directory path");
   const sync = env.OPENBOARD_SYNC ?? "NORMAL";
   if (sync !== "NORMAL" && sync !== "FULL") problems.push("OPENBOARD_SYNC: expected NORMAL or FULL");
   const logLevel = env.OPENBOARD_LOG_LEVEL ?? "info";
@@ -101,6 +114,7 @@ export function loadConfig(env: Env = process.env): Config {
   const user = (env.USER ?? env.USERNAME ?? "owner").toLowerCase().replace(/[^a-z0-9-]/g, "-");
   if (problems.length > 0 || !publicUrl) throw new ConfigError(problems.join("\n"));
   return Object.freeze({
+    ...(databaseUrl === undefined ? { mode: "local" as const } : { mode: "hosted" as const, databaseUrl }),
     port,
     publicUrl,
     dataDir,

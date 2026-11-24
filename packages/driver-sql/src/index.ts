@@ -24,6 +24,8 @@ import { orgReads, orgView } from "./views/orgs.ts";
 import { threadReads } from "./views/threads.ts";
 
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
+export { splitStatements } from "./ddl.ts";
+export { postgresText } from "./db.ts";
 export { platformStatements, statements } from "./statements.ts";
 
 /** A migration of the one DDL source, in Postgres syntax (docs/data-model.md "DDL"). */

@@ -11,7 +11,8 @@
         "packages/ports/**",
         "packages/server/**",
         "apps/openboard/src/config.ts",
-        "packages/cli/src/config.ts"
+        "packages/cli/src/config.ts",
+        "packages/*/test/support/env.ts"
       ],
       "rules": {
         "no-restricted-properties": [

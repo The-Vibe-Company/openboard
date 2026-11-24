@@ -1,9 +1,19 @@
+import { postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { createApp, type Deps, jsonLogger } from "@openboard/server";
 import type { Config } from "./config.ts";
 
-/** The one place a driver is chosen: local mode on SQLite, in the configured data directory. */
-export function compose(config: Config, localOwnerTokenHash: string) {
+async function hostedStore(url: string, now: () => number) {
+  try {
+    return await postgresDriver({ url }, now);
+  } catch {
+    // Connection errors can contain credentials supplied in the URL.
+    throw new Error("Could not open or migrate the Postgres database");
+  }
+}
+
+/** The one place a driver is chosen: SQLite for local mode, Postgres for hosted mode. */
+export async function compose(config: Config, localOwnerTokenHash?: string) {
   const now = () => Date.now();
   const deps: Deps = {
     now,
@@ -12,10 +22,21 @@ export function compose(config: Config, localOwnerTokenHash: string) {
     randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
     fetch: (request) => fetch(request, { redirect: "error" }),
   };
-  const { publicUrl, localOwner, signup, github } = config;
+  const { mode, publicUrl, localOwner, signup, github } = config;
+  const store =
+    config.mode === "hosted"
+      ? await hostedStore(config.databaseUrl, deps.now)
+      : sqliteDriver({ dir: config.dataDir, sync: config.sync }, deps.now);
   return createApp(
-    { mode: "local", publicUrl, localOwner, localOwnerTokenHash, signup, ...(github && { signIn: { github } }) },
-    { store: sqliteDriver({ dir: config.dataDir, sync: config.sync }, deps.now) },
+    {
+      mode,
+      publicUrl,
+      localOwner,
+      ...(mode === "local" && localOwnerTokenHash && { localOwnerTokenHash }),
+      signup,
+      ...(github && { signIn: { github } }),
+    },
+    { store },
     deps,
   );
 }
