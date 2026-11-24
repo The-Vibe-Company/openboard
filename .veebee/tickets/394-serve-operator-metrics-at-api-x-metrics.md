@@ -4,23 +4,51 @@ title: Serve operator metrics at /api/x/metrics
 milestone: M15-operations
 package: server
 writes:
-  - packages/contract/src/operations/metrics.ts
-  - packages/contract/src/operations/index.ts
-  - packages/server/src/operations/metrics.ts
-  - packages/server/src/operations/index.ts
-  - packages/server/src/metrics.ts
-  - packages/server/src/http/pipeline.ts
-  - packages/server/src/deps.ts
-  - packages/server/test/metrics.test.ts
+  - apps/openboard/src/compose.ts
   - apps/openboard/src/config.ts
   - apps/openboard/test/config.test.ts
   - docs/codebase.md
   - docs/decisions.md
+  - docs/protocol.md
+  - packages/contract/src/index.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/operations/metrics/index.ts
+  - packages/driver-postgres/src/index.ts
+  - packages/driver-postgres/src/jobs.ts
+  - packages/driver-postgres/src/pool.ts
+  - packages/driver-sql/src/db.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/views/boards.ts
+  - packages/driver-sql/src/views/jobs/index.ts
+  - packages/driver-sql/src/views/webhooks/deliveries.ts
+  - packages/driver-sqlite/src/jobs.ts
+  - packages/driver-sqlite/src/open.ts
+  - packages/ports/src/index.ts
+  - packages/ports/src/jobs.ts
+  - packages/ports/src/store.ts
+  - packages/sdk/src/client.ts
+  - packages/sdk/test/client.test.ts
+  - packages/server/openapi.json
+  - packages/server/src/app.ts
+  - packages/server/src/deps.ts
+  - packages/server/src/http/limits.ts
+  - packages/server/src/http/openapi.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/http/respond.ts
+  - packages/server/src/jobs/ship-log.ts
+  - packages/server/src/metrics.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/metrics/index.ts
+  - packages/server/test/metrics.test.ts
+  - packages/server/test/support/app.ts
+  - packages/server/test/support/browser-session.ts
+  - packages/server/test/support/drivers.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [341]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 589
 ---
 

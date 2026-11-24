@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { userInfo } from "node:os";
 import process from "node:process";
@@ -19,6 +20,7 @@ interface CommonConfig {
   readonly port: number;
   /** Number of trusted reverse proxy hops in front of this listener. */
   readonly trustedProxies: number;
+  readonly metricsTokenHash?: string;
   readonly instanceId?: string;
   readonly deploymentTag?: string;
   /** `OPENBOARD_PUBLIC_URL`: the origin board URLs are built on, never `Host`; default `http://127.0.0.1:<port>`. */
@@ -88,6 +90,17 @@ function secretOf(env: Env, name: string, problems: string[]): string | undefine
     problems.push(`${name}_FILE: cannot read the file it names`);
     return undefined;
   }
+}
+
+function metricsTokenHashOf(env: Env, problems: string[]): string | undefined {
+  const name = "OPENBOARD_METRICS_TOKEN";
+  const token = secretOf(env, name, problems);
+  if (token === undefined) return undefined;
+  if (!/^[A-Za-z0-9._~+/-]+=*$/.test(token) || /^ob[ctpl]_/.test(token)) {
+    problems.push("OPENBOARD_METRICS_TOKEN: expected a dedicated bearer token");
+    return undefined;
+  }
+  return createHash("sha256").update(token).digest("hex");
 }
 
 /** GitHub sign-in's OAuth client: both halves or neither. */
@@ -209,6 +222,7 @@ export function loadConfig(env: Env = process.env): Config {
     problems.push(`OPENBOARD_SIGNUP: expected ${SIGNUP_MODES.join(", ")}, got ${signup}`);
   const backup = backupOf(env, problems);
   const github = githubOf(env, problems);
+  const metricsTokenHash = metricsTokenHashOf(env, problems);
   const user = (env.USER ?? env.USERNAME ?? "owner").toLowerCase().replace(/[^a-z0-9-]/g, "-");
   if (problems.length > 0 || !publicUrl) throw new ConfigError(problems.join("\n"));
   return Object.freeze({
@@ -221,6 +235,7 @@ export function loadConfig(env: Env = process.env): Config {
     ...(env.OPENBOARD_SECRET_KEY_FILE !== undefined && { secretKeyFile: env.OPENBOARD_SECRET_KEY_FILE }),
     port,
     trustedProxies,
+    ...(metricsTokenHash && { metricsTokenHash }),
     ...(env.OPENBOARD_INSTANCE_ID && { instanceId: env.OPENBOARD_INSTANCE_ID }),
     ...(env.OPENBOARD_DEPLOYMENT_TAG && { deploymentTag: env.OPENBOARD_DEPLOYMENT_TAG }),
     publicUrl,

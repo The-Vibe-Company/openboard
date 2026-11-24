@@ -119,6 +119,9 @@ test("two tenants share dispatch capacity while a capped tenant waits for the ne
   expect(f.sent.filter((org) => org === "alpha")).toHaveLength(600);
   expect(f.sent.filter((org) => org === "bravo")).toHaveLength(10);
   expect(await f.run()).toEqual(f.app.instances.map(() => nextWindow));
+  expect(await f.store.jobs.dueMetrics([WEBHOOK_DELIVERY_JOB], NOW)).toEqual([
+    { kind: WEBHOOK_DELIVERY_JOB, count: 0, oldest: null },
+  ]);
   const [a, b] = await Promise.all([alpha.snapshot(), bravo.snapshot()]);
   expect(a.rates).toEqual([600]);
   expect(b.rates).toEqual([10]);

@@ -3,7 +3,7 @@ import type { Deps } from "../deps.ts";
 import type { Tenants } from "../http/scope.ts";
 import type { OrgJobHandler } from "./registry.ts";
 
-const kind = "ship-log";
+export const SHIP_LOG_JOB = "ship-log";
 const interval = 10_000;
 const pageSize = 100;
 const concurrency = 8;
@@ -57,10 +57,10 @@ export function logShippingJobs(
       const next = await scan(after, stopped);
       return board.write(async (writer) => {
         if ((await writer.takeJob(job.id, lease, deps.now())) === null) return false;
-        await writer.enqueue(kind, lease.claimedAt + interval, { after: next });
+        await writer.enqueue(SHIP_LOG_JOB, lease.claimedAt + interval, { after: next });
         return true;
       });
     },
   };
-  return { [kind]: shipment };
+  return { [SHIP_LOG_JOB]: shipment };
 }

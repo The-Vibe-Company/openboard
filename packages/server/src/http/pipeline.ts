@@ -1,5 +1,5 @@
-import { BoardError, getMe, type operations, type previewInvitation } from "@openboard/contract";
-import type { Bucket, PlatformView, RateLimits } from "@openboard/ports";
+import { BoardError, getMe, type Operation, type operations, type previewInvitation } from "@openboard/contract";
+import type { Bucket, Jobs, PlatformView, RateLimits } from "@openboard/ports";
 import { type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
 import { accountPersonalToken, exportTokenPerson } from "../auth/personal-tokens.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
@@ -8,6 +8,8 @@ import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, Logger, ServerConfig } from "../deps.ts";
 import { runSigned } from "../inbound/receive.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
+import type { Metrics } from "../metrics.ts";
+import { authorizeMetrics } from "../operations/metrics/index.ts";
 import { mcpMethodNotAllowed, mcpPost } from "../mcp/facade.ts";
 import {
   type AccountOperation,
@@ -29,7 +31,20 @@ import { type BoardPath, boardPath, mcpPath, notFound, type Tenants } from "./sc
 type Contracted = (typeof operations)[number];
 type Params = Readonly<Record<string, string>>;
 
+type RequestLog = RequestFields & { route?: string };
+
+function recordOperation(logged: RequestLog, operation: Operation) {
+  logged.op = operation.name;
+  const mount =
+    operation.route.mount ??
+    (operation.scope === "org" || operation.scope === "account" ? "/api/x" : "/api/:org/:board");
+  logged.route = mount + operation.route.path;
+}
+
 export interface Pipeline {
+  readonly metrics: Metrics | undefined;
+  readonly dueMetrics: Jobs["dueMetrics"];
+  readonly jobKinds: readonly string[];
   readonly bucket: Bucket | undefined;
   readonly shutdown: AbortSignal;
   readonly staticFiles: (request: Request, path: string) => Promise<Response> | undefined;
@@ -176,11 +191,29 @@ async function runDevice(request: Request, operation: DeviceOperation, pipeline:
   return operationResponse(operation, output);
 }
 
-async function runPlatform(request: Request, url: URL, pipeline: Pipeline & RequestLimits, logged: RequestFields) {
+async function runPlatform(request: Request, url: URL, pipeline: Pipeline & RequestLimits, logged: RequestLog) {
   const matched = matchRoute(pipeline.platformRoutes, request.method, url.pathname.slice("/api/x".length));
   if (!matched) return null;
   const { operation, params } = matched;
-  logged.op = operation.name;
+  recordOperation(logged, operation);
+  if (operation.name === "getMetrics") {
+    const { metrics, dueMetrics, jobKinds } = pipeline;
+    authorizeMetrics(request, pipeline.config.metricsTokenHash);
+    if (!metrics) throw notFound();
+    const input = validate(operation, { params, query: readQuery(operation, url.searchParams) });
+    return operationResponse(
+      operation,
+      await handlerOf(operation)(
+        {
+          metrics,
+          dueMetrics,
+          jobKinds,
+          now: pipeline.deps.now,
+        },
+        input,
+      ),
+    );
+  }
   refuseClaimedConfiguration(request, operation);
   if (operation.scope === "account") return runAccount(request, url, operation, params, pipeline);
   if (operation.scope === "org") return runOrg(request, url, operation, params, pipeline);
@@ -195,14 +228,16 @@ async function run(
   request: Request,
   url: URL,
   pipeline: Pipeline & RequestLimits,
-  logged: RequestFields,
+  logged: RequestLog,
   log: Logger,
 ): Promise<Response> {
   if (url.pathname === "/auth/logout" && request.method === "POST") {
+    logged.route = "/auth/logout";
     return signOut(request, pipeline.platform, pipeline.deps.now(), pipeline.config.publicUrl);
   }
   if (url.pathname.startsWith("/auth/")) {
     const answer = await signInRoute(request, url, pipeline);
+    if (answer) logged.route = "/auth/:provider/:action";
     if (!answer) throw notFound();
     return answer;
   }
@@ -218,10 +253,11 @@ async function run(
   const matched = matchRoute(pipeline.routes, request.method, path.rest);
   if (!matched) throw notFound();
   const { operation } = matched;
-  logged.op = operation.name;
+  recordOperation(logged, operation);
   if (
     operation.scope === "public" &&
     !operation.route.mount &&
+    operation.name !== "getMetrics" &&
     operation.name !== "previewInvitation" &&
     operation.name !== "startDeviceSignIn" &&
     operation.name !== "pollDeviceSignIn"
@@ -250,10 +286,11 @@ async function runMcp(
   request: Request,
   path: BoardPath,
   pipeline: Pipeline & RequestLimits,
-  logged: RequestFields,
+  logged: RequestLog,
   log: Logger,
 ) {
   logged.org = path.org;
+  logged.route = "/mcp/:org/:board";
   const { publicUrl } = pipeline.config;
   const origin = request.headers.get("origin");
   if (origin !== null && origin !== new URL(publicUrl).origin) {
@@ -267,7 +304,7 @@ async function runMcp(
   const caller = await authenticateBoard(request, apiPath, pipeline, getMe.name);
   logged.actor = caller.by.actor;
   return mcpPost(request, (operation, readInput) => {
-    logged.op = operation.name;
+    recordOperation(logged, operation);
     return runBoard(request, apiPath, operation, pipeline, caller, readInput).catch((error) =>
       errorResponse(error, log),
     );
@@ -288,7 +325,7 @@ export async function handle(request: Request, pipeline: Pipeline, ip?: string):
   const url = new URL(request.url);
   const requestId = requestIdOf(request, url.pathname, pipeline);
   const log = withFields(pipeline.deps.log, { request_id: requestId });
-  const logged: RequestFields = {
+  const logged: RequestLog = {
     req: `${request.method} ${loggedPath(url.pathname)}`,
     op: null,
     org: null,
@@ -297,6 +334,7 @@ export async function handle(request: Request, pipeline: Pipeline, ip?: string):
   let response: Response;
   try {
     const probe = request.method === "GET" ? healthProbe(url.pathname, pipeline) : undefined;
+    if (probe) logged.route = url.pathname;
     if (!probe && pipeline.shutdown.aborted) throw new BoardError("unavailable", "the instance is draining");
     response = await (probe ??
       pipeline.staticFiles(request, url.pathname) ??
@@ -305,6 +343,7 @@ export async function handle(request: Request, pipeline: Pipeline, ip?: string):
     response = errorResponse(error, log);
   }
   if (
+    logged.op === "getMetrics" ||
     logged.op === "startDeviceSignIn" ||
     logged.op === "pollDeviceSignIn" ||
     logged.op === "approveDeviceSignIn" ||
@@ -317,6 +356,9 @@ export async function handle(request: Request, pipeline: Pipeline, ip?: string):
     response.headers.set("cache-control", "no-store");
   }
   response.headers.set(REQUEST_ID, requestId);
-  logRequest(log, logged, response.status, now() - started);
+  const { route, ...fields } = logged;
+  const elapsed = now() - started;
+  pipeline.metrics?.request(route ?? "unmatched", logged.op ?? "unmatched", response.status, elapsed);
+  logRequest(log, fields, response.status, elapsed);
   return response;
 }

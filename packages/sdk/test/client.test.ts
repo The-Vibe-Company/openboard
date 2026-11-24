@@ -90,3 +90,16 @@ test("signed events send the supplied headers and raw bytes", async () => {
   const headers = { "webhook-signature": "signature fixture" };
   expect(await client.receiveInboundEvent({ id: "ib_fixture" }, { signed: { headers, body: bytes } })).toEqual(result);
 });
+
+test("the metrics client sends the operator bearer and reads the Prometheus response as text", async () => {
+  const client = createClient({
+    url: "https://board.example/api/local/main",
+    token: "example-metrics",
+    fetch: async (request) => {
+      expect(request.url).toBe("https://board.example/api/x/metrics");
+      expect(request.headers.get("authorization")).toBe("Bearer example-metrics");
+      return new Response("sample 1\n", { headers: { "content-type": "text/plain; version=0.0.4" } });
+    },
+  });
+  expect(await client.getMetrics({})).toBe("sample 1\n");
+});

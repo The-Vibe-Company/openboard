@@ -27,6 +27,12 @@ export function operationResponse({ responseType, status }: Operation, output: u
     });
   }
   if (typeof output !== "string") throw new TypeError("expected a string response body");
+  if (responseType === "text/plain") {
+    return new Response(output, {
+      status: code,
+      headers: { "content-type": "text/plain; version=0.0.4", "cache-control": "no-store" },
+    });
+  }
   return new Response(output, {
     status: code,
     headers: {

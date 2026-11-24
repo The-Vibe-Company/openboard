@@ -35,6 +35,7 @@ export function requestRateLimits(
   now: () => number,
   platform: PlatformView,
   { perPrincipal = 20, perOrganization = 500 }: NonNullable<ServerConfig["streamLimits"]> = {},
+  observeStream?: (delta: 1 | -1) => void,
 ): RateLimits {
   // Integer units: a write costs 1,000, failed authentication 3,000, and refresh 10,000.
   const writes = tokenBuckets(now, 1_000_000, 200, 1_000);
@@ -85,10 +86,12 @@ export function requestRateLimits(
       if (orgCount >= perOrganization || principalCount >= perPrincipal) return undefined;
       byOrg.set(org, orgCount + 1);
       byPrincipal.set(principal, principalCount + 1);
+      observeStream?.(1);
       let released = false;
       return () => {
         if (released) return;
         released = true;
+        observeStream?.(-1);
         decrement(byOrg, org);
         decrement(byPrincipal, principal);
       };

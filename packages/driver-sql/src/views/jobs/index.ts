@@ -133,6 +133,18 @@ const cappedDue: Fragment = {
 
 export const jobPlatformStatements = {
   // Dispatch runs before a board is known. These statements expose no payload or other board content.
+  dueJobMetrics: sql`WITH RECURSIVE input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds, CAST(${"now"} AS BIGINT) AS at,
+      CAST(${"windowEnd"} AS BIGINT) AS window_end),
+    ${dispatchScopes},
+    eligible_jobs AS (
+      SELECT jobs.* FROM scopes JOIN jobs ON jobs.kind = scopes.kind WHERE scopes.org_id IS NULL
+      UNION ALL
+      SELECT jobs.* FROM scopes JOIN jobs ON jobs.kind = scopes.kind AND jobs.org_id = scopes.org_id
+      WHERE scopes.window_full = 0
+    )
+    SELECT jobs.kind, COUNT(*) AS count, MIN(jobs.available_at) AS oldest
+    FROM eligible_jobs jobs WHERE jobs.available_at <= ${"now"} AND ${activeExpiryBoard}
+      AND ${readyDeliveryLane} AND (${dispatchAt}) <= ${"now"} GROUP BY jobs.kind`,
   // Materialize picks so choosing the oldest candidate does not re-run the locking subqueries.
   claimJob: sql`WITH RECURSIVE input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds, CAST(${"now"} AS BIGINT) AS at,
       CAST(${"windowEnd"} AS BIGINT) AS window_end),
@@ -159,6 +171,22 @@ export const jobPlatformStatements = {
       SELECT MIN(o.deleted_at) + ${"retention"} AS due FROM orgs o WHERE ${"includeLegacy"} = 1 AND ${unqueued}
     ) AS due_jobs`,
 };
+
+export function dueJobMetrics(db: Db, dialect: Dialect): Jobs["dueMetrics"] {
+  return async (kinds, now) => {
+    const rows = await query(
+      db,
+      dialect,
+      jobPlatformStatements.dueJobMetrics,
+      dispatchParams([...new Set(kinds)], now),
+    );
+    const byKind = new Map(rows.map((row) => [row.kind, row]));
+    return kinds.map((kind) => {
+      const row = byKind.get(kind);
+      return { kind, count: row ? Number(row.count) : 0, oldest: row ? Number(row.oldest) : null };
+    });
+  };
+}
 
 export const jobStatements = {
   enqueueJob: sql`INSERT INTO jobs (org_id, board_id, kind, available_at, payload)

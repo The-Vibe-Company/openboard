@@ -34,6 +34,8 @@ export type {
   OrgView,
   PlatformView,
   Store,
+  StoreMetrics,
+  WebhookOutcome,
 } from "./store.ts";
 export type { BoardTaskReads, BoardTaskWriter, TaskListQuery } from "./tasks.ts";
 export * from "./webhooks/index.ts";

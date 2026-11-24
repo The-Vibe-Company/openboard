@@ -1,5 +1,5 @@
-import { createViews, postgresText } from "@openboard/driver-sql";
-import type { Store } from "@openboard/ports";
+import { createViews, postgresText, withWebhookMetrics } from "@openboard/driver-sql";
+import type { Store, StoreMetrics } from "@openboard/ports";
 import { SQL } from "bun";
 import { postgresBroadcaster } from "./broadcaster.ts";
 import type { StatementCounter } from "./counters.ts";
@@ -38,9 +38,16 @@ export async function postgresDriver(
   await migratePostgres(options, now);
   const sql = openPool(options.url);
   try {
-    const db = connection(sql, counter);
+    let metrics: StoreMetrics | undefined;
+    const db = withWebhookMetrics(
+      connection(sql, counter, () => metrics?.boardLock),
+      () => metrics,
+    );
     const broadcaster = await postgresBroadcaster(sql, db);
     return {
+      observeMetrics(observer) {
+        metrics = observer;
+      },
       jobs: postgresJobs(sql, db, now),
       dumpIfMissing: postgresDump(options.url),
       ...createViews(db, postgresText, broadcaster, { now, committed() {} }),
