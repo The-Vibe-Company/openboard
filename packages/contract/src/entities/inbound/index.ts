@@ -65,7 +65,11 @@ export const InboundSpec = Type.Object(
   {
     ...fields,
     verify: Type.Object(
-      { ...WebhookSpec.properties.signing.properties, tolerance: Tolerance },
+      {
+        ...WebhookSpec.properties.signing.properties,
+        algorithm: Webhook.properties.signing.properties.algorithm,
+        tolerance: Tolerance,
+      },
       { additionalProperties: false },
     ),
     rules: InboundRules,

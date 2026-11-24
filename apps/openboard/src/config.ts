@@ -10,6 +10,7 @@ type Signup = (typeof SIGNUP_MODES)[number];
 
 /** The server's configuration, parsed once at startup (docs/codebase.md 5.5). */
 interface CommonConfig {
+  readonly webhookCustomSigning: boolean;
   readonly webhookTargets: { readonly hosts: readonly string[]; readonly ports: readonly number[] };
   readonly secretKey?: Uint8Array;
   readonly host: string;
@@ -164,6 +165,9 @@ function webhookTargetsOf(env: Env, problems: string[]): Config["webhookTargets"
 /** The one place the server reads its environment; every bad variable is named, and the caller exits 2. */
 export function loadConfig(env: Env = process.env): Config {
   const problems: string[] = [];
+  const customSigning = env.OPENBOARD_WEBHOOK_CUSTOM_SIGNING ?? "off";
+  if (customSigning !== "on" && customSigning !== "off")
+    problems.push("OPENBOARD_WEBHOOK_CUSTOM_SIGNING: expected on or off");
   const webhookTargets = webhookTargetsOf(env, problems);
   const secretKey = webhookKeyOf(env, problems);
   const port = Number(env.PORT ?? "8787");
@@ -207,6 +211,7 @@ export function loadConfig(env: Env = process.env): Config {
     ...(databaseUrl === undefined ? { mode: "local" as const } : { mode: "hosted" as const, databaseUrl }),
     host,
     webhookTargets,
+    webhookCustomSigning: customSigning === "on",
     ...(secretKey && { secretKey }),
     port,
     trustedProxies,

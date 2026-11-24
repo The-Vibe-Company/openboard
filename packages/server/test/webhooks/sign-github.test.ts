@@ -13,6 +13,7 @@ test("matches the published GitHub signature and sends the delivery ID", () => {
     NOW,
     "Hello, World!",
     "It's a Secret to Everybody",
+    "https://example.com/hook",
   );
 
   expect(headers.get("x-hub-signature-256")).toBe(

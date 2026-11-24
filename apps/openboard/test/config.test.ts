@@ -200,3 +200,10 @@ test("names invalid webhook allow-list variables", () => {
     expect(() => load({ OPENBOARD_WEBHOOK_ALLOWED_PORTS: port })).toThrow(/^OPENBOARD_WEBHOOK_ALLOWED_PORTS:/);
   }
 });
+
+test("opts in to custom webhook signing only with the rollout flag", () => {
+  expect(load({}).webhookCustomSigning).toBe(false);
+  expect(load({ OPENBOARD_WEBHOOK_CUSTOM_SIGNING: "off" }).webhookCustomSigning).toBe(false);
+  expect(load({ OPENBOARD_WEBHOOK_CUSTOM_SIGNING: "on" }).webhookCustomSigning).toBe(true);
+  expect(() => load({ OPENBOARD_WEBHOOK_CUSTOM_SIGNING: "true" })).toThrow("expected on or off");
+});

@@ -24,18 +24,18 @@ export function webhookRequest(
   if (input.event === null) {
     const boardUrl = `${config.publicUrl}/api/${org}/${board}`;
     const body = webhookPing(boardUrl, org, board, delivery);
-    return signedWebhookRequest(input.webhook.signing, id, now, credentials, body);
+    return signedWebhookRequest(input.webhook, id, now, credentials, body);
   }
   const [event] = projectEvent(input.event, input.record.directory, false);
   if (!event || !("message" in event)) throw new Error("missing webhook event message");
   const template = input.webhook.body as object | null;
   const body = webhookPayload(config.publicUrl, org, board, delivery, event, input.root ?? event.message, template);
   if (body === null) return null;
-  return signedWebhookRequest(input.webhook.signing, id, now, credentials, body);
+  return signedWebhookRequest(input.webhook, id, now, credentials, body);
 }
 
 export function signedWebhookRequest(
-  signing: Webhook["signing"],
+  { signing, url }: Pick<Webhook, "signing" | "url">,
   id: string,
   now: number,
   credentials: WebhookCredentials,
@@ -43,6 +43,6 @@ export function signedWebhookRequest(
 ): SignedWebhookRequest {
   const headers = new Headers(credentials.headers);
   const scheme = webhookSigningScheme(signing);
-  for (const [key, value] of signWebhook(scheme, id, now, body, credentials.secret)) headers.set(key, value);
+  for (const [key, value] of signWebhook(scheme, id, now, body, credentials.secret, url)) headers.set(key, value);
   return { headers, body };
 }

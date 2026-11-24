@@ -6418,13 +6418,7 @@
                     "type": "object",
                     "properties": {
                       "preset": { "type": "string" },
-                      "algorithm": {
-                        "anyOf": [
-                          { "const": "hmac-sha256", "type": "string" },
-                          { "const": "hmac-sha512", "type": "string" },
-                          { "const": "none", "type": "string" }
-                        ]
-                      },
+                      "algorithm": { "type": "string" },
                       "signatureHeader": { "type": "string" },
                       "signatureFormat": { "type": "string" },
                       "encoding": {
@@ -8831,13 +8825,7 @@
                     "type": "object",
                     "properties": {
                       "preset": { "type": "string" },
-                      "algorithm": {
-                        "anyOf": [
-                          { "const": "hmac-sha256", "type": "string" },
-                          { "const": "hmac-sha512", "type": "string" },
-                          { "const": "none", "type": "string" }
-                        ]
-                      },
+                      "algorithm": { "type": "string" },
                       "signatureHeader": { "type": "string" },
                       "signatureFormat": { "type": "string" },
                       "encoding": {

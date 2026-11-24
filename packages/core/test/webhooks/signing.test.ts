@@ -56,3 +56,44 @@ test("rejects signing headers that differ only in case", () => {
     expect.objectContaining({ code: "invalid_signing", status: 400, message: expect.stringContaining("idHeader") }),
   );
 });
+
+const customScheme = {
+  algorithm: "hmac-sha512",
+  signatureHeader: "x-signature",
+  signatureFormat: "sha512={sig}",
+  encoding: "base64url",
+  signedPayload: "{method} {url}\n{body}",
+} as const;
+
+test.each([
+  ["signatureFormat", "{sig}.{unknown}"],
+  ["signatureFormat", "sha512=missing"],
+  ["signatureFormat", "{ts}.{sig}"],
+  ["signatureFormat", "{sig}\r\nunsafe"],
+  ["signedPayload", "{unknown}.{body}"],
+  ["signedPayload", "{ts}.{body}"],
+  ["algorithm", "sha512"],
+  ["preset", "standard-webhooks"],
+  ["preset", "ts-id-body"],
+] as const)("rejects invalid custom %s %j with 400 invalid_signing", (field, value) => {
+  const signing = { ...customScheme, [field]: value };
+  expect(() => validateWebhookSigning({ ...signingSpec, signing })).toThrow(
+    expect.objectContaining({ code: "invalid_signing", status: 400, message: expect.stringContaining(field) }),
+  );
+});
+
+test.each([
+  ["signatureFormat", "must be at most 4096 bytes", "é".repeat(2048) + "{sig}"],
+  ["signedPayload", "must be at most 4096 bytes", "a".repeat(4097)],
+  ["signedPayload", "must contain at most 32 tokens", "{method}".repeat(33)],
+  ["signedPayload", "could exceed the expanded size limit", "{body}".repeat(5)],
+] as const)("bounds custom %s expansion with %s", (field, reason, value) => {
+  const signing = { ...customScheme, [field]: value };
+  expect(() => validateWebhookSigning({ ...signingSpec, signing })).toThrow(
+    expect.objectContaining({
+      code: "invalid_signing",
+      status: 400,
+      message: expect.stringContaining(`${field} ${reason}`),
+    }),
+  );
+});
