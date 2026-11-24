@@ -974,3 +974,13 @@ Only product choices; each has a recommendation.
 - **Consequence.** Disabled deploys are recorded in the workflow summary.
   Enabled deploys require the `staging` environment's `RAILWAY_TOKEN` secret
   and fail if it is missing.
+
+### D61. Promote production after a successful staging rolling check
+
+- **Decision.** The production job in `release.yml` requires a Release Please
+  tag for the same commit, `PRODUCTION_DEPLOY=on`, and the `production`
+  environment. A completed, successful staging job with a passing rolling
+  check qualifies while its workflow is still running.
+- **Consequence.** Production promotes the digest already published for staging
+  to the version tag. The owner configures the production environment protection,
+  Railway project token and HTTPS origin before enabling deployment.

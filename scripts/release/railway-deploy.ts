@@ -2,7 +2,7 @@ import { readRollingSecret, reportRollingCheck, rollingCheck } from "./rolling-c
 
 const API = "https://backboard.railway.com/graphql/v2";
 const PROJECT = "d2f79d2f-64b8-4c30-b922-3b9502e6ea4e";
-const ORIGIN = "https://openboard-staging.up.railway.app";
+const STAGING_ORIGIN = "https://openboard-staging.up.railway.app";
 const REGION = "europe-west4-drams3a";
 const IMAGE = "ghcr.io/the-vibe-company/openboard";
 
@@ -77,9 +77,12 @@ function railway(token: string, request: Runtime["fetch"]) {
   };
 }
 
-async function probe(request: Runtime["fetch"]): Promise<{ instanceId?: string; deploymentTag?: string } | null> {
+async function probe(
+  origin: string,
+  request: Runtime["fetch"],
+): Promise<{ instanceId?: string; deploymentTag?: string } | null> {
   try {
-    const response = await request(`${ORIGIN}/healthz`, {
+    const response = await request(`${origin}/healthz`, {
       redirect: "error",
       signal: AbortSignal.timeout(5_000),
     });
@@ -108,6 +111,7 @@ async function waitForReplicas(
   previousId: string | undefined,
   tag: string,
   runtime: Runtime,
+  origin: string,
 ): Promise<string[]> {
   const deadline = runtime.now() + 300_000;
   const seen = new Set<string>();
@@ -133,7 +137,7 @@ async function waitForReplicas(
       if (!running.has(id)) seen.delete(id);
     }
     if (status === "SUCCESS") {
-      const health = await probe(runtime.fetch);
+      const health = await probe(origin, runtime.fetch);
       if (health?.deploymentTag === tag && health.instanceId && running.has(health.instanceId))
         seen.add(health.instanceId);
     }
@@ -173,22 +177,30 @@ async function waitForReplicas(
   );
 }
 
-function validateDeployment(args: readonly string[], token: string | undefined) {
+function validateDeployment(args: readonly string[], token: string | undefined, productionOrigin?: string) {
   const [environment, tag] = args;
-  if (args.length !== 2 || environment !== "staging" || !tag || !/^main-[a-f0-9]{7,40}$/.test(tag)) {
-    throw new Error("Usage: bun scripts/release/railway-deploy.ts staging main-<sha> [--rolling-check]");
+  const validTag = environment === "staging" ? /^main-[a-f0-9]{7,40}$/ : /^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/;
+  if (args.length !== 2 || (environment !== "staging" && environment !== "production") || !tag || !validTag.test(tag)) {
+    throw new Error(
+      "Usage: bun scripts/release/railway-deploy.ts staging main-<sha> [--rolling-check] | production <version>",
+    );
   }
-  if (!token?.trim()) throw new Error("Set RAILWAY_TOKEN to a staging Railway project token");
-  return [environment, tag, token] as const;
+  if (!token?.trim()) throw new Error(`Set RAILWAY_TOKEN to a ${environment} Railway project token`);
+  if (environment === "staging") return { environment, tag, token, origin: STAGING_ORIGIN };
+  const url = URL.parse(productionOrigin ?? "");
+  if (!url || url.protocol !== "https:" || (productionOrigin !== url.origin && productionOrigin !== `${url.origin}/`)) {
+    throw new Error("Set PRODUCTION_URL to the HTTPS origin of the production service");
+  }
+  return { environment, tag, token, origin: url.origin };
 }
 
-export async function deployStaging(
+export async function deployRailway(
   args: readonly string[],
   token: string | undefined,
   runtime: Runtime = { fetch, now: Date.now, sleep: Bun.sleep },
-  options: { waitForRetirement?: boolean } = {},
+  options: { waitForRetirement?: boolean; productionOrigin?: string } = {},
 ): Promise<string[]> {
-  const [environment, tag, credential] = validateDeployment(args, token);
+  const { environment, tag, token: credential, origin } = validateDeployment(args, token, options.productionOrigin);
 
   const api = railway(credential, runtime.fetch);
   const { projectToken } = await api<{ projectToken: { projectId: string; environmentId: string } }>(targetQuery);
@@ -196,9 +208,9 @@ export async function deployStaging(
     throw new Error("RAILWAY_TOKEN must belong to the OpenBoard Railway project");
   const { environmentId } = projectToken;
   const { environment: target } = await api<{ environment: Environment }>(environmentQuery, { id: environmentId });
-  if (target?.name !== environment) throw new Error("RAILWAY_TOKEN must be scoped to staging");
+  if (target?.name !== environment) throw new Error(`RAILWAY_TOKEN must be scoped to ${environment}`);
   const service = target.serviceInstances.edges.find(({ node }) => node.serviceName === "openboard");
-  if (!service) throw new Error("Railway staging has no openboard service");
+  if (!service) throw new Error(`Railway ${environment} has no openboard service`);
 
   const ids = { environmentId, serviceId: service.node.serviceId };
   let previousId: string | undefined;
@@ -218,10 +230,10 @@ export async function deployStaging(
       startCommand: `/bin/sh -c "export OPENBOARD_INSTANCE_ID=$RAILWAY_REPLICA_ID OPENBOARD_DEPLOYMENT_TAG=${tag}; exec openboard serve"`,
     },
   });
-  if (!serviceInstanceUpdate) throw new Error("Railway did not update the staging service");
+  if (!serviceInstanceUpdate) throw new Error(`Railway did not update the ${environment} service`);
   const { serviceInstanceDeployV2: deploymentId } = await api<{ serviceInstanceDeployV2: string }>(deployMutation, ids);
   if (!deploymentId) throw new Error("Railway did not return a deployment ID");
-  return waitForReplicas(api, deploymentId, previousId, tag, runtime);
+  return waitForReplicas(api, deploymentId, previousId, tag, runtime, origin);
 }
 
 if (import.meta.main) {
@@ -229,14 +241,16 @@ if (import.meta.main) {
     const args = process.argv.slice(2);
     const checked = args.at(-1) === "--rolling-check";
     if (checked) args.pop();
-    const [, tag, token] = validateDeployment(args, process.env.RAILWAY_TOKEN);
+    const productionOrigin = process.env.PRODUCTION_URL;
+    const { environment, tag, token, origin } = validateDeployment(args, process.env.RAILWAY_TOKEN, productionOrigin);
+    if (checked && environment !== "staging") throw new Error("Rolling verification is only available on staging");
     const deploy = async () => {
-      const replicas = await deployStaging(args, token, undefined, { waitForRetirement: checked });
-      console.log(`Verified ${tag} on staging replicas: ${replicas.join(", ")}`);
+      const replicas = await deployRailway(args, token, undefined, { waitForRetirement: checked, productionOrigin });
+      console.log(`Verified ${tag} on ${environment} replicas: ${replicas.join(", ")}`);
     };
     if (checked) {
       const secret = await readRollingSecret();
-      reportRollingCheck(await rollingCheck(`${ORIGIN}/api/conformance-ci/main`, secret, deploy));
+      reportRollingCheck(await rollingCheck(`${origin}/api/conformance-ci/main`, secret, deploy));
     } else {
       await deploy();
     }
