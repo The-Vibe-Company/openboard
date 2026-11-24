@@ -17,7 +17,10 @@ For MCP discovery, configure the client with `<origin>/mcp/<org>/<board>`
 and an `Authorization: Bearer <token>` header. Use `tools/list` to see the
 board's tools and their argument schemas. Send one JSON-RPC message per POST
 with `Accept: application/json`. Each POST stands on its own. The endpoint
-returns HTTP 405 to GET and DELETE.
+returns HTTP 405 to GET and DELETE. Call `list_threads` with a `channel` to
+read thread summaries, then `read_thread` with an `id` to read that thread.
+Read the JSON result in `structuredContent`. On `isError`, inspect its
+`code` and any `next` steps.
 
 - Read channel thread summaries with `ob read <channel>`. Read a specific
   thread with `ob read <id>` or read individual messages in a channel with

@@ -622,6 +622,15 @@ OAuth for MCP clients is deferred (Q5).
 operation's path, query and body fields form one input schema, and its
 effects supply the read-only, idempotent and destructive annotations.
 
+Send `tools/call` with `params.name` and a flat `params.arguments` object using
+the tool schema. A successful call returns its REST JSON body in
+`structuredContent` and the same JSON in a single text item. An operation
+error returns `isError: true`, the error's fields in `structuredContent`,
+and a text item starting with `error: <code>: <message>` followed by any
+`next` steps. Authentication failures retain their HTTP status. An unknown
+tool returns JSON-RPC error `-32602`. A tool's numeric `wait` is capped at 25
+seconds.
+
 - Board and channels: `whoami`, `list_actors`, `list_channels`, `create_channel`.
 - Threads and messages: `list_threads`, `read_thread`, `list_messages`,
   `read_post`, `post_message`, `edit_message`, `delete_message`,
