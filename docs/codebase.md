@@ -514,7 +514,7 @@ Keeping `Verify` under two minutes (armada: `docs/ci-budget.md`): the six jobs r
 
 ### 7.2 Docker image
 
-One image for both modes. Build stage `oven/bun:<pinned>`; runtime stage `debian:bookworm-slim` (D-level choice in `docs/architecture.md` "Topology"), non-root, installs the Postgres client major pinned in `docker-compose.test.yml`, copies `dist/openboard-linux-<arch>` to `/usr/local/bin/openboard`, `ENV OPENBOARD_DATA_DIR=/data`, `OPENBOARD_HOST=0.0.0.0`, `VOLUME /data`, `EXPOSE 8787`, `ENTRYPOINT ["openboard"]`, `CMD ["serve"]`. Published as `ghcr.io/the-vibe-company/openboard:<version>` and `:main-<sha>`. In hosted mode the volume is simply unused.
+One image for both modes. Build stage `oven/bun:<pinned>`; runtime stage `debian:bookworm-slim` (D-level choice in `docs/architecture.md` "Topology"), non-root, installs the Postgres client major pinned in `docker-compose.test.yml`, copies `dist/openboard-linux-<arch>` to `/usr/local/bin/openboard`, `ENV OPENBOARD_DATA_DIR=/data`, `OPENBOARD_HOST=0.0.0.0`, `EXPOSE 8787`, `ENTRYPOINT ["openboard"]`, `CMD ["serve"]`. Published as `ghcr.io/the-vibe-company/openboard:<version>` and `:main-<sha>`. Mount a data volume explicitly in local mode (7.6). Railway runs the same image without a volume.
 
 ### 7.3 Versions
 
@@ -539,7 +539,7 @@ One image for both modes. Build stage `oven/bun:<pinned>`; runtime stage `debian
 
 ### 7.6 Self-host
 
-- **Local, one command**: install the executable and run `ob serve` (the same as `openboard serve`) (SQLite in `./.openboard`, the implicit organization `local` and board `main`; the owner token is written to `~/.config/openboard/local/<port>.json` with mode 0600, never printed, and `ob` reads it for a loopback `BOARD_URL`), or `docker run -p 8787:8787 -v openboard:/data ghcr.io/the-vibe-company/openboard`.
+- **Local, one command**: install the executable and run `ob serve` (the same as `openboard serve`) (SQLite in `./.openboard`, the implicit organization `local` and board `main`; the owner token is written to `~/.config/openboard/local/<port>.json` with mode 0600, never printed, and `ob` reads it for a loopback `BOARD_URL`), or `docker run -p 8787:8787 -v openboard-data:/data ghcr.io/the-vibe-company/openboard`.
 - **Self-hosted server**: the same image as one container with one volume at `/data`, no Postgres. The image uses `/data` as the account home, so the local owner token is on the volume at `/data/.config/openboard/local/<port>.json`. The in-container CLI defaults to `BOARD_URL=http://127.0.0.1:8787/api/local/main`. Set `BOARD_URL` for an in-container CLI command if you change the listener port. Deploys restart it in place with a few seconds of unavailability that clients absorb by reconnecting with their cursor. Snapshots are written under `/data/backups` (`VACUUM INTO`, D25) and `openboard restore` reads them back.
 - **Self-hosted HA**: the same image with `OPENBOARD_DATABASE_URL` and two or more containers, exactly like the hosted service; `OPENBOARD_SIGNUP` decides whether sign-up is open.
 - Moving from local to Postgres is an organization export and import (seam in 4.5), not a database copy.

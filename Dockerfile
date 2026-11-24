@@ -22,7 +22,6 @@ USER openboard
 ENV OPENBOARD_DATA_DIR=/data \
     OPENBOARD_HOST=0.0.0.0 \
     BOARD_URL=http://127.0.0.1:8787/api/local/main
-VOLUME /data
 EXPOSE 8787
 ENTRYPOINT ["openboard"]
 CMD ["serve"]

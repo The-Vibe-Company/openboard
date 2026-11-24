@@ -23,7 +23,7 @@ issue: 374
 As someone self-hosting OpenBoard, I run one container on one volume and it passes the same conformance checks as `ob serve` on my laptop.
 
 ## Done when
-- [ ] `bun run build && docker build -t openboard:dev . && docker run -d --name ob -p 8787:8787 -v openboard:/data openboard:dev` serves local mode: `curl http://127.0.0.1:8787/api/local/main` answers discovery from the host, and a post made before `docker restart ob` is still read after it
+- [ ] `bun run build && docker build -t openboard:dev . && docker run -d --name ob -p 8787:8787 -v openboard-data:/data openboard:dev` serves local mode: `curl http://127.0.0.1:8787/api/local/main` answers discovery from the host, and a post made before `docker restart ob` is still read after it
 - [ ] a direct connection created inside the container with the owner token file (`docker exec ob openboard connections create conformance --can '*=all' --direct --secret-file /data/conformance.secret`), its secret copied out with `docker cp` and never printed, lets `bun run conformance --url http://127.0.0.1:8787/api/local/main < conformance.secret` exit 0 with every check `tools/conformance/score.json` lists under `local`
 - [ ] `docker exec ob ls /data/backups` lists the snapshots of 212
 
