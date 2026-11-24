@@ -21,6 +21,7 @@ import rateCountersDdl from "../migrations/0019-rate-counters.sql" with { type: 
 import schemasDdl from "../migrations/0020-schemas.sql" with { type: "text" };
 import purgeStateDdl from "../migrations/0021-org-purge-state.sql" with { type: "text" };
 import purgeIndexesDdl from "../migrations/0022-org-purge-indexes.sql" with { type: "text" };
+import shippingDdl from "../migrations/0023-shipping.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -35,6 +36,7 @@ import { committedEvents, eventReads } from "./views/events.ts";
 import { invitationPlatform, invitationView } from "./views/invitations.ts";
 import type { JobWrites } from "./views/jobs/index.ts";
 import { purgeOrgView } from "./views/jobs/purge.ts";
+import { shippingPlatform, shippingView } from "./views/jobs/shipping.ts";
 import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
@@ -84,6 +86,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 20, name: "0020-schemas", sql: schemasDdl },
   { version: 21, name: "0021-org-purge-state", sql: purgeStateDdl },
   { version: 22, name: "0022-org-purge-indexes", sql: purgeIndexesDdl },
+  { version: 23, name: "0023-shipping", sql: shippingDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -97,6 +100,7 @@ export function createViews(
     schemaReady: () => checkSchema(db, dialect, migrations.at(-1)?.version ?? 0),
     platform: () => ({
       ...platformView(db, dialect),
+      ...shippingPlatform(db, dialect),
       ...rateView(db, dialect),
       ...accountView(db, dialect),
       ...deviceView(db, dialect),
@@ -109,6 +113,7 @@ export function createViews(
       ...rateView(db, dialect, `org:${scope.orgId}:`),
       ...membershipView(db, dialect, scope, jobs),
       ...purgeOrgView(db, dialect, scope, jobs),
+      ...shippingView(db, dialect, scope),
       ...orgAuditReads(db, dialect, scope),
     }),
     board: (scope) => ({

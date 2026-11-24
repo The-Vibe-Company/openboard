@@ -26,6 +26,8 @@ export type JobPayload = Readonly<Record<string, unknown>>;
 
 export interface BoardJobWriter {
   enqueue(kind: string, dueAt: number, payload: JobPayload): Promise<void>;
+  /** Read the payload of the live lease without consuming it. */
+  readJob(id: string, lease: JobLease, now: number): Promise<JobPayload | null>;
   /** Consume the live lease in this transaction. An effect that throws rolls consumption back as well. */
   takeJob(id: string, lease: JobLease, now: number): Promise<JobPayload | null>;
 }

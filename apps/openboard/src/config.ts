@@ -22,8 +22,17 @@ interface CommonConfig {
   readonly localOwner: string;
   /** `OPENBOARD_SIGNUP`: whether a new sign-in identity makes a new person; default `closed`. */
   readonly signup: Signup;
+  readonly backup?: BackupConfig;
   /** `OPENBOARD_GITHUB_CLIENT_ID` and `OPENBOARD_GITHUB_CLIENT_SECRET`: GitHub sign-in, when both are set. */
   readonly github?: { readonly clientId: string; readonly clientSecret: string };
+}
+
+export interface BackupConfig {
+  readonly endpoint: string;
+  readonly bucket: string;
+  readonly region: string;
+  readonly accessKeyId: string;
+  readonly secretAccessKey: string;
 }
 
 export type Config = CommonConfig &
@@ -85,6 +94,34 @@ function githubOf(env: Env, problems: string[]): Config["github"] {
   return undefined;
 }
 
+function backupOf(env: Env, problems: string[]): BackupConfig | undefined {
+  const prefix = "OPENBOARD_BACKUP_S3_";
+  const endpoint = env[`${prefix}ENDPOINT`];
+  const bucket = env[`${prefix}BUCKET`];
+  const region = env[`${prefix}REGION`];
+  const accessKeyId = env[`${prefix}ACCESS_KEY_ID`];
+  const secretAccessKey = secretOf(env, `${prefix}SECRET_ACCESS_KEY`, problems);
+  if (
+    [endpoint, bucket, region, accessKeyId, secretAccessKey, env[`${prefix}SECRET_ACCESS_KEY_FILE`]].every(
+      (value) => value === undefined,
+    )
+  )
+    return undefined;
+  if (!endpoint || !bucket?.trim() || !region?.trim() || !accessKeyId?.trim() || !secretAccessKey?.trim()) {
+    problems.push(
+      ["ENDPOINT", "BUCKET", "REGION", "ACCESS_KEY_ID", "SECRET_ACCESS_KEY"].map((name) => prefix + name).join(", ") +
+        ": set all five, or none",
+    );
+    return undefined;
+  }
+  const origin = publicOrigin(endpoint);
+  if (!origin) {
+    problems.push(`${prefix}ENDPOINT: expected an http or https origin`);
+    return undefined;
+  }
+  return Object.freeze({ endpoint: origin, bucket, region, accessKeyId, secretAccessKey });
+}
+
 /** The one place the server reads its environment; every bad variable is named, and the caller exits 2. */
 export function loadConfig(env: Env = process.env): Config {
   const problems: string[] = [];
@@ -122,6 +159,7 @@ export function loadConfig(env: Env = process.env): Config {
   const signup = env.OPENBOARD_SIGNUP ?? "closed";
   if (!(SIGNUP_MODES as readonly string[]).includes(signup))
     problems.push(`OPENBOARD_SIGNUP: expected ${SIGNUP_MODES.join(", ")}, got ${signup}`);
+  const backup = backupOf(env, problems);
   const github = githubOf(env, problems);
   const user = (env.USER ?? env.USERNAME ?? "owner").toLowerCase().replace(/[^a-z0-9-]/g, "-");
   if (problems.length > 0 || !publicUrl) throw new ConfigError(problems.join("\n"));
@@ -137,6 +175,7 @@ export function loadConfig(env: Env = process.env): Config {
     localOwner: `ob:user:local-${user}`,
     signup: signup as Signup,
     ...(github && { github }),
+    ...(backup && { backup }),
   });
 }
 

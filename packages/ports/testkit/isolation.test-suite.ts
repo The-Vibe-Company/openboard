@@ -131,6 +131,7 @@ const writerCases: Cases<BoardWriter> = {
     });
   },
   enqueue: (a) => inWrite(a, (writer) => writer.enqueue("test", at, { marker: a.marker })),
+  readJob: (a) => inWrite(a, (writer) => writer.readJob("1", { instanceId: "test", claimedAt: at }, at)),
   takeJob: (a) => inWrite(a, (writer) => writer.takeJob("1", { instanceId: "test", claimedAt: at }, at)),
   head: (a, b) => inWrite(a, async (writer) => expect(writer.head).toBeLessThan(b.message)),
   actor: (a, b) => a.board.write(async (writer) => expectNull(writer.actor), b.actor),
@@ -201,6 +202,18 @@ const writerCases: Cases<BoardWriter> = {
 
 /** One case per `OrgView` method, on A's organization, with B's people and IDs. */
 const orgCases: Cases<OrgView> = {
+  shipLogs: async (a, b) => {
+    const events: object[] = [];
+    await a.org.shipLogs(
+      async (segment) => {
+        events.push(...segment.events);
+      },
+      () => false,
+      () => at,
+    );
+    expect(events.length).toBeGreaterThan(0);
+    expect(JSON.stringify(events)).not.toContain(b.marker);
+  },
   purgeOrg: async (a, b, store) => {
     const keys = await store.platform().findBoard(b.marker.slice(0, -"-only".length), "main");
     if (!keys) throw new Error("missing second organization board");

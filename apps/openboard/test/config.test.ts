@@ -116,3 +116,41 @@ describe("the database URL", () => {
     );
   });
 });
+
+describe("hosted backup bucket", () => {
+  const env = {
+    OPENBOARD_BACKUP_S3_ENDPOINT: "https://storage.example/",
+    OPENBOARD_BACKUP_S3_BUCKET: "backups",
+    OPENBOARD_BACKUP_S3_REGION: "test-region",
+    OPENBOARD_BACKUP_S3_ACCESS_KEY_ID: "sample-access",
+  };
+  test("requires all five variables and accepts the secret from a file", () => {
+    expect(load({}).backup).toBeUndefined();
+    for (const name of [...Object.keys(env), "OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY"]) {
+      expect(() => load(env)).toThrow(name);
+    }
+    const dir = mkdtempSync(join(tmpdir(), "openboard-backup-"));
+    try {
+      const file = join(dir, "secret");
+      writeFileSync(file, "sample-secret\n");
+      expect(load({ ...env, OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY_FILE: file }).backup).toEqual({
+        endpoint: "https://storage.example",
+        bucket: "backups",
+        region: "test-region",
+        accessKeyId: "sample-access",
+        secretAccessKey: "sample-secret",
+      });
+      expect(() =>
+        load({
+          ...env,
+          OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY: "sample-secret",
+          OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY_FILE: file,
+        }),
+      ).toThrow(
+        "OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY and OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY_FILE cannot both be set",
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

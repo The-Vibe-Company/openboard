@@ -1,6 +1,7 @@
 import { migratePostgres, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { createApp, type Deps, jsonLogger, maintenanceJobs } from "@openboard/server";
+import { backupBucket } from "./bucket.ts";
 import type { Config } from "./config.ts";
 
 async function hostedStore(url: string, now: () => number) {
@@ -55,6 +56,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
           },
           deps.now,
         );
+  const bucket = mode === "hosted" && config.backup ? backupBucket(config.backup, deps.now) : undefined;
   return createApp(
     {
       mode,
@@ -66,7 +68,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
       signup,
       ...(github && { signIn: { github } }),
     },
-    { store, jobs: store.jobs },
+    { store, jobs: store.jobs, ...(bucket && { bucket }) },
     deps,
     maintenanceJobs,
   );

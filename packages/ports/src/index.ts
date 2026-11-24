@@ -1,5 +1,6 @@
 export type { IdentityRecord, PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
 export type { Broadcaster, CommittedEvents, CommittedPage } from "./broadcaster.ts";
+export type { Bucket, LogSegment } from "./bucket.ts";
 export type { BoardGrantReads, BoardGrantWriter, PersonGrant } from "./grants.ts";
 export type { BoardJobWriter, Job, JobLease, JobPayload, JobSchedule, Jobs } from "./jobs.ts";
 export { PURGE_ORG_JOB } from "./jobs.ts";

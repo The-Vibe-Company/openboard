@@ -1,7 +1,8 @@
+import { ORG_PURGE_RETENTION_MS } from "@openboard/core";
 import type { OrgScope, OrgView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../../db.ts";
 import { type Fragment, forUpdate, query, type Statement, sql } from "../../sql.ts";
-import { type JobWrites, jobWriter } from "./index.ts";
+import { type JobWrites, jobWriter, readLeasedJob } from "./index.ts";
 
 const batchSize = 1000;
 type BatchParam = "orgId" | "boardId" | "batchSize";
@@ -39,6 +40,7 @@ const orgDeletes = deletes(
     memberships: "org_id, user_id",
     org_events: "org_id, id",
     personal_tokens: "id",
+    shipping: "org_id, board_id",
     tenant_rate_counters: "key, window_start",
   },
   "org",
@@ -73,6 +75,7 @@ export const purgeStatements = {
   purge_lock_org: sql`SELECT o.deleted_at FROM orgs o JOIN boards b ON b.org_id = o.id
     WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"}${lockOrg}`,
   purge_lock_boards: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} ORDER BY id${forUpdate}`,
+  purge_check_shipping: sql`SELECT 1 FROM shipping WHERE org_id = ${"orgId"} LIMIT 1`,
   purge_boards: deleteBatch("boards", "id", "org"),
   markPurgeComplete: sql`UPDATE orgs SET purged_at = ${"now"} FROM boards b
     WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"} AND orgs.id = b.org_id`,
@@ -108,19 +111,35 @@ export function purgeOrgView(
   jobs: JobWrites,
 ): Pick<OrgView, "purgeOrg"> {
   return {
-    purgeOrg: (boardId, id, lease, now) =>
-      db.transaction(async (tx) => {
-        const keys = { orgId, boardId };
+    async purgeOrg(boardId, id, lease, now, deleteBackup) {
+      const keys = { orgId, boardId };
+      if (deleteBackup) {
+        const eligible = await db.transaction(async (tx) => {
+          const [org] = await query(tx, dialect, purgeStatements.purge_lock_org, keys);
+          if (org?.deleted_at == null || Number(org.deleted_at) + ORG_PURGE_RETENTION_MS > now) return false;
+          const payload = await readLeasedJob(tx, dialect, keys, id, lease, now);
+          return payload?.deletedAt === Number(org.deleted_at);
+        });
+        if (!eligible) return false;
+        // The archived organization is fenced against new uploads before this job is due.
+        await deleteBackup();
+      }
+      return db.transaction(async (tx) => {
         const [org] = await query(tx, dialect, purgeStatements.purge_lock_org, keys);
         if (!org) return false;
         // Wait for writes that began before the soft delete before removing their rows.
         const boards = await query(tx, dialect, purgeStatements.purge_lock_boards, keys);
         const writer = jobWriter(tx, dialect, keys, jobs, () => {});
-        const payload = await writer.takeJob(id, lease, now);
+        const finishedAt = deleteBackup ? jobs.now() : now;
+        const payload = await writer.takeJob(id, lease, finishedAt);
         if (!payload || org.deleted_at == null || Number(org.deleted_at) !== payload.deletedAt) return false;
-        await query(tx, dialect, purgeStatements.markPurgeComplete, { ...keys, now });
+        if (!deleteBackup && (await query(tx, dialect, purgeStatements.purge_check_shipping, keys)).length) {
+          throw new Error("Backup bucket required to purge shipped logs");
+        }
+        await query(tx, dialect, purgeStatements.markPurgeComplete, { ...keys, now: finishedAt });
         await removeRows(tx, dialect, orgId, boards);
         return true;
-      }),
+      });
+    },
   };
 }
