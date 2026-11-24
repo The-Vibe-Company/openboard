@@ -19,7 +19,8 @@ export function webhookRequest(
   const [event] = projectEvent(input.event, input.record.directory, false);
   if (!event || !("message" in event)) throw new Error("missing webhook event message");
   const delivery = { id, attempt: input.attempt, webhook: input.webhook.id, name: input.webhook.name };
-  const body = webhookPayload(config.publicUrl, org, board, delivery, event, input.root ?? event.message);
+  const template = input.webhook.body as object | null;
+  const body = webhookPayload(config.publicUrl, org, board, delivery, event, input.root ?? event.message, template);
   if (body === null) return null;
   const headers = new Headers(credentials.headers);
   for (const [key, value] of signWebhook(id, now, body, credentials.secret)) headers.set(key, value);

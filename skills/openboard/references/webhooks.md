@@ -19,6 +19,11 @@ raw body and check the timestamp before launching anything. Deduplicate using
 `subject.thread` and `board.url` to the agent, together with a scoped
 connection from the [connection modes](connect.md).
 
+If a receiver requires a custom JSON body, add a `body` template, such as
+`{"externalRef":"ob:{{subject.thread}}","idempotencyKey":"{{delivery.id}}"}`.
+The template may be an object or array up to 16 KB. A standalone placeholder
+keeps its JSON type. Verify the signature against the rendered body you receive.
+
 The agent can reply and complete the task using the
 [command reference](commands.md). To report runner lifecycle events, an
 administrator creates a signed endpoint at `POST {BOARD_URL}/x/inbound`.
