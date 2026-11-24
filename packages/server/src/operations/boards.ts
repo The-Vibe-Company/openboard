@@ -1,4 +1,4 @@
-import { BoardError, type createBoard, type listBoards } from "@openboard/contract";
+import { BoardError, type createBoard, type deleteBoard, type listBoards } from "@openboard/contract";
 import { boards, countQuotaError } from "@openboard/core";
 import type { Handler } from "./index.ts";
 
@@ -18,3 +18,6 @@ export const createBoardHandler: Handler<typeof createBoard> = async (ctx, input
   if (typeof outcome === "object") throw countQuotaError("boards", outcome.quota);
   return { board: creation.board };
 };
+
+export const deleteBoardHandler: Handler<typeof deleteBoard> = async (ctx, { board }) =>
+  ctx.org.deleteBoard(board, ctx.person.id, ctx.now(), ctx.debitWrite);

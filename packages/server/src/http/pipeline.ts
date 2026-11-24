@@ -1,5 +1,5 @@
 import { BoardError, decodeInput, type operations, type previewInvitation, type RawInput } from "@openboard/contract";
-import type { PlatformView, RateLimits } from "@openboard/ports";
+import type { BoardView, PlatformView, RateLimits } from "@openboard/ports";
 import { keepInsideCan } from "../auth/access.ts";
 import { authenticate, limitAuthentication, verifiers } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
@@ -223,6 +223,20 @@ async function run(
   return runBoard(request, url, pipeline, logged);
 }
 
+/** A tombstone is distinguishable only by a connection or agent that can prove it belonged to the board. */
+function requestBoard(pipeline: Pipeline, path: BoardPath, request: Request, chain: ReturnType<typeof verifiers>) {
+  return pipeline.tenants.board(path, async (board: BoardView) => {
+    const verifier = chain.find(
+      (verifier) => (verifier.name === "agent" || verifier.name === "connection") && verifier.match(request),
+    );
+    if (!verifier) return false;
+    const authorization = request.headers.get("authorization") ?? "";
+    const proof = new Request(request.url, { headers: { authorization } });
+    // The claim operation recognizes both direct and claim-only secrets. Profile headers are irrelevant here.
+    return (await verifier.verify(proof, board, "claimConnection")) !== null;
+  });
+}
+
 async function runBoard(
   request: Request,
   url: URL,
@@ -249,7 +263,7 @@ async function runBoard(
   if (operation.scope !== "board") throw notFound();
   const chain = verifiers(pipeline.config, pipeline.platform, pipeline.deps.now);
   const { board, by } = await limitAuthentication(pipeline, async () => {
-    const board = await pipeline.tenants.board(path);
+    const board = await requestBoard(pipeline, path, request, chain);
     return { board, by: await authenticate(request, chain, board, operation.name) };
   });
   logged.actor = by.actor;
@@ -266,8 +280,8 @@ async function runBoard(
   const context = async (input: unknown) => {
     await keepInsideCan(operation, input, by, board);
     const reauthorize = async () => {
-      // A parked request may outlive its organization. Resolve it again before returning data.
-      const liveBoard = implicitBoard ? board : await pipeline.tenants.board(path);
+      // A parked request may outlive its board or organization. Resolve it again before returning data.
+      const liveBoard = implicitBoard ? board : await requestBoard(pipeline, path, request, chain);
       const current = await authenticate(request, chain, liveBoard, operation.name);
       await keepInsideCan(operation, input, current, liveBoard);
       return current;

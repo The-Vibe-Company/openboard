@@ -84,4 +84,24 @@ export function boardsSuite(driver: string, open: OpenStore): void {
       { slug: "ops", name: "Ops" },
     ]);
   });
+
+  test(`${driver}: deletion is scoped and leaves one tombstone even when retried concurrently`, async () => {
+    store = await open();
+    const ada = await founder(store, "ada", "a", "acme");
+    const bob = await founder(store, "bob", "b", "bobco");
+    const acme = await orgOf(store, "acme", ada);
+    const bobco = await orgOf(store, "bobco", bob);
+    expect(await acme.createBoard(ops(), ada)).toBe("created");
+    expect(await bobco.createBoard(ops(), bob)).toBe("created");
+    await expect(acme.deleteBoard("ops", bob, at)).rejects.toMatchObject({ code: "forbidden" });
+    const outcomes = await Promise.allSettled([acme.deleteBoard("ops", ada, at), acme.deleteBoard("ops", ada, at)]);
+    expect(outcomes).toContainEqual({
+      status: "fulfilled",
+      value: { board: ops().board, deletedAt: "2023-11-14T22:13:20.000Z" },
+    });
+    expect(outcomes).toContainEqual({ status: "rejected", reason: expect.objectContaining({ code: "not_found" }) });
+    expect(await store.platform().findBoard("acme", "ops")).toBeNull();
+    expect(await store.platform().findBoard("acme", "ops", true)).toMatchObject({ deleted: true });
+    expect(await store.platform().findBoard("bobco", "ops")).not.toBeNull();
+  });
 }

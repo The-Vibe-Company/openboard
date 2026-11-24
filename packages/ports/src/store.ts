@@ -6,6 +6,7 @@ import type {
   Channel,
   ClaimedAgent,
   Connection,
+  DeletedBoard,
   DeletedOrg,
   Invitation,
   InvitationRole,
@@ -33,28 +34,13 @@ import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
 import type { BoardJobWriter, JobLease, Jobs } from "./jobs.ts";
 import type { OrgAuditRecord } from "./org-audit-record.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
+import type { BoardKeys, BoardScope, OrgScope } from "./tenant-scope.ts";
 import type { BoardWatcherReads, BoardWatcherWriter } from "./watchers.ts";
+
+export type { BoardKeys, BoardScope, OrgScope } from "./tenant-scope.ts";
 
 /** A board configuration event (`ob.*`, visibility 2), as stored: its payload may hold hashes the audit strips. */
 export type AuditRecord = Extract<BoardEvent, { readonly visibility: 2 }>;
-
-declare const minted: unique symbol;
-
-/**
- * The board a request may touch. Only the server's tenant resolver mints one, after matching the path against the
- * credential (docs/codebase.md 4.4, D33); views take a scope, never a bare ID.
- */
-export interface BoardScope {
-  readonly orgId: number;
-  readonly boardId: number;
-  readonly [minted]: true;
-}
-
-/** The internal keys of a board a path names. */
-export interface BoardKeys {
-  readonly orgId: number;
-  readonly boardId: number;
-}
 
 /** A new organization, as core decided it, created by the person `personId` (`u_…`) at `now`. */
 export interface CreateOrgRecord extends OrgCreation {
@@ -73,12 +59,6 @@ export interface BoardMemberRecord {
   readonly role: Role;
   readonly org: Named;
   readonly board: Named;
-}
-
-/** The organization a request may touch, minted only by the tenant resolver. */
-export interface OrgScope {
-  readonly orgId: number;
-  readonly [minted]: "org";
 }
 
 interface RateView {
@@ -145,6 +125,8 @@ export interface OrgView extends RateView {
     personId: string,
     admit?: () => void,
   ): Promise<"created" | "not_admin" | "slug_taken" | QuotaOutcome>;
+  /** Marks a board deleted and appends its audit event under the organization lock. */
+  deleteBoard(slug: string, personId: string, at: number, admit?: () => void): Promise<DeletedBoard>;
 }
 
 interface DeviceTokenIssue {
@@ -170,8 +152,12 @@ export interface PlatformView extends RateView {
   listPersonalTokens(personId: string): Promise<PersonalToken[]>;
   /** Revoke an owned token, preserving its first revocation time. Null if the person does not own the ID. */
   revokePersonalToken(personId: string, id: string, now: number): Promise<number | null>;
-  /** The board `orgSlug/boardSlug` names, or null when either is unknown or deleted. */
-  findBoard(orgSlug: string, boardSlug: string): Promise<BoardKeys | null>;
+  /** Resolve a board in a live organization, optionally distinguishing its tombstone from an unknown slug. */
+  findBoard(
+    orgSlug: string,
+    boardSlug: string,
+    includeDeleted?: boolean,
+  ): Promise<(BoardKeys & { deleted?: true }) | null>;
   /**
    * In one transaction: the person holding the identity, their details refreshed from it, or a new person when
    * `admitNew` or a live invitation admits them. A supplied invitation is redeemed for a new person before opening
@@ -332,6 +318,7 @@ export interface BoardView extends RateView, BoardMessageReads, BoardTaskReads, 
   subscribeEvents(
     fromPosition: number,
     wake: (committed: CommittedEvents | undefined, head: number) => void,
+    invalidated?: () => void,
   ): () => void;
   /** Look up a personal credential in scope. A known but unusable token returns "inactive"; a scope miss returns null. */
   personalToken(

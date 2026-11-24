@@ -1,6 +1,6 @@
 import type { BoardEvent } from "@openboard/core";
 import type { BoardMessageReads } from "./board-message-reads.ts";
-import type { BoardScope } from "./store.ts";
+import type { BoardKeys, BoardScope } from "./store.ts";
 
 /** The events one commit appended, in position order: every position after `after`, up to `head`. */
 export interface CommittedPage {
@@ -29,6 +29,8 @@ export interface Broadcaster {
   prepareCommit?(scope: BoardScope, page: CommittedPage): () => void;
   /** Announce a new head and the events that reached it, only after their write commits. */
   publish(scope: BoardScope, page: CommittedPage): void;
+  /** Wake subscribers after a board is deleted, even when its event head has not advanced. */
+  invalidate(keys: BoardKeys): void;
   /**
    * Wake on heads above the given cursor. Register before reading; subscriptions do not replay. A wake carries the
    * head and, when available in memory, the committed page. The head lets a subscriber skip already covered events.
@@ -37,5 +39,6 @@ export interface Broadcaster {
     scope: BoardScope,
     fromPosition: number,
     wake: (page: CommittedPage | undefined, head: number) => void,
+    invalidated?: () => void,
   ): () => void;
 }

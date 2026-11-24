@@ -32,7 +32,7 @@ test("on Postgres, reads the writer's record in its own statement after the boar
   expect(await lockBoardAs(db, postgresText, keys, ada.id, window)).toMatchObject({ head: 7, actor: ada });
   expect(ran).toHaveLength(2);
   expect(ran[0]).toStartWith("SELECT boards.head, boards.timeline,");
-  expect(ran[0]).toEndWith("FOR UPDATE OF boards FOR SHARE OF orgs");
+  expect(ran[0]).toEndWith("FOR SHARE OF orgs FOR UPDATE OF boards");
   expect(ran[1]).toStartWith("SELECT id, kind, handle, name, avatar, via FROM actors");
 });
 
@@ -59,5 +59,5 @@ test("refreshes sibling usage and the actor together when Postgres waited for an
     dailyEvents: { day: 0, count: 2 },
   });
   expect(ran).toHaveLength(2);
-  expect(ran[1]).toEndWith("FOR UPDATE OF boards FOR SHARE OF orgs");
+  expect(ran[1]).toEndWith("FOR SHARE OF orgs FOR UPDATE OF boards");
 });

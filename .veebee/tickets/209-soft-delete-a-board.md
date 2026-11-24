@@ -16,11 +16,30 @@ writes:
   - packages/server/test/boards-delete.test.ts
   - packages/server/openapi.json
   - docs/decisions.md
+  - packages/contract/src/entities/orgs.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/audit.ts
+  - packages/contract/src/operations/index.ts
+  - packages/driver-sql/src/views/boards.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/audit.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/test/isolation/seed.ts
+  - docs/protocol.md
+  - packages/ports/src/tenant-scope.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/driver-sql/test/actors.test.ts
+  - packages/ports/src/broadcaster.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/local-broadcaster.ts
+  - packages/driver-postgres/src/broadcaster.ts
+  - packages/server/src/live/fan-out.ts
+  - packages/server/test/support/browser-session.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [208]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 370
 ---
 
@@ -28,9 +47,9 @@ issue: 370
 As an organization admin, I delete a board I no longer use, and its URL, connections and agents stop working at once.
 
 ## Done when
-- [ ] signed in as an admin, `curl -b cookies -H 'x-ob-csrf: <csrf>' -H 'origin: <public URL>' -X POST <public URL>/api/x/orgs/acme/boards/ops/delete` answers `{ board, deletedAt }` and records `ob.board.deleted`; `GET /api/x/orgs/acme/boards` no longer lists `ops`; a member gets 403 `forbidden`
-- [ ] `bun test packages/server/test/boards-delete.test.ts` passes on SQLite and on Postgres (`OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard`): after the deletion, every route under `/api/acme/ops` answers 401 `unauthorized` to the board's connection secret and agent tokens and 404 `not_found` to a member's session, the board `main` still answers, and creating a board with slug `ops` again answers 409 `slug_taken`
-- [ ] in the same file, deleting `main` answers 400 `invalid_request` with a hint to delete the organization instead, and changes nothing
+- [x] signed in as an admin, `curl -b cookies -H 'x-ob-csrf: <csrf>' -H 'origin: <public URL>' -X POST <public URL>/api/x/orgs/acme/boards/ops/delete` answers `{ board, deletedAt }` and records `ob.board.deleted`; `GET /api/x/orgs/acme/boards` no longer lists `ops`; a member gets 403 `forbidden`
+- [x] `bun test packages/server/test/boards-delete.test.ts` passes on SQLite and on Postgres (`OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard`): after the deletion, every authenticated route under `/api/acme/ops` answers 401 `unauthorized` to the board's connection secret and agent tokens and 404 `not_found` to a member's session, the board `main` still answers, and creating a board with slug `ops` again answers 409 `slug_taken`; public discovery and OpenAPI still answer from the URL alone (D35)
+- [x] in the same file, deleting `main` answers 400 `invalid_request` with a hint to delete the organization instead, and changes nothing
 
 ## Out of scope
 - Removing a deleted board's rows: they go with the organization's purge (208).

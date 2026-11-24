@@ -31,17 +31,25 @@ export function tailBoard(board: BoardView, after: number | undefined): Tail {
     waiter = undefined;
     resolve?.();
   };
-  const unsubscribe = board.subscribeEvents(after ?? 0, (committed, head) => {
-    if (committed === undefined) {
-      announced = Math.max(announced, head);
-    } else if (queued !== undefined) {
+  const unsubscribe = board.subscribeEvents(
+    after ?? 0,
+    (committed, head) => {
+      if (committed === undefined) {
+        announced = Math.max(announced, head);
+      } else if (queued !== undefined) {
+        queued = undefined;
+        behind = true;
+      } else if (!behind) {
+        queued = committed;
+      }
+      notify();
+    },
+    () => {
       queued = undefined;
       behind = true;
-    } else if (!behind) {
-      queued = committed;
-    }
-    notify();
-  });
+      notify();
+    },
+  );
   return {
     take(cursor) {
       const page = queued;

@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
-import { Named, Slug } from "../entities/orgs.ts";
-import { defineOperation } from "../operation.ts";
+import { DeletedBoard, Named, Slug } from "../entities/orgs.ts";
+import { defineOperation, Ref } from "../operation.ts";
 
 /** Organization routes are relative to `/api/x`; the pipeline takes the organization from `:org` (codebase.md 4.4). */
 const OrgParams = Type.Object({ org: Slug });
@@ -49,6 +49,22 @@ export const createBoard = defineOperation({
   ],
   access: { permission: "manage", channel: "any" },
   effects: { readOnly: false, idempotent: false, emits: ["ob.board.created"] },
+  cli: false,
+  mcp: false,
+  why,
+  upstream: false,
+});
+
+export const deleteBoard = defineOperation({
+  name: "deleteBoard",
+  summary: "Soft-delete an organization board and reserve its slug.",
+  route: { method: "POST", path: "/orgs/:org/boards/:board/delete" },
+  scope: "org",
+  input: { params: Type.Object({ org: Slug, board: Ref("board", { pattern: Slug.pattern }) }) },
+  output: DeletedBoard,
+  errors: ["invalid_request", "unauthorized", "forbidden", "not_found"],
+  access: { permission: "manage", channel: "any" },
+  effects: { readOnly: false, idempotent: false, emits: ["ob.board.deleted"] },
   cli: false,
   mcp: false,
   why,

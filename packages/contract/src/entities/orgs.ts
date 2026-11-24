@@ -28,6 +28,10 @@ export const CreatedOrg = Type.Object({
 });
 export type CreatedOrg = Static<typeof CreatedOrg>;
 
+/** A deleted board and its ISO 8601 UTC deletion time. */
+export const DeletedBoard = Type.Object({ board: Named, deletedAt: Type.String() });
+export type DeletedBoard = Static<typeof DeletedBoard>;
+
 /** The organization and its 30-day retention window, in ISO 8601 UTC. */
 export const DeletedOrg = Type.Object({ org: Named, deletedAt: Type.String(), purgeAt: Type.String() });
 export type DeletedOrg = Static<typeof DeletedOrg>;

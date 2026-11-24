@@ -206,6 +206,10 @@ const orgCases: Cases<OrgView> = {
     if (!keys) throw new Error("missing second organization board");
     expect(await a.org.purgeOrg(keys.boardId, "1", { instanceId: "b", claimedAt: at }, at)).toBe(false);
   },
+  deleteBoard: async (a, b) => {
+    await expect(a.org.deleteBoard("intruder", b.personId, at)).rejects.toMatchObject({ code: "forbidden" });
+    await expect(a.org.deleteBoard("intruder", a.personId, at)).rejects.toMatchObject({ code: "not_found" });
+  },
   deleteOrg: async (a, b) => await expect(a.org.deleteOrg(b.personId, at)).rejects.toMatchObject({ code: "not_found" }),
   takeRate: (a, b) => isolatedRates(a.org, b.org),
   listMembers: (a) => a.org.listMembers(),

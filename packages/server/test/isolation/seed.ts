@@ -191,7 +191,11 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
     send("POST", "/api/x/auth/device", {}, { clientName: marker }),
     "device",
   );
-  const ids = { ...made, member: `ob:user:${personId}`, org };
+  const boardRef = org === "bravo" ? "bravo-board" : "main";
+  if (org === "bravo") {
+    await ok(send("POST", `/api/x/orgs/${org}/boards`, session, { slug: boardRef, name: marker }), "board ref");
+  }
+  const ids = { ...made, member: `ob:user:${personId}`, org, board: boardRef };
   const credentials = { session, personal, connection, agent };
   return { org, board: "main", ...credentials, ids, firstThread, invitationToken, userCode: pending.userCode, marker };
 }

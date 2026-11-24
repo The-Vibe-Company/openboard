@@ -60,6 +60,7 @@ export {
   createOrg,
   createSchema,
   createTask,
+  deleteBoard,
   deleteMessage,
   deleteOrg,
   discoverBoard,

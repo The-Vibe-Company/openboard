@@ -1014,3 +1014,13 @@ on each instance. The composition root can override either cap through
 The local benchmark sets its principal cap to 50 and uses one credential for
 all 50 tails, preserving the workload measured for ticket 108. The HTTP cap
 tests use the server defaults. ([Issue #367](https://github.com/The-Vibe-Company/openboard/issues/367))
+
+### D63. Board deletion preserves the default board
+
+Organization admins and owners can soft-delete other boards. Deleting
+`main` returns 400 `invalid_request` with a hint to delete the organization
+instead. The retained row reserves the slug until organization purge.
+Authenticated board routes refuse a deleted board's connections and agents
+with 401 `unauthorized` and answer 404 `not_found` to people. Public
+discovery and OpenAPI continue to answer from the URL alone (D35).
+Parked event reads wake on deletion and reauthorize against the tombstone.
