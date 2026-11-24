@@ -146,9 +146,14 @@ test(`${hosted ? "Postgres: both runners poll" : "SQLite"} due work sweeps bound
   const anchor = await one.seedSweep(keys, webhook.id, due);
   const polls: string[] = [];
   const sweeps: string[] = [];
+  const next = due + 60_000;
+  // Populate the queue before LISTEN so either runner can discover both jobs from storage.
+  await board.write(async (writer) => {
+    await writer.enqueue("fixture-work", due, {});
+    await writer.enqueue("fixture-work", next, {});
+  });
   const first = runner(one, "one", clock, polls, sweeps);
   const second = two && runner(two, "two", clock, polls, sweeps);
-  const enqueue = (at: number) => board.write((writer) => writer.enqueue("fixture-work", at, {}));
   try {
     const { replay, position } = await prepareReplay(first, clock.now);
     const original = await replay();
@@ -160,7 +165,6 @@ test(`${hosted ? "Postgres: both runners poll" : "SQLite"} due work sweeps bound
     const page = (await pageBefore.json()) as OutputOf<typeof listWebhookDeliveries>;
     expect(page.deliveries.length).toBeGreaterThan(0);
     const before = await one.sweepSnapshot();
-    await enqueue(due);
     await clock.armed;
     await clock.advance(due - 1);
     expect(await one.sweepSnapshot()).toEqual(before);
@@ -189,9 +193,6 @@ test(`${hosted ? "Postgres: both runners poll" : "SQLite"} due work sweeps bound
     expect(await requeued.json()).toEqual({ id: "dl_cccccccccccccccc" });
     expect(await replay()).toEqual(original);
 
-    // The other runner may still know about the old lease. Let its existing timer settle too.
-    const next = due + 60_000;
-    await enqueue(next);
     await clock.advance(next);
     expect(sweeps).toHaveLength(2);
     expect((await one.sweepSnapshot()).backlog).toBe(0);
@@ -202,8 +203,6 @@ test(`${hosted ? "Postgres: both runners poll" : "SQLite"} due work sweeps bound
     expect(original).toEqual({ ok: true, matched: [0], results: [{ reply: replies[0]?.id }] });
     expect(processedAgain).toEqual({ ok: true, matched: [0], results: [{ reply: replies[1]?.id }] });
     expect(await replay()).toEqual(processedAgain);
-    // A late Postgres enqueue notification can still prompt an empty dispatch.
-    await clock.advance(next + 60_000);
     expect(clock.timers.size).toBe(0);
   } finally {
     await Promise.all([first.close(), second?.close()]);
