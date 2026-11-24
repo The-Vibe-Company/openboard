@@ -23,6 +23,9 @@ export function channelInputError(
   );
 }
 
+export const GRANT_SYNTAX_HINT =
+  "Write can as pattern=permissions: `*=all`, `dev/=read,post`; permissions are read, post, react, label, sync, manage.";
+
 /** Carries the bad key to the HTTP edge, where the operation and the submitted grant are available. */
 export class InvalidGrantPattern extends BoardError {
   readonly pattern: string;
@@ -32,7 +35,7 @@ export class InvalidGrantPattern extends BoardError {
     const corrected = correctedChannel(pattern, isChannelOrSubtree);
     super("invalid_grant", `${JSON.stringify(pattern)} is not *, a channel, or a channel/`, {
       reason: "invalid_channel",
-      hint: corrected ? `Use the corrected pattern ${corrected}.` : "Use *, a channel, or a channel/.",
+      hint: corrected ? `Use the corrected pattern ${corrected}. ${GRANT_SYNTAX_HINT}` : GRANT_SYNTAX_HINT,
       next: [{ kind: "run", argv: ["ob", "grants", "--help"] }],
     });
     this.pattern = pattern;

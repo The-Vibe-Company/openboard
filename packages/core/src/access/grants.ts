@@ -6,7 +6,7 @@ import {
   type Permission,
   type Role,
 } from "@openboard/contract";
-import { InvalidGrantPattern, isChannelOrSubtree } from "../channels/path.ts";
+import { GRANT_SYNTAX_HINT, InvalidGrantPattern, isChannelOrSubtree } from "../channels/path.ts";
 
 /** Upstream's permissions, in the order a compiled grant lists them; `all` is every one of them. */
 export const PERMISSIONS: readonly Permission[] = Object.freeze(["read", "post", "react", "label", "sync", "manage"]);
@@ -62,7 +62,7 @@ export function formatGrantId(id: number): string {
 
 function invalidGrant(message: string): BoardError {
   return new BoardError("invalid_grant", message, {
-    hint: "Write can as pattern=permissions: `*=all`, `dev/=read,post`; permissions are read, post, react, label, sync, manage.",
+    hint: GRANT_SYNTAX_HINT,
   });
 }
 

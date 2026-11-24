@@ -115,15 +115,19 @@ test("an organization admin lists, adds, edits, and revokes grants with live con
 
     await grant.getByRole("button", { name: "Edit" }).click();
     await expect(grant.getByLabel("Permissions", { exact: true })).toHaveValue("deploys/=read,post");
-    // The pattern reaches domain validation, which returns a message and a syntax hint.
-    await grant.getByLabel("Permissions", { exact: true }).fill("deploys//=read,post");
+    // The form surfaces both the grant syntax and the corrected pattern.
+    await grant.getByLabel("Permissions", { exact: true }).fill("Deploys/=read,post");
     const refused = page.waitForResponse(
       (response) => response.url().endsWith(`/grants/${id}`) && response.request().method() === "PATCH",
     );
     await grant.getByRole("button", { name: "Save changes" }).click();
-    expect((await refused).status()).toBe(400);
-    await expect(grant.getByRole("alert")).toContainText('"deploys//" is not *, a channel, or a channel/');
+    const response = await refused;
+    expect(response.status()).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "invalid_grant", reason: "invalid_channel" } });
+    await expect(grant.getByRole("alert")).toContainText('"Deploys/" is not *, a channel, or a channel/');
     await expect(grant.getByRole("alert")).toContainText("Write can as pattern=permissions");
+    await expect(grant.getByRole("alert")).toContainText("Call updateGrant");
+    await expect(grant.getByRole("alert")).toContainText('"deploys/":["read","post"]');
     await grant.getByLabel("Permissions", { exact: true }).fill("deploys/=post");
     await grant.getByRole("button", { name: "Save changes" }).click();
     await expect(grant.getByText("deploys/=post", { exact: true })).toBeVisible();
