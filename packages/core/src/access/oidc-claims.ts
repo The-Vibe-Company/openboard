@@ -1,4 +1,4 @@
-import type { GrantPrincipal } from "@openboard/contract";
+import type { GrantPrincipal, GrantView } from "@openboard/contract";
 
 export interface OidcPrincipal {
   readonly kind: "oidc";
@@ -22,4 +22,17 @@ export function matchesOidcClaims(grant: Extract<GrantPrincipal, { kind: "oidc" 
         );
     })
   );
+}
+
+/** Keep only authenticated workload attributes needed for grant matching. */
+export function grantMatchingClaims(grantViews: readonly GrantView[], workload: OidcPrincipal): OidcPrincipal {
+  const keys = new Set(["sub"]);
+  for (const { principals } of grantViews) {
+    for (const grant of principals) {
+      if (grant.kind !== "oidc" || !matchesOidcClaims(grant, workload)) continue;
+      for (const key of Object.keys(grant.claims)) keys.add(key);
+    }
+  }
+  const claims = Object.fromEntries(Object.entries(workload.claims).filter(([key]) => keys.has(key)));
+  return { kind: "oidc", issuer: workload.issuer, claims };
 }

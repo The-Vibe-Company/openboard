@@ -12,8 +12,10 @@ import {
 import {
   base32,
   countQuotaError,
+  grantMatchingClaims,
   isoTime,
   matchesEventChannel,
+  narrowCan,
   parseTail,
   validateWebhook,
   validateWebhookContent,
@@ -27,7 +29,8 @@ import {
   canListMentionActors,
   unrestrictedLocalOwner,
 } from "../../auth/access.ts";
-import { callerCan } from "../../deps.ts";
+import { workloadCan } from "../../auth/oidc.ts";
+import { callerCan, credentialExpiry, requestScope, workloadOf } from "../../deps.ts";
 import { deliverWebhook } from "../../jobs/webhooks.ts";
 import { signedWebhookRequest } from "../../webhooks/request.ts";
 import { openWebhookSecret, sealWebhookSecret } from "../../webhooks/secret-box.ts";
@@ -91,6 +94,20 @@ function newSecret(ctx: BoardContext) {
   return `whsec_${Buffer.from(ctx.randomBytes(32)).toString("base64")}`;
 }
 
+async function webhookWorkload(ctx: BoardContext, writer: BoardWriter, channel: string | undefined) {
+  const identity = ctx.by[workloadOf];
+  if (!identity) return undefined;
+  const grants = await writer.listGrants();
+  if (ctx.now() >= (ctx.by[credentialExpiry] ?? 0)) {
+    throw new BoardError("unauthorized", "the credential expired before creating the webhook");
+  }
+  const workload = identity.kind === "oidc" ? grantMatchingClaims(grants, identity) : identity;
+  const can = workloadCan(grants, workload) ?? {};
+  const scope = ctx.by[requestScope];
+  requireManage({ ...ctx, by: { ...ctx.by, [callerCan]: scope ? narrowCan(can, scope) : can } }, channel);
+  return workload;
+}
+
 export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, spec) => {
   const {
     tail,
@@ -129,9 +146,14 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
     if ((await writer.webhooks()).some((record) => record.webhook.name === spec.name)) {
       throw new BoardError("slug_taken", "a webhook already has that name");
     }
+    const workload = await webhookWorkload(ctx, writer, tail.channel);
     await writer.storeWebhookSecret(id, secretId, sealed, now);
     await writer.append([
-      { ...audit(ctx, writer.head + 1, now), type: "ob.webhook.created", payload: { webhook, secretId, directory } },
+      {
+        ...audit(ctx, writer.head + 1, now),
+        type: "ob.webhook.created",
+        payload: { webhook, secretId, directory, ...(workload && { workload }) },
+      },
     ]);
   });
   return suppliedSecret === undefined && secret !== undefined ? { webhook, secret } : { webhook };

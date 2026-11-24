@@ -11,7 +11,7 @@ writes:
   - packages/driver-sql/src/views/jobs/sweep.ts
   - packages/driver-sql/src/statements.ts
   - packages/ports/src/store.ts
-  - packages/driver-sql/migrations/0040-operational-retention.sql
+  - packages/driver-sql/migrations/0041-operational-retention.sql
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/sweep-test-data.ts
   - packages/driver-postgres/src/catalog.ts

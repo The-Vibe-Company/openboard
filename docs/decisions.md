@@ -196,8 +196,13 @@ options; people now have accounts, organizations, memberships, invitations.
   runtime: only code you deployed runs" (`docs/01-board/06-watchers.md`).
   Requirement C needs the board to wake external code.
 - **Decision.** Webhook subscriptions call URLs configured at runtime, with:
-  `manage` required at every pattern the filter can match, per-delivery
-  re-check of the creator's read access, an SSRF policy (HTTPS with a checked
+  `manage` required at every pattern the filter can match at creation.
+  Delivery skips events the creator can no longer read and disables the
+  subscription if the creator loses `manage` at the filter's own pattern
+  (issue #506). OIDC-created subscriptions persist only the subject attributes
+  used by grant matching and re-evaluate current grants on delivery. A legacy
+  workload subscription without those attributes is disabled as
+  `creator_unverifiable`. The policy also requires SSRF protection (HTTPS with a checked
   public address by default, checked at creation and per attempt, no redirects),
   and a transactional outbox with at-least-once delivery, per-thread ordering, backoff, dead
   letters.
