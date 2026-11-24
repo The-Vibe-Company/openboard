@@ -8,6 +8,7 @@ import {
   EXPORT_RUN_MS,
   type OrgView,
   type Store,
+  USAGE_ROLLUP_JOB,
 } from "../src/index.ts";
 import { type OpenStore, testScope } from "./index.ts";
 import { seedCase } from "./isolation-case-seeds.ts";
@@ -309,6 +310,15 @@ const writerCases: Cases<BoardWriter> = {
 
 /** One case per `OrgView` method, on A's organization, with B's people and IDs. */
 const orgCases: Cases<OrgView> = {
+  rollupUsage: async (a, b, store) => {
+    const lease = { instanceId: "usage-isolation", claimedAt: at + 86_400_000 };
+    // A's seeded day is picked first. Claim B's without consuming A's so both remain fenced.
+    const { job: first } = await store.jobs.claim([USAGE_ROLLUP_JOB], lease);
+    const { job } = await store.jobs.claim([USAGE_ROLLUP_JOB], lease);
+    if (!first || !job || first.orgId === job.orgId) throw new Error("missing second organization's usage job");
+    expect(await a.org.rollupUsage(job.boardId, job.id, lease, lease.claimedAt)).toBe(false);
+    expect(await b.org.rollupUsage(job.boardId, job.id, lease, lease.claimedAt)).toBe(true);
+  },
   exportAudit: (a) => a.org.exportAudit(0, 100),
   requestExport: async (a, b) => {
     await expect(a.org.requestExport("foreign", b.personId, at, () => {})).rejects.toMatchObject({ code: "forbidden" });

@@ -42,6 +42,10 @@ import webhookWorkloadDdl from "../migrations/0040-webhook-workload.sql" with { 
 import operationalRetentionDdl from "../migrations/0041-operational-retention.sql" with { type: "text" };
 import inboundHistoryDdl from "../migrations/0042-inbound-history.sql" with { type: "text" };
 import taskBatchesDdl from "../migrations/0043-task-batches.sql" with { type: "text" };
+import usageDdl from "../migrations/0044-usage.sql" with { type: "text" };
+import usageIndexesDdl from "../migrations/0045-usage.sql" with { type: "text" };
+import usageDeliveryDdl from "../migrations/0046-usage.sql" with { type: "text" };
+import usagePurgeDdl from "../migrations/0047-usage.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -61,6 +65,7 @@ import { type JobWrites, queueBoardOrgBackfill, runBoardOrgBackfill } from "./vi
 import { purgeOrgView } from "./views/jobs/purge.ts";
 import { shippingPlatform, shippingView } from "./views/jobs/shipping.ts";
 import { sweepView } from "./views/jobs/sweep.ts";
+import { usageView } from "./views/jobs/usage.ts";
 import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
 import { operatorView } from "./views/operator/index.ts";
@@ -134,6 +139,10 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 41, name: "0041-operational-retention", sql: operationalRetentionDdl },
   { version: 42, name: "0042-inbound-history", sql: inboundHistoryDdl },
   { version: 43, name: "0043-task-batches", sql: taskBatchesDdl },
+  { version: 44, name: "0044-usage", sql: usageDdl },
+  { version: 45, name: "0045-usage", sql: usageIndexesDdl },
+  { version: 46, name: "0046-usage", sql: usageDeliveryDdl },
+  { version: 47, name: "0047-usage", sql: usagePurgeDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -164,6 +173,7 @@ export function createViews(
       ...rateView(db, dialect, `org:${scope.orgId}:`),
       ...membershipView(db, dialect, scope, jobs),
       ...purgeOrgView(db, dialect, scope, jobs),
+      ...usageView(db, dialect, scope, jobs),
       ...shippingView(db, dialect, scope),
       ...exportsView(db, dialect, scope, jobs),
       backfillBoardOrgIds: (boardId, id, lease, now) =>

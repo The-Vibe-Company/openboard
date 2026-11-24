@@ -1,7 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { migratePostgres, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
-import { createApp, type Deps, jsonLogger, maintenanceJobs } from "@openboard/server";
+import { createApp, type Deps, jsonLogger, maintenanceJobs, usageJobs } from "@openboard/server";
 import { backupBucket } from "./bucket.ts";
 import type { Config } from "./config.ts";
 
@@ -94,6 +94,6 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
     },
     { store, jobs: store.jobs, ...(bucket && { bucket }) },
     deps,
-    maintenanceJobs,
+    { ...maintenanceJobs, ...usageJobs },
   );
 }

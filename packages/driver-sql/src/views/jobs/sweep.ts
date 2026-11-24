@@ -4,7 +4,7 @@ import { type Fragment, query, sql } from "../../sql.ts";
 
 const day = 86_400_000;
 const skipLocked: Fragment = {
-  fragment: ({ name }) => (name === "postgres" ? " FOR UPDATE SKIP LOCKED" : ""),
+  fragment: ({ name }) => (name === "postgres" ? " FOR UPDATE OF candidate SKIP LOCKED" : ""),
 };
 
 // Each call uses static schema identifiers and a matching retention index. Lock the picked rows
@@ -18,15 +18,24 @@ function expiredBatch(table: string, key: string, time: string, state = "1 = 1",
   const composite = key.includes(",");
   const match: Fragment = { fragment: () => (composite ? `(${key})` : key) };
   return sql`WITH picked AS MATERIALIZED (
-    SELECT ${keys} FROM ${target} WHERE ${eligible} AND ${timeColumn} ${comparison} ${"cutoff"}
+    SELECT ${keys} FROM ${target} AS candidate WHERE ${eligible} AND ${timeColumn} ${comparison} ${"cutoff"}
     ORDER BY ${timeColumn} LIMIT 1000${skipLocked}
   )
   DELETE FROM ${target} WHERE ${match} IN (SELECT ${keys} FROM picked)`;
 }
 
+// An outage can outlast delivery retention. Preserve source rows until their day is recorded.
+const deliveryNotPending = `NOT EXISTS (SELECT 1 FROM usage_pending_days u WHERE u.org_id = candidate.org_id
+  AND u.job_key = CAST(candidate.created_at - (candidate.created_at % 86400000 + 86400000) % 86400000 AS TEXT))`;
+
 export const sweepStatements = {
-  sweepFinishedDeliveries: expiredBatch("webhook_deliveries", "id", "done_at", "state IN ('done', 'skipped')"),
-  sweepDeadDeliveries: expiredBatch("webhook_deliveries", "id", "done_at", "state = 'dead'"),
+  sweepFinishedDeliveries: expiredBatch(
+    "webhook_deliveries",
+    "id",
+    "done_at",
+    `state IN ('done', 'skipped') AND ${deliveryNotPending}`,
+  ),
+  sweepDeadDeliveries: expiredBatch("webhook_deliveries", "id", "done_at", `state = 'dead' AND ${deliveryNotPending}`),
   sweepInboundSeen: expiredBatch("inbound_seen", "endpoint, event_id", "at"),
   sweepWatcherMatches: expiredBatch("watcher_matches", "board_id, id", "next_at", "state = 'done'"),
   sweepSessions: expiredBatch("sessions", "id_hash", "expires_at", undefined, true),

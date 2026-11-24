@@ -350,8 +350,6 @@ CREATE INDEX personal_tokens_user ON personal_tokens (user_id);
 CREATE TABLE rate_counters (key TEXT NOT NULL, window_start BIGINT NOT NULL, n BIGINT NOT NULL,
                             expires_at BIGINT NOT NULL, PRIMARY KEY (key, window_start));
 CREATE INDEX rate_counters_expiry ON rate_counters (expires_at);
-CREATE TABLE usage_daily (org_id BIGINT NOT NULL, day TEXT NOT NULL, events BIGINT NOT NULL, bytes BIGINT NOT NULL,
-                          deliveries BIGINT NOT NULL, agents BIGINT NOT NULL, PRIMARY KEY (org_id, day));
 CREATE TABLE schema_migrations (version BIGINT PRIMARY KEY, applied_at BIGINT NOT NULL);
 ```
 
@@ -577,6 +575,26 @@ looked up from a credential or a URL before the board is known; every lookup
 then checks `board_id` against the request's scope.
 
 ### Operational tables (not replayed)
+
+A board queues a durable job for each UTC day with events or outbox deliveries.
+At the following midnight, the first job to acquire the organization lock
+records the completed day across all its boards. Tracking starts with activity
+recorded after the database enables rollups. Days with only earlier activity
+are outside its coverage.
+It counts distinct connection actors with profiles across the organization's boards
+and samples the sum of stored bytes when it runs, including when catching up after an outage.
+Delivery retention waits for pending accounting days to be recorded. Late
+events and deliveries update the existing counts without resampling stored
+bytes. Organization purge removes the rows.
+
+```sql
+CREATE TABLE usage_daily (
+  org_id BIGINT NOT NULL, day BIGINT NOT NULL, events BIGINT NOT NULL, bytes_stored BIGINT NOT NULL,
+  deliveries BIGINT NOT NULL, active_agents BIGINT NOT NULL, PRIMARY KEY (org_id, day)
+);
+```
+
+The `day` column holds UTC midnight in epoch milliseconds.
 
 Webhook events carry a `secretId` reference. Full organization purge removes
 `webhook_secrets`. Organization export excludes the table so exported events

@@ -21,6 +21,7 @@ import { legacyPurgePlatform, legacyPurgeScoped } from "./views/jobs/legacy-purg
 import { purgeStatements } from "./views/jobs/purge.ts";
 import { shippingStatements } from "./views/jobs/shipping.ts";
 import { sweepStatements } from "./views/jobs/sweep.ts";
+import { usageStatements } from "./views/jobs/usage.ts";
 import { membershipStatements } from "./views/memberships.ts";
 import { messageStatements } from "./views/messages/statements.ts";
 import { operatorPlatform, operatorScoped } from "./views/operator/index.ts";
@@ -74,6 +75,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...taskListStatements,
   ...taskReadStatements,
   ...threadStatements,
+  ...usageStatements,
   ...watcherStatements,
   ...webhookStatements,
   ...inboundStatements,

@@ -115,7 +115,7 @@ async function seedSibling(
   return keys;
 }
 
-function expectSeeded(rows: Record<string, unknown[]>, legacy: boolean) {
+function expectSeeded(rows: Record<string, Record<string, unknown>[]>, legacy: boolean) {
   for (const table of [
     "events",
     "messages",
@@ -132,7 +132,7 @@ function expectSeeded(rows: Record<string, unknown[]>, legacy: boolean) {
     expect(rows[table]?.length, table).toBeGreaterThan(0);
   }
   expect(rows.boards).toHaveLength(2);
-  expect(rows.jobs).toHaveLength(legacy ? 0 : 1);
+  expect(rows.jobs?.filter(({ kind }) => kind === PURGE_ORG_JOB)).toHaveLength(legacy ? 0 : 1);
 }
 
 const mode = hosted ? "postgres: two runners" : "sqlite: due timer";
@@ -179,7 +179,7 @@ for (const legacy of [false, true]) {
       const reuse = await send("POST", "/api/x/orgs", newcomer.headers, { slug: deleted.org, name: "Reuse" });
       expect(reuse.status).toBe(409);
       expect(await reuse.json()).toMatchObject({ error: { code: "slug_taken" } });
-      const [job] = before.rows.jobs ?? [];
+      const job = before.rows.jobs?.find(({ kind }) => kind === PURGE_ORG_JOB);
       const [winner] = completed;
       if (!winner) throw new Error("no completed purge");
       if (job) {

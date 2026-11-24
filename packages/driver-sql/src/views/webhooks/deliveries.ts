@@ -16,6 +16,8 @@ import type { Db, Dialect } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
 import { actorReads } from "../actors.ts";
 import { messageEvent } from "../events.ts";
+import type { JobWrites } from "../jobs/index.ts";
+import { notifyUsageDay } from "../jobs/usage.ts";
 import { messageStatements } from "../messages/statements.ts";
 import { webhookReads, webhookRecord, webhookStatements } from "./webhooks.ts";
 
@@ -140,6 +142,7 @@ export function deliveryWriter(
   db: Db,
   dialect: Dialect,
   keys: BoardKeys,
+  enqueued: JobWrites["committed"],
 ): Pick<
   BoardWebhookWriter,
   | "beginWebhookPing"
@@ -152,6 +155,7 @@ export function deliveryWriter(
     async beginWebhookPing(record, id, now) {
       const params = { ...keys, id, webhook: record.webhook.id, secretId: record.secretId, now };
       if (!(await query(db, dialect, deliveryStatements.addPing, params)).length) return null;
+      if (dialect.name === "sqlite") notifyUsageDay(now, enqueued);
       const [row] = await query(db, dialect, webhookStatements.webhookSecret, { ...params, id: record.webhook.id });
       return typeof row?.ciphertext === "string"
         ? { ciphertext: row.ciphertext, keyVersion: Number(row.key_version) }
@@ -219,6 +223,7 @@ export async function matchWebhooks(
   jobs: BoardJobWriter,
   event: BoardEvent,
   now: number,
+  enqueued: JobWrites["committed"],
 ) {
   // Older replicas can lease delivery jobs before they know how to decode this event.
   if (
@@ -280,6 +285,7 @@ export async function matchWebhooks(
       now,
       root: JSON.stringify(root ?? null),
     });
+    if (dialect.name === "sqlite") notifyUsageDay(now, enqueued);
     await jobs.enqueue(WEBHOOK_DELIVERY_JOB, now, { id });
   }
 }

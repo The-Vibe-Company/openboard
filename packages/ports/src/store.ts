@@ -76,6 +76,8 @@ interface RateView {
 }
 
 export interface OrgView extends RateView, OrgLogMaintenance, OrgExports {
+  /** Atomically consumes the leased job and records the organization's completed UTC day. */
+  rollupUsage(boardId: number, id: string, lease: JobLease, now: number): Promise<boolean>;
   /** Consume a backfill lease and fill one batch under the board lock. */
   backfillBoardOrgIds(boardId: number, jobId: string, lease: JobLease, now: number): Promise<boolean>;
   deleteOrg(personId: string, at: number, admit?: () => void): Promise<DeletedOrg>;

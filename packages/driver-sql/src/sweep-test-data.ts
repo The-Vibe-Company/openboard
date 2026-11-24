@@ -1,3 +1,4 @@
+import { dailyEventWindow } from "@openboard/core";
 import type { BoardKeys } from "@openboard/ports";
 import type { Db, Dialect } from "./db.ts";
 import { query, sql } from "./sql.ts";
@@ -5,6 +6,10 @@ import { query, sql } from "./sql.ts";
 const deliveries = sql`INSERT INTO webhook_deliveries
   (org_id, board_id, webhook, id, event, state, next_at, created_at, done_at)
   VALUES (${"orgId"}, ${"boardId"}, ${"webhook"}, ${"id"}, NULL, ${"state"}, ${"at"}, ${"at"}, ${"at"})`;
+// The retention fixture models deliveries whose accounting day has already closed.
+const rolledUp = sql`INSERT INTO usage_daily (org_id, day, events, bytes_stored, deliveries, active_agents)
+  VALUES (${"orgId"}, ${"day"}, 0, 0, 1, 0)
+  ON CONFLICT (org_id, day) DO UPDATE SET deliveries = usage_daily.deliveries + 1`;
 const matches = sql`INSERT INTO watcher_matches
   (org_id, board_id, id, owner, watcher, thread, event, state, next_at, needs_actor_directory)
   VALUES (${"orgId"}, ${"boardId"}, ${"id"}, 'fixture', 'fixture', 1, 1, ${"state"}, ${"at"}, 0)`;
@@ -34,6 +39,7 @@ export async function seedSweep(db: Db, dialect: Dialect, keys: BoardKeys, webho
     ["pending-old", "pending", prior(90)],
     ["sending-old", "sending", prior(90)],
   ] as const) {
+    await query(db, dialect, rolledUp, { orgId: keys.orgId, day: dailyEventWindow(at).day });
     await query(db, dialect, deliveries, { ...keys, webhook, id, state, at });
   }
   await query(db, dialect, backlog, { ...keys, at: prior(8) });
