@@ -65,3 +65,18 @@ export const TaskCompletedEvent = Type.Object({
   payload: TaskCompletedPayload,
   message: Message,
 });
+
+export const TaskExpiredPayload = Type.Object({
+  id: Type.String(),
+  epoch: Type.Integer({ minimum: 1 }),
+});
+
+export type TaskExpiredPayload = Static<typeof TaskExpiredPayload>;
+
+export const TaskExpiredEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("task.expired"),
+  createdAt: Type.String(),
+  payload: TaskExpiredPayload,
+  message: Message,
+});

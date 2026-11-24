@@ -185,17 +185,13 @@ type FeedEvent = Awaited<ReturnType<Parameters<typeof readEventsHandler>[0]["boa
 type WireEvents = OutputOf<typeof readEvents>["events"];
 
 export function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boolean): WireEvents {
-  if (event.visibility === 1 || event.type === "watch.failed") {
-    const common = { cursor: formatId(event.id), createdAt: isoTime(event.at) };
-    if (event.type === "watch.failed") return [{ ...common, type: event.type, payload: event.payload }];
-    if (event.type === "actor.seen") return [{ ...common, type: event.type, payload: event.payload }];
-    return [{ ...common, type: event.type, payload: event.payload }];
-  }
+  if (event.visibility === 1 || event.type === "watch.failed") return [projectBookkeepingEvent(event)];
   const current = event.current;
   const historical = event.type === "message.posted" ? messages.messageView(event) : event.payload.view;
   if (current !== undefined && byWords && (current.deleted || current.text !== historical.text)) return [];
 
   const visible = (view: ReturnType<typeof messages.messageView>) => (everywhere ? view : withoutMentionDetails(view));
+  if (event.type === "task.expired") return [projectTaskExpired(event, visible(current ?? historical))];
   if (event.type === "task.completed") return [projectTaskCompleted(event, visible(current ?? historical))];
   if (event.type === "task.claimed" || event.type === "task.renewed")
     return [projectTaskLease(event, visible(current ?? historical))];
@@ -261,6 +257,29 @@ export function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boo
       message: visible(current ?? historical),
     },
   ];
+}
+
+function projectBookkeepingEvent(
+  event: Extract<FeedEvent, { visibility: 1 } | { type: "watch.failed" }>,
+): WireEvents[number] {
+  const common = { cursor: formatId(event.id), createdAt: isoTime(event.at) };
+  if (event.type === "watch.failed") return { ...common, type: event.type, payload: event.payload };
+  if (event.type === "actor.seen") return { ...common, type: event.type, payload: event.payload };
+  return { ...common, type: event.type, payload: event.payload };
+}
+
+function projectTaskExpired(
+  event: Extract<FeedEvent, { type: "task.expired" }>,
+  message: ReturnType<typeof messages.messageView>,
+): WireEvents[number] {
+  const { id, epoch } = event.payload;
+  return {
+    cursor: formatId(event.id),
+    type: event.type,
+    createdAt: isoTime(event.at),
+    payload: { id: formatId(id), epoch },
+    message,
+  };
 }
 
 function projectTaskCreated(

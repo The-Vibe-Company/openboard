@@ -65,6 +65,26 @@ test("registers a tail, pulls a feed event, and acknowledges it once", async () 
   expect(await ok(call(app, "GET", pullPath))).toEqual({ matches: [] });
 });
 
+test("skips stored event kinds outside the feed and watcher allowlists", async () => {
+  app = makeApp();
+  await ok(call(app, "POST", "/watchers", { watch: { triage: { tail: "dev --all" } } }));
+  const posted = await post();
+  expect(posted.status).toBe(201);
+  const { message } = (await posted.json()) as { message: { id: string } };
+  const { cursor } = await ok<{ cursor: string }>(call(app, "GET", "/events?after=0&all=true"));
+  const { matches } = await ok<{ matches: Match[] }>(call(app, "GET", pullPath));
+  const [match] = matches;
+  if (!match) throw new Error("missing post match");
+  await ok(ack(match));
+
+  const reacted = await call(app, "POST", `/messages/${message.id}/reactions`, { emoji: "eyes" });
+  expect(reacted.ok).toBe(true);
+  const page = await ok<{ events: unknown[]; cursor: string }>(call(app, "GET", `/events?after=${cursor}&all=true`));
+  expect(page.events).toEqual([]);
+  expect(Number(page.cursor)).toBe(Number(cursor) + 1);
+  expect(await ok(call(app, "GET", pullPath))).toEqual({ matches: [] });
+});
+
 test("rejects invalid watchers and sync entries, and distinguishes an absent registration", async () => {
   app = makeApp();
   await error(call(app, "GET", pullPath), 404, "no_registration");

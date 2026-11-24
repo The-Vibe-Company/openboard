@@ -272,7 +272,7 @@ safety poll**.
 | Job | Pick | Effect, exactly once |
 | --- | --- | --- |
 | Schedule sends | `SELECT id, board_id FROM schedules WHERE state = 'pending' AND next_at <= now() ORDER BY next_at LIMIT 20 FOR UPDATE SKIP LOCKED`, in a short transaction that only picks | Then a normal board write: under the board lock, re-check `next_at`, post with the unique key `(board_id, schedule_id, n)`, advance `next_at`. A duplicate pick finds the key taken and does nothing |
-| Lease expiry | `tasks` where `state = 'claimed' AND claim_until < now()` | Board write appends `task.expired` after re-checking under the lock. Lazy expiry makes it correct even if the job is late ([data-model.md](./data-model.md#claims-leases-and-dependencies)) |
+| Lease expiry | Persisted `task-expiry` job due at `claim_until` | Board write appends `task.expired` after re-checking under the lock. Lazy expiry makes it correct even if the job is late ([data-model.md](./data-model.md#claims-leases-and-dependencies)) |
 | Webhook deliveries | `UPDATE webhook_deliveries SET state = 'sending', lease_until = now() + 30 s, instance = $me WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED) RETURNING …` | Send after commit; mark `done`. At-least-once by nature (an instance can die after the receiver accepted); receivers dedupe by delivery ID |
 | Inbound events | Processed in the request, not as a job | Dedupe insert and rule effects in one board transaction: exactly once |
 | Watcher match leases, retention, blob GC, usage rollups, log shipping | Same pick pattern | Idempotent |

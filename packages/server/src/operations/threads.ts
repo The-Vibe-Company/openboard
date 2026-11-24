@@ -1,5 +1,13 @@
 import { BoardError, type listThreads, type readThread } from "@openboard/contract";
-import { channelFilter, formatId, labelFilters, mentionFilter, parseId, textPattern } from "@openboard/core";
+import {
+  channelFilter,
+  effectiveTask,
+  formatId,
+  labelFilters,
+  mentionFilter,
+  parseId,
+  textPattern,
+} from "@openboard/core";
 import { canListMentionActors, withoutMentionDetails } from "../auth/access.ts";
 import type { Handler } from "./index.ts";
 
@@ -10,8 +18,9 @@ export const readThreadHandler: Handler<typeof readThread> = async (ctx, input) 
   const after = input.after === undefined ? undefined : (parseId(input.after) ?? 0);
   const thread = id === null ? null : await ctx.board.thread(id, { after, limit: input.limit });
   if (!thread) throw new BoardError("message_not_found", `Couldn't find message #${input.id}.`);
-  if (canListMentionActors(ctx.by)) return thread;
-  return { message: withoutMentionDetails(thread.message), replies: thread.replies.map(withoutMentionDetails) };
+  const message = effectiveTask(thread.message, ctx.now());
+  if (canListMentionActors(ctx.by)) return { ...thread, message };
+  return { message: withoutMentionDetails(message), replies: thread.replies.map(withoutMentionDetails) };
 };
 
 /** A page's `older`, `"<active>.<root>"`, as a position; null when the text is not one. */

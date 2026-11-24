@@ -1,4 +1,5 @@
 import type { Message } from "@openboard/contract";
+import { effectiveTask } from "@openboard/core";
 import type { BoardScope, BoardTaskReads } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
 import { type Fragment, query, type Statement, sql } from "../../sql.ts";
@@ -33,7 +34,9 @@ function taskList(channels: Statement<"boardId" | "channel" | "under">) {
       SELECT t.board_id, t.id, root.view, root.replies, root.last_reply
       FROM tasks AS t JOIN messages AS root ON root.board_id = t.board_id AND root.id = t.id
       WHERE t.board_id = ${"boardId"} AND ${CHANNELS} AND t.id > CAST(${"after"} AS BIGINT) AND root.deleted = 0
-        AND ${position}(CAST(${"states"} AS TEXT), ',' || t.state || ',') > 0
+        AND ${position}(CAST(${"states"} AS TEXT), ',' || (CASE
+          WHEN t.state = 'claimed' AND t.claim_until <= CAST(${"now"} AS BIGINT) THEN 'ready'
+          ELSE t.state END) || ',') > 0
         AND (CAST(${"owner"} AS TEXT) IS NULL OR t.owner = ${"owner"} OR t.owner IN (
           SELECT principal FROM actors WHERE board_id = ${"boardId"} AND lower(handle) = ${"ownerHandle"} AND id = principal
         ))
@@ -70,9 +73,15 @@ export const taskListStatements = {
 };
 
 /** A board's task list: one statement reads the page, each root's latest reply and the board's head together. */
-export function taskListReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardTaskReads, "listTasks"> {
+export function taskListReads(
+  db: Db,
+  dialect: Dialect,
+  scope: BoardScope,
+  clock: () => number,
+): Pick<BoardTaskReads, "listTasks"> {
   return {
     async listTasks({ channel, under, states, labels = [], by, owner, for: assignee, after = 0, limit }) {
+      const now = clock();
       const statement =
         channel === undefined
           ? taskListStatements.listBoardTasks
@@ -94,12 +103,13 @@ export function taskListReads(db: Db, dialect: Dialect, scope: BoardScope): Pick
         authorHandle: by?.toLowerCase() ?? null,
         after,
         limit,
+        now,
       });
       const head = Number(rows[0]?.head ?? 0);
       const tasks = rows
         .filter((row) => row.view != null)
         .map((row) => ({
-          message: JSON.parse(String(row.view)) as Message,
+          message: effectiveTask(JSON.parse(String(row.view)) as Message, now),
           replies: Number(row.replies),
           last: row.last_view == null ? null : (JSON.parse(String(row.last_view)) as Message),
         }));

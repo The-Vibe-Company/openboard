@@ -2,6 +2,7 @@ import { type Actor, BoardError, type Message } from "@openboard/contract";
 import { isoTime, parseId } from "../ids.ts";
 import { actorSeen, type PostContext } from "../messages/post.ts";
 import type { TaskClaimed } from "./events.ts";
+import { expireTask } from "./expire.ts";
 import { withTask } from "./view.ts";
 
 interface ClaimState {
@@ -11,11 +12,15 @@ interface ClaimState {
 }
 
 export function decideClaimTask(
-  { head, target, actor }: ClaimState,
+  { head, target: stored, actor }: ClaimState,
   { id, lease = 900, tokenHash }: { id: string; lease?: number; tokenHash: string },
   context: PostContext,
 ) {
-  if (!target) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
+  if (!stored) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
+  const seen = actorSeen(actor, context, head + 1);
+  const beforeExpiry = seen?.id ?? head;
+  const expired = expireTask(beforeExpiry, stored, context.now);
+  const target = expired?.payload.view ?? stored;
   const { task } = target;
   if (!task || target.deleted) throw new BoardError("not_a_task", `#${id} is not a task.`);
   if (task.state === "claimed") throw new BoardError("task_claimed", `#${id} is claimed until ${task.claim?.until}.`);
@@ -25,8 +30,7 @@ export function decideClaimTask(
   if (task.for !== null) throw new BoardError("task_assigned", `#${id} is assigned to ${task.for}.`);
   const message = parseId(target.id);
   if (message === null) throw new Error("invalid stored task position");
-  const seen = actorSeen(actor, context, head + 1);
-  const position = head + (seen ? 2 : 1);
+  const position = (expired?.id ?? beforeExpiry) + 1;
   const untilMs = context.now + lease * 1000;
   const until = isoTime(untilMs);
   const epoch = task.epoch + 1;
@@ -47,5 +51,6 @@ export function decideClaimTask(
     visibility: 0,
     payload: { id: message, thread: target.thread, epoch, until, untilMs, tokenHash, by: context.by, view },
   };
-  return { task: view, claim: { epoch, until }, events: seen ? [seen, claimed] : [claimed] };
+  const events = [...(seen ? [seen] : []), ...(expired ? [expired] : []), claimed];
+  return { task: view, claim: { epoch, until }, events };
 }

@@ -3,7 +3,7 @@ export type { Broadcaster, CommittedEvents, CommittedPage } from "./broadcaster.
 export type { Bucket, LogSegment } from "./bucket.ts";
 export type { BoardGrantReads, BoardGrantWriter, PersonGrant } from "./grants.ts";
 export type { BoardJobWriter, Job, JobClaim, JobLease, JobPayload, JobSchedule, Jobs } from "./jobs.ts";
-export { BACKFILL_BOARD_ORG_JOB, PURGE_ORG_JOB } from "./jobs.ts";
+export { BACKFILL_BOARD_ORG_JOB, PURGE_ORG_JOB, TASK_EXPIRY_JOB } from "./jobs.ts";
 export type {
   OperatorOrgDetails,
   OperatorOrgSummary,

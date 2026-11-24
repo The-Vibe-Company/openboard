@@ -1,3 +1,4 @@
+import type { Jobs } from "@openboard/ports";
 import { type Deps, type Logger, mintLocalOwnerToken, type ServerConfig } from "../../src/index.ts";
 import { createCluster } from "./cluster.ts";
 import { openStore, type TestStore } from "./drivers.ts";
@@ -24,6 +25,7 @@ type AppOptions = Pick<ServerConfig, "signup" | "signIn" | "webDir"> &
     readonly log?: Logger;
     readonly schedule?: Deps["schedule"];
     readonly store?: TestStore;
+    readonly watchJobs?: Jobs["watch"];
   };
 
 /**
@@ -61,7 +63,7 @@ export function makeApp(options: AppOptions = {}) {
     ...(fetch && { fetch }),
     ...(options.resolveHost && { resolveHost: options.resolveHost }),
   };
-  const app = createCluster(config, { store: options.store ?? openStore(now) }, deps);
+  const app = createCluster(config, { store: options.store ?? openStore(now), watchJobs: options.watchJobs }, deps);
   return Object.assign(app, { logged });
 }
 

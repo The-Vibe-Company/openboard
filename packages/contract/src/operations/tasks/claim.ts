@@ -42,7 +42,7 @@ export const claimTask = defineOperation({
     "task_assigned",
   ],
   access: { permission: "label", channel: "fromMessage" },
-  effects: { readOnly: false, idempotent: false, emits: ["task.claimed"], meter: "task_claims" },
+  effects: { readOnly: false, idempotent: false, emits: ["task.expired", "task.claimed"], meter: "task_claims" },
   cli: { command: ["tasks", "claim"], args: ["id"] },
   mcp: { tool: "task_claim" },
   upstream: true,
