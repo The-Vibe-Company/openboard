@@ -41,6 +41,7 @@ writes:
   - packages/server/src/operations/audit.ts
   - packages/server/src/operations/events.ts
   - packages/server/test/isolation/cases.ts
+  - packages/server/test/rate-limits.test.ts
   - tools/conformance/score.json
   - packages/driver-sqlite/test/open.test.ts
 conformance: ["watchers/matches a registered tail, hands the match to a pull, and takes its ack"]

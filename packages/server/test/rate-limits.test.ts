@@ -3,6 +3,28 @@ import type { createConnection, OutputOf } from "@openboard/contract";
 import { call, NOW, OWNER, PUBLIC_URL } from "./support/app.ts";
 import { browserSession, makeBrowserApp } from "./support/browser-session.ts";
 
+const channel = { path: "testing" };
+const registration = { watch: { rate: { tail: channel.path } } };
+
+async function seedWatcher(app: Parameters<typeof call>[0]) {
+  expect((await call(app, "POST", "/channels", channel)).status).toBe(201);
+  expect((await call(app, "POST", "/watchers", registration)).status).toBe(200);
+}
+
+async function expectWatcherThrottling(app: Parameters<typeof call>[0]) {
+  const responses = await Promise.all([
+    call(app, "POST", "/watchers", { watch: {} }),
+    call(app, "GET", "/watchers/matches?wait=5"),
+    call(app, "POST", "/watchers/matches/fixture/ack", { lease: "fixture" }),
+  ]);
+  for (const response of responses) {
+    expect(response.status).toBe(429);
+    expect(await response.json()).toMatchObject({ error: { code: "rate_limited" } });
+  }
+  expect((await call(app, "POST", "/watchers", registration)).status).toBe(200);
+  expect((await call(app, "GET", "/watchers")).status).toBe(200);
+}
+
 test("an organization has its own write burst and refill on each instance, and reads stay available", async () => {
   let now = NOW;
   const cluster = makeBrowserApp(OWNER.hash, undefined, () => now);
@@ -26,9 +48,8 @@ test("an organization has its own write burst and refill on each instance, and r
     });
     expect(connection.status).toBe(201);
     const { secret } = (await connection.json()) as OutputOf<typeof createConnection>;
-    const channel = { path: "testing" };
-    expect((await call(app, "POST", "/channels", channel)).status).toBe(201);
-    now += 10; // Refill the two tokens spent on setup.
+    await seedWatcher(app);
+    now += 15; // Refill the three tokens spent on setup.
 
     const owner = { authorization: `Bearer ${OWNER.token}` };
     const post = (text = "write", path = "/api/local/main", auth: Record<string, string> = owner, instance = app) =>
@@ -58,6 +79,7 @@ test("an organization has its own write burst and refill on each instance, and r
     expect(denied.status).toBe(429);
     expect(denied.headers.get("retry-after")).toBe("1");
     expect(await denied.json()).toMatchObject({ error: { code: "rate_limited" } });
+    await expectWatcherThrottling(app);
     const forbidden = await post("not authorized", "/api/local/main", { authorization: `Bearer ${secret}` });
     expect(forbidden.status).toBe(403);
     const grant = await app.fetch(
