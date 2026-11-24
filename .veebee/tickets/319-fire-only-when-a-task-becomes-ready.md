@@ -9,7 +9,7 @@ writes:
   - packages/server/test/webhooks/became.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [254, 304]
+depends_on: [254, 263, 304]
 status: draft
 claimed_by: null
 issue: 504
