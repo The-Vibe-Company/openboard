@@ -15,7 +15,7 @@
     "verify:pg": "bun scripts/ci/verify-pg.ts",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "lint": "biome lint . && oxlint --format default && bun scripts/ci/boundaries.ts && bun scripts/ci/agents-guard.ts && bun scripts/ci/sizes.ts && bun scripts/ci/migrations.ts && bun scripts/ci/module-state.ts",
+    "lint": "biome lint . && oxlint --format default && bun scripts/ci/boundaries.ts && bun scripts/ci/agents-guard.ts && bun scripts/ci/sizes.ts && bun scripts/ci/migrations.ts && bun scripts/ci/module-state.ts && bun scripts/ci/score.ts",
     "gen": "bun scripts/ci/gen.ts",
     "gen:check": "bun scripts/ci/gen.ts --check",
     "pr-size": "bun scripts/ci/pr-size.ts",
