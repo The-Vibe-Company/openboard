@@ -498,8 +498,8 @@ CREATE TABLE grant_principals (
 CREATE INDEX grant_principals_kind ON grant_principals (board_id, kind, key);
 
 CREATE TABLE schemas (
-  board_id BIGINT NOT NULL, id TEXT NOT NULL, name TEXT NOT NULL, version BIGINT NOT NULL,
-  description TEXT, schema TEXT NOT NULL, by TEXT, at BIGINT,
+  org_id BIGINT NOT NULL, board_id BIGINT NOT NULL, id TEXT NOT NULL, name TEXT NOT NULL, version BIGINT NOT NULL,
+  description TEXT, schema TEXT NOT NULL, by TEXT NOT NULL, at BIGINT NOT NULL,
   PRIMARY KEY (board_id, id)
 );
 
@@ -603,6 +603,7 @@ decide and may append several events; folds never append.
 | `task.completed` | state; decrement `waiting_on` of dependants (the command appended their `task.ready`) |
 | `task.expired` | clear claim; `ready` (or `blocked` if held) |
 | `ob.connection.created` | insert `connections` and its grant |
+| `ob.schema.registered` | insert the schema version, its canonical definition, and registration metadata |
 | `ob.grant.updated` | replace the grant and its principal index, preserving any connection’s original grant ID |
 | `ob.connection.rotated` | `connections`: the new secret's hash and hint; the old one to `prev_secret_hash` until `prev_secret_until` (the overlap, ≤ 24 h) |
 | `ob.agent.claimed` | insert `connection_agents` (the token's hash, never the token) |

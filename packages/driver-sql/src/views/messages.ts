@@ -31,6 +31,7 @@ import { activeGrant, foldGrantEvent, grantReads } from "./grants.ts";
 import { type JobWrites, jobWriter } from "./jobs/index.ts";
 import { messageStatements } from "./messages/statements.ts";
 import { orgReads } from "./orgs.ts";
+import { foldSchemaRegistered, schemaWriter } from "./schemas/registry.ts";
 import { foldTaskEvent } from "./tasks/task-folds.ts";
 import { taskReads, taskWriter } from "./tasks/tasks.ts";
 import { foldWatchersRegistered, matchWatchers, watcherWriter } from "./watchers/index.ts";
@@ -146,6 +147,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
       view: JSON.stringify(view),
     });
   } else if (event.type === "message.posted") await foldMessagePosted(tx, dialect, keys, event);
+  else if (event.type === "ob.schema.registered") await foldSchemaRegistered(tx, dialect, keys, event);
   else if (event.type === "ob.watchers.registered") await foldWatchersRegistered(tx, dialect, keys, event);
   else if (event.type !== "watch.failed") await foldTaskEvent(tx, dialect, keys, event);
 }
@@ -247,6 +249,7 @@ function writer(
     ...taskWriter(tx, dialect, keys),
     ...jobs,
     ...watcherWriter(tx, dialect, keys),
+    ...schemaWriter(tx, dialect, keys),
     append: events.append,
     get head() {
       return events.head;

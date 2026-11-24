@@ -18,6 +18,7 @@ import dailyEventsDdl from "../migrations/0016-daily-events.sql" with { type: "t
 import dailyEventsIndexDdl from "../migrations/0017-index-daily-events.sql" with { type: "text" };
 import watchersDdl from "../migrations/0018-watchers.sql" with { type: "text" };
 import rateCountersDdl from "../migrations/0019-rate-counters.sql" with { type: "text" };
+import schemasDdl from "../migrations/0020-schemas.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -35,6 +36,7 @@ import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
 import { rateView } from "./views/rates/index.ts";
+import { schemaReads } from "./views/schemas/registry.ts";
 import { taskListReads } from "./views/tasks/list.ts";
 import { threadReads } from "./views/threads.ts";
 
@@ -75,6 +77,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 17, name: "0017-index-daily-events", sql: dailyEventsIndexDdl },
   { version: 18, name: "0018-watchers", sql: watchersDdl },
   { version: 19, name: "0019-rate-counters", sql: rateCountersDdl },
+  { version: 20, name: "0020-schemas", sql: schemasDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -111,6 +114,7 @@ export function createViews(
       ...auditReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),
       ...watcherReads(db, dialect, scope),
+      ...schemaReads(db, dialect, scope),
       ...taskListReads(db, dialect, scope),
       ...channelReads(db, dialect, scope),
       ...connectionReads(db, dialect, scope),

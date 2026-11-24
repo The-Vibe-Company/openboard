@@ -160,6 +160,30 @@ Example:
 ob grants create --connection cn_7k2m4q3t5v2w6x7y --can 'deploys/=read,post'
 ```
 
+## `ob schemas create`
+
+Register an immutable schema version from a file or inline JSON.
+
+```sh
+ob schemas create <id> (--file <path> | --data <json>) [--description <text>]
+```
+
+Options:
+
+- `--file`: Path to the JSON Schema, or - for stdin.
+- `--data`: Inline JSON Schema.
+- `--description`: Text.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_schema`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: schema_immutable`, `error: too_many_schemas`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob schemas create sandbox@1 --file sandbox.schema.json
+```
+
 ## `ob connections rotate`
 
 Replace a connection's secret, optionally keeping the old one working for a while.

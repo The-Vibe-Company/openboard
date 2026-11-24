@@ -17,6 +17,7 @@ import { membershipStatements } from "./views/memberships.ts";
 import { messageStatements } from "./views/messages/statements.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
 import { rateStatements } from "./views/rates/index.ts";
+import { schemaStatements } from "./views/schemas/registry.ts";
 import { taskListStatements } from "./views/tasks/list.ts";
 import { taskFoldStatements } from "./views/tasks/task-folds.ts";
 import { taskReadStatements } from "./views/tasks/tasks.ts";
@@ -45,6 +46,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...orgStatements,
   ...rateStatements,
   ...readinessStatements,
+  ...schemaStatements,
   ...taskFoldStatements,
   ...taskListStatements,
   ...taskReadStatements,

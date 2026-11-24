@@ -14,21 +14,33 @@ writes:
   - packages/driver-sql/migrations/*-schemas.sql
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
-  - packages/driver-sql/src/views/schemas.ts
   - packages/driver-sql/src/views/messages.ts
   - packages/driver-sql/src/views/purge.ts
-  - packages/server/src/operations/schemas.ts
   - packages/server/test/schemas/register.test.ts
   - packages/server/test/isolation/seed.ts
-  - packages/cli/src/commands/schemas.ts
   - packages/cli/src/commands/index.ts
   - packages/cli/test/schemas.test.ts
   - docs/data-model.md
+  - packages/cli/src/commands/schemas/create.ts
+  - packages/driver-sql/src/views/schemas/registry.ts
+  - docs/protocol.md
+  - packages/cli/src/commands/usage.ts
+  - packages/cli/src/output.ts
+  - packages/contract/src/operations/audit.ts
+  - packages/contract/src/operations/schemas/registry.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/audit.ts
+  - packages/server/src/operations/schemas/registry.ts
+  - packages/server/test/schemas/read.test.ts
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
 conformance: ["schemas/registers a schema version once: the same definition again changes nothing, and another is refused"]
 modes: [local, hosted]
 depends_on: [361]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 557
 ---
 

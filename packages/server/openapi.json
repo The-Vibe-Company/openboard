@@ -2652,9 +2652,10 @@
                 "type": "object",
                 "required": ["name", "version", "schema"],
                 "properties": {
-                  "name": { "pattern": "^[a-z][a-z0-9._-]*$", "type": "string" },
-                  "version": { "minimum": 1, "maximum": 9007199254740991, "type": "integer" },
+                  "name": { "pattern": "^[a-z][a-z0-9._-]{0,79}(?![\\s\\S])", "type": "string" },
+                  "version": { "minimum": 1, "maximum": 99999, "type": "integer" },
                   "description": {
+                    "maxLength": 2000,
                     "pattern": "^(?:[^\\u0000\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])+$",
                     "type": "string"
                   },
@@ -2722,7 +2723,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, invalid_profile",
+            "description": "invalid_request, invalid_schema, too_many_schemas, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
@@ -2737,8 +2738,12 @@
             "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
+          "409": {
+            "description": "schema_immutable",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
           "429": {
-            "description": "rate_limited",
+            "description": "quota_exceeded, rate_limited",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
             "headers": {
               "retry-after": {
@@ -2749,10 +2754,6 @@
           },
           "500": {
             "description": "internal",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
-          },
-          "501": {
-            "description": "no_schemas",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           }
         }
@@ -9382,6 +9383,22 @@
                       "type": "array",
                       "items": {
                         "anyOf": [
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.schema.registered", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id"],
+                                "properties": { "id": { "type": "string" } }
+                              }
+                            }
+                          },
                           {
                             "type": "object",
                             "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],

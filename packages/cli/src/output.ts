@@ -162,8 +162,8 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
     },
     listSchemas: (output) =>
       (output as OutputOf<typeof listSchemas>).schemas
-        .map(({ id, builtIn, at, description }) =>
-          [id, builtIn ? "built in" : at, description].filter(Boolean).join("  "),
+        .map(({ id, builtIn, by, at, description }) =>
+          [id, builtIn ? "built in" : at, by, description].filter(Boolean).join("  "),
         )
         .join("\n"),
     listTasks: tasksText,

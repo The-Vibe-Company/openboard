@@ -37,12 +37,11 @@ test("a connection with only dev read can list and inspect every built-in schema
   }
 });
 
-test("schema routes distinguish missing IDs, malformed IDs, and unavailable registration", async () => {
+test("schema reads distinguish missing IDs and malformed IDs", async () => {
   const app = makeApp();
   try {
     await expectError(await call(app, "GET", "/schemas/conformance-none@1"), 404, "schema_not_found");
     await expectError(await call(app, "GET", "/schemas/Not%20A%20Schema"), 400, "invalid_schema_id");
-    await expectError(await call(app, "POST", "/schemas", registration), 501, "no_schemas");
   } finally {
     await app.close();
   }
@@ -60,7 +59,7 @@ test("schema registration requires the upstream strict request body", async () =
     ]) {
       await expectError(await post(fields), 400, "invalid_request");
     }
-    await expectError(await post({ description: "Deployment 🚀" }), 501, "no_schemas");
+    expect((await post({ description: "Deployment 🚀" })).status).toBe(201);
   } finally {
     await app.close();
   }

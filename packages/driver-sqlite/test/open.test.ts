@@ -61,7 +61,7 @@ test("keeps a posted message and the migration records on reopen", async () => {
       ]);
       expect(database.query("PRAGMA journal_mode").get()).toEqual({ journal_mode: "wal" });
       expect(database.query("SELECT version, applied_at FROM schema_migrations ORDER BY version").all()).toEqual(
-        Array.from({ length: 19 }, (_, index) => ({ version: index + 1, applied_at: 100 })),
+        Array.from({ length: 20 }, (_, index) => ({ version: index + 1, applied_at: 100 })),
       );
     } finally {
       database.close();

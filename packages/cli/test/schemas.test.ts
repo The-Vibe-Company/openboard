@@ -59,3 +59,26 @@ test("schemas inspect reports an unknown version as a CLI error", async () => {
   );
   expect(result).toEqual({ status: 1, out: [], err: ["error: schema_not_found: Schema not found."] });
 });
+
+test("schemas create prints the same envelope for creation and an unchanged retry", async () => {
+  const schema = { ...commit, id: "sandbox@1", name: "sandbox", builtIn: false };
+  for (const created of [true, false]) {
+    const result = await run(
+      ["schemas", "create", schema.id, "--data", '{"type":"object"}', "--json"],
+      "/schemas",
+      Response.json({ schema, created }, { status: created ? 201 : 200 }),
+    );
+    expect(result.status).toBe(0);
+    expect(result.err).toEqual([]);
+    expect(result.out.map((line) => JSON.parse(line))).toEqual([
+      { schema, outcome: created ? "created" : "unchanged" },
+    ]);
+  }
+});
+
+test("schemas create without an ID reports command usage", async () => {
+  const result = await run(["schemas", "create"], "/schemas", new Response(null, { status: 500 }));
+  expect(result.status).toBe(2);
+  expect(result.out).toEqual([]);
+  expect(result.err[0]).toStartWith("error: invalid_request: give a schema ID");
+});

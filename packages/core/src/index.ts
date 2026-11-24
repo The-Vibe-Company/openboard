@@ -7,6 +7,7 @@ import type { MessageEdited } from "./messages/edit.ts";
 import type { LabelsChanged } from "./messages/labels.ts";
 import type { ActorSeen, MessagePosted } from "./messages/post.ts";
 import type { ReactionAdded, ReactionRemoved } from "./messages/reactions.ts";
+import type { SchemaRegistered } from "./schemas/register.ts";
 import type { WatchFailed } from "./watchers/ack.ts";
 import type { WatchersRegistered } from "./watchers/register.ts";
 
@@ -62,9 +63,19 @@ export type BoardEvent =
   | LabelsChanged
   | ReactionAdded
   | ReactionRemoved
+  | SchemaRegistered
   | TaskEvent
   | WatchersRegistered
   | WatchFailed;
+
+export { canonicalSchema } from "./schemas/canonical.ts";
+export {
+  checkSchemaCapacity,
+  registeredSchema,
+  repeatSchema,
+  type SchemaRegistered,
+  schemaRegistration,
+} from "./schemas/register.ts";
 
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail } from "./events/tail.ts";
 export { formatId, isoTime, parseId } from "./ids.ts";

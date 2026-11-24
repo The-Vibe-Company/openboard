@@ -3,6 +3,7 @@ import { messages } from "@openboard/core";
 import type { BoardView, BoardWriter, OrgView, Store } from "../src/index.ts";
 import { type OpenStore, testScope } from "./index.ts";
 import { at, boardCreation, type StoreTenant, storeTenant } from "./isolation-seed.ts";
+import { appendSchema } from "./store/schemas.test-suite.ts";
 import { pull, seedWatcher } from "./store/watchers.test-suite.ts";
 
 /** Fails when a result carries any of B's names or text. */
@@ -20,6 +21,11 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  */
 const boardCases: Cases<BoardView> = {
   takeRate: (a, b) => isolatedRates(a.board, b.board),
+  schema: async (a, b) => {
+    expectNull(await a.board.schema(`${b.marker}@1`));
+    return a.board.schema(`${a.marker}@1`);
+  },
+  schemas: (a) => a.board.schemas(),
   watcherRegistrations: async (a, b) => {
     expect(await a.board.watcherRegistrations(b.actor)).toEqual([]);
     return a.board.watcherRegistrations(null);
@@ -101,6 +107,12 @@ const boardCases: Cases<BoardView> = {
 
 /** One case per `BoardWriter` member, inside A's write with B's IDs. */
 const writerCases: Cases<BoardWriter> = {
+  schema: (a, b) =>
+    inWrite(a, async (writer) => {
+      expectNull(await writer.schema(`${b.marker}@1`));
+      return writer.schema(`${a.marker}@1`);
+    }),
+  schemaCount: (a) => inWrite(a, async (writer) => expect(await writer.schemaCount()).toBe(1)),
   watcherRegistrationHash: (a, b) =>
     inWrite(a, async (writer) => {
       expect(await writer.watcherRegistrationHash(a.actor)).toBe(a.channel);
@@ -239,6 +251,7 @@ async function digestOf(b: StoreTenant): Promise<string> {
     await b.board.listChannels({ limit: 500 }),
     await b.board.listConnections(at),
     await b.board.watcherRegistrations(null),
+    await b.board.schemas(),
     await b.board.readEvents(0),
     await b.board.auditEvents(0, 500),
     await b.board.thread(b.message),
@@ -308,6 +321,10 @@ export function isolationSuite(driver: string, open: OpenStore): void {
         ) {
           await seedWatcher(a.board, a.actor, a.channel, at);
           await seedWatcher(b.board, b.actor, b.channel, at);
+        }
+        if (["schema", "schemas", "schemaCount"].includes(method)) {
+          await inWrite(a, (writer) => appendSchema(writer, a.actor, a.marker, at));
+          await inWrite(b, (writer) => appendSchema(writer, b.actor, b.marker, at));
         }
         const before = await digestOf(b);
         holdsNothingOf(b, await run(a, b, store), `${view}.${method}`);
