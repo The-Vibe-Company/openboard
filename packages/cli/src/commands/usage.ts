@@ -65,7 +65,8 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     example: "ob connect https://board.example/api/acme/main --as fixer-2 --secret-file ./secret",
     options: {
       as: "The profile the agent token is stored under and claimed as.",
-      "secret-file": "A file holding the connection secret; otherwise stdin or `OPENBOARD_SECRET`.",
+      "secret-file":
+        "A file holding the connection secret; otherwise `OPENBOARD_SECRET_FILE`, `OPENBOARD_SECRET`, then stdin.",
     },
     errors: ["remote_error"],
   },
@@ -97,7 +98,7 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
   "connections rotate": {
     summary: "Replace a connection's secret, optionally keeping the old one working for a while.",
     operations: ["rotateConnection"],
-    example: "ob connections rotate 7 --overlap 10m --secret-file ./secret",
+    example: "ob connections rotate cn_7k2m4q9t3v8w5x6y --overlap 10m --secret-file ./secret",
     options: {
       overlap: "How long the old secret keeps working (`10m`, at most `24h`); absent, it stops at once.",
       "secret-file": SECRET_FILE,
@@ -107,7 +108,12 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     summary: "List a channel's threads by activity, or print one thread when given a message ID.",
     operations: ["listThreads", "readThread"],
     example: "ob read dev --label status=open --limit 20",
-    options: { label: "A label `key` that must be set, or `key=value` it must have; repeatable, all must match." },
+    options: {
+      label: "A label `key` that must be set, or `key=value` it must have; repeatable, all must match.",
+      after:
+        "With a channel, a decimal cursor or message ID: the threads active after it. With an ID, the replies after this message.",
+      limit: "With a channel, the maximum threads, 50 by default. With an ID, the maximum replies.",
+    },
   },
   messages: {
     summary: "Read a channel message by message, oldest first, with the cursor to continue from.",
@@ -125,7 +131,8 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     example: "ob wait dev --timeout 10m",
     options: {
       after: "A cursor: wait for what lands after it; absent, for what lands next.",
-      timeout: "How long to wait (`30s`, `10m`, `1h`) before giving up with `error: timeout`.",
+      timeout:
+        "How long to wait (`30s`, `10m`, `1h`; a bare number is seconds), 30m by default, before `error: timeout`.",
     },
     errors: ["timeout"],
   },
@@ -138,17 +145,25 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
   whoami: { summary: "Print the caller's actor on the board.", operations: ["getMe"], example: "ob whoami" },
 };
 
-/** Sample values of arguments, for derived commands' examples. */
+/** Sample values of arguments, for derived commands' examples: by the kind of ID a field names, then by name. */
+const SAMPLE_IDS: Readonly<Record<string, string>> = {
+  agent: "ag_3n5p7r2s4t6v8w9x",
+  connection: "cn_7k2m4q9t3v8w5x6y",
+  message: "42",
+};
 const SAMPLES: Readonly<Record<string, string>> = {
-  agent: "fixer-2",
   channel: "dev",
   emoji: "eyes",
-  id: "42",
   path: "dev/ci",
   prefix: "dev/",
   set: "status=done",
   text: '"Ship it"',
 };
+
+/** Every command can print these: a misuse, a bug, or the board out of reach or answering garbage (SDK). */
+const ALWAYS: readonly ErrorCode[] = ["invalid_request", "internal", "unreachable", "remote_error"];
+/** What the pipeline answers any operation that needs a credential (as `packages/server/src/http/openapi.ts`). */
+const AUTHENTICATED: readonly ErrorCode[] = ["unauthorized", "not_found", "invalid_profile", "forbidden"];
 
 export interface CommandOption {
   /** `--label`, or an argument name such as `channel`. */
@@ -175,7 +190,8 @@ function fieldsOf(operation: Contracted): Map<string, Schema> {
 /** A field's description, or what its schema says when the contract gives none. */
 function meaningOf(schema: Schema): string {
   if (schema.description) return schema.description;
-  if (schema["x-ref"]) return `A ${schema["x-ref"]} ID.`;
+  const kind = schema["x-ref"];
+  if (kind) return `${/^[aeiou]/.test(kind) ? "An" : "A"} ${kind} ID.`;
   if (schema.type === "boolean") return "A switch: present means yes.";
   if (schema.type === "integer") {
     const range =
@@ -217,6 +233,11 @@ function optionsOf(command: AnyCommand, used: readonly Contracted[], given: Read
   });
 }
 
+function errorsOf(used: readonly Contracted[], own: readonly string[]): string[] {
+  const authenticated = used.some((operation) => operation.scope !== "public") ? AUTHENTICATED : [];
+  return [...new Set([...ALWAYS, ...authenticated, ...used.flatMap((operation) => operation.errors), ...own])].sort();
+}
+
 function referenceOf(command: AnyCommand): CommandReference {
   const words = command.words.join(" ");
   const derived = operations.find((operation) => operation.cli && operation.cli.command.join(" ") === words);
@@ -234,9 +255,7 @@ function referenceOf(command: AnyCommand): CommandReference {
     summary: derived?.summary ?? handwritten?.summary ?? "",
     arguments: args.map((name) => ({ name, meaning: meaningOf(fields.get(name) ?? {}) })),
     options: optionsOf(command, used, handwritten?.options ?? {}),
-    errors: [
-      ...new Set(["invalid_request", ...used.flatMap((op) => op.errors), ...(handwritten?.errors ?? [])]),
-    ].sort(),
+    errors: errorsOf(used, handwritten?.errors ?? []),
     mcpTools: used
       .filter((operation) => handwritten?.tools?.includes(operation.name) ?? true)
       .flatMap((operation) => (operation.mcp ? [operation.mcp.tool] : [])),
@@ -245,7 +264,10 @@ function referenceOf(command: AnyCommand): CommandReference {
       [
         "ob",
         ...command.words,
-        ...args.flatMap((name, at) => (at < needed || SAMPLES[name] ? [SAMPLES[name] ?? name] : [])),
+        ...args.flatMap((name, at) => {
+          const sample = SAMPLE_IDS[fields.get(name)?.["x-ref"] ?? ""] ?? SAMPLES[name];
+          return at < needed || sample ? [sample ?? name] : [];
+        }),
       ].join(" "),
   };
 }
