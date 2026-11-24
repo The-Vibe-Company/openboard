@@ -15,6 +15,7 @@ import {
 import type { BoardWriter, InboundRecord } from "@openboard/ports";
 
 type Result = OutputOf<typeof receiveInboundEvent>;
+type MissingThread = { error: { code: "thread_not_found"; message: string } };
 
 export function parseInboundBody(bytes: Uint8Array): unknown {
   try {
@@ -33,19 +34,23 @@ async function endpointGrant(writer: BoardWriter, record: InboundRecord) {
   return grants.compileCan(grant.can);
 }
 
-function missingThread(): BoardError {
-  return new BoardError("thread_not_found", "the inbound thread could not be resolved");
+function missingThread(message = "the inbound reference did not identify an available thread root"): MissingThread {
+  return { error: { code: "thread_not_found", message } };
 }
 
 async function resolveThread(writer: BoardWriter, record: InboundRecord, body: unknown) {
   const can = await endpointGrant(writer, record);
   const { inbound } = record;
   const plan = inbound.threadPlan ?? parseInboundThread(inbound.thread);
-  const position = inboundThreadPosition(plan, body);
-  const thread = position === null ? null : await writer.message(position);
-  if (position === null || !thread || thread.re !== null || thread.deleted) throw missingThread();
+  const target = inboundThreadPosition(plan, body);
+  if (target.kind === "empty") return missingThread("thread.from rendered empty or could not be rendered");
+  if (target.kind === "pattern") return missingThread("thread.from did not match thread.pattern with a capture");
+  if (target.kind === "root") return missingThread();
+  const { position } = target;
+  const thread = await writer.message(position);
+  if (!thread || thread.re !== null || thread.deleted) return missingThread();
   const permissions = agents.allowedAt(can, thread.channel);
-  if (!permissions.includes("read")) throw missingThread();
+  if (!permissions.includes("read")) return missingThread();
   return { position, thread, permissions };
 }
 
@@ -55,7 +60,7 @@ export async function runInbound(
   headers: Headers,
   body: unknown,
   now: number,
-): Promise<Result> {
+): Promise<Result | MissingThread> {
   const { inbound } = record;
   const rulePlan = inbound.rulePlan ?? parseInboundRules(inbound.rules);
   const fields = Object.fromEntries(headers);
@@ -66,7 +71,9 @@ export async function runInbound(
   const answer = { ok: true as const, matched, results };
   if (matched.length === 0) return answer;
 
-  const { position, thread, permissions } = await resolveThread(writer, record, body);
+  const resolved = await resolveThread(writer, record, body);
+  if ("error" in resolved) return resolved;
+  const { position, thread, permissions } = resolved;
   let root = thread;
 
   const { principal } = inbound;

@@ -26,7 +26,8 @@ export const setTaskNeedsHandler: Handler<typeof setTaskNeeds> = (ctx, input) =>
       const target = position === null ? null : await writer.message(position);
       const channelPermissions = target ? agents.allowedAt(ctx.by[callerCan] ?? {}, target.channel) : [];
       const permissions = unrestrictedLocalOwner(ctx.by) ? grants.PERMISSIONS : channelPermissions;
-      const root = taskForNeedsChange(target, input.id, ctx.by, permissions);
+      const now = ctx.now();
+      const root = taskForNeedsChange(target, input.id, ctx.by, permissions, now);
       const id = Number(root.id);
       const needs = await readNeeds(ctx, writer, input.needs, id);
       let walk = startNeedsWalk(needs.ids, root.task.needs);
@@ -37,7 +38,7 @@ export const setTaskNeedsHandler: Handler<typeof setTaskNeeds> = (ctx, input) =>
       const { events, task } = decideTaskNeedsChange(writer, root, needs, {
         by: ctx.by,
         author: authorOf(ctx.by),
-        now: ctx.now(),
+        now,
       });
       if (events.length) {
         ctx.debitWrite();

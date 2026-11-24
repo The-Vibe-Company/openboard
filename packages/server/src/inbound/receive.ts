@@ -1,4 +1,4 @@
-import { BoardError, type OutputOf, type receiveInboundEvent } from "@openboard/contract";
+import { BoardError, type receiveInboundEvent } from "@openboard/contract";
 import type { BoardView } from "@openboard/ports";
 import { limitAuthentication } from "../auth/chain.ts";
 import { limitWrite, type RequestLimits } from "../http/limits.ts";
@@ -72,11 +72,11 @@ export const receiveInboundEventHandler: Handler<typeof receiveInboundEvent> = a
   const header = webhookSigningScheme(record.inbound.verify).idHeader;
   const body = header ? undefined : parseInboundBody(ctx.body);
   const delivery = eventId(header, ctx.headers, body);
-  return ctx.board.write(async (writer) => {
+  const result = await ctx.board.write(async (writer) => {
     const current = await writer.inboundEndpoint(id);
     if (!current?.inbound.enabled) throw missingEndpoint();
     const seen = await writer.inboundSeen(id, delivery);
-    if (seen !== null) return JSON.parse(seen) as OutputOf<typeof receiveInboundEvent>;
+    if (seen !== null) return JSON.parse(seen) as Awaited<ReturnType<typeof runInbound>>;
 
     const now = ctx.now();
     const answer =
@@ -86,6 +86,8 @@ export const receiveInboundEventHandler: Handler<typeof receiveInboundEvent> = a
     await writer.recordInboundSeen(id, delivery, now, JSON.stringify(answer));
     return answer;
   }, record.inbound.principal);
+  if ("error" in result) throw new BoardError(result.error.code, result.error.message, { status: 422 });
+  return result;
 };
 
 export async function runSigned(

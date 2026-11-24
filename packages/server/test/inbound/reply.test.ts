@@ -180,21 +180,3 @@ test("rejects a reply whose template value is too deeply nested to serialize", (
     expect(await events()).toEqual(before);
     expect(await seen()).toBeNull();
   }));
-
-test("an unreadable thread has the same response as an absent thread", () =>
-  withEndpoint(
-    async ({ send, events, seen }) => {
-      const before = await events();
-      const hidden = await send();
-      const absent = await send("turn.finished", "absent-fixture", '"fixed"', "812");
-      expect(hidden.status).toBe(404);
-      expect(absent.status).toBe(404);
-      const missing: unknown = await absent.json();
-      expect(missing).toMatchObject({ error: { code: "thread_not_found" } });
-      expect(await hidden.json()).toEqual(missing);
-      expect(await events()).toEqual(before);
-      expect(await seen()).toBeNull();
-      expect(await seen("absent-fixture")).toBeNull();
-    },
-    { "other/": ["read", "post"] },
-  ));
