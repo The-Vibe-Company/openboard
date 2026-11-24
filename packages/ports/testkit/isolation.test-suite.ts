@@ -11,17 +11,13 @@ import {
   USAGE_ROLLUP_JOB,
 } from "../src/index.ts";
 import { type OpenStore, testScope } from "./index.ts";
+import { expectNull, holdsNothingOf } from "./isolation-assertions.ts";
+import { attachmentBoardCases, attachmentWriterCases } from "./isolation-attachments.ts";
 import { seedCase } from "./isolation-case-seeds.ts";
 import { at, boardCreation, type StoreTenant, seedPersonGrant, storeTenant } from "./isolation-seed.ts";
 import { webhookWriterCases } from "./isolation-webhooks.ts";
 import { inboundCipher, inboundId } from "./store/inbound.test-suite.ts";
 import { pull, seedWatcher } from "./store/watchers.test-suite.ts";
-
-/** Fails when a result carries any of B's names or text. */
-function holdsNothingOf(b: StoreTenant, result: unknown, method: string): void {
-  const text = JSON.stringify(result instanceof Set ? [...result] : result) ?? "";
-  expect(text.includes(b.marker) || text.includes(b.personId), `${method} answered ${text}`).toBe(false);
-}
 
 type Case = (a: StoreTenant, b: StoreTenant, store: Store) => Promise<unknown>;
 type Cases<View> = { readonly [Method in keyof View]-?: Case };
@@ -31,6 +27,7 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  * case does not compile. A case answers what the view gave, which must hold nothing of B.
  */
 const boardCases: Cases<BoardView> = {
+  ...attachmentBoardCases,
   inboundReceived: async (a, b) => {
     expect(await b.board.inboundReceived(inboundId, at, null, 1)).toEqual([
       { eventId: "delivery-fixture", at, result: "{}" },
@@ -158,6 +155,7 @@ const boardCases: Cases<BoardView> = {
 
 /** One case per `BoardWriter` member, inside A's write with B's IDs. */
 const writerCases: Cases<BoardWriter> = {
+  ...attachmentWriterCases,
   inboundReceived: async (a) =>
     expect(await inWrite(a, (writer) => writer.inboundReceived(inboundId, at, null, 1))).toEqual([]),
   inboundEndpoints: async (a) => expect(await inWrite(a, (writer) => writer.inboundEndpoints())).toEqual([]),
@@ -408,11 +406,6 @@ async function isolatedRates(a: Pick<BoardView, "takeRate">, b: Pick<BoardView, 
   expect(await take(a)).toBeUndefined();
   expect(await take(b)).toBeGreaterThan(0);
   expect(await take(a)).toBeGreaterThan(0);
-}
-
-function expectNull<T>(value: T): T {
-  expect(value).toBeNull();
-  return value;
 }
 
 function inWrite<T>(a: StoreTenant, fn: (writer: BoardWriter) => Promise<T>): Promise<T> {

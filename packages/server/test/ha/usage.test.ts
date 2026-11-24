@@ -56,6 +56,7 @@ function runners(store: ReturnType<typeof openSnapshotStore>, clock: ReturnType<
     return createApp(
       { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, instanceId },
       {
+        blobs: instance.blobs,
         store: { ...instance, close: async () => {} },
         jobs: {
           ...instance.jobs,

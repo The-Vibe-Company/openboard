@@ -46,6 +46,10 @@ export function createCluster(
   deps: Deps,
 ): Cluster {
   return cluster(ports.store, (store) =>
-    createApp(config, { store, jobs: { ...store.jobs, watch: ports.watchJobs ?? (() => () => {}) } }, deps),
+    createApp(
+      config,
+      { store, blobs: store.blobs, jobs: { ...store.jobs, watch: ports.watchJobs ?? (() => () => {}) } },
+      deps,
+    ),
   );
 }

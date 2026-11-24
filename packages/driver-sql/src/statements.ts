@@ -18,6 +18,7 @@ import { backfillPlatformStatements, backfillStatements } from "./views/jobs/bac
 import { exportStatements } from "./views/jobs/exports.ts";
 import { jobPlatformStatements, jobStatements } from "./views/jobs/index.ts";
 import { legacyPurgePlatform, legacyPurgeScoped } from "./views/jobs/legacy-purge.ts";
+import { attachmentStatements } from "./views/attachments/index.ts";
 import { purgeStatements } from "./views/jobs/purge.ts";
 import { shippingStatements } from "./views/jobs/shipping.ts";
 import { sweepStatements } from "./views/jobs/sweep.ts";
@@ -68,6 +69,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...rateStatements,
   ...readinessStatements,
   ...purgeStatements,
+  ...attachmentStatements,
   ...schemaStatements,
   ...shippingStatements,
   ...sweepStatements,

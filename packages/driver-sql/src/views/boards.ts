@@ -80,7 +80,7 @@ export const boardStatements = {
     (SELECT COALESCE(SUM(CASE WHEN sibling.stored_bytes_head = sibling.head THEN sibling.stored_bytes ELSE (
       SELECT COALESCE(SUM(${messageBytes}), 0)
       FROM messages m WHERE m.org_id = ${"orgId"} AND m.board_id = sibling.id AND m.deleted = 0
-    ) END), 0) FROM boards sibling WHERE sibling.org_id = ${"orgId"} AND sibling.id <> ${"boardId"}) AS other_bytes
+    ) END), 0) FROM boards sibling WHERE sibling.org_id = ${"orgId"} AND sibling.id <> ${"boardId"}) + COALESCE(orgs.attachment_bytes, 0) AS other_bytes
     FROM orgs JOIN boards ON boards.org_id = orgs.id
     CROSS JOIN (SELECT CAST(${"day"} AS BIGINT) AS day, CAST(${"nextDay"} AS BIGINT) AS next_day) quota_clock
     LEFT JOIN actors ON actors.org_id = boards.org_id AND actors.board_id = boards.id AND actors.id = ${"actor"}

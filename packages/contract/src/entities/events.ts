@@ -1,3 +1,4 @@
+import { Attachment } from "./attachments/index.ts";
 import { Type } from "@sinclair/typebox";
 import { Author, ChannelPath, Labels, Message, MessageAuthor } from "./messages.ts";
 
@@ -29,7 +30,7 @@ const MessagePostedPayload = Type.Object({
   by: Author,
   origin: Type.Null(),
   from: Type.Null(),
-  attachments: Type.Array(Type.Unknown()),
+  attachments: Type.Array(Attachment),
   links: Type.Array(Type.Unknown()),
 });
 

@@ -1,3 +1,4 @@
+import { postgresBlobs } from "../src/blobs.ts";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "bun:test";
 import { BoardError } from "@openboard/contract";
 import { messages } from "@openboard/core";
@@ -98,6 +99,7 @@ if (url) {
   test("a store on a URL nothing listens on answers a read and a write with unavailable, within the connect timeout", async () => {
     const sql = openPool(deadUrl(url));
     const store: Store = {
+      blobs: postgresBlobs(connection(sql)),
       jobs: postgresJobs(sql, connection(sql), Date.now),
       ...createViews(connection(sql), postgresText, localBroadcaster()),
       close: () => sql.close(),

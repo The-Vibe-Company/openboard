@@ -8,6 +8,10 @@ export interface RateLimits {
   reserveStream(org: string, principal: string): (() => void) | undefined;
   /** Reserves space for one signed request body on this instance. */
   reserveInbound(ip: string | undefined): (() => void) | undefined;
+  /** Reserves space for one attachment upload on this instance. */
+  reserveUpload(): (() => void) | undefined;
+  /** Reserves space for an attachment download until its stream ends. */
+  reserveDownload(): (() => void) | undefined;
   /** Consumes a browser sign-in attempt or returns the retry delay in seconds. */
   takeSignIn(ip: string | undefined): Promise<number | undefined>;
   /** Reserves a check, or returns retry seconds. Finishing debits the bucket only for an unauthorized result. */

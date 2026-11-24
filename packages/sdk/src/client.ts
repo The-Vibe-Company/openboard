@@ -1,4 +1,5 @@
 import {
+  type Attachment,
   BoardError,
   ERRORS,
   type ErrorBody,
@@ -9,11 +10,15 @@ import {
   type OutputOf,
   operations,
   PROFILE_HEADER,
+  type postMessage,
   type receiveInboundEvent,
 } from "@openboard/contract";
 
 type Contracted = (typeof operations)[number];
 
+type UploadBytes = Uint8Array<ArrayBuffer> | ArrayBuffer | Blob;
+type UploadOptions = { readonly name: string; readonly type?: string };
+type PostInput = InputOf<typeof postMessage> & ({ text: string } | { attachments: [string, ...string[]] });
 type CallOptions = { readonly signal?: AbortSignal };
 type SignedCallOptions = CallOptions & {
   readonly signed: {
@@ -24,12 +29,16 @@ type SignedCallOptions = CallOptions & {
 
 /** One method per contract operation: `client.postMessage({ channel, text })` (docs/codebase.md 4.2). */
 export type Client = {
-  readonly [Op in Contracted as Op["name"]]: (
-    input: InputOf<Op>,
-    ...options: Op["name"] extends typeof receiveInboundEvent.name
-      ? [options: SignedCallOptions]
-      : [options?: CallOptions]
-  ) => Promise<OutputOf<Op>>;
+  readonly [Op in Contracted as Op["name"]]: Op["name"] extends "upload"
+    ? (bytes: UploadBytes, options: UploadOptions & CallOptions) => Promise<Attachment>
+    : Op["name"] extends "download"
+      ? (id: string, options?: CallOptions) => Promise<Response>
+      : (
+          input: Op["name"] extends "postMessage" ? PostInput : InputOf<Op>,
+          ...options: Op["name"] extends typeof receiveInboundEvent.name
+            ? [options: SignedCallOptions]
+            : [options?: CallOptions]
+        ) => Promise<OutputOf<Op>>;
 };
 
 export interface ClientOptions {
@@ -52,6 +61,7 @@ export function requestOf(
   options: ClientOptions,
   signal?: AbortSignal,
   signed?: SignedCallOptions["signed"],
+  binary?: UploadOptions & { readonly bytes: UploadBytes },
 ) {
   const params = fieldsOf(operation.input.params);
   const query = fieldsOf(operation.input.query);
@@ -89,6 +99,12 @@ export function requestOf(
   if (operation.route.method !== "GET" && options.csrf) {
     headers["x-ob-csrf"] = options.csrf;
   }
+  if (operation.input.binary) {
+    if (!binary) throw new TypeError("a binary operation requires a byte body");
+    headers["content-type"] = binary.type ?? "application/octet-stream";
+    headers["x-board-filename"] = encodeURIComponent(binary.name);
+    return new Request(url, { method: operation.route.method, headers, signal, body: binary.bytes });
+  }
   if (!operation.input.body) return new Request(url, { method: operation.route.method, headers, signal });
   headers["content-type"] = "application/json";
   return new Request(url, { method: operation.route.method, headers, signal, body: JSON.stringify(body) });
@@ -118,6 +134,7 @@ function isNextStep(value: unknown): value is NextStep {
 /** The board's answer, or its error envelope thrown as a `BoardError`. */
 export async function answerOf(response: Response, responseType?: Operation["responseType"]): Promise<unknown> {
   if (response.ok && responseType !== undefined) {
+    if (responseType === "application/octet-stream") return response;
     const mediaType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
     if (mediaType !== responseType)
       throw new BoardError("remote_error", `the board did not answer with ${responseType}`);
@@ -162,13 +179,32 @@ export async function reach(send: (request: Request) => Promise<Response>, reque
 export function createClient(options: ClientOptions): Client {
   if (!URL.canParse(options.url)) throw new TypeError(`not a board URL: ${options.url}`);
   const send = options.fetch ?? ((request: Request) => fetch(request));
-  const methods = operations.map((operation) => [
-    operation.name,
-    async (input: Readonly<Record<string, unknown>>, request?: CallOptions & Partial<SignedCallOptions>) =>
-      answerOf(
-        await reach(send, requestOf(operation, input, options, request?.signal, request?.signed)),
-        operation.responseType,
-      ),
-  ]);
+  const methods = operations.map((operation) => {
+    if ("binary" in operation.input)
+      return [
+        operation.name,
+        async (bytes: UploadBytes, request: UploadOptions & CallOptions) => {
+          const response = await reach(
+            send,
+            requestOf(operation, {}, options, request.signal, undefined, { bytes, ...request }),
+          );
+          return ((await answerOf(response)) as { attachment: Attachment }).attachment;
+        },
+      ];
+    if (operation.responseType === "application/octet-stream")
+      return [
+        operation.name,
+        async (id: string, request?: CallOptions) =>
+          answerOf(await reach(send, requestOf(operation, { id }, options, request?.signal)), operation.responseType),
+      ];
+    return [
+      operation.name,
+      async (input: Readonly<Record<string, unknown>>, request?: CallOptions & Partial<SignedCallOptions>) =>
+        answerOf(
+          await reach(send, requestOf(operation, input, options, request?.signal, request?.signed)),
+          operation.responseType,
+        ),
+    ];
+  });
   return Object.freeze(Object.fromEntries(methods)) as Client;
 }

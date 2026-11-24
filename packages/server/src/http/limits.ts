@@ -31,6 +31,21 @@ function tokenBuckets(now: () => number, capacity: number, refillPerMs: number, 
   };
 }
 
+function attachmentAdmission() {
+  let active = 0;
+  return () => {
+    // Limit each direction to 64 MiB of attachment payloads per instance.
+    if (active >= 16) return undefined;
+    active++;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      active--;
+    };
+  };
+}
+
 export function requestRateLimits(
   now: () => number,
   platform: PlatformView,
@@ -80,6 +95,8 @@ export function requestRateLimits(
         decrement(inboundByIp, ip);
       };
     },
+    reserveUpload: attachmentAdmission(),
+    reserveDownload: attachmentAdmission(),
     reserveStream(org, principal) {
       const orgCount = byOrg.get(org) ?? 0;
       const principalCount = byPrincipal.get(principal) ?? 0;

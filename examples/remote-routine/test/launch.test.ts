@@ -57,6 +57,7 @@ function board(webhookFetch: (request: Request) => Promise<Response>) {
     },
     {
       store,
+      blobs: store.blobs,
       jobs: {
         ...store.jobs,
         watch(_kinds, _schedule, wake) {

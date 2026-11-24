@@ -38,7 +38,7 @@ function fakeClock(instances = 1) {
 function app(store: Store, instanceId: string, clock: ReturnType<typeof fakeClock>, run: JobHandler) {
   return createApp(
     { mode: "local", instanceId, publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER },
-    { store, jobs: store.jobs },
+    { store, blobs: store.blobs, jobs: store.jobs },
     {
       now: clock.now,
       schedule: clock.schedule,

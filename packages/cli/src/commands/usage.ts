@@ -1,3 +1,4 @@
+import type { Handwritten, Schema } from "./reference/types.ts";
 import { type ErrorCode, operations } from "@openboard/contract";
 import {
   type Command,
@@ -9,6 +10,7 @@ import {
   createWebhookCommand,
   derivedCommands,
   disableWebhookCommand,
+  downloadCommand,
   downloadOrgExportCommand,
   enableWebhookCommand,
   explainGrantsCommand,
@@ -33,6 +35,7 @@ export const commands: readonly AnyCommand[] = [
   loginCommand,
   exportOrgCommand,
   downloadOrgExportCommand,
+  downloadCommand,
   updateGrantCommand,
   useCommand,
   createConnectionCommand,
@@ -54,31 +57,16 @@ export const commands: readonly AnyCommand[] = [
 ];
 
 type Contracted = (typeof operations)[number];
-type OperationName = Contracted["name"];
-type Schema = {
-  readonly type?: unknown;
-  readonly description?: string;
-  readonly "x-ref"?: string;
-  readonly minimum?: number;
-  readonly maximum?: number;
-};
-
-/** What a hand-written command is for, the operations it calls, and the meanings no operation field gives. */
-interface Handwritten {
-  readonly summary: string;
-  readonly operations: readonly OperationName[];
-  readonly example: string;
-  /** Meanings of flags no field of `operations` describes, keyed by flag without `--`. */
-  readonly options?: Readonly<Record<string, string>>;
-  /** Codes the command prints itself, beyond its operations' errors. */
-  readonly errors?: readonly (ErrorCode | "timeout")[];
-  /** The operations whose MCP tools do what the command does; absent, every one of `operations`. */
-  readonly tools?: readonly OperationName[];
-}
 
 const SECRET_FILE = "Where the new secret is written, created with mode 0600; the secret is never printed.";
 
 const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
+  download: {
+    summary: "Download a file from a message you can read.",
+    operations: ["download"],
+    example: "ob download att_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa out.png",
+    errors: ["invalid_request"],
+  },
   "org export": {
     summary: "Request a hosted organization export as its owner.",
     operations: ["requestOrgExport"],

@@ -42,6 +42,7 @@ export interface OperationInput {
   readonly params?: TObject;
   readonly query?: TObject;
   readonly body?: TObject;
+  readonly binary?: { readonly maxBytes: number };
 }
 
 export interface CliSpec {
@@ -93,7 +94,7 @@ export type Operation<
   readonly bodyDefaults?: false;
   readonly output: O;
   /** The success media type for a raw string body. Defaults to JSON. */
-  readonly responseType?: "image/svg+xml" | "application/gzip" | "text/plain";
+  readonly responseType?: "image/svg+xml" | "application/gzip" | "text/plain" | "application/octet-stream";
   readonly orgPersonalToken?: true;
   readonly invalidInputCode?: ErrorCode;
   /** Report a named body array's maxItems violation before validating individual items. */
@@ -142,10 +143,22 @@ export function defineOperation<
   return codes.size === errors.length ? Object.freeze(operation) : Object.freeze({ ...operation, errors: [...codes] });
 }
 
+export interface BinaryInput {
+  readonly stream: ReadableStream<Uint8Array> | null;
+  readonly name: string | null;
+  readonly type: string | null;
+  readonly maxBytes: number;
+}
+
 type Part<S> = S extends TObject ? Static<S> : unknown;
 /** The flat input of an operation: params, query and body fields together, as the SDK takes them. */
 export type InputOf<Op> =
-  Op extends Operation<infer I, TSchema> ? Part<I["params"]> & Part<I["query"]> & Part<I["body"]> : never;
+  Op extends Operation<infer I, TSchema>
+    ? Part<I["params"]> &
+        Part<I["query"]> &
+        Part<I["body"]> &
+        (I extends { binary: object } ? { binary: BinaryInput } : unknown)
+    : never;
 export type OutputOf<Op> = Op extends Operation<OperationInput, infer O> ? Static<O> : never;
 
 /** The raw parts of a request, before validation; path params and query values are strings. */
@@ -155,6 +168,7 @@ export interface RawInput {
   /** MCP supplies native JSON types for path and query fields. */
   readonly typed?: true;
   readonly body?: unknown;
+  readonly binary?: Omit<BinaryInput, "maxBytes">;
 }
 
 const TEXT_FORMS: Readonly<Record<string, { pattern: RegExp; read: (text: string) => unknown }>> = {
@@ -237,7 +251,9 @@ function checkBodyArrayLimit(operation: Operation, body: unknown) {
 export function decodeInput<Op extends Operation>(operation: Op, raw: RawInput): InputOf<Op> {
   try {
     checkBodyArrayLimit(operation, raw.body);
+    if (operation.input.binary && !raw.binary) throw new BoardError("invalid_request", "this route takes a byte body");
     return {
+      ...(operation.input.binary && raw.binary ? { binary: { ...raw.binary, ...operation.input.binary } } : {}),
       ...decodePart(operation.input.params, raw.params, "path", !raw.typed),
       ...decodePart(operation.input.query, raw.query, "query", !raw.typed),
       ...decodePart(

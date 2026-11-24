@@ -34,6 +34,7 @@ function deletes(tables: Readonly<Record<string, string>>, scope: "org" | "both"
 
 const orgDeletes = deletes(
   {
+    blobs: "org_id, sha256",
     device_codes: "device_hash",
     invitations: "id",
     jobs: "id",
@@ -52,6 +53,8 @@ const orgDeletes = deletes(
 const boardDeletes = {
   ...deletes(
     {
+      attachments: "board_id, id",
+      terms: "board_id, message, term, value",
       actors: "board_id, id",
       channels: "board_id, path",
       connection_agents: "id",
@@ -90,7 +93,7 @@ export const purgeStatements = {
   purge_boards: deleteBatch("boards", "id", "org"),
   markPurgeStarted: sql`UPDATE jobs SET payload = ${"payload"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
-  markPurgeComplete: sql`UPDATE orgs SET purged_at = ${"now"} FROM boards b
+  markPurgeComplete: sql`UPDATE orgs SET purged_at = ${"now"}, attachment_bytes = NULL FROM boards b
     WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"} AND orgs.id = b.org_id`,
 };
 
@@ -122,11 +125,13 @@ export function purgeOrgView(
   dialect: Dialect,
   { orgId }: OrgScope,
   jobs: JobWrites,
+  purgeBlobs?: (orgId: number) => Promise<void>,
 ): Pick<OrgView, "purgeOrg"> {
   return {
     async purgeOrg(boardId, id, lease, now, deleteBackup) {
       const keys = { orgId, boardId };
-      if (deleteBackup) {
+      const deletesExternal = !!(deleteBackup || purgeBlobs);
+      if (deletesExternal) {
         const eligible = await db.transaction(async (tx) => {
           const [org] = await query(tx, dialect, purgeStatements.purge_lock_org, keys);
           if (org?.deleted_at == null || Number(org.deleted_at) + ORG_PURGE_RETENTION_MS > now) return false;
@@ -142,7 +147,8 @@ export function purgeOrgView(
         });
         if (!eligible) return false;
         // The archived organization is fenced against new uploads before this job is due.
-        await deleteBackup();
+        await deleteBackup?.();
+        await purgeBlobs?.(orgId);
       }
       return db.transaction(async (tx) => {
         const [org] = await query(tx, dialect, purgeStatements.purge_lock_org, keys);
@@ -150,7 +156,7 @@ export function purgeOrgView(
         // Wait for writes that began before the soft delete before removing their rows.
         const boards = await query(tx, dialect, purgeStatements.purge_lock_boards, keys);
         const writer = jobWriter(tx, dialect, keys, () => {});
-        const finishedAt = deleteBackup ? jobs.now() : now;
+        const finishedAt = deletesExternal ? Math.max(now, jobs.now()) : now;
         const payload = await writer.takeJob(id, lease, finishedAt);
         if (!payload || org.deleted_at == null || Number(org.deleted_at) !== payload.deletedAt) return false;
         if (!deleteBackup) {

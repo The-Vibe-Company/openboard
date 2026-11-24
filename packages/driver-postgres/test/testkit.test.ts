@@ -2,6 +2,7 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 import {
   type OpenStore,
   ratesSuite,
+  runBlobsSuite,
   runBroadcasterSuite,
   runJobsSuite,
   runJobWakeSuite,
@@ -42,6 +43,7 @@ if (url) {
     }
   };
   runStoreSuite("postgres", open);
+  runBlobsSuite("postgres", open);
   runJobsSuite("postgres", open);
   runBroadcasterSuite("postgres", open);
   const withStores: WithJobStores = async (now, run) => {

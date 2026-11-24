@@ -1,5 +1,6 @@
 import { Database, type SQLQueryBindings } from "bun:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
   databaseRows,
@@ -89,6 +90,10 @@ export function sqlitePurgeFixture(now: () => number) {
     let closing: Promise<void> | undefined;
     return {
       ...store,
+      async blobFiles(orgId: number) {
+        const directory = join(dir, "blobs", "org", String(orgId), "sha256");
+        return Promise.all((await readdir(directory)).map((name) => Bun.file(join(directory, name)).bytes()));
+      },
       databaseRows: () => withTestDb(file, (db, database) => databaseRows(db, readCatalog(database).tables)),
       tenantRows: ({ orgId, boardId }: BoardKeys, extraBoards: readonly number[] = []) =>
         withTestDb(file, (db, database) =>

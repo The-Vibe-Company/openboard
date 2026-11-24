@@ -15,7 +15,8 @@ export const usageStatements = {
       (SELECT COALESCE(SUM(CASE WHEN b.stored_bytes_head = b.head THEN b.stored_bytes ELSE (
         SELECT COALESCE(SUM(${messageBytes}), 0) FROM messages m
         WHERE m.org_id = ${"orgId"} AND m.board_id = b.id AND m.deleted = 0
-      ) END), 0) FROM boards b WHERE b.org_id = ${"orgId"}),
+      ) END), 0) FROM boards b WHERE b.org_id = ${"orgId"}) + COALESCE((SELECT o.attachment_bytes FROM orgs o JOIN boards owner_board ON owner_board.org_id = o.id
+        WHERE owner_board.org_id = ${"orgId"} LIMIT 1), 0),
       (SELECT COUNT(*) FROM webhook_deliveries d WHERE d.org_id = ${"orgId"}
         AND d.created_at >= ${"day"} AND d.created_at < ${"end"}),
       COUNT(DISTINCT CASE WHEN e.actor LIKE 'ob:conn:%+%' AND e.type <> 'actor.seen' THEN e.actor END)

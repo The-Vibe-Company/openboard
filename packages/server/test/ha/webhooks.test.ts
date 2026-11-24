@@ -37,6 +37,7 @@ function instance(
     },
     {
       store: db,
+      blobs: db.blobs,
       jobs: {
         ...db.jobs,
         watch: (_kinds, _schedule, run) => {

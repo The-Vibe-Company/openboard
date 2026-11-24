@@ -62,7 +62,7 @@ function bootLocal() {
   const counters = Object.assign(statementCounter(), { roundTrips: 0 });
   const { now, advanceWriteClock } = workloadClock();
   const store = sqliteDriver({ memory: true }, now, counters);
-  const app = createApp(config, { store, jobs: store.jobs }, deps(now));
+  const app = createApp(config, { store, blobs: store.blobs, jobs: store.jobs }, deps(now));
   return {
     instances: [{ app, counters, advanceWriteClock }],
     board: { url: `${ORIGIN}/api/local/main`, token: owner.token },
@@ -90,7 +90,7 @@ async function bootHosted(cleanup: (() => Promise<void>)[]) {
     const store = await postgresDriver({ url: database.url }, now, counters);
     let app: App;
     try {
-      app = createApp(config, { store, jobs: store.jobs }, deps(now));
+      app = createApp(config, { store, blobs: store.blobs, jobs: store.jobs }, deps(now));
     } catch (error) {
       await store.close();
       throw error;

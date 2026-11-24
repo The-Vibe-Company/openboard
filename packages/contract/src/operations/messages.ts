@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import { ATTACHMENT_ID_PATTERN } from "../entities/attachments/index.ts";
 import { ChannelPath, LabelKey, Labels, MESSAGE_TEXT_MAX, Mention, Message } from "../entities/messages.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
@@ -20,7 +21,16 @@ export const postMessage = defineOperation({
             description: "A reply's precondition: a message in its thread that must still be the newest.",
           }),
         ),
-        text: Type.String({ maxLength: MESSAGE_TEXT_MAX }),
+        text: Type.Optional(
+          Type.String({
+            maxLength: MESSAGE_TEXT_MAX,
+            default: "",
+            description: "Message text, which may be empty when the message has attachments.",
+          }),
+        ),
+        attachments: Type.Optional(
+          Type.Array(Ref("file", { pattern: ATTACHMENT_ID_PATTERN.source }), { maxItems: 10 }),
+        ),
         labels: Type.Optional(Labels),
         noSync: Type.Optional(Type.Boolean()),
         sync: Type.Optional(
@@ -52,6 +62,7 @@ export const postMessage = defineOperation({
   errors: [
     "invalid_request",
     "invalid_block",
+    "attachment_not_found",
     "schema_not_found",
     "invalid_after",
     "invalid_target",
@@ -66,7 +77,7 @@ export const postMessage = defineOperation({
   cli: {
     command: ["post"],
     args: ["channel", "text"],
-    options: { id: "idempotency-key", noSync: "no-sync", labels: "label" },
+    options: { attachments: "attach", id: "idempotency-key", noSync: "no-sync", labels: "label" },
   },
   mcp: { tool: "post_message" },
   upstream: true,

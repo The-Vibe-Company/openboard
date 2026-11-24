@@ -183,3 +183,4 @@ export { webhookPayload, webhookPing } from "./webhooks/payload.ts";
 export { validateWebhookSigningPreset } from "./webhooks/signing.ts";
 export { validateWebhook, validateWebhookContent } from "./webhooks/validate.ts";
 export type { InboundEvent, WebhookCreated, WebhookDeleted, WebhookUpdated };
+export * from "./attachments/upload.ts";

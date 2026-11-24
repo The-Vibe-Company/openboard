@@ -54,7 +54,7 @@ export function openStore(now: () => number): TestStore {
 
 export function openSnapshotStore(now: () => number) {
   const url = postgresTestUrl();
-  if (url) return postgresStore(url, now);
+  if (url) return { ...postgresStore(url, now), blobFiles: undefined };
   const store = sqlitePurgeFixture(now);
   afterAll(() => store.close());
   return { ...store, sibling: undefined };
@@ -134,6 +134,7 @@ function driverOn(open: () => Promise<Store>): Store {
       release: async (...args) => (await opened()).jobs.release(...args),
       watch: (...args) => subscribeLater(async () => (await opened()).jobs, "watch")(...args),
     },
+    blobs: deferred(async () => (await opened()).blobs),
     schemaReady: async () => (await opened()).schemaReady(),
     dumpIfMissing: async (...args) => (await opened()).dumpIfMissing?.(...args) ?? false,
     platform: () => deferred(async () => (await opened()).platform()),

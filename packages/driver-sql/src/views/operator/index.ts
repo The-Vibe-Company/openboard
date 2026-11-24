@@ -18,7 +18,7 @@ const storedBytes: Fragment = {
   fragment: (dialect) => `(SELECT COALESCE(SUM(CASE WHEN b.stored_bytes_head = b.head THEN b.stored_bytes ELSE (
     SELECT COALESCE(SUM(${messageBytes.fragment(dialect)}), 0)
     FROM messages m WHERE m.org_id = b.org_id AND m.board_id = b.id AND m.deleted = 0
-  ) END), 0) FROM boards b WHERE b.org_id = o.id) AS stored_bytes`,
+  ) END), 0) FROM boards b WHERE b.org_id = o.id) + COALESCE(o.attachment_bytes, 0) AS stored_bytes`,
 };
 
 export const operatorPlatform = {

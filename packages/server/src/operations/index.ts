@@ -10,7 +10,7 @@ import type {
   SignInProvider,
   startDeviceSignIn,
 } from "@openboard/contract";
-import type { BoardView, Bucket, OrgView, PersonRecord, PlatformView } from "@openboard/ports";
+import type { Blobs, BoardView, Bucket, OrgView, PersonRecord, PlatformView } from "@openboard/ports";
 import type { Session } from "../auth/sessions.ts";
 import type { Deps, Principal, ServerConfig } from "../deps.ts";
 import type { RequestLimits } from "../http/limits.ts";
@@ -28,6 +28,7 @@ import {
   startDeviceSignInHandler,
 } from "./accounts.ts";
 import { getMeHandler, listActorsHandler } from "./actors.ts";
+import { downloadHandler, uploadHandler } from "./attachments/index.ts";
 import { readBoardAuditHandler, readOrgAuditHandler } from "./audit.ts";
 import { getAvatarHandler } from "./avatars/get.ts";
 import { createBoardHandler, deleteBoardHandler, listBoardsHandler } from "./boards.ts";
@@ -131,6 +132,7 @@ export interface BoardContext extends RequestLimits {
   /** Admit a write once its operation-specific permissions have been checked. */
   readonly debitWrite: () => void;
   readonly board: BoardView;
+  readonly blobs: Blobs;
   readonly webhookConfig: Pick<
     ServerConfig,
     "mode" | "secretKey" | "publicUrl" | "webhookTargets" | "webhookCustomSigning"
@@ -301,6 +303,8 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   testWebhook: testWebhookHandler,
   pollDeviceSignIn: pollDeviceSignInHandler,
   postMessage: postMessageHandler,
+  upload: uploadHandler,
+  download: downloadHandler,
   previewDeviceSignIn: previewDeviceSignInHandler,
   previewInvitation: previewInvitationHandler,
   getMetrics: getMetricsHandler,

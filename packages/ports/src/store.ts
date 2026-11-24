@@ -1,3 +1,4 @@
+import type { AttachmentReads, AttachmentWrites } from "./attachments/blobs.ts";
 import type {
   Actor,
   Author,
@@ -33,16 +34,16 @@ import type {
 import type { DeviceView, PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
 import type { BoardMessageReads, ChannelMessagesQuery, ChannelsQuery } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
-import type { Bucket, OrgLogMaintenance } from "./bucket.ts";
+import type { OrgLogMaintenance } from "./bucket.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
 import type { BoardInboundReads, BoardInboundWriter } from "./inbound/index.ts";
-import type { BoardJobWriter, JobLease, Jobs } from "./jobs.ts";
+import type { BoardJobWriter, JobLease } from "./jobs.ts";
 import type { OidcKeyStore } from "./oidc-keys.ts";
 import type { OperatorReads, OperatorWrites } from "./operator.ts";
 import type { OrgExports } from "./org/exports.ts";
 import type { OrgAuditRecord } from "./org-audit-record.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
-import type { BoardKeys, BoardScope, OrgScope } from "./tenant-scope.ts";
+import type { BoardKeys } from "./tenant-scope.ts";
 import type { BoardWatcherReads, BoardWatcherWriter } from "./watchers.ts";
 import type { BoardWebhookReads, BoardWebhookWriter } from "./webhooks/index.ts";
 
@@ -211,7 +212,8 @@ export interface BoardWriter
     BoardJobWriter,
     BoardWatcherWriter,
     BoardInboundWriter,
-    BoardWebhookWriter {
+    BoardWebhookWriter,
+    AttachmentReads {
   readonly head: number;
   schema(id: string): Promise<SchemaView | null>;
   schemaCount(): Promise<number>;
@@ -305,7 +307,9 @@ export interface BoardView
     BoardGrantReads,
     BoardWatcherReads,
     BoardInboundReads,
-    BoardWebhookReads {
+    BoardWebhookReads,
+    AttachmentReads,
+    AttachmentWrites {
   /**
    * Wake when a write advances this board past the cursor, with the head it reached and its events when in memory.
    * Returns an unsubscribe.
@@ -374,27 +378,5 @@ export interface BoardView
   member(personId: string): Promise<BoardMemberRecord | null>;
 }
 
-/** Ensure an archive exists, returning false when another instance holds the dump lock. */
-export type DatabaseDump = (bucket: Bucket, key: string, signal: AbortSignal) => Promise<boolean>;
-
-export type WebhookOutcome = "done" | "retry" | "dead" | "skipped";
-
-export interface StoreMetrics {
-  readonly boardLock: (ms: number) => void;
-  readonly webhook: (outcome: WebhookOutcome) => void;
-}
-
-export interface Store {
-  /** Observe this driver's board lock acquisitions and committed webhook outcomes. */
-  observeMetrics?(metrics: StoreMetrics): void;
-  readonly jobs: Jobs;
-  readonly dumpIfMissing?: DatabaseDump;
-  /** Query storage and report whether its schema meets this instance's migration level. */
-  schemaReady(): Promise<boolean>;
-  platform(): PlatformView;
-  board(scope: BoardScope): BoardView;
-  org(scope: OrgScope): OrgView;
-  close(): Promise<void>;
-}
-
+export type { DatabaseDump, Store, StoreMetrics, WebhookOutcome } from "./store/driver.ts";
 export type { ChannelMessagesQuery, ChannelsQuery, ThreadPosition } from "./board-message-reads.ts";
