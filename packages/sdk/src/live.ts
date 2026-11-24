@@ -9,8 +9,8 @@ export type TailOptions = ClientOptions &
   Omit<InputOf<typeof readEvents>, "wait"> & {
     /** Aborting it ends the iteration quietly. */
     readonly signal?: AbortSignal;
-    /** Override the pause between reconnect attempts. */
-    readonly retryDelay?: (signal?: AbortSignal) => Promise<void>;
+    /** Override the pause between reconnect attempts; `attempt` counts failures since the last good connection, from 0. */
+    readonly retryDelay?: (signal?: AbortSignal, attempt?: number) => Promise<void>;
   };
 
 const EVENT_STREAM = "text/event-stream";
@@ -75,8 +75,20 @@ async function* framesOf(body: ReadableStream<Uint8Array>): AsyncGenerator<Frame
   }
 }
 
-/** Wait briefly while the board restarts, and wake immediately on cancellation. */
-function retryDelay(signal?: AbortSignal): Promise<void> {
+const RETRY_FIRST_MS = 250;
+const RETRY_MAX_MS = 10_000;
+
+/**
+ * How long to wait before reconnect `attempt`: doubling from 250 ms up to 10 s, with jitter (half to all of it) so
+ * many tails waiting out one restart do not reconnect in step.
+ */
+export function retryDelayMs(attempt: number, random: () => number = Math.random): number {
+  const ceiling = Math.min(RETRY_MAX_MS, RETRY_FIRST_MS * 2 ** Math.min(attempt, 16));
+  return Math.round(ceiling * (0.5 + random() / 2));
+}
+
+/** Wait while the board restarts, longer after each failed attempt, and wake immediately on cancellation. */
+function retryDelay(signal?: AbortSignal, attempt = 0): Promise<void> {
   if (signal?.aborted) return Promise.resolve();
   return new Promise((resolve) => {
     const finish = () => {
@@ -84,7 +96,7 @@ function retryDelay(signal?: AbortSignal): Promise<void> {
       signal?.removeEventListener("abort", finish);
       resolve();
     };
-    const timer = setTimeout(finish, 250);
+    const timer = setTimeout(finish, retryDelayMs(attempt));
     signal?.addEventListener("abort", finish, { once: true });
   });
 }
@@ -119,6 +131,7 @@ export async function* tail(options: TailOptions): AsyncGenerator<BoardEvent, vo
   let cursor: string | undefined;
   let connected = false;
   let polling = false;
+  let failures = 0;
 
   while (!signal?.aborted) {
     // Capture the initial position before opening a stream that could break before its first frame.
@@ -134,6 +147,7 @@ export async function* tail(options: TailOptions): AsyncGenerator<BoardEvent, vo
       const response = await reach(send, request);
       if (response.ok && response.headers.get("content-type")?.startsWith(EVENT_STREAM)) {
         connected = true;
+        failures = 0;
         if (response.body) {
           for await (const frame of framesOf(response.body)) {
             if (signal?.aborted) return;
@@ -148,6 +162,7 @@ export async function* tail(options: TailOptions): AsyncGenerator<BoardEvent, vo
         const page = (await answerOf(response).catch(broken)) as OutputOf<typeof readEvents>;
         const resumingSse = !polling && cursor !== undefined;
         connected = true;
+        failures = 0;
         polling = !bootstrapping;
         // The JSON route ignores Last-Event-ID. Request the page again with `after`.
         if (resumingSse) continue;
@@ -164,6 +179,6 @@ export async function* tail(options: TailOptions): AsyncGenerator<BoardEvent, vo
         throw error;
       }
     }
-    if (!signal?.aborted) await pause(signal);
+    if (!signal?.aborted) await pause(signal, failures++);
   }
 }
