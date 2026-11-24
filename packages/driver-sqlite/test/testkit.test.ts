@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { runStoreSuite } from "@openboard/ports/testkit";
+import { runJobsSuite, runStoreSuite } from "@openboard/ports/testkit";
 import { renderDdl } from "../src/ddl.ts";
 import { sqliteDriver } from "../src/index.ts";
 
-runStoreSuite("sqlite", async () => sqliteDriver({ memory: true }, () => 0));
+const open = async () => sqliteDriver({ memory: true }, () => 0);
+runStoreSuite("sqlite", open);
+runJobsSuite("sqlite", open);
 
 describe("rendering Postgres DDL for SQLite", () => {
   test("applies the mechanical differences", () => {

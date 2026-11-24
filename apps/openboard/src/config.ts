@@ -10,6 +10,7 @@ type Signup = (typeof SIGNUP_MODES)[number];
 /** The server's configuration, parsed once at startup (docs/codebase.md 5.5). */
 interface CommonConfig {
   readonly port: number;
+  readonly instanceId?: string;
   /** `OPENBOARD_PUBLIC_URL`: the origin board URLs are built on, never `Host`; default `http://127.0.0.1:<port>`. */
   readonly publicUrl: string;
   readonly dataDir: string;
@@ -116,6 +117,7 @@ export function loadConfig(env: Env = process.env): Config {
   return Object.freeze({
     ...(databaseUrl === undefined ? { mode: "local" as const } : { mode: "hosted" as const, databaseUrl }),
     port,
+    ...(env.OPENBOARD_INSTANCE_ID && { instanceId: env.OPENBOARD_INSTANCE_ID }),
     publicUrl,
     dataDir,
     sync: sync === "FULL" ? "FULL" : "NORMAL",

@@ -3,6 +3,7 @@ import type { Store } from "@openboard/ports";
 import { SQL } from "bun";
 import { postgresBroadcaster } from "./broadcaster.ts";
 import type { StatementCounter } from "./counters.ts";
+import { postgresJobs } from "./jobs.ts";
 import { migrateLocked } from "./migrate.ts";
 import { connection, openPool } from "./pool.ts";
 
@@ -39,7 +40,8 @@ export async function postgresDriver(
     const db = connection(sql, counter);
     const broadcaster = await postgresBroadcaster(sql, db);
     return {
-      ...createViews(db, postgresText, broadcaster),
+      jobs: postgresJobs(sql, db),
+      ...createViews(db, postgresText, broadcaster, { now, committed() {} }),
       async close() {
         try {
           await broadcaster.close();

@@ -6,6 +6,7 @@ import type { Store } from "@openboard/ports";
 import { sqliteBroadcaster } from "./broadcaster.ts";
 import type { StatementCounter } from "./counters.ts";
 import { sqliteDialect } from "./dialect.ts";
+import { sqliteJobs } from "./jobs.ts";
 import { migrate } from "./migrate.ts";
 
 export type SqliteOptions = { readonly memory: true } | { readonly dir: string; readonly sync?: "NORMAL" | "FULL" };
@@ -93,9 +94,13 @@ function connection(database: Database, counter?: StatementCounter): Db {
  */
 export function sqliteDriver(options: SqliteOptions, now: () => number = Date.now, counter?: StatementCounter): Store {
   const database = openDatabase(options, now);
+  const db = connection(database, counter);
+  const jobs = sqliteJobs(db, now);
   return {
-    ...createViews(connection(database, counter), sqliteDialect, sqliteBroadcaster()),
+    jobs,
+    ...createViews(db, sqliteDialect, sqliteBroadcaster(), { now, committed: jobs.committed }),
     async close() {
+      jobs.close();
       database.close();
     },
   };

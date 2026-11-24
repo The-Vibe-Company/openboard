@@ -1,18 +1,25 @@
 import { operations } from "@openboard/contract";
-import type { Store } from "@openboard/ports";
-import type { Deps, ServerConfig } from "./deps.ts";
+import type { Jobs, Store } from "@openboard/ports";
 import { loginProviders } from "./auth/providers/index.ts";
+import type { Deps, ServerConfig } from "./deps.ts";
 import { handle, type Pipeline } from "./http/pipeline.ts";
 import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
+import { type JobHandler, startJobs } from "./jobs/registry.ts";
 
 /** The ports the server runs on; it never sees a driver. */
 export interface Ports {
   readonly store: Store;
+  readonly jobs: Jobs;
 }
 
 /** One server instance: everything hangs off it, so two apps in one process share nothing (5.6). */
-export function createApp(config: ServerConfig, ports: Ports, deps: Deps) {
+export function createApp(
+  config: ServerConfig,
+  ports: Ports,
+  deps: Deps,
+  handlers: Readonly<Record<string, JobHandler>> = {},
+) {
   const pipeline: Pipeline = {
     config,
     deps,
@@ -26,11 +33,13 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps) {
     platform: ports.store.platform(),
     providers: loginProviders(config, deps),
   };
+  const stopJobs = startJobs(ports.jobs, pipeline.tenants, deps, config.instanceId ?? deps.requestId, handlers);
   return {
     fetch: (request: Request): Promise<Response> => handle(request, pipeline),
     async drain() {},
     /** Releases the ports it was given. */
     async close() {
+      await stopJobs();
       await ports.store.close();
     },
   };

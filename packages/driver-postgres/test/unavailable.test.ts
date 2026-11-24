@@ -6,6 +6,7 @@ import type { BoardView, BoardWriter, Store } from "@openboard/ports";
 import { testScope } from "@openboard/ports/testkit";
 import { SQL } from "bun";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
+import { postgresJobs } from "../src/jobs.ts";
 import { connection, isUnavailable, openPool } from "../src/pool.ts";
 import { postgresTestUrl } from "./support/env.ts";
 
@@ -97,6 +98,7 @@ if (url) {
   test("a store on a URL nothing listens on answers a read and a write with unavailable, within the connect timeout", async () => {
     const sql = openPool(deadUrl(url));
     const store: Store = {
+      jobs: postgresJobs(sql, connection(sql)),
       ...createViews(connection(sql), postgresText, localBroadcaster()),
       close: () => sql.close(),
     };

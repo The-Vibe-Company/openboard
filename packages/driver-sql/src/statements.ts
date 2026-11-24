@@ -11,6 +11,7 @@ import { devicePlatform, deviceScoped } from "./views/device.ts";
 import { eventStatements } from "./views/events.ts";
 import { grantStatements } from "./views/grants.ts";
 import { invitationStatements } from "./views/invitations.ts";
+import { jobPlatformStatements, jobStatements } from "./views/jobs/index.ts";
 import { membershipStatements } from "./views/memberships.ts";
 import { messageStatements } from "./views/messages.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
@@ -33,6 +34,8 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...eventStatements,
   ...grantStatements,
   ...invitationStatements,
+  ...jobPlatformStatements,
+  ...jobStatements,
   ...membershipStatements,
   ...messageStatements,
   ...orgStatements,
@@ -73,6 +76,7 @@ export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...accountPlatformStatements,
   ...Object.keys(devicePlatform),
   ...boardPlatformStatements,
+  ...Object.keys(jobPlatformStatements),
   ...orgPlatformStatements,
   "orgMembership",
   "invitationByHash",

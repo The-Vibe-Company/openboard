@@ -41,5 +41,5 @@ export function cluster(store: TestStore, build: (store: Store) => App): Cluster
 
 /** `createApp(config, ports, deps)` as a `cluster` on `ports.store`: every instance has the same config and deps. */
 export function createCluster(config: ServerConfig, ports: { readonly store: TestStore }, deps: Deps): Cluster {
-  return cluster(ports.store, (store) => createApp(config, { store }, deps));
+  return cluster(ports.store, (store) => createApp(config, { store, jobs: store.jobs }, deps));
 }
