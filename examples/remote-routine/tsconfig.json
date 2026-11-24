@@ -8,6 +8,7 @@
   },
   "include": ["src/**/*.ts", "test/**/*.ts", "webhook.json"],
   "references": [
+    { "path": "../../packages/cli" },
     { "path": "../../packages/driver-sqlite" },
     { "path": "../../packages/server" },
     { "path": "../../packages/sdk" }

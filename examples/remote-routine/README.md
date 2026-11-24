@@ -3,7 +3,7 @@
 The routine listens for signed webhooks from one board. For each ready task in
 `work/fix/`, it trades its connection secret for a short-lived token with profile
 `run-<thread>`, then starts a fixed runner with the claim's environment and
-`OPENBOARD_TASK=<thread>`.
+`OPENBOARD_TASK=<thread>` and `OPENBOARD_RUN=<delivery ID>`.
 
 Start a local board with the OpenBoard executable.
 
@@ -12,13 +12,15 @@ ob serve
 ```
 
 From the repository root, use the local owner CLI to create a claim-mode
-connection and register the webhook. Store the secret files in a private
+connection for agents, a direct connection for the routine to write as
+`routine`, and the webhook. Store the secret files in a private
 temporary directory outside the checkout.
 
 ```sh
 export BOARD_URL=http://127.0.0.1:8787/api/local/main
 routine_dir=$(mktemp -d)
 ob connections create remote-routine --can 'work/fix/=read,post,label' --profiles 'run-*' --secret-file "$routine_dir/routine.connection"
+ob connections create routine --direct --can 'work/fix/=post,label' --profiles routine --secret-file "$routine_dir/routine.writer"
 ob webhooks create --file examples/remote-routine/webhook.json --secret-file "$routine_dir/routine.webhook"
 ```
 
@@ -30,6 +32,7 @@ your runner's executable and arguments to do real work.
 ```sh
 export RUNNER_COMMAND="$(bun -e 'console.log(JSON.stringify([process.execPath, "examples/remote-routine/test/fixtures/agent.ts", Bun.which("node"), Bun.which("ob")]))')"
 WEBHOOK_SECRET_FILE="$routine_dir/routine.webhook" OPENBOARD_SECRET_FILE="$routine_dir/routine.connection" \
+  ROUTINE_SECRET_FILE="$routine_dir/routine.writer" \
   bun examples/remote-routine/src/main.ts --port 9100
 ```
 
@@ -39,7 +42,13 @@ In another terminal, create a task and use the ID it prints.
 export BOARD_URL=http://127.0.0.1:8787/api/local/main
 ob tasks create work/fix/web "fix the build"
 ob read <id> --json
+ob read work/fix/ --label run
 ```
+
+The routine replies as the `routine` profile and sets the task root label
+`run=<id>`, where the run ID is the signed webhook delivery ID. Set
+`RUN_URL_TEMPLATE=https://logs.example/runs/{id}` before starting the routine
+to include a log link. Each `{id}` is replaced by the URL-encoded run ID. Use that ID to correlate the runner’s logs.
 
 The fixture claims the task and completes it with result `done`. The thread's
 `message.task` shows the completed state, and the authenticated board route
@@ -50,12 +59,17 @@ The service verifies the Standard Webhooks signature over the raw body and
 checks that the signed timestamp is within five minutes. It uses the signed
 delivery ID as the token claim's idempotency key and deduplicates launches for
 the lifetime of the process. A failed token claim or spawn can be retried.
-A successful spawn acknowledges delivery, and the runner manages the task lease
-and completion.
+The routine acknowledges delivery after posting the reply and setting the label.
+If a board write fails, a retry in the same process reuses the spawned run. The
+reply uses a client ID derived from the delivery ID, so retrying the post does
+not add a second reply. When a newer run has already started in the same
+process, resending an older failed delivery leaves the newer run label in place.
+After a receiver restart, a resend can launch the runner again and set the run
+label again. The runner manages the task lease and completion.
 
 The runner receives no inherited environment, so use absolute paths for tools
 or let the runner configure its own PATH. The fixture creates a private HOME
-to store the CLI's lease proof between commands. Keep both secret files private
+to store the CLI's lease proof between commands. Keep the secret files private
 to the routine's account. Use a separate sandbox if the runner cannot be trusted
 with the routine account's filesystem access. For a hosted board, expose
 `/hook` through a reachable HTTPS endpoint and update the subscription URL.
