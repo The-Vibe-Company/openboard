@@ -89,6 +89,8 @@ export type Operation<
   readonly responseType?: "image/svg+xml" | "application/gzip";
   readonly orgPersonalToken?: true;
   readonly invalidInputCode?: ErrorCode;
+  /** Use a different code for malformed items in a named body array. */
+  readonly invalidBodyItemCode?: { readonly array: string; readonly code: ErrorCode };
   /** Optional alternate HTTP representation, negotiated through Accept. */
   readonly eventStream?: "text/event-stream";
   /** The success status, or the boolean output field that distinguishes 201 from 200. */
@@ -179,6 +181,7 @@ function decodePart(
   where: string,
   convert: boolean,
   defaults = true,
+  invalidItem?: Operation["invalidBodyItemCode"],
 ): object {
   if (!schema) {
     const empty =
@@ -196,7 +199,8 @@ function decodePart(
   const [first] = Value.Errors(schema, decoded);
   if (first) {
     const field = first.path.replace(/^\//, "").replaceAll("/", ".") || where;
-    throw new BoardError("invalid_request", `${field}: ${first.message}`);
+    const code = invalidItem && first.path.startsWith(`/${invalidItem.array}/`) ? invalidItem.code : "invalid_request";
+    throw new BoardError(code, `${field}: ${first.message}`);
   }
   return decoded as object;
 }
@@ -207,7 +211,14 @@ export function decodeInput<Op extends Operation>(operation: Op, raw: RawInput):
     return {
       ...decodePart(operation.input.params, raw.params, "path", true),
       ...decodePart(operation.input.query, raw.query, "query", true),
-      ...decodePart(operation.input.body, raw.body, "body", false, operation.bodyDefaults),
+      ...decodePart(
+        operation.input.body,
+        raw.body,
+        "body",
+        false,
+        operation.bodyDefaults,
+        operation.invalidBodyItemCode,
+      ),
     } as InputOf<Op>;
   } catch (error) {
     if (operation.invalidInputCode && error instanceof BoardError && error.code === "invalid_request") {

@@ -421,6 +421,14 @@ change would leave its maker unable to manage the affected grant patterns.
 The error may include an OpenBoard `next` command to keep the caller in.
 Set `lockMeOut: true` (CLI `--lock-me-out`) to make the change anyway. Local
 owners and organization owners and admins are exempt from the lockout check.
+`POST /grants/batch` takes `{ grants, lockMeOut? }` with 1 to 16 grant drafts
+(`{ principals, can }`). It checks manage against the starting grants and checks
+everyone permissions and lockout against the resulting grants. It commits all
+grants together and returns 200 with `{ grants }` in input order. An out-of-range
+batch size returns 400 `invalid_request`, and a malformed draft returns 400
+`invalid_grant`. Run `ob grants create --file grants.json`
+with a JSON array of drafts, or use `--file -` for stdin.
+
 An empty list contributes no permissions when its pattern decides access. Grants tied
 at that pattern can still add permissions. In the CLI,
 `--can 'ops/=read' --can 'ops/secret/=none'` allows reading under `ops/` and closes `ops/secret/`.

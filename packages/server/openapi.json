@@ -2807,6 +2807,399 @@
         }
       }
     },
+    "/grants/batch": {
+      "post": {
+        "operationId": "createGrants",
+        "summary": "Create several grants in one atomic board write.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["grants"],
+                "properties": {
+                  "grants": {
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "type": "array",
+                    "items": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": ["principals", "can"],
+                      "properties": {
+                        "principals": {
+                          "minItems": 1,
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind", "userId"],
+                                "properties": {
+                                  "kind": { "const": "user", "type": "string" },
+                                  "userId": { "minLength": 1, "maxLength": 128, "x-ref": "member", "type": "string" }
+                                }
+                              },
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind", "project", "environments"],
+                                "properties": {
+                                  "kind": { "const": "project", "type": "string" },
+                                  "project": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                  "environments": {
+                                    "type": "array",
+                                    "items": { "minLength": 1, "maxLength": 512, "type": "string" }
+                                  }
+                                }
+                              },
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind", "environments"],
+                                "properties": {
+                                  "kind": { "const": "all-projects", "type": "string" },
+                                  "environments": {
+                                    "type": "array",
+                                    "items": { "minLength": 1, "maxLength": 512, "type": "string" }
+                                  }
+                                }
+                              },
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind", "repository"],
+                                "properties": {
+                                  "kind": { "const": "github", "type": "string" },
+                                  "repository": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                  "workflow": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                  "branch": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                  "event": { "minLength": 1, "maxLength": 512, "type": "string" }
+                                }
+                              },
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind", "issuer", "claims"],
+                                "properties": {
+                                  "kind": { "const": "oidc", "type": "string" },
+                                  "issuer": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                  "claims": {
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^(.*)$": {
+                                        "anyOf": [
+                                          { "minLength": 1, "maxLength": 1000, "type": "string" },
+                                          {
+                                            "minItems": 1,
+                                            "type": "array",
+                                            "items": { "minLength": 1, "maxLength": 1000, "type": "string" }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind", "app"],
+                                "properties": {
+                                  "kind": { "const": "app", "type": "string" },
+                                  "app": { "minLength": 1, "maxLength": 512, "type": "string" }
+                                }
+                              },
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind", "connection"],
+                                "properties": {
+                                  "kind": { "const": "connection", "type": "string" },
+                                  "connection": {
+                                    "minLength": 1,
+                                    "maxLength": 128,
+                                    "x-ref": "connection",
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind"],
+                                "properties": { "kind": { "const": "all-users", "type": "string" } }
+                              },
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind"],
+                                "properties": { "kind": { "const": "all-apps", "type": "string" } }
+                              },
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind"],
+                                "properties": { "kind": { "const": "everyone", "type": "string" } }
+                              },
+                              {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": ["kind"],
+                                "properties": { "kind": { "const": "all-connections", "type": "string" } }
+                              }
+                            ]
+                          }
+                        },
+                        "can": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^(.*)$": {
+                              "anyOf": [
+                                { "const": "all", "type": "string" },
+                                {
+                                  "maxItems": 6,
+                                  "type": "array",
+                                  "items": {
+                                    "anyOf": [
+                                      { "const": "read", "type": "string" },
+                                      { "const": "post", "type": "string" },
+                                      { "const": "react", "type": "string" },
+                                      { "const": "label", "type": "string" },
+                                      { "const": "sync", "type": "string" },
+                                      { "const": "manage", "type": "string" }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "lockMeOut": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["grants"],
+                  "properties": {
+                    "grants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "principals", "can", "capped", "by", "at"],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "principals": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "userId", "email"],
+                                  "properties": {
+                                    "kind": { "const": "user", "type": "string" },
+                                    "userId": { "type": "string" },
+                                    "email": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "projectId", "name", "environments", "teamId"],
+                                  "properties": {
+                                    "kind": { "const": "project", "type": "string" },
+                                    "projectId": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "name": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                    "environments": {
+                                      "type": "array",
+                                      "items": { "minLength": 1, "maxLength": 512, "type": "string" }
+                                    },
+                                    "teamId": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "environments"],
+                                  "properties": {
+                                    "kind": { "const": "all-projects", "type": "string" },
+                                    "environments": {
+                                      "type": "array",
+                                      "items": { "minLength": 1, "maxLength": 512, "type": "string" }
+                                    }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "repository", "repositoryId"],
+                                  "properties": {
+                                    "kind": { "const": "github", "type": "string" },
+                                    "repository": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "workflow": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "branch": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "event": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "repositoryId": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "issuer", "claims"],
+                                  "properties": {
+                                    "kind": { "const": "oidc", "type": "string" },
+                                    "issuer": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "claims": {
+                                      "type": "object",
+                                      "patternProperties": {
+                                        "^(.*)$": {
+                                          "anyOf": [
+                                            { "minLength": 1, "maxLength": 1000, "type": "string" },
+                                            {
+                                              "minItems": 1,
+                                              "type": "array",
+                                              "items": { "minLength": 1, "maxLength": 1000, "type": "string" }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "clientId", "name"],
+                                  "properties": {
+                                    "kind": { "const": "app", "type": "string" },
+                                    "clientId": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "name": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "connection"],
+                                  "properties": {
+                                    "kind": { "const": "connection", "type": "string" },
+                                    "connection": { "type": "string" }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind"],
+                                  "properties": { "kind": { "const": "all-users", "type": "string" } }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind"],
+                                  "properties": { "kind": { "const": "all-apps", "type": "string" } }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind"],
+                                  "properties": { "kind": { "const": "everyone", "type": "string" } }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind"],
+                                  "properties": { "kind": { "const": "all-connections", "type": "string" } }
+                                }
+                              ]
+                            }
+                          },
+                          "can": {
+                            "type": "object",
+                            "patternProperties": {
+                              "^(.*)$": {
+                                "anyOf": [
+                                  { "const": "all", "type": "string" },
+                                  {
+                                    "maxItems": 6,
+                                    "type": "array",
+                                    "items": {
+                                      "anyOf": [
+                                        { "const": "read", "type": "string" },
+                                        { "const": "post", "type": "string" },
+                                        { "const": "react", "type": "string" },
+                                        { "const": "label", "type": "string" },
+                                        { "const": "sync", "type": "string" },
+                                        { "const": "manage", "type": "string" }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "capped": { "type": "boolean" },
+                          "by": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "at": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_grant, grant_empty, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "grant_lockout",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "quota_exceeded, rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/api/x/orgs/{org}/invitations": {
       "post": {
         "operationId": "createInvitation",

@@ -133,9 +133,11 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
   },
   "grants create": {
     summary: "Grant channel permissions to one or more principals.",
-    operations: ["createGrant"],
+    operations: ["createGrant", "createGrants"],
     example: "ob grants create --connection cn_7k2m4q3t5v2w6x7y --can 'deploys/=read,post'",
     options: {
+      file: "Path to a JSON array of grants to create atomically, or - for stdin.",
+      "lock-me-out": "Allow the write even if it leaves you unable to manage the affected patterns.",
       can: "A channel pattern and its permissions, all, none or a comma-separated list. Repeatable.",
       connection: "A connection ID on this board.",
       "all-connections": "Every connection on this board.",
