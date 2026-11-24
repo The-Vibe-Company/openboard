@@ -1,5 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 
+import { Button, Input } from "../ui/index.ts";
+import "./SecretOnce.css";
+
 interface SecretOnceProps {
   title: string;
   secret: string;
@@ -11,6 +14,7 @@ export function SecretOnce({ title, secret, instructions, onClose }: SecretOnceP
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const description = useId();
+  const secretId = useId();
   const [copyStatus, setCopyStatus] = useState("");
 
   useEffect(() => {
@@ -27,20 +31,26 @@ export function SecretOnce({ title, secret, instructions, onClose }: SecretOnceP
   }
 
   return (
-    <dialog ref={dialog} aria-labelledby={titleId} aria-describedby={description} onClose={onClose}>
+    <dialog
+      className="secret-once"
+      ref={dialog}
+      aria-labelledby={titleId}
+      aria-describedby={description}
+      onClose={onClose}
+    >
       <h2 id={titleId}>{title}</h2>
-      <p id={description}>Save this secret now. You can only see it once.</p>
-      <label>
-        Secret
-        <input readOnly value={secret} size={40} style={{ display: "block", maxWidth: "100%" }} />
-      </label>
-      <button type="button" onClick={copy}>
+      <p id={description} className="secret-warning">
+        Save this secret now. You can only see it once.
+      </p>
+      <label htmlFor={secretId}>Secret</label>
+      <Input id={secretId} readOnly value={secret} />
+      <Button variant="secondary" onClick={copy}>
         Copy
-      </button>
+      </Button>
       <p role="status">{copyStatus}</p>
-      <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{instructions}</pre>
+      <pre>{instructions}</pre>
       <form method="dialog">
-        <button type="submit">Done</button>
+        <Button type="submit">Done</Button>
       </form>
     </dialog>
   );

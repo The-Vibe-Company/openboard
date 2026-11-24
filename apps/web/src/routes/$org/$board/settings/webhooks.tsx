@@ -7,6 +7,7 @@ import { sessionQuery } from "../../../../api/session.ts";
 import { webhookError } from "../../../../api/webhooks.ts";
 import { SecretOnce } from "../../../../components/SecretOnce.tsx";
 import { WebhookForm } from "../../../../components/WebhookForm.tsx";
+import { Button, Table } from "../../../../ui/index.ts";
 
 export const Route = createFileRoute("/$org/$board/settings/webhooks")({
   component: WebhooksRoute,
@@ -57,9 +58,9 @@ function WebhooksPage({ client, queryKey }: { client: Client; queryKey: string[]
         <>
           <p role="alert">{webhookError(error, "Could not load webhooks.")}</p>
           {!denial && (
-            <button type="button" disabled={list.isFetching} onClick={() => void refresh()}>
+            <Button variant="secondary" pending={list.isFetching} onClick={() => void refresh()}>
               Retry loading webhooks
-            </button>
+            </Button>
           )}
         </>
       )}
@@ -116,23 +117,40 @@ function WebhookList({
   return (
     <>
       {error && <p role="alert">{error}</p>}
-      <ul aria-label="Webhooks">
-        {webhooks.map((webhook) => (
-          <li key={webhook.id} style={{ overflowWrap: "anywhere" }}>
-            <strong>{webhook.name}</strong>
-            <p>{webhook.url}</p>
-            <p>{webhook.enabled ? "Enabled" : "Disabled"}</p>
-            <button
-              type="button"
-              aria-label={`Delete ${webhook.name}`}
-              disabled={deleting}
-              onClick={() => void remove(webhook)}
-            >
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
+      <div className="settings-table">
+        <Table aria-label="Webhooks">
+          <thead>
+            <tr>
+              <th scope="col">Webhook</th>
+              <th scope="col">Status</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {webhooks.map((webhook) => (
+              <tr key={webhook.id}>
+                <th scope="row">
+                  {webhook.name}
+                  <br />
+                  <code>{webhook.url}</code>
+                </th>
+                <td className="webhook-status">{webhook.enabled ? "Enabled" : "Disabled"}</td>
+                <td>
+                  <Button
+                    variant="danger"
+                    size="small"
+                    aria-label={`Delete ${webhook.name}`}
+                    disabled={deleting}
+                    onClick={() => void remove(webhook)}
+                  >
+                    Delete
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
     </>
   );
 }

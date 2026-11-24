@@ -952,6 +952,29 @@ Example:
 ob webhooks deliveries id
 ```
 
+## `ob webhooks retry`
+
+Queue a dead webhook delivery again.
+
+```sh
+ob webhooks retry <id> <dl>
+```
+
+Arguments:
+
+- `id`: A webhook ID.
+- `dl`: A delivery ID.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob webhooks retry id dl
+```
+
 ## `ob webhooks`
 
 List manageable webhooks without receiver credentials.

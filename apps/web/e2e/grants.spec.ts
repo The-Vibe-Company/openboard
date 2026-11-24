@@ -65,7 +65,7 @@ async function checkAccessLoss(page: Page, url: string) {
     await page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
     await refreshed;
     await expect(page.getByRole("alert")).toHaveText("Only board owners and organization admins manage grants");
-    await expect(page.getByRole("region", { name: "g1", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("row", { name: "g1", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Add grant" })).toHaveCount(0);
   }
 }
@@ -97,20 +97,24 @@ test("an organization admin lists, adds, edits, and revokes grants with live con
     };
     await join(page, app.url, "admin");
     await page.goto(`${app.url}/acme/main/settings/grants`);
-    const g1 = page.getByRole("region", { name: "g1", exact: true });
+    const g1 = page.getByRole("row", { name: "g1", exact: true });
     await expect(g1).toContainText("--all-users");
     await expect(g1).toContainText("*=all");
     for (const entry of [connection, other.connection]) {
-      const row = page.getByRole("region", { name: entry.grant, exact: true });
+      const row = page.getByRole("row", { name: entry.grant, exact: true });
       await expect(row).toContainText(`--connection ${entry.id}`);
       await expect(row).toContainText(entry.name === "agents" ? "dev/=read" : "ops/=read");
     }
 
     await addGrantOnNarrowScreen(page, app.url, connection.id);
-    const created = page.getByRole("region").filter({ hasText: "deploys/=read,post" });
+    const created = page
+      .getByRole("table", { name: "Grants" })
+      .locator("tbody")
+      .getByRole("row")
+      .filter({ hasText: "deploys/=read,post" });
     await expect(created).toContainText(`--connection ${connection.id}`);
     const id = await created.getByRole("heading").innerText();
-    const grant = page.getByRole("region", { name: id, exact: true });
+    const grant = page.getByRole("row", { name: id, exact: true });
     expect((await post()).status).toBe(201);
 
     await grant.getByRole("button", { name: "Edit" }).click();

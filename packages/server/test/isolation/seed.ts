@@ -208,7 +208,19 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
     await store.org(testOrgScope(membership.orgId)).requestExport(id, personId, NOW, () => {});
   }
   const { webhook } = await seedWebhook(send, `/api/${org}/main`, session, marker);
-  const ids = { ...made, webhook: webhook.id, export: id, member: `ob:user:${personId}`, org, board: boardRef };
+  const { delivery } = await ok<{ delivery: { id: string } }>(
+    send("POST", `/api/${org}/main/x/webhooks/${webhook.id}/test`, session),
+    "test delivery",
+  );
+  const ids = {
+    ...made,
+    webhook: webhook.id,
+    delivery: delivery.id,
+    export: id,
+    member: `ob:user:${personId}`,
+    org,
+    board: boardRef,
+  };
   const credentials = { session, personal, connection, agent };
   return { org, board: "main", ...credentials, ids, firstThread, invitationToken, userCode: pending.userCode, marker };
 }

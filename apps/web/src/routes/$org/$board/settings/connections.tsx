@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useBlocker } from "@tanstack/react-router";
 import { BoardError, type Client } from "@the-vibe-company/openboard";
 import { type FormEvent, useState } from "react";
 import { browserClient } from "../../../../api/client.ts";
 import { SecretOnce } from "../../../../components/SecretOnce.tsx";
+import { Button, Card, Field, Input, Table } from "../../../../ui/index.ts";
 
 export const Route = createFileRoute("/$org/$board/settings/connections")({
   component: ConnectionsRoute,
@@ -42,6 +43,7 @@ function Connections({ org, board }: { org: string; board: string }) {
   });
   const [created, setCreated] = useState<Created>();
   const [busy, setBusy] = useState(false);
+  useBlocker({ shouldBlockFn: () => busy, enableBeforeUnload: false });
   const [error, setError] = useState("");
   const [revokeError, setRevokeError] = useState("");
 
@@ -71,8 +73,8 @@ function Connections({ org, board }: { org: string; board: string }) {
   }
 
   return (
-    <section style={{ maxWidth: "42rem", margin: "2rem auto", padding: "0 1rem" }} aria-labelledby="connections">
-      <h2 id="connections">Connections</h2>
+    <section aria-labelledby="connections">
+      <h1 id="connections">Connections</h1>
       {list.isPending && <p role="status">Loading connections…</p>}
       {revokeError && <p role="alert">{revokeError}</p>}
       {list.isError && <ListLoadError error={list.error} retry={list.refetch} retrying={list.isFetching} />}
@@ -110,19 +112,21 @@ function CreateConnectionForm({
 }) {
   return (
     <form onSubmit={onSubmit}>
-      <p>
-        <label>
-          Name <input name="name" required pattern={"[a-z0-9][a-z0-9\\-]{0,62}"} />
-        </label>
-      </p>
-      <p>
-        <label>
-          Access <input name="access" required placeholder="dev/=read,post" />
-        </label>
-      </p>
-      <button type="submit" disabled={busy}>
-        Create connection
-      </button>
+      <Card>
+        <fieldset disabled={busy}>
+          <Field label="Name">
+            {(field) => <Input {...field} name="name" required pattern={"[a-z0-9][a-z0-9\\-]{0,62}"} />}
+          </Field>
+          <Field label="Access">
+            {(field) => <Input {...field} name="access" required placeholder="dev/=read,post" />}
+          </Field>
+          <div>
+            <Button type="submit" pending={busy}>
+              Create connection
+            </Button>
+          </div>
+        </fieldset>
+      </Card>
     </form>
   );
 }
@@ -139,9 +143,9 @@ function ListLoadError({
   return (
     <>
       <p role="alert">{errorMessage(error, "Could not load connections.")}</p>
-      <button type="button" disabled={retrying} onClick={() => void retry()}>
+      <Button variant="secondary" pending={retrying} onClick={() => void retry()}>
         Retry loading connections
-      </button>
+      </Button>
     </>
   );
 }
@@ -182,33 +186,58 @@ function ConnectionList({
 
   if (connections.length === 0) return <p>No connections yet.</p>;
   return (
-    <ul aria-label="Active connections">
-      {connections.map((connection) => (
-        <li key={connection.id} style={{ overflowWrap: "anywhere" }}>
-          <span>{connection.name}</span> <code>{connection.secretHint}</code>
-          <p>
-            Last used:{" "}
-            {connection.lastUsedAt ? (
-              <time dateTime={connection.lastUsedAt}>{new Date(connection.lastUsedAt).toLocaleString()}</time>
-            ) : (
-              "Never"
-            )}
-          </p>
-          <p>
-            Live agents:{" "}
-            {connection.agents.length ? connection.agents.map((agent) => agent.profile).join(", ") : "None"}
-          </p>
-          <button
-            type="button"
-            aria-label={`Revoke ${connection.name}`}
-            disabled={revoking}
-            onClick={() => void revoke(connection)}
-          >
-            Revoke
-          </button>
-        </li>
-      ))}
-    </ul>
+    <div className="settings-table">
+      <Table aria-label="Active connections">
+        <thead>
+          <tr>
+            <th scope="col">Connection</th>
+            <th scope="col">Activity</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {connections.map((connection) => (
+            <tr key={connection.id}>
+              <th scope="row">
+                <span>{connection.name}</span>
+                <br />
+                <code>{connection.secretHint}</code>
+              </th>
+              <ConnectionActivity connection={connection} />
+              <td>
+                <Button
+                  variant="danger"
+                  size="small"
+                  aria-label={`Revoke ${connection.name}`}
+                  disabled={revoking}
+                  onClick={() => void revoke(connection)}
+                >
+                  Revoke
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
+  );
+}
+
+function ConnectionActivity({ connection }: { connection: Listed[number] }) {
+  return (
+    <td>
+      <div>
+        Last used:{" "}
+        {connection.lastUsedAt ? (
+          <time dateTime={connection.lastUsedAt}>{new Date(connection.lastUsedAt).toLocaleString()}</time>
+        ) : (
+          "Never"
+        )}
+      </div>
+      <div>
+        Live agents: {connection.agents.length ? connection.agents.map((agent) => agent.profile).join(", ") : "None"}
+      </div>
+    </td>
   );
 }
 
