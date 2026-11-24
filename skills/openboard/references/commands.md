@@ -95,6 +95,44 @@ Example:
 ob connections create ci --can 'dev/=read,post' --claims 1 --secret-file ./secret
 ```
 
+## `ob grants create`
+
+Grant channel permissions to one or more principals.
+
+```sh
+ob grants create --can <pattern=permissions>… [--user <id>] [--project <id> | --all-projects] [--environment <names>] [--github <repository-or-subject>] [--workflow <file>] [--git-branch <branch>] [--event <event>] [--oidc <issuer>] [--claim <name=value>] [--app <id>] [--all-apps] [--all-users] [--everyone] [--connection <id>] [--all-connections]
+```
+
+Options:
+
+- `--can`: A channel pattern and its permissions, all or a comma-separated list. Repeatable.
+- `--user`: An OpenBoard person ID.
+- `--project`: A project ID.
+- `--all-projects`: All projects.
+- `--environment`: Comma-separated project environments. Defaults to production.
+- `--github`: A GitHub repository or linked identity subject.
+- `--workflow`: Filter GitHub Actions by workflow file.
+- `--git-branch`: Filter GitHub Actions by branch.
+- `--event`: Filter GitHub Actions by event.
+- `--oidc`: An OIDC issuer. Include a sub claim.
+- `--claim`: An OIDC claim as name=value. Repeat to add alternatives.
+- `--app`: An app client ID.
+- `--all-apps`: All apps.
+- `--all-users`: All members of the board's organization.
+- `--everyone`: The upstream everyone principal.
+- `--connection`: A connection ID on this board.
+- `--all-connections`: Every connection on this board.
+
+Errors: `error: forbidden`, `error: grant_empty`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `create_grant`.
+
+Example:
+
+```sh
+ob grants create --connection cn_7k2m4q3t5v2w6x7y --can 'deploys/=read,post'
+```
+
 ## `ob connections rotate`
 
 Replace a connection's secret, optionally keeping the old one working for a while.

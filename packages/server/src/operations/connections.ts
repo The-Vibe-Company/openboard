@@ -120,7 +120,8 @@ export const claimConnectionHandler: Handler<typeof claimConnection> = async (ct
     if (replay) return replay;
     const minted = mintSecret("obt_", ctx.randomBytes(SECRET_BYTES));
     const token = { id: `ag_${minted.name}`, hash: minted.hash };
-    const { id, profiles, can } = record.connection;
+    const { id, profiles } = record.connection;
+    const can = record.effectiveCan;
     const { tokenTtl, tokenMax, claims } = record;
     const connection = { id, profiles, can, tokenTtl, tokenMax, claims };
     const state = { head: writer.head, holder: await writer.profileHolder(id, input.profile) };

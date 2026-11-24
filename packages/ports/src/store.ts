@@ -1,6 +1,8 @@
 import type {
   Actor,
   Author,
+  Can,
+  CanInput,
   Channel,
   ClaimedAgent,
   Connection,
@@ -16,6 +18,7 @@ import type {
 import type { BoardCreation, BoardEvent, Grant, messages, OrgCreation } from "@openboard/core";
 import type { BoardMessageReads } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
+import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
 
 /** A board configuration event (`ob.*`, visibility 2), as stored: its payload may hold hashes the audit strips. */
@@ -224,7 +227,7 @@ export interface PlatformView {
 }
 
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */
-export interface BoardWriter extends BoardTaskWriter {
+export interface BoardWriter extends BoardTaskWriter, BoardGrantWriter {
   readonly head: number;
   /** The actors available to resolve handles under the write lock. */
   mentionActors(handles: ReadonlySet<string>): Promise<MentionActor[]>;
@@ -242,8 +245,6 @@ export interface BoardWriter extends BoardTaskWriter {
   newerReply(thread: number, after: number): Promise<number | null>;
   /** The message posted under the client ID, as the board holds it, read under the lock; null when none was. */
   clientPost(clientId: string): Promise<Message | null>;
-  /** The ID the board's next grant takes, read under this write lock. */
-  nextGrant(): Promise<number>;
   /** Whether a connection of this board, revoked or not, has the name. */
   connectionNamed(name: string): Promise<boolean>;
   /** The unrevoked connection of this board with the ID, read under the lock, or null when the board has none with it. */
@@ -287,6 +288,7 @@ export interface ThreadPosition {
 export interface ConnectionRecord {
   readonly connection: Connection;
   readonly grant: Grant;
+  readonly effectiveCan: Can;
   readonly secretHash: string;
   /** The secret the last rotation replaced: its SHA-256 (hex), and the epoch milliseconds it works until; or null. */
   readonly previous: { readonly secretHash: string; readonly until: number } | null;
@@ -300,6 +302,7 @@ export interface ConnectionRecord {
 /** An agent claimed with a connection's secret, with its connection and the SHA-256 (hex) of its token. */
 export interface AgentRecord {
   readonly agent: ClaimedAgent;
+  readonly grantCans: readonly CanInput[];
   readonly connection: {
     readonly id: string;
     readonly name: string;
@@ -326,7 +329,7 @@ export interface MentionEvidence {
 }
 
 /** One board's storage; every statement it runs is bound to its scope. */
-export interface BoardView extends BoardMessageReads, BoardTaskReads {
+export interface BoardView extends BoardMessageReads, BoardTaskReads, BoardGrantReads {
   /** Wake when a write advances this board past the cursor, with its events when in memory. Returns an unsubscribe. */
   subscribeEvents(fromPosition: number, wake: (committed?: CommittedEvents) => void): () => void;
   /** Look up a personal credential in scope. A known but unusable token returns "inactive"; a scope miss returns null. */

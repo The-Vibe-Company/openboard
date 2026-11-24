@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { BoardError } from "@openboard/contract";
+import { grants, resolveCan } from "@openboard/core";
 import type { PersonRecord, PlatformView, SessionRecord } from "@openboard/ports";
-import { grants } from "@openboard/core";
 import { callerCan, credentialKind, memberOf, type Principal } from "../deps.ts";
 import { boardMember } from "../http/scope.ts";
 import type { CredentialVerifier } from "./chain.ts";
@@ -143,7 +143,10 @@ export function sessionVerifier(platform: PlatformView, now: () => number, publi
       return {
         ...person,
         [memberOf]: { handle, name, avatar, ...member },
-        [callerCan]: grants.allUsersCan(member.role),
+        [callerCan]: resolveCan([
+          grants.allUsersCan(member.role),
+          ...(await board.personGrants(id)).map(grants.compileCan),
+        ]),
       };
     },
   };

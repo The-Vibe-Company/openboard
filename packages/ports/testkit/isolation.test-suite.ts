@@ -18,6 +18,12 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  * case does not compile. A case answers what the view gave, which must hold nothing of B.
  */
 const boardCases: Cases<BoardView> = {
+  personGrants: async (a, b) => {
+    expect(await a.board.personGrants(b.personId)).toEqual([]);
+    const own = await a.board.personGrants(a.personId);
+    expect(own).toEqual([{ [a.channel]: ["read"] }]);
+    return own;
+  },
   personalToken: async (a, b) => expectNull(await a.board.personalToken(b.tokenHash, at)),
   write: (a, b) => a.board.write(async (writer) => writer.actor, b.actor).then(expectNull),
   mentionEvidence: (a, b) => a.board.mentionEvidence(new Set([`${b.marker.split("-")[0]}-owner`])),
@@ -97,7 +103,7 @@ const writerCases: Cases<BoardWriter> = {
   newerReply: (a, b) => inWrite(a, async (writer) => expectNull(await writer.newerReply(b.message, 0))),
   taskRoot: (a, b) => inWrite(a, async (writer) => expectNull(await writer.taskRoot(b.task))),
   clientPost: (a, b) => inWrite(a, async (writer) => expectNull(await writer.clientPost(b.clientId))),
-  nextGrant: (a) => inWrite(a, async (writer) => expect(await writer.nextGrant()).toBe(5)),
+  nextGrant: (a) => inWrite(a, async (writer) => expect(await writer.nextGrant()).toBe(6)),
   connectionNamed: (a, b) =>
     inWrite(a, async (writer) => expect(await writer.connectionNamed(`${b.marker}-fleet`)).toBe(false)),
   connection: (a, b) => inWrite(a, async (writer) => expectNull(await writer.connection(b.connection))),

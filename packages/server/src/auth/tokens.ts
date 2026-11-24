@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { BoardError, type Operation, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
-import { connections } from "@openboard/core";
+import { connections, grants, resolveCan, withinPin } from "@openboard/core";
 import type { AgentRecord, BoardView } from "@openboard/ports";
 import { agentOf, callerCan, connectionOf, credentialKind, type Principal, profileName, tokenHashOf } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
@@ -10,14 +10,21 @@ const PREFIX = "obt_";
 /** The one board extension a claimed token reaches: refreshing itself (docs/auth.md "Routes a claimed token can never reach"). */
 const REFRESH = "refreshAgentToken";
 
-/** Configuration operations are all board extensions and all operations mounted under /api/x. */
+/** Claimed credentials may use data routes but cannot manage grants or OpenBoard configuration. */
 export function refuseClaimedConfiguration(
   request: Request,
   operation: Pick<Operation, "name" | "scope" | "route">,
 ): void {
   if (operation.name === REFRESH) return;
   const { scope, route } = operation;
-  if (scope !== "account" && scope !== "org" && !route.mount && !route.path.startsWith("/x/")) return;
+  if (
+    scope !== "account" &&
+    scope !== "org" &&
+    !route.mount &&
+    !route.path.startsWith("/x/") &&
+    route.path !== "/grants"
+  )
+    return;
   if (bearer(request)?.startsWith(PREFIX)) {
     throw new BoardError("forbidden", "claimed tokens cannot access configuration routes");
   }
@@ -77,7 +84,7 @@ export function agentTokenVerifier(now: () => number): CredentialVerifier {
         [credentialKind]: "agent",
         [connectionOf]: { name: connection.name, profiles: connection.profiles },
         [agentOf]: agent.id,
-        [callerCan]: agent.can,
+        [callerCan]: withinPin(resolveCan(record.grantCans.map(grants.compileCan)), agent.can),
         [profileName]: profile,
         [tokenHashOf]: presented,
       };

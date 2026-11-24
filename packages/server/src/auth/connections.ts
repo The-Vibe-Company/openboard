@@ -50,14 +50,14 @@ export function connectionVerifier(now: () => number): CredentialVerifier {
       const record = await board.connection(`cn_${id}`);
       if (!record || !(record.connection.direct || operation === CLAIM)) return null;
       if (!holdsSecret(record, hashToken(secret), now())) return null;
-      const { principal, name, profiles, can } = record.connection;
+      const { principal, name, profiles } = record.connection;
       return {
         actor: principal,
         principal,
         profile: null,
         [credentialKind]: "connection",
         [connectionOf]: { name, profiles },
-        [callerCan]: can,
+        [callerCan]: record.effectiveCan,
       };
     },
   };

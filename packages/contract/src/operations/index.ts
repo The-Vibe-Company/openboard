@@ -24,6 +24,7 @@ import {
 } from "./connections.ts";
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
+import { createGrant } from "./grants/create.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
 import { changeMemberRole, removeMember } from "./memberships.ts";
 import {
@@ -71,6 +72,7 @@ export const operations = [
   createBoard,
   createChannel,
   createConnection,
+  createGrant,
   createInvitation,
   createOrg,
   createTask,
@@ -136,6 +138,7 @@ export {
   createBoard,
   createChannel,
   createConnection,
+  createGrant,
   createInvitation,
   createOrg,
   createTask,
