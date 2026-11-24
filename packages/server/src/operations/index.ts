@@ -132,6 +132,7 @@ export interface PublicContext {
 export interface AccountContext extends RequestLimits {
   readonly platform: PlatformView;
   readonly session: Session | null;
+  readonly tokenPersonId: string | null;
   readonly now: () => number;
   readonly mode: "local" | "hosted";
   /** The sign-in providers this server offers. */

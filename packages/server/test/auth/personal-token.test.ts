@@ -3,7 +3,7 @@ import type { listPersonalTokens, OutputOf, pollDeviceSignIn, startDeviceSignIn 
 import { NOW, PUBLIC_URL } from "../support/app.ts";
 import { browserSession, makeBrowserApp } from "../support/browser-session.ts";
 
-test("only the session holder can list and revoke their personal token", async () => {
+test("a person can list their token by session or bearer and revoke it by session with CSRF proof", async () => {
   const app = makeBrowserApp();
   try {
     const { headers } = await browserSession(app.fetch, "ada");
@@ -29,7 +29,7 @@ test("only the session holder can list and revoke their personal token", async (
     const bearer = { authorization: `Bearer ${issued.token}` };
     const whoami = () => app.fetch(new Request(`${issued.boards[0]?.url}/me`, { headers: bearer }));
 
-    expect((await list(bearer)).status).toBe(401);
+    expect((await list()).status).toBe(401);
     expect(await (await list(other)).json()).toEqual({ tokens: [] });
     const response = await list(headers);
     expect(response.headers.get("cache-control")).toBe("no-store");
@@ -45,8 +45,9 @@ test("only the session holder can list and revoke their personal token", async (
         revokedAt: null,
       },
     ]);
+    expect(await (await list(bearer)).json()).toEqual({ tokens });
     const path = `/tokens/${id}/revoke`;
-    expect((await post(path, {}, bearer)).status).toBe(401);
+    expect((await post(path, {})).status).toBe(401);
     expect((await post(path, {}, { cookie: headers.cookie, origin: PUBLIC_URL })).status).toBe(403);
     expect((await post(path, {}, other)).status).toBe(404);
     const me = await whoami();
@@ -68,6 +69,7 @@ test("only the session holder can list and revoke their personal token", async (
     const revoked = await post(path, {}, headers);
     expect(revoked.status).toBe(200);
     expect(await revoked.json()).toEqual({ id, revokedAt: NOW });
+    expect((await list(bearer)).status).toBe(401);
     const denied = await whoami();
     expect(denied.status).toBe(401);
     expect(await denied.json()).toMatchObject({ error: { code: "unauthorized" } });

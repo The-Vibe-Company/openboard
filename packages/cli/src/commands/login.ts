@@ -1,3 +1,4 @@
+import { parseCanScope } from "@openboard/contract";
 import { BoardError, type Client, createClient } from "@the-vibe-company/openboard";
 import { isPersonalToken, loginOrigin, personalConfigPath, storePersonalLogin } from "../config.ts";
 import { Misuse, type StandaloneContext } from "./index.ts";
@@ -19,11 +20,11 @@ async function deviceRequest<T>(request: Promise<T>): Promise<T> {
 
 const slug = (value: unknown) => typeof value === "string" && /^[a-z0-9][a-z0-9-]{1,38}$/.test(value);
 
-async function approve(ctx: StandaloneContext, client: Client, origin: string) {
+async function approve(ctx: StandaloneContext, client: Client, origin: string, can: string | undefined) {
   const wait = ctx.options.wait ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const now = ctx.options.now ?? (() => performance.now());
   const started = now();
-  const begun = await deviceRequest(client.startDeviceSignIn({ clientName: "ob" }));
+  const begun = await deviceRequest(client.startDeviceSignIn({ clientName: "ob", can }));
   if (
     !begun ||
     begun.verificationUri !== `${origin}/device` ||
@@ -31,7 +32,7 @@ async function approve(ctx: StandaloneContext, client: Client, origin: string) {
     typeof begun.userCode !== "string" ||
     !/^[A-Z2-7]{4}(?:-[A-Z2-7]{4}){3}$/.test(begun.userCode) ||
     typeof begun.deviceCode !== "string" ||
-    !/^[A-Za-z0-9_-]{43}$/.test(begun.deviceCode) ||
+    !(can === undefined ? /^[A-Za-z0-9_-]{43}$/ : /^[A-Za-z0-9_-]{43}n$/).test(begun.deviceCode) ||
     !Number.isInteger(begun.interval) ||
     begun.interval < 1 ||
     begun.interval > 60
@@ -70,12 +71,15 @@ async function approve(ctx: StandaloneContext, client: Client, origin: string) {
 export const loginCommand = {
   standalone: true,
   words: ["login"],
-  usage: "ob login <origin>",
+  usage: "ob login <origin> [--can <scope>]",
   async run(ctx: StandaloneContext): Promise<number> {
     const origin = loginOrigin(ctx.args[0]);
-    if (!origin || ctx.args.length !== 1 || ctx.profile !== undefined) {
+    const scoped = ctx.args[1] === "--can" && ctx.optionsEnd >= 2;
+    if (!origin || ctx.args.length !== (scoped ? 3 : 1) || ctx.profile !== undefined) {
       throw new Misuse("login requires one HTTPS or loopback HTTP origin");
     }
+    const can = scoped ? ctx.args[2] : undefined;
+    if (can !== undefined) parseCanScope(can);
     const path = personalConfigPath(ctx.env);
     if (!path) throw new Misuse("HOME is required to store the personal credential");
     const send = ctx.options.fetch ?? ((request: Request) => fetch(request));
@@ -84,7 +88,7 @@ export const loginCommand = {
       fetch: (request) => send(new Request(request, { redirect: "error", signal: AbortSignal.timeout(15_000) })),
     });
     const { org, boards } = await storePersonalLogin(path, async () => {
-      const { token, org, boards } = await approve(ctx, client, origin);
+      const { token, org, boards } = await approve(ctx, client, origin, can);
       return {
         credential: { token, origin, org: org.slug, board: "main" },
         result: { org: org.slug, boards: boards.map((board) => board.slug) },

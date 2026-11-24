@@ -1098,3 +1098,11 @@ exact channel so sibling and descendant channels retain their access. A
 pre-existing grant at the exact path that permits access to anyone besides
 the creator prevents creation with 409 `channel_granted`. Grants there can outrank or add to the
 `everyone` closure. The board lock covers this check and all three events.
+
+### D67. Personal token scope at device approval
+
+- **Status:** accepted (orchestrator, [issue #473](https://github.com/The-Vibe-Company/openboard/issues/473)).
+- **Decision.** Device start stores the requested scope and approval records
+  the resulting per-board caps. Token management accepts a browser session or an
+  unrestricted personal bearer. Narrowed personal bearers receive 403
+  `forbidden` on account routes.

@@ -50,6 +50,7 @@ function errorResponses(operation: Operation) {
 function describeOperation(operation: Operation) {
   const { params, query, body } = operation.input;
   const sessionAuth = operation.scope === "org" || operation.scope === "account";
+  const personalBearer = operation.orgPersonalToken || operation.accountBearer === "personal";
   const needsCsrf = sessionAuth && operation.route.method !== "GET";
   const fields = [
     ...parameters(params, "path"),
@@ -59,9 +60,11 @@ function describeOperation(operation: Operation) {
           {
             name: CSRF_HEADER,
             in: "header",
-            required: !operation.orgPersonalToken,
+            required: !personalBearer,
             schema: { type: "string" },
-            description: "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin.",
+            description: operation.accountBearer
+              ? "For session authentication, send the CSRF value from GET /api/x/session and the configured public origin as Origin."
+              : "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin.",
           },
         ]
       : []),
@@ -89,7 +92,7 @@ function describeOperation(operation: Operation) {
     ...(operation.scope === "public" && { security: [] }),
     ...(sessionAuth && {
       servers: [{ url: "/" }],
-      security: [{ sessionAuth: [] }, ...(operation.orgPersonalToken ? [{ bearerAuth: [] }] : [])],
+      security: [{ sessionAuth: [] }, ...(personalBearer ? [{ bearerAuth: [] }] : [])],
     }),
     ...(operation.route.mount && { servers: [{ url: "/" }] }),
     ...(fields.length > 0 && { parameters: fields }),

@@ -1,3 +1,5 @@
+import type { Can, Named } from "@openboard/contract";
+
 /** A person (docs/auth.md "Organizations, boards, people"): one `users` row, independent of providers and orgs. */
 export interface PersonRecord {
   /** `u_<base32>`; the principal is `ob:user:<id>`. */
@@ -44,4 +46,31 @@ export interface SessionRecord {
   readonly csrf: string;
   readonly seenAt: number;
   readonly expiresAt: number;
+}
+
+interface DeviceTokenIssue {
+  readonly id: string;
+  readonly tokenHash: string;
+  readonly now: number;
+  readonly expiresAt: number;
+}
+
+type DevicePoll = { status: "missing" | "pending" | "too_soon" } | { status: "issued"; org: Named; boards: Named[] };
+
+export interface DeviceView {
+  /** Start a device request and prune prior expired requests using the supplied clock. */
+  startDevice(
+    deviceHash: string,
+    userCode: string,
+    clientName: string,
+    now: number,
+    expiresAt: number,
+    can?: Can,
+  ): Promise<void>;
+  /** Read the display metadata of an unused, live code. */
+  previewDevice(userCode: string, now: number): Promise<{ clientName: string; expiresAt: number; can?: Can } | null>;
+  /** Only a current member of the named organization can approve an unused, live code. */
+  approveDevice(userCode: string, org: string, personId: string, now: number): Promise<boolean>;
+  /** Poll a device capability; consume approval and issue its token in one transaction. */
+  pollDevice(deviceHash: string, minInterval: number, issue: DeviceTokenIssue): Promise<DevicePoll>;
 }

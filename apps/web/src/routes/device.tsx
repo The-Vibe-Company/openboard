@@ -79,21 +79,7 @@ function DeviceApproval({ principal, csrf }: { principal: string; csrf: string }
       {invalid && <p role="alert">This code is not valid</p>}
       {preview.isError && !invalid && <p role="alert">Could not check the code. Try again.</p>}
       <div aria-live="polite" aria-atomic="true">
-        {confirmation && (
-          <>
-            <p>Confirm that the code and client name match your terminal.</p>
-            <dl>
-              <dt>Code</dt>
-              <dd>{request.userCode}</dd>
-              <dt>Client</dt>
-              <dd>{request.clientName}</dd>
-              <dt>Organization</dt>
-              <dd>
-                {org.name} ({org.slug})
-              </dd>
-            </dl>
-          </>
-        )}
+        {confirmation && <DeviceDetails request={request} org={org} />}
       </div>
       {confirmation && (
         <>
@@ -113,6 +99,40 @@ function DeviceApproval({ principal, csrf }: { principal: string; csrf: string }
           )}
         </>
       )}
+    </>
+  );
+}
+
+function DeviceDetails({
+  request,
+  org,
+}: {
+  request: Awaited<ReturnType<ReturnType<typeof browserClient>["previewDeviceSignIn"]>> & { userCode: string };
+  org: { name: string; slug: string };
+}) {
+  return (
+    <>
+      <p>Confirm that the code and client name match your terminal.</p>
+      <dl>
+        <dt>Code</dt>
+        <dd>{request.userCode}</dd>
+        <dt>Client</dt>
+        <dd>{request.clientName}</dd>
+        <dt>Permissions</dt>
+        <dd>
+          {request.can
+            ? Object.entries(request.can).map(([pattern, permissions]) => (
+                <div key={pattern}>
+                  {pattern}: {permissions.join(", ") || "none"}
+                </div>
+              ))
+            : "Full access"}
+        </dd>
+        <dt>Organization</dt>
+        <dd>
+          {org.name} ({org.slug})
+        </dd>
+      </dl>
     </>
   );
 }

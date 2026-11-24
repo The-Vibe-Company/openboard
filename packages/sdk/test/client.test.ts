@@ -50,3 +50,24 @@ test("getAvatar reads SVG and preserves JSON errors", async () => {
   expect(await client.getAvatar({ name: "agent" })).toBe(svg);
   await expect(client.getAvatar({ name: "unknown" })).rejects.toMatchObject({ code: "not_found" });
 });
+
+test("only opted-in account operations send the personal bearer", async () => {
+  const requests: Request[] = [];
+  const token = ["obp", "fixture"].join("_");
+  const client = createClient({
+    url: "http://127.0.0.1:8787/api/acme/main",
+    token,
+    fetch: async (request) => {
+      requests.push(request);
+      return Response.json({});
+    },
+  });
+  await client.listPersonalTokens({});
+  await client.revokePersonalToken({ id: "example" });
+  await client.getAccount({});
+  expect(requests.map((request) => request.headers.get("authorization"))).toEqual([
+    `Bearer ${token}`,
+    `Bearer ${token}`,
+    null,
+  ]);
+});

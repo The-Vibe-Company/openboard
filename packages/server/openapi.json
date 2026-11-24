@@ -7551,7 +7551,7 @@
         "operationId": "listPersonalTokens",
         "summary": "List the signed-in person's personal token metadata.",
         "servers": [{ "url": "/" }],
-        "security": [{ "sessionAuth": [] }],
+        "security": [{ "sessionAuth": [] }, { "bearerAuth": [] }],
         "responses": {
           "200": {
             "description": "Success",
@@ -7568,6 +7568,24 @@
                         "required": ["id", "name", "org", "createdAt", "expiresAt", "revokedAt"],
                         "properties": {
                           "id": { "pattern": "^pt_[a-z2-7]{16}$", "type": "string" },
+                          "can": {
+                            "type": "object",
+                            "patternProperties": {
+                              "^(.*)$": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    { "const": "read", "type": "string" },
+                                    { "const": "post", "type": "string" },
+                                    { "const": "react", "type": "string" },
+                                    { "const": "label", "type": "string" },
+                                    { "const": "sync", "type": "string" },
+                                    { "const": "manage", "type": "string" }
+                                  ]
+                                }
+                              }
+                            }
+                          },
                           "name": { "type": "string" },
                           "org": { "type": "string" },
                           "createdAt": { "type": "integer" },
@@ -8482,7 +8500,7 @@
               "schema": {
                 "type": "object",
                 "required": ["deviceCode"],
-                "properties": { "deviceCode": { "pattern": "^[A-Za-z0-9_-]{43}$", "type": "string" } }
+                "properties": { "deviceCode": { "pattern": "^[A-Za-z0-9_-]{43}n?$", "type": "string" } }
               }
             }
           }
@@ -8572,7 +8590,28 @@
                 "schema": {
                   "type": "object",
                   "required": ["clientName", "expiresAt"],
-                  "properties": { "clientName": { "type": "string" }, "expiresAt": { "type": "integer" } }
+                  "properties": {
+                    "clientName": { "type": "string" },
+                    "expiresAt": { "type": "integer" },
+                    "can": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^(.*)$": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              { "const": "read", "type": "string" },
+                              { "const": "post", "type": "string" },
+                              { "const": "react", "type": "string" },
+                              { "const": "label", "type": "string" },
+                              { "const": "sync", "type": "string" },
+                              { "const": "manage", "type": "string" }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -17596,7 +17635,7 @@
         "operationId": "revokePersonalToken",
         "summary": "Revoke one of the signed-in person's personal tokens.",
         "servers": [{ "url": "/" }],
-        "security": [{ "sessionAuth": [] }],
+        "security": [{ "sessionAuth": [] }, { "bearerAuth": [] }],
         "parameters": [
           {
             "name": "id",
@@ -17607,9 +17646,9 @@
           {
             "name": "x-ob-csrf",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": { "type": "string" },
-            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+            "description": "For session authentication, send the CSRF value from GET /api/x/session and the configured public origin as Origin."
           }
         ],
         "responses": {
@@ -17853,7 +17892,8 @@
                 "type": "object",
                 "required": ["clientName"],
                 "properties": {
-                  "clientName": { "minLength": 1, "maxLength": 100, "pattern": "^[^\\u0000]+$", "type": "string" }
+                  "clientName": { "minLength": 1, "maxLength": 100, "pattern": "^[^\\u0000]+$", "type": "string" },
+                  "can": { "type": "string" }
                 }
               }
             }
@@ -17868,7 +17908,7 @@
                   "type": "object",
                   "required": ["deviceCode", "userCode", "verificationUri", "interval", "expiresIn"],
                   "properties": {
-                    "deviceCode": { "pattern": "^[A-Za-z0-9_-]{43}$", "type": "string" },
+                    "deviceCode": { "pattern": "^[A-Za-z0-9_-]{43}n?$", "type": "string" },
                     "userCode": { "pattern": "^[A-Z2-7]{4}(?:-[A-Z2-7]{4}){3}$", "type": "string" },
                     "verificationUri": { "type": "string" },
                     "interval": { "minimum": 1, "maximum": 60, "type": "integer" },
@@ -17879,7 +17919,7 @@
             }
           },
           "400": {
-            "description": "invalid_request",
+            "description": "invalid_request, invalid_scope",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {

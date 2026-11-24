@@ -28,7 +28,7 @@ import type {
   OrgQuotaOverrides,
   QuotaOutcome,
 } from "@openboard/core";
-import type { PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
+import type { DeviceView, PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
 import type { BoardMessageReads, ChannelMessagesQuery, ChannelsQuery } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
 import type { Bucket, OrgLogMaintenance } from "./bucket.ts";
@@ -135,29 +135,13 @@ export interface OrgView extends RateView, OrgLogMaintenance, OrgExports {
   deleteBoard(slug: string, personId: string, at: number, admit?: () => void): Promise<DeletedBoard>;
 }
 
-interface DeviceTokenIssue {
-  readonly id: string;
-  readonly tokenHash: string;
-  readonly now: number;
-  readonly expiresAt: number;
-}
-
-type DevicePoll = { status: "missing" | "pending" | "too_soon" } | { status: "issued"; org: Named; boards: Named[] };
-
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
-export interface PlatformView extends RateView, OidcKeyStore, OperatorReads, OperatorWrites {
+export interface PlatformView extends RateView, OidcKeyStore, OperatorReads, OperatorWrites, DeviceView {
   /** At startup, enqueue board-scoped work for any rows still missing their organization. */
   queueBoardOrgBackfill(now: number, signal?: AbortSignal): Promise<void>;
   /** Maintenance scan of unpurged organization IDs with unshipped events in ascending order. */
   shippingOrgs(after: number, limit: number): Promise<number[]>;
-  /** Start a device request and prune prior expired requests using the supplied clock. */
-  startDevice(deviceHash: string, userCode: string, clientName: string, now: number, expiresAt: number): Promise<void>;
-  /** Read the display metadata of an unused, live code. */
-  previewDevice(userCode: string, now: number): Promise<{ clientName: string; expiresAt: number } | null>;
-  /** Only a current member of the named organization can approve an unused, live code. */
-  approveDevice(userCode: string, org: string, personId: string, now: number): Promise<boolean>;
-  /** Poll a device capability; consume approval and issue its token in one transaction. */
-  pollDevice(deviceHash: string, minInterval: number, issue: DeviceTokenIssue): Promise<DevicePoll>;
+  accountPersonalToken(hash: string, now: number): Promise<{ personId: string; restricted: boolean } | null>;
   /** List metadata for the person's tokens across organizations, including revocation timestamps. */
   listPersonalTokens(personId: string): Promise<PersonalToken[]>;
   /** Revoke an owned token, preserving its first revocation time. Null if the person does not own the ID. */
@@ -327,7 +311,12 @@ export interface BoardView
     tokenHash: string,
     now: number,
   ): Promise<
-    | (Pick<PersonRecord, "id" | "handle" | "name" | "avatar"> & { tokenName: string; expiresAt: number })
+    | (Pick<PersonRecord, "id" | "handle" | "name" | "avatar"> & {
+        tokenName: string;
+        expiresAt: number;
+        can?: Can;
+        boardBound?: true;
+      })
     | "inactive"
     | null
   >;

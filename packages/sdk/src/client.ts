@@ -59,8 +59,13 @@ export function requestOf(
     } else url.searchParams.set(name, String(value));
   }
   const headers: Record<string, string> = { accept: operation.responseType ?? "application/json" };
-  if ((!platformMount || operation.orgPersonalToken) && options.token)
-    headers.authorization = `Bearer ${options.token}`;
+  const token = options.token;
+  if (
+    token &&
+    (!platformMount || operation.orgPersonalToken || (operation.accountBearer && token.startsWith("obp_")))
+  ) {
+    headers.authorization = `Bearer ${token}`;
+  }
   if (!platformMount && options.profile) headers[PROFILE_HEADER] = options.profile;
   if (operation.route.method !== "GET" && options.csrf) {
     headers["x-ob-csrf"] = options.csrf;
