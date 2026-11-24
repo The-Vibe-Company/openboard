@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import budgets from "../budgets.json";
 import { compareBudgets } from "../src/compare";
 import type { ModeReport } from "../src/counters";
 
@@ -68,5 +69,16 @@ test("without latency, only the counters are held", () => {
   );
   expect(compareBudgets({ ...localReport, workloads }, { latency: false })).toEqual([
     "local postMessage (post) statements: 9 -> 10",
+  ]);
+});
+
+test("local SSE fan-out uses the measured budget and noise floor", () => {
+  const { p50Ms, p99Ms } = budgets.local.sseFanOut;
+  const sse = { tails: 50, events: 1000, p50: p50Ms, p99: p99Ms * 1.2 };
+  expect(compareBudgets({ ...localReport, sse }, all)).toEqual([]);
+
+  const over = Math.ceil(sse.p99);
+  expect(compareBudgets({ ...localReport, sse: { ...sse, p99: over } }, all)).toEqual([
+    `local SSE fan-out p99: ${over} ms exceeds budget ${p99Ms} ms by more than 20% and 1 ms`,
   ]);
 });

@@ -1,15 +1,21 @@
 import { boot, type Mode, type Server } from "./drivers";
 import { countArmedTimers } from "./timers";
 import { runMessageWorkloads, type Sizes, type WorkloadResult } from "./workloads/messages";
+import { runSseWorkload, type SseResult } from "./workloads/sse";
 
 export interface ModeReport {
   readonly mode: Mode;
   readonly workloads: readonly WorkloadResult[];
   readonly idleTimers: number;
+  readonly sse?: SseResult;
 }
 
 /** Boots `mode`, counts the timers it leaves armed once settled, then runs the workloads of `sizes` on it. */
-export async function measure(mode: Mode, sizes: Sizes): Promise<ModeReport> {
+export async function measure(
+  mode: Mode,
+  sizes: Sizes,
+  { includeSse = false }: { readonly includeSse?: boolean } = {},
+): Promise<ModeReport> {
   let server: Server | undefined;
   try {
     const idleTimers = await countArmedTimers(async () => {
@@ -18,7 +24,8 @@ export async function measure(mode: Mode, sizes: Sizes): Promise<ModeReport> {
     });
     if (!server) throw new Error(`${mode} did not boot`);
     const workloads = await runMessageWorkloads(server, sizes);
-    return { mode, workloads, idleTimers };
+    const sse = includeSse && mode === "local" ? await runSseWorkload(server) : undefined;
+    return { mode, workloads, idleTimers, sse };
   } finally {
     await server?.close();
   }
@@ -40,5 +47,12 @@ export function formatTable(report: ModeReport): string {
     return row.workload.padEnd(width) + row.operation.padEnd(width) + cells.map((c) => c.padStart(CELL)).join("");
   });
   const idle = "Timers armed when idle".padEnd(2 * width) + String(report.idleTimers).padStart(CELL);
-  return [report.mode, header, ...rows, idle].join("\n");
+  const lines = [report.mode, header, ...rows, idle];
+  if (report.sse) {
+    const { tails, events, p50, p99 } = report.sse;
+    lines.push(
+      `SSE fan-out: ${tails} tails received ${events} events each (p50 ${p50.toFixed(3)} ms, p99 ${p99.toFixed(3)} ms)`,
+    );
+  }
+  return lines.join("\n");
 }

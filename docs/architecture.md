@@ -395,6 +395,12 @@ measured by the spike): 80 to 90 MB RSS idle, about 1.1 ms per write, about
 | Fan-out of one event to 1,000 streams | ≤ 5 ms of loop time |
 | Idle CPU | 0% between timers |
 
+The local quick benchmark delivers 1,000 events to each of 50 SSE tails.
+It measures from the start of each in-process write until all tails receive
+the event. The current regression baseline is 10.721 ms p50 and 16.079 ms p99.
+It includes the write and stream reads, and is above the 5 ms fan-out target.
+A separate follow-up will optimize fan-out.
+
 ### Hosted mode (Postgres)
 
 Assumes the app and Postgres in the same region on a private network with a
