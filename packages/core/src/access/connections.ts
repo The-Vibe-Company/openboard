@@ -145,3 +145,36 @@ export function decideRevoke(
     payload: target,
   };
 }
+
+export interface AgentRevoked extends Omit<ConnectionCreated, "type" | "payload"> {
+  readonly type: "ob.agent.revoked";
+  readonly payload: { readonly connection: string; readonly agent: string };
+}
+
+/**
+ * Records revocation of one claimed agent as an internal board event: its tokens stop working from the next request
+ * and its profile is free (D50), while the connection and its other agents keep working. `agent` is the unrevoked agent
+ * read under the lock, or null; one of another connection is not found under this one.
+ */
+export function decideRevokeAgent(
+  head: number,
+  target: { readonly connection: string; readonly agent: { readonly id: string; readonly connection: string } | null },
+  { by, now }: { readonly by: Author; readonly now: number },
+): AgentRevoked {
+  const { connection, agent } = target;
+  if (agent?.connection !== connection) {
+    throw new BoardError("not_found", "no such active agent on this connection");
+  }
+  return {
+    id: head + 1,
+    type: "ob.agent.revoked",
+    at: now,
+    thread: null,
+    message: null,
+    channel: null,
+    actor: by.actor,
+    principal: by.principal,
+    visibility: 2,
+    payload: { connection, agent: agent.id },
+  };
+}

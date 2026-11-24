@@ -3,6 +3,7 @@ import {
   type claimConnection,
   type createConnection,
   type refreshAgentToken,
+  type revokeAgent,
   type revokeConnection,
 } from "@openboard/contract";
 import { agents, connections, grants, isoTime } from "@openboard/core";
@@ -153,15 +154,20 @@ export const refreshAgentTokenHandler: Handler<typeof refreshAgentToken> = async
   return { agent, token: minted.token, env };
 };
 
-export const revokeConnectionHandler: Handler<typeof revokeConnection> = async (ctx, { id }) => {
+/** Only the local owner on the local board, or a board owner or organization admin, revokes (docs/auth.md "Revoke"). */
+function requireRevoker(ctx: Parameters<Handler<typeof revokeConnection>>[0], what: string): void {
   const role = ctx.by[memberOf]?.role;
   if (ctx.by[credentialKind] === "local") {
     if (new URL(ctx.boardUrl).pathname !== "/api/local/main") {
       throw new BoardError("unauthorized", "the credential is not valid on this board");
     }
   } else if (role !== "owner" && role !== "admin") {
-    throw new BoardError("forbidden", "only a board owner or organization admin may revoke a connection");
+    throw new BoardError("forbidden", `only a board owner or organization admin may revoke ${what}`);
   }
+}
+
+export const revokeConnectionHandler: Handler<typeof revokeConnection> = async (ctx, { id }) => {
+  requireRevoker(ctx, "a connection");
   return ctx.board.write(async (writer) => {
     const record = await writer.connection(id);
     if (!record) throw new BoardError("not_found", "no such active connection on this board");
@@ -173,5 +179,19 @@ export const revokeConnectionHandler: Handler<typeof revokeConnection> = async (
     );
     await writer.append([event]);
     return { id, revokedAt: isoTime(now) };
+  });
+};
+
+/** Revokes one agent of the connection: its tokens answer 401 from the next request, its siblings keep working. */
+export const revokeAgentHandler: Handler<typeof revokeAgent> = async (ctx, { id, agent }) => {
+  requireRevoker(ctx, "an agent");
+  return ctx.board.write(async (writer) => {
+    const record = await writer.agent(agent);
+    const now = ctx.now();
+    const target = record && { id: record.agent.id, connection: record.connection.id };
+    await writer.append([
+      connections.decideRevokeAgent(writer.head, { connection: id, agent: target }, { by: ctx.by, now }),
+    ]);
+    return { id: agent, connection: id, revokedAt: isoTime(now) };
   });
 };

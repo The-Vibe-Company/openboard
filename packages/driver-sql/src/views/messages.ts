@@ -10,6 +10,7 @@ import { findChannel, foldChannelCreated } from "./channels.ts";
 import {
   connectionNamed,
   findConnection,
+  foldAgentRevoked,
   foldConnectionCreated,
   foldConnectionRevoked,
   nextGrant,
@@ -138,6 +139,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   else if (event.type === "actor.seen") await foldActorSeen(tx, dialect, keys, event);
   else if (event.type === "ob.agent.claimed") await foldAgentClaimed(tx, dialect, keys, event);
   else if (event.type === "ob.agent.refreshed") await foldAgentRefreshed(tx, dialect, keys, event);
+  else if (event.type === "ob.agent.revoked") await foldAgentRevoked(tx, dialect, keys, event);
   else if (event.type === "message.edited") {
     const { text, view } = event.payload;
     await query(tx, dialect, messageStatements.editMessage, {
