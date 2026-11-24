@@ -334,3 +334,52 @@ test.each([
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test("ob tasks claim --next sends every label as a separate thread-style filter", async () => {
+  const home = mkdtempSync(join(tmpdir(), "ob-claim-next-"));
+  try {
+    const fetch = async (request: Request) => {
+      expect(`${request.method} ${request.url}`).toBe(`POST ${ENV.BOARD_URL}/tasks/claim`);
+      expect(await request.json()).toEqual({ channel: "dev", label: ["repo", "step=fix|review"] });
+      return Response.json({ task: null });
+    };
+    const lines: string[] = [];
+    const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+    const args = ["tasks", "claim", "--next", "--label", "repo", "--channel", "dev", "--label", "step=fix|review"];
+    expect(await runCli(args, { ...ENV, HOME: home }, { fetch, output })).toBe(0);
+    expect(lines).toEqual(["no ready task in dev"]);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("ob tasks claim keeps polling until its wait budget runs out without holding the claim storage lock", async () => {
+  const home = mkdtempSync(join(tmpdir(), "ob-claim-wait-"));
+  try {
+    let now = 0;
+    const holds: number[] = [];
+    const fetch = async (request: Request) => {
+      const body = (await request.json()) as { channel: string; wait: number };
+      expect(body.channel).toBe("dev");
+      holds.push(body.wait);
+      // A separate command can use the same claims file while this fetch is pending.
+      await withClaimStorage(home, async () => ({ result: undefined }));
+      now += Math.min(100_000, body.wait * 1000);
+      return Response.json({ task: null });
+    };
+    const lines: string[] = [];
+    const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+    const timeouts: number[] = [];
+    const timeoutSignal = (ms: number) => {
+      timeouts.push(ms);
+      return new AbortController().signal;
+    };
+    const args = ["tasks", "claim", "--next", "--channel", "dev", "--wait", "210"];
+    expect(await runCli(args, { ...ENV, HOME: home }, { fetch, now: () => now, output, timeoutSignal })).toBe(0);
+    expect(holds).toEqual([120, 110, 10]);
+    expect(timeouts).toEqual([121_000, 111_000, 11_000]);
+    expect(lines).toEqual(["no ready task in dev"]);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});

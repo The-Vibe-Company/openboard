@@ -1650,6 +1650,29 @@
                     "maximum": 3600,
                     "description": "Lease in seconds, default 900.",
                     "type": "integer"
+                  },
+                  "wait": {
+                    "minimum": 0,
+                    "maximum": 300,
+                    "description": "Wait for a ready task in seconds. The server may return early and waits at most 120 seconds.",
+                    "type": "number"
+                  },
+                  "label": {
+                    "description": "Repeatable root label filter: key for presence, key=a|b for either value; all filters must match.",
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "patternProperties": {
+                          "^[a-z0-9][a-z0-9_.-]{0,63}$": {
+                            "maxLength": 256,
+                            "pattern": "^(?:[^\\u0000\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+                            "type": "string"
+                          }
+                        }
+                      },
+                      { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } }
+                    ]
                   }
                 }
               }

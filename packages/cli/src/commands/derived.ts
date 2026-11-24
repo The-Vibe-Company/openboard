@@ -31,6 +31,7 @@ function fieldsOf(operation: Contracted): Map<string, { schema: Field; required:
 
 /** An option's text as its field takes it: a plain decimal for an integer field, the text otherwise. */
 function optionValue(field: Field, text: string): unknown {
+  if (field.type === "number" && /^(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)$/.test(text)) return Number(text);
   return field.type === "integer" && /^(?:0|[1-9]\d{0,15})$/.test(text) ? Number(text) : text;
 }
 
@@ -153,6 +154,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   const { command, args, alternative, options: renamed = {}, nullEntryOptions = {} } = operation.cli;
   const nullEntries = new Map(Object.entries(nullEntryOptions));
   const fields = fieldsOf(operation);
+  if (operation.name === "claimNextTask") fields.set("label", { schema: { type: "array" }, required: false });
   if (operation.name === "createTask") fields.set("for", { schema: { type: "string" }, required: false });
   // A field's flag is its own name unless the contract gives it upstream's: `--idempotency-key` for `id`.
   const flags = new Map<string, string>();
@@ -163,7 +165,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     if (schema.type === "boolean" && renamed[name] !== undefined) {
       flags.set(flag, name);
       options.push(`[--${flag}]`);
-    } else if (schema.type === "string" || schema.type === "integer") {
+    } else if (schema.type === "string" || schema.type === "integer" || schema.type === "number") {
       flags.set(flag, name);
       const option = `--${flag} <${flag}>`;
       options.push(policy ? option : `[${option}]`);
@@ -182,7 +184,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   }
   const usage =
     operation.name === "claimNextTask"
-      ? "ob tasks claim [--next] --channel <channel> [--lease <lease>]"
+      ? "ob tasks claim [--next] --channel <channel> [--lease <lease>] [--label <label>]... [--wait <seconds>]"
       : commandUsage(command, args, fields, options, alternative);
   if (operation.name === "claimNextTask") {
     fields.set("next", { schema: { type: "boolean" }, required: false });
@@ -255,7 +257,12 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
   }
   if (name === "claimNextTask") {
     if (!input.channel) throw new Misuse("--channel is required to claim the next task");
-    return runClaimNext(ctx, { channel: String(input.channel), lease: input.lease as number | undefined });
+    return runClaimNext(ctx, {
+      channel: String(input.channel),
+      lease: input.lease as number | undefined,
+      label: input.label as string[] | undefined,
+      wait: input.wait as number | undefined,
+    });
   }
   if (name === "claimTask" || name === "createTask") {
     const invoke = ctx.client[name] as (
@@ -341,6 +348,8 @@ export const derivedCommands: readonly Command[] = operations.flatMap((operation
     const next = derive({ ...claimNextTask, cli: claimNextTask.cli || operation.cli });
     const fields = fieldsOf(claimNextTask);
     const flags = new Map([
+      ["label", "label"],
+      ["wait", "wait"],
       ["lease", "lease"],
       ["channel", "channel"],
     ]);

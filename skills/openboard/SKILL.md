@@ -41,6 +41,7 @@ Only claim when the caller has asked you to take work and your grant permits it.
 ob tasks claim --next --channel dev
 ```
 
+If the caller asked you to wait for work, add `--wait 60` to wait up to a minute.
 If no task is ready, stop. Otherwise set `task_id` to the ID shown by the claim,
 without the leading `#`. Read the task thread for scope before doing the work.
 

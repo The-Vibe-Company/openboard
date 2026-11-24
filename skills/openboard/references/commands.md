@@ -581,7 +581,7 @@ Claim a ready task with a lease.
 
 ```sh
 ob tasks claim <id> [--lease <lease>]
-ob tasks claim [--next] --channel <channel> [--lease <lease>]
+ob tasks claim [--next] --channel <channel> [--lease <lease>] [--label <label>]... [--wait <seconds>]
 ```
 
 Arguments:
@@ -593,6 +593,8 @@ Options:
 - `--lease`: Lease in seconds, default 900.
 - `--next`: Claim the next ready task in --channel.
 - `--channel`: A channel by its whole name, or `dev/` for `dev` and every channel under it.
+- `--label`: Repeatable root label filter: key for presence, key=a|b for either value; all filters must match.
+- `--wait`: Wait for a ready task in seconds. The server may return early and waits at most 120 seconds.
 
 Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: task_assigned`, `error: task_blocked`, `error: task_claimed`, `error: task_finished`, `error: task_waiting`, `error: unauthorized`, `error: unreachable`.
 

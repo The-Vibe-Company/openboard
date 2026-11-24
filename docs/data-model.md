@@ -702,7 +702,8 @@ byte.
   or by a principal in `from`, in the channel or subtree, with labels
   (upstream, `03-http.md`, "Tasks"). With `wait`, the request parks on the
   board tail and retries on `task.created|ready|released|expired|reopened|unblocked`
-  in that subtree, whichever instance wrote it.
+  in that subtree, whichever instance wrote it. Label and assignment changes also
+  trigger a retry because they can make a ready task eligible.
 - **Leases:** claims and renewals grant the requested 30 to 3600 s (400 outside),
   or 900 s if omitted. Both set `claim_until = tx.now + lease`.
   Instance clocks must be NTP-synced; skew of a

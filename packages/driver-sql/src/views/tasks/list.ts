@@ -15,6 +15,17 @@ const filterValues: Fragment = {
   fragment: ({ name }) =>
     name === "sqlite" ? "json_each(filter.value -> 1)" : "jsonb_array_elements_text(filter.value -> 1)",
 };
+export const TASK_LABELS: Fragment = { fragment: () => "" };
+export const matchesTaskLabels = sql`NOT EXISTS (
+    SELECT 1 FROM (SELECT CAST(${"labels"} AS TEXT) AS data) AS filters CROSS JOIN ${filterRows} AS filter
+    LEFT JOIN ${rootLabels} AS root_label ON root_label.key = filter.value ->> 0
+    WHERE root.board_id = ${"boardId"} AND (root_label.key IS NULL OR (
+      filter.value -> 1 IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM ${filterValues} AS allowed WHERE root.board_id = ${"boardId"} AND allowed.value = root_label.value
+      )
+    ))
+  )`;
+
 /** Case-sensitive substring position on both engines. */
 const position: Fragment = { fragment: ({ name }) => (name === "sqlite" ? "instr" : "strpos") };
 
@@ -42,8 +53,7 @@ function taskList(
 ) {
   const selectOrder: Fragment = { fragment: () => (latest ? "root.active DESC, t.id DESC" : "t.id") };
   const resultOrder: Fragment = { fragment: () => (latest ? "page.active, page.id" : "page.id") };
-  const list = sql`WITH filters AS (SELECT CAST(${"labels"} AS TEXT) AS data),
-    page AS (
+  const list = sql`WITH page AS (
       SELECT t.board_id, t.id, root.active, root.view, root.replies, root.last_reply
       FROM tasks AS t JOIN messages AS root ON root.board_id = t.board_id AND root.id = t.id
       WHERE t.board_id = ${"boardId"} AND ${CHANNELS} AND t.id > CAST(${"after"} AS BIGINT)
@@ -62,15 +72,7 @@ function taskList(
           SELECT 1 FROM actors AS writer WHERE writer.board_id = ${"boardId"} AND lower(writer.handle) = ${"authorHandle"}
             AND (writer.id = root.actor OR (writer.kind = 'person' AND writer.id = root.principal))
         ))
-        AND NOT EXISTS (
-          SELECT 1 FROM filters CROSS JOIN ${filterRows} AS filter
-          LEFT JOIN ${rootLabels} AS root_label ON root_label.key = filter.value ->> 0
-          WHERE root.board_id = ${"boardId"} AND (root_label.key IS NULL OR (
-            filter.value -> 1 IS NOT NULL AND NOT EXISTS (
-              SELECT 1 FROM ${filterValues} AS allowed WHERE root.board_id = ${"boardId"} AND allowed.value = root_label.value
-            )
-          ))
-        )
+        AND ${TASK_LABELS}
       ORDER BY ${selectOrder} LIMIT CAST(${"limit"} AS BIGINT)
     )
     SELECT boards.head, page.id, page.view, page.replies, reply.view AS last_view
@@ -78,7 +80,7 @@ function taskList(
     LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = page.last_reply
     WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"}
     ORDER BY ${resultOrder}`;
-  return splice(splice(list, CHANNELS, channels), PREREQUISITE, prerequisite);
+  return splice(splice(splice(list, CHANNELS, channels), PREREQUISITE, prerequisite), TASK_LABELS, matchesTaskLabels);
 }
 
 export const taskListStatements = {

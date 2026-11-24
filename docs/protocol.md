@@ -444,8 +444,18 @@ and the MCP tool `list_tasks`.
 `POST /tasks/claim` takes a `channel` and optional `lease`. It claims the oldest ready task assigned
 to the caller’s actor, or the oldest unassigned ready task owned by the caller’s principal.
 A trailing slash includes the named channel and its descendants and requires `label` throughout.
+The optional upstream `label` map, such as `{"step":"review"}`, requires every exact value on
+the task root. OpenBoard also accepts an array of thread-style filters, such as
+`["step=fix|review","repo"]`. A bare key checks presence, a pipe separates alternatives,
+and every filter must match. Pass each filter with a separate `--label` option.
 The response is `{ task, claim }`, or `{ task: null }` when no task qualifies. Use
 `ob tasks claim --next --channel dev` or `ob tasks claim --channel dev`.
+The optional `wait` is 0–300 seconds, including fractions. When the queue is
+empty, the request waits for task availability events in the channel or subtree.
+Each HTTP request holds for at most 120 seconds, and a draining instance returns
+`{ task: null }` to parked claims. The CLI repeats empty responses within its
+remaining budget when invoked with `--wait <seconds>`. MCP calls hold for at
+most 25 seconds.
 
 `POST /tasks/:id/claim` takes an optional `lease` in seconds (30–3600, default 900).
 It requires `label` in the task's channel and answers

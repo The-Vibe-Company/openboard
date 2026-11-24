@@ -1,4 +1,5 @@
 import process from "node:process";
+import { setTimeout } from "node:timers/promises";
 import { BoardError, type ClientOptions, createClient, tail } from "@the-vibe-company/openboard";
 import { Misuse, type StandaloneContext } from "./commands/index.ts";
 import { type AnyCommand, commands } from "./commands/usage.ts";
@@ -96,6 +97,7 @@ export async function runCli(
       boardUrl: config.boardUrl,
       home: env.HOME,
       now: options.now ?? Date.now,
+      wait: options.wait ?? setTimeout,
       timeoutSignal: options.timeoutSignal ?? AbortSignal.timeout,
     });
   } catch (error) {
