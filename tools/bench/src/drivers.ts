@@ -4,10 +4,10 @@ import { sqliteDriver, statementCounter } from "@openboard/driver-sqlite";
 import { type App, createApp, type Deps, mintLocalOwnerToken, type ServerConfig } from "@openboard/server";
 import { fakeGitHub, hostedBoard, hostedConfig } from "./hosted";
 
-/** One server instance and the statement counter of its store. */
+/** One server instance and the database counters of its store. */
 export interface Instance {
   readonly app: App;
-  readonly statements: { readonly statements: number };
+  readonly counters: { readonly statements: number; readonly roundTrips: number };
 }
 
 export type Mode = "local" | "hosted";
@@ -46,9 +46,9 @@ function bootLocal() {
     localOwner: "ob:user:local-tools",
     localOwnerTokenHash: owner.hash,
   };
-  const statements = statementCounter();
-  const app = createApp(config, { store: sqliteDriver({ memory: true }, Date.now, statements) }, deps());
-  return { instances: [{ app, statements }], board: { url: `${ORIGIN}/api/local/main`, token: owner.token } };
+  const counters = Object.assign(statementCounter(), { roundTrips: 0 });
+  const app = createApp(config, { store: sqliteDriver({ memory: true }, Date.now, counters) }, deps());
+  return { instances: [{ app, counters }], board: { url: `${ORIGIN}/api/local/main`, token: owner.token } };
 }
 
 /**
@@ -67,8 +67,8 @@ async function bootHosted(cleanup: (() => Promise<void>)[]) {
   const config = { mode: "hosted", publicUrl: ORIGIN, localOwner: "ob:user:local-tools", ...hostedConfig } as const;
   const instances: Instance[] = [];
   for (let at = 0; at < 2; at++) {
-    const statements = postgresCounter();
-    const store = await postgresDriver({ url: database.url }, Date.now, statements);
+    const counters = postgresCounter();
+    const store = await postgresDriver({ url: database.url }, Date.now, counters);
     let app: App;
     try {
       app = createApp(config, { store }, deps());
@@ -78,7 +78,7 @@ async function bootHosted(cleanup: (() => Promise<void>)[]) {
     }
     // Closing the app closes its store.
     cleanup.push(() => app.close());
-    instances.push({ app, statements });
+    instances.push({ app, counters });
   }
   const [first] = instances;
   if (!first) throw new Error("hosted mode booted no instance");

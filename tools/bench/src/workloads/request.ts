@@ -6,10 +6,11 @@ export interface Board {
   readonly token: string;
 }
 
-/** What one request cost: its time through the in-process handler and the statements its store ran. */
+/** Request latency and database counters. Round trips are measured only for Postgres. */
 export interface Cost {
   readonly ms: number;
   readonly statements: number;
+  readonly roundTrips: number;
 }
 
 /**
@@ -25,7 +26,9 @@ export async function send(
   if (request.body !== undefined) headers["content-type"] = "application/json";
   const init: RequestInit = { method: request.method, headers };
   if (request.body !== undefined) init.body = JSON.stringify(request.body);
-  const before = instance.statements.statements;
+  const { counters } = instance;
+  const statementsBefore = counters.statements;
+  const roundTripsBefore = counters.roundTrips;
   const started = performance.now();
   const response = await instance.app.fetch(new Request(`${board.url}${request.path}`, init));
   const body: unknown = await response.json();
@@ -33,7 +36,14 @@ export async function send(
   if (response.status !== request.expected) {
     throw new Error(`${request.method} ${request.path} answered ${response.status}, not ${request.expected}`);
   }
-  return { cost: { ms, statements: instance.statements.statements - before }, body };
+  return {
+    cost: {
+      ms,
+      statements: counters.statements - statementsBefore,
+      roundTrips: counters.roundTrips - roundTripsBefore,
+    },
+    body,
+  };
 }
 
 /** The nearest-rank percentile `p` (0 to 100) of `values`, which must not be empty. */

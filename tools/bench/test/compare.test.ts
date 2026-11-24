@@ -7,9 +7,9 @@ const localReport: ModeReport = {
   mode: "local",
   idleTimers: 0,
   workloads: [
-    { workload: "post", operation: "postMessage", runs: 1, statements: 9, p50: 0.1, p99: 0.2 },
-    { workload: "reply", operation: "postMessage", runs: 1, statements: 11, p50: 0.1, p99: 0.2 },
-    { workload: "channelRead", operation: "listMessages", runs: 1, statements: 2, p50: 0.1, p99: 0.2 },
+    { workload: "post", operation: "postMessage", runs: 1, statements: 9, roundTrips: 0, p50: 0.1, p99: 0.2 },
+    { workload: "reply", operation: "postMessage", runs: 1, statements: 11, roundTrips: 0, p50: 0.1, p99: 0.2 },
+    { workload: "channelRead", operation: "listMessages", runs: 1, statements: 2, roundTrips: 0, p50: 0.1, p99: 0.2 },
   ],
 };
 
@@ -32,8 +32,14 @@ test("an idle timer increase identifies both counts", () => {
 
 test("hosted is held to its own budget", () => {
   const hosted = { post: 11, reply: 15, channelRead: 4 };
-  const workloads = localReport.workloads.map((row) => ({ ...row, statements: hosted[row.workload] }));
+  const trips = { post: 12, reply: 14, channelRead: 4 };
+  const workloads = localReport.workloads.map((row) => ({
+    ...row,
+    statements: hosted[row.workload],
+    roundTrips: trips[row.workload],
+  }));
   expect(compareBudgets({ mode: "hosted", workloads, idleTimers: 1 }, all)).toEqual([
+    "hosted postMessage (post) round trips: 11 -> 12",
     "hosted postMessage (reply) statements: 14 -> 15",
     "hosted timers armed when idle: 0 -> 1",
   ]);

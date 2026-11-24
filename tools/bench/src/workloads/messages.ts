@@ -14,12 +14,13 @@ export const quickSizes: Sizes = { posts: 500, replies: 500, reads: 100 };
 
 export type WorkloadName = "post" | "reply" | "channelRead";
 
-/** One workload's result: statements are the most any single run took (exact), times are in milliseconds. */
+/** One workload's result: counters are the most any single run took (exact), times are in milliseconds. */
 export interface WorkloadResult {
   readonly workload: WorkloadName;
   readonly operation: string;
   readonly runs: number;
   readonly statements: number;
+  readonly roundTrips: number;
   readonly p50: number;
   readonly p99: number;
 }
@@ -36,6 +37,7 @@ function summarize(workload: WorkloadName, operation: string, costs: readonly Co
     operation,
     runs: costs.length,
     statements: Math.max(...costs.map(({ statements }) => statements)),
+    roundTrips: Math.max(...costs.map(({ roundTrips }) => roundTrips)),
     p50: percentile(times, 50),
     p99: percentile(times, 99),
   };

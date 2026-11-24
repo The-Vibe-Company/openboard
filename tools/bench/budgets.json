@@ -14,6 +14,7 @@
   "hosted": {
     "counters": {
       "statements": { "post": 11, "reply": 14, "channelRead": 4 },
+      "roundTrips": { "post": 11, "reply": 14, "channelRead": 4 },
       "idleTimers": 0
     },
     "measured": {

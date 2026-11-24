@@ -64,13 +64,13 @@ test.skipIf(!postgres)("hosted runs the workloads on two instances sharing one P
   try {
     expect(server.instances).toHaveLength(2);
     const workloads = await runMessageWorkloads(server, sizes);
-    expect(workloads.map(({ workload, statements }) => [workload, statements])).toEqual([
-      ["post", 11],
-      ["reply", 14],
-      ["channelRead", 4],
+    expect(workloads.map(({ workload, statements, roundTrips }) => [workload, statements, roundTrips])).toEqual([
+      ["post", 11, 11],
+      ["reply", 14, 14],
+      ["channelRead", 4, 4],
     ]);
     // Every request went through the instances in turn, and each one's store sent its own statements.
-    for (const { statements } of server.instances) expect(statements.statements).toBeGreaterThan(0);
+    for (const { counters } of server.instances) expect(counters.roundTrips).toBeGreaterThan(0);
   } finally {
     await server.close();
   }

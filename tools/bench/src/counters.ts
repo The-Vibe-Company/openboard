@@ -31,19 +31,23 @@ export async function measure(
   }
 }
 
-const COLUMNS = ["Runs", "Statements", "p50 ms", "p99 ms"];
 const CELL = 12;
 
-/** Renders one mode's table: one row per workload with its operation, statements per request and latency. */
+/** Renders one mode's table: one row per workload with its operation, database counters per request and latency. */
 export function formatTable(report: ModeReport): string {
   const width = Math.max(
     16,
     ...report.workloads.map(({ workload }) => workload.length + 2),
     ...report.workloads.map(({ operation }) => operation.length + 2),
   );
-  const header = "Workload".padEnd(width) + "Operation".padEnd(width) + COLUMNS.map((c) => c.padStart(CELL)).join("");
+  const columns = ["Runs", "Statements"];
+  if (report.mode === "hosted") columns.push("Round trips");
+  columns.push("p50 ms", "p99 ms");
+  const header = "Workload".padEnd(width) + "Operation".padEnd(width) + columns.map((c) => c.padStart(CELL)).join("");
   const rows = report.workloads.map((row) => {
-    const cells = [String(row.runs), String(row.statements), row.p50.toFixed(3), row.p99.toFixed(3)];
+    const cells = [String(row.runs), String(row.statements)];
+    if (report.mode === "hosted") cells.push(String(row.roundTrips));
+    cells.push(row.p50.toFixed(3), row.p99.toFixed(3));
     return row.workload.padEnd(width) + row.operation.padEnd(width) + cells.map((c) => c.padStart(CELL)).join("");
   });
   const idle = "Timers armed when idle".padEnd(2 * width) + String(report.idleTimers).padStart(CELL);

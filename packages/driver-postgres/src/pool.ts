@@ -64,29 +64,47 @@ async function guarded<T>(run: () => Promise<T>): Promise<T> {
 
 /**
  * Runs the shared registry's positional queries on the pool or its reserved transaction connection. `counter`, when
- * given, counts every statement sent: each query, and a transaction's `BEGIN` and its `COMMIT` or `ROLLBACK`.
+ * given, counts every statement and wait, including transaction control.
  */
 export function connection(sql: SQL, counter?: StatementCounter): Db {
   const run = (session: SQL, text: string, values: readonly unknown[]) => {
-    counter?.count();
     return session.unsafe<Row[]>(text, [...values]);
   };
   return {
-    query: (text, values) => guarded(() => run(sql, text, values)),
+    query: (text, values) =>
+      guarded(() => {
+        counter?.count(true);
+        return run(sql, text, values);
+      }),
     transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T> {
       return guarded(async () => {
         const result = await sql.begin(async (session) => {
-          counter?.count(); // BEGIN, sent before this callback runs.
+          counter?.count(true); // BEGIN, sent before this callback runs.
+          let batchOpen = false;
           const tx: Db = {
-            query: async (text, values) => run(session, text, values),
+            query: async (text, values) => {
+              if (counter) {
+                // Bun serializes simple queries and queries with preparation disabled. Prepared queries
+                // submitted together can share a pipeline once prepared on this connection.
+                const pipelinable = sql.options.prepare !== false && values.length > 0;
+                counter.count(!pipelinable || !batchOpen);
+                if (pipelinable && !batchOpen) {
+                  queueMicrotask(() => {
+                    batchOpen = false;
+                  });
+                }
+                batchOpen = pipelinable;
+              }
+              return run(session, text, values);
+            },
             transaction: () => Promise.reject(new Error("a board write does not nest")),
           };
           try {
             const value = await fn(tx);
-            counter?.count(); // COMMIT, sent once this callback returns.
+            counter?.count(true); // COMMIT, sent once this callback returns.
             return { value };
           } catch (error) {
-            counter?.count(); // ROLLBACK, sent once this callback throws.
+            counter?.count(true); // ROLLBACK, sent once this callback throws.
             throw error;
           }
         });
