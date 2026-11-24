@@ -10,3 +10,9 @@ export function postgresTestUrl(): string | undefined {
   if (!url) throw new Error("OPENBOARD_TEST_DATABASE_URL is required for Postgres tests");
   return url;
 }
+
+/** The full two-instance webhook workload runs in Nightly. */
+export function webhookStressEnabled(): boolean {
+  // oxlint-disable-next-line no-restricted-properties -- test support env reader, docs/codebase.md 6.1
+  return process.env.OPENBOARD_TEST_WEBHOOK_STRESS === "1";
+}

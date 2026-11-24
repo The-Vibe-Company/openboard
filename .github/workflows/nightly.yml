@@ -122,6 +122,12 @@ jobs:
           name: bench-hosted-${{ github.run_attempt }}
           path: bench-hosted.json
           if-no-files-found: error
+      - name: Stress two-instance webhook delivery
+        if: ${{ !cancelled() && steps.bench-install.outcome == 'success' }}
+        env:
+          OPENBOARD_TEST_DRIVER: postgres
+          OPENBOARD_TEST_WEBHOOK_STRESS: "1"
+        run: bun test packages/server/test/ha/webhooks.test.ts
       - *report-failure
 
   flake-check:
