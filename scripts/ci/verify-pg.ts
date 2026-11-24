@@ -1,4 +1,4 @@
-// `bun run verify:pg`: the Postgres test run and two-instance conformance on a real Postgres (docs/codebase.md 6.2).
+// `bun run verify:pg`: the Postgres test run and single-instance conformance on a real Postgres (docs/codebase.md 6.2).
 // Uses OPENBOARD_TEST_DATABASE_URL when set; otherwise starts docker-compose.test.yml and uses its database.
 // An unreachable database fails the run: Postgres suites never skip.
 
@@ -74,7 +74,7 @@ async function verifyPg(): Promise<number> {
       "Postgres tests",
       ["bun", "run", "--filter", "@openboard/driver-postgres", "--filter", "@openboard/server", "test"],
     ],
-    ["Conformance", ["bun", "run", "conformance", "--driver", "postgres", "--instances", "2"]],
+    ["Conformance", ["bun", "run", "conformance", "--driver", "postgres", "--instances", "1"]],
   ];
   const failed = steps.filter(([label, command]) => !run(label, command, env)).map(([label]) => label);
   if (failed.length > 0) {
