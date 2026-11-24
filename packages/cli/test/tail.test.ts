@@ -52,6 +52,31 @@ test("ob tail <channel> prints each new post as it lands until Ctrl-C, then exit
   ]);
 });
 
+test("ob tail exits 130 when Ctrl-C arrives while the stream is open and quiet", async () => {
+  const interrupt = new AbortController();
+  const lines = { out: [] as string[], err: [] as string[] };
+  let opened: () => void = () => {};
+  const streaming = new Promise<void>((resolve) => {
+    opened = resolve;
+  });
+  const fetch = async (request: Request) => {
+    if (request.headers.get("last-event-id") === null) return Response.json({ events: [], cursor: "3" });
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        request.signal.addEventListener("abort", () => controller.error(request.signal.reason), { once: true });
+        opened();
+      },
+    });
+    return new Response(body, { headers: { "content-type": "text/event-stream" } });
+  };
+  const output = { out: (line: string) => lines.out.push(line), err: (line: string) => lines.err.push(line) };
+  const code = runCli(["tail", "dev"], env, { fetch, output, interrupt: interrupt.signal });
+  await streaming;
+  interrupt.abort();
+  expect(await code).toBe(130);
+  expect(lines).toEqual({ out: [], err: [] });
+});
+
 test("ob tail <channel> --last 3 prints the three newest events first, oldest first", async () => {
   const page = { events: [event("2", "a"), event("3", "b", "message.edited"), event("4", "c")], cursor: "4" };
   const { code, printed, requests } = run(["dev", "--last", "3"], [Response.json(page)], 3);

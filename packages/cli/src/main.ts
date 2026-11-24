@@ -61,10 +61,11 @@ function usage(output: Output, problem: string): number {
 }
 
 /** A signal aborted by the process's next SIGINT, so a command that runs until Ctrl-C can end and exit 130. */
-function nextSigint(): AbortSignal {
+function nextSigint(): { signal: AbortSignal; release(): void } {
   const controller = new AbortController();
-  process.once("SIGINT", () => controller.abort());
-  return controller.signal;
+  const abort = () => controller.abort();
+  process.once("SIGINT", abort);
+  return { signal: controller.signal, release: () => process.off("SIGINT", abort) };
 }
 
 /** `--as <name>` before `--`, upstream's way to pick a profile on every command; the flags without it. */
@@ -120,7 +121,7 @@ export async function runCli(
       ...context,
       client: createClient(connection),
       tail: (input) => tail({ ...input, ...connection }),
-      interrupt: () => options.interrupt ?? nextSigint(),
+      interrupt: () => (options.interrupt ? { signal: options.interrupt, release: () => {} } : nextSigint()),
       boardUrl: config.boardUrl,
       now: options.now ?? Date.now,
       timeoutSignal: options.timeoutSignal ?? AbortSignal.timeout,

@@ -13,8 +13,8 @@ export interface CommandContext {
   readonly tail: (
     input: Omit<TailOptions, "url" | "token" | "csrf" | "profile" | "fetch">,
   ) => AsyncIterable<BoardEvent>;
-  /** A signal aborted when the person presses Ctrl-C; only a command that runs until interrupted asks for it. */
-  readonly interrupt: () => AbortSignal;
+  /** A signal aborted when the person presses Ctrl-C, and `release` to stop listening; only a command that runs until interrupted asks for it. */
+  readonly interrupt: () => { readonly signal: AbortSignal; release(): void };
   readonly args: readonly string[];
   /** The explicit `--as` override. */
   readonly profile: string | undefined;

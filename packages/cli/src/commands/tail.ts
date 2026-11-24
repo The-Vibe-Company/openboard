@@ -40,11 +40,15 @@ export const tailCommand: Command = {
   usage: "ob tail <channel> [--last <n>]",
   async run(ctx) {
     const { channel, last } = parse(ctx);
-    const signal = ctx.interrupt();
-    for await (const event of ctx.tail({ channel, ...(last === undefined ? {} : { last }), signal })) {
-      const line = ctx.json ? JSON.stringify(event) : eventLine(event);
-      if (line !== undefined) ctx.output.out(line);
+    const { signal, release } = ctx.interrupt();
+    try {
+      for await (const event of ctx.tail({ channel, ...(last === undefined ? {} : { last }), signal })) {
+        const line = ctx.json ? JSON.stringify(event) : eventLine(event);
+        if (line !== undefined) ctx.output.out(line);
+      }
+      return signal.aborted ? 130 : 0;
+    } finally {
+      release();
     }
-    return signal.aborted ? 130 : 0;
   },
 };

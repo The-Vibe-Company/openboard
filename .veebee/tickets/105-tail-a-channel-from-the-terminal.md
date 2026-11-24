@@ -6,11 +6,12 @@ package: cli
 writes:
   - packages/cli/src/commands/tail.ts
   - packages/cli/src/commands/index.ts
+  - packages/cli/src/main.ts
   - packages/cli/test/tail.test.ts
 conformance: []
 modes: [local]
 depends_on: [104]
-status: claimed
+status: done
 claimed_by: claude-opus-5.5-t105
 issue: 105
 ---
