@@ -97,7 +97,7 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
       { ...audit(ctx, writer.head + 1, now), type: "ob.webhook.created", payload: { webhook, secretId, directory } },
     ]);
   });
-  return { webhook, secret };
+  return signing.secret === undefined ? { webhook, secret } : { webhook };
 };
 
 export const listWebhooksHandler: Handler<typeof listWebhooks> = async (ctx) => ({

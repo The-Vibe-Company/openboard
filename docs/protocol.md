@@ -698,10 +698,15 @@ POST {BOARD_URL}/x/webhooks
 In the web UI, open `/:org/:board/settings/webhooks` to create a subscription,
 copy its signing secret once, see whether it is enabled, or delete it.
 
-Create shows the signing secret once. Use
+Create returns a generated signing secret once. Use
 `ob webhooks create --file dev-ready.json --secret-file hook.secret` to keep it
-in a private file. Until hosted target validation ships, local mode accepts
-loopback HTTP or HTTPS URLs and hosted mode returns `invalid_url`.
+in a private file or read a receiver-chosen secret from an existing file.
+Create omits `secret` when the caller supplies it. The `github` preset
+requires a nonempty secret and uses its UTF-8 bytes as the HMAC key. The CLI
+reads that preset's secret file verbatim, including trailing newlines. A missing
+GitHub secret or an unsupported signing preset returns 400 `invalid_signing`.
+Until hosted target validation ships, local mode accepts loopback HTTP or
+HTTPS URLs and hosted mode returns `invalid_url`.
 A completed attempt records a terminal result in this first implementation.
 Deleting a subscription prevents new attempts. An attempt already claimed by
 a dispatcher may finish.

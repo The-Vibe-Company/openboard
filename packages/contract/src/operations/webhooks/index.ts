@@ -14,10 +14,10 @@ const params = Type.Object({ id: Ref("webhook") });
 export const createWebhook = defineOperation({
   ...common,
   name: "createWebhook",
-  summary: "Subscribe to board events and return the signing secret once.",
+  summary: "Subscribe to board events and return a generated signing secret once.",
   route: { method: "POST", path: "/x/webhooks" },
   input: { body: WebhookSpec },
-  output: Type.Object({ webhook: Webhook, secret: Type.String() }),
+  output: Type.Object({ webhook: Webhook, secret: Type.Optional(Type.String()) }),
   status: 201,
   errors: [
     "forbidden",
