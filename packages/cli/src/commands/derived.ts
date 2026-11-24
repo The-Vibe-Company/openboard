@@ -129,6 +129,22 @@ function inputOf(
   return input;
 }
 
+function commandUsage(
+  command: readonly string[],
+  args: readonly string[],
+  fields: ReturnType<typeof fieldsOf>,
+  options: string[],
+  alternative?: readonly string[],
+) {
+  const needed = requiredPositionals(args, fields);
+  const shown = args.map((arg, at) => (at < needed ? `<${arg}>` : `[${arg}]`));
+  if (takesEntries(args, fields)) shown[shown.length - 1] = needed === args.length ? "<k=v>..." : "[k=v]...";
+  // Two forms each take all their arguments: `(<channel> <text> | <re>)`.
+  const forms = [args, alternative ?? []].map((form) => form.map((arg) => `<${arg}>`).join(" "));
+  if (alternative !== undefined) shown.splice(0, shown.length, `(${forms.join(" | ")})`);
+  return `ob ${[...command, ...shown, ...options].join(" ")}`;
+}
+
 /** `ob <command…> <args…> [--option value]`, one per operation with a `cli` block. */
 function derive(operation: Contracted & { cli: CliSpec }): Command {
   const policy = operation.name === "getConnectionPolicy";
@@ -161,18 +177,17 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     flags.set(flag, name);
     options.push(`[--${flag} <key>]...`);
   }
-  const needed = requiredPositionals(args, fields);
-  const shown = args.map((arg, at) => (at < needed ? `<${arg}>` : `[${arg}]`));
-  if (takesEntries(args, fields)) shown[shown.length - 1] = needed === args.length ? "<k=v>..." : "[k=v]...";
-  // Two forms each take all their arguments: `(<channel> <text> | <re>)`.
-  const forms = [args, alternative ?? []].map((form) => form.map((arg) => `<${arg}>`).join(" "));
-  if (alternative !== undefined) shown.splice(0, shown.length, `(${forms.join(" | ")})`);
+  const usage = commandUsage(command, args, fields, options, alternative);
+  const post = operation.name === "postMessage";
   const derived: Command = {
     words: command,
     ...(operation.name === "listWebhookDeliveries" && { help: operation.summary }),
-    usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
+    usage: post ? `${usage}\nob ${[...command, "<channel>", "--file <path>", ...options].join(" ")}` : usage,
     async run(ctx) {
-      const input = inputOf(ctx, args, fields, flags, nullEntries, alternative);
+      const input =
+        post && hasFileOption(ctx, flags, fields)
+          ? postFileInput(ctx, fields, flags, nullEntries)
+          : inputOf(ctx, args, fields, flags, nullEntries, alternative);
       if (policy) {
         if (ctx.profile === undefined || input.can === undefined) throw new Misuse("policy requires --as and --can");
         input.profile = ctx.profile;
@@ -206,6 +221,20 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   };
   if (operation.name !== "createTask") return derived;
   return taskCreateWithBatch(derived, (ctx) => hasFileOption(ctx, flags, fields));
+}
+
+function postFileInput(
+  ctx: CommandContext,
+  fields: ReturnType<typeof fieldsOf>,
+  flags: ReadonlyMap<string, string>,
+  nullEntries: ReadonlyMap<string, string>,
+): Record<string, unknown> {
+  const { file, ...input } = inputOf(ctx, ["channel"], fields, new Map([...flags, ["file", "file"]]), nullEntries);
+  try {
+    return { ...input, text: readFileSync(file === "-" ? 0 : String(file), "utf8") };
+  } catch {
+    throw new BoardError("invalid_request", "Could not read the message file as text.");
+  }
 }
 
 function hasFileOption(ctx: CommandContext, flags: ReadonlyMap<string, string>, fields: ReturnType<typeof fieldsOf>) {

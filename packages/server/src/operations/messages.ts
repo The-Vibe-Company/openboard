@@ -9,7 +9,20 @@ import {
   type reactToMessage,
   type readPost,
 } from "@openboard/contract";
-import { decideDelete, decideEdit, decideLabels, decideReaction, formatId, messages, parseId } from "@openboard/core";
+import {
+  blockData,
+  builtInSchemas,
+  checkBlock,
+  decideDelete,
+  decideEdit,
+  decideLabels,
+  decideReaction,
+  findBlocks,
+  formatId,
+  type MessageBlock,
+  messages,
+  parseId,
+} from "@openboard/core";
 import type { BoardWriter, MentionEvidence } from "@openboard/ports";
 import { canListMentionActors, canReadChannel, withoutMentionDetails } from "../auth/access.ts";
 import { authorOf } from "../auth/author.ts";
@@ -43,7 +56,8 @@ export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input
         target?.thread,
         mentions,
       );
-      const decided = messages.decidePost(state, input, context, settled);
+      const blocks = await validateBlocks(writer, settled?.text ?? input.text);
+      const decided = messages.decidePost(state, input, { ...context, blocks }, settled);
       await writer.append(decided.events);
       return { message: decided.message, replay: false };
     },
@@ -51,6 +65,22 @@ export const postMessageHandler: Handler<typeof postMessage> = async (ctx, input
   );
   return postAnswer(replay ? await visibleReplay(ctx, message) : message);
 };
+
+// Use the writer so registration and validation observe the same board lock.
+async function validateBlocks(writer: BoardWriter, text: string): Promise<MessageBlock[]> {
+  const found = findBlocks(text);
+  if (!found.length) return [];
+  const schemas = new Map(builtInSchemas().map(({ id, schema }) => [id, schema]));
+  const blocks: MessageBlock[] = [];
+  for (const fence of found) {
+    const block = blockData(fence);
+    const schema = schemas.get(fence.id) ?? (await writer.schema(fence.id))?.schema;
+    checkBlock(fence.id, block, schema);
+    if (schema) schemas.set(fence.id, schema);
+    blocks.push(block);
+  }
+  return blocks;
+}
 
 function postAnswer(message: Message) {
   return { message, ...(message.mentions === undefined ? {} : { mentions: message.mentions }) };
@@ -178,6 +208,7 @@ export const editMessageHandler: Handler<typeof editMessage> = async (ctx, input
       mentions,
     );
     const event = decideEdit({ head: writer.head, target }, input, { by: ctx.by, now: ctx.now() }, settled);
+    event.payload.view.blocks = await validateBlocks(writer, event.payload.text);
     ctx.debitWrite();
     await writer.append([event]);
     const { mentions: resolved } = event.payload.view;

@@ -1,5 +1,7 @@
 import { MESSAGE_TEXT_MAX, type Mention, type MentionActor } from "@openboard/contract";
 
+import { findBlocks } from "../schemas/blocks.ts";
+
 const name = "[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?";
 // Skip code and explicit actor references so only bare handles can be rewritten.
 const tokens = new RegExp(
@@ -8,13 +10,28 @@ const tokens = new RegExp(
   "gi",
 );
 
+function outsideBlocks(text: string) {
+  let blocks: ReturnType<typeof findBlocks> | undefined;
+  let index = 0;
+  return (offset: number) => {
+    blocks ??= findBlocks(text);
+    while (blocks[index] && blocks[index]!.end <= offset) index++;
+    const block = blocks[index];
+    return !block || offset < block.start;
+  };
+}
+
 export function mentionedHandles(text: string): ReadonlySet<string> {
-  return new Set([...text.matchAll(tokens)].flatMap((match) => (match[2] ? [match[2].toLowerCase()] : [])));
+  const outside = outsideBlocks(text);
+  return new Set(
+    [...text.matchAll(tokens)].flatMap((match) => (match[2] && outside(match.index) ? [match[2].toLowerCase()] : [])),
+  );
 }
 
 export function referencesActor(text: string, actor: string): boolean {
+  const outside = outsideBlocks(text);
   for (const match of text.matchAll(tokens)) {
-    if (match[1] === actor) return true;
+    if (match[1] === actor && outside(match.index)) return true;
   }
   return false;
 }
@@ -67,19 +84,23 @@ export function settleMentions(
 ): SettledMentions {
   const { exact, qualified } = actorsByHandle(actors, handles);
   const found = new Map<string, Mention>();
-  const settled = text.replace(tokens, (written: string, _actor: string | undefined, handle: string | undefined) => {
-    if (handle === undefined) return written;
-    const key = handle.toLowerCase();
-    let mention = found.get(key);
-    if (!mention) {
-      const matches = exact.get(key) ?? [];
-      const inThread = matches.filter((actor) => threadWriters?.has(actor.id));
-      const actor = (matches.length === 1 ? matches[0] : inThread.length === 1 ? inThread[0] : null) ?? null;
-      mention = { written, actor, candidates: actor ? [] : matches.length ? matches : (qualified.get(key) ?? []) };
-      found.set(key, mention);
-    }
-    return mention.actor ? `@[${mention.actor.id}]` : written;
-  });
+  const outside = outsideBlocks(text);
+  const settled = text.replace(
+    tokens,
+    (written: string, _actor: string | undefined, handle: string | undefined, offset: number) => {
+      if (handle === undefined || !outside(offset)) return written;
+      const key = handle.toLowerCase();
+      let mention = found.get(key);
+      if (!mention) {
+        const matches = exact.get(key) ?? [];
+        const inThread = matches.filter((actor) => threadWriters?.has(actor.id));
+        const actor = (matches.length === 1 ? matches[0] : inThread.length === 1 ? inThread[0] : null) ?? null;
+        mention = { written, actor, candidates: actor ? [] : matches.length ? matches : (qualified.get(key) ?? []) };
+        found.set(key, mention);
+      }
+      return mention.actor ? `@[${mention.actor.id}]` : written;
+    },
+  );
   const mentions = [...found.values()];
   if (settled.length <= MESSAGE_TEXT_MAX) return { text: settled, mentions };
   return {

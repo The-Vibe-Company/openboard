@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { runCli } from "../src/main.ts";
 
 const env = { BOARD_URL: "http://127.0.0.1:8787/api/local/main" };
@@ -43,6 +46,23 @@ test("ob post rejects a missing idempotency key before --no-sync", async () => {
   expect(await runCli(argv, env, { fetch: board.fetch, output })).toBe(2);
   expect(lines.err[0]).toStartWith("error: invalid_request: --idempotency-key takes a value");
   expect(board.seen).toEqual([]);
+});
+
+test("ob post --file sends the exact file and rejects a second text argument", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "ob-post-"));
+  try {
+    const file = join(directory, "report.md");
+    const text = "Before\n~~~json#sandbox@1\n{}\n~~~\nAfter\n";
+    writeFileSync(file, text);
+    const board = fakeBoard(201, { message: message("3", text) });
+    const { output } = capture();
+    const options = { fetch: board.fetch, output };
+    expect(await runCli(["post", "dev", "--file", file, "--no-sync"], env, options)).toBe(0);
+    expect(await runCli(["post", "dev", "other", "--file", file], env, options)).toBe(2);
+    expect(board.seen.map(({ body }) => JSON.parse(body))).toEqual([{ channel: "dev", text, noSync: true }]);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 describe("ob reply --after", () => {

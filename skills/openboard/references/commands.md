@@ -433,7 +433,7 @@ Options:
 - `--no-sync`: A switch: present means yes.
 - `--idempotency-key`: An idempotency key: a retry under it gets back the post that landed instead of posting again.
 
-Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_target`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_block`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_target`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: schema_not_found`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `post_message`.
 
@@ -842,7 +842,7 @@ Options:
 
 - `--if-revision`: The message revision observed before editing or deleting.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: revision_conflict`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_block`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: revision_conflict`, `error: schema_not_found`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `edit_message`.
 
@@ -1244,6 +1244,7 @@ Post a message: a new thread in a channel, or a reply in the thread of any messa
 
 ```sh
 ob post <channel> <text> [--re <re>] [--after <after>] [--label <k=v>]... [--no-sync] [--sync <sync>]... [--idempotency-key <idempotency-key>]
+ob post <channel> --file <path> [--re <re>] [--after <after>] [--label <k=v>]... [--no-sync] [--sync <sync>]... [--idempotency-key <idempotency-key>]
 ```
 
 Arguments:
@@ -1259,8 +1260,9 @@ Options:
 - `--no-sync`: A switch: present means yes.
 - `--sync`: External targets for a new thread. This board refuses any targets.
 - `--idempotency-key`: An idempotency key: a retry under it gets back the post that landed instead of posting again.
+- `--file`: Path to the message text, or - for stdin.
 
-Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_target`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_block`, `error: invalid_profile`, `error: invalid_request`, `error: invalid_target`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: schema_not_found`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `post_message`.
 

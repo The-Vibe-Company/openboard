@@ -1,8 +1,8 @@
 import { type Author, BoardError, type Message } from "@openboard/contract";
 import { isoTime, parseId } from "../ids.ts";
 import type { SettledMentions } from "./mentions.ts";
-import { checkMessageText } from "./post.ts";
 import { checkMessageOwnership } from "./ownership.ts";
+import { checkMessageText } from "./post.ts";
 import { checkRevision } from "./revision.ts";
 
 export interface MessageEdited {
@@ -61,6 +61,7 @@ export function decideEdit(
       view: {
         ...previous,
         text,
+        blocks: [],
         ...(settled?.mentions.length ? { mentions: settled.mentions } : {}),
         editedAt: isoTime(now),
         revision: target.revision + 1,

@@ -7934,7 +7934,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, message_deleted, invalid_profile",
+            "description": "invalid_request, invalid_block, schema_not_found, message_deleted, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
@@ -7946,7 +7946,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
-            "description": "message_not_found, not_found",
+            "description": "schema_not_found, message_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "409": {
@@ -10857,7 +10857,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, invalid_after, invalid_target, reserved_label, invalid_profile",
+            "description": "invalid_request, invalid_block, schema_not_found, invalid_after, invalid_target, reserved_label, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
@@ -10869,7 +10869,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
-            "description": "message_not_found, not_found",
+            "description": "schema_not_found, message_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "409": {

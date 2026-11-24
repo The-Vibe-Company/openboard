@@ -181,6 +181,8 @@ An entry means "may import". Anything not listed is forbidden. The table lists d
 | `examples/*` | `sdk`, `cli` by published names | whatever the recipe declares in its own `package.json` |
 | `scripts/*` | any workspace except `examples/*` | root dev dependencies |
 
+Tests in `tools/conformance/test/` may also import `core` for direct parity checks against the pinned upstream package.
+
 The web build configuration may import Vite and its React and TanStack Router plugins.
 The web Playwright configuration and browser tests may import Playwright. Browser tests may also use the SDK to exercise agent journeys.
 Only the web E2E support directory may import the server for browser tests. Only `apps/web/e2e/support/serve.ts` may import the SQLite and Postgres drivers to compose the local and hosted browser projects.

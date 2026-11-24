@@ -51,6 +51,8 @@ export const postMessage = defineOperation({
   status: 201,
   errors: [
     "invalid_request",
+    "invalid_block",
+    "schema_not_found",
     "invalid_after",
     "invalid_target",
     "reserved_label",
@@ -88,6 +90,8 @@ export const editMessage = defineOperation({
   output: Type.Object({ ok: Type.Literal(true), mentions: Type.Optional(Type.Array(Mention)) }),
   errors: [
     "invalid_request",
+    "invalid_block",
+    "schema_not_found",
     "message_not_found",
     "message_deleted",
     "forbidden",

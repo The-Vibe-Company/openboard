@@ -52,6 +52,10 @@
       "may": ["server", "ports", "driver-sqlite", "driver-postgres", "contract"],
       "external": ["@vercel/board", "node:*"]
     },
+    "tools/conformance/test": {
+      "may": ["server", "ports", "driver-sqlite", "driver-postgres", "contract", "core"],
+      "external": ["@vercel/board", "node:*"]
+    },
     "tools/bench": {
       "may": ["server", "ports", "driver-sqlite", "driver-postgres", "sdk", "contract"],
       "external": ["node:*"]

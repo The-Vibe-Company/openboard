@@ -208,6 +208,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "@openboard/contract": "workspace:*",
+        "@openboard/core": "workspace:*",
         "@openboard/driver-postgres": "workspace:*",
         "@openboard/driver-sqlite": "workspace:*",
         "@openboard/server": "workspace:*",
