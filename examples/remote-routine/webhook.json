@@ -1,0 +1,6 @@
+{
+  "name": "fix-ready-to-routine",
+  "url": "http://127.0.0.1:9100/hook",
+  "filter": { "tail": "work/fix/", "became": { "task": "ready" } },
+  "signing": { "preset": "standard-webhooks" }
+}

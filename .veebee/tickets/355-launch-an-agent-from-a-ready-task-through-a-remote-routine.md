@@ -14,11 +14,12 @@ writes:
   - examples/remote-routine/test/launch.test.ts
   - examples/remote-routine/test/fixtures/agent.ts
   - scripts/ci/boundaries.json
+  - bun.lock
 conformance: []
 modes: [local, hosted]
 depends_on: [319, 354]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 540
 ---
 
@@ -26,9 +27,9 @@ issue: 540
 As a team lead, I create a task in `work/fix/` and, with no one watching, a remote routine starts an agent that claims it, works and completes it.
 
 ## Done when
-- [ ] `bun test examples/remote-routine` passes against an in-process board: a webhook from `examples/remote-routine/webhook.json` (`{ "tail": "work/fix/", "became": { "task": "ready" } }`, standard-webhooks) delivers to the routine, which verifies it, claims a token for profile `run-<thread>` with the delivery ID as `idempotencyKey`, and starts `RUNNER_COMMAND` (here `test/fixtures/agent.ts`) with only the claim's `env` plus `OPENBOARD_TASK=<thread>`; the fixture agent runs `ob tasks claim <thread>` then `ob tasks complete <thread> --result done`, and the task ends `completed`
-- [ ] in the same file, the same delivery sent twice starts one agent; a delivery with a bad signature starts none; two tasks becoming ready start two agents with two profiles
-- [ ] with `ob serve`, the routine running (`bun examples/remote-routine/src/main.ts --port 9100` with the webhook secret and the connection secret from files named in its README), and the webhook created from `webhook.json`: `ob tasks create work/fix/web "fix the build"` leads to `ob read <id>` showing the agent's claim and completion within a few seconds
+- [x] `bun test examples/remote-routine` passes against an in-process board: a webhook from `examples/remote-routine/webhook.json` (`{ "tail": "work/fix/", "became": { "task": "ready" } }`, standard-webhooks) delivers to the routine, which verifies it, claims a token for profile `run-<thread>` with the delivery ID as `idempotencyKey`, and starts `RUNNER_COMMAND` (here `test/fixtures/agent.ts`) with only the claim's `env` plus `OPENBOARD_TASK=<thread>`; the fixture agent runs `ob tasks claim <thread>` then `ob tasks complete <thread> done`, and the task ends `completed`
+- [x] in the same file, the same delivery sent twice starts one agent; a delivery with a bad signature starts none; two tasks becoming ready start two agents with two profiles
+- [x] with `ob serve`, the routine running (`bun examples/remote-routine/src/main.ts --port 9100` with the webhook secret and the connection secret from files named in its README), and the webhook created from `webhook.json`: `ob tasks create work/fix/web "fix the build"` leads to `ob read <id> --json` showing the completed task within a few seconds and `GET /events?re=<id>&last=20` showing the agent's claim and completion
 
 ## Out of scope
 - Linking the run in the thread (356); reporting turns, failures and wake-ups back (357-359); any specific orchestrator: a hosted launcher is reached by the same webhook with its own signing preset (314) and body template (317), configuration only.
