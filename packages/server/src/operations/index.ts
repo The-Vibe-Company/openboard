@@ -123,7 +123,10 @@ export interface BoardContext extends RequestLimits {
   /** Admit a write once its operation-specific permissions have been checked. */
   readonly debitWrite: () => void;
   readonly board: BoardView;
-  readonly webhookConfig: Pick<ServerConfig, "mode" | "secretKey" | "publicUrl" | "webhookTargets">;
+  readonly webhookConfig: Pick<
+    ServerConfig,
+    "mode" | "secretKey" | "publicUrl" | "webhookTargets" | "webhookCustomSigning"
+  >;
   readonly resolveHost?: Deps["resolveHost"];
   readonly signal: AbortSignal;
   readonly shutdown: AbortSignal;

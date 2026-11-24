@@ -1184,3 +1184,14 @@ capped at 200 UTF-16 code units and programs at 512 instructions. The restricted
 syntax and flags are defined in [Inbound endpoints](protocol.md#inbound-endpoints).
 Rules and compiled plans are stored with the inbound configuration so instances
 can share them. The original rules remain the public configuration.
+
+### Custom webhook signing during a rolling deploy
+
+Deploy custom scheme support with `OPENBOARD_WEBHOOK_CUSTOM_SIGNING=off`,
+the default. Enable it only after every replica runs the new release.
+Older replicas can claim the shared delivery job and would interpret a custom
+scheme without a preset as Standard Webhooks. While the flag is off, writes
+that would set a custom scheme return HTTP 400 `invalid_signing`. Replicas
+that support custom schemes can process stored custom subscriptions
+regardless of their flag setting.
+([Issue #500](https://github.com/The-Vibe-Company/openboard/issues/500#issuecomment-7141464319))

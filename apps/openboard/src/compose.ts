@@ -84,6 +84,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
       ...(config.secretKey && { secretKey: config.secretKey }),
       publicUrl,
       webhookTargets: config.webhookTargets,
+      webhookCustomSigning: config.webhookCustomSigning,
       localOwner,
       instanceId: config.instanceId,
       deploymentTag: config.deploymentTag,

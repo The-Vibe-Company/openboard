@@ -63,6 +63,12 @@ function audit(ctx: BoardContext, id: number, at: number) {
   };
 }
 
+function requireCustomSigning(ctx: BoardContext, signing: Webhook["signing"]) {
+  if ("algorithm" in signing && !ctx.webhookConfig.webhookCustomSigning) {
+    throw new BoardError("invalid_signing", "custom signing requires OPENBOARD_WEBHOOK_CUSTOM_SIGNING=on");
+  }
+}
+
 function signingKey(ctx: BoardContext) {
   if (!ctx.webhookConfig.secretKey) {
     throw new BoardError("not_supported", "webhook signing is unavailable", { hint: "Set OPENBOARD_SECRET_KEY." });
@@ -83,6 +89,7 @@ export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, s
     body,
   } = validateWebhook(spec);
   requireManage(ctx, tail.channel);
+  requireCustomSigning(ctx, signing);
   const key = signingKey(ctx);
   ctx.debitWrite();
   const { url } = await webhookTarget(spec.url, ctx.webhookConfig, withDnsDeadline(ctx.resolveHost, ctx.schedule));
@@ -146,6 +153,7 @@ async function updateCredentials(
     signing: patch.signing ?? { ...record.webhook.signing, secret: saved?.secret },
     headers: patch.headers ?? saved?.headers,
   });
+  if (patch.signing !== undefined) requireCustomSigning(ctx, signing);
   const secret = supplied ?? newSecret(ctx);
   const secretId = base32(ctx.randomBytes(10));
   const id = record.webhook.id;
@@ -271,7 +279,7 @@ export const testWebhookHandler: Handler<typeof testWebhook> = async (ctx, { id 
     name: record.webhook.name,
   });
   const { status, error } = await deliverWebhook(ctx.webhookConfig, ctx, record, secret, (credentials) =>
-    signedWebhookRequest(record.webhook.signing, deliveryId, start, credentials, body),
+    signedWebhookRequest(record.webhook, deliveryId, start, credentials, body),
   );
   const now = ctx.now();
   const outcome = webhookOutcome(status);

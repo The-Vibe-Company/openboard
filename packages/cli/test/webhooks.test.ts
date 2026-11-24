@@ -52,6 +52,49 @@ for (const existing of [false, true]) {
   });
 }
 
+const customSigning = {
+  algorithm: "hmac-sha256",
+  signatureHeader: "x-signature",
+  signatureFormat: "sha256={sig}",
+  encoding: "hex",
+  signedPayload: "{body}",
+};
+
+test.each([[false], [true]])("ob webhooks create preserves custom key bytes (existing: %s)", async (existing) => {
+  const config = join(directory, "spec.json");
+  const path = join(directory, "hook.secret");
+  const receiverSpec = { ...spec, signing: customSigning };
+  const key = existing ? "\uFEFF  receiver café fixture\n" : secret;
+  writeFileSync(config, JSON.stringify(receiverSpec));
+  if (existing) writeFileSync(path, key, { mode: 0o600 });
+  const capture = fixture(existing ? { webhook } : { webhook, secret: key }, 201);
+
+  expect(await capture.run(["create", "--file", config, "--secret-file", path])).toBe(0);
+  const [request] = capture.requests;
+  if (!request) throw new Error("missing create request");
+  expect(await request.json()).toEqual(
+    existing ? { ...spec, signing: { ...customSigning, secret: key } } : receiverSpec,
+  );
+  expect(readFileSync(path, "utf8")).toBe(key);
+  expect(statSync(path).mode & 0o777).toBe(0o600);
+  expect(capture.out).toEqual([webhook.id]);
+  expect(capture.errors).toEqual([]);
+});
+
+test("ob webhooks create rejects custom key files with malformed UTF-8", async () => {
+  const config = join(directory, "spec.json");
+  const path = join(directory, "hook.secret");
+  const bytes = Buffer.from([0xff]);
+  writeFileSync(config, JSON.stringify({ ...spec, signing: customSigning }));
+  writeFileSync(path, bytes, { mode: 0o600 });
+  const capture = fixture({ webhook }, 201);
+
+  expect(await capture.run(["create", "--file", config, "--secret-file", path])).toBe(2);
+  expect(capture.errors.join("\n")).toContain("--secret-file must contain valid UTF-8");
+  expect(capture.requests).toHaveLength(0);
+  expect(readFileSync(path)).toEqual(bytes);
+});
+
 test.each(["stripe", "ts-id-body"])("ob webhooks create saves a generated %s secret verbatim", async (preset) => {
   const config = join(directory, "spec.json");
   const path = join(directory, "hook.secret");

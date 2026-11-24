@@ -80,6 +80,7 @@ export const WebhookSpec = Type.Object(
         {
           ...signingFields,
           preset: Type.Optional(Type.String()),
+          algorithm: Type.Optional(Type.String()),
           secret: Type.Optional(Type.String({ minLength: 1, maxLength: 4096 })),
         },
         { additionalProperties: false },

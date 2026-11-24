@@ -3,6 +3,7 @@ import type { OidcPrincipal, RepositoryPrincipal } from "@openboard/core";
 
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
+  readonly webhookCustomSigning?: boolean;
   readonly webhookTargets?: { readonly hosts: readonly string[]; readonly ports: readonly number[] };
   readonly secretKey?: Uint8Array;
   readonly instanceId?: string | undefined;

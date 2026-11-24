@@ -16,7 +16,7 @@ import {
   parseInboundRules,
   parseInboundThread,
   unmanagedGrantPattern,
-  validateWebhookSigning,
+  validateWebhookSigningPreset,
 } from "@openboard/core";
 import type { BoardWriter, InboundRecord } from "@openboard/ports";
 import { unrestrictedLocalOwner } from "../../auth/access.ts";
@@ -72,7 +72,7 @@ export const createInboundHandler: Handler<typeof createInbound> = async (ctx, s
   const threadPlan = parseInboundThread(spec.thread);
   const can = writtenCan(spec.can);
   const { tolerance = 300, ...verify } = spec.verify;
-  const { secret: supplied, ...signing } = validateWebhookSigning({ signing: verify });
+  const { secret: supplied, ...signing } = validateWebhookSigningPreset(verify);
   const key = ctx.webhookConfig.secretKey;
   if (!key)
     throw new BoardError("not_supported", "inbound verification is unavailable", { hint: "Set OPENBOARD_SECRET_KEY." });

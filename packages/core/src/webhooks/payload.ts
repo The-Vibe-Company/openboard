@@ -2,7 +2,7 @@ import type { Message } from "@openboard/contract";
 
 import { renderWebhookTemplate } from "./template.ts";
 
-const limit = 256 * 1024;
+export const webhookBodyLimit = 256 * 1024;
 const encoder = new TextEncoder();
 
 function webhookSubject(root: Message, message: string, url: string) {
@@ -79,6 +79,8 @@ export function webhookPayload(
     event,
   };
   // Reserve the extra digit in attempt 10 so retries preserve the same event text.
-  const maxBytes = delivery.attempt < 10 ? limit - 1 : limit;
-  return template === null ? encodeWebhookPayload(payload, maxBytes) : renderWebhookTemplate(template, payload, limit);
+  const maxBytes = delivery.attempt < 10 ? webhookBodyLimit - 1 : webhookBodyLimit;
+  return template === null
+    ? encodeWebhookPayload(payload, maxBytes)
+    : renderWebhookTemplate(template, payload, webhookBodyLimit);
 }

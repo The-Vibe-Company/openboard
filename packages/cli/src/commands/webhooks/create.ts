@@ -28,12 +28,21 @@ export function readSpec<T>(path: string): T {
   }
 }
 
-export function reserveSecret(path: string, verbatim: boolean): { fd: number } | { secret: string } {
+function decodeCustomSecret(contents: Uint8Array): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(contents);
+  } catch {
+    throw new Misuse("--secret-file must contain valid UTF-8 for custom signing");
+  }
+}
+
+export function reserveSecret(path: string, verbatim: boolean, custom = false): { fd: number } | { secret: string } {
   try {
     return { fd: openSync(path, "wx", 0o600) };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    const contents = readFileSync(path, "utf8");
+    const bytes = readFileSync(path);
+    const contents = custom ? decodeCustomSecret(bytes) : bytes.toString("utf8");
     const secret = verbatim ? contents : contents.trim();
     if (!secret) throw new Misuse("--secret-file is empty");
     return { secret };
@@ -48,8 +57,9 @@ export const createWebhookCommand: Command = {
     const spec = readSpec<WebhookSpec>(paths.spec);
     if (spec.signing?.secret !== undefined) throw new Misuse("put the signing secret in --secret-file");
     const preset = spec.signing?.preset;
-    const verbatim = preset === "stripe" || preset === "ts-id-body";
-    const file = reserveSecret(paths.secret, preset === "github" || verbatim);
+    const custom = preset === undefined && spec.signing?.algorithm !== undefined;
+    const verbatim = custom || preset === "stripe" || preset === "ts-id-body";
+    const file = reserveSecret(paths.secret, preset === "github" || verbatim, custom);
     if ("secret" in file) {
       const { webhook } = await ctx.client.createWebhook({
         ...spec,

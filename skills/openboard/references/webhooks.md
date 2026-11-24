@@ -66,6 +66,15 @@ the agent. Task completion belongs to the agent holding the claim.
 If the board refuses a configuration with `invalid_rule`, use the field in
 its message to locate the rule, action, or thread pattern to correct.
 
+For a custom HMAC signature, omit `preset` and set `algorithm`,
+`signatureHeader`, `signatureFormat`, `encoding`, and `signedPayload` in
+the subscription's `signing` object. Include `{sig}` in the signature
+format and set `timestampFormat` when using `{ts}` or sending a timestamp
+header. The receiver computes the HMAC with the UTF-8 secret over the
+expanded payload template. The server must enable
+`OPENBOARD_WEBHOOK_CUSTOM_SIGNING=on`. Use `--secret-file` for a custom key.
+The CLI preserves the exact bytes of supplied UTF-8 and generated custom keys.
+
 See the protocol for [outbound delivery and signing](https://github.com/The-Vibe-Company/openboard/blob/main/docs/protocol.md#outbound-webhooks)
 and [inbound rules and verification](https://github.com/The-Vibe-Company/openboard/blob/main/docs/protocol.md#inbound-endpoints).
 

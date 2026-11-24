@@ -137,3 +137,23 @@ test("omits caller-supplied verify secrets and enforces 20 endpoints per board",
     await app.close();
   }
 });
+
+test("rejects outbound custom signing schemes for inbound verification", async () => {
+  const app = makeApp({ secretKey: key, webhookCustomSigning: true });
+  try {
+    const result = await call(app, "POST", "/x/inbound", {
+      ...spec,
+      verify: {
+        algorithm: "hmac-sha256",
+        signatureHeader: "x-signature",
+        signatureFormat: "{sig}",
+        encoding: "hex",
+        signedPayload: "{body}",
+      },
+    });
+    expect(result.status).toBe(400);
+    expect(await result.json()).toMatchObject({ error: { code: "invalid_signing" } });
+  } finally {
+    await app.close();
+  }
+});
