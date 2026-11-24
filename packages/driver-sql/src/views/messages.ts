@@ -9,6 +9,7 @@ import { lockBoard, setHead } from "./boards.ts";
 import { codePointOrder, findChannel, foldChannelCreated } from "./channels.ts";
 import {
   connectionNamed,
+  connectionQuota,
   findConnection,
   foldAgentRevoked,
   foldConnectionCreated,
@@ -292,6 +293,7 @@ function writer(
       return { role: member.role, grants: await grantReads(tx, dialect, keys).personGrants(personId) };
     },
     connectionNamed: (name) => connectionNamed(tx, dialect, keys, name),
+    connectionQuota: () => connectionQuota(tx, dialect, keys),
     connection: (id) => findConnection(tx, dialect, keys, id),
     agent: (id) => findAgent(tx, dialect, keys, id),
     agentByClaimKey: (connection, key) => findAgentByClaimKey(tx, dialect, keys, connection, key),

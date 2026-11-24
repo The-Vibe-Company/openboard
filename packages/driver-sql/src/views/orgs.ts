@@ -1,10 +1,12 @@
 import { BoardError, type Role } from "@openboard/contract";
+import { type CountQuota, type CountQuotas, countQuotas } from "@openboard/core";
 import type { BoardMemberRecord, BoardScope, BoardView, CreateOrgRecord, PlatformView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
 import { forUpdate, query, sql } from "../sql.ts";
 
 /** Organizations, their memberships and their events. */
 export const orgStatements = {
+  setOrgQuotas: sql`UPDATE orgs SET quotas = ${"quotas"} WHERE id = ${"orgId"} RETURNING id`,
   lockPerson: sql`SELECT id, email FROM users WHERE public_id = ${"personId"}${forUpdate}`,
   insertOrg: sql`INSERT INTO orgs (slug, name, created_by, created_at)
     VALUES (${"slug"}, ${"name"}, ${"userId"}, ${"at"}) ON CONFLICT (slug) DO NOTHING RETURNING id`,
@@ -22,9 +24,10 @@ export const orgStatements = {
     WHERE m.org_id = ${"orgId"} AND b.id = ${"boardId"} AND u.public_id = ${"personId"} AND u.disabled_at IS NULL`,
 };
 
-/** Statements that run before an organization exists or across a person's organizations. */
+/** Platform statements for account operations and operator quota overrides. */
 export const orgPlatformStatements: readonly (keyof typeof orgStatements)[] = Object.freeze([
   "lockPerson",
+  "setOrgQuotas",
   "insertOrg",
   "personMemberships",
 ]);
@@ -37,8 +40,15 @@ async function lockPerson(tx: Db, dialect: Dialect, personId: string): Promise<n
   return Number(user.id);
 }
 
+/** Count and compare after acquiring the resource's write lock. */
+export function exhaustedQuota(reason: CountQuota, stored: unknown, count: unknown) {
+  const overrides = typeof stored === "string" ? (JSON.parse(stored) as Partial<CountQuotas> | null) : null;
+  const limit = countQuotas(overrides ?? {})[reason];
+  return Number(count) >= limit ? { quota: limit } : null;
+}
+
 /** The platform's organization methods, written once for both engines. */
-export function orgView(db: Db, dialect: Dialect): Pick<PlatformView, "createOrg" | "memberships"> {
+export function orgView(db: Db, dialect: Dialect): Pick<PlatformView, "createOrg" | "memberships" | "setOrgQuotas"> {
   return {
     createOrg: (record: CreateOrgRecord) =>
       db.transaction(async (tx) => {
@@ -61,6 +71,10 @@ export function orgView(db: Db, dialect: Dialect): Pick<PlatformView, "createOrg
           await query(tx, dialect, orgStatements.insertOrgEvent, { orgId, id, type, at: event.at, actor, payload });
         }
       }),
+    async setOrgQuotas(orgId, overrides) {
+      const [org] = await query(db, dialect, orgStatements.setOrgQuotas, { orgId, quotas: JSON.stringify(overrides) });
+      return org !== undefined;
+    },
     async memberships(personId) {
       const rows = await query(db, dialect, orgStatements.personMemberships, { personId });
       return rows.map((row) => ({ org: { slug: String(row.slug), name: String(row.name) }, role: role(row) }));

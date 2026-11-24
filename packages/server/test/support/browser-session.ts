@@ -47,7 +47,7 @@ export async function browserSession(send: (request: Request) => Promise<Respons
   return { headers: { cookie, "x-ob-csrf": session.csrf, origin: PUBLIC_URL }, principal: session.person.principal };
 }
 
-export function makeBrowserApp(localOwnerTokenHash?: string) {
+export function makeBrowserApp(localOwnerTokenHash?: string, store = openStore(() => NOW)) {
   let drawn = 0;
   return createCluster(
     {
@@ -58,7 +58,7 @@ export function makeBrowserApp(localOwnerTokenHash?: string) {
       signup: "open",
       signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } },
     },
-    { store: openStore(() => NOW) },
+    { store },
     {
       now: () => NOW,
       requestId: () => "req-1",

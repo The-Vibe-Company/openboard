@@ -6,7 +6,7 @@ import {
   type previewInvitation,
   type revokeInvitation,
 } from "@openboard/contract";
-import { decideInvitation, isoTime, previewInvite } from "@openboard/core";
+import { countQuotaError, decideInvitation, isoTime, previewInvite } from "@openboard/core";
 import { base32, hashToken } from "../auth/secrets.ts";
 import { base64url } from "../auth/sessions.ts";
 import type { Handler } from "./index.ts";
@@ -38,6 +38,7 @@ export const acceptInvitationHandler: Handler<typeof acceptInvitation> = async (
     ? await ctx.platform.acceptInvitation(digest(token), person.id, ctx.now())
     : null;
   if (!membership) throw new BoardError("not_found", "no such invitation");
+  if ("quota" in membership) throw countQuotaError("members", membership.quota);
   return membership;
 };
 

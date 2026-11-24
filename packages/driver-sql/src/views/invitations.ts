@@ -2,13 +2,13 @@ import { BoardError, type InvitationRole, type Role } from "@openboard/contract"
 import type { OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { forUpdate, query, sql } from "../sql.ts";
-import { orgStatements } from "./orgs.ts";
+import { exhaustedQuota, orgStatements } from "./orgs.ts";
 
 export const invitationStatements = {
   orgMembership: sql`SELECT m.org_id, m.role FROM memberships m
     JOIN orgs o ON o.id = m.org_id JOIN users u ON u.id = m.user_id
     WHERE o.slug = ${"slug"} AND u.public_id = ${"personId"} AND o.deleted_at IS NULL AND u.disabled_at IS NULL`,
-  lockInvitationOrg: sql`SELECT m.user_id, m.role FROM orgs o
+  lockInvitationOrg: sql`SELECT m.user_id, m.role, o.quotas FROM orgs o
     JOIN memberships m ON m.org_id = o.id JOIN users u ON u.id = m.user_id
     WHERE m.org_id = ${"orgId"} AND u.public_id = ${"personId"} AND o.deleted_at IS NULL AND u.disabled_at IS NULL
     AND m.role IN ('admin', 'owner')${forUpdate}`,
@@ -17,10 +17,11 @@ export const invitationStatements = {
   nextInvitationEvent: sql`SELECT COALESCE(MAX(id), 0) + 1 AS id FROM org_events WHERE org_id = ${"orgId"}`,
   listOrgMembers: sql`SELECT u.public_id, m.role FROM memberships m
     JOIN users u ON u.id = m.user_id WHERE m.org_id = ${"orgId"} ORDER BY u.public_id`,
-  lockRedeemableInvitation: sql`SELECT i.role, i.email, o.slug, o.name FROM invitations i
+  lockRedeemableInvitation: sql`SELECT i.role, i.email, o.slug, o.name, o.quotas FROM invitations i
     JOIN orgs o ON o.id = i.org_id WHERE i.org_id = ${"orgId"} AND i.token_hash = ${"tokenHash"}
     AND o.deleted_at IS NULL AND i.accepted_at IS NULL AND i.revoked_at IS NULL
     AND i.expires_at > ${"at"}${forUpdate}`,
+  orgMemberCount: sql`SELECT COUNT(*) AS count FROM memberships WHERE org_id = ${"orgId"}`,
   insertInvitedMember: sql`INSERT INTO memberships (org_id, user_id, role, created_at, invited_by)
     SELECT ${"orgId"}, u.id, i.role, ${"at"}, i.created_by FROM invitations i
     JOIN users u ON u.public_id = ${"personId"}
@@ -59,6 +60,9 @@ export async function redeemInvitation(tx: Db, dialect: Dialect, tokenHash: Uint
   }
   const [joined] = await query(tx, dialect, orgStatements.personMemberships, { personId });
   if (joined) throw new BoardError("already_in_org", "you already belong to an organization");
+  const [usage] = await query(tx, dialect, invitationStatements.orgMemberCount, { orgId });
+  const quota = exhaustedQuota("members", invitation.quotas, usage?.count);
+  if (quota) return quota;
   const [member] = await query(tx, dialect, invitationStatements.insertInvitedMember, { ...scope, personId });
   if (!member) return null;
   const userId = Number(member.user_id);

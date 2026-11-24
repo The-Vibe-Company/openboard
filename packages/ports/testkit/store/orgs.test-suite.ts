@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
+import { boards } from "@openboard/core";
 import type { CreateOrgRecord, IdentityRecord, Store } from "../../src/index.ts";
-import { type OpenStore, testScope } from "../index.ts";
+import { type OpenStore, testOrgScope, testScope } from "../index.ts";
 
 const at = 1_700_000_000_000;
 
@@ -31,9 +32,39 @@ function acme(personId: string, slug = "acme"): CreateOrgRecord {
   };
 }
 
+async function checkQuotaOverride(store: Store) {
+  const ada = await person(store, "ada", "a");
+  const bob = await person(store, "bob", "b");
+  const platform = store.platform();
+  await platform.createOrg(acme(ada));
+  await platform.createOrg(acme(bob, "bobco"));
+  const first = await platform.findBoard("acme", "main");
+  const second = await platform.findBoard("bobco", "main");
+  if (!first || !second) throw new Error("organizations did not create main boards");
+
+  const create = (orgId: number, personId: string) =>
+    store
+      ?.org(testOrgScope(orgId))
+      .createBoard(
+        boards.decideCreateBoard({ slug: "ops", name: "Ops" }, { now: at, by: `ob:user:${personId}` }),
+        personId,
+      );
+  expect(await platform.setOrgQuotas(0, { boards: 1 })).toBe(false);
+  expect(await platform.setOrgQuotas(first.orgId, { boards: 1 })).toBe(true);
+  expect(await create(first.orgId, ada)).toEqual({ quota: 1 });
+  expect(await create(second.orgId, bob)).toBe("created");
+  expect(await platform.setOrgQuotas(first.orgId, {})).toBe(true);
+  expect(await create(first.orgId, ada)).toBe("created");
+}
+
 export function orgsSuite(driver: string, open: OpenStore): void {
   let store: Store | undefined;
   afterEach(() => store?.close());
+
+  test(`${driver}: a platform quota override applies to the selected organization and can be cleared`, async () => {
+    store = await open();
+    await checkQuotaOverride(store);
+  });
 
   test(`${driver}: a new organization has its creator as owner and a board main`, async () => {
     store = await open();

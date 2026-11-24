@@ -1,3 +1,4 @@
+export type { IdentityRecord, PersonRecord, SessionRecord, SignInRecord } from "./account-records.ts";
 export type { Broadcaster, CommittedEvents, CommittedPage } from "./broadcaster.ts";
 export type { BoardGrantReads, BoardGrantWriter, PersonGrant } from "./grants.ts";
 export type {
@@ -12,16 +13,12 @@ export type {
   ChannelsQuery,
   ConnectionRecord,
   CreateOrgRecord,
-  IdentityRecord,
   MembershipRecord,
   MentionEvidence,
   OrgAuditRecord,
   OrgScope,
   OrgView,
-  PersonRecord,
   PlatformView,
-  SessionRecord,
-  SignInRecord,
   Store,
 } from "./store.ts";
 export type { BoardTaskReads, BoardTaskWriter, TaskListQuery } from "./tasks.ts";

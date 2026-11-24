@@ -2,9 +2,9 @@ import type { Named } from "@openboard/contract";
 import type { BoardCreation } from "@openboard/core";
 import type { BoardKeys, OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
-import { forUpdate, type Fragment, query, sql } from "../sql.ts";
+import { type Fragment, forUpdate, query, sql } from "../sql.ts";
 import { invitationStatements } from "./invitations.ts";
-import { orgStatements } from "./orgs.ts";
+import { exhaustedQuota, orgStatements } from "./orgs.ts";
 
 const notifyHead: Fragment = Object.freeze({ fragment: (dialect: Dialect) => dialect.notifyHeadSuffix });
 const serverTimeline: Fragment = Object.freeze({ fragment: (dialect: Dialect) => dialect.serverTimeline });
@@ -21,6 +21,7 @@ export const boardStatements = {
   setHead: sql`UPDATE boards SET head = ${"head"}, timeline = ${serverTimeline}
     WHERE org_id = ${"orgId"} AND id = ${"boardId"}${notifyHead}`,
   orgBoards: sql`SELECT slug, name FROM boards WHERE org_id = ${"orgId"} AND deleted_at IS NULL ORDER BY slug`,
+  orgBoardCount: sql`SELECT COUNT(*) AS count FROM boards WHERE org_id = ${"orgId"} AND deleted_at IS NULL`,
   boardSlugUsed: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"}`,
 };
 
@@ -78,6 +79,9 @@ export function orgBoardsView(
         if (!admin) return "not_admin" as const;
         const [used] = await query(tx, dialect, boardStatements.boardSlugUsed, { orgId, slug: board.slug });
         if (used) return "slug_taken" as const;
+        const [usage] = await query(tx, dialect, boardStatements.orgBoardCount, { orgId });
+        const quota = exhaustedQuota("boards", admin.quotas, usage?.count);
+        if (quota) return quota;
         await query(tx, dialect, orgStatements.insertBoard, { orgId, ...board, at: event.at });
         const [next] = await query(tx, dialect, invitationStatements.nextInvitationEvent, { orgId });
         const { type, at, actor } = event;
