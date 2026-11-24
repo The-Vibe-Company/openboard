@@ -86,6 +86,7 @@ const CODES = {
     "not_uploaded",
     "stale_lease",
     "grant_lockout",
+    "channel_granted",
     "profile_taken",
     "already_in_org",
     "slug_taken",

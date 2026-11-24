@@ -491,17 +491,21 @@ ob tasks fail 42 reason
 
 ## `ob channels create`
 
-Create a public channel before anyone posts to it.
+Create a channel before anyone posts to it, optionally granting access only to its creator.
 
 ```sh
-ob channels create <path>
+ob channels create <path> [--private]
 ```
 
 Arguments:
 
 - `path`: Text.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Options:
+
+- `--private`: A switch: present means yes.
+
+Errors: `error: channel_granted`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `create_channel`.
 

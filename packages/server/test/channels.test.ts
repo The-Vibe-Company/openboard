@@ -158,7 +158,7 @@ test("creating a channel opened by a post returns its counts without advancing t
   }
 });
 
-test.each([{ path: "Not A Channel" }, { path: "dev/alerts", private: true }])(
+test.each([{ path: "Not A Channel" }, { path: "dev/alerts", private: "true" }])(
   "rejects an invalid channel creation body %j",
   async (body) => {
     const app = makeApp();

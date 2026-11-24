@@ -9,11 +9,17 @@ writes:
   - packages/core/test/channels/create.test.ts
   - packages/server/src/operations/channels.ts
   - packages/server/test/channels-private.test.ts
+  - packages/contract/src/errors.ts
+  - packages/server/test/channels.test.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
+  - docs/decisions.md
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [283]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 469
 ---
 

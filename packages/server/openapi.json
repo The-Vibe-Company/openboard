@@ -1732,7 +1732,7 @@
     "/channels": {
       "post": {
         "operationId": "createChannel",
-        "summary": "Create a public channel before anyone posts to it.",
+        "summary": "Create a channel before anyone posts to it, optionally granting access only to its creator.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1746,7 +1746,8 @@
                     "maxLength": 2048,
                     "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
                     "type": "string"
-                  }
+                  },
+                  "private": { "type": "boolean" }
                 }
               }
             }
@@ -1823,6 +1824,10 @@
           },
           "404": {
             "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "channel_granted",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "429": {

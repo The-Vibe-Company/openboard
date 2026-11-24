@@ -187,10 +187,18 @@ a refused write appends nothing.
 | --- | --- | --- | --- |
 | GET | `/` | U | no token |
 | GET | `/me` | U | plus an `openboard` object (org, board, role, credential kind) |
-| GET, POST | `/channels` | U | `private` makes two grants and the channel, as upstream |
+| GET, POST | `/channels` | U | OpenBoard adds the optional `private` flag to POST (X) |
 | GET | `/actors` | U | |
 | GET | `/openapi.json` | U | OpenAPI 3.1, no token; generated from the contract with upstream `operationId`s; extensions included |
 | GET | `/avatars/:name` | U | public SVG marks for `agent`, `bot`, `ci`, and `person`; other names return JSON 404 `not_found` |
+
+Send `{ path, private: true }` to `POST /channels` or use
+`ob channels create <path> --private`. A direct connection or person needs
+`manage` at the path and must meet the grant-change rules below. An empty
+`everyone` grant closes the exact path and a named grant gives the creator
+`all` there. A grant already permitting someone other than the
+creator to access that exact path returns 409 `channel_granted`. Creating an existing channel returns `created: false`
+and leaves its grants alone. Both grants appear as `ob.grant.created` in audit.
 
 Use `{BOARD_URL}/avatars/agent` as the avatar URL in `x-board-profile`.
 The route is anonymous and answers independently of whether the organization or

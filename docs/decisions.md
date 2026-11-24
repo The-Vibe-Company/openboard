@@ -1088,3 +1088,11 @@ extensions and account and organization routes. The gateway enforces the
 allowlist and supplies the pinned headers. Claimed-token enforcement continues
 to use its existing rules.
 ([Issue #538](https://github.com/The-Vibe-Company/openboard/issues/538#issuecomment-7135210537))
+
+### Private channel creation uses exact grants
+
+`POST /channels` accepts an optional `private` flag. Both grants target the
+exact channel so sibling and descendant channels retain their access. A
+pre-existing grant at the exact path that permits access to anyone besides
+the creator prevents creation with 409 `channel_granted`. Grants there can outrank or add to the
+`everyone` closure. The board lock covers this check and all three events.
