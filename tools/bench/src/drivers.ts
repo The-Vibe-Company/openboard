@@ -28,6 +28,10 @@ function bootInstance(mode: "local" | "hosted", tokenHash: string): Instance {
       now,
       log,
       requestId: () => crypto.randomUUID(),
+      schedule: (delayMs, run) => {
+        const timer = setTimeout(run, delayMs);
+        return () => clearTimeout(timer);
+      },
       randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
     },
   );

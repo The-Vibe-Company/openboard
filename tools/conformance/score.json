@@ -5,6 +5,7 @@
     "core/creates a channel only once: one a post made is there already",
     "core/deletes a message, leaving a tombstone",
     "core/drops a deleted message from what its labels find",
+    "core/holds a long-poll open until the next event",
     "core/ignores x-board-avatar, which x-board-profile's avatar parameter replaced",
     "core/ignores x-board-session: who writes is the principal and its profile",
     "core/labels a message only while its labels are as the write says, one of any that race",

@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createApp, jsonLogger, mintLocalOwnerToken } from "../src/index.ts";
-import { BOARD_URL, call, LOCAL_OWNER, makeApp, NOW, PUBLIC_URL } from "./support/app.ts";
-import { openStore } from "./support/drivers.ts";
+import { type createApp, jsonLogger, mintLocalOwnerToken } from "../src/index.ts";
+import { BOARD_URL, call, LOCAL_OWNER, makeApp, NOW, OWNER } from "./support/app.ts";
 
 let app: ReturnType<typeof createApp>;
 
@@ -73,16 +72,9 @@ describe("one JSON log line per request", () => {
 
   test("prints a refused credential's request without the credential", async () => {
     /** Fixed bytes, so no token-shaped string is written in this file (docs/codebase.md 6.1). */
-    const owner = mintLocalOwnerToken(new Uint8Array(42).fill(7));
     const stranger = mintLocalOwnerToken(new Uint8Array(42).fill(9));
-    const lines: Record<string, unknown>[] = [];
-    const log = jsonLogger({ now: () => NOW, write: (line) => lines.push(JSON.parse(line)) });
-    app = createApp(
-      { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: owner.hash },
-      { store: openStore(() => NOW) },
-      { now: () => NOW, log, requestId: () => "req-test", randomBytes: (length) => new Uint8Array(length) },
-    );
-    for (const token of [stranger.token, owner.token]) {
+    const lines = loggedApp();
+    for (const token of [stranger.token, OWNER.token]) {
       await app.fetch(
         new Request(`${BOARD_URL}/messages`, {
           method: "POST",
@@ -96,7 +88,7 @@ describe("one JSON log line per request", () => {
       { op: "postMessage", org: "local", actor: LOCAL_OWNER, status: 201 },
     ]);
     const printed = JSON.stringify(lines);
-    for (const secret of [stranger.token, owner.token, "Bearer"]) expect(printed).not.toContain(secret);
+    for (const secret of [stranger.token, OWNER.token, "Bearer"]) expect(printed).not.toContain(secret);
   });
 });
 

@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
-import { createApp } from "../src/index.ts";
 import { boardPath } from "../src/http/scope.ts";
-import { call, LOCAL_OWNER, makeApp, NOW, OWNER, PUBLIC_URL } from "./support/app.ts";
+import { createApp } from "../src/index.ts";
+import { call, LOCAL_OWNER, makeApp, NOW, OWNER, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
 import { openStore } from "./support/drivers.ts";
 
 let app: ReturnType<typeof createApp>;
@@ -53,6 +53,7 @@ test.each(["/api", "/api/messages/10", "/api/tasks/main", "/api/x/main"])(
       {
         now: () => NOW,
         requestId: () => "req-1",
+        schedule: unexpectedTimer,
         randomBytes: (length) => new Uint8Array(length),
         log: { info: () => {}, error: () => {} },
       },

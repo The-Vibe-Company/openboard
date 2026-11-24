@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
-import type { ErrorBody, OutputOf, postMessage, readEvents } from "@openboard/contract";
-import { call, makeApp } from "./support/app.ts";
+import type { CreatedConnection, ErrorBody, OutputOf, postMessage, readEvents } from "@openboard/contract";
+import { BOARD_URL, call, makeApp, NOW, OWNER } from "./support/app.ts";
+import { openStore } from "./support/drivers.ts";
 
 test("reads a posted message once from its event cursor, its writer's actor.seen left out", async () => {
   const app = makeApp();
@@ -33,8 +34,8 @@ test("reads a posted message once from its event cursor, its writer's actor.seen
   }
 });
 
-test("validates upstream wait bounds and reads immediately", async () => {
-  const app = makeApp();
+test("validates upstream wait bounds and reads available events immediately", async () => {
+  const app = makeApp({ schedule: () => () => {} });
   try {
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
     const atHead = await call(app, "GET", "/events?after=2&channel=dev&wait=0");
@@ -42,9 +43,9 @@ test("validates upstream wait bounds and reads immediately", async () => {
     const page = await atHead.json();
     expect(page).toEqual({ cursor: "2", events: [] });
     for (const wait of ["0.5", "300"]) {
-      const response = await call(app, "GET", `/events?after=2&channel=dev&wait=${wait}`);
+      const response = await call(app, "GET", `/events?after=0&channel=dev&wait=${wait}`);
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual(page);
+      expect(((await response.json()) as OutputOf<typeof readEvents>).events).toHaveLength(1);
     }
     for (const wait of ["-0.1", "300.1"]) {
       const response = await call(app, "GET", `/events?after=2&channel=dev&wait=${wait}`);
@@ -55,6 +56,136 @@ test("validates upstream wait bounds and reads immediately", async () => {
     await app.close();
   }
 });
+
+function waitingApp(options: Parameters<typeof makeApp>[0] = {}) {
+  const timer = Promise.withResolvers<{ delay: number; expire: () => void }>();
+  let cancelled = false;
+  const app = makeApp({
+    ...options,
+    schedule(delay, expire) {
+      timer.resolve({ delay, expire });
+      return () => {
+        cancelled = true;
+      };
+    },
+  });
+  return { app, armed: timer.promise, cancelled: () => cancelled };
+}
+
+test("waits for a matching committed post after scanning an unrelated post", async () => {
+  const { app, armed, cancelled } = waitingApp();
+  try {
+    const pending = call(app, "GET", "/events?after=0&channel=dev&wait=30");
+    expect((await armed).delay).toBe(30_000);
+    expect((await call(app, "POST", "/messages", { channel: "other", text: "outside" })).status).toBe(201);
+    expect(cancelled()).toBe(false);
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "hi" })).status).toBe(201);
+    const response = await pending;
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      cursor: "3",
+      events: [expect.objectContaining({ type: "message.posted", message: expect.objectContaining({ text: "hi" }) })],
+    });
+    expect(cancelled()).toBe(true);
+  } finally {
+    await app.close();
+  }
+}, 500);
+
+test("starts at head without after and returns an empty page at the capped deadline", async () => {
+  const { app, armed, cancelled } = waitingApp();
+  try {
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "before the poll" })).status).toBe(201);
+    const pending = call(app, "GET", "/events?channel=dev&wait=300");
+    const { delay, expire } = await armed;
+    expect(delay).toBe(120_000);
+    expire();
+    expect(await (await pending).json()).toEqual({ cursor: "2", events: [] });
+    expect(cancelled()).toBe(true);
+  } finally {
+    await app.close();
+  }
+}, 500);
+
+test("cancels the event wait when the request aborts", async () => {
+  const { app, armed, cancelled } = waitingApp();
+  try {
+    const controller = new AbortController();
+    const pending = app.fetch(
+      new Request(`${BOARD_URL}/events?after=0&wait=30`, {
+        headers: { authorization: `Bearer ${OWNER.token}` },
+        signal: controller.signal,
+      }),
+    );
+    await armed;
+    controller.abort();
+    expect(await (await pending).json()).toEqual({ cursor: "0", events: [] });
+    expect(cancelled()).toBe(true);
+  } finally {
+    await app.close();
+  }
+}, 500);
+
+test("a parked feed refuses a credential rotated before a matching post", async () => {
+  const { app, armed } = waitingApp();
+  try {
+    const created = await call(app, "POST", "/x/connections", {
+      name: "feed-reader",
+      direct: true,
+      can: { dev: ["read"] },
+    });
+    expect(created.status).toBe(201);
+    const { connection, secret } = (await created.json()) as CreatedConnection;
+    const pending = app.fetch(
+      new Request(`${BOARD_URL}/events?after=0&channel=dev&wait=30`, {
+        headers: { authorization: `Bearer ${secret}` },
+      }),
+    );
+    await armed;
+    expect((await call(app, "POST", `/x/connections/${connection.id}/rotate`)).status).toBe(200);
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "private" })).status).toBe(201);
+    const response = await pending;
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ error: { code: "unauthorized" } });
+  } finally {
+    await app.close();
+  }
+}, 500);
+
+test("rechecks a named author registered between actor lookup and event scan", async () => {
+  const store = openStore(() => NOW);
+  const lookedUp = Promise.withResolvers<void>();
+  const continueRead = Promise.withResolvers<void>();
+  const { app } = waitingApp({
+    store: {
+      ...store,
+      board(scope) {
+        const board = store.board(scope);
+        return {
+          ...board,
+          async findFilterActors(...args) {
+            const actors = await board.findFilterActors(...args);
+            lookedUp.resolve();
+            await continueRead.promise;
+            return actors;
+          },
+        };
+      },
+    },
+  });
+  try {
+    const pending = call(app, "GET", "/events?after=0&channel=dev&by=local-test&wait=30");
+    await lookedUp.promise;
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "first by this author" })).status).toBe(201);
+    continueRead.resolve();
+    const response = await pending;
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ cursor: "2", events: [{ message: { id: "2" } }] });
+  } finally {
+    continueRead.resolve();
+    await app.close();
+  }
+}, 500);
 
 test.each(["bad", "1"])("rejects invalid event cursor %s", async (cursor) => {
   const app = makeApp();

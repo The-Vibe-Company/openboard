@@ -32,6 +32,8 @@ export interface Logger {
 /** Time, logging and anything else that varies per process comes from here, never from a global. */
 export interface Deps {
   readonly now: () => number;
+  /** Schedule a one-shot timer and return its cancel function. */
+  readonly schedule: (delayMs: number, run: () => void) => () => void;
   readonly log: Logger;
   /** A fresh ID for a request whose client sent none (docs/protocol.md "Request headers"). */
   readonly requestId: () => string;

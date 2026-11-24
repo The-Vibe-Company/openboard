@@ -1,4 +1,5 @@
-import { createApp, type Logger, mintLocalOwnerToken } from "../../src/index.ts";
+import type { Store } from "@openboard/ports";
+import { createApp, type Deps, type Logger, mintLocalOwnerToken } from "../../src/index.ts";
 import { openStore } from "./drivers.ts";
 
 /** `OPENBOARD_PUBLIC_URL` of every test app. */
@@ -10,12 +11,24 @@ export const NOW = 1_700_000_000_000;
 /** The local owner token every test app accepts, from fixed bytes so no token-shaped string is written here. */
 export const OWNER = mintLocalOwnerToken(new Uint8Array(42).fill(7));
 
+/** Tests that do not exercise timers fail if they accidentally arm one. */
+export function unexpectedTimer(): never {
+  throw new Error("unexpected timer");
+}
+
 /**
  * One app on the test store (in-memory SQLite, or a fresh Postgres database with `OPENBOARD_TEST_DRIVER=postgres`),
  * with a fixed clock unless one is given, a logger that keeps the errors it is told unless one is given, request IDs
  * `req-1`, `req-2`, … in the order requests arrive, and random bytes all 1, then all 2, ….
  */
-export function makeApp(options: { readonly now?: () => number; readonly log?: Logger } = {}) {
+export function makeApp(
+  options: {
+    readonly now?: () => number;
+    readonly log?: Logger;
+    readonly schedule?: Deps["schedule"];
+    readonly store?: Store;
+  } = {},
+) {
   const logged: Readonly<Record<string, unknown>>[] = [];
   const now = options.now ?? (() => NOW);
   const log: Logger = options.log ?? {
@@ -26,8 +39,14 @@ export function makeApp(options: { readonly now?: () => number; readonly log?: L
   let drawn = 0;
   const app = createApp(
     { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: OWNER.hash },
-    { store: openStore(now) },
-    { now, log, requestId: () => `req-${++minted}`, randomBytes: (length) => new Uint8Array(length).fill(++drawn) },
+    { store: options.store ?? openStore(now) },
+    {
+      now,
+      log,
+      requestId: () => `req-${++minted}`,
+      schedule: options.schedule ?? unexpectedTimer,
+      randomBytes: (length) => new Uint8Array(length).fill(++drawn),
+    },
   );
   return { ...app, logged };
 }

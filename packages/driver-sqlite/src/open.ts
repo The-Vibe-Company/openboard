@@ -3,6 +3,7 @@ import { closeSync, mkdirSync, openSync } from "node:fs";
 import { join } from "node:path";
 import { createViews, type Db, migrations, type Row, type SqlValue } from "@openboard/driver-sql";
 import type { Store } from "@openboard/ports";
+import { sqliteBroadcaster } from "./broadcaster.ts";
 import type { StatementCounter } from "./counters.ts";
 import { sqliteDialect } from "./dialect.ts";
 import { migrate } from "./migrate.ts";
@@ -93,7 +94,7 @@ function connection(database: Database, counter?: StatementCounter): Db {
 export function sqliteDriver(options: SqliteOptions, now: () => number = Date.now, counter?: StatementCounter): Store {
   const database = openDatabase(options, now);
   return {
-    ...createViews(connection(database, counter), sqliteDialect),
+    ...createViews(connection(database, counter), sqliteDialect, sqliteBroadcaster()),
     async close() {
       database.close();
     },

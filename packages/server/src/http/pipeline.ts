@@ -1,9 +1,9 @@
 import { BoardError, decodeInput, type operations, type previewInvitation, type RawInput } from "@openboard/contract";
 import type { PlatformView } from "@openboard/ports";
+import { keepInsideCan } from "../auth/access.ts";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
 import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.ts";
-import { keepInsideCan } from "../auth/access.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
@@ -186,7 +186,8 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   if (operation.scope !== "board") throw notFound();
   const board = await pipeline.tenants.board(path);
   const chain = verifiers(pipeline.config, pipeline.platform, pipeline.deps.now);
-  const by = await authenticate(request, chain, board, operation.name);
+  const verify = () => authenticate(request, chain, board, operation.name);
+  const by = await verify();
   logged.actor = by.actor;
   refuseClaimedConfiguration(request, operation);
   const input = validate(operation, {
@@ -195,9 +196,17 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
     body: request.method === "GET" ? undefined : await readBody(request),
   });
   await keepInsideCan(operation, input, by, board);
-  const { now, randomBytes } = pipeline.deps;
+  const reauthorize = async () => {
+    const current = await verify();
+    await keepInsideCan(operation, input, current, board);
+    return current;
+  };
+  const { now, randomBytes, schedule } = pipeline.deps;
   const boardUrl = `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`;
-  const output = await handlerOf(operation)({ board, by, now, boardUrl, randomBytes }, input);
+  const output = await handlerOf(operation)(
+    { board, by, now, boardUrl, randomBytes, schedule, reauthorize, signal: request.signal },
+    input,
+  );
   return operationResponse(operation, output);
 }
 

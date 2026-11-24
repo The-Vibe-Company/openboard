@@ -4,7 +4,7 @@ import type { createInvitation, OutputOf } from "@openboard/contract";
 import { orgs } from "@openboard/core";
 import type { Store } from "@openboard/ports";
 import { createApp } from "../src/index.ts";
-import { LOCAL_OWNER, NOW, PUBLIC_URL } from "./support/app.ts";
+import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
 import { browserSession, makeBrowserApp } from "./support/browser-session.ts";
 import { openStore } from "./support/drivers.ts";
 
@@ -47,6 +47,7 @@ async function setup() {
     {
       now: () => now,
       requestId: () => "req-1",
+      schedule: unexpectedTimer,
       randomBytes: (length) => new Uint8Array(length).fill(++drawn),
       log: { info: (_, fields) => log.push(fields), error: (_, fields) => log.push(fields) },
     },

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { RefKind } from "@openboard/contract";
 import type { Store } from "@openboard/ports";
 import { type App, createApp } from "../../src/index.ts";
-import { LOCAL_OWNER, NOW, PUBLIC_URL } from "../support/app.ts";
+import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "../support/app.ts";
 import { openStore } from "../support/drivers.ts";
 
 export type Headers = Readonly<Record<string, string>>;
@@ -168,7 +168,13 @@ export async function seed(): Promise<Seeded> {
   const app = createApp(
     { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, signup: "open" },
     { store },
-    { now: () => NOW, requestId: () => "req-1", randomBytes, log: { info() {}, error() {} } },
+    {
+      schedule: unexpectedTimer,
+      now: () => NOW,
+      requestId: () => "req-1",
+      randomBytes,
+      log: { info() {}, error() {} },
+    },
   );
   const send: Send = (method, path, headers, body) =>
     app.fetch(

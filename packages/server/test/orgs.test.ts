@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import type { ErrorBody } from "@openboard/contract";
 import type { Store } from "@openboard/ports";
 import { type App, createApp } from "../src/index.ts";
-import { LOCAL_OWNER, NOW, PUBLIC_URL } from "./support/app.ts";
+import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
 import { openStore } from "./support/drivers.ts";
 
 let app: App | undefined;
@@ -29,7 +29,13 @@ async function start(people: string[], mode: "local" | "hosted" = "local") {
   }
   const config = { mode, publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, signup: "open" as const };
   const randomBytes = (length: number) => new Uint8Array(length).fill(9);
-  const deps = { now: () => NOW, requestId: () => "req-1", randomBytes, log: { info() {}, error() {} } };
+  const deps = {
+    schedule: unexpectedTimer,
+    now: () => NOW,
+    requestId: () => "req-1",
+    randomBytes,
+    log: { info() {}, error() {} },
+  };
   app = createApp(config, { store }, deps);
   const at = (index: number): Person => {
     const person = sessions[index];

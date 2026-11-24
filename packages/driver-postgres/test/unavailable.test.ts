@@ -1,10 +1,11 @@
-import { SQL } from "bun";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "bun:test";
 import { BoardError } from "@openboard/contract";
 import { messages } from "@openboard/core";
 import { createViews, postgresText } from "@openboard/driver-sql";
 import type { BoardView, BoardWriter, Store } from "@openboard/ports";
 import { testScope } from "@openboard/ports/testkit";
+import { SQL } from "bun";
+import { postgresBroadcaster } from "../src/broadcaster.ts";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
 import { connection, isUnavailable, openPool } from "../src/pool.ts";
 import { postgresTestUrl } from "./support/env.ts";
@@ -96,7 +97,10 @@ if (url) {
 
   test("a store on a URL nothing listens on answers a read and a write with unavailable, within the connect timeout", async () => {
     const sql = openPool(deadUrl(url));
-    const store: Store = { ...createViews(connection(sql), postgresText), close: () => sql.close() };
+    const store: Store = {
+      ...createViews(connection(sql), postgresText, postgresBroadcaster()),
+      close: () => sql.close(),
+    };
     stores.push(store);
     const board = store.board(testScope({ orgId: 1, boardId: 1 }));
 

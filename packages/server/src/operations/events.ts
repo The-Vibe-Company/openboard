@@ -10,10 +10,11 @@ import {
   parseId,
 } from "@openboard/core";
 import { canListMentionActors, canReadChannel, withoutMentionDetails } from "../auth/access.ts";
+import { longPoll } from "../live/long-poll.ts";
 import type { Handler } from "./index.ts";
 
 export const readEventsHandler: Handler<typeof readEvents> = async (
-  { board, by },
+  { board, by, schedule, signal, reauthorize },
   { after, last, wait, channel, re, label, from, text, by: author, mentions },
 ) => {
   if (last !== undefined && (after !== undefined || wait !== undefined)) {
@@ -24,35 +25,69 @@ export const readEventsHandler: Handler<typeof readEvents> = async (
 
   const thread = re === undefined ? undefined : parseId(re);
   if (thread === null) throw new BoardError("invalid_request", "re: expected a decimal thread ID");
-  const everywhere = canListMentionActors(by);
   const authorLookup = author === "me" ? undefined : author;
-  const named = mentions === undefined ? undefined : mentionFilter(mentions, by.actor, everywhere);
-  const mentionLookup = named?.resolve ? named : undefined;
-  const actors =
-    authorLookup !== undefined || mentionLookup !== undefined
-      ? await board.findFilterActors(authorLookup, mentionLookup)
-      : [];
-  const mentionActors = everywhere ? actors : mentions === "me" ? actors.filter(({ id }) => id === by.actor) : [];
-  const { events, cursor, head } = await board.readEvents(position, {
+  const filters = {
     channel,
     last,
     thread: thread === undefined ? undefined : formatId(thread),
     labels: labelFilters(label),
     from,
     text: text?.toLowerCase(),
-    authors: author === undefined ? undefined : eventAuthors(author, by.actor, actors),
-    mentions: mentions === undefined ? undefined : eventMentions(mentions, by.actor, mentionActors),
-  });
-  if (position !== undefined && position > head) {
-    throw new BoardError("invalid_cursor", "after: cursor is ahead of the board");
-  }
-  return {
-    cursor: formatId(cursor),
-    events: events
-      .filter((event) => canReadChannel(by, event.channel))
-      .flatMap((event) => projectEvent(event, everywhere, text !== undefined || mentions !== undefined)),
   };
+  let current = by;
+  const page = await longPoll(board, position, wait, signal, schedule, async (after) => {
+    const everywhere = canListMentionActors(current);
+    const named = mentions === undefined ? undefined : mentionFilter(mentions, current.actor, everywhere);
+    const mentionLookup = named?.resolve ? named : undefined;
+    const lookup = () =>
+      authorLookup !== undefined || mentionLookup !== undefined
+        ? board.findFilterActors(authorLookup, mentionLookup)
+        : [];
+    const actors = await lookup();
+    const mentionActors = everywhere
+      ? actors
+      : mentions === "me"
+        ? actors.filter(({ id }) => id === current.actor)
+        : [];
+    const { events, cursor, head } = await board.readEvents(after, {
+      ...filters,
+      authors: author === undefined ? undefined : eventAuthors(author, current.actor, actors),
+      mentions: mentions === undefined ? undefined : eventMentions(mentions, current.actor, mentionActors),
+    });
+    if (after !== undefined && after > head) {
+      throw new BoardError("invalid_cursor", "after: cursor is ahead of the board");
+    }
+    if (wait) {
+      // A write can introduce an actor between lookup and scan. Re-read without advancing the cursor in that case.
+      const latest = after === undefined ? actors : await lookup();
+      current = await reauthorize();
+      if ((mentions !== undefined && everywhere !== canListMentionActors(current)) || !sameActors(actors, latest)) {
+        return { cursor: after ?? head, head, events: [], retry: true };
+      }
+    }
+    const revealMentions = canListMentionActors(current);
+    return {
+      head,
+      cursor,
+      events: events
+        .filter((event) => canReadChannel(current, event.channel))
+        .flatMap((event) => projectEvent(event, revealMentions, text !== undefined || mentions !== undefined)),
+    };
+  });
+  return { cursor: formatId(page.cursor), events: page.events };
 };
+
+type FilterActors = Awaited<ReturnType<Parameters<typeof readEventsHandler>[0]["board"]["findFilterActors"]>>;
+
+function sameActors(before: FilterActors, after: FilterActors): boolean {
+  if (before === after) return true;
+  if (before.length !== after.length) return false;
+  const byId = new Map(after.map((actor) => [actor.id, actor]));
+  return before.every(({ id, kind, handle }) => {
+    const actor = byId.get(id);
+    return actor?.kind === kind && actor.handle === handle;
+  });
+}
 
 type FeedEvent = Awaited<ReturnType<Parameters<typeof readEventsHandler>[0]["board"]["readEvents"]>>["events"][number];
 

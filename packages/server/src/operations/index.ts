@@ -10,7 +10,7 @@ import type {
 } from "@openboard/contract";
 import type { BoardView, OrgView, PersonRecord, PlatformView } from "@openboard/ports";
 import type { Session } from "../auth/sessions.ts";
-import type { Principal } from "../deps.ts";
+import type { Deps, Principal } from "../deps.ts";
 import {
   approveDeviceSignInHandler,
   getAccountHandler,
@@ -59,6 +59,9 @@ import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
 export interface BoardContext {
   readonly board: BoardView;
+  readonly signal: AbortSignal;
+  readonly schedule: Deps["schedule"];
+  readonly reauthorize: () => Promise<Principal>;
   readonly by: Principal;
   readonly now: () => number;
   /** The canonical `BOARD_URL` of the board: `OPENBOARD_PUBLIC_URL` + `/api/<org>/<board>`. */

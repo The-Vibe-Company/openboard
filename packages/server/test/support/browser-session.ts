@@ -1,7 +1,7 @@
 import { expect } from "bun:test";
 import type { SessionState } from "@openboard/contract";
 import { createApp } from "../../src/index.ts";
-import { LOCAL_OWNER, NOW, PUBLIC_URL } from "./app.ts";
+import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./app.ts";
 import { openStore } from "./drivers.ts";
 
 /** Fake the provider's HTTP endpoints while running the browser sign-in and session flow. */
@@ -62,6 +62,7 @@ export function makeBrowserApp(localOwnerTokenHash?: string) {
     {
       now: () => NOW,
       requestId: () => "req-1",
+      schedule: unexpectedTimer,
       randomBytes: (length) => new Uint8Array(length).fill(++drawn),
       fetch: fakeProvider,
       log: { info() {}, error() {} },

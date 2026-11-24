@@ -1,6 +1,6 @@
-import { SQL } from "bun";
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { runStoreSuite } from "@openboard/ports/testkit";
+import { type OpenStore, runBroadcasterSuite, runStoreSuite } from "@openboard/ports/testkit";
+import { SQL } from "bun";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
 import { migrate } from "../src/migrate.ts";
 import { postgresTestUrl } from "./support/env.ts";
@@ -14,7 +14,7 @@ if (url) {
   afterAll(() => databases?.close());
 
   // Every store case, each on its own database cloned from the migrated template.
-  runStoreSuite("postgres", async () => {
+  const open: OpenStore = async () => {
     const database = await databases.create();
     try {
       const store = await postgresDriver({ url: database.url });
@@ -32,7 +32,9 @@ if (url) {
       await database.drop();
       throw error;
     }
-  });
+  };
+  runStoreSuite("postgres", open);
+  runBroadcasterSuite("postgres", open);
 
   test("retries an unrecorded concurrent migration and replaces a failed build", async () => {
     const database = await databases.create();
