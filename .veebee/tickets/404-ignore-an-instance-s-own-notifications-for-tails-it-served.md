@@ -8,11 +8,19 @@ writes:
   - packages/driver-postgres/test/broadcaster.test.ts
   - packages/server/src/live/fan-out.ts
   - packages/server/test/live/fan-out.test.ts
+  - .veebee/tickets/404-ignore-an-instance-s-own-notifications-for-tails-it-served.md
+  - packages/ports/src/broadcaster.ts
+  - packages/ports/src/store.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/local-broadcaster.ts
+  - packages/driver-sql/src/views/messages.ts
+  - docs/architecture.md
+  - docs/decisions.md
 conformance: []
 modes: [hosted]
 depends_on: [177]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-t177
 issue: 633
 ---
 
@@ -20,8 +28,8 @@ issue: 633
 As an operator on Postgres, a post served to my instance's tails from memory costs no extra store read when that instance's own `NOTIFY` for the same commit arrives.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/live/fan-out.test.ts --rerun-each 20` passes every run, with the single-instance cases asserting zero store reads for tails served from memory
-- [ ] a test in `packages/driver-postgres/test/broadcaster.test.ts` shows that a notification for a position a subscriber already reached (from the local publish) does not wake it again, while a notification from another instance for a newer position still does
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/live/fan-out.test.ts --rerun-each 20` passes every run, with the single-instance cases asserting zero store reads for tails served from memory
+- [x] a test in `packages/driver-postgres/test/broadcaster.test.ts` shows that a notification for a position a subscriber already reached (from the local publish) does not wake it again, while a notification from another instance for a newer position still does
 
 ## Out of scope
 - Cross-instance in-memory delivery (notifications carry only the head, D36).

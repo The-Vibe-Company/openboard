@@ -1,8 +1,10 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
-import type { BoardView, BoardWriter, Store } from "@openboard/ports";
+import type { Db } from "@openboard/driver-sql";
+import type { BoardView, BoardWriter, CommittedPage, Store } from "@openboard/ports";
 import { testScope } from "@openboard/ports/testkit";
 import { SQL } from "bun";
+import { postgresBroadcaster } from "../src/broadcaster.ts";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
 import { postgresTestUrl } from "./support/env.ts";
 
@@ -132,3 +134,55 @@ if (url) {
     expect((await writer.board.readEvents()).head).toBe(head);
   }, 850);
 }
+
+/** A broadcaster whose LISTEN connection is a fake: the test delivers each notification itself. */
+async function listening() {
+  let deliver: (payload: string) => void = () => {};
+  const sql = {
+    listen: async (_channel: string, onNotify: (payload: string) => void) => {
+      deliver = onNotify;
+      return { unlisten: async () => {} };
+    },
+  } as unknown as SQL;
+  const broadcaster = await postgresBroadcaster(sql, {} as Db, () => () => {});
+  // A notification flushes on the next turn of the event loop, coalesced with others for the board.
+  const notify = async (payload: string) => {
+    deliver(payload);
+    await new Promise((resolve) => setImmediate(resolve));
+  };
+  return { broadcaster, notify };
+}
+
+test("an instance's own notification leaves the wake to its publish, which carries the page", async () => {
+  const { broadcaster, notify } = await listening();
+  const scope = testScope({ orgId: 1, boardId: 7 });
+  const wakes: [CommittedPage | undefined, number][] = [];
+  broadcaster.subscribe(scope, 1, (page, head) => wakes.push([page, head]));
+  const committed = (after: number, head: number): CommittedPage => ({ after, head, events: [] });
+  try {
+    // The notifications of this instance's commit can arrive before the write returns and publishes its page, for its
+    // last head and for any it set on the way.
+    const release = broadcaster.committing?.(scope, 1, 3);
+    await notify("7:2");
+    await notify("7:3");
+    expect(wakes).toEqual([]);
+    broadcaster.publish(scope, committed(1, 3));
+    release?.();
+    expect(wakes).toEqual([[committed(1, 3), 3]]);
+    // A notification for a position the publish already reached does not wake the subscriber again.
+    broadcaster.publish(scope, committed(3, 4));
+    await notify("7:4");
+    expect(wakes).toEqual([
+      [committed(1, 3), 3],
+      [committed(3, 4), 4],
+    ]);
+    // Another instance's newer commit still wakes without a page, and so does a head this instance no longer commits.
+    await notify("7:5");
+    expect(wakes.at(-1)).toEqual([undefined, 5]);
+    broadcaster.committing?.(scope, 5, 6)();
+    await notify("7:6");
+    expect(wakes.at(-1)).toEqual([undefined, 6]);
+  } finally {
+    await broadcaster.close();
+  }
+});
