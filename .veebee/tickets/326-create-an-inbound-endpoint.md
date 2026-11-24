@@ -27,9 +27,9 @@ writes:
   - packages/cli/test/inbound.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [181, 304]
-status: draft
-claimed_by: null
+depends_on: [181, 304, 314]
+status: claimed
+claimed_by: codex
 issue: 511
 ---
 
