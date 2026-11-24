@@ -9,7 +9,7 @@ writes:
   - packages/server/test/webhooks/template-paths.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [317]
+depends_on: [317, 310]
 status: draft
 claimed_by: null
 issue: 503
@@ -27,3 +27,5 @@ As a board admin, a typo in a body template (`{{subject.thraed}}`) is refused wh
 
 ## Notes
 docs/protocol.md "Body templates" ("Unknown paths are 400 at creation").
+
+Waits for 310 (orchestrator, 2026-11-24, #503): the update criterion needs `POST /x/webhooks/:id`, which 310 adds. A first draft is on branch `t/318-refuse-a-template-with-an-unknown-path`.
