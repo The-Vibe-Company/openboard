@@ -4,14 +4,18 @@ title: Answer 501 to a wake-by-path registration
 milestone: M11-webhooks-and-watchers
 package: core
 writes:
+  - tools/conformance/score.json
+  - packages/contract/src/operations/watchers/index.ts
+  - packages/server/src/operations/watchers/index.ts
+  - packages/server/openapi.json
   - packages/core/src/watchers/register.ts
   - packages/core/test/watchers/register.test.ts
   - packages/server/test/watchers/wake.test.ts
 conformance: ["watchers/wakes by path only where its discovery says so, and only a Vercel project"]
 modes: [local, hosted]
 depends_on: [300]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 486
 ---
 

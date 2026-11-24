@@ -6795,8 +6795,8 @@
                       "properties": { "key": { "type": "string" }, "platform": { "type": "string" } }
                     }
                   },
-                  "url": { "type": "null" },
-                  "path": { "type": "null" },
+                  "url": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                  "path": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
                   "branch": { "type": "null" }
                 }
               }
@@ -6867,6 +6867,10 @@
           },
           "500": {
             "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "501": {
+            "description": "no_wake_by_path, no_wake_by_url",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           }
         }
