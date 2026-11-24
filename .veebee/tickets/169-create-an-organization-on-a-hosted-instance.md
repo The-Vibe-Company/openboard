@@ -4,6 +4,9 @@ title: Create an organization on a hosted instance
 milestone: M5-postgres-driver
 package: server
 writes:
+  - .veebee/tickets/169-create-an-organization-on-a-hosted-instance.md
+  - packages/server/test/accounts.test.ts
+  - packages/server/test/support/sign-in.ts
   - packages/server/test/hosted.test.ts
   - packages/server/test/support/app.ts
   - packages/server/src/auth/chain.ts
@@ -12,8 +15,8 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [167, 168]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 249
 ---
 
