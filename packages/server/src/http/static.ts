@@ -2,6 +2,8 @@ import { webAssets } from "../web/assets.ts";
 import { notFound } from "./scope.ts";
 
 const RESERVED = /^\/(?:api|mcp|auth|healthz|readyz)(?:\/|$)/;
+const CONTENT_SECURITY_POLICY =
+  "default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://github.com";
 const ENCODINGS = [
   { name: "br", suffix: ".br" },
   { name: "gzip", suffix: ".gz" },
@@ -25,8 +27,9 @@ function encodings(value: string) {
   };
 }
 
-export function staticFiles(directory?: string) {
+export function staticFiles(publicUrl: string, directory?: string) {
   const read = webAssets(directory);
+  const secure = new URL(publicUrl).protocol === "https:";
   async function respond(request: Request, path: string): Promise<Response> {
     const asset = path === "/assets" || path.startsWith("/assets/");
     // The URL never becomes a filesystem path unless all components are filename-safe.
@@ -44,6 +47,10 @@ export function staticFiles(directory?: string) {
     const headers = new Headers({
       "cache-control": asset ? "public, max-age=31536000, immutable" : "no-cache",
       "content-type": Bun.file(name).type,
+      "content-security-policy": CONTENT_SECURITY_POLICY,
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "same-origin",
+      ...(secure && { "strict-transport-security": "max-age=31536000" }),
       vary: "Accept-Encoding",
     });
     const { preferred, identity } = encodings(request.headers.get("accept-encoding") ?? "");
