@@ -10,7 +10,7 @@ writes:
   - packages/driver-sqlite/test/isolation.test.ts
 conformance: []
 modes: [local]
-depends_on: [97, 134]
+depends_on: [134]
 status: draft
 claimed_by: null
 issue: 136
@@ -28,4 +28,4 @@ As the owner of the code base, I know no operation lets one organization read or
 - Expected-failure lists: forbidden (AGENTS.md non-negotiable 15).
 
 ## Notes
-`docs/codebase.md` 6.5 and 4.4; storage twin in `packages/ports/testkit/isolation.test-suite.ts`. Label `isolation`. This ticket closes M4's "tenant isolation suite green on SQLite".
+`docs/codebase.md` 6.5 and 4.4. The cases are generated from the operation registry, so operations merged later (events, long-poll, 97) are covered without changing this suite (orchestrator: dependency on 97 dropped); storage twin in `packages/ports/testkit/isolation.test-suite.ts`. Label `isolation`. This ticket closes M4's "tenant isolation suite green on SQLite".
