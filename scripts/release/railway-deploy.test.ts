@@ -10,7 +10,7 @@ const ids = { environmentId: target.environmentId, serviceId: service.serviceId 
 
 function fakeRailway(
   health: { instanceId: string; deploymentTag: string }[],
-  options: { environment?: string; rejectUpdate?: boolean; interruptPoll?: boolean } = {},
+  options: { environment?: string; rejectUpdate?: boolean; interruptPoll?: boolean; replaced?: boolean } = {},
 ) {
   let now = 0;
   let probes = 0;
@@ -56,7 +56,10 @@ function fakeRailway(
           data: {
             deployment: {
               status: "SUCCESS",
-              instances: ["replica-a", "replica-b"].map((id) => ({ id, status: "RUNNING" })),
+              instances: [
+                ...(options.replaced ? [{ id: "replaced-replica", status: "REMOVED" }] : []),
+                ...["replica-a", "replica-b"].map((id) => ({ id, status: "RUNNING" })),
+              ],
             },
           },
         });
@@ -150,4 +153,15 @@ test("honors Retry-After on an interrupted status poll and still verifies both r
   );
   expect(await deployStaging(args, credential, fake.runtime)).toEqual(["replica-a", "replica-b"]);
   expect(fake.sleeps).toEqual([1_000, 2_000]);
+});
+
+test("ignores the replica the deploy replaced, which Railway lists as REMOVED", async () => {
+  const fake = fakeRailway(
+    [
+      { instanceId: "replica-a", deploymentTag: tag },
+      { instanceId: "replica-b", deploymentTag: tag },
+    ],
+    { replaced: true },
+  );
+  expect(await deployStaging(args, credential, fake.runtime)).toEqual(["replica-a", "replica-b"]);
 });

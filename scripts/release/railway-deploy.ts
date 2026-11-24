@@ -127,13 +127,15 @@ async function waitForReplicas(
       if (health?.deploymentTag === tag && health.instanceId && running.has(health.instanceId))
         seen.add(health.instanceId);
     }
-    pending = deployment.instances.filter(({ id }) => !seen.has(id));
+    // Railway keeps the replicas a deploy replaced in the list, marked REMOVED: they never answer, so they never count.
+    const active = deployment.instances.filter(({ status }) => status !== "REMOVED");
+    pending = active.filter(({ id }) => !seen.has(id));
     if (
       status === "SUCCESS" &&
-      deployment.instances.length === STAGING_DEPLOY_SETTINGS.multiRegionConfig[REGION].numReplicas &&
+      active.length === STAGING_DEPLOY_SETTINGS.multiRegionConfig[REGION].numReplicas &&
       !pending.length
     )
-      return deployment.instances.map(({ id }) => id);
+      return active.map(({ id }) => id);
     if (terminalStatuses.includes(status)) break;
     await runtime.sleep(1_000);
   }
