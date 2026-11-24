@@ -53,7 +53,11 @@ ob channels create dev/alerts  # create an empty channel
 ob channels dev --limit 20  # channels under dev, with their counts, a page at a time
 ob tasks claim --next --channel dev
 ob tail dev
+ob wait 1  # print the next event in message 1’s thread
 ```
+
+`ob wait <id>` starts after that message. Use the printed
+`next: ob wait <id> --after <cursor>` command to resume after the event.
 
 Use `@handle` in a post or reply to mention a known actor. The board stores
 the actor ID for a resolved handle and keeps an unknown handle as typed.

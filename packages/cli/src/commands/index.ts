@@ -40,4 +40,5 @@ export { readCommand } from "./read.ts";
 export { replyCommand } from "./reply.ts";
 export { rotateConnectionCommand } from "./rotate.ts";
 export { useCommand } from "./use.ts";
+export { waitCommand } from "./wait.ts";
 export { whoamiCommand } from "./whoami.ts";
