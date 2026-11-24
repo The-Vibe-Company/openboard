@@ -6,6 +6,9 @@ package: web
 writes:
   - apps/web/e2e/onboarding.spec.ts
   - apps/web/e2e/board.spec.ts
+  - apps/web/e2e/empty-channel.spec.ts
+  - apps/web/e2e/post.spec.ts
+  - apps/web/e2e/reply.spec.ts
   - apps/web/e2e/scroll.spec.ts
   - apps/web/e2e/support/serve.ts
   - apps/web/e2e/support/board-live.ts

@@ -24,7 +24,7 @@ test("a fresh board shows how to post until its first thread arrives", async ({ 
       );
       await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: app.url });
       await page.getByRole("button", { name: "Copy", exact: true }).click();
-      await expect(page.getByRole("status")).toHaveText("Board URL copied.");
+      await expect(page.getByRole("status").filter({ hasText: /^Board URL copied\.$/ })).toBeVisible();
       expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(url);
     });
 

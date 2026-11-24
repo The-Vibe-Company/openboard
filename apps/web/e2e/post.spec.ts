@@ -129,7 +129,7 @@ test("a post refreshes a thread list that is still loading", async ({ page, boar
   try {
     await page.reload();
     await waiting.promise;
-    await expect(page.getByRole("status")).toContainText("Loading threads");
+    await expect(page.getByRole("status").filter({ hasText: "Loading threads" })).toBeVisible();
     await page.getByRole("textbox", { name: "Message" }).fill("while loading");
     await page.getByRole("button", { name: "Post", exact: true }).click();
     const threads = page.getByRole("list", { name: "Latest threads" }).getByRole("listitem");
