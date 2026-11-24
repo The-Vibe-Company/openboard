@@ -2,7 +2,7 @@ import { BoardError, decodeInput, type operations, type previewInvitation, type 
 import type { PlatformView } from "@openboard/ports";
 import { authenticate, verifiers } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
-import { sessionOf, signOut } from "../auth/sessions.ts";
+import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.ts";
 import { keepInsideCan } from "../auth/access.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
@@ -96,14 +96,17 @@ async function runAccount(request: Request, url: URL, operation: AccountOperatio
 
 /**
  * An `org` operation: the browser's session is the person, who must belong to the organization the path names (404
- * otherwise, as for an unknown one). Reading (`access.permission` `read`) takes any member; anything else an admin.
+ * otherwise, as for an unknown one, before any CSRF proof is asked). Reading (`access.permission` `read`) takes any
+ * member; anything else an admin.
  */
 async function runOrg(request: Request, url: URL, operation: OrgOperation, params: Params, pipeline: Pipeline) {
   const { config, deps, platform } = pipeline;
-  const session = await sessionOf(request, platform, deps.now(), config.publicUrl);
-  if (!session) throw new BoardError("unauthorized", "sign in first");
+  const at = deps.now();
+  const live = await liveSession(request, platform, at);
+  if (!live) throw new BoardError("unauthorized", "sign in first");
   const resolve = operation.access?.permission === "read" ? pipeline.tenants.memberOrg : pipeline.tenants.adminOrg;
-  const org = await resolve(params.org ?? "", session.person.id);
+  const org = await resolve(params.org ?? "", live.record.person.id);
+  const session = await proveSession(request, live, platform, at, config.publicUrl);
   const input = validate(operation, {
     params,
     query: readQuery(operation, url.searchParams),

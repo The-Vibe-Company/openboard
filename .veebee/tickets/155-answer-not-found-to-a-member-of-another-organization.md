@@ -6,11 +6,13 @@ package: server
 writes:
   - packages/server/src/http/scope.ts
   - packages/server/test/tenancy.test.ts
+  - packages/server/src/auth/sessions.ts
+  - packages/server/src/http/pipeline.ts
 conformance: []
 modes: [local]
 depends_on: [41, 135, 144]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t155
 issue: 156
 ---
 
