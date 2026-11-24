@@ -131,7 +131,7 @@ const storable = (value: string) => !value.includes("\0") && value.isWellFormed(
 const DERIVED_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 /** Refuses a client ID that is someone else's to post with: the board's own, a sync's import, or another's key. */
-function checkClientId(id: string, principal: string) {
+export function checkClientId(id: string, principal: string) {
   if (!storable(id)) throw new BoardError("invalid_request", "id: the ID has a NUL character or a lone surrogate");
   if (DERIVED_ID.test(id)) throw new BoardError("invalid_request", "id: UUIDv8s are the board's own, for its writes");
   if (id.startsWith("sync:")) throw new BoardError("invalid_request", "id: sync:… IDs are what sync imports");

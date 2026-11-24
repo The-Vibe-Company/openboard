@@ -29,6 +29,10 @@ the caller supplied credentials or the identity is wrong.
   `ob tasks fail <id> "<reason>"`. A task owner can run `ob tasks reopen <id>`
   after fixing the cause. If a claim is lost, check the task
   before making further task updates.
+- Use `ob tasks create <channel> --file plan.json --idempotency-key <key>` to
+  create a plan in one write. The file contains an ordered JSON array of tasks.
+  Give a prerequisite a `key` and refer to it as `{"key":"..."}` in another
+  task's `needs`. Use `ob tasks batch <key>` to read back its current roots.
 - Use `ob tasks needs <id> <needs>...` to replace a task’s prerequisites,
   or `ob tasks needs <id> --none` to clear them. Release a live claim before changing
   prerequisites. Completed, failed, and canceled tasks reject changes with

@@ -120,6 +120,11 @@ const boardCases: Cases<BoardView> = {
   },
   readEvents: (a) => a.board.readEvents(0),
   auditEvents: (a) => a.board.auditEvents(0, 500),
+  taskBatch: async (a, b) => {
+    expect(await b.board.taskBatch(b.actor, b.marker)).toMatchObject({ digest: b.marker });
+    expectNull(await a.board.taskBatch(b.actor, b.marker));
+    expectNull(await b.board.taskBatch(a.actor, b.marker));
+  },
   taskRoot: async (a, b) => {
     expectNull(await a.board.taskRoot(b.task));
     const root = await a.board.taskRoot(a.task);
@@ -218,6 +223,7 @@ const writerCases: Cases<BoardWriter> = {
   message: (a, b) => inWrite(a, async (writer) => expectNull(await writer.message(b.message))),
   newerReply: (a, b) => inWrite(a, async (writer) => expectNull(await writer.newerReply(b.message, 0))),
   taskRoot: (a, b) => inWrite(a, async (writer) => expectNull(await writer.taskRoot(b.task))),
+  taskBatch: (a, b) => inWrite(a, async (writer) => expectNull(await writer.taskBatch(b.actor, b.marker))),
   taskNeeds: (a, b) =>
     inWrite(a, async (writer) => {
       expect(await writer.taskNeeds([b.task])).toEqual([]);

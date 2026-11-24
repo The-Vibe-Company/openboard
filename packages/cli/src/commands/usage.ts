@@ -9,8 +9,8 @@ import {
   createWebhookCommand,
   derivedCommands,
   disableWebhookCommand,
-  enableWebhookCommand,
   downloadOrgExportCommand,
+  enableWebhookCommand,
   explainGrantsCommand,
   exportOrgCommand,
   loginCommand,
@@ -355,23 +355,26 @@ function referenceOf(command: AnyCommand): CommandReference {
   const derived = operations.find((operation) => operation.cli && operation.cli.command.join(" ") === words);
   const handwritten = derived ? undefined : HANDWRITTEN[words];
   if (!derived && !handwritten) throw new Error(`ob ${words}: no summary or example; describe it in usage.ts`);
-  const used = derived ? [derived] : operations.filter((operation) => handwritten?.operations.includes(operation.name));
+  const used = derived
+    ? operations.filter((operation) => operation.cli && operation.cli.command.join(" ") === words)
+    : operations.filter((operation) => handwritten?.operations.includes(operation.name));
   const args = derived && derived.cli ? derived.cli.args : [];
   const alternative = (derived && derived.cli && derived.cli.alternative) || [];
   const fields = derived ? fieldsOf(derived) : new Map<string, Schema>();
   const shown = command.usage.slice(`ob ${words}`.length).trim();
   // The leading `<arg>` words of the usage line are the required arguments.
   const needed = `${shown} [`.split(" ").findIndex((word) => !word.startsWith("<"));
+  const meanings = {
+    ...handwritten?.options,
+    ...(derived?.name === "setTaskNeeds" && { none: "Clear every prerequisite." }),
+    ...(derived?.name === "createTask" && { file: "Path to a JSON task array, or - for stdin." }),
+  };
   return {
     command: `ob ${words}`,
     usage: command.usage,
     summary: derived?.summary ?? handwritten?.summary ?? "",
     arguments: [...args, ...alternative].map((name) => ({ name, meaning: meaningOf(fields.get(name) ?? {}) })),
-    options: optionsOf(
-      command,
-      used,
-      derived?.name === "setTaskNeeds" ? { none: "Clear every prerequisite." } : (handwritten?.options ?? {}),
-    ),
+    options: optionsOf(command, used, meanings),
     errors: errorsOf(used, handwritten?.errors ?? []),
     mcpTools: used
       .filter((operation) => handwritten?.tools?.includes(operation.name) ?? true)

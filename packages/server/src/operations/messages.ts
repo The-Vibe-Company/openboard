@@ -82,11 +82,11 @@ async function visibleEvidence(ctx: BoardContext, handles: ReadonlySet<string>) 
 // Search for candidate visibility outside the write lock. Check only the selected proof messages under the lock.
 export async function writeWithMentionVisibility<T>(
   ctx: BoardContext,
-  text: string,
+  text: string | ReadonlySet<string>,
   decide: (writer: BoardWriter, visibility: MentionVisibility) => Promise<T>,
   actor?: string,
 ): Promise<T> {
-  const handles = messages.mentionedHandles(text);
+  const handles = typeof text === "string" ? messages.mentionedHandles(text) : text;
   const restricted = handles.size > 0 && !canListMentionActors(ctx.by);
   const scoped = restricted ? await visibleEvidence(ctx, handles) : null;
   return ctx.board.write((writer) => decide(writer, { handles, scoped }), actor);

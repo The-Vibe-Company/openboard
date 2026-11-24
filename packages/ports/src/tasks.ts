@@ -27,6 +27,7 @@ export interface TaskListQuery {
 export interface BoardTaskReads {
   /** The root of a task on this board, or null when this board has no such task. */
   taskRoot(id: number): Promise<Message | null>;
+  taskBatch(principal: string, id: string): Promise<{ digest: string; roots: Message[] } | null>;
   /** A page of matching tasks as thread summaries, with the snapshot's head. */
   listTasks(query: TaskListQuery): Promise<{ tasks: ThreadSummary[]; head: number }>;
 }
@@ -38,7 +39,7 @@ export interface TaskNeedEdge {
 }
 
 /** What a write reads of tasks under the board's lock. */
-export interface BoardTaskWriter extends Pick<BoardTaskReads, "taskRoot"> {
+export interface BoardTaskWriter extends Pick<BoardTaskReads, "taskRoot" | "taskBatch"> {
   taskNeedEdges(ids: readonly number[]): Promise<TaskNeedEdge[]>;
   taskNeeds(ids: readonly number[]): Promise<Message[]>;
   taskDependants(id: number): Promise<{ any: boolean; ready: Message[] }>;

@@ -60,6 +60,7 @@ const boardDeletes = {
       messages: "board_id, id",
       schemas: "board_id, id",
       tasks: "board_id, id",
+      task_batches: "board_id, principal, id",
       watcher_matches: "board_id, id",
       webhook_deliveries: "id",
       webhook_secrets: "id",

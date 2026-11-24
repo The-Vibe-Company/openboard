@@ -1,4 +1,3 @@
-import { projectTaskNeedsChanged, projectTaskReady, projectTaskReopened } from "./tasks/feed.ts";
 import { BoardError, type InputOf, type OutputOf, type readEvents } from "@openboard/contract";
 import {
   eventAuthors,
@@ -16,6 +15,7 @@ import { tailBoard } from "../live/fan-out.ts";
 import { longPoll } from "../live/long-poll.ts";
 import { eventStream } from "../live/sse.ts";
 import type { BoardContext, Handler } from "./index.ts";
+import { projectTaskNeedsChanged, projectTaskReady, projectTaskReopened } from "./tasks/feed.ts";
 
 type EventInput = InputOf<typeof readEvents>;
 
@@ -293,7 +293,7 @@ function projectTaskCreated(
   event: Extract<FeedEvent, { type: "task.created" }>,
   message: ReturnType<typeof messages.messageView>,
 ) {
-  const { view: _view, blind: _blind, waitingOn: _waitingOn, id, needs, ...payload } = event.payload;
+  const { view: _view, blind: _blind, batch: _batch, waitingOn: _waitingOn, id, needs, ...payload } = event.payload;
   return {
     cursor: formatId(event.id),
     type: event.type,

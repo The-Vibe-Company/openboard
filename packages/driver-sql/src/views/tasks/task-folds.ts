@@ -8,11 +8,14 @@ import { needIds } from "./tasks.ts";
 export const taskFoldStatements = {
   insertTask: sql`INSERT INTO tasks (org_id, board_id, id, channel, state, owner, by_actor, by_profile, created_at, waiting_on)
     VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"channel"}, ${"state"}, ${"owner"}, ${"actor"}, ${"profile"}, ${"at"}, ${"waitingOn"})`,
+  insertTaskBatch: sql`INSERT INTO task_batches (org_id, board_id, principal, id, digest, tasks)
+    VALUES (${"orgId"}, ${"boardId"}, ${"principal"}, ${"id"}, ${"digest"}, ${"tasks"})`,
+  // A decided batch can refer to roots whose positions are later in the same transaction.
   insertTaskNeeds: sql<"ids" | "orgId" | "boardId" | "id">`WITH input AS (SELECT CAST(${"ids"} AS TEXT) AS ids)
     INSERT INTO task_needs (org_id, board_id, task, needs)
     SELECT ${"orgId"}, ${"boardId"}, ${"id"}, CAST(need.value AS BIGINT)
     FROM input CROSS JOIN ${needIds} AS need
-    JOIN tasks t ON t.id = CAST(need.value AS BIGINT)
+    JOIN tasks t ON t.id = ${"id"}
     WHERE t.org_id = ${"orgId"} AND t.board_id = ${"boardId"}`,
   // Legacy edges awaiting backfill belong to the globally unique board ID.
   deleteTaskNeeds: sql`DELETE FROM task_needs
@@ -86,6 +89,16 @@ async function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: Tas
         ...keys,
         id: event.message,
         ids: JSON.stringify(event.payload.needs),
+      });
+    }
+    const { batch } = event.payload;
+    if (batch) {
+      await query(tx, dialect, taskFoldStatements.insertTaskBatch, {
+        ...keys,
+        principal: event.principal,
+        id: batch.id,
+        digest: batch.digest,
+        tasks: JSON.stringify(batch.tasks),
       });
     }
     return;
