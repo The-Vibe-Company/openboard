@@ -28,4 +28,7 @@ export interface BoardTaskReads {
 }
 
 /** What a write reads of tasks under the board's lock. */
-export type BoardTaskWriter = Pick<BoardTaskReads, "taskRoot">;
+export interface BoardTaskWriter extends Pick<BoardTaskReads, "taskRoot"> {
+  /** The private token hash for the current claim, read under the board lock. */
+  taskClaimProof(id: number): Promise<{ hash: Uint8Array; until: number } | null>;
+}

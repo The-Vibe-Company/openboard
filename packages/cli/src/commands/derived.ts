@@ -2,6 +2,7 @@ import { type CliSpec, operations } from "@openboard/contract";
 import { formats } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 import { runTaskCommand } from "./tasks/claim.ts";
+import { runCompleteTask } from "./tasks/complete.ts";
 
 type Contracted = (typeof operations)[number];
 type Invoke = (input: Readonly<Record<string, unknown>>) => Promise<unknown>;
@@ -132,7 +133,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   const flags = new Map<string, string>();
   const options: string[] = [];
   for (const [name, { schema }] of fields) {
-    if (args.includes(name) || alternative?.includes(name)) continue;
+    if (args.includes(name) || alternative?.includes(name) || operation.cli.implicit?.includes(name)) continue;
     const flag = renamed[name] ?? name;
     if (schema.type === "boolean" && renamed[name] !== undefined) {
       flags.set(flag, name);
@@ -164,6 +165,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
     async run(ctx) {
       const input = inputOf(ctx, args, fields, flags, nullEntries, alternative);
+      if (operation.name === "completeTask") return runCompleteTask(ctx, input as { id: string; result?: string });
       if (operation.name === "claimTask" || operation.name === "createTask") {
         const invoke = ctx.client[operation.name] as (
           ...args: Parameters<Invoke>

@@ -30,7 +30,7 @@ import { type JobWrites, jobWriter } from "./jobs/index.ts";
 import { messageStatements } from "./messages/statements.ts";
 import { orgReads } from "./orgs.ts";
 import { foldTaskEvent } from "./tasks/task-folds.ts";
-import { taskReads } from "./tasks/tasks.ts";
+import { taskReads, taskWriter } from "./tasks/tasks.ts";
 
 /**
  * The fold of `message.posted`: the message row with its precomputed view and its channel's row; a reply keeps its
@@ -197,7 +197,7 @@ function writer(
   let head = start;
   const usage = messageStorage(tx, dialect, keys, storage);
   return {
-    ...taskReads(tx, dialect, keys),
+    ...taskWriter(tx, dialect, keys),
     ...jobs,
     get head() {
       return head;
