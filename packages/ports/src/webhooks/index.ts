@@ -1,5 +1,5 @@
 import type { Message, Webhook, WebhookDelivery } from "@openboard/contract";
-import type { QuotaOutcome, TailMessage } from "@openboard/core";
+import type { QuotaOutcome, TailMessage, WebhookCreated } from "@openboard/core";
 
 export interface WebhookRecord {
   readonly webhook: Webhook;
@@ -7,6 +7,7 @@ export interface WebhookRecord {
   readonly ownerActor: string;
   readonly owner: string;
   readonly directory: boolean;
+  readonly workload?: WebhookCreated["payload"]["workload"];
 }
 
 export interface WebhookSecret {

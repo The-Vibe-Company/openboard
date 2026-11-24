@@ -114,7 +114,7 @@ export const deliveryStatements = {
   recentDeadDeliveries: sql`SELECT COUNT(*) AS total FROM webhook_deliveries
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook = ${"webhook"}
       AND state = 'dead' AND event IS NOT NULL AND done_at > ${"cutoff"}`,
-  deliveryInput: sql`SELECT w.config, w.secret_id, w.owner_actor, w.owner, w.directory, s.ciphertext, s.key_version, d.root_view,
+  deliveryInput: sql`SELECT w.config, w.secret_id, w.owner_actor, w.owner, w.directory, w.workload, s.ciphertext, s.key_version, d.root_view,
       d.attempt, d.event, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal, e.payload
     FROM webhook_deliveries d
     JOIN webhooks w ON w.org_id = d.org_id AND w.board_id = d.board_id AND w.id = d.webhook AND w.enabled = 1

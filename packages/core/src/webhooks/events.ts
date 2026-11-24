@@ -1,5 +1,8 @@
 import type { Webhook, WebhookDisabledReason } from "@openboard/contract";
 
+import type { OidcPrincipal } from "../access/oidc-claims.ts";
+import type { RepositoryPrincipal } from "../access/workloads.ts";
+
 interface Audit {
   readonly id: number;
   readonly at: number;
@@ -13,7 +16,12 @@ interface Audit {
 
 export interface WebhookCreated extends Audit {
   readonly type: "ob.webhook.created";
-  readonly payload: { readonly webhook: Webhook; readonly directory: boolean; readonly secretId: string };
+  readonly payload: {
+    readonly webhook: Webhook;
+    readonly directory: boolean;
+    readonly secretId: string;
+    readonly workload?: OidcPrincipal | RepositoryPrincipal;
+  };
 }
 
 interface WebhookChange extends Audit {

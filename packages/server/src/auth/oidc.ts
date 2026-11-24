@@ -194,7 +194,7 @@ function issuerVerifier(now: Deps["now"]) {
   };
 }
 
-function workloadCan(grantViews: readonly GrantView[], principal: Workload) {
+export function workloadCan(grantViews: readonly GrantView[], principal: Workload) {
   const matching = subjectGrants(grantViews, principal);
   return matching.some(({ level }) => level === "principal") ? resolveRankedCan(matching) : null;
 }

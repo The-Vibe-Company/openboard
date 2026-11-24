@@ -7,6 +7,12 @@ const responseLimit = 8192;
 type CheckedTarget = Awaited<ReturnType<typeof webhookTarget>>;
 type Transport = NonNullable<Deps["webhookFetch"]>;
 type Preparation = { payload: SignedWebhookRequest } | { error: string };
+type PrepareSend = SignedWebhookRequest | ((signal: AbortSignal) => Promise<Preparation>);
+
+function prepareSend(prepare: PrepareSend, signal: AbortSignal) {
+  signal.throwIfAborted();
+  return typeof prepare === "function" ? prepare(signal) : { payload: prepare };
+}
 
 async function drainResponse(response: Response): Promise<void> {
   const { body } = response;
@@ -51,15 +57,18 @@ function transportError(error: unknown): "tls" | "request_failed" {
 
 async function fetchChecked(
   { url, addresses }: CheckedTarget,
-  { headers, body }: SignedWebhookRequest,
+  prepare: PrepareSend,
   signal: AbortSignal,
   fetch: Transport,
-): Promise<Response> {
+): Promise<Response | { error: string }> {
   const endpoint = new URL(url);
-  headers.set("host", url.host);
-  headers.set("accept-encoding", "identity");
   for (const address of addresses) {
+    const prepared = await prepareSend(prepare, signal);
+    if ("error" in prepared) return prepared;
     signal.throwIfAborted();
+    const { headers, body } = prepared.payload;
+    headers.set("host", url.host);
+    headers.set("accept-encoding", "identity");
     endpoint.hostname = address.includes(":") ? `[${address}]` : address;
     const request = new Request(endpoint.href, { method: "POST", body, headers, signal, redirect: "manual" });
     try {
@@ -84,7 +93,7 @@ export async function sendWebhook(
   target: string,
   config: TargetConfig,
   { webhookFetch, resolveHost, schedule }: Pick<Deps, "webhookFetch" | "resolveHost" | "schedule">,
-  prepare: SignedWebhookRequest | ((signal: AbortSignal) => Promise<Preparation>),
+  prepare: PrepareSend,
   remainingLeaseMs = webhookTimeoutMs,
 ) {
   const timeoutMs = Math.min(webhookTimeoutMs, remainingLeaseMs);
@@ -104,11 +113,13 @@ export async function sendWebhook(
         (target) => ({ target }),
         (failure: unknown) => ({ failure }),
       );
-      controller.signal.throwIfAborted();
-      const prepared = typeof prepare === "function" ? await prepare(controller.signal) : { payload: prepare };
-      if ("error" in prepared) return { status: null, error: prepared.error };
-      if ("failure" in checked) throw checked.failure;
-      const response = await fetchChecked(checked.target, prepared.payload, controller.signal, webhookFetch);
+      if ("failure" in checked) {
+        const prepared = await prepareSend(prepare, controller.signal);
+        if ("error" in prepared) return { status: null, error: prepared.error };
+        throw checked.failure;
+      }
+      const response = await fetchChecked(checked.target, prepare, controller.signal, webhookFetch);
+      if ("error" in response) return { status: null, error: response.error };
       status = response.status;
       retryAfter = response.headers.get("retry-after");
       await drainResponse(response);

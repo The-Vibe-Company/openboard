@@ -756,11 +756,13 @@ POST {BOARD_URL}/x/webhooks
   pattern does not affect that check. Each event also requires `read` on its
   channel at send time. Unreadable events are marked `skipped` without
   sending a request, and readable events continue to be delivered while
-  the subscription is enabled. If current access cannot be resolved for the
-  stored creator, the worker treats the creator as having no access. Workload
-  credentials can carry OIDC claims that cannot be recovered from the stored
-  owner ID. A mention filter that used the actor directory is also skipped
-  when its creator loses board-wide read access.
+  the subscription is enabled. For an OIDC workload, the worker evaluates
+  current grants against the creator's stored grant-matching identity. An older
+  OIDC-created webhook without that identity is disabled with
+  `disabledReason: "creator_unverifiable"` and the corresponding
+  `ob.webhook.disabled` audit event. Re-create the subscription with the
+  workload credential to resume delivery. A mention filter that used the actor
+  directory is also skipped when its creator loses board-wide read access.
 - **Schedules are a source.** A schedule posts a message as its creator at
   each slot with `schedule: { id, n }` (`docs/01-board/07-schedules.md`). A
   subscription with `"tail": "cron/nightly-deps", "types": ["message.posted"]`

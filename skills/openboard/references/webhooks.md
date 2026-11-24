@@ -104,3 +104,5 @@ in the same update.
 Event deliveries use the creator's current access. An unreadable event is
 marked `skipped`. If the creator loses `manage` at the filter's own pattern,
 `ob webhooks show <id>` reports `disabled: creator_access`.
+Re-create a workload subscription that reports `disabled: creator_unverifiable`
+using its OIDC credential so OpenBoard can check its current grants.

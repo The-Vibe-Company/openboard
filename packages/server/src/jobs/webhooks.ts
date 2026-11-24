@@ -11,12 +11,15 @@ import {
 import {
   type BoardWriter,
   JOB_LEASE_MS,
+  type Job,
+  type JobLease,
   WEBHOOK_DELIVERY_JOB,
   type WebhookAttempt,
   type WebhookRecord,
   type WebhookSecret,
 } from "@openboard/ports";
 import { allowedEverywhere, personGrantCan } from "../auth/access.ts";
+import { workloadCan } from "../auth/oidc.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { type SignedWebhookRequest, webhookRequest } from "../webhooks/request.ts";
 import { openWebhookSecret } from "../webhooks/secret-box.ts";
@@ -84,7 +87,8 @@ async function checkDeadDeliveries(writer: BoardWriter, id: string, now: number)
   if (count > webhookDeadDeliveryLimit) await disableWebhook(writer, id, now, "dead_deliveries");
 }
 
-async function creatorCan(writer: BoardWriter, owner: string, config: ServerConfig): Promise<Can> {
+async function creatorCan(writer: BoardWriter, { owner, workload }: WebhookRecord, config: ServerConfig): Promise<Can> {
+  if (workload) return workloadCan(await writer.listGrants(), workload) ?? {};
   if (config.mode === "local" && owner === config.localOwner) return { "*": [...grants.PERMISSIONS] };
   if (owner.startsWith("ob:user:")) {
     const current = await writer.grantMember(owner.slice("ob:user:".length));
@@ -105,19 +109,47 @@ async function authorizeDelivery(
   config: ServerConfig,
 ): Promise<WebhookAttempt | null> {
   if (input.event === null) return input;
-  const { record } = input;
-  const can = await creatorCan(writer, record.owner, config);
-  const { channel, mention } = parseTail(record.webhook.filter.tail);
+  const stored = input.record;
+  const record = await writer.webhook(stored.webhook.id);
+  if (!record?.webhook.enabled) {
+    await writer.finishWebhookAttempt(id, input.attempt, { state: "skipped", status: null, error: null, now });
+    return null;
+  }
+  const unverifiable =
+    !record.workload && (record.owner.startsWith("oidc:https:") || record.owner.startsWith("github:repo:"));
+  const can = await creatorCan(writer, record, config);
+  const { channel } = parseTail(record.webhook.filter.tail);
+  const { mention } = parseTail(stored.webhook.filter.tail);
   const manages = agents.allowedAt(can, channel ?? "*").includes("manage");
   const directory = record.directory && allowedEverywhere(can, "read");
   // The outbox may have selected this event through a directory alias the creator can no longer look up.
   const restrictedMention = record.directory && !directory && mention !== undefined && mention !== "me";
   if (!manages || restrictedMention || !agents.allowedAt(can, input.event.channel).includes("read")) {
     await writer.finishWebhookAttempt(id, input.attempt, { state: "skipped", status: null, error: null, now });
-    if (!manages) await disableWebhook(writer, record.webhook.id, now, "creator_access");
+    if (!manages) {
+      const reason = unverifiable ? "creator_unverifiable" : "creator_access";
+      await disableWebhook(writer, record.webhook.id, now, reason);
+    }
     return null;
   }
-  return { ...input, record: { ...record, directory } };
+  const secret = record.secretId === stored.secretId ? input.secret : await writer.webhookSecret(record);
+  return { ...input, secret, webhook: record.webhook, record: { ...record, directory } };
+}
+
+async function beginDelivery(writer: BoardWriter, job: Job, lease: JobLease, now: number) {
+  const payload = await writer.readJob(job.id, lease, now);
+  if (typeof payload?.id !== "string") return null;
+  const input = await writer.beginWebhookAttempt(payload.id, lease.instanceId, now, lease.claimedAt + JOB_LEASE_MS);
+  if (input && "deferred" in input) {
+    if (await writer.takeJob(job.id, lease, now)) await writer.enqueue(job.kind, now + 100, payload);
+    return null;
+  }
+  if (!input || "expiredWebhookId" in input) {
+    await writer.takeJob(job.id, lease, now);
+    if (input) await checkDeadDeliveries(writer, input.expiredWebhookId, now);
+    return null;
+  }
+  return { input, id: payload.id };
 }
 
 export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHandler {
@@ -125,30 +157,16 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
     async runBoard(board, job, lease) {
       const leaseUntil = lease.claimedAt + JOB_LEASE_MS;
       const identity = await board.identity();
-      const prepared = await board.write(async (writer) => {
-        const now = deps.now();
-        const payload = await writer.readJob(job.id, lease, now);
-        if (typeof payload?.id !== "string") return null;
-        const input = await writer.beginWebhookAttempt(payload.id, lease.instanceId, now, leaseUntil);
-        if (input && "deferred" in input) {
-          if (await writer.takeJob(job.id, lease, now)) await writer.enqueue(job.kind, now + 100, payload);
-          return null;
-        }
-        if (!input || "expiredWebhookId" in input) {
-          await writer.takeJob(job.id, lease, now);
-          if (input) await checkDeadDeliveries(writer, input.expiredWebhookId, now);
-          return null;
-        }
-        return { input, id: payload.id };
-      });
+      const prepared = await board.write((writer) => beginDelivery(writer, job, lease, deps.now()));
       if (!prepared) return false;
       const { input, id } = prepared;
+      let authorizedTransport: WebhookRecord | undefined;
       const { status, error, retryAfter } = await sendWebhook(
         input.record.webhook.url,
         config,
         deps,
         async (signal) => {
-          // DNS can yield to a revoke or pause. Authorize with the live lease before starting transport.
+          // DNS and a refused address can yield to a revoke or pause. Check before each transport start.
           const authorized = await board.write(async (writer) => {
             if (signal.aborted || !(await writer.readJob(job.id, lease, deps.now()))) return null;
             const now = deps.now();
@@ -157,6 +175,8 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
             return authorized;
           });
           if (!authorized) return { error: "delivery_skipped" };
+          authorizedTransport = authorized.record;
+          if (authorized.webhook.url !== input.webhook.url) return { error: "request_failed" };
           return prepareWebhook(config, authorized.record, authorized.secret, (credentials) =>
             webhookRequest(config, authorized, id, deps.now(), credentials, identity.org.slug, identity.board.slug),
           );
@@ -167,6 +187,8 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
       return board.write(async (writer) => {
         const now = deps.now();
         const taken = await writer.takeJob(job.id, lease, now);
+        // A DNS timeout can win the transport race before the first authorization check.
+        if (taken && !authorizedTransport && !(await authorizeDelivery(writer, input, id, now, config))) return false;
         const nextAt =
           input.event === null ? null : webhookRetryAt({ status, error, retryAfter, attempt: input.attempt, now });
         const { state, gone } = webhookOutcome(status);
@@ -182,7 +204,8 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
           });
           if (settled && taken && terminal === "dead" && input.event !== null) {
             const webhookId = input.record.webhook.id;
-            const paused = gone && (await disableWebhook(writer, webhookId, now, "gone", input.record));
+            const paused =
+              gone && (await disableWebhook(writer, webhookId, now, "gone", authorizedTransport ?? input.record));
             if (!paused) await checkDeadDeliveries(writer, webhookId, now);
           }
           return settled;

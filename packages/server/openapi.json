@@ -15528,7 +15528,8 @@
                                     "anyOf": [
                                       { "const": "gone", "type": "string" },
                                       { "const": "dead_deliveries", "type": "string" },
-                                      { "const": "creator_access", "type": "string" }
+                                      { "const": "creator_access", "type": "string" },
+                                      { "const": "creator_unverifiable", "type": "string" }
                                     ]
                                   }
                                 }
