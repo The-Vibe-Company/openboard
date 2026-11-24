@@ -745,7 +745,8 @@ a dispatcher may finish.
 - `delivery.id` is the receiver's idempotency key and stays constant across
   retries. The version 1 payload stays the same apart from `delivery.attempt`,
   which starts at 1 and increments for each send. Each attempt is signed over
-  its own serialized body using that attempt's timestamp.
+  its own serialized body and includes that attempt's timestamp if the signing
+  preset uses one.
 - `subject` carries what a receiver needs to act and correlate: `thread` (=
   task ID), `channel`, root `labels`, `schedule` (`{ id, n }` for scheduled
   messages, a natural idempotency key). A receiver passes `subject.thread` on

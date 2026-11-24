@@ -1129,5 +1129,6 @@ an event join. Ping failures never count toward disabling a subscription.
 
 A retry keeps the delivery ID as the receiver's idempotency key. The version 1
 payload changes only in its incrementing attempt field. Each signature covers
-the bytes sent on that attempt with its own timestamp.
+the bytes sent on that attempt. Presets that sign a timestamp use that
+attempt's timestamp.
 ([Issue #492](https://github.com/The-Vibe-Company/openboard/issues/492))
