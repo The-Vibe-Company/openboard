@@ -8,11 +8,14 @@ writes:
   - packages/cli/src/commands/index.ts
   - packages/cli/src/config.ts
   - packages/cli/test/use.test.ts
+  - packages/cli/src/main.ts
+  - README.md
+  - .veebee/tickets/157-choose-the-board-the-cli-talks-to.md
 conformance: []
 modes: [local]
 depends_on: [153, 156]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t157
 issue: 158
 ---
 
