@@ -11,6 +11,7 @@ export const InboundActionResult = Type.Union([
     outcome: Type.Union([Type.Literal("unblocked"), Type.Literal("unchanged")]),
   }),
   Type.Object({ "task.cancel": Type.String() }),
+  Type.Object({ "task.expire": Type.String() }),
 ]);
 
 export const listInboundReceived = defineOperation({

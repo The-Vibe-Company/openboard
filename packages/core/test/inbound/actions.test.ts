@@ -24,18 +24,26 @@ test("renders task reasons against the root and enforces the task route's charac
   );
 });
 
-test.each(["task.expire", "agents.revoke"])("still refuses the unsupported action %s", (action) => {
-  const plan = parseInboundRules([
-    {
-      when: {},
-      do: [
-        action === "task.expire"
-          ? { "task.expire": {} }
-          : { "agents.revoke": { connection: "runner", profile: "test" } },
-      ],
-    },
-  ]);
+test("renders task expiry as a manage action on the root", () => {
+  const { task } = decideCreateTask(
+    { head: 1 },
+    { channel: "work/tasks", text: "Task root" },
+    { by: { actor: "owner", principal: "owner", profile: null }, now: 0 },
+  );
+  const plan = parseInboundRules([{ when: {}, do: [{ "task.expire": {} }] }]);
+  validateInboundActions(plan);
+  const action = plan[0]?.do[0];
+  if (!action) throw new Error("missing action");
+  expect(renderInboundAction(action, {}, task)).toEqual({
+    permission: "manage",
+    action: "task.expire",
+    input: { id: task.id },
+  });
+});
+
+test("still refuses the unsupported agents.revoke action", () => {
+  const plan = parseInboundRules([{ when: {}, do: [{ "agents.revoke": { connection: "runner", profile: "test" } }] }]);
   expect(() => validateInboundActions(plan)).toThrow(
-    expect.objectContaining({ code: "invalid_rule", message: expect.stringContaining(`rules[0].do[0].${action}`) }),
+    expect.objectContaining({ code: "invalid_rule", message: expect.stringContaining("rules[0].do[0].agents.revoke") }),
   );
 });

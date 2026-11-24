@@ -94,7 +94,7 @@ test("rejects unsupported actions and a creator without manage throughout the gr
   try {
     const invalid = await call(app, "POST", "/x/inbound", {
       ...spec,
-      rules: [{ when: {}, do: [{ "task.expire": {} }] }],
+      rules: [{ when: {}, do: [{ "agents.revoke": { connection: "runner", profile: "test" } }] }],
     });
     expect(invalid.status).toBe(400);
     expect(await invalid.json()).toMatchObject({ error: { code: "invalid_rule" } });
