@@ -32,7 +32,7 @@ import type { BoardMessageReads } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
 import type { Bucket, OrgLogMaintenance } from "./bucket.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
-import type { BoardJobWriter, Jobs } from "./jobs.ts";
+import type { BoardJobWriter, JobLease, Jobs } from "./jobs.ts";
 import type { OrgAuditRecord } from "./org-audit-record.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
 import type { BoardKeys, BoardScope, OrgScope } from "./tenant-scope.ts";
@@ -68,6 +68,8 @@ interface RateView {
 }
 
 export interface OrgView extends RateView, OrgLogMaintenance {
+  /** Consume a backfill lease and fill one batch under the board lock. */
+  backfillBoardOrgIds(boardId: number, jobId: string, lease: JobLease, now: number): Promise<boolean>;
   deleteOrg(personId: string, at: number, admit?: () => void): Promise<DeletedOrg>;
   listMembers(): Promise<{ principal: string; role: Role }[]>;
   /** The organization's first `limit` events after its event ID `after`, oldest first, and the last event ID read first. */
@@ -139,6 +141,8 @@ type DevicePoll = { status: "missing" | "pending" | "too_soon" } | { status: "is
 
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
 export interface PlatformView extends RateView {
+  /** At startup, enqueue board-scoped work for any rows still missing their organization. */
+  queueBoardOrgBackfill(now: number, signal?: AbortSignal): Promise<void>;
   /** Maintenance scan of unpurged organization IDs with unshipped events in ascending order. */
   shippingOrgs(after: number, limit: number): Promise<number[]>;
   /** Start a device request and prune prior expired requests using the supplied clock. */

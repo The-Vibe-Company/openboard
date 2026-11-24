@@ -35,13 +35,13 @@ export async function tenantRows(
 }
 
 const markLegacy = sql`DELETE FROM jobs WHERE org_id = ${"orgId"} AND kind = ${"kind"}`;
-const taskNeed = sql`INSERT INTO task_needs (board_id, task, needs)
-  VALUES (${"boardId"}, ${"task"}, ${"needs"})`;
+const taskNeed = sql`INSERT INTO task_needs (org_id, board_id, task, needs)
+  VALUES (${"orgId"}, ${"boardId"}, ${"task"}, ${"needs"})`;
 
 export function simulateLegacyDeletion(db: Db, dialect: Dialect, orgId: number) {
   return query(db, dialect, markLegacy, { orgId, kind: PURGE_ORG_JOB });
 }
 
 export function seedTaskNeed(db: Db, dialect: Dialect, keys: BoardKeys, task: number, needs: number) {
-  return query(db, dialect, taskNeed, { boardId: keys.boardId, task, needs });
+  return query(db, dialect, taskNeed, { ...keys, task, needs });
 }

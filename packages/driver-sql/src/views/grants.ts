@@ -33,8 +33,8 @@ export const grantStatements = {
       AND (id = ${"connection"} OR id IN (SELECT p.key FROM grant_principals p
         WHERE p.board_id = ${"boardId"} AND p.grant_id = ${"grantId"} AND p.kind = 'connection'))`,
   deleteGrantPrincipals: sql`DELETE FROM grant_principals WHERE board_id = ${"boardId"} AND grant_id = ${"grantId"}`,
-  insertGrantPrincipal: sql`INSERT INTO grant_principals (board_id, grant_id, kind, key, detail)
-    VALUES (${"boardId"}, ${"grantId"}, ${"kind"}, ${"key"}, ${"detail"})`,
+  insertGrantPrincipal: sql`INSERT INTO grant_principals (org_id, board_id, grant_id, kind, key, detail)
+    VALUES (${"orgId"}, ${"boardId"}, ${"grantId"}, ${"kind"}, ${"key"}, ${"detail"})`,
   personGrants: sql`SELECT DISTINCT g.id, g.can, g.capped
     FROM grant_principals p JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
     JOIN boards b ON b.id = g.board_id AND b.org_id = g.org_id
@@ -206,7 +206,7 @@ async function indexGrantPrincipals(
     if (stored.has(indexKey)) continue;
     stored.add(indexKey);
     await query(tx, dialect, grantStatements.insertGrantPrincipal, {
-      boardId: keys.boardId,
+      ...keys,
       grantId: id,
       kind: principal.kind,
       key,

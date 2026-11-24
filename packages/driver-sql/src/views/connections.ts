@@ -120,7 +120,7 @@ export async function foldConnectionCreated(tx: Db, dialect: Dialect, keys: Boar
   });
   for (const principal of grant.principals) {
     await query(tx, dialect, grantStatements.insertGrantPrincipal, {
-      boardId: keys.boardId,
+      ...keys,
       grantId: grant.id,
       kind: principal.kind,
       key: principal.connection,

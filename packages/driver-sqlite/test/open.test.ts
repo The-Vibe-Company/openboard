@@ -3,7 +3,8 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { migrations } from "@openboard/driver-sql";
-import { testScope } from "@openboard/ports/testkit";
+import { BACKFILL_BOARD_ORG_JOB } from "@openboard/ports";
+import { testOrgScope, testScope } from "@openboard/ports/testkit";
 import { sqliteDriver } from "../src/index.ts";
 
 test("keeps a posted message and the migration records on reopen", async () => {
@@ -126,6 +127,11 @@ test("pins a legacy connection's original grant before an edit names it in an ea
       connection: { grant: "g4", can: { ops: ["read"] } },
       effectiveCan: { ops: ["read"], dev: ["read"] },
     });
+    using inspector = new Database(join(dir, "board.db"));
+    expect(inspector.query("SELECT grant_id, org_id FROM grant_principals ORDER BY grant_id").all()).toEqual([
+      { grant_id: 2, org_id: 1 },
+      { grant_id: 4, org_id: null },
+    ]);
   } finally {
     await driver.close();
     rmSync(dir, { recursive: true, force: true });
@@ -201,6 +207,46 @@ test("a new rate window prunes expired counters after the clock-skew grace perio
       database.close();
     }
   } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("startup queues one job per board and the backfill drains a soft-deleted org in batches", async () => {
+  const dir = mkdtempSync("openboard-org-backfill-");
+  const driver = sqliteDriver({ dir }, () => 100);
+  const org = driver.org(testOrgScope(1));
+  const lease = { instanceId: "worker", claimedAt: 100 };
+  const jobKind = BACKFILL_BOARD_ORG_JOB;
+  try {
+    using database = new Database(join(dir, "board.db"));
+    database.run(
+      "INSERT INTO grant_principals (board_id, grant_id, kind, key, detail) VALUES (1, 4, 'all-users', '', '{}')",
+    );
+    database.run(`WITH RECURSIVE ids(id) AS (VALUES (1) UNION ALL SELECT id + 1 FROM ids WHERE id < 1001)
+      INSERT INTO task_needs (board_id, task, needs) SELECT 1, id, 0 FROM ids`);
+    await Promise.all([driver.platform().queueBoardOrgBackfill(100), driver.platform().queueBoardOrgBackfill(100)]);
+    const job = await driver.jobs.claim([jobKind], lease);
+    if (!job) throw new Error("missing backfill job");
+    expect(job).toMatchObject({ orgId: 1, boardId: 1 });
+    expect(await driver.jobs.claim([jobKind], lease)).toBeNull();
+
+    // Tombstoned boards and organizations still retain their rows after deletion.
+    database.run("UPDATE boards SET deleted_at = 100 WHERE id = 1");
+    database.run("UPDATE orgs SET deleted_at = 100 WHERE id = 1");
+    expect(await org.backfillBoardOrgIds(1, job.id, lease, 100)).toBe(true);
+    expect(await org.backfillBoardOrgIds(1, job.id, lease, 100)).toBe(false);
+    expect(database.query("SELECT count(*) AS remaining FROM task_needs WHERE org_id IS NULL").get()).toEqual({
+      remaining: 1,
+    });
+    const next = await driver.jobs.claim([jobKind], lease);
+    if (!next) throw new Error("missing continuation job");
+    expect(await org.backfillBoardOrgIds(1, next.id, lease, 100)).toBe(true);
+    expect(database.query("SELECT DISTINCT org_id FROM task_needs").all()).toEqual([{ org_id: 1 }]);
+    expect(database.query("SELECT org_id FROM grant_principals").get()).toEqual({ org_id: 1 });
+    await driver.platform().queueBoardOrgBackfill(100);
+    expect(await driver.jobs.claim([jobKind], lease)).toBeNull();
+  } finally {
+    await driver.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });
