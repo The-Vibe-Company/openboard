@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import type { createConnection, OutputOf } from "@openboard/contract";
-import { BOARD_URL, call, makeApp, OWNER } from "./support/app.ts";
+import { BOARD_URL, call, makeApp, NOW, OWNER } from "./support/app.ts";
 import { STREAM_MAX_MS } from "../src/live/sse.ts";
+import { openStore } from "./support/drivers.ts";
 
 function subscribe(
   app: { fetch(request: Request): Promise<Response> },
@@ -98,6 +99,57 @@ test("caps the organization at 500 streams across its principals", async () => {
     opened(await subscribe(app, extra));
     await refused(await subscribe(app, extra));
   } finally {
+    await cluster.close();
+  }
+});
+
+test("an aborted opening stream releases its slot before the initial read returns", async () => {
+  const store = openStore(() => NOW);
+  const entered = Promise.withResolvers<void>();
+  const resume = Promise.withResolvers<void>();
+  let holdNext = false;
+  const cluster = makeApp({
+    schedule: () => () => {},
+    store: {
+      ...store,
+      board(scope) {
+        const board = store.board(scope);
+        return new Proxy(board, {
+          get(target, key) {
+            if (key !== "readEvents") return Reflect.get(target, key);
+            return async (...args: Parameters<typeof board.readEvents>) => {
+              if (holdNext) {
+                holdNext = false;
+                entered.resolve();
+                await resume.promise;
+              }
+              return board.readEvents(...args);
+            };
+          },
+        });
+      },
+    },
+  });
+  let pending: Promise<Response> | undefined;
+  try {
+    const app = cluster.instances[0]!;
+    for (let i = 0; i < 19; i++) opened(await subscribe(app));
+
+    const abort = new AbortController();
+    holdNext = true;
+    pending = subscribe(app, OWNER.token, { signal: abort.signal });
+    await entered.promise;
+    await refused(await subscribe(app));
+    abort.abort();
+
+    opened(await subscribe(app));
+    await refused(await subscribe(app));
+    resume.resolve();
+    expect((await pending).status).toBe(503);
+    await refused(await subscribe(app));
+  } finally {
+    resume.resolve();
+    await pending;
     await cluster.close();
   }
 });

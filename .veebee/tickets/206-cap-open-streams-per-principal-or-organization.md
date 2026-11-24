@@ -8,12 +8,14 @@ writes:
   - packages/server/src/http/limits.ts
   - packages/server/src/http/pipeline.ts
   - packages/server/src/operations/events.ts
+  - packages/server/src/live/sse.ts
   - packages/contract/src/operations/events.ts
   - packages/server/openapi.json
   - skills/openboard/references/commands.md
   - docs/protocol.md
   - tools/bench/src/workloads/sse.ts
   - packages/server/test/stream-caps.test.ts
+  - packages/server/test/ha/drill.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [102, 183, 199]

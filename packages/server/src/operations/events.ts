@@ -48,20 +48,26 @@ export async function streamEvents(
   reserve: () => () => void,
 ): Promise<Response> {
   const { position, read, newest } = prepareFeed(ctx, input, true, lastEventId);
+  const opening = AbortSignal.any([ctx.signal, ctx.shutdown]);
+  if (opening.aborted) throw new BoardError("unavailable", "the event stream request ended");
   const release = reserve();
-  let closeTail = () => {};
+  let closeTail: (() => void) | undefined;
   const close = () => {
     release();
-    closeTail();
+    const stopTail = closeTail;
+    closeTail = undefined;
+    stopTail?.();
   };
   try {
     // Subscribe before the first read: the stream then follows from memory, and reads the store only when behind.
     const tail = tailBoard(ctx.board, position);
     closeTail = tail.close;
+    opening.addEventListener("abort", close, { once: true });
     tail.take(position);
     let first = await read(position);
-    while (first.retry && !ctx.signal.aborted && !ctx.shutdown.aborted) first = await read(position);
+    while (first.retry && !opening.aborted) first = await read(position);
     if (ctx.shutdown.aborted) throw new BoardError("unavailable", "the instance is draining");
+    if (opening.aborted) throw new BoardError("unavailable", "the event stream request ended");
     tail.settle(first);
     const follow = newest ? prepareFeed(ctx, { ...input, last: undefined }, true).read : read;
     return eventStream(
@@ -75,6 +81,8 @@ export async function streamEvents(
   } catch (error) {
     close();
     throw error;
+  } finally {
+    opening.removeEventListener("abort", close);
   }
 }
 

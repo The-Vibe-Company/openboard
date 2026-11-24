@@ -60,24 +60,31 @@ export function eventStream(
         return;
       }
       signal.addEventListener("abort", stop, { once: true });
-      cancelPing = schedule(PING_INTERVAL_MS, ping);
-      cancelDeadline = schedule(STREAM_MAX_MS, () => deadline.abort());
+      try {
+        cancelPing = schedule(PING_INTERVAL_MS, ping);
+        cancelDeadline = schedule(STREAM_MAX_MS, () => deadline.abort());
+      } catch (error) {
+        abort.abort();
+        throw error;
+      }
     },
     async pull(controller) {
       if (signal.aborted) return;
-      // A failed read errors the stream without calling `cancel`: abort so the pings stop with it.
-      const page = await read(cursor, signal).catch((error: unknown) => {
-        if (signal.aborted) return undefined;
+      try {
+        const page = await read(cursor, signal);
+        if (signal.aborted) return;
+        if (page === undefined) {
+          deadline.abort();
+          return;
+        }
+        cursor = page.cursor;
+        controller.enqueue(encoder.encode(pageFrames(page)));
+      } catch (error) {
+        if (signal.aborted) return;
+        // A failed pull errors the stream without calling `cancel`.
         abort.abort();
         throw error;
-      });
-      if (signal.aborted) return;
-      if (page === undefined) {
-        deadline.abort();
-        return;
       }
-      cursor = page.cursor;
-      controller.enqueue(encoder.encode(pageFrames(page)));
     },
     cancel() {
       abort.abort();
