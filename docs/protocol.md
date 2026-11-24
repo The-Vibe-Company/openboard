@@ -370,6 +370,11 @@ the same write appends `task.created` with state `waiting`, then `task.ready` wi
 with only `task.created` and any requested claim. Forward reads of the event feed show the task state
 after each event in its `message` field. Failure and cancellation leave dependants waiting.
 
+`POST /tasks/batch` creates all tasks in one write. A duplicate batch key, an
+unknown key reference, a self dependency, a dependency cycle, or a canceled
+prerequisite rejects the whole batch with 400 `invalid_needs`. A batch of more
+than 100 tasks returns 400 `batch_too_large` and creates nothing.
+
 `POST /tasks/:id/needs` takes `{ needs }` and returns `{ task }`. It replaces the
 prerequisites using the same validation as creation. Adding a prerequisite that
 would make the task depend on itself returns 400 `invalid_needs`. The same error
