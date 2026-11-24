@@ -1,0 +1,19 @@
+{
+  "name": "remote-routine-status",
+  "can": { "work/fix/": ["read", "post", "label"] },
+  "verify": { "preset": "standard-webhooks" },
+  "thread": { "from": "{{body.externalRef}}", "pattern": "^ob:(\\d+)$" },
+  "rules": [
+    {
+      "when": { "body.event": "turn.finished", "body.settled": false },
+      "do": [
+        { "label": { "unset": ["run"], "if": { "run": "{{body.run}}" } } },
+        { "reply": "Turn ended without settling the task: {{body.summary}}" }
+      ]
+    },
+    {
+      "when": { "body.event": "turn.finished", "body.settled": true },
+      "do": [{ "label": { "unset": ["run"], "if": { "run": "{{body.run}}" } } }]
+    }
+  ]
+}

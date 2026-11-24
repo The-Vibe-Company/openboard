@@ -6,7 +6,7 @@
     "outDir": "../../.tsbuild/examples/remote-routine",
     "types": ["bun"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "webhook.json"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "webhook.json", "inbound.json"],
   "references": [
     { "path": "../../packages/cli" },
     { "path": "../../packages/driver-sqlite" },

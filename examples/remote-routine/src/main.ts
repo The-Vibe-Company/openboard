@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 import { createClient } from "@the-vibe-company/openboard";
 import { createLauncher, runnerCommand } from "./launch.ts";
 import { createLinkedLauncher } from "./link.ts";
+import { captureTurn, createTurnReporter } from "./report.ts";
 import { type DeliveryRequest, signingKey, verifyDelivery } from "./verify.ts";
 
 function readyThread(body: ArrayBuffer): string | undefined {
@@ -73,14 +74,30 @@ async function serve() {
   const boardUrl = process.env.BOARD_URL;
   if (!boardUrl) throw new Error("BOARD_URL is required");
   const command = runnerCommand(process.env.RUNNER_COMMAND);
-  const [webhookSecret, connectionSecret, routineSecret] = await Promise.all([
+  const inboundUrl = process.env.INBOUND_URL;
+  if (!inboundUrl) throw new Error("INBOUND_URL is required");
+  const [webhookSecret, connectionSecret, routineSecret, inboundSecret] = await Promise.all([
     readSecret(process.env.WEBHOOK_SECRET_FILE),
     readSecret(process.env.OPENBOARD_SECRET_FILE),
     readSecret(process.env.ROUTINE_SECRET_FILE),
+    readSecret(process.env.INBOUND_SECRET_FILE),
   ]);
-  const launch = createLauncher(boardUrl, connectionSecret, command);
+  const launch = createLauncher(boardUrl, connectionSecret, command, "pipe");
   const routine = createClient({ url: boardUrl, token: routineSecret, profile: "routine" });
-  const start = createLinkedLauncher(routine, launch, process.env.RUN_URL_TEMPLATE);
+  const report = createTurnReporter(routine, inboundUrl, inboundSecret, {
+    now: Date.now,
+    eventId: () => crypto.randomUUID(),
+    send: globalThis.fetch,
+    wait: (ms) => Bun.sleep(ms),
+  });
+  const start = createLinkedLauncher(
+    routine,
+    async (thread, deliveryId) => {
+      const child = await launch(thread, deliveryId);
+      return captureTurn(child, (summary) => report(thread, deliveryId, summary));
+    },
+    process.env.RUN_URL_TEMPLATE,
+  );
   const fetch = createRoutine(webhookSecret, Date.now, start);
   const server = Bun.serve({ hostname: "127.0.0.1", port, maxRequestBodySize: 256 * 1024, fetch });
   process.stdout.write(`Remote routine listening at ${server.url.origin}/hook\n`);

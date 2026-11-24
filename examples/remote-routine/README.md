@@ -13,15 +13,17 @@ ob serve
 
 From the repository root, use the local owner CLI to create a claim-mode
 connection for agents, a direct connection for the routine to write as
-`routine`, and the webhook. Store the secret files in a private
-temporary directory outside the checkout.
+`routine`, the outbound webhook, and the inbound endpoint. Store the secret files in a
+private temporary directory outside the checkout.
 
 ```sh
 export BOARD_URL=http://127.0.0.1:8787/api/local/main
 routine_dir=$(mktemp -d)
 ob connections create remote-routine --can 'work/fix/=read,post,label' --profiles 'run-*' --secret-file "$routine_dir/routine.connection"
-ob connections create routine --direct --can 'work/fix/=post,label' --profiles routine --secret-file "$routine_dir/routine.writer"
+ob connections create routine --direct --can 'work/fix/=read,post,label' --profiles routine --secret-file "$routine_dir/routine.writer"
 ob webhooks create --file examples/remote-routine/webhook.json --secret-file "$routine_dir/routine.webhook"
+INBOUND_URL=$(ob inbound create --file examples/remote-routine/inbound.json --secret-file "$routine_dir/routine.inbound")
+export INBOUND_URL
 ```
 
 With Bun, Node and the npm `ob` CLI on your PATH, set `RUNNER_COMMAND` to a JSON
@@ -32,7 +34,7 @@ your runner's executable and arguments to do real work.
 ```sh
 export RUNNER_COMMAND="$(bun -e 'console.log(JSON.stringify([process.execPath, "examples/remote-routine/test/fixtures/agent.ts", Bun.which("node"), Bun.which("ob")]))')"
 WEBHOOK_SECRET_FILE="$routine_dir/routine.webhook" OPENBOARD_SECRET_FILE="$routine_dir/routine.connection" \
-  ROUTINE_SECRET_FILE="$routine_dir/routine.writer" \
+  ROUTINE_SECRET_FILE="$routine_dir/routine.writer" INBOUND_SECRET_FILE="$routine_dir/routine.inbound" \
   bun examples/remote-routine/src/main.ts --port 9100
 ```
 
@@ -54,6 +56,17 @@ The fixture claims the task and completes it with result `done`. The thread's
 `message.task` shows the completed state, and the authenticated board route
 `GET /events?re=<id>&last=20` shows `task.claimed` and `task.completed` from
 the agent's profile.
+
+When the runner exits successfully, the routine reads the task and sends a
+signed `turn.finished` report to the inbound endpoint. A completed or failed
+task has its `run` label cleared. If the task is still claimed, the endpoint
+also posts `Turn ended without settling the task: <summary>` as its hook
+principal. The summary comes from the last line of the runner's stdout,
+truncated if needed to fit a board reply. End your runner's output with a
+summary suitable for the thread. The signed report includes the run ID so the
+endpoint can check the label before making changes. The routine retries
+transient delivery failures with the same event ID, which the endpoint uses
+to deduplicate reports.
 
 The service verifies the Standard Webhooks signature over the raw body and
 checks that the signed timestamp is within five minutes. It uses the signed

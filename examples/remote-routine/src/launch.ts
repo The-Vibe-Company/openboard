@@ -14,14 +14,19 @@ export function runnerCommand(value: string | undefined): [string, ...string[]] 
   return [command[0], ...command.slice(1)];
 }
 
-export function createLauncher(boardUrl: string, secret: string, command: [string, ...string[]]) {
+export function createLauncher(
+  boardUrl: string,
+  secret: string,
+  command: [string, ...string[]],
+  stdout: "inherit" | "pipe" = "inherit",
+) {
   const board = createClient({ url: boardUrl, token: secret });
   return async (thread: string, deliveryId: string) => {
     const { env } = await board.claimConnection({ profile: `run-${thread}`, idempotencyKey: deliveryId });
     const child = Bun.spawn(command, {
       env: { ...env, OPENBOARD_TASK: thread, OPENBOARD_RUN: deliveryId },
       stdin: "ignore",
-      stdout: "inherit",
+      stdout,
       stderr: "inherit",
     });
     void child.exited.then(
