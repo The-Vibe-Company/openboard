@@ -9,9 +9,9 @@ writes:
   - packages/server/test/webhooks/template-paths.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [317]
-status: draft
-claimed_by: null
+depends_on: [310, 317]
+status: claimed
+claimed_by: codex
 issue: 503
 ---
 
