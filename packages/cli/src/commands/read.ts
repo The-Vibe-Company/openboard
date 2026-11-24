@@ -40,7 +40,7 @@ async function readChannel(ctx: CommandContext, input: ChannelInput): Promise<vo
 export const readCommand: Command = {
   words: ["read"],
   usage:
-    "ob read <channel> [--label <key[=value]>]... [--before <older>] [--limit <limit>] | ob read <id> [--after <id>] [--limit <limit>]",
+    "ob read <channel> [--label <key[=value]>]... [--before <older> | --after <cursor>] [--limit <limit>] | ob read <id> [--after <id>] [--limit <limit>]",
   async run(ctx) {
     const positional: string[] = [];
     const labels: string[] = [];
@@ -71,8 +71,7 @@ export const readCommand: Command = {
       if (labels.length > 0 || before !== undefined) throw new Misuse("--label and --before require a channel");
       await readThread(ctx, { id: target, after, limit });
     } else {
-      if (after !== undefined) throw new Misuse("--after requires a message ID");
-      await readChannel(ctx, { channel: target, label: labels, before, limit });
+      await readChannel(ctx, { channel: target, label: labels, before, after, limit });
     }
     return 0;
   },

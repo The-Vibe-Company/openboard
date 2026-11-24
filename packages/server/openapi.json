@@ -1999,13 +1999,24 @@
             "schema": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } }
           },
           {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "A decimal cursor or message ID: the threads active after it, the first `limit` of them.",
+              "type": "string"
+            }
+          },
+          {
             "name": "before",
             "in": "query",
             "required": false,
             "schema": {
               "minLength": 1,
               "maxLength": 128,
-              "description": "A page's `older`: the threads last active before that page's, the latest `limit` of them.",
+              "description": "A page's `older`: the threads last active before that page's, the latest `limit` of them. Not with `after`.",
               "type": "string"
             }
           },
@@ -2016,7 +2027,7 @@
             "schema": {
               "minimum": 1,
               "maximum": 500,
-              "description": "Maximum threads, the latest; 50 by default.",
+              "description": "Maximum threads, 50 by default: the latest, or with `after` the first after it.",
               "type": "integer"
             }
           }
@@ -2032,16 +2043,22 @@
               "type": "string"
             },
             "label": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } },
+            "after": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "A decimal cursor or message ID: the threads active after it, the first `limit` of them.",
+              "type": "string"
+            },
             "before": {
               "minLength": 1,
               "maxLength": 128,
-              "description": "A page's `older`: the threads last active before that page's, the latest `limit` of them.",
+              "description": "A page's `older`: the threads last active before that page's, the latest `limit` of them. Not with `after`.",
               "type": "string"
             },
             "limit": {
               "minimum": 1,
               "maximum": 500,
-              "description": "Maximum threads, the latest; 50 by default.",
+              "description": "Maximum threads, 50 by default: the latest, or with `after` the first after it.",
               "type": "integer"
             }
           }
@@ -2053,7 +2070,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["threads", "cursor", "older"],
+                  "required": ["threads", "cursor"],
                   "properties": {
                     "threads": {
                       "type": "array",
@@ -2272,7 +2289,7 @@
                     },
                     "cursor": { "type": "string" },
                     "older": {
-                      "description": "The `before` for the next older page, as it came, or null when no thread is older.",
+                      "description": "The `before` for the next older page, as it came, or null when no thread is older. Absent with `after`.",
                       "anyOf": [{ "type": "string" }, { "type": "null" }]
                     }
                   }

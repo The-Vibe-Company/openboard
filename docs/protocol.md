@@ -157,6 +157,13 @@ appears once. `GET /threads` takes `limit` (1 to 500, 50 by default) and
 older. A `before` that is not of that form, or names a position past the board
 head, is 400 `invalid_cursor`.
 
+`ob read <channel> --after <cursor>` reads forward instead: `GET /threads`
+takes `after`, a cursor or message ID, and answers the first `limit` threads
+active after it, oldest first, with no `older`. One that is not a decimal
+position, or is past the board head, is 400 `invalid_cursor`. `before` and
+`after` together are 400 `invalid_request`, whatever either holds: page one way
+at a time.
+
 Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --idempotency-key`.
 
 ### Attachments, schedules, tasks, grants, schemas
