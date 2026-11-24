@@ -131,7 +131,7 @@ answers. OpenBoard adds:
 | --- | --- | --- | --- |
 | GET | `/messages` | U | |
 | GET | `/threads` | U | all filters, `before`/`older` |
-| GET | `/messages/:id` | U | |
+| GET | `/messages/:id` | U | Root and replies, oldest first. `after` must name a message in the same thread (400 `invalid_request` otherwise). `limit` (1–500) selects the first replies after it, or the newest replies when no `after` is given. |
 | GET | `/posts/:id` | U | `{ message }` as it landed, by the caller's client ID; 404 `post_not_found` for missing or foreign IDs |
 | POST | `/messages` | U | `sync` targets: 400 `invalid_request` "this board syncs nowhere" |
 | POST | `/messages/:id/edit` | U | `ob edit <id> <text>` replaces the text and advances the message revision. Pass `--if-revision <n>` to edit only at the observed revision. |
@@ -139,6 +139,9 @@ answers. OpenBoard adds:
 | POST | `/messages/:id/reactions` | U | |
 | POST | `/messages/:id/labels` | U | `ob label <id> k=v... [--unset k]...` sends `{ set?, unset? }`, at least one of the two (400 `invalid_request` otherwise). Each key holds one value; `unset` applies after `set`, so a key in both is removed. Unsetting a key the message lacks still raises its `version`. A key under `board.` is 400 `reserved_label`. |
 | GET | `/events` | U | JSON feed with `after`; SSE and long-poll planned |
+
+Use `ob read <id> --after <reply-id>` to read from a message in the thread, or
+`ob read <id> --limit 1` to see the root and the latest reply.
 
 Use `ob read <channel> --label status=open` to list threads with a matching root or reply.
 `GET /threads` accepts `label=key` for presence and `label=key=value` for an exact value.

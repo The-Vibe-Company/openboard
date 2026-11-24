@@ -63,3 +63,15 @@ test("GET /threads combines repeated label filters with labels from the root and
     threads: [{ message, replies: 2, last: ((await latest.json()) as Thread).message }],
   });
 });
+
+test("GET /messages/:id rejects a cursor outside the requested thread", async () => {
+  app = makeApp();
+  const posted = await call(app, "POST", "/messages", { channel: "dev", text: "root" });
+  const outside = await call(app, "POST", "/messages", { channel: "dev", text: "different thread" });
+  const { message } = (await posted.json()) as Thread;
+  const { message: foreign } = (await outside.json()) as Thread;
+  const read = await call(app, "GET", `/messages/${message.id}?after=${foreign.id}`);
+
+  expect(read.status).toBe(400);
+  expect(await read.json()).toMatchObject({ error: { code: "invalid_request" } });
+});
