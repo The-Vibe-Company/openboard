@@ -7,6 +7,7 @@ writes:
   - apps/web/e2e/onboarding.spec.ts
   - apps/web/e2e/scroll.spec.ts
   - apps/web/e2e/support/serve.ts
+  - apps/web/e2e/support/board-live.ts
   - apps/web/playwright.config.ts
   - .github/workflows/web.yml
   - .github/workflows/nightly.yml

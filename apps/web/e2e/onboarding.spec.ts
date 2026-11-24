@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@the-vibe-company/openboard";
+import { openLiveBoard } from "./support/board-live.ts";
 import { serve } from "./support/serve.ts";
 import { signIn } from "./support/sign-in.ts";
 
@@ -38,28 +39,51 @@ async function inviteMember(owner: Page, member: Page, url: string) {
   expect((await account.json()).memberships).toContainEqual({ org: { slug: "acme", name: "Acme" }, role: "member" });
 }
 
+const instanceHeader = "x-openboard-test-instance";
+
+async function routedInstance(origin: string) {
+  const probe = await fetch(`${origin}/healthz`);
+  expect(probe.ok).toBe(true);
+  await probe.arrayBuffer();
+  return probe.headers.get(instanceHeader);
+}
+
+async function postAsAgent(origin: string, url: string, token: string, streamInstance: string | null, text: string) {
+  const agent = createClient({
+    url,
+    token,
+    profile: "writer",
+    async fetch(request) {
+      if (streamInstance !== null) {
+        // Advance the normal round robin so the write follows a request to the streaming replica.
+        let probe = await routedInstance(origin);
+        if (probe !== streamInstance) probe = await routedInstance(origin);
+        expect(probe).toBe(streamInstance);
+      }
+      const response = await fetch(request);
+      if (streamInstance !== null) {
+        expect(response.headers.get(instanceHeader)).toBe(streamInstance === "0" ? "1" : "0");
+      }
+      return response;
+    },
+  });
+  await agent.postMessage({ channel: "general", text });
+}
+
 test("an owner onboards an agent and a member who reads and posts", async ({ page, browser }, info) => {
   const app = await serve();
   try {
-    if (info.project.name === "hosted") {
-      const routed = [];
-      for (let index = 0; index < 3; index++) {
-        const response = await page.request.get(`${app.url}/healthz`);
-        expect(response.ok()).toBe(true);
-        routed.push(response.headers()["x-openboard-test-instance"]);
-      }
-      expect(routed).toEqual(["0", "1", "0"]);
-    }
     await createOrganization(page, app.url);
     const token = await createConnection(page, app.url);
     const url = `${app.url}/api/acme/main`;
-    const agent = createClient({ url, token, profile: "writer" });
-    const stream = page.waitForResponse(`${url}/events`);
-    await page.goto(`${app.url}/acme/main`);
-    expect((await stream).ok()).toBe(true);
-    await expect(page.getByRole("heading", { name: "No messages yet" })).toBeVisible();
+    const stream = await openLiveBoard(page, url, async () => {
+      await page.goto(`${app.url}/acme/main`);
+      await expect(page.getByRole("heading", { name: "No messages yet" })).toBeVisible();
+    });
+    const streamInstance = await stream.headerValue(instanceHeader);
+    if (info.project.name === "hosted") expect(streamInstance).toMatch(/^[01]$/);
     const text = "Hello from the agent";
-    await agent.postMessage({ channel: "general", text });
+    await postAsAgent(app.url, url, token, streamInstance, text);
     const threads = page.getByRole("list", { name: "Latest threads" });
     await expect(threads.getByText(text, { exact: true })).toBeVisible();
 

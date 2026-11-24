@@ -132,8 +132,13 @@ export async function serve(options: ServeOptions = {}) {
         if (request.method === "GET" && pathname.endsWith("/events")) listener.timeout(request, 0);
         const app = apps[instance];
         const response = app ? await app.fetch(request) : new Response(null, { status: 503 });
-        if (mode === "hosted" && pathname === "/healthz")
+        if (
+          mode === "hosted" &&
+          response.ok &&
+          (pathname === "/healthz" || pathname.endsWith("/events") || pathname.endsWith("/messages"))
+        ) {
           response.headers.set("x-openboard-test-instance", String(instance));
+        }
         return onResponse ? onResponse(request, response) : response;
       },
     });

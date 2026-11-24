@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { browserClient } from "../src/api/client.ts";
+import { openLiveBoard, waitForThreadHead } from "./support/board-live.ts";
 import { serve } from "./support/serve.ts";
 import { signIn } from "./support/sign-in.ts";
 
@@ -51,34 +52,8 @@ async function postAfterPaging(page: Page, list: Locator) {
   await expect(list.getByRole("listitem").first()).toContainText("Posted after reading history");
 }
 
-async function openHistory(page: Page, origin: string, url: string, list: Locator) {
-  const threadsPath = "/api/acme/main/threads";
-  const stream = Promise.withResolvers<void>();
-  await page.route(
-    `${origin}/api/acme/main/events`,
-    async (route) => {
-      await stream.promise;
-      await route.continue();
-    },
-    { times: 1 },
-  );
-
-  try {
-    await page.goto(url);
-    await expect(list.getByText(threadLabel(threadCount), { exact: true })).toBeInViewport();
-    // Open the stream after the first read so its reconciliation finishes before scrolling.
-    const reconciled = page.waitForResponse((response) => {
-      const request = new URL(response.url());
-      return request.pathname === threadsPath && !request.searchParams.has("before");
-    });
-    stream.resolve();
-    const head = await reconciled;
-    expect(head.ok()).toBe(true);
-    expect(await head.finished()).toBeNull();
-  } finally {
-    stream.resolve();
-  }
-
+function watchPagination(page: Page, api: string) {
+  const threadsPath = new URL(`${api}/threads`).pathname;
   const counts = new Map<string | null, number>([[null, 1]]);
   page.on("request", (request) => {
     const url = new URL(request.url());
@@ -107,7 +82,12 @@ test("a member pages through 2,000 threads with bounded DOM rows and returns to 
     const channelUrl = `${server.url}/acme/main?channel=history`;
     const list = page.getByRole("list", { name: "Latest threads" });
     await page.clock.install();
-    const cursors = await openHistory(page, server.url, channelUrl, list);
+    const api = `${server.url}/api/acme/main`;
+    await openLiveBoard(page, api, async () => {
+      await page.goto(channelUrl);
+      await expect(list.getByText(threadLabel(threadCount), { exact: true })).toBeInViewport();
+    });
+    const cursors = watchPagination(page, api);
     const oldest = list.getByText(threadLabel(1), { exact: true });
     await expect
       .poll(
@@ -159,8 +139,13 @@ test("a member pages through 2,000 threads with bounded DOM rows and returns to 
     process.stdout.write(
       `Back restored and focused the opened row (${label?.trim().split(" wrapped row ")[0]}) after resizing, with no extra page requests.\n`,
     );
+    const refreshed = waitForThreadHead(page, api);
     await postAfterPaging(page, list);
-    expectEachPageOnce(cursors);
+    const head = await refreshed;
+    expect(head.ok()).toBe(true);
+    expect(await head.finished()).toBeNull();
+    const history = [...cursors].filter(([cursor]) => cursor !== null);
+    expect(history.map(([, count]) => count)).toEqual(Array(threadCount / pageSize - 1).fill(1));
     process.stdout.write("Posting after paging showed the new thread without replaying history.\n");
   } finally {
     await server.stop();
