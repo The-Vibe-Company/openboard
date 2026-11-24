@@ -470,6 +470,11 @@ describe("deleting a message", () => {
     await call(app, "POST", "/messages", { channel: "dev", text: "earlier", labels: { topic: "deploy" } });
     const reply = (await answer(call(app, "POST", "/messages", { re: "2", text: "reply" }))).body.message;
 
+    const labelledThreads = () => call(app, "GET", "/threads?channel=dev&label=topic%3Ddeploy");
+    const before = await labelledThreads();
+    expect(before.status).toBe(200);
+    expect(await before.json()).toMatchObject({ threads: [{ message: { id: "2" } }] });
+
     const deletes = await Promise.all([
       call(app, "POST", "/messages/2/delete"),
       call(app, "POST", "/messages/2/delete"),
@@ -479,11 +484,14 @@ describe("deleting a message", () => {
       expect(await response.json()).toEqual({ ok: true });
     }
 
+    const after = await labelledThreads();
+    expect(after.status).toBe(200);
+    expect(await after.json()).toMatchObject({ threads: [] });
+
     const tombstone = { id: "2", text: "", deleted: true, labels: {}, revision: 1, version: 4 };
-    expect(await (await call(app, "GET", "/messages/2")).json()).toMatchObject({
-      message: tombstone,
-      replies: [reply],
-    });
+    const thread = await answer(call(app, "GET", "/messages/2"));
+    expect(thread.body).toMatchObject({ message: tombstone, replies: [reply] });
+    expect(thread.body.message.labels).toEqual({});
     expect(await (await call(app, "GET", "/events?after=3")).json()).toMatchObject({
       cursor: "4",
       events: [{ type: "message.deleted", payload: { id: "2", thread: "2", from: null }, message: tombstone }],
