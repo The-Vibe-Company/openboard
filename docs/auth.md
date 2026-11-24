@@ -130,6 +130,10 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
 
 ### Invitations
 
+- In organization settings, **Members** lists the organization’s members and their roles.
+  Owners and admins can choose **Invite**, select a role and optionally bind the link to a
+  verified email address. Copy the link before closing the dialog.
+
 - Open the invitation link to see the organization, role and expiry. If
   signed in, choose **Join** followed by the organization's name to join and
   open its main board. Otherwise choose **Sign in with GitHub to join**.
