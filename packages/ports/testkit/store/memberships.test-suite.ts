@@ -46,7 +46,9 @@ export function membershipsSuite(driver: string, open: OpenStore): void {
 
       const change = { personId: owner, targetId: member, role: "admin", at: at + 2 } as const;
       expect(await acme.changeMemberRole({ ...change, targetId: outsider })).toBeNull();
-      expect(await other.listMembers()).toEqual([{ principal: `ob:user:${outsider}`, role: "owner" }]);
+      expect(await other.listMembers()).toEqual([
+        { principal: `ob:user:${outsider}`, role: "owner", profile: { handle: "mei", name: "mei", avatar: null } },
+      ]);
       await expect(acme.changeMemberRole({ ...change, personId: member })).rejects.toMatchObject({ code: "forbidden" });
       expect(await acme.changeMemberRole(change)).toEqual({ principal: `ob:user:${member}`, role: "admin" });
       expect(await platform.orgMembership("acme", member)).toMatchObject({ role: "admin" });
@@ -74,7 +76,9 @@ export function membershipsSuite(driver: string, open: OpenStore): void {
       expect(changes.filter((result) => result.status === "fulfilled")).toHaveLength(1);
       expect(changes).toContainEqual({ status: "rejected", reason: expect.objectContaining({ code: "last_owner" }) });
       expect((await acme.listMembers()).filter(({ role }) => role === "owner")).toHaveLength(1);
-      expect(await other.listMembers()).toEqual([{ principal: `ob:user:${outsider}`, role: "owner" }]);
+      expect(await other.listMembers()).toEqual([
+        { principal: `ob:user:${outsider}`, role: "owner", profile: { handle: "mei", name: "mei", avatar: null } },
+      ]);
     } finally {
       await store.close();
     }

@@ -12,12 +12,6 @@ function GeneralSettings() {
   return (
     <Card>
       <h2>General</h2>
-      <dl>
-        <dt>Organization slug</dt>
-        <dd>
-          <code>{org.slug}</code>
-        </dd>
-      </dl>
       <section aria-labelledby="settings-boards">
         <h3 id="settings-boards">Boards</h3>
         <p>

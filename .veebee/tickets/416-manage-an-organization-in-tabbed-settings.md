@@ -16,6 +16,16 @@ writes:
   - apps/web/src/routes/$org/settings/members.css
   - apps/web/src/routes/$org/settings/settings.css
   - apps/web/src/routes/$org/org.css
+  - docs/protocol.md
+  - packages/contract/src/operations/invitations.ts
+  - packages/driver-sql/src/views/invitations.ts
+  - packages/ports/src/store.ts
+  - packages/ports/testkit/store/invitations.test-suite.ts
+  - packages/ports/testkit/store/memberships.test-suite.ts
+  - packages/server/openapi.json
+  - packages/server/test/auth/signup.test.ts
+  - packages/server/test/invitations.test.ts
+  - packages/server/test/memberships.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [411]

@@ -7,3 +7,16 @@
   background: var(--surface);
   box-shadow: var(--overlay-shadow);
 }
+
+.organization-members .member-profile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: calc(2 * var(--space));
+}
+
+.organization-members .member-profile code {
+  display: block;
+  color: var(--muted);
+  font-size: var(--type-small);
+}

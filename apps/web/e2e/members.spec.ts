@@ -35,7 +35,7 @@ async function principal(page: Page, origin: string): Promise<string> {
 
 async function expectMember(page: Page, id: string, role: string) {
   const row = page.getByRole("row").filter({ has: page.getByText(id, { exact: true }) });
-  await expect(row.getByText(role, { exact: true })).toBeVisible();
+  await expect(row.getByRole("cell", { name: role, exact: true })).toBeVisible();
 }
 
 test("an admin sees each role, copies a one-time link, and sees the recipient join as a member", async ({
@@ -52,6 +52,8 @@ test("an admin sees each role, copies a one-time link, and sees the recipient jo
     await admin.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin });
     await admin.goto(`${origin}${members}`);
     await expectMember(admin, await principal(page, origin), "owner");
+    await expect(admin.getByText("ada", { exact: true })).toBeVisible();
+    await expect(admin.getByRole("img", { name: "ada" })).toBeVisible();
     await expectMember(admin, await principal(admin, origin), "admin");
     await expect(admin.locator("tbody").getByRole("row")).toHaveCount(2);
 

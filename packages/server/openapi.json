@@ -7549,6 +7549,15 @@
                               { "const": "admin", "type": "string" },
                               { "const": "member", "type": "string" }
                             ]
+                          },
+                          "profile": {
+                            "type": "object",
+                            "required": ["handle", "name", "avatar"],
+                            "properties": {
+                              "handle": { "type": "string" },
+                              "name": { "type": "string" },
+                              "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                            }
                           }
                         }
                       }

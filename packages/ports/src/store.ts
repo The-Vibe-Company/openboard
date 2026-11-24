@@ -11,10 +11,12 @@ import type {
   GrantLevel,
   Invitation,
   InvitationRole,
+  listMembers,
   ManagedConnection,
   MentionActor,
   Message,
   Named,
+  OutputOf,
   PersonalToken,
   Role,
   SchemaView,
@@ -76,7 +78,7 @@ export interface OrgView extends RateView, OrgLogMaintenance, OrgExports {
   /** Consume a backfill lease and fill one batch under the board lock. */
   backfillBoardOrgIds(boardId: number, jobId: string, lease: JobLease, now: number): Promise<boolean>;
   deleteOrg(personId: string, at: number, admit?: () => void): Promise<DeletedOrg>;
-  listMembers(): Promise<{ principal: string; role: Role }[]>;
+  listMembers(): Promise<OutputOf<typeof listMembers>["members"]>;
   /** The organization's first `limit` events after its event ID `after`, oldest first, and the last event ID read first. */
   auditEvents(after: number, limit: number): Promise<{ events: OrgAuditRecord[]; head: number }>;
   /**

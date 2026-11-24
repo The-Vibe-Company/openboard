@@ -20,11 +20,7 @@
 }
 
 .organization-overview li a {
-  display: block;
+  display: grid;
   height: 100%;
   border-radius: var(--radius-card);
-}
-
-.organization-overview li .ui-card {
-  height: 100%;
 }

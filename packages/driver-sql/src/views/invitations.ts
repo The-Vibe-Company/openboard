@@ -15,7 +15,7 @@ export const invitationStatements = {
   insertInvitation: sql`INSERT INTO invitations (id, org_id, token_hash, email, role, created_by, created_at, expires_at)
     VALUES (${"id"}, ${"orgId"}, ${"tokenHash"}, ${"email"}, ${"role"}, ${"userId"}, ${"at"}, ${"expiresAt"})`,
   nextInvitationEvent: sql`SELECT COALESCE(MAX(id), 0) + 1 AS id FROM org_events WHERE org_id = ${"orgId"}`,
-  listOrgMembers: sql`SELECT u.public_id, m.role FROM memberships m
+  listOrgMembers: sql`SELECT u.public_id, m.role, u.handle, u.name, u.avatar FROM memberships m
     JOIN users u ON u.id = m.user_id WHERE m.org_id = ${"orgId"} ORDER BY u.public_id`,
   lockRedeemableInvitation: sql`SELECT i.role, i.email, o.slug, o.name, o.quotas FROM invitations i
     JOIN orgs o ON o.id = i.org_id WHERE i.org_id = ${"orgId"} AND i.token_hash = ${"tokenHash"}
@@ -115,7 +115,15 @@ export function invitationView(
   return {
     async listMembers() {
       const rows = await query(db, dialect, invitationStatements.listOrgMembers, { orgId });
-      return rows.map((row) => ({ principal: `ob:user:${row.public_id}`, role: String(row.role) as Role }));
+      return rows.map((row) => ({
+        principal: `ob:user:${row.public_id}`,
+        role: String(row.role) as Role,
+        profile: {
+          handle: String(row.handle),
+          name: String(row.name),
+          avatar: typeof row.avatar !== "string" ? null : row.avatar,
+        },
+      }));
     },
     createInvitation: (record) =>
       db.transaction(async (tx) => {

@@ -122,7 +122,6 @@ for (const width of [1280, 375]) {
       await expect(tabs).toHaveCSS("flex-direction", width === 375 ? "row" : "column");
       await expect(page.locator("html")).toHaveCSS("color-scheme", colorScheme);
       await expectNoOverflow(page, width);
-      await page.screenshot({ path: info.outputPath("general.png") });
 
       await tabs.getByRole("link", { name: "Members" }).click();
       await expectTabsAndTable(page, "Members", ["Member", "Role"]);
@@ -134,7 +133,6 @@ for (const width of [1280, 375]) {
       await expect(dialog.locator(".ui-field").getByLabel("Email (optional)")).toBeVisible();
       await expect(dialog.locator('footer [data-variant="primary"]')).toHaveText("Create invitation");
       await expectNoOverflow(page, width);
-      await page.screenshot({ path: info.outputPath("invite.png") });
       await dialog.getByRole("button", { name: "Close" }).click();
 
       await tabs.getByRole("link", { name: "Boards" }).click();
@@ -144,14 +142,12 @@ for (const width of [1280, 375]) {
       await expect(form.locator(".ui-field").getByLabel("Slug")).toBeVisible();
       await expect(form.locator('footer [data-variant="primary"]')).toHaveText("Create board");
       await expectNoOverflow(page, width);
-      await page.screenshot({ path: info.outputPath("boards.png") });
 
       await post(page, boardsApi, { slug: "ops", name: "Operations" });
       await page.goto(`${origin}/acme`);
       const cards = page.getByRole("region", { name: "Boards" }).locator(".ui-card");
       await expect(cards).toHaveCount(2);
       await expectNoOverflow(page, width);
-      await page.screenshot({ path: info.outputPath("organization.png") });
       await page.getByRole("link", { name: /Operations/ }).click();
       await expect(page).toHaveURL(`${origin}/acme/ops`);
     });

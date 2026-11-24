@@ -40,10 +40,6 @@
   margin-block-start: 0;
 }
 
-.organization-settings dd {
-  margin-inline-start: 0;
-}
-
 .organization-settings .settings-boards-table {
   table-layout: fixed;
 }

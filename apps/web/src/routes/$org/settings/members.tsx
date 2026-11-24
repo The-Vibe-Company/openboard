@@ -3,7 +3,7 @@ import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { browserClient } from "../../../api/client.ts";
-import { Button, Card, Field, Input, Select, Table } from "../../../ui/index.ts";
+import { Avatar, Button, Card, Field, Input, Select, Table } from "../../../ui/index.ts";
 import "./members.css";
 
 export const Route = createFileRoute("/$org/settings/members")({ component: OrganizationMembers });
@@ -39,10 +39,17 @@ function Members({ org, mayInvite }: { org: string; mayInvite: boolean }) {
               </tr>
             </thead>
             <tbody>
-              {members.data.members.map(({ principal, role }) => (
+              {members.data.members.map(({ principal, role, profile }) => (
                 <tr key={principal}>
                   <td>
-                    <code>{principal}</code>
+                    <div className="member-profile">
+                      <Avatar name={profile?.handle ?? "Unknown member"} src={profile?.avatar ?? undefined} />
+                      <div>
+                        <strong>{profile?.handle ?? "Unknown member"}</strong>
+                        {profile?.name && profile.name !== profile.handle && <div>{profile.name}</div>}
+                        <code>{principal}</code>
+                      </div>
+                    </div>
                   </td>
                   <td>{role}</td>
                 </tr>
