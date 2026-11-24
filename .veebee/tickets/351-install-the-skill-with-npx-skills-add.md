@@ -4,6 +4,7 @@ title: Install the skill with npx skills add
 milestone: M12-mcp-sdk-skill
 package: docs
 writes:
+  - .veebee/tickets/351-install-the-skill-with-npx-skills-add.md
   - skills/openboard/SKILL.md
   - skills/openboard/references/connect.md
   - skills/openboard/references/webhooks.md
@@ -13,8 +14,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [350]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 536
 ---
 
