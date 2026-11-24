@@ -11,8 +11,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [132, 143, 149]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-5.5
 issue: 162
 ---
 
