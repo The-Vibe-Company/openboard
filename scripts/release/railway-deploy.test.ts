@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { deployStaging } from "./railway-deploy.ts";
+import { deployStaging, STAGING_DEPLOY_SETTINGS } from "./railway-deploy.ts";
 
 const tag = "main-012abcd";
 const args = ["staging", tag];
@@ -96,15 +96,18 @@ test("deploys the tagged GHCR image and verifies distinct replicas despite old a
     "DeployStaging",
     "StagingDeployment",
   ]);
+  expect(STAGING_DEPLOY_SETTINGS).toEqual({
+    healthcheckPath: "/readyz",
+    healthcheckTimeout: 120,
+    preDeployCommand: ["openboard migrate"],
+    restartPolicyType: "ON_FAILURE",
+    multiRegionConfig: { "europe-west4-drams3a": { numReplicas: 2 } },
+  });
   expect(fake.calls.find(({ operation }) => operation === "UpdateStaging")?.variables).toEqual({
     ...ids,
     input: {
+      ...STAGING_DEPLOY_SETTINGS,
       source: { image: "ghcr.io/the-vibe-company/openboard:main-012abcd" },
-      healthcheckPath: "/readyz",
-      healthcheckTimeout: 120,
-      preDeployCommand: ["openboard migrate"],
-      restartPolicyType: "ON_FAILURE",
-      multiRegionConfig: { "europe-west4-drams3a": { numReplicas: 2 } },
       startCommand:
         '/bin/sh -c "export OPENBOARD_INSTANCE_ID=$RAILWAY_REPLICA_ID OPENBOARD_DEPLOYMENT_TAG=main-012abcd; exec openboard serve"',
     },

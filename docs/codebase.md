@@ -27,7 +27,7 @@ openboard/
   .oxlintrc.json             per-package restricted imports and globals
   tsconfig.json              strict, erasableSyntaxOnly, project references
   release-please-config.json one version for every manifest (armada)
-  Dockerfile  railway.json  railway.hosted.json
+  Dockerfile  railway.json
   .github/
     workflows/ci.yml         the one required check: "Verify"
     workflows/web.yml        Playwright, not required
@@ -513,7 +513,7 @@ One image for both modes. Build stage `oven/bun:<pinned>`; runtime stage `debian
 
 ### 7.5 Railway: hosted service
 
-- One Railway project, environments `staging` and `production`. Each has Railway Postgres, one node on the private network (D38), and one `openboard` service with **at least two replicas**, no volume, source = the GHCR image (never a Railway-side build, so every environment runs the bytes CI built). `railway.hosted.json`: health check `/readyz` (liveness `/healthz`), `numReplicas: 2`, restart on failure, pre-deploy command `openboard migrate`. For the staging image deploy, the deploy script reads these settings from the file and applies them through Railway’s GraphQL API.
+- One Railway project, environments `staging` and `production`. Each has Railway Postgres, one node on the private network (D38), and one `openboard` service with **at least two replicas**, no volume, source = the GHCR image (never a Railway-side build, so every environment runs the bytes CI built). The staging deploy script sets the image, health check `/readyz` (liveness `/healthz`), health check timeout, two replicas in `europe-west4-drams3a`, restart on failure, and pre-deploy command `openboard migrate` in one `serviceInstanceUpdate` call through Railway’s GraphQL API.
 - Config: `OPENBOARD_DATABASE_URL` (Railway reference variable), `OPENBOARD_SIGNUP`, `OPENBOARD_PUBLIC_URL`, `OPENBOARD_SECRET_KEY`, GitHub sign-in credentials.
 - **Rolling deploy without downtime**: Railway starts new replicas, waits for `/readyz`, then sends `SIGTERM` to old ones. On `SIGTERM` an instance stops taking new requests, ends SSE streams with a retry hint and the last cursor, lets in-flight requests and its current job finish (10 s cap), releases its job leases, and exits. Clients resume on another replica by cursor. Unclaimed or released jobs are taken by the remaining instances.
 - **Migrations on deploy**: `openboard migrate` runs as the pre-deploy command under a Postgres advisory lock, so only one runs. Migrations are expand-only during a deploy, since old and new versions serve together: add tables and nullable columns, backfill in jobs, never drop or rename. A contract step (drop, rename, `NOT NULL`) ships in a later release, marked `-- contract-phase`, once no running version uses the object; `scripts/ci/migrations.ts` enforces the marker (armada keeps the same N/N-1 overlap for database objects: `AGENTS.md` non-negotiable 1, `docs/architecture.md` "Deployment overlap").

@@ -4,7 +4,6 @@ title: Deploy staging on Railway with two replicas
 milestone: M6-high-availability
 package: tools
 writes:
-  - railway.hosted.json
   - scripts/release/railway-deploy.ts
   - scripts/release/railway-deploy.test.ts
   - apps/openboard/src/compose.ts
@@ -34,9 +33,11 @@ As the owner, a staging OpenBoard runs on Railway as two replicas on one Railway
 - Production (M7, 193, 215).
 
 ## Notes
-- Staging does not exist yet. Before this ticket can be checked, the owner creates (agents cannot: accounts, tokens and billing are the owner's): the Railway project with a `staging` environment, its Railway Postgres (one node, private network, D38), the `openboard` service with no volume and the GHCR image as source, its variables (`OPENBOARD_DATABASE_URL` as a Railway reference, `OPENBOARD_PUBLIC_URL`, `OPENBOARD_SECRET_KEY`, the GitHub sign-in pair of a staging OAuth app), Railway's access to the GHCR package, and a `RAILWAY_TOKEN` in a GitHub environment `staging`. Until 190 automates it, the first image (188) is pushed by hand by someone holding GHCR write access.
-- docs/codebase.md 7.5: `railway.hosted.json` holds the healthcheck `/readyz` (liveness `/healthz`), `numReplicas: 2`, restart on failure, pre-deploy `openboard migrate` (167). Whether Railway's pre-deploy command fits is unverified (docs/architecture.md "Migrations without downtime"): say in the PR what Railway did.
+- The owner manages Railway accounts, tokens, billing, and GHCR access. Staging uses one Postgres node on the private network, an `openboard` service with no volume, and the hosted variables from docs/codebase.md 7.5. Ticket 190 publishes the image used for live verification.
+- docs/codebase.md 7.5: `railway-deploy.ts` defines the settings and applies them with the image source through `serviceInstanceUpdate`: healthcheck `/readyz` (liveness `/healthz`), timeout, two replicas in `europe-west4-drams3a`, restart on failure, and pre-deploy `openboard migrate` (167). Whether Railway's pre-deploy command fits is unverified (docs/architecture.md "Migrations without downtime"): say in the PR what Railway did.
 - `railway-deploy.ts` reads `RAILWAY_TOKEN` from its environment (scripts read their own, docs/codebase.md 3.2) and never prints it; it calls Railway's API with the global `fetch`.
 - Also check on staging, and record in the PR: the app-to-database round trip (docs/architecture.md "Hosted on Railway", to measure before launch) and whether the app role can read `pg_control_checkpoint()` (185).
 
 Re-enabled (owner, 2026-11-24: "Ok pour railway pour moi"). Railway is set up: project `openboard` (d2f79d2f-64b8-4c30-b922-3b9502e6ea4e), environment `staging` with a `Postgres` service and an empty `openboard` service at https://openboard-staging.up.railway.app, variables OPENBOARD_DATABASE_URL (reference to Postgres), OPENBOARD_SECRET_KEY, OPENBOARD_PUBLIC_URL, OPENBOARD_SIGNUP=closed already set. GitHub OAuth credentials and any deploy token are set by the owner; never print or commit them.
+
+Orchestrator decision on #269: verify against the fake API in the sandbox. The owner runs the live command after merge once ticket 190 publishes the image.

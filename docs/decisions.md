@@ -949,8 +949,8 @@ Only product choices; each has a recommendation.
 
 ### D59. Apply staging image settings through Railway's API
 
-- **Decision.** The staging deploy script reads `railway.hosted.json` and applies
-  its deploy settings through Railway's service instance API. The staging
+- **Decision.** The staging deploy script defines the settings and applies them
+  with the image source through Railway's service instance API. The staging
   replicas run in `europe-west4-drams3a`.
 - **Reason.** A config file uploaded through `railway up` left the healthcheck
   and replica settings unset during the owner's staging setup.
