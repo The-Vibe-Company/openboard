@@ -101,7 +101,7 @@ function deferred<View extends object>(view: () => Promise<View>): View {
         const target = (await view()) as unknown as Record<string, (...args: unknown[]) => unknown>;
         const call = target[method];
         if (typeof call !== "function") throw new TypeError(`The store view has no method ${method}`);
-        return call(...args);
+        return Reflect.apply(call, target, args);
       };
     },
   });
