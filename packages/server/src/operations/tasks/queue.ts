@@ -37,6 +37,8 @@ function claimAttempt(ctx: BoardContext, { channel, label, lease }: Input, mayCl
 
 function taskBecameAvailable(type: string): boolean {
   return (
+    type === "labels.changed" ||
+    type === "task.assigned" ||
     type === "task.created" ||
     type === "task.ready" ||
     type === "task.released" ||

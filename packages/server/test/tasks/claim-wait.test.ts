@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { claimTask, OutputOf } from "@openboard/contract";
-import { call, makeApp, NOW } from "../support/app.ts";
+import { call, LOCAL_OWNER, makeApp, NOW } from "../support/app.ts";
 import { openStore } from "../support/drivers.ts";
 
 function queue() {
@@ -15,7 +15,9 @@ function queue() {
         const board = store.board(scope);
         const write: typeof board.write = async (run, actor, id) => {
           const result = await board.write(run, actor, id);
-          if (timers.size) parked[lookups++]?.resolve();
+          const next = timers.size ? parked[lookups++] : undefined;
+          // Let the empty lookup reach the tail before the test changes the queue.
+          if (next) setImmediate(next.resolve);
           return result;
         };
         return new Proxy(board, {
@@ -43,6 +45,15 @@ async function answer(pending: Promise<Response>) {
   return response.json();
 }
 
+async function untilParked(parked: Promise<void>, pending: Promise<unknown>) {
+  await Promise.race([
+    parked,
+    pending.then(() => {
+      throw new Error("claim returned before parking");
+    }),
+  ]);
+}
+
 test("a release on a peer wakes two claimants, but only one takes the task", async () => {
   const { app, first, peer, parked, timers } = queue();
   try {
@@ -51,9 +62,9 @@ test("a release on a peer wakes two claimants, but only one takes the task", asy
     const held = (await answer(call(peer, "POST", "/tasks/2/claim"))) as OutputOf<typeof claimTask>;
 
     const one = answer(call(first, "POST", "/tasks/claim", { channel: "dev/", wait: 60 }));
-    await parked[0].promise;
+    await untilParked(parked[0].promise, one);
     const two = answer(call(first, "POST", "/tasks/claim", { channel: "dev/", wait: 70 }));
-    await parked[1].promise;
+    await untilParked(parked[1].promise, two);
 
     const { epoch, token } = held.claim;
     await answer(call(peer, "POST", "/tasks/2/release", { epoch, token }));
@@ -74,7 +85,7 @@ test.each(["timer", "drain"])("a parked claim returns an empty answer on %s", as
   const { app, first, parked, timers } = queue();
   try {
     const pending = call(first, "POST", "/tasks/claim", { channel: "dev", wait: 300 });
-    await parked[0].promise;
+    await untilParked(parked[0].promise, pending);
     expect([...timers.keys()]).toEqual([120_000]);
     if (stop === "timer") timers.get(120_000)?.();
     else await first.drain();
@@ -84,3 +95,30 @@ test.each(["timer", "drain"])("a parked claim returns an empty answer on %s", as
     await app.close();
   }
 });
+
+test.each(["labels", "assignment"])(
+  "a parked claim retries when %s changes make a ready task eligible",
+  async (change) => {
+    const { app, first, peer, parked } = queue();
+    try {
+      const byLabel = change === "labels";
+      const made = await call(peer, "POST", "/tasks", {
+        channel: "dev",
+        text: "review",
+        labels: { step: byLabel ? "fix" : "review" },
+        ...(byLabel ? {} : { for: `${LOCAL_OWNER}+other` }),
+      });
+      expect(made.status).toBe(201);
+      const pending = answer(call(first, "POST", "/tasks/claim", { channel: "dev", label: ["step=review"], wait: 60 }));
+      await untilParked(parked[0].promise, pending);
+      if (byLabel) {
+        await answer(call(peer, "POST", "/messages/2/labels", { set: { step: "review" } }));
+      } else {
+        await answer(call(peer, "POST", "/tasks/2/assign", { for: null }));
+      }
+      expect(await pending).toMatchObject({ task: { id: "2" }, claim: { epoch: 1 } });
+    } finally {
+      await app.close();
+    }
+  },
+);

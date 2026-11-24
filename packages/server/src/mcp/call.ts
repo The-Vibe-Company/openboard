@@ -35,7 +35,7 @@ function toolInput(operation: BoardOperation, args: unknown): RawInput {
   const query: Record<string, unknown> = {};
   const body: Record<string, unknown> = {};
   for (const [key, raw] of Object.entries(args)) {
-    const value = key === "wait" && typeof raw === "number" ? Math.min(raw, 25) : raw;
+    const value = key === "wait" && typeof raw === "number" && raw <= 300 ? Math.min(raw, 25) : raw;
     if (input.params && Object.hasOwn(input.params.properties, key)) params[key] = value;
     else if (input.query && Object.hasOwn(input.query.properties, key)) {
       query[key] = value;

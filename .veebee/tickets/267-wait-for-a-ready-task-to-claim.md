@@ -5,6 +5,7 @@ milestone: M9-tasks
 package: server
 writes:
   - apps/openboard/src/serve.ts
+  - docs/data-model.md
   - docs/protocol.md
   - packages/cli/src/claims.ts
   - packages/cli/src/commands/derived.ts
