@@ -248,7 +248,7 @@ Options:
 - `--no-sync`: A switch: present means yes.
 - `--idempotency-key`: An idempotency key: a retry under it gets back the post that landed instead of posting again.
 
-Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `post_message`.
 
@@ -390,7 +390,7 @@ Options:
 - `--no-sync`: A switch: present means yes.
 - `--idempotency-key`: An idempotency key for a new task thread.
 
-Errors: `error: already_a_task`, `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: already_a_task`, `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `task_create`.
 
@@ -443,7 +443,7 @@ Options:
 
 - `--if-revision`: The message revision observed before editing or deleting.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: revision_conflict`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: revision_conflict`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `edit_message`.
 
@@ -638,7 +638,7 @@ Options:
 - `--no-sync`: A switch: present means yes.
 - `--idempotency-key`: An idempotency key: a retry under it gets back the post that landed instead of posting again.
 
-Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_after`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: newer_message`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `post_message`.
 

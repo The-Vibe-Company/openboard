@@ -1,8 +1,8 @@
-import { SQL } from "bun";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
 import type { BoardView, BoardWriter, Store } from "@openboard/ports";
 import { testScope } from "@openboard/ports/testkit";
+import { SQL } from "bun";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
 import { postgresTestUrl } from "./support/env.ts";
 
@@ -106,5 +106,29 @@ if (url) {
     ).rejects.toBe(failure);
     expect(await stored(admin)).toEqual(before);
     expect((await board.write((writer) => appendPost(writer, "replacement"))).id).toBe("1000001");
+  });
+
+  test("a write counts and repairs an untouched sibling's legacy UTF-8 message bytes", async () => {
+    if (!store || !admin) throw new Error("missing Postgres test store");
+    const platform = store.platform();
+    const keys = await platform.findBoard("local", "main");
+    if (!keys) throw new Error("missing local/main fixture board");
+    const [sibling] = await admin`INSERT INTO boards (org_id, slug, name, created_at)
+      VALUES (${keys.orgId}, 'sibling', 'Sibling', ${at}) RETURNING id`;
+    await store
+      .board(testScope({ orgId: keys.orgId, boardId: Number(sibling.id) }))
+      .write((writer) => appendPost(writer, "é€"));
+    await admin`UPDATE boards SET stored_bytes = 0, stored_bytes_head = 0 WHERE id = ${sibling.id}`;
+    expect(await platform.setOrgQuotas(keys.orgId, { storedBytes: 10 })).toBe(true);
+    const board = store.board(testScope(keys));
+
+    await expect(board.write((writer) => appendPost(writer, "xx"))).rejects.toMatchObject({
+      code: "quota_exceeded",
+      reason: "stored_bytes",
+    });
+    await board.write((writer) => appendPost(writer, "x"));
+    const [repaired] = await admin`SELECT head, stored_bytes, stored_bytes_head FROM boards WHERE id = ${sibling.id}`;
+    expect(Number(repaired.stored_bytes)).toBe(7);
+    expect(Number(repaired.stored_bytes_head)).toBe(Number(repaired.head));
   });
 }

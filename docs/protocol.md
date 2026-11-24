@@ -126,6 +126,11 @@ are 10 active boards and 50 members per organization, and 100 active connections
 per board. The hint gives the effective limit, including any organization override.
 A rejected invitation acceptance leaves the link usable.
 
+Posting or growing a message, including creating a task from a new thread, can return 429 `quota_exceeded` with reason
+`stored_bytes` (OpenBoard). The default is 1 GB per organization, counting the
+UTF-8 text and serialized blocks of live messages across its boards. Edits
+count the change in size, and deleting a message frees its bytes.
+
 ## Route inventory: the board (relative to `BOARD_URL`)
 
 ### Discovery, identity, channels, actors

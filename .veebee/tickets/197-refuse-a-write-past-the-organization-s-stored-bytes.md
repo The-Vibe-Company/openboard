@@ -13,11 +13,24 @@ writes:
   - packages/contract/src/errors.ts
   - packages/ports/testkit/store/messages.test-suite.ts
   - packages/server/test/quotas-bytes.test.ts
+  - packages/driver-sql/src/views/messages/statements.ts
+  - docs/protocol.md
+  - packages/contract/src/operations/messages.ts
+  - packages/core/src/index.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/views/actors.ts
+  - packages/driver-sql/test/actors.test.ts
+  - packages/ports/src/store.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
+  - packages/contract/src/operations/tasks/create.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/driver-postgres/test/timeline.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [185, 196]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 358
 ---
 

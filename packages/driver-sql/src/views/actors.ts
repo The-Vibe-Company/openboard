@@ -7,16 +7,10 @@ import { lockBoard } from "./boards.ts";
 import { codePointOrder } from "./channels.ts";
 
 /**
- * `headAndActor` reads the head with the writer's record in one statement where the write lock is taken before any
- * read (SQLite's `BEGIN IMMEDIATE`). Postgres locks with `lockBoard` and then reads `findActor`: a statement that
- * waited on the board's row lock re-reads that row only, so a record joined to it could predate the lock holder's
- * commit. `listActors` returns the head with the actors, or alone on a board nobody wrote on.
+ * Postgres reads `findActor` after the board lock: when the lock waited, the actor record in its snapshot
+ * could predate the lock holder's commit. SQLite takes the write lock before either read.
  */
 export const actorStatements = {
-  headAndActor: sql`SELECT boards.head, actors.id, actors.kind, actors.handle, actors.name, actors.avatar, actors.via
-    FROM boards LEFT JOIN actors ON actors.org_id = boards.org_id AND actors.board_id = boards.id
-      AND actors.id = ${"actor"}
-    WHERE boards.org_id = ${"orgId"} AND boards.id = ${"boardId"}`,
   findActor: sql`SELECT id, kind, handle, name, avatar, via FROM actors
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"actor"}`,
   findFilterActors: sql`SELECT id, kind, handle FROM actors
@@ -47,15 +41,11 @@ function actorView(row: Row): Actor | null {
 }
 
 /** Takes the board's lock and reads its head with the board's record of `actor`: the start of the write. */
-export async function lockBoardAs(tx: Db, dialect: Dialect, keys: BoardKeys, actor: string) {
-  if (dialect.name === "postgres") {
-    const head = await lockBoard(tx, dialect, keys);
-    const [found] = await query(tx, dialect, actorStatements.findActor, { ...keys, actor });
-    return { head, actor: found ? actorView(found) : null };
-  }
-  const [row] = await query(tx, dialect, actorStatements.headAndActor, { ...keys, actor });
-  if (!row) throw new Error(`board ${keys.boardId} of organization ${keys.orgId} is missing`);
-  return { head: Number(row.head), actor: actorView(row) };
+export async function lockBoardAs(tx: Db, dialect: Dialect, keys: BoardKeys, actor: string | null) {
+  const { head, row, storage, actorLoaded } = await lockBoard(tx, dialect, keys, actor);
+  const [found] =
+    actor !== null && !actorLoaded ? await query(tx, dialect, actorStatements.findActor, { ...keys, actor }) : [row];
+  return { head, storage, actor: found ? actorView(found) : null };
 }
 
 /** The fold of `actor.seen`: the actor's row, its first sighting kept and its details and last sighting replaced. */

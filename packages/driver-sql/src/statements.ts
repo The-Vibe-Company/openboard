@@ -13,7 +13,7 @@ import { grantStatements } from "./views/grants.ts";
 import { invitationStatements } from "./views/invitations.ts";
 import { jobPlatformStatements, jobStatements } from "./views/jobs/index.ts";
 import { membershipStatements } from "./views/memberships.ts";
-import { messageStatements } from "./views/messages.ts";
+import { messageStatements } from "./views/messages/statements.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
 import { taskListStatements } from "./views/tasks/list.ts";
 import { taskFoldStatements } from "./views/tasks/task-folds.ts";

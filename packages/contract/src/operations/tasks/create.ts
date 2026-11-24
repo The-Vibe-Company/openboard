@@ -31,6 +31,7 @@ export const createTask = defineOperation({
   output: Type.Object({ task: TaskRoot, claim: Type.Optional(TaskClaim) }),
   status: 201,
   errors: [
+    "quota_exceeded",
     "invalid_request",
     "reserved_label",
     "forbidden",
