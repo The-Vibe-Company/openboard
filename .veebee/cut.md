@@ -275,7 +275,7 @@ Legend.
 
 ## M9 Tasks (38)
 
-238  Start a thread as a task   ← 215, 99, 198
+238  Start a thread as a task   ← 99
 239  List a channel's tasks   ← 238
 240  Make a task of a thread that was there   ← 239
 241  Make a task once for a client ID [c]   ← 240
@@ -322,7 +322,7 @@ M9 and M10 changes made when their ticket files were written (each ticket's Note
 
 ## M10 Access (24)
 
-276  Grant a principal on a board   ← 215, 238
+276  Grant a principal on a board   ← 238
 277  List a board's grants   ← 276
 278  Revoke a grant [c]   ← 277
 279  Change a grant by its ID [c]   ← 278
@@ -349,7 +349,7 @@ M9 and M10 changes made when their ticket files were written (each ticket's Note
 
 ## M11 Webhooks and watchers (39)
 
-300  Ack a registered watcher's match [c]   ← 97, 198, 215, 276
+300  Ack a registered watcher's match [c]   ← 97, 198, 276
 301  Answer 501 to a wake-by-path registration [c]   ← 300
 302  Refuse a narrowed caller's watchers [c]   ← 286, 300
 303  Fail a match after five tries   ← 300
@@ -391,7 +391,7 @@ M9 and M10 changes made when their ticket files were written (each ticket's Note
 
 ## M12 MCP, SDK, skill (22)
 
-339  List the board's tools over MCP   ← 209, 215, 282, 334
+339  List the board's tools over MCP   ← 209, 282, 334
 340  Answer 405 to GET on the MCP endpoint   ← 339
 341  Read a channel over MCP   ← 327, 340
 342  Post over MCP   ← 341
@@ -399,13 +399,13 @@ M9 and M10 changes made when their ticket files were written (each ticket's Note
 344  Claim the next task over MCP   ← 267, 290, 343
 345  Complete a task over MCP   ← 344
 346  Wait for events over MCP   ← 341
-347  Connect the SDK with a secret   ← 103, 215
+347  Connect the SDK with a secret   ← 103
 348  Publish the SDK to npm   ← 194, 347
 349  Publish the client-only CLI to npm   ← 348
-350  Generate the skill's command reference   ← 215
+350  Generate the skill's command reference   ← (none)
 351  Install the skill with npx skills add   ← 338, 350
 352  Onboard an agent read-only first through the skill   ← 351
-353  Serve a proxy policy for injecting gateways   ← 215
+353  Serve a proxy policy for injecting gateways   ← 286
 354  Run a sandboxed agent with no long-lived secret in its VM   ← 338, 349, 353
 355  Launch an agent from a ready task through a remote routine   ← 319, 354
 356  Link the agent's run in its thread   ← 355
@@ -424,19 +424,19 @@ M11 and M12 changes made when their ticket files were written (each ticket's Not
 
 ## M13 Data, files, schedules (21)
 
-361  List the built-in schemas [c]   ← 215, 326
+361  List the built-in schemas [c]   ← 326
 362  Register a schema version once [c]   ← 361
 363  Refuse a built-in's name or an uncheckable definition [c]   ← 362
 364  Check a message's block against its schema [c]   ← 272, 362
 365  Refuse schema registration by a narrowed caller [c]   ← 286, 362
 366  Show a block as fields in the front   ← 224, 225, 364
-367  Attach a file to a message [c]   ← 215, 296, 305, 339, 364
+367  Attach a file to a message [c]   ← 296, 305, 339, 364
 368  Refuse a file name that would download as a dotfile [c]   ← 367
 369  Start a task with a file [c]   ← 238, 268, 291, 367
 370  Answer 501 to direct uploads   ← 367
 371  Ship new files to the backup bucket   ← 210, 324, 367
 372  Delete files that were never attached   ← 181, 367
-373  Schedule a reply   ← 215, 364, 367
+373  Schedule a reply   ← 364, 367
 374  List a thread's schedules   ← 373
 375  Cancel a schedule [c]   ← 374
 376  Keep noSync on a schedule [c]   ← 375
@@ -448,7 +448,7 @@ M11 and M12 changes made when their ticket files were written (each ticket's Not
 
 ## M14 External sync (6)
 
-382  Answer sync routes as a board that syncs nowhere   ← 215
+382  Answer sync routes as a board that syncs nowhere   ← (none)
 383  Refuse a sync target on a post   ← 381, 382
 384  Refuse a sync entry in a watcher registration   ← 300, 301, 382
 385  Record the sync checks as expected skips while sync is deferred [s]   ← 272, 293, 384

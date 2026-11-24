@@ -30,3 +30,5 @@ As an agent using a hosted board, when the database restarts mid-traffic I get f
 - Terminating backends is SQL: the test reaches 178's helper in `packages/driver-postgres/src/database.ts` through `packages/server/test/support/drivers.ts`, the composition root tests may use.
 - Writes the test retries carry a post `id`, so a retry after an ambiguous failure is idempotent (docs/architecture.md "Upgrade path": no server-side retry without an idempotency key); a 2xx counts as acknowledged.
 - The PR states the drill's wall time; it must stay under one second (AGENTS.md "Tests").
+
+Orchestrator note (from #613): the cross-instance broadcaster's `LISTEN ob_events` connection does not re-subscribe when Postgres restarts. As part of this drill, make the listener re-LISTEN after its connection is lost and wake every subscriber once so each tail re-reads from its cursor; check that a tail on instance B sees a post made on instance A after the database comes back, without waiting for its long-poll deadline. Add `packages/driver-postgres/src/broadcaster.ts` and its test to `writes`.

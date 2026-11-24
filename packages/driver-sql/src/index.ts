@@ -10,6 +10,7 @@ import deviceDdl from "../migrations/0008-device.sql" with { type: "text" };
 import connectionUseDdl from "../migrations/0009-connection-use.sql" with { type: "text" };
 import eventMessageHistoryDdl from "../migrations/0010-event-message-history.sql" with { type: "text" };
 import auditDdl from "../migrations/0011-audit.sql" with { type: "text" };
+import tasksDdl from "../migrations/0012-tasks.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
@@ -52,6 +53,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 9, name: "0009-connection-use", sql: connectionUseDdl },
   { version: 10, name: "0010-event-message-history", sql: eventMessageHistoryDdl },
   { version: 11, name: "0011-audit", sql: auditDdl },
+  { version: 12, name: "0012-tasks", sql: tasksDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */

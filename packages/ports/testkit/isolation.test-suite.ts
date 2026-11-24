@@ -51,6 +51,12 @@ const boardCases: Cases<BoardView> = {
   },
   readEvents: (a) => a.board.readEvents(0),
   auditEvents: (a) => a.board.auditEvents(0, 500),
+  taskRoot: async (a, b) => {
+    expectNull(await a.board.taskRoot(b.task));
+    const root = await a.board.taskRoot(a.task);
+    expect(root?.task?.owner).toBe(a.actor);
+    return root;
+  },
   thread: async (a, b) => {
     expectNull(await a.board.thread(b.message));
     return a.board.thread(a.message);
@@ -82,6 +88,7 @@ const writerCases: Cases<BoardWriter> = {
   replyTarget: (a, b) => inWrite(a, async (writer) => expectNull(await writer.replyTarget(b.message))),
   message: (a, b) => inWrite(a, async (writer) => expectNull(await writer.message(b.message))),
   newerReply: (a, b) => inWrite(a, async (writer) => expectNull(await writer.newerReply(b.message, 0))),
+  taskRoot: (a, b) => inWrite(a, async (writer) => expectNull(await writer.taskRoot(b.task))),
   clientPost: (a, b) => inWrite(a, async (writer) => expectNull(await writer.clientPost(b.clientId))),
   nextGrant: (a) => inWrite(a, async (writer) => expect(await writer.nextGrant()).toBe(5)),
   connectionNamed: (a, b) =>
@@ -148,6 +155,7 @@ async function digestOf(b: StoreTenant): Promise<string> {
     await b.board.readEvents(0),
     await b.board.auditEvents(0, 500),
     await b.board.thread(b.message),
+    await b.board.taskRoot(b.task),
     await b.org.listMembers(),
     await b.org.auditEvents(0, 500),
     await b.org.listBoards(),

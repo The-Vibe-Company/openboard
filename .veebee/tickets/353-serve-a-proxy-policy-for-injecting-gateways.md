@@ -13,7 +13,7 @@ writes:
   - packages/server/test/connections/policy.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [215]
+depends_on: [286]
 status: draft
 claimed_by: null
 issue: 538
@@ -31,3 +31,5 @@ As an orchestrator that runs agents behind an egress proxy or an MCP gateway, I 
 
 ## Notes
 docs/auth.md "Mode 3, injecting proxy or MCP gateway" (`GET {BOARD_URL}/x/connections/:id/policy?profile=…&can=…` returns `{ env, headers, routes }`; for an MCP gateway, point it at `/mcp/<org>/<board>` with the same headers) and upstream `sandboxPolicy()` (`docs/03-guides/06-sandboxed-agents.md`: `allow` lists the board's host and its routes; the proxy refuses grants, watchers, sync's records, webhooks, wake-ups). The route list is derived from the contract (`operations`), filtered by the same rule as `refuseClaimedConfiguration` (`packages/server/src/auth/tokens.ts`), so it cannot drift. `${OPENBOARD_SECRET}` is a literal placeholder the proxy fills from its own store.
+
+Orchestrator note: depends on 286 (`x-board-can` narrowing, which this policy enforces; found by the ticket's agent on #538). The dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets.

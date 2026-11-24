@@ -14,9 +14,9 @@ import type {
   Role,
 } from "@openboard/contract";
 import type { BoardCreation, BoardEvent, Grant, messages, OrgCreation } from "@openboard/core";
-
 import type { BoardMessageReads } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
+import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
 
 /** A board configuration event (`ob.*`, visibility 2), as stored: its payload may hold hashes the audit strips. */
 export type AuditRecord = Extract<BoardEvent, { readonly visibility: 2 }>;
@@ -224,7 +224,7 @@ export interface PlatformView {
 }
 
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */
-export interface BoardWriter {
+export interface BoardWriter extends BoardTaskWriter {
   readonly head: number;
   /** The actors available to resolve handles under the write lock. */
   mentionActors(handles: ReadonlySet<string>): Promise<MentionActor[]>;
@@ -326,7 +326,7 @@ export interface MentionEvidence {
 }
 
 /** One board's storage; every statement it runs is bound to its scope. */
-export interface BoardView extends BoardMessageReads {
+export interface BoardView extends BoardMessageReads, BoardTaskReads {
   /** Wake when a write advances this board past the cursor, with its events when in memory. Returns an unsubscribe. */
   subscribeEvents(fromPosition: number, wake: (committed?: CommittedEvents) => void): () => void;
   /** Look up a personal credential in scope. A known but unusable token returns "inactive"; a scope miss returns null. */

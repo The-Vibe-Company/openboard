@@ -8,11 +8,15 @@ writes:
   - scripts/ci/gen.test.ts
   - packages/cli/src/commands/usage.ts
   - packages/cli/src/index.ts
+  - packages/cli/src/main.ts
+  - skills/openboard/references/commands.md
+  - package.json
+  - bun.lock
 conformance: []
 modes: [local, hosted]
-depends_on: [215]
-status: draft
-claimed_by: null
+depends_on: []
+status: done
+claimed_by: claude-t350
 issue: 535
 ---
 
@@ -28,3 +32,5 @@ As an agent reading the OpenBoard skill, I find every `ob` command with its argu
 
 ## Notes
 docs/codebase.md 4.2 ("Skill reference | `bun run gen` → `skills/openboard/references/commands.md` | One section per CLI command") and 5.1 (generated files are exempt from size limits and never hand-edited). `scripts/ci/gen.ts` already writes `packages/server/openapi.json`; add the second file to `generate()`. `packages/cli/src/commands/usage.ts` exports the list of commands with their usage, so the generator reads the CLI's own table instead of a copy; `scripts/*` may import any workspace (docs/codebase.md 3.1).
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets.

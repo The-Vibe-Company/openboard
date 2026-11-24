@@ -28,7 +28,7 @@ writes:
   - packages/server/test/isolation/seed.ts
 conformance: ["watchers/matches a registered tail, hands the match to a pull, and takes its ack"]
 modes: [local, hosted]
-depends_on: [215, 97, 198, 276]
+depends_on: [97, 198, 276]
 status: draft
 claimed_by: null
 issue: 485
@@ -55,3 +55,5 @@ As an agent that cannot keep a tail open, I register a watcher on a tail, pull w
 - Registering appends `ob.watchers.registered` (docs/data-model.md: watcher registrations are `ob.*` events); a match ID is a new `Ref` kind for the isolation suite (`packages/server/test/isolation/seed.ts`).
 - No CLI command: upstream's `vb` has none; agents use the SDK or MCP.
 - Depends on 97 (long-poll; M3 is not upstream of M7, cut question 13), 198, the last ticket before it to change `packages/driver-sql/src/views/boards.ts`, and 276, the last to change `packages/driver-sql/src/views/messages.ts` and `packages/core/src/index.ts`.
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets.

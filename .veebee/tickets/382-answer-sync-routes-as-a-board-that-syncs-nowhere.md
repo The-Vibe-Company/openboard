@@ -12,7 +12,7 @@ writes:
   - packages/server/test/sync/stubs.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [215]
+depends_on: []
 status: draft
 claimed_by: null
 issue: 577
@@ -32,3 +32,5 @@ As an agent written for upstream's board, every sync route I call answers what a
 - docs/protocol.md "Sync (deferred)", D19, upstream `docs/04-reference/03-http.md` "Sync's routes" and `SyncImportBody`, `SyncReceiptBody`, `SyncFindQuery`, `InboxItem`, `TypingResult` in `@vercel/board`'s `dist/routes-*.d.mts`. The stubs are contract operations with upstream's inputs (`packages/contract/src/operations/sync.ts`), so OpenAPI, the SDK and the isolation suite see them; handlers only answer as above. `cli: false` and `mcp: false`, with the reason that sync is deferred (D19).
 - A route that names a message reads it through the scoped view first, so it answers for a message the caller cannot read exactly as `GET /messages/:id` does.
 - No code here may name a platform (AGENTS.md non-negotiable 1): `:key` is an opaque sync key.
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets, which would hold every feature milestone behind them.

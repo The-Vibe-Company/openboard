@@ -15,10 +15,9 @@
  * bypassing the policies. The docker-compose Postgres of `verify:pg` is one.
  */
 import { messages } from "@openboard/core";
-import { createViews, type Db, postgresText } from "@openboard/driver-sql";
+import { createViews, localBroadcaster, type Db, postgresText } from "@openboard/driver-sql";
 import type { BoardScope, BoardView } from "@openboard/ports";
 import { SQL } from "bun";
-import { postgresBroadcaster } from "../src/broadcaster.ts";
 import { type StatementCounter, statementCounter } from "../src/counters.ts";
 import { createTestDatabases } from "../src/database.ts";
 import { connection } from "../src/pool.ts";
@@ -141,7 +140,7 @@ function openVariant(name: Name, url: string, role?: string): Variant {
   const counter = statementCounter();
   const sql = new SQL(url, { connectionTimeout: 3, connection: name === "rls" && role ? { role } : {} });
   const db = connection(sql, counter);
-  const views = createViews(name === "plain" ? db : tenantDb(db, 1), postgresText, postgresBroadcaster());
+  const views = createViews(name === "plain" ? db : tenantDb(db, 1), postgresText, localBroadcaster());
   return { name, sql, counter, board: (s) => views.board(s) };
 }
 

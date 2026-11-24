@@ -35,8 +35,21 @@ export async function postgresDriver(
 ): Promise<Store> {
   await migratePostgres(options, now);
   const sql = openPool(options.url);
-  return {
-    ...createViews(connection(sql, counter), postgresText, postgresBroadcaster()),
-    close: () => sql.close(),
-  };
+  try {
+    const db = connection(sql, counter);
+    const broadcaster = await postgresBroadcaster(sql, db);
+    return {
+      ...createViews(db, postgresText, broadcaster),
+      async close() {
+        try {
+          await broadcaster.close();
+        } finally {
+          await sql.close();
+        }
+      },
+    };
+  } catch (error) {
+    await sql.close();
+    throw error;
+  }
 }

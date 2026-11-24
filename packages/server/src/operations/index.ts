@@ -55,6 +55,7 @@ import {
   readPostHandler,
 } from "./messages.ts";
 import { createOrgHandler } from "./orgs.ts";
+import { createTaskHandler } from "./tasks.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
@@ -148,6 +149,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   createConnection: createConnectionHandler,
   createInvitation: createInvitationHandler,
   createOrg: createOrgHandler,
+  createTask: createTaskHandler,
   deleteMessage: deleteMessageHandler,
   discoverBoard: discoverBoardHandler,
   editMessage: editMessageHandler,

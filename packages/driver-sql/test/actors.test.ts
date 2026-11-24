@@ -5,7 +5,13 @@ import { lockBoardAs } from "../src/views/actors.ts";
 
 const keys = { orgId: 1, boardId: 1 };
 const ada = { id: "ob:user:ada", kind: "person", handle: "ada", name: "ada", avatar: null } as const;
-const sqliteText: Dialect = Object.freeze({ name: "sqlite", placeholder: () => "?", lockSuffix: "" });
+const sqliteText: Dialect = Object.freeze({
+  name: "sqlite",
+  placeholder: () => "?",
+  lockSuffix: "",
+  notifyHeadSuffix: "",
+  serverTimeline: "0",
+});
 
 /** A connection that answers each statement by its first words and records what ran. */
 function recording(answer: (text: string) => Row[]) {
@@ -24,7 +30,7 @@ test("on Postgres, reads the writer's record in its own statement after the boar
   const { db, ran } = recording((text) => (text.includes("FOR UPDATE") ? [{ head: 7 }] : [{ ...ada }]));
   expect(await lockBoardAs(db, postgresText, keys, ada.id)).toEqual({ head: 7, actor: ada });
   expect(ran).toHaveLength(2);
-  expect(ran[0]).toStartWith("SELECT head FROM boards");
+  expect(ran[0]).toStartWith("SELECT head, timeline,");
   expect(ran[0]).toEndWith("FOR UPDATE");
   expect(ran[1]).toStartWith("SELECT id, kind, handle, name, avatar, via FROM actors");
 });

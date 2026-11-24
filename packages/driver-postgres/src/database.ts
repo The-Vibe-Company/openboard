@@ -51,3 +51,20 @@ export async function createTestDatabases(url: string, now: () => number = Date.
     },
   };
 }
+
+/** Terminates a single test backend named through its Postgres application_name. */
+export async function terminateTestConnection(url: string, name: string): Promise<void> {
+  await using sql = new SQL(url);
+  const connections = await sql<{ pid: number }[]>`
+    SELECT pid FROM pg_stat_activity
+    WHERE datname = current_database() AND application_name = ${name} AND pid <> pg_backend_pid()
+  `;
+  const [connection] = connections;
+  if (connections.length !== 1 || !connection) {
+    throw new Error(`Expected one connection named ${name}, found ${connections.length}`);
+  }
+  const [result] = await sql<{ terminated: boolean }[]>`
+    SELECT pg_terminate_backend(${connection.pid}, 500) AS terminated
+  `;
+  if (!result?.terminated) throw new Error(`Could not terminate connection named ${name}`);
+}

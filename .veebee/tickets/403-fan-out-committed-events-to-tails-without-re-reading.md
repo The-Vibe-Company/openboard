@@ -20,6 +20,7 @@ writes:
   - packages/server/test/sse.test.ts
   - docs/architecture.md
   - tools/bench/test/compare.test.ts
+  - packages/driver-postgres/src/broadcaster.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [108]

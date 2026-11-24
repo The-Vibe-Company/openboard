@@ -39,7 +39,7 @@ writes:
   - packages/cli/test/grants.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [215, 238]
+depends_on: [238]
 status: draft
 claimed_by: null
 issue: 451
@@ -63,3 +63,5 @@ As a board owner, I let a connection or a person do more on part of the board wi
 - What a caller may do: each verifier sets `callerCan` (`server/src/deps.ts`; `auth/connections.ts`, `auth/tokens.ts`, `auth/sessions.ts`, `auth/personal-tokens.ts` through `grants.allUsersCan(role)`), and `keepInsideCan` (`auth/access.ts`, 402) checks it. Compile it in `core/access/resolve.ts` from the board's unrevoked grants naming the caller (its connection or person, `all-connections` or `all-users`), read once per request through `grant_principals_kind`, keeping g1's role cap (152, `capByRole`); a claimed token stays inside its pin. Here grants on one pattern add up; upstream's order between principal levels arrives with 281, `everyone` with 282. The local owner keeps every permission.
 - OpenBoard verifies its own tokens, so a `user` principal takes a person's ID (`{ kind: "user", userId: "u_…" }`, principal `ob:user:u_…`) and an email is 400 `invalid_grant`, as upstream says of a board that verifies tokens itself. `oidc` needs a `sub` claim, exact or ending in `*` right after a `:` or `/` (upstream "Grants"); naming one takes `manage` everywhere (283). `github` and `oidc` principals match callers from 296 and 297.
 - CLI: `packages/cli/src/commands/grants.ts` with upstream's principal flags plus `--connection <id>` and `--all-connections`, parsed in `packages/cli/src/grant-principals.ts` (reused by 281's `explain`). `RefKind` already has `grant`: seed one per organization.
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets.

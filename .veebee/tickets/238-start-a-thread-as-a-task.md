@@ -4,11 +4,19 @@ title: Start a thread as a task
 milestone: M9-tasks
 package: server
 writes:
+  - .veebee/tickets/238-start-a-thread-as-a-task.md
+  - docs/protocol.md
+  - packages/cli/src/output.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/ports/src/board-message-reads.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
+  - packages/server/src/operations/messages.ts
   - packages/contract/src/entities/tasks.ts
   - packages/contract/src/entities/task-events.ts
   - packages/contract/src/entities/events.ts
   - packages/contract/src/entities/messages.ts
-  - packages/contract/src/operations/tasks.ts
+  - packages/contract/src/operations/tasks/create.ts
   - packages/contract/src/operations/index.ts
   - packages/contract/src/index.ts
   - packages/core/src/tasks/create.ts
@@ -26,8 +34,8 @@ writes:
   - packages/driver-sql/migrations/*-tasks.sql
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
-  - packages/driver-sql/src/views/tasks.ts
-  - packages/driver-sql/src/views/task-folds.ts
+  - packages/driver-sql/src/views/tasks/tasks.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
   - packages/driver-sql/src/views/messages.ts
   - packages/driver-sql/src/views/events.ts
   - packages/server/src/operations/tasks.ts
@@ -41,9 +49,9 @@ writes:
   - packages/cli/test/tasks.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [215, 99, 198]
-status: draft
-claimed_by: null
+depends_on: [99]
+status: done
+claimed_by: codex
 issue: 411
 ---
 
@@ -67,3 +75,6 @@ As an agent, I post a piece of work as a task with `ob tasks create dev "fix the
 - The feed (`readEvents` in `server/src/operations/events.ts`, `views/events.ts`) serves `task.created` with its `message` view, as docs/protocol.md "Events" lists it.
 - `ob tasks create <channel> "<text>"` is upstream's `vb tasks create`; printing the ID may need `packages/cli/src/commands/tasks.ts`, which later task commands share. `RefKind` already has `task`: seed one per organization in `packages/server/test/isolation/seed.ts` and `packages/ports/testkit/isolation-seed.ts`.
 - Depends on 99 and 198 besides 215: M3 is not upstream of M7 (`.veebee/cut.md` "Could not place" 13), and 99 is the last ticket to change the feed's `operations/events.ts` and `views/events.ts`, 198 the last to change `views/messages.ts`; the task checks of 263, 267 and 269 also need the feed's filters, `wait` and the `Broadcaster` port (95-97).
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets, which would hold every feature milestone behind them.
+The dependency on 198 (only the last earlier ticket to change `views/messages.ts`) was dropped too, so M9 runs alongside M6/M7; the orchestrator resolves overlaps on that file at merge.

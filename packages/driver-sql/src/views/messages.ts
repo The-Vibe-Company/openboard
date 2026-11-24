@@ -17,6 +17,8 @@ import {
   nextGrant,
   profileHolder,
 } from "./connections.ts";
+import { foldTaskEvent } from "./tasks/task-folds.ts";
+import { taskReads } from "./tasks/tasks.ts";
 
 const jsonStrings: Fragment = {
   fragment: ({ name }) =>
@@ -221,7 +223,8 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
       version: view.version,
       view: JSON.stringify(view),
     });
-  } else await foldMessagePosted(tx, dialect, keys, event);
+  } else if (event.type === "message.posted") await foldMessagePosted(tx, dialect, keys, event);
+  else await foldTaskEvent(tx, dialect, keys, event);
 }
 
 /** `committed` collects the appended events, which the broadcaster hands to live tails once the write commits. */
@@ -235,6 +238,7 @@ function writer(
 ): BoardWriter {
   let head = start;
   return {
+    ...taskReads(tx, dialect, keys),
     get head() {
       return head;
     },
@@ -283,6 +287,7 @@ function writer(
     agentByClaimKey: (connection, key) => findAgentByClaimKey(tx, dialect, keys, connection, key),
     profileHolder: (connection, profile) => profileHolder(tx, dialect, keys, connection, profile),
     async append(events) {
+      if (events.length === 0) return;
       for (const event of events) {
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);
         await appendEvent(tx, dialect, keys, event);
@@ -300,9 +305,10 @@ export function boardView(
   dialect: Dialect,
   scope: BoardScope,
   broadcaster: Broadcaster,
-): Pick<BoardView, "write" | "channelMessages" | "ownClientPost" | "mentionEvidence"> {
+): Pick<BoardView, "write" | "channelMessages" | "ownClientPost" | "mentionEvidence" | "taskRoot"> {
   const keys: BoardKeys = { orgId: scope.orgId, boardId: scope.boardId };
   return {
+    ...taskReads(db, dialect, keys),
     async write(fn, as) {
       const { result, page } = await db.transaction(async (tx) => {
         const { head, actor } =

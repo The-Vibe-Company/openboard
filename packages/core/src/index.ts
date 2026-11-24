@@ -28,6 +28,11 @@ export * as connections from "./access/connections.ts";
 export type { Grant, GrantPrincipal } from "./access/grants.ts";
 export * as grants from "./access/grants.ts";
 export * as channels from "./channels/create.ts";
+
+import type { TaskEvent } from "./tasks/events.ts";
+
+export { decideCreateTask } from "./tasks/create.ts";
+export type { TaskCreated, TaskEvent } from "./tasks/events.ts";
 export type { ChannelCreated };
 export type BoardEvent =
   | ActorSeen
@@ -43,7 +48,8 @@ export type BoardEvent =
   | MessageDeleted
   | LabelsChanged
   | ReactionAdded
-  | ReactionRemoved;
+  | ReactionRemoved
+  | TaskEvent;
 export { formatId, isoTime, parseId } from "./ids.ts";
 export { decideDelete, type MessageDeleted } from "./messages/delete.ts";
 export { decideEdit, type MessageEdited } from "./messages/edit.ts";
