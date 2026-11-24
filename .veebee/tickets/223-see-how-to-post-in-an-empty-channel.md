@@ -7,11 +7,14 @@ writes:
   - apps/web/src/components/EmptyChannel.tsx
   - apps/web/src/components/ThreadList.tsx
   - apps/web/e2e/empty-channel.spec.ts
+  - apps/web/src/api/client.ts
+  - apps/web/src/routes/$org/$board/index.tsx
+  - docs/architecture.md
 conformance: []
 modes: [local, hosted]
 depends_on: [222]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 384
 ---
 

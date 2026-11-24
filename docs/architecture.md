@@ -144,6 +144,9 @@ and the cross-instance parts are in-process.
   links to a view that uses `GET {BOARD_URL}/messages/:id` to show the root and
   replies in order with author, time, labels, reactions, edit markers, and
   deletion tombstones. Back navigation restores the channel's scroll position.
+  When there are no threads, the board shows a copyable board API URL, CLI
+  commands for the first post, and a link to connection settings. The example
+  uses `general` when the board has no channels.
 - **Headers.** CSP `default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://github.com`,
   `x-content-type-options: nosniff`, `referrer-policy: same-origin`, HSTS.
 - **Session.** `__Host-ob_session` cookie for the person (not per
