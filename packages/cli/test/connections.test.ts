@@ -246,3 +246,28 @@ describe("ob connections", () => {
     expect(none.lines.out).toEqual(["no connections"]);
   });
 });
+
+test("ob connections policy passes --as and --can as policy query parameters", async () => {
+  const { lines, output } = capture();
+  const policy = { env: { BOARD_URL, BOARD_TOKEN: "<placeholder>", BOARD_PROFILE: "fixer-2" } };
+  const fetch = async (request: Request) => {
+    const url = new URL(request.url);
+    expect(request.method).toBe("GET");
+    expect(url.pathname).toBe(`/api/local/main/x/connections/${connection.id}/policy`);
+    expect(Object.fromEntries(url.searchParams)).toEqual({ profile: "fixer-2", can: "work/fix/=read,post" });
+    return Response.json(policy);
+  };
+  const argv = ["connections", "policy", connection.id, "--as", "fixer-2", "--can", "work/fix/=read,post"];
+  expect(await runCli(argv, env, { fetch, output })).toBe(0);
+  expect(JSON.parse(lines.out.join("\n"))).toEqual(policy);
+});
+
+test("ob connections policy advertises both required pins and rejects a missing pin", async () => {
+  const { lines, output } = capture();
+  const command = ["connections", "policy"];
+  const usage = "ob connections policy <id> --as <as> --can <can>";
+  expect(await runCli([...command, "--help"], env, { output })).toBe(0);
+  expect(lines.out).toEqual([usage]);
+  expect(await runCli([...command, connection.id, "--as", "fixer-2"], env, { output })).toBe(2);
+  expect(lines.err[0]).toContain("policy requires --as and --can");
+});

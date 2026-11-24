@@ -4,18 +4,28 @@ title: Serve a proxy policy for injecting gateways
 milestone: M12-mcp-sdk-skill
 package: server
 writes:
-  - packages/contract/src/operations/connection-policy.ts
+  - packages/contract/src/operations/connection-policy/policy.ts
   - packages/contract/src/operations/index.ts
   - packages/core/src/access/policy.ts
   - packages/core/test/access/policy.test.ts
-  - packages/server/src/operations/connection-policy.ts
+  - packages/server/src/operations/connection-policy/policy.ts
   - packages/server/src/operations/index.ts
   - packages/server/test/connections/policy.test.ts
+  - packages/core/src/index.ts
+  - packages/server/test/isolation/cases.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
+  - docs/protocol.md
+  - docs/decisions.md
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/test/connections.test.ts
+  - packages/contract/src/index.ts
+  - packages/cli/src/commands/usage.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [286]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 538
 ---
 

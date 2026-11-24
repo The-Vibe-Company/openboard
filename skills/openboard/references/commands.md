@@ -594,6 +594,33 @@ Example:
 ob connections show cn_7k2m4q3t5v2w6x7y
 ```
 
+## `ob connections policy`
+
+Read a secret-free policy for a gateway that injects a direct connection's credential.
+
+```sh
+ob connections policy <id> --as <as> --can <can>
+```
+
+Arguments:
+
+- `id`: A connection ID.
+
+Options:
+
+- `--as`: Profile pinned by the gateway.
+- `--can`: Pinned x-board-can scope, such as work/fix/=read,post.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob connections policy cn_7k2m4q3t5v2w6x7y --as fixer-2 --can 'work/fix/=read,post'
+```
+
 ## `ob label`
 
 Set and unset labels on a message if all label conditions hold; unset applies last.

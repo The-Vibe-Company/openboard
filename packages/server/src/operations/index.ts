@@ -28,6 +28,7 @@ import { readBoardAuditHandler, readOrgAuditHandler } from "./audit.ts";
 import { getAvatarHandler } from "./avatars/get.ts";
 import { createBoardHandler, deleteBoardHandler, listBoardsHandler } from "./boards.ts";
 import { createChannelHandler, listChannelsHandler } from "./channels.ts";
+import { getConnectionPolicyHandler } from "./connection-policy/policy.ts";
 import {
   claimConnectionHandler,
   createConnectionHandler,
@@ -212,6 +213,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   getAccount: getAccountHandler,
   getAvatar: getAvatarHandler,
   getConnection: getConnectionHandler,
+  getConnectionPolicy: getConnectionPolicyHandler,
   getMe: getMeHandler,
   getOpenApi: getOpenApiHandler,
   getOrgExport: getOrgExportHandler,

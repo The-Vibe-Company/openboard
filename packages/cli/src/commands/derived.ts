@@ -127,6 +127,7 @@ function inputOf(
 
 /** `ob <command…> <args…> [--option value]`, one per operation with a `cli` block. */
 function derive(operation: Contracted & { cli: CliSpec }): Command {
+  const policy = operation.name === "getConnectionPolicy";
   const { command, args, alternative, options: renamed = {}, nullEntryOptions = {} } = operation.cli;
   const nullEntries = new Map(Object.entries(nullEntryOptions));
   const fields = fieldsOf(operation);
@@ -141,7 +142,8 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
       options.push(`[--${flag}]`);
     } else if (schema.type === "string" || schema.type === "integer") {
       flags.set(flag, name);
-      options.push(`[--${flag} <${flag}>]`);
+      const option = `--${flag} <${flag}>`;
+      options.push(policy ? option : `[${option}]`);
     } else if (schema.type === "object") {
       flags.set(flag, name);
       options.push(`[--${flag} <k=v>]...`);
@@ -166,6 +168,10 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
     async run(ctx) {
       const input = inputOf(ctx, args, fields, flags, nullEntries, alternative);
+      if (policy) {
+        if (ctx.profile === undefined || input.can === undefined) throw new Misuse("policy requires --as and --can");
+        input.profile = ctx.profile;
+      }
       if (operation.name === "renewTask") return runRenewTask(ctx, input as { id: string; lease?: number });
       if (operation.name === "completeTask" || operation.name === "releaseTask") {
         return runSettleTask(ctx, input as { id: string; result?: string }, operation.name);

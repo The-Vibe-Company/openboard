@@ -33,6 +33,7 @@ export { explainAccess, explainSubject, type GrantSubject, subjectGrants } from 
 export type { Grant, GrantPrincipal } from "./access/grants.ts";
 export * as grants from "./access/grants.ts";
 export { narrowCan, parseCanHeader } from "./access/narrow.ts";
+export { validateProxyPins } from "./access/policy.ts";
 export { changeGrantPrincipals, grantPrincipals } from "./access/principals.ts";
 export { resolveCan, resolveRankedCan, withinPin } from "./access/resolve.ts";
 export { matchesWorkload, type RepositoryPrincipal } from "./access/workloads.ts";

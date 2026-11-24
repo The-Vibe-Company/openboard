@@ -1079,3 +1079,12 @@ Parked event reads wake on deletion and reauthorize against the tombstone.
   The writer leaves expiry out of the persisted watcher allowlist because an
   older watcher reader can lease every persisted match. Other job kinds
   follow the general release rule in codebase.md §5.7.
+
+### Gateway allowlists for direct connections
+
+The gateway policy takes the routes allowed by the claimed-token guard and
+excludes grant routes, watchers, sync records, schema registration, board
+extensions and account and organization routes. The gateway enforces the
+allowlist and supplies the pinned headers. Claimed-token enforcement continues
+to use its existing rules.
+([Issue #538](https://github.com/The-Vibe-Company/openboard/issues/538#issuecomment-7135210537))
