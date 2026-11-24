@@ -4,14 +4,16 @@ title: Run the nightly checks against staging
 milestone: M6-high-availability
 package: tools
 writes:
+  - .veebee/tickets/192-run-the-nightly-checks-against-staging.md
   - .github/workflows/nightly.yml
+  - docs/codebase.md
   - tools/conformance/src/run.ts
   - tools/conformance/test/url.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: []
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 272
 ---
 

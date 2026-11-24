@@ -1,0 +1,121 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+env:
+  BUN_VERSION: 1.4.2
+
+jobs:
+  staging-conformance:
+    if: vars.STAGING_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    steps:
+      - name: Check staging credential
+        id: staging
+        env:
+          CONFORMANCE_SECRET: ${{ secrets.STAGING_CONFORMANCE_SECRET }}
+        run: |
+          if [[ -n "$CONFORMANCE_SECRET" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Skipping staging conformance because STAGING_CONFORMANCE_SECRET is unset"
+          fi
+      - if: steps.staging.outputs.configured == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: steps.staging.outputs.configured == 'true'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - if: steps.staging.outputs.configured == 'true'
+        run: bun install --frozen-lockfile
+      - name: Run conformance against staging
+        if: steps.staging.outputs.configured == 'true'
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+          CONFORMANCE_SECRET: ${{ secrets.STAGING_CONFORMANCE_SECRET }}
+        shell: bash
+        run: |
+          if [[ "$STAGING_URL" != https://* ]]; then
+            echo "::error::STAGING_URL must use HTTPS"
+            exit 1
+          fi
+          printf '%s\n' "$CONFORMANCE_SECRET" |
+            timeout --kill-after=30s 5m bun run conformance --url "${STAGING_URL%/}/api/conformance-ci/main"
+      - &report-failure
+        name: Open an issue for the failing job
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          FAILED_JOB: ${{ github.job }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue create --title "Nightly failed: $FAILED_JOB" \
+            --body "The $FAILED_JOB job failed. See [the workflow run]($RUN_URL)."
+
+  full-bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env: &postgres-env
+      OPENBOARD_TEST_DATABASE_URL: postgres://openboard:openboard@127.0.0.1:55432/openboard
+    services: &postgres-service
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_USER: openboard
+          POSTGRES_PASSWORD: openboard
+          POSTGRES_DB: openboard
+        ports:
+          - "55432:5432"
+        options: >-
+          --tmpfs /var/lib/postgresql/data
+          --health-cmd "pg_isready -h 127.0.0.1 -U openboard -d openboard"
+          --health-interval 1s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - &checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - &setup-bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: timeout --kill-after=30s 10m bun run bench
+      - *report-failure
+
+  flake-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env: *postgres-env
+    services: *postgres-service
+    steps:
+      - *checkout
+      - *setup-bun
+      - id: install
+        run: bun install --frozen-lockfile
+      - name: Repeat SQLite tests
+        run: timeout --kill-after=30s 8m bun test --rerun-each 3
+      - name: Repeat Postgres tests
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          OPENBOARD_TEST_DRIVER: postgres
+        run: timeout --kill-after=30s 8m bun test --rerun-each 3 packages/driver-postgres packages/server tools/bench
+      - *report-failure
