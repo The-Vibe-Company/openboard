@@ -71,6 +71,8 @@ export type Principal = Author & {
    * access; any other caller without a can may do nothing.
    */
   readonly [callerCan]?: Can;
+  /** The caller supplied an x-board-can header. */
+  readonly [requestNarrowed]?: true;
   /** A profile's name as the caller spelled it, which is how it is shown; `profile` is its lowercase. */
   readonly [profileName]?: string;
   readonly [profileAvatar]?: string | null;
@@ -104,6 +106,7 @@ export const credentialName = Symbol("credential name");
 export const connectionOf = Symbol("connection");
 export const agentOf = Symbol("agent");
 export const callerCan = Symbol("caller can");
+export const requestNarrowed = Symbol("request narrowed");
 export const profileName = Symbol("profile name");
 export const profileAvatar = Symbol("profile avatar");
 export const tokenHashOf = Symbol("token hash");

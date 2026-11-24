@@ -1,24 +1,31 @@
 import { createHash } from "node:crypto";
-import type {
-  ackWatcherMatch,
-  listWatchers,
-  pullWatcherMatches,
-  Registration,
-  registerWatchers,
+import {
+  type ackWatcherMatch,
+  BoardError,
+  type listWatchers,
+  type pullWatcherMatches,
+  type Registration,
+  type registerWatchers,
 } from "@openboard/contract";
 import { formatId, validateWatchers, type WatchFailed } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
-import { allowedEverywhere, canListMentionActors, canReadChannel } from "../../auth/access.ts";
+import { allowedEverywhere, canListMentionActors, canReadChannel, isNarrowedCaller } from "../../auth/access.ts";
 import { callerCan, credentialKind } from "../../deps.ts";
 import { tailBoard } from "../../live/fan-out.ts";
 import { longPoll } from "../../live/long-poll.ts";
 import { projectEvent } from "../events.ts";
 import type { BoardContext, Handler } from "../index.ts";
 
+function requireUnnarrowedCaller(by: BoardContext["by"]): void {
+  if (isNarrowedCaller(by))
+    throw new BoardError("forbidden", "narrowed callers cannot register, pull, or ack watchers");
+}
+
 export const registerWatchersHandler: Handler<typeof registerWatchers> = async (
   { board, by, now, debitWrite },
   input,
 ) => {
+  requireUnnarrowedCaller(by);
   validateWatchers(input);
   const watch = input.watch;
   const canonical = Object.entries(watch)
@@ -99,6 +106,7 @@ async function leaseMatches(ctx: BoardContext, limit: number, refresh: boolean) 
 }
 
 export const pullWatcherMatchesHandler: Handler<typeof pullWatcherMatches> = async (ctx, { limit = 10, wait = 0 }) => {
+  requireUnnarrowedCaller(ctx.by);
   ctx.debitWrite();
   const read = () => leaseMatches(ctx, limit, wait > 0);
   if (!wait) return { matches: (await read()).events };
@@ -118,6 +126,7 @@ export const ackWatcherMatchHandler: Handler<typeof ackWatcherMatch> = async (
   { board, by, debitWrite, now },
   input,
 ) => {
+  requireUnnarrowedCaller(by);
   debitWrite();
   await board.write(async (writer) => {
     const at = now();

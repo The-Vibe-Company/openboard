@@ -425,6 +425,10 @@ board audit. The CLI is `ob grants update <id>` and the MCP tool is `update_gran
 
 An empty `sync: []` is equivalent to omitting it.
 
+A caller using `x-board-can` or a claimed token receives 403 `forbidden` on
+registration, pull, and ack before watcher lookup. Listing remains governed by
+the caller's read access.
+
 Upstream's watcher pull is the "pull/ack variant" of webhooks: register a
 tail, pull with a lease, ack or retry.
 
