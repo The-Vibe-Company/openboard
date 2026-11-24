@@ -9,11 +9,16 @@ writes:
   - apps/web/src/api/grants.ts
   - apps/web/test/grant-can.test.ts
   - apps/web/e2e/grants.spec.ts
+  - apps/web/src/routes/$org/$board/settings/grants.css
+  - packages/cli/src/grant-views.ts
+  - packages/contract/src/grant-display.ts
+  - packages/contract/src/index.ts
+  - packages/sdk/src/index.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [216, 279]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 474
 ---
 
