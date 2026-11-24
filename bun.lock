@@ -72,6 +72,7 @@
         "@openboard/ports": "workspace:*",
       },
       "devDependencies": {
+        "@openboard/core": "workspace:*",
         "@types/bun": "1.4.5",
       },
     },
