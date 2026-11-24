@@ -16,11 +16,30 @@ writes:
   - packages/cli/src/commands/tasks.ts
   - packages/cli/src/claims.ts
   - packages/cli/test/tasks.test.ts
+  - docs/protocol.md
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/src/commands/tasks/complete.ts
+  - packages/contract/src/entities/events.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/operations/tasks/fail.ts
+  - packages/core/src/events/tail.ts
+  - packages/core/src/index.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/tasks/complete.ts
+  - packages/server/test/isolation/cases.ts
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
+  - packages/driver-sql/src/views/watchers/index.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [247]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 421
 ---
 

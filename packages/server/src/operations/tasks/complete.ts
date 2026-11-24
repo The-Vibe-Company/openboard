@@ -1,12 +1,24 @@
 import { timingSafeEqual } from "node:crypto";
-import type { completeTask } from "@openboard/contract";
-import { decideCompleteTask, parseId } from "@openboard/core";
+import type { completeTask, failTask } from "@openboard/contract";
+import { decideSettlement, parseId } from "@openboard/core";
 import { canListMentionActors, withoutMentionDetails } from "../../auth/access.ts";
 import { authorOf } from "../../auth/author.ts";
 import { hashToken } from "../../auth/secrets.ts";
 import type { Handler } from "../index.ts";
 
-export const completeTaskHandler: Handler<typeof completeTask> = async (ctx, { id, epoch, token, result }) => {
+export const completeTaskHandler: Handler<typeof completeTask> = (ctx, { result = null, ...input }) =>
+  settleTask(ctx, { ...input, result });
+
+export const failTaskHandler: Handler<typeof failTask> = settleTask;
+
+function settleTask(
+  ctx: Parameters<Handler<typeof failTask>>[0],
+  {
+    token,
+    ...settlement
+  }: { id: string; epoch: number; token: string } & ({ result: string | null } | { reason: string }),
+) {
+  const { id } = settlement;
   const position = parseId(id);
   return ctx.board.write(
     async (writer) => {
@@ -17,11 +29,11 @@ export const completeTaskHandler: Handler<typeof completeTask> = async (ctx, { i
         until: claim.until,
         tokenMatches: timingSafeEqual(claim.hash, Buffer.from(hashToken(token), "hex")),
       };
-      const decided = decideCompleteTask(
-        { head: writer.head, actor: writer.actor, target, proof },
-        { id, epoch, result },
-        { by: ctx.by, author: authorOf(ctx.by), now: ctx.now() },
-      );
+      const decided = decideSettlement({ head: writer.head, actor: writer.actor, target, proof }, settlement, {
+        by: ctx.by,
+        author: authorOf(ctx.by),
+        now: ctx.now(),
+      });
       ctx.debitWrite();
       await writer.append(decided.events);
       const { task } = decided;
@@ -30,4 +42,4 @@ export const completeTaskHandler: Handler<typeof completeTask> = async (ctx, { i
     ctx.by.actor,
     position,
   );
-};
+}

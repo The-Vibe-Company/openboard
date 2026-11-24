@@ -173,8 +173,16 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
         input.profile = ctx.profile;
       }
       if (operation.name === "renewTask") return runRenewTask(ctx, input as { id: string; lease?: number });
+      if (operation.name === "failTask") {
+        return runSettleTask(ctx, String(input.id), "failed", (proof) =>
+          ctx.client.failTask({ ...(input as { id: string; reason: string }), ...proof }),
+        );
+      }
       if (operation.name === "completeTask" || operation.name === "releaseTask") {
-        return runSettleTask(ctx, input as { id: string; result?: string }, operation.name);
+        const action = operation.name;
+        return runSettleTask(ctx, String(input.id), action === "completeTask" ? "completed" : "released", (proof) =>
+          ctx.client[action]({ ...(input as { id: string; result?: string }), ...proof }),
+        );
       }
       if (operation.name === "claimTask" || operation.name === "createTask") {
         const invoke = ctx.client[operation.name] as (

@@ -24,7 +24,8 @@ the caller supplied credentials or the identity is wrong.
   task back with `ob tasks release <id>`.
   At expiry the task returns to the ready queue and another worker can claim it.
 - When the work is complete, record the result with
-  `ob tasks complete <id> "<result>"`. If a claim is lost, check the task
+  `ob tasks complete <id> "<result>"` or record a failure with
+  `ob tasks fail <id> "<reason>"`. If a claim is lost, check the task
   before making further task updates.
 
 If a command reports `reason: invalid_channel`, use its recovery guidance to

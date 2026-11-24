@@ -70,6 +70,7 @@ export {
   downloadOrgExport,
   editMessage,
   explainGrants,
+  failTask,
   findLinkedThread,
   findSync,
   getAccount,

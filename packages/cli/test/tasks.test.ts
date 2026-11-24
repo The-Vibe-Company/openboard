@@ -110,6 +110,7 @@ test.each([
   ["complete", "completed"],
   ["complete", "claim_lost"],
   ["release", "released"],
+  ["fail", "failed"],
 ] as const)("ob tasks %s forgets a claim after %s", async (command, outcome) => {
   const home = mkdtempSync(join(tmpdir(), "ob-settle-"));
   const key = { boardUrl: ENV.BOARD_URL, actor: "agent-a", id: "2" };
@@ -118,10 +119,10 @@ test.each([
   const path = join(home, ".config", "openboard", "claims.json");
   const lines: string[] = [];
   const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
-  const result = command === "complete" ? "fixed in a1b2c3" : undefined;
+  const text = command === "complete" ? "fixed in a1b2c3" : command === "fail" ? "no access" : undefined;
   const run = (accepted: boolean) =>
     runCli(
-      ["tasks", command, "2", ...(result === undefined ? [] : [result])],
+      ["tasks", command, "2", ...(text === undefined ? [] : [text])],
       { ...ENV, HOME: home },
       {
         output,
@@ -131,7 +132,7 @@ test.each([
           expect(await request.json()).toEqual({
             epoch: claim.epoch,
             token: claim.token,
-            ...(result === undefined ? {} : { result }),
+            ...(text === undefined ? {} : { [command === "fail" ? "reason" : "result"]: text }),
           });
           return accepted
             ? outcome !== "claim_lost"

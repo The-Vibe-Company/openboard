@@ -40,6 +40,7 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
     },
   }),
   completeTask: () => ({ body: { epoch: 1, token: "unused" } }),
+  failTask: () => ({ body: { epoch: 1, token: "unused", reason: "test" } }),
   releaseTask: () => ({ body: { epoch: 1, token: "unused" } }),
   renewTask: () => ({ body: { epoch: 1, token: "unused" } }),
   createTask: (tenant) => ({ body: { channel: "dev", text: `${tenant.marker} task` } }),

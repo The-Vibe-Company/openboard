@@ -1,7 +1,7 @@
 import { type Actor, BoardError, type Message } from "@openboard/contract";
 import { parseId } from "../ids.ts";
 import { actorSeen, type PostContext } from "../messages/post.ts";
-import type { TaskCompleted } from "./events.ts";
+import type { TaskCompleted, TaskFailed } from "./events.ts";
 import { withTask } from "./view.ts";
 
 export interface SettlementState {
@@ -16,26 +16,53 @@ export function decideCompleteTask(
   { id, epoch, result = null }: { id: string; epoch: number; result?: string | null },
   context: PostContext,
 ) {
-  if (result !== null && (result.trim().length === 0 || result.includes("\0") || !result.isWellFormed())) {
-    throw new BoardError("invalid_request", "result: a task result must contain text without NUL or lone surrogates");
+  return decideSettlement({ head, target: stored, actor, proof }, { id, epoch, result }, context);
+}
+
+type Settlement = { id: string; epoch: number } & ({ result: string | null } | { reason: string });
+
+export function decideSettlement(
+  { head, target: stored, actor, proof }: SettlementState,
+  settlement: Settlement,
+  context: PostContext,
+) {
+  const { id, epoch } = settlement;
+  const field = "reason" in settlement ? "reason" : "result";
+  const value = "reason" in settlement ? settlement.reason : settlement.result;
+  if (value !== null && (value.trim().length === 0 || value.includes("\0") || !value.isWellFormed())) {
+    throw new BoardError(
+      "invalid_request",
+      `${field}: a task ${field} must contain text without NUL or lone surrogates`,
+    );
   }
   const target = requireHeldTask(stored, proof, id, epoch, context.now);
   const message = parseId(target.id);
   if (message === null) throw new Error("invalid stored task position");
   const seen = actorSeen(actor, context, head + 1);
   const position = head + (seen ? 2 : 1);
-  const view = withTask(target, { ...target.task, state: "completed", claim: null, result }, position);
-  const completed: TaskCompleted = {
+  const eventFields = {
     id: position,
-    type: "task.completed",
     at: context.now,
     thread: message,
     message,
     channel: target.channel,
     actor: context.by.actor,
     principal: context.by.principal,
-    visibility: 0,
-    payload: { id: message, thread: target.thread, epoch, result, by: context.by, view },
+    visibility: 0 as const,
+  };
+  const payload = { id: message, thread: target.thread, epoch, by: context.by };
+  if ("reason" in settlement) {
+    const { reason } = settlement;
+    const view = withTask(target, { ...target.task, state: "failed", claim: null, reason }, position);
+    const failed: TaskFailed = { ...eventFields, type: "task.failed", payload: { ...payload, reason, view } };
+    return { task: view, events: seen ? [seen, failed] : [failed] };
+  }
+  const { result } = settlement;
+  const view = withTask(target, { ...target.task, state: "completed", claim: null, result }, position);
+  const completed: TaskCompleted = {
+    ...eventFields,
+    type: "task.completed",
+    payload: { ...payload, result, view },
   };
   return { task: view, events: seen ? [seen, completed] : [completed] };
 }

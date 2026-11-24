@@ -69,6 +69,7 @@ import {
 import { claimTask } from "./tasks/claim.ts";
 import { completeTask } from "./tasks/complete.ts";
 import { createTask } from "./tasks/create.ts";
+import { failTask } from "./tasks/fail.ts";
 import { listTasks } from "./tasks/list.ts";
 import { releaseTask } from "./tasks/release.ts";
 import { renewTask } from "./tasks/renew.ts";
@@ -86,6 +87,7 @@ export const operations = [
   claimConnection,
   claimTask,
   completeTask,
+  failTask,
   createBoard,
   createChannel,
   createConnection,
@@ -190,6 +192,7 @@ export {
   downloadOrgExport,
   editMessage,
   explainGrants,
+  failTask,
   findLinkedThread,
   findSync,
   getAccount,

@@ -466,6 +466,29 @@ Example:
 ob tasks complete 42
 ```
 
+## `ob tasks fail`
+
+Fail a claimed task and record the reason.
+
+```sh
+ob tasks fail <id> <reason>
+```
+
+Arguments:
+
+- `id`: A message ID.
+- `reason`: Text.
+
+Errors: `error: claim_lost`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_fail`.
+
+Example:
+
+```sh
+ob tasks fail 42 reason
+```
+
 ## `ob channels create`
 
 Create a public channel before anyone posts to it.
