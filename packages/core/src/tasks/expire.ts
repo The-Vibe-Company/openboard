@@ -4,14 +4,23 @@ import type { TaskExpired } from "./events.ts";
 import { withTask } from "./view.ts";
 
 export function effectiveTask(root: Message, now: number): Message {
+  return endClaim(root, now, false);
+}
+
+function endClaim(root: Message, now: number, early: boolean): Message {
   const { task } = root;
-  if (task?.state !== "claimed" || !task.claim || task.claim.until > isoTime(now)) return root;
+  if (task?.state !== "claimed" || !task.claim || (!early && task.claim.until > isoTime(now))) return root;
   // The reserved label reflects the last event, even when a read already sees a dead lease as released.
   return { ...root, task: { ...task, state: task.blocked ? "blocked" : "ready", claim: null } };
 }
 
-export function expireTask(head: number, root: Message, now: number): TaskExpired | undefined {
-  const effective = effectiveTask(root, now);
+export function expireTask(
+  head: number,
+  root: Message,
+  now: number,
+  { early = false }: { readonly early?: boolean } = {},
+): TaskExpired | undefined {
+  const effective = endClaim(root, now, early);
   const id = parseId(root.id);
   if (effective === root || !effective.task || root.deleted || id === null) return;
   const position = head + 1;

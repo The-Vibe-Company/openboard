@@ -7,6 +7,7 @@ import {
   decideReaction,
   decideUnblockTask,
   effectiveTask,
+  expireTask,
   grants,
   inboundActionPermission,
   inboundThreadPosition,
@@ -79,6 +80,16 @@ async function decideTaskAction(
     const change = decideCancelTask(state, action.input, context, permissions);
     return { ...change, result: { "task.cancel": action.input.id } };
   }
+  if (action.action === "task.expire") {
+    const root = state.target;
+    if (!root?.task) throw new BoardError("not_a_task", `#${action.input.id} is not a task.`);
+    const expiry = expireTask(state.head, root, context.now, { early: true });
+    return {
+      events: expiry ? [expiry] : [],
+      task: expiry?.payload.view ?? root,
+      result: { "task.expire": expiry ? root.id : "not_claimed" },
+    };
+  }
   const root = taskForUnblock(state.target, action.input.id, context.by, permissions);
   const needs = effectiveTask(root, context.now).task?.state === "blocked" ? root.task.needs.map(Number) : [];
   const prerequisites = await writer.taskNeeds(needs);
@@ -131,7 +142,7 @@ export async function runInbound(
         const { events, task, result } = await decideTaskAction(writer, state, rendered, context, permissions);
         if (events.length > 0) {
           await writer.append(events);
-          actor = { id: principal, ...context.author };
+          if (events.some((event) => event.type === "actor.seen")) actor = { id: principal, ...context.author };
         }
         root = task;
         results.push(result);

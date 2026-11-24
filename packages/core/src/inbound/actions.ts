@@ -11,7 +11,8 @@ export function inboundActionPermission(action: Action, at = "action") {
   if ("reply" in action) return "post";
   if ("label" in action) return "label";
   if ("react" in action) return "react";
-  if ("task.block" in action || "task.unblock" in action || "task.cancel" in action) return "manage";
+  if ("task.block" in action || "task.unblock" in action || "task.cancel" in action || "task.expire" in action)
+    return "manage";
   throw new BoardError("invalid_rule", `${at}.${Object.keys(action)[0]}: unsupported inbound action`);
 }
 
@@ -51,6 +52,9 @@ export function renderInboundAction(action: Action, body: unknown, thread: Messa
   }
   if ("task.unblock" in action) {
     return { permission: "manage", action: "task.unblock", input: { id } } as const;
+  }
+  if ("task.expire" in action) {
+    return { permission: "manage", action: "task.expire", input: { id } } as const;
   }
   if ("task.cancel" in action) {
     const { reason } = action["task.cancel"];

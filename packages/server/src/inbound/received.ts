@@ -18,6 +18,7 @@ function publicReceipt({ eventId, at, result }: InboundReceipt): Receipt {
     if ("react" in action) return { react: action.react };
     if ("task.block" in action) return { "task.block": action["task.block"] };
     if ("task.cancel" in action) return { "task.cancel": action["task.cancel"] };
+    if ("task.expire" in action) return { "task.expire": action["task.expire"] };
     return { "task.unblock": action["task.unblock"], outcome: action.outcome };
   });
   return { ...base, status: 200, matched: stored.matched, results };

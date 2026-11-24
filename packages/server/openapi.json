@@ -7387,6 +7387,11 @@
                                   "type": "object",
                                   "required": ["task.cancel"],
                                   "properties": { "task.cancel": { "type": "string" } }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": ["task.expire"],
+                                  "properties": { "task.expire": { "type": "string" } }
                                 }
                               ]
                             }
@@ -24513,6 +24518,11 @@
                             "type": "object",
                             "required": ["task.cancel"],
                             "properties": { "task.cancel": { "type": "string" } }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["task.expire"],
+                            "properties": { "task.expire": { "type": "string" } }
                           }
                         ]
                       }

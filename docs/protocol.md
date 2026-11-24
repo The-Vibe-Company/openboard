@@ -1150,7 +1150,7 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   `{ events, older }` for the last seven days. Each event contains
   `{ eventId, at, status, matched, results }` with an ISO 8601 receipt time.
   Matched rules are zero-based indices, and each result names the action
-  and its message ID, plus the outcome for `task.unblock`. A stored 422 has no
+  and its message ID or outcome. A stored 422 has no
   action results. Receipts recorded before match indices were stored return
   an empty `matched` array. Sender bodies, headers, and refused signatures
   do not appear. Events sort by time descending, with event ID as the
@@ -1183,6 +1183,10 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   without a hold, including a finished task, returns `unchanged` and emits
   no events. A non-task root returns `not_a_task`. Results use the action
   name and root ID, such as `{"task.unblock":"42","outcome":"unchanged"}`.
+  `task.expire` ends a claim immediately. It returns `{"task.expire":"42"}`
+  when it expires the claim, or `{"task.expire":"not_claimed"}` without
+  writing a task event if the task has no claim. Writes fenced by the ended
+  claim return `claim_lost`.
 - **Effects** run in one board transaction together with the dedupe insert, so
   they happen at most once per endpoint and delivery ID while its dedupe record
   is retained, including across instances.
