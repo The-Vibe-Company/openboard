@@ -23,8 +23,11 @@ const measuredBudgetMultiplier = 1.2;
 /** Sub-millisecond timings jitter on shared CI runners: tenths of a millisecond at p50, up to a millisecond at p99. */
 const measuredNoiseFloorMs = { p50: 0.5, p99: 1 } as const;
 
-/** Returns diagnostics for increased exact counters and measured values more than 20% and the noise floor over budget. */
-export function compareBudgets(report: ModeReport): string[] {
+/**
+ * Returns diagnostics for increased exact counters and, when `latency` holds, measured values more than 20% and the
+ * noise floor over budget.
+ */
+export function compareBudgets(report: ModeReport, { latency }: { readonly latency: boolean }): string[] {
   const budget = modeBudgets[report.mode];
 
   const failures: string[] = [];
@@ -35,6 +38,7 @@ export function compareBudgets(report: ModeReport): string[] {
       failures.push(`${name} statements: ${previous} -> ${statements}`);
     }
 
+    if (!latency) continue;
     const { p50Ms, p99Ms } = budget.measured[workload];
     for (const [metric, value, limit] of [
       ["p50", p50, p50Ms],

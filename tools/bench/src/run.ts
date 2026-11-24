@@ -23,7 +23,9 @@ const failures: string[] = [];
 for (const mode of selected) {
   const report = await measure(mode, sizes);
   tables.push(formatTable(report));
-  failures.push(...compareBudgets(report));
+  // The required check holds both modes' counters and local latencies only (docs/codebase.md 6.7): hosted latencies
+  // are held by the full bench, since a quick run's round trips to a shared runner's Postgres jitter too much.
+  failures.push(...compareBudgets(report, { latency: !values.quick || mode === "local" }));
 }
 writeSync(process.stdout.fd, `${tables.join("\n\n")}\n`);
 if (failures.length > 0) {

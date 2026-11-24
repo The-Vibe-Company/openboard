@@ -69,7 +69,14 @@ async function bootHosted(cleanup: (() => Promise<void>)[]) {
   for (let at = 0; at < 2; at++) {
     const statements = postgresCounter();
     const store = await postgresDriver({ url: database.url }, Date.now, statements);
-    const app = createApp(config, { store }, deps());
+    let app: App;
+    try {
+      app = createApp(config, { store }, deps());
+    } catch (error) {
+      await store.close();
+      throw error;
+    }
+    // Closing the app closes its store.
     cleanup.push(() => app.close());
     instances.push({ app, statements });
   }

@@ -12,25 +12,27 @@ const localReport: ModeReport = {
   ],
 };
 
+const all = { latency: true };
+
 test("equal and lower counters pass within the measured budgets", () => {
-  expect(compareBudgets(localReport)).toEqual([]);
+  expect(compareBudgets(localReport, all)).toEqual([]);
 });
 
 test("a statement increase identifies the operation, workload and both counts", () => {
   const workloads = localReport.workloads.map((row) =>
     row.workload === "post" ? { ...row, statements: row.statements + 1 } : row,
   );
-  expect(compareBudgets({ ...localReport, workloads })).toEqual(["local postMessage (post) statements: 9 -> 10"]);
+  expect(compareBudgets({ ...localReport, workloads }, all)).toEqual(["local postMessage (post) statements: 9 -> 10"]);
 });
 
 test("an idle timer increase identifies both counts", () => {
-  expect(compareBudgets({ ...localReport, idleTimers: 1 })).toEqual(["local timers armed when idle: 0 -> 1"]);
+  expect(compareBudgets({ ...localReport, idleTimers: 1 }, all)).toEqual(["local timers armed when idle: 0 -> 1"]);
 });
 
 test("hosted is held to its own budget", () => {
   const hosted = { post: 11, reply: 15, channelRead: 4 };
   const workloads = localReport.workloads.map((row) => ({ ...row, statements: hosted[row.workload] }));
-  expect(compareBudgets({ mode: "hosted", workloads, idleTimers: 1 })).toEqual([
+  expect(compareBudgets({ mode: "hosted", workloads, idleTimers: 1 }, all)).toEqual([
     "hosted postMessage (reply) statements: 14 -> 15",
     "hosted timers armed when idle: 0 -> 1",
   ]);
@@ -40,22 +42,31 @@ test("a measured write exactly 20% over budget passes", () => {
   const workloads = localReport.workloads.map((row) =>
     row.workload === "post" ? { ...row, p50: 0.156, p99: 0.336 } : row,
   );
-  expect(compareBudgets({ ...localReport, workloads })).toEqual([]);
+  expect(compareBudgets({ ...localReport, workloads }, all)).toEqual([]);
 });
 
 test("a write more than 20% but within the noise floor (0.5 ms at p50, 1 ms at p99) passes", () => {
   const workloads = localReport.workloads.map((row) =>
     row.workload === "post" ? { ...row, p50: 0.63, p99: 1.28 } : row,
   );
-  expect(compareBudgets({ ...localReport, workloads })).toEqual([]);
+  expect(compareBudgets({ ...localReport, workloads }, all)).toEqual([]);
 });
 
 test("measured writes over budget by more than 20% and the noise floor name their percentile, value and budget", () => {
   const workloads = localReport.workloads.map((row) =>
     row.workload === "post" ? { ...row, p50: 0.631, p99: 1.281 } : row,
   );
-  expect(compareBudgets({ ...localReport, workloads })).toEqual([
+  expect(compareBudgets({ ...localReport, workloads }, all)).toEqual([
     "local postMessage (post) p50: 0.631 ms exceeds budget 0.13 ms by more than 20% and 0.5 ms",
     "local postMessage (post) p99: 1.281 ms exceeds budget 0.28 ms by more than 20% and 1 ms",
+  ]);
+});
+
+test("without latency, only the counters are held", () => {
+  const workloads = localReport.workloads.map((row) =>
+    row.workload === "post" ? { ...row, statements: 10, p50: 9, p99: 99 } : row,
+  );
+  expect(compareBudgets({ ...localReport, workloads }, { latency: false })).toEqual([
+    "local postMessage (post) statements: 9 -> 10",
   ]);
 });

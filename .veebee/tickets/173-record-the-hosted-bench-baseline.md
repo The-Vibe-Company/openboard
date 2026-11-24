@@ -18,7 +18,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [170, 172]
-status: claimed
+status: done
 claimed_by: claude-t173
 issue: 253
 ---
