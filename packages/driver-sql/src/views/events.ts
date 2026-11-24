@@ -26,7 +26,7 @@ const FORWARD_LIMIT = 200;
 
 const feedTypes: Fragment = {
   fragment: () =>
-    "('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.blocked', 'task.ready', 'task.expired', 'task.released', 'watch.failed')",
+    "('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.blocked', 'task.unblocked', 'task.ready', 'task.expired', 'task.released', 'watch.failed')",
 };
 
 /** Bookkeeping: events that concern no message, served only with `all` (docs/data-model.md, `visibility` 1). */
@@ -43,19 +43,19 @@ function eventPage(newest: boolean) {
   const start: Fragment = { fragment: () => (newest ? `b.head - ${NEWEST_LOOKBACK}` : "b.head") };
   return sql`SELECT b.head, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal,
     e.visibility, e.payload,
-    CASE WHEN ${"history"} = 1 AND e.visibility = 0 AND e.type IN ('message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.blocked', 'task.ready', 'task.expired', 'task.released') THEN (
+    CASE WHEN ${"history"} = 1 AND e.visibility = 0 AND e.type IN ('message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.blocked', 'task.unblocked', 'task.ready', 'task.expired', 'task.released') THEN (
       SELECT p.payload FROM events p
       WHERE p.org_id = ${"orgId"} AND p.board_id = ${"boardId"} AND p.thread = e.thread
         AND p.message = e.message AND p.id < e.id AND p.visibility = 0
-        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.blocked', 'task.ready', 'task.expired', 'task.released')
+        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.blocked', 'task.unblocked', 'task.ready', 'task.expired', 'task.released')
       ORDER BY p.id DESC LIMIT 1
     ) END AS previous,
     CASE WHEN ${"rootLabels"} = 1 AND e.message <> e.thread AND e.visibility = 0
-      AND e.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.blocked', 'task.ready', 'task.expired', 'task.released') THEN (
+      AND e.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.blocked', 'task.unblocked', 'task.ready', 'task.expired', 'task.released') THEN (
       SELECT p.payload FROM events p
       WHERE p.org_id = ${"orgId"} AND p.board_id = ${"boardId"} AND p.thread = e.thread
         AND p.message = e.thread AND p.id < e.id AND p.visibility = 0
-        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.blocked', 'task.ready', 'task.expired', 'task.released')
+        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.blocked', 'task.unblocked', 'task.ready', 'task.expired', 'task.released')
       ORDER BY p.id DESC LIMIT 1
     ) END AS root${projectedView}
     FROM boards b LEFT JOIN events e ON e.org_id = b.org_id AND e.board_id = b.id
@@ -99,6 +99,7 @@ export function messageEvent(row: Row): FeedEvent {
     case "task.canceled":
     case "task.ready":
     case "task.blocked":
+    case "task.unblocked":
     case "task.needs_changed":
     case "task.reopened":
     case "task.failed":

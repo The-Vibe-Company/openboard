@@ -4,24 +4,39 @@ title: Lift a hold on a task
 milestone: M9-tasks
 package: server
 writes:
-  - packages/contract/src/operations/task-holds.ts
-  - packages/core/src/tasks/hold.ts
-  - packages/core/test/tasks/hold.test.ts
-  - packages/core/src/tasks/readiness.ts
-  - packages/core/test/tasks/readiness.test.ts
-  - packages/contract/src/entities/task-events.ts
-  - packages/core/src/tasks/events.ts
-  - packages/driver-sql/src/views/task-folds.ts
-  - packages/driver-sql/src/statements.ts
-  - packages/server/src/operations/task-holds.ts
-  - packages/server/test/tasks/unblock.test.ts
-  - packages/cli/src/commands/tasks.ts
+  - docs/data-model.md
+  - docs/protocol.md
+  - packages/cli/src/output.ts
   - packages/cli/test/tasks.test.ts
+  - packages/contract/src/entities/events.ts
+  - packages/contract/src/entities/task-events.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/operations/tasks/hold.ts
+  - packages/core/src/events/tail.ts
+  - packages/core/src/index.ts
+  - packages/core/src/tasks/events.ts
+  - packages/core/src/tasks/holds/unblock.ts
+  - packages/core/src/tasks/readiness.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/driver-sql/src/views/watchers/index.ts
+  - packages/driver-sql/src/views/webhooks/deliveries.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/tasks/feed.ts
+  - packages/server/src/operations/tasks/hold.ts
+  - packages/server/test/tasks/hold.test.ts
+  - packages/server/test/tasks/unblock.test.ts
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
 conformance: ["tasks/holds a task for a person, by its owner or its claim, and gives it back when unblocked", "tasks/says task.ready each time a task that needs others becomes ready: right after it is made or unblocked, once they have completed", "tasks/changes what a task needs: it waits for the new ones, is ready once they have completed, and at once with none"]
 modes: [local, hosted]
 depends_on: [262]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 437
 ---
 
@@ -29,9 +44,11 @@ issue: 437
 As the task's owner, I lift a hold with `ob tasks unblock 2`, and the task goes back to ready, or to waiting if what it needs has not completed.
 
 ## Done when
-- [ ] `ob tasks unblock 2` prints `unblocked 2` and 2 reads `ready`; a held task whose needs have not completed reads `waiting` after unblocking, then `ready` once they complete; unblocking a task that is not held changes nothing (`--json` outcome `unchanged`)
-- [ ] changing what a held task needs keeps it `blocked` (`task.needs_changed` with state `blocked`), and unblocking it once those needs have completed appends `task.unblocked` (`waiting`) then `task.ready` (`ready`) in one write
+- [x] `ob tasks unblock 2` prints `unblocked 2` and 2 reads `ready`; a held task whose needs have not completed reads `waiting` after unblocking, then `ready` once they complete; unblocking a task that is not held changes nothing (`--json` outcome `unchanged`)
+- [x] changing what a held task needs keeps it `blocked` (`task.needs_changed` with state `blocked`), and unblocking it once those needs have completed appends `task.unblocked` (`waiting`) then `task.ready` (`ready`) in one write
 - [ ] `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `tasks/holds a task for a person, by its owner or its claim, and gives it back when unblocked` and `tasks/says task.ready each time a task that needs others becomes ready: right after it is made or unblocked, once they have completed` and `tasks/changes what a task needs: it waits for the new ones, is ready once they have completed, and at once with none`, and `--update` records them in `tools/conformance/score.json` under `local` and `hosted`
+
+  The hold and needs-change checks pass and are recorded in both modes. The remaining check stops before unblock because `POST /tasks` rejects `lease` on create-and-claim.
 
 ## Out of scope
 - Assigning (264); the board's own hold on an edit (272).

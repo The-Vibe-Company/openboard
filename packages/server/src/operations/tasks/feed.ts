@@ -43,3 +43,14 @@ export function projectTaskBlocked(event: Extract<TaskEvent, { type: "task.block
     message,
   };
 }
+
+export function projectTaskUnblocked(event: Extract<TaskEvent, { type: "task.unblocked" }>, message: Message) {
+  const { id, by } = event.payload;
+  return {
+    cursor: formatId(event.id),
+    type: event.type,
+    createdAt: isoTime(event.at),
+    payload: { id: formatId(id), by },
+    message,
+  };
+}

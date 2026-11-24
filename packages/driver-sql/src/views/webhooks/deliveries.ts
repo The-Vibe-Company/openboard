@@ -230,6 +230,7 @@ export async function matchWebhooks(
     event.type === "task.reopened" ||
     event.type === "task.needs_changed" ||
     event.type === "task.blocked" ||
+    event.type === "task.unblocked" ||
     event.type === "task.ready" ||
     !isTailMessageEvent(event)
   )

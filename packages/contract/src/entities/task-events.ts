@@ -166,3 +166,14 @@ export const TaskNeedsChangedEvent = Type.Object({
   payload: TaskNeedsChangedPayload,
   message: Message,
 });
+
+export const TaskUnblockedPayload = Type.Pick(TaskBlockedPayload, ["id", "by"]);
+export type TaskUnblockedPayload = Static<typeof TaskUnblockedPayload>;
+
+export const TaskUnblockedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("task.unblocked"),
+  createdAt: Type.String(),
+  payload: TaskUnblockedPayload,
+  message: Message,
+});

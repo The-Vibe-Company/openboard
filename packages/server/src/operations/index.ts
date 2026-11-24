@@ -99,7 +99,7 @@ import { createTaskBatchHandler, getTaskBatchHandler } from "./tasks/batch.ts";
 import { cancelTaskHandler } from "./tasks/cancel.ts";
 import { claimTaskHandler } from "./tasks/claim.ts";
 import { completeTaskHandler, failTaskHandler } from "./tasks/complete.ts";
-import { blockTaskHandler } from "./tasks/hold.ts";
+import { blockTaskHandler, unblockTaskHandler } from "./tasks/hold.ts";
 import { setTaskNeedsHandler } from "./tasks/needs.ts";
 import { releaseTaskHandler } from "./tasks/release.ts";
 import { renewTaskHandler } from "./tasks/renew.ts";
@@ -326,6 +326,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   rotateConnection: rotateConnectionHandler,
   showTyping: showTypingHandler,
   startDeviceSignIn: startDeviceSignInHandler,
+  unblockTask: unblockTaskHandler,
   updateGrant: updateGrantHandler,
   updateWebhook: updateWebhookHandler,
 };

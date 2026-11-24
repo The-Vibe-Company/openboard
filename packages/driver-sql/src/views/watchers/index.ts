@@ -102,6 +102,7 @@ export async function matchWatchers(db: Db, dialect: Dialect, keys: BoardKeys, e
     event.type === "task.reopened" ||
     event.type === "task.needs_changed" ||
     event.type === "task.blocked" ||
+    event.type === "task.unblocked" ||
     event.type === "task.ready" ||
     !isTailMessageEvent(event)
   )

@@ -303,3 +303,20 @@ test("ob tasks block clears a stale claim before the owner retries without proof
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test("ob tasks unblock sends no body and prints its outcome", async () => {
+  const lines: string[] = [];
+  const outcomes = ["unblocked", "unchanged", undefined];
+  const fetch = async (request: Request) => {
+    expect(`${request.method} ${request.url}`).toBe(`POST ${ENV.BOARD_URL}/tasks/2/unblock`);
+    expect(request.body).toBeNull();
+    return Response.json({ task: { id: "2" }, outcome: outcomes.shift() });
+  };
+  const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  expect(await runCli(["tasks", "unblock", "2"], ENV, { fetch, output })).toBe(0);
+  expect(await runCli(["tasks", "unblock", "2", "--json"], ENV, { fetch, output })).toBe(0);
+  expect(lines[0]).toBe("unblocked 2");
+  expect(JSON.parse(lines[1] ?? "")).toEqual({ task: { id: "2" }, outcome: "unchanged" });
+  expect(await runCli(["tasks", "unblock", "2"], ENV, { fetch, output })).toBe(0);
+  expect(lines[2]).toBe("2");
+});

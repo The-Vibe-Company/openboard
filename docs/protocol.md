@@ -392,7 +392,7 @@ Replacing the prerequisites of a ready or waiting task appends
 `waiting`. If every prerequisite is completed, the same write appends
 `task.ready`, setting it to `ready`. Clearing the list sets the task to
 `ready` in `task.needs_changed` alone. Sending the same set appends no events,
-even if the IDs are reordered or repeated.
+even if the IDs are reordered or repeated. A held task stays blocked when its needs change.
 
 `GET /tasks` lists tasks oldest first, each as its thread's summary `{ message, replies, last }`,
 in `{ tasks, cursor }`. Its query is upstream's: `channel` (a channel, `dev/` for a subtree, absent
@@ -451,6 +451,16 @@ A task already on hold returns 409 `task_blocked`; completed, failed and
 canceled tasks return 409 `task_finished` to an authorized owner.
 The event feed serves `task.blocked` on upgraded replicas.
 The writer omits persisted pull-watcher matches and webhook deliveries during rollout.
+
+`POST /tasks/:id/unblock` takes no body and returns `{ task }` with an optional
+OpenBoard-only `outcome` of `"unblocked"` or `"unchanged"`. It applies the cancellation
+ownership rule to every task state. Lifting a hold clears it and emits
+`task.unblocked` with `{ id, by }`. A task with no prerequisites becomes ready.
+A task with prerequisites becomes waiting. If they are all completed, the same
+write appends `task.ready`. An already unheld task emits no events. Use
+`ob tasks unblock <id>` to lift a hold. The CLI prints `unblocked <id>` or
+`unchanged`. Upgraded replicas serve `task.unblocked` in the feed. During rollout,
+writers omit persisted pull-watcher matches and webhook deliveries for this event.
 
 `POST /tasks/:id/cancel` takes `{ reason }` and returns `{ task }`. The task's maker profile or
 its principal acting as itself can cancel it with channel read and either post or label access.

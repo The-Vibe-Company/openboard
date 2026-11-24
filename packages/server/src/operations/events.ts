@@ -15,7 +15,13 @@ import { tailBoard } from "../live/fan-out.ts";
 import { longPoll } from "../live/long-poll.ts";
 import { eventStream } from "../live/sse.ts";
 import type { BoardContext, Handler } from "./index.ts";
-import { projectTaskBlocked, projectTaskNeedsChanged, projectTaskReady, projectTaskReopened } from "./tasks/feed.ts";
+import {
+  projectTaskBlocked,
+  projectTaskNeedsChanged,
+  projectTaskReady,
+  projectTaskReopened,
+  projectTaskUnblocked,
+} from "./tasks/feed.ts";
 
 type EventInput = InputOf<typeof readEvents>;
 
@@ -197,6 +203,7 @@ export function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boo
   if (event.type === "task.ready") return [projectTaskReady(event, visible(current ?? historical))];
   if (event.type === "task.reopened") return [projectTaskReopened(event, visible(current ?? historical))];
   if (event.type === "task.needs_changed") return [projectTaskNeedsChanged(event, visible(current ?? historical))];
+  if (event.type === "task.unblocked") return [projectTaskUnblocked(event, visible(current ?? historical))];
   if (event.type === "task.blocked") return [projectTaskBlocked(event, visible(current ?? historical))];
   if (event.type === "task.canceled") return [projectTaskCanceled(event, visible(current ?? historical))];
   if (event.type === "task.failed") return [projectTaskFailed(event, visible(current ?? historical))];

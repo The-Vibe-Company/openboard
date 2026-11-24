@@ -53,6 +53,7 @@ export type { TaskClaimed, TaskCreated, TaskEvent, TaskExpired } from "./tasks/e
 export { effectiveTask, expireTask } from "./tasks/expire.ts";
 export { OPEN_TASK_STATES, taskCursor, taskStates } from "./tasks/filters.ts";
 export { decideBlockTask, taskBlocked } from "./tasks/holds/hold.ts";
+export { decideUnblockTask, taskForUnblock } from "./tasks/holds/unblock.ts";
 export { decideReleaseTask } from "./tasks/release.ts";
 export { decideRenewTask } from "./tasks/renew.ts";
 export { decideReopenTask } from "./tasks/reopen.ts";

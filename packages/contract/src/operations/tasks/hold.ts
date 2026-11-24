@@ -38,3 +38,22 @@ export const blockTask = defineOperation({
   mcp: { tool: "task_block" },
   upstream: true,
 });
+
+export const unblockTask = defineOperation({
+  name: "unblockTask",
+  operationId: "unblockTask",
+  summary: "Lift a task hold and resume normal prerequisite checks.",
+  route: { method: "POST", path: "/tasks/:id/unblock" },
+  scope: "board",
+  input: { params: Type.Object({ id: Ref("task") }) },
+  output: Type.Object({
+    task: TaskRoot,
+    outcome: Type.Optional(Type.Union([Type.Literal("unblocked"), Type.Literal("unchanged")])),
+  }),
+  errors: ["invalid_request", "message_not_found", "not_a_task", "task_not_owned"],
+  access: { permission: "read", channel: "fromMessage" },
+  effects: { readOnly: false, idempotent: true, emits: ["task.expired", "task.unblocked", "task.ready"] },
+  cli: { command: ["tasks", "unblock"], args: ["id"] },
+  mcp: { tool: "task_unblock" },
+  upstream: true,
+});
