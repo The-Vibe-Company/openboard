@@ -10,7 +10,7 @@ import {
   parseId,
 } from "@openboard/core";
 import type { BoardGrantReads, BoardKeys, BoardScope, BoardView, BoardWriter, Broadcaster } from "@openboard/ports";
-import type { Db, Dialect } from "../db.ts";
+import type { Db, Dialect, Row } from "../db.ts";
 import { query } from "../sql.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
 import { findAgent, findAgentByClaimKey, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
@@ -158,12 +158,18 @@ function contentBytes(message: Pick<Message, "text" | "blocks"> | null): number 
   return utf8.encode(message.text).length + utf8.encode(JSON.stringify(message.blocks)).length;
 }
 
-function messageStorage(tx: Db, dialect: Dialect, keys: BoardKeys, storage: BoardStorage) {
+function messageStorage(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  storage: BoardStorage,
+  preloaded: (id: number) => Row | undefined,
+) {
   let { boardBytes } = storage;
   const sizes = new Map<number, number>();
   async function readMessage(id: number): Promise<Message | null> {
-    const [row] = await query(tx, dialect, messageStatements.message, { ...keys, id });
-    const message = row ? (JSON.parse(String(row.view)) as Message) : null;
+    const row = preloaded(id) ?? (await query(tx, dialect, messageStatements.message, { ...keys, id }))[0];
+    const message = typeof row?.view === "string" ? (JSON.parse(row.view) as Message) : null;
     sizes.set(id, message?.deleted ? 0 : contentBytes(message));
     return message;
   }
@@ -241,12 +247,15 @@ function writer(
   committed: BoardEvent[],
   jobs: ReturnType<typeof jobWriter>,
   now: number,
+  taskId: number | null,
 ): BoardWriter {
   const { head, actor, storage, dailyEvents, hasWatchers } = locked;
-  const usage = messageStorage(tx, dialect, keys, storage);
+  // Once a callback appends events, later reads must see its folds.
+  const preloaded = (id: number) => (id === taskId && committed.length === 0 ? locked.row : undefined);
+  const usage = messageStorage(tx, dialect, keys, storage, preloaded);
   const events = eventWriter(tx, dialect, keys, head, committed, usage, dailyEvents, now, hasWatchers);
   return {
-    ...taskWriter(tx, dialect, keys),
+    ...taskWriter(tx, dialect, keys, preloaded),
     ...jobs,
     ...watcherWriter(tx, dialect, keys),
     ...schemaWriter(tx, dialect, keys),
@@ -320,20 +329,20 @@ export function boardView(
   return {
     ...taskReads(db, dialect, keys),
     ...grantReads(db, dialect, keys),
-    async write(fn, as) {
+    async write(fn, as, taskId = null) {
       let release: (() => void) | undefined;
       let enqueued = false;
       try {
         const { result, page } = await db.transaction(async (tx) => {
           const now = jobs.now();
           const window = dailyEventWindow(Number.isFinite(now) ? now : 0);
-          const locked = await lockBoardAs(tx, dialect, keys, as ?? null, window);
+          const locked = await lockBoardAs(tx, dialect, keys, as ?? null, window, taskId);
           const { head, storage } = locked;
           const events: BoardEvent[] = [];
           const queue = jobWriter(tx, dialect, keys, jobs, () => {
             enqueued = true;
           });
-          const boardWriter = writer(tx, dialect, keys, locked, events, queue, now);
+          const boardWriter = writer(tx, dialect, keys, locked, events, queue, now, taskId);
           const result = await fn(boardWriter);
           const page = boardWriter.head > head ? { after: head, head: boardWriter.head, events } : undefined;
           if (page !== undefined && storage.staleSiblings) await repairStoredBytes(tx, dialect, keys);

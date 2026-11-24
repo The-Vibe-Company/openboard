@@ -7,8 +7,8 @@ import { lockBoard } from "./boards.ts";
 import { codePointOrder } from "./channels.ts";
 
 /**
- * Postgres reads `findActor` after the board lock: when the lock waited, the actor record in its snapshot
- * could predate the lock holder's commit. SQLite takes the write lock before either read.
+ * Postgres can read `findActor` after the board lock. When the actor is loaded with the lock, the
+ * snapshot check in `lockBoard` protects it from a concurrent board write.
  */
 export const actorStatements = {
   findActor: sql`SELECT id, kind, handle, name, avatar, via FROM actors
@@ -47,6 +47,7 @@ export async function lockBoardAs(
   keys: BoardKeys,
   actor: string | null,
   window: Parameters<typeof lockBoard>[4],
+  taskId: number | null = null,
 ) {
   const { head, row, storage, dailyEvents, actorLoaded, hasWatchers } = await lockBoard(
     tx,
@@ -54,10 +55,11 @@ export async function lockBoardAs(
     keys,
     actor,
     window,
+    taskId,
   );
   const [found] =
     actor !== null && !actorLoaded ? await query(tx, dialect, actorStatements.findActor, { ...keys, actor }) : [row];
-  return { head, storage, dailyEvents, hasWatchers, actor: found ? actorView(found) : null };
+  return { head, storage, dailyEvents, hasWatchers, actor: found ? actorView(found) : null, row };
 }
 
 /** The fold of `actor.seen`: the actor's row, its first sighting kept and its details and last sighting replaced. */

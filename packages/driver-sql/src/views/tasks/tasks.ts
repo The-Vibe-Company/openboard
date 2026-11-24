@@ -1,6 +1,6 @@
 import type { Message } from "@openboard/contract";
 import type { BoardKeys, BoardTaskReads, BoardTaskWriter } from "@openboard/ports";
-import type { Db, Dialect } from "../../db.ts";
+import type { Db, Dialect, Row } from "../../db.ts";
 import { query, sql } from "../../sql.ts";
 
 export const taskReadStatements = {
@@ -20,11 +20,17 @@ export function taskReads(db: Db, dialect: Dialect, keys: BoardKeys): Pick<Board
   };
 }
 
-export function taskWriter(db: Db, dialect: Dialect, keys: BoardKeys): BoardTaskWriter {
+export function taskWriter(
+  db: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  preloadedProof: (id: number) => Row | undefined,
+): BoardTaskWriter {
   return {
     ...taskReads(db, dialect, keys),
     async taskClaimProof(id) {
-      const [row] = await query(db, dialect, taskReadStatements.taskClaimProof, { ...keys, id });
+      const row =
+        preloadedProof(id) ?? (await query(db, dialect, taskReadStatements.taskClaimProof, { ...keys, id }))[0];
       return row?.claim_token == null || row.claim_until == null
         ? null
         : { hash: row.claim_token as Uint8Array, until: Number(row.claim_until) };

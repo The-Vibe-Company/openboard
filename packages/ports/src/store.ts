@@ -334,9 +334,10 @@ export interface BoardView extends RateView, BoardMessageReads, BoardTaskReads, 
   schemas(): Promise<SchemaView[]>;
   /**
    * Locks the board, runs `fn`, and commits what it appended, or rolls everything back if it throws. With `actor`,
-   * the board's record of that actor is read at the start of the write, after the lock.
+   * the board's record of that actor is read under the lock. With `taskId`, the initial message and claim proof
+   * for that position can be loaded with the lock and reused by the writer's read methods.
    */
-  write<T>(fn: (writer: BoardWriter) => Promise<T>, actor?: string): Promise<T>;
+  write<T>(fn: (writer: BoardWriter) => Promise<T>, actor?: string, taskId?: number | null): Promise<T>;
   /** Candidate authors, reactors and possible prose references, from one snapshot outside the write lock. */
   mentionEvidence(handles: ReadonlySet<string>): Promise<MentionEvidence[]>;
   /** Actor candidates for one feed's author and mention filters, using the board's current names. */
