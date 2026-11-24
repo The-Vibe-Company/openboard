@@ -69,16 +69,16 @@ function postgresStore(url: string, now: () => number): TestStore {
   // Runs when the test, or the file or describe block, that opened the store ends: every instance is closed, then the
   // database they share is dropped.
   afterAll(async () => {
+    // Every instance has finished closing, failed or not, before the database they share is dropped.
+    const closed = await Promise.allSettled(instances.map((store) => store.close()));
     try {
-      await Promise.all(instances.map((store) => store.close()));
+      const opened = await database?.catch(() => undefined);
+      await opened?.drop();
     } finally {
-      try {
-        const opened = await database?.catch(() => undefined);
-        await opened?.drop();
-      } finally {
-        if (own) await (await own).close();
-      }
+      if (own) await (await own).close();
     }
+    const failed = closed.find((result) => result.status === "rejected");
+    if (failed) throw failed.reason;
   });
   return { ...instance(), sibling: instance };
 }

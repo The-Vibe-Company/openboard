@@ -1,5 +1,5 @@
-import { createApp, type Deps, type Logger, mintLocalOwnerToken, type ServerConfig } from "../../src/index.ts";
-import { cluster } from "./cluster.ts";
+import { type Deps, type Logger, mintLocalOwnerToken, type ServerConfig } from "../../src/index.ts";
+import { createCluster } from "./cluster.ts";
 import { openStore, type TestStore } from "./drivers.ts";
 
 /** `OPENBOARD_PUBLIC_URL` of every test app. */
@@ -26,7 +26,7 @@ type AppOptions = Pick<ServerConfig, "signup" | "signIn"> &
   };
 
 /**
- * The app a test runs on (`cluster`): one app on in-memory SQLite, or with `OPENBOARD_TEST_DRIVER=postgres` two
+ * The app a test runs on (`createCluster`): one app on in-memory SQLite, or with `OPENBOARD_TEST_DRIVER=postgres` two
  * instances on one fresh Postgres database whose `fetch` alternates between them. Its instances share
  * a fixed clock unless one is given, a logger that keeps the errors it is told unless one is given, request IDs
  * `req-1`, `req-2`, … in the order requests arrive, and random bytes all 1, then all 2, ….
@@ -58,7 +58,7 @@ export function makeApp(options: AppOptions = {}) {
     randomBytes: (length) => new Uint8Array(length).fill(++drawn),
     ...(fetch && { fetch }),
   };
-  const app = cluster(options.store ?? openStore(now), (store) => createApp(config, { store }, deps));
+  const app = createCluster(config, { store: options.store ?? openStore(now) }, deps);
   return Object.assign(app, { logged });
 }
 

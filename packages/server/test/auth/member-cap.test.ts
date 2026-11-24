@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { createInvitation, OutputOf, SessionState } from "@openboard/contract";
-import { createApp } from "../../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "../support/app.ts";
+import { createCluster } from "../support/cluster.ts";
 import { openStore } from "../support/drivers.ts";
 
 const PEOPLE = { ada: 1, lin: 2, sam: 3 } as const;
@@ -41,7 +41,7 @@ async function signIn(send: (request: Request) => Promise<Response>, login: Logi
 
 async function setup() {
   let drawn = 0;
-  const app = createApp(
+  const app = createCluster(
     {
       mode: "local",
       publicUrl: PUBLIC_URL,

@@ -10,8 +10,9 @@ import {
 } from "@openboard/contract";
 import type { Store } from "@openboard/ports";
 import { sessionOf } from "../src/auth/sessions.ts";
-import { type App, createApp, type ServerConfig } from "../src/index.ts";
+import type { App, ServerConfig } from "../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
+import { createCluster } from "./support/cluster.ts";
 import { openStore } from "./support/drivers.ts";
 import { CLIENT, cookiesOf, fakeGitHub, signIn } from "./support/sign-in.ts";
 
@@ -45,7 +46,7 @@ function start(options: { signup?: "open" | "closed"; clock?: { now: number }; g
     randomBytes,
     log: { info() {}, error() {} },
   };
-  app = createApp(config, { store: openStore(() => clock.now) }, { ...deps, fetch: github.fetch });
+  app = createCluster(config, { store: openStore(() => clock.now) }, { ...deps, fetch: github.fetch });
   return { app, github };
 }
 

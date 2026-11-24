@@ -1,5 +1,5 @@
 import type { Store } from "@openboard/ports";
-import type { App } from "../../src/index.ts";
+import { type App, createApp, type Deps, type ServerConfig } from "../../src/index.ts";
 import type { TestStore } from "./drivers.ts";
 
 /** What a test talks to: one app, or several instances behind one `fetch`, closed and drained together. */
@@ -31,7 +31,15 @@ export function cluster(store: TestStore, build: (store: Store) => App): Cluster
       await Promise.all(instances.map((instance) => instance.drain()));
     },
     async close() {
-      await Promise.all(instances.map((instance) => instance.close()));
+      // Every instance closes, even when another one fails to.
+      const closed = await Promise.allSettled(instances.map((instance) => instance.close()));
+      const failed = closed.find((result) => result.status === "rejected");
+      if (failed) throw failed.reason;
     },
   };
+}
+
+/** `createApp(config, ports, deps)` as a `cluster` on `ports.store`: every instance has the same config and deps. */
+export function createCluster(config: ServerConfig, ports: { readonly store: TestStore }, deps: Deps): Cluster {
+  return cluster(ports.store, (store) => createApp(config, { store }, deps));
 }

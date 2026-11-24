@@ -3,9 +3,9 @@ import { createHash } from "node:crypto";
 import type { createInvitation, OutputOf } from "@openboard/contract";
 import { orgs } from "@openboard/core";
 import type { Store } from "@openboard/ports";
-import { createApp } from "../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
 import { browserSession, makeBrowserApp } from "./support/browser-session.ts";
+import { createCluster } from "./support/cluster.ts";
 import { openStore } from "./support/drivers.ts";
 
 /** Signs a person in at `now`, without an organization. */
@@ -41,7 +41,7 @@ async function setup() {
   const store = openStore(() => now);
   const log: Readonly<Record<string, unknown>>[] = [];
   let drawn = 0;
-  const app = createApp(
+  const app = createCluster(
     { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER },
     { store },
     {

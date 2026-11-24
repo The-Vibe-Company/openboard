@@ -1,7 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
 import { boardPath } from "../src/http/scope.ts";
-import { createApp } from "../src/index.ts";
+import type { createApp } from "../src/index.ts";
 import { call, LOCAL_OWNER, makeApp, NOW, OWNER, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
+import { createCluster } from "./support/cluster.ts";
 import { openStore } from "./support/drivers.ts";
 
 let app: ReturnType<typeof createApp>;
@@ -47,7 +48,7 @@ test.each([
 test.each(["/api", "/api/messages/10", "/api/tasks/main", "/api/x/main"])(
   "does not resolve %s as a board mount in hosted mode",
   async (path) => {
-    app = createApp(
+    app = createCluster(
       { mode: "hosted", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER },
       { store: openStore(() => NOW) },
       {

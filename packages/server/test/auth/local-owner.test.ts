@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createApp, mintLocalOwnerToken } from "../../src/index.ts";
+import { type createApp, mintLocalOwnerToken } from "../../src/index.ts";
 import { BOARD_URL, LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "../support/app.ts";
+import { createCluster } from "../support/cluster.ts";
 import { openStore } from "../support/drivers.ts";
 
 /** Fixed bytes, so no token-shaped string is written in this file (docs/codebase.md 6.1). */
@@ -12,7 +13,7 @@ afterEach(() => app?.close());
 
 function localApp() {
   const now = () => NOW;
-  app = createApp(
+  app = createCluster(
     { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: owner.hash },
     { store: openStore(now) },
     {
