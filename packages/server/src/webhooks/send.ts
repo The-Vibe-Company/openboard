@@ -26,7 +26,8 @@ export async function sendWebhook(request: Request, { fetch, schedule }: Pick<De
   });
   try {
     const send = async () => {
-      const response = await fetch(new Request(request, { signal: controller.signal, redirect: "error" }));
+      const redirect = request.redirect === "manual" ? "manual" : "error";
+      const response = await fetch(new Request(request, { signal: controller.signal, redirect }));
       status = response.status;
       await drainResponse(response);
       return { status, error: null };

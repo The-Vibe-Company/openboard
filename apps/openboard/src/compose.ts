@@ -61,7 +61,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
       return () => clearTimeout(timer);
     },
     randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
-    fetch: (request) => fetch(request, { redirect: "error" }),
+    fetch: (request) => fetch(request, { redirect: request.redirect === "manual" ? "manual" : "error" }),
     resolveHost: async (hostname) => (await lookup(hostname, { all: true })).map(({ address }) => address),
   };
   const { mode, publicUrl, localOwner, signup, github } = config;

@@ -1098,3 +1098,10 @@ exact channel so sibling and descendant channels retain their access. A
 pre-existing grant at the exact path that permits access to anyone besides
 the creator prevents creation with 409 `channel_granted`. Grants there can outrank or add to the
 `everyone` closure. The board lock covers this check and all three events.
+
+### Webhook test pings are single-attempt deliveries
+
+A test sends `board.ping` once during the administrative request. Its
+delivery row has a null event and thread, so readers can identify it without
+an event join. Ping failures never count toward disabling a subscription.
+([Issue #491](https://github.com/The-Vibe-Company/openboard/issues/491#issuecomment-7136782211))

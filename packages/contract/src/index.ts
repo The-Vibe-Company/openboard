@@ -136,5 +136,5 @@ export {
   startDeviceSignIn,
   updateGrant,
 } from "./operations/index.ts";
-export { createWebhook, deleteWebhook, getWebhook, listWebhooks } from "./operations/webhooks/index.ts";
+export { createWebhook, deleteWebhook, getWebhook, listWebhooks, testWebhook } from "./operations/webhooks/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

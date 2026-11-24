@@ -8,8 +8,9 @@ import type {
   ManagedConnection,
   OutputOf,
   revokeGrant,
+  testWebhook,
 } from "@openboard/contract";
-import type { BoardError } from "@the-vibe-company/openboard";
+import { BoardError } from "@the-vibe-company/openboard";
 import { grantsText } from "./grant-views.ts";
 
 /** Where the CLI writes; tests hand in their own. */
@@ -172,6 +173,12 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
         )
         .join("\n"),
     listTasks: tasksText,
+    testWebhook: (output) => {
+      const { delivery } = output as OutputOf<typeof testWebhook>;
+      if (delivery.status === null) throw new BoardError("unreachable", "the receiver could not be reached");
+      if (!delivery.ok) throw new BoardError("remote_error", `the receiver answered ${delivery.status}`);
+      return `delivered ${delivery.id} ${delivery.status} in ${delivery.ms} ms`;
+    },
     revokeGrant: (output, { id }) =>
       (output as OutputOf<typeof revokeGrant>).revoked ? `revoked ${String(id)}` : `${String(id)} is already gone`,
     postMessage: (output: unknown) => (output as { message: { id: string } }).message.id,

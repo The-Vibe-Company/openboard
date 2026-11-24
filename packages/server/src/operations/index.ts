@@ -101,6 +101,7 @@ import {
   deleteWebhookHandler,
   getWebhookHandler,
   listWebhooksHandler,
+  testWebhookHandler,
 } from "./webhooks/index.ts";
 
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
@@ -112,6 +113,7 @@ export interface BoardContext extends RequestLimits {
   readonly signal: AbortSignal;
   readonly shutdown: AbortSignal;
   readonly schedule: Deps["schedule"];
+  readonly fetch?: Deps["fetch"];
   readonly reauthorize: () => Promise<Principal>;
   readonly by: Principal;
   readonly now: () => number;
@@ -250,6 +252,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listThreads: listThreadsHandler,
   listWatchers: listWatchersHandler,
   listWebhooks: listWebhooksHandler,
+  testWebhook: testWebhookHandler,
   pollDeviceSignIn: pollDeviceSignInHandler,
   postMessage: postMessageHandler,
   previewDeviceSignIn: previewDeviceSignInHandler,

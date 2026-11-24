@@ -4,9 +4,18 @@ import {
   type deleteWebhook,
   type getWebhook,
   type listWebhooks,
+  type testWebhook,
   type Webhook,
 } from "@openboard/contract";
-import { base32, countQuotaError, isoTime, parseTail, validateWebhook } from "@openboard/core";
+import {
+  base32,
+  countQuotaError,
+  isoTime,
+  parseTail,
+  validateWebhook,
+  webhookOutcome,
+  webhookPing,
+} from "@openboard/core";
 import type { WebhookRecord } from "@openboard/ports";
 import {
   allowedEverywhere,
@@ -15,6 +24,8 @@ import {
   unrestrictedLocalOwner,
 } from "../../auth/access.ts";
 import { callerCan } from "../../deps.ts";
+import { deliverWebhook } from "../../jobs/webhooks.ts";
+import { webhookPingRequest } from "../../webhooks/request.ts";
 import { sealWebhookSecret } from "../../webhooks/secret-box.ts";
 import { webhookTarget } from "../../webhooks/target.ts";
 import type { BoardContext, Handler } from "../index.ts";
@@ -109,4 +120,36 @@ export const deleteWebhookHandler: Handler<typeof deleteWebhook> = async (ctx, {
     await writer.removeWebhookSecret(record);
   });
   return { id };
+};
+
+export const testWebhookHandler: Handler<typeof testWebhook> = async (ctx, { id }) => {
+  const deliveryId = `dl_${base32(ctx.randomBytes(10))}`;
+  const { record, secret } = await ctx.board.write(async (writer) => {
+    const record = requireWebhook(ctx, await writer.webhook(id));
+    ctx.debitWrite();
+    return { record, secret: await writer.beginWebhookPing(record, deliveryId, ctx.now()) };
+  });
+  const { org, board } = await ctx.board.identity();
+  const start = ctx.now();
+  const body = webhookPing(ctx.boardUrl, org.slug, board.slug, {
+    id: deliveryId,
+    attempt: 1,
+    webhook: id,
+    name: record.webhook.name,
+  });
+  const { status, error } = await deliverWebhook(ctx.webhookConfig.secretKey, ctx, record, secret, (credentials) =>
+    webhookPingRequest(ctx.webhookConfig.mode, record.webhook, deliveryId, start, credentials, body),
+  );
+  const now = ctx.now();
+  const outcome = webhookOutcome(status);
+  await ctx.board.write((writer) => writer.finishWebhookAttempt(deliveryId, 1, { ...outcome, error, now }));
+  return {
+    delivery: {
+      id: deliveryId,
+      status,
+      ok: outcome.state === "done",
+      ms: Math.max(0, now - start),
+      ...(status === null && { error: "unreachable" as const }),
+    },
+  };
 };

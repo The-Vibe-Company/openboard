@@ -213,6 +213,7 @@ test:
 | table options none | `STRICT`; `WITHOUT ROWID` on tables with composite keys |
 | `CREATE EXTENSION pg_trgm` and the trigram index | omitted (SQLite searches with `LIKE`, see [Search](#search)) |
 | `CREATE INDEX CONCURRENTLY` in migrations | `CREATE INDEX` |
+| Dropping `NOT NULL` on webhook delivery event and thread | Rebuild the table inside the migration transaction and restore its indexes for older system SQLite versions |
 | Stored functions and triggers for job wake-up notifications | omitted (the SQLite driver wakes jobs in-process) |
 | Task lease queue trigger | SQLite trigger with the same statements inlined |
 
@@ -589,7 +590,8 @@ CREATE INDEX matches_next ON watcher_matches (board_id, owner, state, thread, ev
 CREATE TABLE webhook_deliveries (                 -- transactional outbox
   id TEXT PRIMARY KEY,                            -- dl_..., the delivery ID receivers see
   org_id BIGINT NOT NULL, board_id BIGINT NOT NULL, webhook TEXT NOT NULL,
-  event BIGINT NOT NULL, thread BIGINT,
+  event BIGINT, thread BIGINT,                     -- both NULL for a test ping
+  type TEXT NOT NULL DEFAULT 'board.event',        -- board.event | board.ping
   state TEXT NOT NULL,                            -- pending | sending | done | dead | skipped
   attempt BIGINT NOT NULL DEFAULT 0, next_at BIGINT NOT NULL,
   lease_until BIGINT, instance TEXT,
