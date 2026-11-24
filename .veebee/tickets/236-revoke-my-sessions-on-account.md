@@ -6,11 +6,15 @@ package: web
 writes:
   - apps/web/src/routes/account.tsx
   - apps/web/e2e/account.spec.ts
+  - apps/web/src/api/client.ts
+  - apps/web/src/components/Header.tsx
+  - apps/web/src/routes/account.css
+  - docs/auth.md
 conformance: []
 modes: [local, hosted]
 depends_on: [218]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 397
 ---
 

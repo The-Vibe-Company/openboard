@@ -1,0 +1,50 @@
+.account {
+  display: block;
+  box-sizing: border-box;
+  width: min(100%, 44rem);
+  margin-inline: auto;
+  padding: 2rem 1rem;
+  overflow-wrap: anywhere;
+}
+
+.account h1 {
+  margin: 0;
+}
+
+.account section {
+  margin-top: 2rem;
+}
+
+.account button {
+  font: inherit;
+  padding: 0.4rem 0.8rem;
+}
+
+.account .personal-tokens {
+  padding-inline-start: 1.25rem;
+}
+
+.account .personal-tokens li {
+  padding-block: 1rem;
+  border-top: 1px solid #ddd;
+}
+
+.account .personal-tokens h3 {
+  margin: 0;
+}
+
+.account .personal-tokens dt {
+  font-weight: 600;
+}
+
+.account .personal-tokens dd {
+  margin-inline-start: 0;
+}
+
+.account .personal-tokens dl div + div {
+  margin-top: 0.5rem;
+}
+
+.account .personal-tokens button[aria-disabled="true"] {
+  opacity: 0.65;
+}

@@ -172,8 +172,8 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
   origin and `x-ob-csrf: <session csrf>`; otherwise 403. Bearer requests are
   exempt. No CORS headers on the API; credentials never in query strings.
 - Sign-out revokes the session; "sign out everywhere" revokes all of a
-  person's sessions; removing a member revokes nothing global but their
-  membership checks fail at once.
+  person's sessions from `/account`. Removing a member revokes nothing global
+  but their membership checks fail at once.
 
 ### CLI sign-in (device flow) and choosing org and board
 
@@ -188,9 +188,8 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
    While waiting, the route returns `{ pending: true }`. Polls faster than
    the advertised interval return 429 `rate_limited`. An expired or used
    device code returns 404 `not_found`. The personal token is bound to that organization (30 days, revocable from
-   `/account` once the page ships). Until then, list tokens with `GET /api/x/tokens`
-   and revoke one with `POST /api/x/tokens/:id/revoke` using the session cookie,
-   Origin and CSRF proof.
+   `/account`). The page lists tokens with `GET /api/x/tokens` and revokes one
+   with `POST /api/x/tokens/:id/revoke` using the session cookie, Origin and CSRF proof.
 4. The CLI prints the organization and board slugs and stores the token with
    the context `{ origin, org, board: "main" }` in
    `~/.config/openboard/personal.json` (mode 0600). If both a personal
