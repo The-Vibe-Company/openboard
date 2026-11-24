@@ -226,15 +226,7 @@ export async function matchWebhooks(
   enqueued: JobWrites["committed"],
 ) {
   // Older replicas can lease delivery jobs before they know how to decode this event.
-  if (
-    event.type === "task.reopened" ||
-    event.type === "task.needs_changed" ||
-    event.type === "task.blocked" ||
-    event.type === "task.unblocked" ||
-    event.type === "task.ready" ||
-    !isTailMessageEvent(event)
-  )
-    return;
+  if (event.type === "task.blocked" || !isTailMessageEvent(event)) return;
   const subscriptions = (await webhookReads(db, dialect, keys).webhooks()).filter(({ webhook }) => webhook.enabled);
   if (!subscriptions.length) return;
   const read = async (id: number) => {

@@ -1103,9 +1103,9 @@ Parked event reads wake on deletion and reauthorize against the tombstone.
 
 ### Task reopening during a rolling deploy
 
-The event feed serves `task.reopened` on upgraded replicas. The writer omits
-persisted pull-watcher matches and webhook deliveries for this event because
-an older replica can lease shared work before it can decode the event.
+The event feed served `task.reopened` on upgraded replicas. During the rollout
+the writer omitted persisted pull-watcher matches and webhook deliveries because
+older replicas could lease shared work before they could decode the event.
 
 ### Task dependency completion during a rolling deploy
 
@@ -1113,8 +1113,19 @@ When an older replica tries to complete a prerequisite that has dependants,
 Postgres rolls back the write and the replica returns a retryable 503
 `unavailable`. An upgraded replica can retry with the same claim and append
 the completion and readiness events together. The feed serves `task.ready`
-on upgraded replicas. The writer omits persisted pull-watcher matches and
-webhook deliveries because older replicas can lease work they cannot decode.
+on upgraded replicas. During the rollout the writer omitted persisted pull-watcher
+matches and webhook deliveries because older replicas could lease work they could
+not decode.
+
+### Task event webhook delivery after decoder rollout
+
+- **Status:** accepted (orchestrator, [issue #504](https://github.com/The-Vibe-Company/openboard/issues/504)).
+- **Decision.** Lift the webhook outbox exclusions for `task.ready`,
+  `task.reopened`, and `task.unblocked` after deploying the decoders on all
+  running replicas. Lift the exclusion for `task.needs_changed` as well.
+  Its decoder shipped before `task.unblocked` and clearing a waiting task's
+  needs can make it ready in this event.
+  The persisted pull-watcher exclusions remain in effect.
 
 ### Gateway allowlists for direct connections
 

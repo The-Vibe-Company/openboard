@@ -4,14 +4,18 @@ title: Fire only when a task becomes ready
 milestone: M11-webhooks-and-watchers
 package: core
 writes:
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/driver-sql/src/views/webhooks/deliveries.ts
+  - packages/server/test/webhooks/deliver.test.ts
   - packages/core/src/webhooks/filter.ts
   - packages/core/test/webhooks/filter.test.ts
   - packages/server/test/webhooks/became.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [254, 263, 304]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 504
 ---
 
@@ -19,8 +23,8 @@ issue: 504
 As a board admin, I subscribe a runner with `"became": { "task": "ready" }` and it is called once each time a task in `work/` becomes workable, whatever event made it so, and never for the replies or label changes in between.
 
 ## Done when
-- [ ] `bun test packages/server/test/webhooks/became.test.ts` passes with `{ "tail": "work/", "became": { "task": "ready" } }`: a task created ready, a waiting task whose last need completes, a released claim, an expired lease, a reopened task and an unblocked task each send exactly one delivery for the event that made it ready; a reply in the thread, a label change, a claim and a completion send none; `subject.task.state` is `ready` in each
-- [ ] `bun test packages/core/test/webhooks/filter.test.ts` passes: `became` is decided from the root's task state before and after each event, so two events in one write that leave the task ready once fire once; `became` with `types` keeps only both; an unknown state or key answers 400 `invalid_request`
+- [x] `bun test packages/server/test/webhooks/became.test.ts` passes with `{ "tail": "work/", "became": { "task": "ready" } }`: a task created ready, a waiting task whose last need completes, a released claim, an expired lease, a reopened task and an unblocked task each send exactly one delivery for the event that made it ready; a reply in the thread, a label change, a claim and a completion send none; `subject.task.state` is `ready` in each
+- [x] `bun test packages/core/test/webhooks/filter.test.ts` passes: `became` is decided from the root's task state before and after each event, so two events in one write that leave the task ready once fire once; `became` with `types` keeps only both; an unknown state or key answers 400 `invalid_request`
 
 ## Out of scope
 - `became` on labels (a label taking a value): not in the cut, listed as a gap in the PR that wrote this ticket.

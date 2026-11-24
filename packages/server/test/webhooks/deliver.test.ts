@@ -196,8 +196,8 @@ test("requires manage throughout the tail, including the member role cap and nar
   });
 });
 
-test("reopen leaves the shared webhook outbox untouched during mixed-version deployments", async () => {
-  const { runner, deliveries } = setup(204);
+test("delivers a reopened event to a type-only webhook after the decoder rollout", async () => {
+  const { runner, requests, run } = setup(204);
   await answer(
     call(runner, "POST", "/x/webhooks", { ...spec, filter: { tail: "dev", types: ["task.reopened"] } }),
     201,
@@ -213,5 +213,10 @@ test("reopen leaves the shared webhook outbox untouched during mixed-version dep
     200,
   );
   await answer(call(runner, "POST", `${path}/reopen`), 200);
-  expect(await deliveries()).toEqual([]);
+  await run();
+  expect(requests).toHaveLength(1);
+  expect(await requests[0]?.json()).toMatchObject({
+    event: { type: "task.reopened" },
+    subject: { thread: task.id, task: { state: "ready" } },
+  });
 });
