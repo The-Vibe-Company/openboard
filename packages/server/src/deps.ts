@@ -45,6 +45,7 @@ export interface Deps {
 export type Principal = Author & {
   readonly [credentialKind]?: "local" | "connection" | "agent" | "session" | "personal";
   readonly [credentialExpiry]?: number;
+  readonly [credentialName]?: string;
   readonly [connectionOf]?: ConnectionIdentity;
   /** The agent an `obt_` token was claimed as, `ag_…`. */
   readonly [agentOf]?: string;
@@ -83,6 +84,7 @@ export interface ConnectionIdentity {
 /** Request-only metadata. Symbol keys stay out of serialized message authors. */
 export const credentialKind = Symbol("credential kind");
 export const credentialExpiry = Symbol("credential expiry");
+export const credentialName = Symbol("credential name");
 export const connectionOf = Symbol("connection");
 export const agentOf = Symbol("agent");
 export const callerCan = Symbol("caller can");

@@ -1,6 +1,6 @@
 import { BoardError } from "@openboard/contract";
 import { grants } from "@openboard/core";
-import { callerCan, credentialExpiry, credentialKind, memberOf } from "../deps.ts";
+import { callerCan, credentialExpiry, credentialKind, credentialName, memberOf } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { bearer, hashToken } from "./secrets.ts";
 
@@ -15,7 +15,7 @@ export function personalTokenVerifier(now: () => number): CredentialVerifier {
       const person = await board.personalToken(hashToken(token), now());
       if (!person) throw new BoardError("not_found", "no such board or route");
       if (person === "inactive") return null;
-      const { id, handle, name, avatar, expiresAt } = person;
+      const { id, handle, name, avatar, tokenName, expiresAt } = person;
       const member = await board.member(id);
       if (!member) throw new BoardError("not_found", "no such board or route");
       const principal = `ob:user:${id}`;
@@ -25,6 +25,7 @@ export function personalTokenVerifier(now: () => number): CredentialVerifier {
         profile: null,
         [credentialKind]: "personal",
         [credentialExpiry]: expiresAt,
+        [credentialName]: tokenName,
         [memberOf]: { handle, name, avatar, ...member },
         [callerCan]: grants.allUsersCan(member.role),
       };

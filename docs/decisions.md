@@ -717,6 +717,15 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   the new form. The listed agents are the live ones (D50): unrevoked, token
   unexpired.
 
+### D52. Personal credential details on `GET /me`
+
+- **Context.** The CLI sign-in example shows a personal token's name and expiry.
+  The original response gave the CLI the kind and expiry but no token name.
+- **Decision.** Issue #159 adds an optional top-level OpenBoard-only
+  `credential` object with `kind`, `name?`, and `expiresAt?`.
+- **Consequence.** `ob whoami` can show the recorded token name and expiry.
+  Existing upstream fields and the OpenBoard kind remain available.
+
 ## Hard blockers found
 
 None. Limits worth knowing:

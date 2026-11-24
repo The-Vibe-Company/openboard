@@ -188,10 +188,13 @@ can     *  read post react label sync manage
 ```
 
 The server side is upstream's `GET /me` (`{ actor, principal, kind, handle,
-name, avatar, profile, expiresAt, can }`) plus one added object,
+name, avatar, profile, expiresAt, can }`) with the OpenBoard context object
 `openboard: { org: { slug, name }, board: { slug, name }, role, credential }`
-where `credential` is `session`, `personal`, `connection`, `agent`, `oidc`, or
-`local`. Upstream clients ignore the extra key.
+where `openboard.credential` identifies the kind. When acting as themselves,
+signed-in people also receive the optional top-level
+[credential details](protocol.md#board-extensions).
+For device sign-in, the token name comes from the client name supplied at login
+(`ob` for the OpenBoard CLI). Upstream clients ignore the extra keys.
 
 ## Local mode
 

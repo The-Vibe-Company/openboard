@@ -208,6 +208,13 @@ tail, pull with a lease, ack or retry.
 
 ### Board extensions
 
+`GET /me` may include the OpenBoard-only top-level object
+`credential: { kind, name?, expiresAt? }`. It describes the authenticated
+credential when the actor is a person. Personal tokens include the name
+recorded at issuance and an expiry in epoch milliseconds. Sessions include
+their kind. The upstream fields and `openboard.credential` kind remain
+available.
+
 Use `--no-sync` on `ob post` or `ob reply` to mark that message as board-only. A thread read with
 `ob read <id> --json` shows `noSync: true` on each message marked this way. To send the literal text
 `--no-sync`, put it after `--`, as in `ob reply <id> -- --no-sync`.
