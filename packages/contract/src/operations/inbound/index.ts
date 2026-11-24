@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { describeInboundRuleIssue, Inbound, InboundSpec } from "../../entities/inbound/index.ts";
 import { defineOperation, Ref } from "../../operation.ts";
+import { InboundActionResult } from "./received.ts";
 
 const common = {
   scope: "board",
@@ -99,8 +100,8 @@ export const receiveInboundEvent = defineOperation({
   input: { params },
   output: Type.Object({
     ok: Type.Literal(true),
-    matched: Type.Array(Type.Unknown()),
-    results: Type.Array(Type.Unknown()),
+    matched: Type.Array(Type.Integer()),
+    results: Type.Array(InboundActionResult),
   }),
   errors: [
     "invalid_request",
@@ -111,13 +112,27 @@ export const receiveInboundEvent = defineOperation({
     "thread_not_found",
     "reserved_label",
     "label_conflict",
+    "not_a_task",
+    "task_blocked",
+    "task_claimed",
+    "task_finished",
     "too_large",
     "unavailable",
   ],
   effects: {
     readOnly: false,
     idempotent: false,
-    emits: ["actor.seen", "message.posted", "labels.changed", "reaction.added"],
+    emits: [
+      "actor.seen",
+      "message.posted",
+      "labels.changed",
+      "reaction.added",
+      "task.expired",
+      "task.blocked",
+      "task.unblocked",
+      "task.ready",
+      "task.canceled",
+    ],
   },
   cli: false,
   mcp: false,

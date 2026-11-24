@@ -1063,7 +1063,7 @@ commands by configuration: the return path from an orchestrator.
 ```json
 POST {BOARD_URL}/x/inbound
 { "name": "orchestrator-status",
-  "can": { "work/": ["read", "post", "label"] },
+  "can": { "work/": ["read", "post", "label", "manage"] },
   "verify": { "preset": "ts-id-body", "signatureHeader": "<sender's>", "timestampHeader": "<sender's>",
               "idHeader": "<sender's>", "secret": "…", "tolerance": 300 },
   "thread": { "from": "{{body.externalRef}}", "pattern": "^ob:(\\d+)$" },
@@ -1127,7 +1127,7 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   `{ events, older }` for the last seven days. Each event contains
   `{ eventId, at, status, matched, results }` with an ISO 8601 receipt time.
   Matched rules are zero-based indices, and each result names the action
-  (`reply`, `label`, or `react`) and its message ID. A stored 422 has no
+  and its message ID, plus the outcome for `task.unblock`. A stored 422 has no
   action results. Receipts recorded before match indices were stored return
   an empty `matched` array. Sender bodies, headers, and refused signatures
   do not appear. Events sort by time descending, with event ID as the
@@ -1151,6 +1151,15 @@ receives the generated secret with mode 0600. Use `ob inbound`,
   A reaction adds the endpoint's reaction using the same short names and aliases
   as the message API. Successful results include `{ "label": "<root id>" }`
   or `{ "react": "<root id>" }` in action order.
+- **Task actions** require `read` and `manage` in the root's channel and use
+  the task routes' state rules. `task.block` renders its reason and requires
+  an unclaimed or expired task. `task.cancel` accepts a reason template and
+  defaults to `Canceled by inbound rule`. Block and cancel use the routes'
+  reason limit and return `task_finished` in the same states as their routes.
+  `task.unblock` returns an outcome of `unblocked` or `unchanged`. A task
+  without a hold, including a finished task, returns `unchanged` and emits
+  no events. A non-task root returns `not_a_task`. Results use the action
+  name and root ID, such as `{"task.unblock":"42","outcome":"unchanged"}`.
 - **Effects** run in one board transaction together with the dedupe insert, so
   they happen at most once per endpoint and delivery ID while its dedupe record
   is retained, including across instances.

@@ -1,16 +1,21 @@
-import { BoardError, type OutputOf, type receiveInboundEvent } from "@openboard/contract";
+import { BoardError, type OutputOf, type Permission, type receiveInboundEvent } from "@openboard/contract";
 import {
   agents,
+  decideBlockTask,
+  decideCancelTask,
   decideLabels,
   decideReaction,
+  decideUnblockTask,
+  effectiveTask,
   grants,
-  inboundMessagePermission,
+  inboundActionPermission,
   inboundThreadPosition,
   matchingInboundRules,
   messages,
   parseInboundRules,
   parseInboundThread,
-  renderInboundMessageAction,
+  renderInboundAction,
+  taskForUnblock,
 } from "@openboard/core";
 import type { BoardWriter, InboundRecord } from "@openboard/ports";
 
@@ -55,6 +60,34 @@ async function resolveThread(writer: BoardWriter, record: InboundRecord, body: u
   return { position, thread, permissions };
 }
 
+type TaskAction = Extract<ReturnType<typeof renderInboundAction>, { permission: "manage" }>;
+type ActionContext = Parameters<typeof decideBlockTask>[2];
+type ActionState = Omit<Parameters<typeof decideBlockTask>[0], "proof">;
+
+async function decideTaskAction(
+  writer: BoardWriter,
+  state: ActionState,
+  action: TaskAction,
+  context: ActionContext,
+  permissions: readonly Permission[],
+) {
+  if (action.action === "task.block") {
+    const change = decideBlockTask({ ...state, proof: null }, action.input, context, permissions);
+    return { ...change, result: { "task.block": action.input.id } };
+  }
+  if (action.action === "task.cancel") {
+    const change = decideCancelTask(state, action.input, context, permissions);
+    return { ...change, result: { "task.cancel": action.input.id } };
+  }
+  const root = taskForUnblock(state.target, action.input.id, context.by, permissions);
+  const needs = effectiveTask(root, context.now).task?.state === "blocked" ? root.task.needs.map(Number) : [];
+  const prerequisites = await writer.taskNeeds(needs);
+  const needsComplete =
+    prerequisites.length === needs.length && prerequisites.every((need) => need.task?.state === "completed");
+  const change = decideUnblockTask(state, root, needsComplete, context);
+  return { ...change, result: { "task.unblock": action.input.id, outcome: change.outcome } };
+}
+
 export async function runInbound(
   writer: BoardWriter,
   record: InboundRecord,
@@ -87,12 +120,23 @@ export async function runInbound(
   const target = { id: position, thread: position, channel: thread.channel };
   for (const { actions } of matching) {
     for (const action of actions) {
-      const required = inboundMessagePermission(action);
+      const required = inboundActionPermission(action);
       if (!permissions.includes(required)) {
         throw new BoardError("forbidden", `the inbound endpoint needs ${required} in the thread's channel`);
       }
-      const { permission, input } = renderInboundMessageAction(action, body, root);
+      const rendered = renderInboundAction(action, body, root);
+      const { permission, input } = rendered;
       const state = { head: writer.head, actor, target: root };
+      if (permission === "manage") {
+        const { events, task, result } = await decideTaskAction(writer, state, rendered, context, permissions);
+        if (events.length > 0) {
+          await writer.append(events);
+          actor = { id: principal, ...context.author };
+        }
+        root = task;
+        results.push(result);
+        continue;
+      }
       if (permission === "post") {
         const { events, message } = messages.decidePost({ ...state, target }, input, context);
         await writer.append(events);
@@ -100,11 +144,12 @@ export async function runInbound(
       } else {
         const events =
           permission === "label" ? decideLabels(state, input, context) : decideReaction(state, input, context);
-        if (events.length > 0) await writer.append(events);
+        results.push(permission === "label" ? { label: root.id } : { react: root.id });
+        if (events.length === 0) continue;
+        await writer.append(events);
         for (const event of events) {
           if (event.type !== "actor.seen") root = event.payload.view;
         }
-        results.push({ [permission]: root.id });
       }
       actor = { id: principal, ...context.author };
     }

@@ -1,10 +1,16 @@
 import { Type } from "@sinclair/typebox";
 import { defineOperation, Ref } from "../../operation.ts";
 
-const result = Type.Union([
+export const InboundActionResult = Type.Union([
   Type.Object({ reply: Type.String() }),
   Type.Object({ label: Type.String() }),
   Type.Object({ react: Type.String() }),
+  Type.Object({ "task.block": Type.String() }),
+  Type.Object({
+    "task.unblock": Type.String(),
+    outcome: Type.Union([Type.Literal("unblocked"), Type.Literal("unchanged")]),
+  }),
+  Type.Object({ "task.cancel": Type.String() }),
 ]);
 
 export const listInboundReceived = defineOperation({
@@ -35,7 +41,7 @@ export const listInboundReceived = defineOperation({
         at: Type.String({ format: "date-time" }),
         status: Type.Union([Type.Literal(200), Type.Literal(422)]),
         matched: Type.Array(Type.Integer()),
-        results: Type.Array(result),
+        results: Type.Array(InboundActionResult),
       }),
     ),
     older: Type.Union([Type.String(), Type.Null()]),

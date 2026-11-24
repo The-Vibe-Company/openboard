@@ -6,27 +6,23 @@ import type { parseInboundRules } from "./rules.ts";
 type Plan = ReturnType<typeof parseInboundRules>;
 type Action = Plan[number]["do"][number];
 type Template = Extract<Action, { reply: unknown }>["reply"];
-type MessageAction = Extract<Action, { reply: unknown } | { label: unknown } | { react: unknown }>;
 
-function requireMessageAction(action: Action, at: string): asserts action is MessageAction {
-  if (!("reply" in action || "label" in action || "react" in action)) {
-    throw new BoardError("invalid_rule", `${at}.${Object.keys(action)[0]}: unsupported inbound action`);
-  }
+export function inboundActionPermission(action: Action, at = "action") {
+  if ("reply" in action) return "post";
+  if ("label" in action) return "label";
+  if ("react" in action) return "react";
+  if ("task.block" in action || "task.unblock" in action || "task.cancel" in action) return "manage";
+  throw new BoardError("invalid_rule", `${at}.${Object.keys(action)[0]}: unsupported inbound action`);
 }
 
 export function validateInboundActions(plan: Plan): void {
   for (const [ruleIndex, rule] of plan.entries()) {
-    for (const [index, action] of rule.do.entries()) requireMessageAction(action, `rules[${ruleIndex}].do[${index}]`);
+    for (const [index, action] of rule.do.entries())
+      inboundActionPermission(action, `rules[${ruleIndex}].do[${index}]`);
   }
 }
 
-export function inboundMessagePermission(action: Action) {
-  requireMessageAction(action, "action");
-  return "reply" in action ? "post" : "label" in action ? "label" : "react";
-}
-
-export function renderInboundMessageAction(action: Action, body: unknown, thread: Message) {
-  requireMessageAction(action, "action");
+export function renderInboundAction(action: Action, body: unknown, thread: Message) {
   function render(parts: Template, field: string, limit: number): string {
     const rendered = renderTemplateText(parts, { body, thread }, limit);
     if (!rendered || rendered.truncated) throw new BoardError("invalid_request", `inbound ${field} is too large`);
@@ -42,6 +38,30 @@ export function renderInboundMessageAction(action: Action, body: unknown, thread
     return { permission: "react", input: { id: thread.id, emoji: render(action.react, "reaction", 64) } } as const;
   }
 
+  function taskReason(parts: Template): string {
+    const reason = render(parts, "task reason", 2000);
+    if ([...reason].length > 1000) throw new BoardError("invalid_request", "inbound task reason is too large");
+    return reason;
+  }
+
+  const id = thread.id;
+  if ("task.block" in action) {
+    const { kind, reason } = action["task.block"];
+    return { permission: "manage", action: "task.block", input: { id, kind, reason: taskReason(reason) } } as const;
+  }
+  if ("task.unblock" in action) {
+    return { permission: "manage", action: "task.unblock", input: { id } } as const;
+  }
+  if ("task.cancel" in action) {
+    const { reason } = action["task.cancel"];
+    return {
+      permission: "manage",
+      action: "task.cancel",
+      input: { id, reason: reason ? taskReason(reason) : "Canceled by inbound rule" },
+    } as const;
+  }
+
+  if (!("label" in action)) throw new BoardError("invalid_rule", "unsupported inbound action");
   const { set = {}, unset = [], if: conditions = {} } = action.label;
   const input: LabelChange = {
     id: thread.id,
