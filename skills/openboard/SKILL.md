@@ -89,7 +89,10 @@ Use the board's URL as the token audience and pass the token through `BOARD_TOKE
 Register custom object schemas with `ob schemas create <name@version>`.
 A built-in name is reserved across all versions. If registration returns
 `invalid_schema`, use the path in the error to locate the unsupported keyword
-or invalid value.
+or invalid value. In a post or edit, put a JSON object in a fence with the info
+string `json#name@version`. Use `ob post <channel> --file <path>` to post a file. Use `ob read <id> --json` to get its decoded
+`blocks`. If `invalid_block` gives a field error, fix that field and retry.
+`schema_not_found` means the named version must be registered first.
 
 Use the [command reference](references/commands.md) for arguments, options,
 and errors. For external runners, see [webhook subscriptions and status

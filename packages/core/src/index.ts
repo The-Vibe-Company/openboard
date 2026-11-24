@@ -129,6 +129,7 @@ export {
   storedBytesLimit,
 } from "./orgs/quotas.ts";
 export { decideMemberRole, requireAnotherOwner, requireMemberRemoval } from "./orgs/roles.ts";
+export { blockData, checkBlock, findBlocks, type MessageBlock } from "./schemas/blocks.ts";
 export { builtInSchemas } from "./schemas/builtins.ts";
 export { canonicalSchema } from "./schemas/canonical.ts";
 export { parseSchemaId } from "./schemas/id.ts";
@@ -140,6 +141,7 @@ export {
   type SchemaRegistered,
   schemaRegistration,
 } from "./schemas/register.ts";
+export { checkValue } from "./schemas/value.ts";
 export {
   advanceNeedsWalk,
   checkNeeds,

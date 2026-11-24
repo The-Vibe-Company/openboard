@@ -336,6 +336,18 @@ The list places built-ins before registered versions. Registration writes an
 Schema reads take a `name@version` ID. An invalid ID answers 400 `invalid_schema_id`,
 and an unknown version answers 404 `schema_not_found`.
 
+`POST /messages` and `POST /messages/:id/edit` check top-level fences whose
+info string starts with `json#name@version` against that schema version on the
+board. Successful writes return or store a message whose `blocks` lists the
+decoded objects in source order as `{ schema, version, data }`. Messages without
+structured fences have an empty list. The fence remains in the message text.
+Fences nested in code fences, quotes, or list items are treated as text.
+An unknown schema version answers 400 `schema_not_found`. Malformed fences,
+invalid JSON objects, and values that violate the schema answer 400
+`invalid_block`. Block data must be representable on both storage engines.
+It can contain at most 996 nested objects or arrays along a path, including the
+root object. A refused write leaves the message and its blocks intact.
+
 `POST /tasks` with `{ channel, text, labels?, noSync?, id?, needs? }` starts a thread as a task.
 It requires `post` in the channel and also `label` when the caller supplies labels.
 The 201 response is `{ task: Message }`. The root's `task` records the writer's

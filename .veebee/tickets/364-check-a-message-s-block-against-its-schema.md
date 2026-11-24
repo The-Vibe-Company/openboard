@@ -11,15 +11,31 @@ writes:
   - packages/core/src/messages/post.ts
   - packages/core/src/messages/edit.ts
   - packages/core/src/index.ts
-  - packages/driver-sql/src/views/schemas.ts
   - packages/server/src/operations/messages.ts
   - packages/server/test/schemas/blocks.test.ts
   - tools/conformance/test/schemas-parity.test.ts
+  - bun.lock
+  - docs/codebase.md
+  - docs/protocol.md
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/src/commands/usage.ts
+  - packages/cli/test/cli.test.ts
+  - packages/contract/src/operations/messages.ts
+  - packages/core/src/messages/mentions.ts
+  - packages/core/src/schemas/formats.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/events.ts
+  - scripts/ci/boundaries.json
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
+  - tools/conformance/package.json
+  - tools/conformance/score.json
+  - tools/conformance/tsconfig.json
 conformance: ["schemas/carries a block in a message, checked against the schema its fence names"]
 modes: [local, hosted]
 depends_on: [362]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 559
 ---
 
@@ -27,9 +43,9 @@ issue: 559
 As an agent, I post a message whose text holds a ```` ```json#sandbox@1 ```` fence, and the board checks it against `sandbox@1`, refuses it if it does not match, and gives it back as a block readers can use.
 
 ## Done when
-- [ ] with `sandbox@1` registered, `ob post dev --file report.md` (prose, a `json#sandbox@1` fence holding `{"id":"sbx-1","action":"stopped"}`, more prose) prints the message, and `ob read <id> --json` shows `blocks: [{ schema: "sandbox", version: 1, data: { id: "sbx-1", action: "stopped" } }]` with the text unchanged; a fence whose object misses `action` prints `error: invalid_block: …`, one naming `nothing@1` prints `error: schema_not_found: …`, and neither posts
-- [ ] `bun test packages/server/test/schemas/blocks.test.ts` passes on SQLite and Postgres: an edit whose block does not match answers 400 `invalid_block` and leaves the message and its blocks as they were; a fence inside a longer fence, in a quote or under a list item is text with no block; a message with no fence has `blocks: []`; `bun test tools/conformance/test/schemas-parity.test.ts` gives the same answer as upstream's `findBlocks` and `checkValue` on its fixture corpus
-- [ ] `bun run conformance` and `bun run conformance --driver postgres --instances 2` pass `schemas/carries a block in a message, checked against the schema its fence names`, recorded with `--update` under `local` and `hosted`
+- [x] with `sandbox@1` registered, `ob post dev --file report.md` (prose, a `json#sandbox@1` fence holding `{"id":"sbx-1","action":"stopped"}`, more prose) prints the message, and `ob read <id> --json` shows `blocks: [{ schema: "sandbox", version: 1, data: { id: "sbx-1", action: "stopped" } }]` with the text unchanged; a fence whose object misses `action` prints `error: invalid_block: …`, one naming `nothing@1` prints `error: schema_not_found: …`, and neither posts
+- [x] `bun test packages/server/test/schemas/blocks.test.ts` passes on SQLite and Postgres: an edit whose block does not match answers 400 `invalid_block` and leaves the message and its blocks as they were; a fence inside a longer fence, in a quote or under a list item is text with no block; a message with no fence has `blocks: []`; `bun test tools/conformance/test/schemas-parity.test.ts` gives the same answer as upstream's `findBlocks` and `checkValue` on its fixture corpus
+- [x] `bun run conformance` and `bun run conformance --driver postgres --instances 2` pass `schemas/carries a block in a message, checked against the schema its fence names`, recorded with `--update` under `local` and `hosted`
 
 ## Out of scope
 - Blocks in a schedule's text: 373 checks them with this ticket's functions when it is scheduled.

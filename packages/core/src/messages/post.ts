@@ -9,6 +9,7 @@ import {
   type postMessage,
 } from "@openboard/contract";
 import { formatId, isoTime } from "../ids.ts";
+import type { MessageBlock } from "../schemas/blocks.ts";
 import { checkLabels } from "./labels.ts";
 import type { SettledMentions } from "./mentions.ts";
 
@@ -40,6 +41,8 @@ export interface MessagePostedPayload {
   readonly thread: string;
   /** The original handle spellings and their resolution, kept with the message view. */
   readonly mentions?: Mention[];
+  /** Internal block projection, retained for replay and rebuilding the views. */
+  readonly blocks?: MessageBlock[];
   readonly labels: Readonly<Record<string, string>>;
   readonly noSync: boolean;
   readonly by: Author;
@@ -123,6 +126,7 @@ export interface PostContext {
   /** How the writer shows; with `state.actor` read, the post records it with `actor.seen` unless that matches it. */
   readonly author?: MessageAuthor;
   readonly now: number;
+  readonly blocks?: MessageBlock[];
 }
 
 /** No board string holds a NUL, which Postgres cannot store, or a lone surrogate (upstream `storable`). */
@@ -198,7 +202,7 @@ export function messageView(event: MessagePosted): Message {
     version: event.id,
     revision: 1,
     author: payload.author ?? null,
-    blocks: [],
+    blocks: payload.blocks ?? [],
   };
 }
 
@@ -256,6 +260,7 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
       channel,
       text: settled?.text ?? command.text,
       ...(settled?.mentions.length ? { mentions: settled.mentions } : {}),
+      ...(context.blocks?.length ? { blocks: context.blocks } : {}),
       re,
       replyTo,
       thread: formatId(root),
