@@ -97,11 +97,13 @@ export function createViews(
     org: (scope) => ({
       ...invitationView(db, dialect, scope),
       ...orgBoardsView(db, dialect, scope),
+      ...rateView(db, dialect, `org:${scope.orgId}:`),
       ...membershipView(db, dialect, scope),
       ...orgAuditReads(db, dialect, scope),
     }),
     board: (scope) => ({
       ...boardView(db, dialect, scope, broadcaster, jobs),
+      ...rateView(db, dialect, `board:${scope.orgId}:${scope.boardId}:`),
       subscribeEvents: (fromPosition, wake) =>
         broadcaster.subscribe(scope, fromPosition, (page, head) => wake(page && committedEvents(page), head)),
       ...personalTokenView(db, dialect, scope),

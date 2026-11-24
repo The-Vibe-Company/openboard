@@ -117,6 +117,12 @@ export const claimConnectionHandler: Handler<typeof claimConnection> = async (ct
     });
   }
   const connectionId = ctx.by.principal.slice(CONNECTION.length);
+  const seconds = await ctx.board.takeRate(`connection-claim:${connectionId}`, 30, 60_000, ctx.now());
+  if (seconds !== undefined) {
+    throw new BoardError("rate_limited", "too many agent token claims for this connection", {
+      next: [{ kind: "wait", seconds }],
+    });
+  }
   const { agent, token, profile } = await ctx.board.write(async (writer) => {
     const record = await writer.connection(connectionId);
     if (!record) throw new BoardError("unauthorized", "the credential is not valid on this board");

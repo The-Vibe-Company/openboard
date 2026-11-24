@@ -137,6 +137,11 @@ is empty, the instance returns `429 rate_limited` with `retry-after` in seconds
 before looking up the board or credential. The response contains only the
 generic rate-limit error and retry guidance.
 
+An authenticated connection can attempt 30 claims per connection in each fixed
+minute, shared across all instances. Further claims on
+`POST /x/connections/claim` return `429 rate_limited` with `retry-after` in
+seconds until the next minute. A rate-limited request does not spend a claim.
+
 Board creation, invitation acceptance, and connection creation can return 429
 `quota_exceeded` with reason `boards`, `members`, or `connections`. The defaults
 are 10 active boards and 50 members per organization, and 100 active connections
