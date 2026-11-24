@@ -11,11 +11,16 @@ writes:
   - packages/driver-sql/src/views/boards.ts
   - packages/driver-sql/src/views/messages.ts
   - packages/driver-sqlite/src/dialect.ts
+  - .veebee/tickets/176-wake-a-tail-on-one-instance-from-a-write-on-another.md
+  - packages/driver-postgres/src/index.ts
+  - packages/driver-postgres/bench/rls.ts
+  - packages/driver-postgres/test/unavailable.test.ts
+  - packages/driver-sql/test/actors.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [166, 170, 174]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t176
 issue: 256
 ---
 
@@ -23,8 +28,8 @@ issue: 256
 As an agent following a board, I receive a post the moment it is written, whichever instance wrote it.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/driver-postgres/test/broadcaster.test.ts` passes: with two drivers (two instances) on one database, a subscriber on instance 1 receives every position written through instance 2, in order, each once, and several notifications arriving together cause one read from the subscriber's cursor
-- [ ] in the same file, a write that rolls back sends no notification, and `bun test packages/driver-sqlite` still passes
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/driver-postgres/test/broadcaster.test.ts` passes: with two drivers (two instances) on one database, a subscriber on instance 1 receives every position written through instance 2, in order, each once, and several notifications arriving together cause one read from the subscriber's cursor
+- [x] in the same file, a write that rolls back sends no notification, and `bun test packages/driver-sqlite` still passes
 
 ## Out of scope
 - Delivery when a notification is lost (178); catching up after the listener reconnects (179).

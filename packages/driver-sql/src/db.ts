@@ -20,6 +20,8 @@ export interface Dialect {
   placeholder(index: number): string;
   /** Ends the head read that opens a board write: ` FOR UPDATE` on Postgres, nothing on SQLite. */
   readonly lockSuffix: string;
+  /** Announces the updated head in the same statement on Postgres, with no extra round trip. */
+  readonly notifyHeadSuffix: string;
 }
 
 /** The dialect the registry is written in, and the one Postgres runs. */
@@ -27,4 +29,5 @@ export const postgresText: Dialect = Object.freeze({
   name: "postgres",
   placeholder: (index: number) => `$${index}`,
   lockSuffix: " FOR UPDATE",
+  notifyHeadSuffix: " RETURNING (SELECT pg_notify('ob_events', boards.id::text || ':' || boards.head::text))",
 });

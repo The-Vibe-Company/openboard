@@ -2,16 +2,18 @@ import type { Named } from "@openboard/contract";
 import type { BoardCreation } from "@openboard/core";
 import type { BoardKeys, OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
-import { forUpdate, query, sql } from "../sql.ts";
+import { forUpdate, type Fragment, query, sql } from "../sql.ts";
 import { invitationStatements } from "./invitations.ts";
 import { orgStatements } from "./orgs.ts";
+
+const notifyHead: Fragment = Object.freeze({ fragment: (dialect: Dialect) => dialect.notifyHeadSuffix });
 
 /** Statements on organizations and boards themselves. `orgBySlug` runs before any tenant is known. */
 export const boardStatements = {
   orgBySlug: sql`SELECT id FROM orgs WHERE slug = ${"slug"} AND deleted_at IS NULL`,
   boardBySlug: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"} AND deleted_at IS NULL`,
   lockBoard: sql`SELECT head FROM boards WHERE org_id = ${"orgId"} AND id = ${"boardId"}${forUpdate}`,
-  setHead: sql`UPDATE boards SET head = ${"head"} WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
+  setHead: sql`UPDATE boards SET head = ${"head"} WHERE org_id = ${"orgId"} AND id = ${"boardId"}${notifyHead}`,
   orgBoards: sql`SELECT slug, name FROM boards WHERE org_id = ${"orgId"} AND deleted_at IS NULL ORDER BY slug`,
   boardSlugUsed: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"}`,
 };
