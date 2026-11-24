@@ -4,7 +4,7 @@
  * (`org_id = current_setting('app.org_id')::bigint`) to every table that carries `org_id` on that scratch database
  * only, then times a channel read of 50 and a post, interleaved, through three stores on the same database:
  *
- * - `plain`: the driver's views and connection as they ship, connected as the URL's user;
+ * - `plain`: the driver's views and statement runner as they ship, connected as the URL's user;
  * - `tenant`: the same, with every statement run in a transaction that first sets the tenant with
  *   `set_config('app.org_id', $1, true)`; as the URL's user, no policy applies, so this is the round trips alone;
  * - `rls`: `tenant` connected as a role the policies apply to.
@@ -133,7 +133,7 @@ interface Variant {
 }
 
 /**
- * The driver's own views and connection on a pool of `url`: as they ship (`plain`), with the tenant set per
+ * The driver's own views and statement runner on a pool of `url`: as they ship (`plain`), with the tenant set per
  * transaction (`tenant`), or that and connected as `role`, which the policies apply to (`rls`). All three pools are
  * opened alike, without `openPool`'s timeout settings, so the variants differ only in what they measure.
  */
@@ -204,6 +204,8 @@ async function checkPolicies(variants: readonly Variant[], other: BoardScope): P
   const leaked = await readIds(rls, other);
   if (seen === 0 || leaked !== "") throw new Error(`policy check failed: plain saw ${seen}, rls saw ${leaked}`);
   const own = await readIds(plain, scope(1, 1));
+  const count = own === "" ? 0 : own.split(",").length;
+  if (count !== READ_LIMIT) throw new Error(`plain read ${count} messages on its own board, not ${READ_LIMIT}`);
   for (const variant of tenanted) {
     if ((await readIds(variant, scope(1, 1))) !== own) throw new Error(`${variant.name} reads differ from plain's`);
   }
@@ -235,7 +237,12 @@ function report(result: Awaited<ReturnType<typeof measure>>): string[] {
       const sorted = [...(result.samples.get(key) ?? [])].sort((a, b) => a - b);
       const cells = [percentile(sorted, 50).toFixed(2), percentile(sorted, 99).toFixed(2)];
       lines.push(
-        `${operation.padEnd(9)}  ${name.padEnd(7)}  ${cells[0]?.padStart(6)}  ${cells[1]?.padStart(6)}  ${[...(result.trips.get(key) ?? [])].sort().join("/").padStart(11)}`,
+        `${operation.padEnd(9)}  ${name.padEnd(7)}  ${cells[0]?.padStart(6)}  ${cells[1]?.padStart(6)}  ${[
+          ...(result.trips.get(key) ?? []),
+        ]
+          .sort((a, b) => a - b)
+          .join("/")
+          .padStart(11)}`,
       );
     }
   }

@@ -399,8 +399,8 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   - Shared tables keyed by `org_id` and `board_id`, primary keys led by
     `board_id`; not schema- or database-per-tenant (migration and pool cost
     at thousands of small tenants).
-  - No Postgres RLS in v1: it costs a round trip on every read to set the
-    tenant per transaction (measured in D56: three round trips). Isolation by construction (only the tenant
+  - No Postgres RLS in v1: setting the tenant per transaction costs three
+    more round trips on every read (measured in D56). Isolation by construction (only the tenant
     resolver mints a `BoardScope`; store functions take it; a static check
     that every statement filters on `board_id` or `org_id`; a tenant
     isolation test suite). `org_id` on every row keeps RLS a later option.
@@ -798,7 +798,7 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   organization 2's board. It times the store's channel read (the latest 50)
   and its post, 1,000 of each per variant after 100 warm-up runs. The three
   variants alternate operation by operation, and the one that goes first
-  rotates. `plain` is the driver's views and connection as they ship.
+  rotates. `plain` is the driver's views and statement runner as they ship.
   `tenant` runs every statement in a transaction that first calls
   `set_config('app.org_id', $1, true)`, as a superuser, so the policies are
   bypassed: its cost is the extra round trips alone. `rls` is `tenant`
@@ -830,7 +830,9 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   The p99s varied more: a read took 0.21 to 0.24 ms plain, 0.40 to 0.81 ms
   with the tenant set, and 0.38 to 0.86 ms with RLS. The extra round trips
   are the cost. Setting the tenant doubles a read's p50; evaluating the
-  policies adds 0.01 to 0.05 ms at p50 on top (`rls` minus `tenant`). On
+  policies on top (`rls` minus `tenant`) is within run-to-run noise, at most
+  about 0.05 ms at p50. All three pools are opened alike, without the
+  shipped pool's timeout settings, which do not change latency. On
   loopback a round trip costs about 0.05 ms. On a network round trip of
   0.5 ms (D33's figure), three extra round trips would add about 1.5 ms to
   every read statement, and one extra round trip about 0.5 ms to every
