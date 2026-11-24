@@ -1,7 +1,9 @@
 import type { Actor, Message } from "@openboard/contract";
 import {
   type BoardEvent,
+  checkDailyEvents,
   checkStoredBytes,
+  dailyEventWindow,
   type MessageDeleted,
   type MessagePosted,
   messages,
@@ -184,6 +186,46 @@ function messageStorage(tx: Db, dialect: Dialect, keys: BoardKeys, storage: Boar
 }
 
 /** `committed` collects the appended events, which the broadcaster hands to live tails once the write commits. */
+function eventWriter(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  start: number,
+  committed: BoardEvent[],
+  usage: ReturnType<typeof messageStorage>,
+  dailyEvents: { readonly day: number; readonly count: number; readonly limit: number },
+  measured: number,
+): Pick<BoardWriter, "append" | "head"> {
+  let head = start;
+  let { day, count } = dailyEvents;
+  return {
+    get head() {
+      return head;
+    },
+    async append(events) {
+      const [first] = events;
+      if (!first) return;
+      const now = Number.isFinite(measured) ? measured : first.at;
+      const window = dailyEventWindow(now);
+      // A queued write with an earlier clock reading cannot reopen a prior day.
+      if (window.day > day) {
+        day = window.day;
+        count = 0;
+      }
+      checkDailyEvents(count, events.length, dailyEvents.limit, dailyEventWindow(day).nextDay, now);
+      for (const event of events) {
+        if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);
+        await usage.account(event);
+        await appendEvent(tx, dialect, keys, event);
+        committed.push(event);
+        head = event.id;
+      }
+      count += events.length;
+      await setHead(tx, dialect, keys, head, usage.boardBytes, { day, count });
+    },
+  };
+}
+
 function writer(
   tx: Db,
   dialect: Dialect,
@@ -193,14 +235,17 @@ function writer(
   committed: BoardEvent[],
   jobs: ReturnType<typeof jobWriter>,
   storage: BoardStorage,
+  dailyEvents: { readonly day: number; readonly count: number; readonly limit: number },
+  now: number,
 ): BoardWriter {
-  let head = start;
   const usage = messageStorage(tx, dialect, keys, storage);
+  const events = eventWriter(tx, dialect, keys, start, committed, usage, dailyEvents, now);
   return {
     ...taskWriter(tx, dialect, keys),
     ...jobs,
+    append: events.append,
     get head() {
-      return head;
+      return events.head;
     },
     channel: (path) => findChannel(tx, dialect, keys, path),
     actor,
@@ -250,17 +295,6 @@ function writer(
     agent: (id) => findAgent(tx, dialect, keys, id),
     agentByClaimKey: (connection, key) => findAgentByClaimKey(tx, dialect, keys, connection, key),
     profileHolder: (connection, profile) => profileHolder(tx, dialect, keys, connection, profile),
-    async append(events) {
-      if (events.length === 0) return;
-      for (const event of events) {
-        if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);
-        await usage.account(event);
-        await appendEvent(tx, dialect, keys, event);
-        committed.push(event);
-        head = event.id;
-      }
-      await setHead(tx, dialect, keys, head, usage.boardBytes);
-    },
   };
 }
 
@@ -284,12 +318,14 @@ export function boardView(
       let enqueued = false;
       try {
         const { result, page } = await db.transaction(async (tx) => {
-          const { head, actor, storage } = await lockBoardAs(tx, dialect, keys, as ?? null);
+          const now = jobs.now();
+          const window = dailyEventWindow(Number.isFinite(now) ? now : 0);
+          const { head, actor, storage, dailyEvents } = await lockBoardAs(tx, dialect, keys, as ?? null, window);
           const events: BoardEvent[] = [];
           const queue = jobWriter(tx, dialect, keys, jobs, () => {
             enqueued = true;
           });
-          const boardWriter = writer(tx, dialect, keys, head, actor, events, queue, storage);
+          const boardWriter = writer(tx, dialect, keys, head, actor, events, queue, storage, dailyEvents, now);
           const result = await fn(boardWriter);
           const page = boardWriter.head > head ? { after: head, head: boardWriter.head, events } : undefined;
           if (page !== undefined && storage.staleSiblings) await repairStoredBytes(tx, dialect, keys);

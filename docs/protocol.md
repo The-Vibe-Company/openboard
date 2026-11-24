@@ -24,6 +24,13 @@ The board API is upstream Vercel Board's protocol
 | Front | `/signin`, `/invite/:token`, `/new`, `/device`, `/account`, `/:org`, `/:org/:board`, `/:org/:board/t/:id`, `/:org/settings[/members|/boards]`, `/:org/:board/settings/{connections,webhooks,inbound,grants}` | same, org `local` |
 | Health | `/healthz`, `/readyz` | same |
 
+Both health probes are unauthenticated and return JSON with `Cache-Control: no-store`.
+`GET /healthz` returns 200 with `{"version":"<running version>"}` without
+querying storage. `GET /readyz` returns 200 with `{"ready":true}` when
+storage answers within one second with a compatible schema and the
+instance can serve traffic. It returns 503 with `{"ready":false}` while
+draining or when the readiness check fails.
+
 **Why paths, not a subdomain per organization.** Both satisfy upstream's
 client constraints, which are about the URL string, not its shape:
 discovery's `url` and `audience` must equal `BOARD_URL` exactly (trailing
@@ -118,7 +125,7 @@ answers. OpenBoard adds:
 | 410 | `secret_spent`, `invitation_used` | single-use secret claimed; invitation accepted, revoked, or expired |
 | 400 | `invalid_url`, `invalid_signing`, `invalid_rule`, `reserved_slug` | webhook URL refused; bad scheme; bad inbound rule; reserved slug |
 | 401 | `bad_signature` | inbound endpoint signature |
-| 429 | `rate_limited`, `quota_exceeded` | with `retry-after` for rate limits |
+| 429 | `rate_limited`, `quota_exceeded` | with `retry-after` for rate limits and the daily event quota |
 
 Board creation, invitation acceptance, and connection creation can return 429
 `quota_exceeded` with reason `boards`, `members`, or `connections`. The defaults
@@ -130,6 +137,12 @@ Posting or growing a message, including creating a task from a new thread, can r
 `stored_bytes` (OpenBoard). The default is 1 GB per organization, counting the
 UTF-8 text and serialized blocks of live messages across its boards. Edits
 count the change in size, and deleting a message frees its bytes.
+
+A board write that would exceed 100,000 events on that board in a UTC day
+returns 429 `quota_exceeded` with reason `daily_events` and `retry-after` in
+seconds until UTC midnight. An organization override can change the limit for
+each of its boards. All events in the write count, including bookkeeping, and
+a refused write appends nothing.
 
 ## Route inventory: the board (relative to `BOARD_URL`)
 
@@ -298,7 +311,11 @@ A `user` takes a board member's OpenBoard person ID. For a `github` principal
 without workflow, branch or event filters, the `repository` field can also
 carry the exact subject of a person's locally linked GitHub identity.
 Project and app principal kinds are preserved for display. Grant creation
-appears as `ob.grant.created` in the board audit.
+appears as `ob.grant.created` in the board audit. The response and subsequent listings
+keep `can` as submitted, including `"all"`, the order of permission lists, and empty lists.
+An empty list contributes no permissions when its pattern decides access. Grants tied
+at that pattern can still add permissions. In the CLI,
+`--can 'ops/=read' --can 'ops/secret/=none'` allows reading under `ops/` and closes `ops/secret/`.
 
 `GET /grants` returns `{ grants }`, every unrevoked grant oldest first in the same view, as upstream's
 does. It needs `manage` at `*` or board ownership,

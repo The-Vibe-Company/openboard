@@ -3,6 +3,7 @@ import type { Db, Dialect, Row, SqlValue } from "../src/db.ts";
 import { postgresText } from "../src/db.ts";
 import { lockBoardAs } from "../src/views/actors.ts";
 
+const window = { day: 0, nextDay: 86_400_000 };
 const keys = { orgId: 1, boardId: 1 };
 const ada = { id: "ob:user:ada", kind: "person", handle: "ada", name: "ada", avatar: null } as const;
 const sqliteText: Dialect = Object.freeze({
@@ -28,7 +29,7 @@ function recording(answer: (text: string) => Row[]) {
 
 test("on Postgres, reads the writer's record in its own statement after the board's row lock", async () => {
   const { db, ran } = recording((text) => (text.includes("FOR UPDATE") ? [{ head: 7 }] : [{ ...ada }]));
-  expect(await lockBoardAs(db, postgresText, keys, ada.id)).toMatchObject({ head: 7, actor: ada });
+  expect(await lockBoardAs(db, postgresText, keys, ada.id, window)).toMatchObject({ head: 7, actor: ada });
   expect(ran).toHaveLength(2);
   expect(ran[0]).toStartWith("SELECT boards.head, boards.timeline,");
   expect(ran[0]).toEndWith("FOR UPDATE OF boards");
@@ -37,7 +38,7 @@ test("on Postgres, reads the writer's record in its own statement after the boar
 
 test("on SQLite, reads the head and the writer's record in one statement", async () => {
   const { db, ran } = recording(() => [{ head: 7, id: null, kind: null, handle: null, name: null, avatar: null }]);
-  expect(await lockBoardAs(db, sqliteText, keys, ada.id)).toMatchObject({ head: 7, actor: null });
+  expect(await lockBoardAs(db, sqliteText, keys, ada.id, window)).toMatchObject({ head: 7, actor: null });
   expect(ran).toHaveLength(1);
   expect(ran[0]).toStartWith("SELECT boards.head, boards.timeline,");
 });
@@ -47,14 +48,15 @@ test("refreshes sibling usage and the actor together when Postgres waited for an
   const { db, ran } = recording(() => {
     if (first) {
       first = false;
-      return [{ head: 8, snapshot_head: 7, board_bytes: 100, other_bytes: 0 }];
+      return [{ head: 8, snapshot_head: 7, board_bytes: 100, other_bytes: 0, event_day: 0, event_count: 1 }];
     }
-    return [{ ...ada, head: 8, snapshot_head: 8, board_bytes: 100, other_bytes: 890 }];
+    return [{ ...ada, head: 8, snapshot_head: 8, board_bytes: 100, other_bytes: 890, event_day: 0, event_count: 2 }];
   });
-  expect(await lockBoardAs(db, postgresText, keys, ada.id)).toMatchObject({
+  expect(await lockBoardAs(db, postgresText, keys, ada.id, window)).toMatchObject({
     head: 8,
     actor: ada,
     storage: { boardBytes: 100, otherBytes: 890 },
+    dailyEvents: { day: 0, count: 2 },
   });
   expect(ran).toHaveLength(2);
   expect(ran[1]).toEndWith("FOR UPDATE OF boards");

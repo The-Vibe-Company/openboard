@@ -73,7 +73,7 @@ async function replayClaim(ctx: ClaimContext, writer: BoardWriter, connection: s
     throw new BoardError("invalid_request", "this claim key belongs to another profile");
   }
   if (input.can !== undefined) {
-    const requested = Object.entries(grants.compileCan(input.can));
+    const requested = Object.entries(grants.compileRequiredCan(input.can));
     const pinned = record.agent.can;
     const matches =
       requested.length === Object.keys(pinned).length &&

@@ -57,6 +57,9 @@ test("a key is scoped to its connection, stays bound to its profile, and cannot 
     expect(a.agent.id).not.toBe(b.agent.id);
     const narrower = await claim(first, { ...CLAIM, can: { dev: ["read"] } });
     expect(narrower.status).toBe(400);
+    const empty = await claim(first, { ...CLAIM, can: { dev: [] } });
+    expect(empty.status).toBe(400);
+    expect(await empty.json()).toMatchObject({ error: { code: "grant_empty" } });
     const wrongProfile = await claim(first, { ...CLAIM, profile: "fixer-3" });
     expect(wrongProfile.status).toBe(400);
     clock.now = NOW + 3_580_000;

@@ -41,11 +41,17 @@ function actorView(row: Row): Actor | null {
 }
 
 /** Takes the board's lock and reads its head with the board's record of `actor`: the start of the write. */
-export async function lockBoardAs(tx: Db, dialect: Dialect, keys: BoardKeys, actor: string | null) {
-  const { head, row, storage, actorLoaded } = await lockBoard(tx, dialect, keys, actor);
+export async function lockBoardAs(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  actor: string | null,
+  window: Parameters<typeof lockBoard>[4],
+) {
+  const { head, row, storage, dailyEvents, actorLoaded } = await lockBoard(tx, dialect, keys, actor, window);
   const [found] =
     actor !== null && !actorLoaded ? await query(tx, dialect, actorStatements.findActor, { ...keys, actor }) : [row];
-  return { head, storage, actor: found ? actorView(found) : null };
+  return { head, storage, dailyEvents, actor: found ? actorView(found) : null };
 }
 
 /** The fold of `actor.seen`: the actor's row, its first sighting kept and its details and last sighting replaced. */

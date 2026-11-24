@@ -4,6 +4,18 @@ title: Keep a grant's can as written
 milestone: M10-access
 package: core
 writes:
+  - docs/protocol.md
+  - packages/cli/src/commands/grants.ts
+  - packages/cli/src/commands/usage.ts
+  - packages/cli/test/grants.test.ts
+  - packages/core/src/access/agents.ts
+  - packages/core/src/access/connections.ts
+  - packages/server/src/operations/connections.ts
+  - packages/server/test/auth/claim.test.ts
+  - packages/server/test/auth/claim-key.test.ts
+  - packages/server/src/operations/grants/create.ts
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
   - packages/core/src/access/grants.ts
   - packages/core/test/access/grants.test.ts
   - packages/core/src/access/resolve.ts
@@ -13,8 +25,8 @@ writes:
 conformance: ["grants/keeps a grant's can as written, a pattern with no permissions included"]
 modes: [local, hosted]
 depends_on: [279]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t280
 issue: 455
 ---
 
@@ -22,8 +34,8 @@ issue: 455
 As a board owner, I close part of a pattern with `none`, `ob grants create --connection <id> --can 'ops/=read' --can 'ops/secret/=none'`, and the grant keeps exactly what I wrote.
 
 ## Done when
-- [ ] that command makes a grant whose `can` reads back from `ob grants --json` as written, `{ "ops/": ["read"], "ops/secret/": [] }` (and `*=all` as `"all"`); the connection then reads `ops/web` but neither reads nor posts in `ops/secret/x`
-- [ ] `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `grants/keeps a grant's can as written, a pattern with no permissions included`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
+- [x] that command makes a grant whose `can` reads back from `ob grants --json` as written, `{ "ops/": ["read"], "ops/secret/": [] }` (and `*=all` as `"all"`); the connection then reads `ops/web` but neither reads nor posts in `ops/secret/x`
+- [x] `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `grants/keeps a grant's can as written, a pattern with no permissions included`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
 
 ## Out of scope
 - `everyone` closing a pattern (282).

@@ -8,7 +8,7 @@ import {
 } from "@openboard/contract";
 import { isoTime } from "../ids.ts";
 import { connectionPrincipal, profileAllowed } from "./connections.ts";
-import { compileCan, withImplied } from "./grants.ts";
+import { compileRequiredCan, withImplied } from "./grants.ts";
 
 /** The connection whose secret claims, as stored: its patterns, its grant, and its token lifetimes in seconds. */
 export interface ClaimingConnection {
@@ -113,7 +113,7 @@ export function allowedAt(can: Can, spot: string): readonly Permission[] {
  * pattern decides a channel cannot change.
  */
 function narrowed(grant: Can, written: CanInput): Can {
-  const can = compileCan(written);
+  const can = compileRequiredCan(written);
   for (const spot of new Set([...Object.keys(grant), ...Object.keys(can)])) {
     const allowed = allowedAt(grant, spot);
     const missing = allowedAt(can, spot).find((permission) => !allowed.includes(permission));

@@ -6,7 +6,7 @@ import { type App, DRAIN_TIMEOUT_MS, mintLocalOwnerToken } from "@openboard/serv
 import { compose } from "./compose.ts";
 import type { Config } from "./config.ts";
 
-const HOST = "127.0.0.1";
+const LOOPBACK = "127.0.0.1";
 
 /**
  * Writes the owner token where `ob` looks for it, `~/.config/openboard/local/<port>.json`, readable by the user only
@@ -21,13 +21,14 @@ async function writeTokenFile(port: number, url: string, token: string): Promise
   await rename(partial, file);
 }
 
-/** `ob serve`: listens on loopback and runs until interrupted. */
+/** `ob serve`: binds locally or on all interfaces in hosted mode. */
 export async function serve(config: Config): Promise<void> {
+  const hostname = config.mode === "hosted" ? "0.0.0.0" : LOOPBACK;
   const owner = config.mode === "local" ? mintLocalOwnerToken(crypto.getRandomValues(new Uint8Array(42))) : undefined;
   const app = await compose(config, owner?.hash);
   try {
     const server = Bun.serve({
-      hostname: HOST,
+      hostname,
       port: config.port,
       fetch(request, server) {
         if (request.method === "GET" && /\/events\/*$/.test(new URL(request.url).pathname)) server.timeout(request, 0);
@@ -36,11 +37,11 @@ export async function serve(config: Config): Promise<void> {
     });
     try {
       if (owner) {
-        const url = `http://${HOST}:${server.port}/api/local/main`;
+        const url = `http://${hostname}:${server.port}/api/local/main`;
         await writeTokenFile(server.port ?? config.port, url, owner.token);
         process.stdout.write(`BOARD_URL=${url}\n`);
       } else {
-        process.stdout.write(`OpenBoard listening on http://${HOST}:${server.port} (hosted mode)\n`);
+        process.stdout.write(`OpenBoard listening on http://${hostname}:${server.port} (hosted mode)\n`);
       }
     } catch (error) {
       await server.stop();

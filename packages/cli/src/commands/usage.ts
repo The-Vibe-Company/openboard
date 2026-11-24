@@ -97,7 +97,7 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
       "remove-connection":
         "Remove a board connection. Prefix other principal flags with remove- to remove those kinds.",
       environment: "Comma-separated environments for a project. Adding a named project joins its environments.",
-      can: "Replace the grant’s channel patterns and permissions. Repeat for multiple patterns.",
+      can: "Replace the grant’s channel patterns and permissions. Use none to close a pattern. Repeatable.",
     },
   },
   "grants create": {
@@ -105,7 +105,7 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     operations: ["createGrant"],
     example: "ob grants create --connection cn_7k2m4q3t5v2w6x7y --can 'deploys/=read,post'",
     options: {
-      can: "A channel pattern and its permissions, all or a comma-separated list. Repeatable.",
+      can: "A channel pattern and its permissions, all, none or a comma-separated list. Repeatable.",
       connection: "A connection ID on this board.",
       "all-connections": "Every connection on this board.",
       user: "An OpenBoard person ID.",

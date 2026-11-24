@@ -44,7 +44,12 @@ function errorBody(error: BoardError): ErrorBody {
 
 /** The one edge where failures become answers: a `BoardError` as its envelope, anything else a logged 500. */
 export function errorResponse(error: unknown, log: Logger): Response {
-  if (error instanceof BoardError) return json({ error: errorBody(error) }, error.status);
+  if (error instanceof BoardError) {
+    const response = json({ error: errorBody(error) }, error.status);
+    const wait = error.next?.find((step) => step.kind === "wait");
+    if (error.status === 429 && wait) response.headers.set("retry-after", String(wait.seconds));
+    return response;
+  }
   const stack = error instanceof Error ? (error.stack ?? error.message) : String(error);
   log.error("request failed", { stack });
   return json({ error: { code: "internal", message: "the board failed to answer; it logged why" } }, 500);

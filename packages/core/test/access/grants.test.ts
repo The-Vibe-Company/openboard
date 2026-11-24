@@ -35,9 +35,12 @@ describe("compileCan", () => {
     expect(codeOf(() => grants.compileCan({ "*": ["read", "write" as "read"] }))).toBe("invalid_grant");
   });
 
-  test("refuses a grant that lets nothing in as grant_empty", () => {
+  test("refuses a map with no patterns as grant_empty", () => {
     expect(codeOf(() => grants.compileCan({}))).toBe("grant_empty");
-    expect(codeOf(() => grants.compileCan({ dev: [] }))).toBe("grant_empty");
+  });
+
+  test("retains a pattern with no permissions", () => {
+    expect(grants.compileCan({ dev: [] })).toEqual({ dev: [] });
   });
 });
 
@@ -108,13 +111,13 @@ describe("capByRole", () => {
     expect(grants.capByRole({ "*": [...all["*"]] }, role)).toEqual({ "*": [...all["*"]] });
   });
 
-  test("caps what a pattern's permissions imply, and drops a pattern a member keeps nothing of", () => {
+  test("caps implied permissions and keeps explicit closures", () => {
     expect(grants.capByRole({ "dev/": ["manage"], ops: ["sync"], ci: ["post"] }, "member")).toEqual({
       "dev/": ["read", "post", "react", "label"],
       ops: ["read"],
       ci: ["post"],
     });
-    expect(grants.capByRole({ ci: ["post"], ops: [] }, "member")).toEqual({ ci: ["post"] });
+    expect(grants.capByRole({ ci: ["post"], ops: [] }, "member")).toEqual({ ci: ["post"], ops: [] });
   });
 
   test("seeded g1 gives a member the capped set and an admin manage", () => {

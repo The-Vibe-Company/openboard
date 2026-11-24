@@ -143,6 +143,7 @@ test.each([
   [{ profile: "fixer-2", idempotencyKey: "" }, "invalid_request"],
   [{ profile: "fixer-2", can: { "Dev/": "all" } }, "invalid_grant"],
   [{ profile: "fixer-2", can: {} }, "grant_empty"],
+  [{ profile: "fixer-2", can: { dev: [] } }, "grant_empty"],
 ])("POST /x/connections/claim refuses %j with 400 %s", async (body, code) => {
   app = makeApp();
   const secret = await connect(app);

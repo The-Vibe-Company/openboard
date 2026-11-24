@@ -10,8 +10,8 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [183, 187]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 268
 ---
 
@@ -19,8 +19,8 @@ issue: 268
 As an operator, I run OpenBoard from one container image that holds only the compiled binary.
 
 ## Done when
-- [ ] `bun run build && docker build -t openboard:dev .` succeeds, and `docker run --rm --entrypoint id openboard:dev -u` prints a user ID other than 0
-- [ ] `docker run --rm -p 8787:8787 -e OPENBOARD_DATABASE_URL=postgres://openboard:openboard@host.docker.internal:55432/openboard openboard:dev` serves hosted mode: `curl http://127.0.0.1:8787/api/acme/main` answers discovery from the host, and `docker stop` ends the container within 10 s
+- [x] `bun run build && docker build -t openboard:dev .` succeeds, and `docker run --rm --entrypoint id openboard:dev -u` prints a user ID other than 0
+- [x] `docker run --rm -p 8787:8787 -e OPENBOARD_DATABASE_URL=postgres://openboard:openboard@host.docker.internal:55432/openboard openboard:dev` serves hosted mode: `curl http://127.0.0.1:8787/api/acme/main` answers discovery from the host, and `docker stop` ends the container within 10 s
 
 ## Out of scope
 - Local mode in a container on one volume, and its listening address (M7, 213).
