@@ -157,6 +157,7 @@ for (const width of [1280, 375]) {
 
         await header.getByRole("button", { name: "Switch organization: acme" }).click();
         await header.getByRole("link", { name: "Acme", exact: true }).click();
+        await page.getByRole("region", { name: "Boards" }).getByRole("link", { name: /main/i }).click();
         await expect(page).toHaveURL(`${server.url}/acme/main`);
         const userMenu = header.getByRole("button", { name: "User menu" });
         await userMenu.click();
