@@ -4,16 +4,31 @@ title: List what an inbound endpoint received
 milestone: M11-webhooks-and-watchers
 package: server
 writes:
-  - packages/contract/src/operations/inbound-events.ts
+  - packages/cli/src/output.ts
+  - packages/contract/src/operations/inbound/received.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/ports/src/inbound/index.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/ports/testkit/isolation-case-seeds.ts
   - packages/server/src/inbound/received.ts
   - packages/server/src/operations/index.ts
-  - packages/driver-sql/src/views/inbound.ts
+  - packages/server/src/inbound/run.ts
+  - packages/driver-sql/src/views/inbound/index.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/migrations/0042-inbound-history.sql
+  - packages/server/test/inbound/no-thread.test.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
+  - docs/data-model.md
+  - skills/openboard/references/commands.md
+  - skills/openboard/references/webhooks.md
   - packages/server/test/inbound/received.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [333, 334]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 521
 ---
 

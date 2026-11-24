@@ -30,6 +30,12 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  * case does not compile. A case answers what the view gave, which must hold nothing of B.
  */
 const boardCases: Cases<BoardView> = {
+  inboundReceived: async (a, b) => {
+    expect(await b.board.inboundReceived(inboundId, at, null, 1)).toEqual([
+      { eventId: "delivery-fixture", at, result: "{}" },
+    ]);
+    expect(await a.board.inboundReceived(inboundId, at, null, 1)).toEqual([]);
+  },
   inboundSecret: async (a, b) => {
     expect(await b.board.inboundSecret(inboundId)).toEqual(inboundCipher);
     expectNull(await a.board.inboundSecret(inboundId));
@@ -146,6 +152,8 @@ const boardCases: Cases<BoardView> = {
 
 /** One case per `BoardWriter` member, inside A's write with B's IDs. */
 const writerCases: Cases<BoardWriter> = {
+  inboundReceived: async (a) =>
+    expect(await inWrite(a, (writer) => writer.inboundReceived(inboundId, at, null, 1))).toEqual([]),
   inboundEndpoints: async (a) => expect(await inWrite(a, (writer) => writer.inboundEndpoints())).toEqual([]),
   inboundEndpoint: async (a) => expectNull(await inWrite(a, (writer) => writer.inboundEndpoint(inboundId))),
   inboundQuota: async (a) => expectNull(await inWrite(a, (writer) => writer.inboundQuota())),

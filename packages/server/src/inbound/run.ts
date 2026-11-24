@@ -16,6 +16,7 @@ import type { BoardWriter, InboundRecord } from "@openboard/ports";
 
 type Result = OutputOf<typeof receiveInboundEvent>;
 type MissingThread = { error: { code: "thread_not_found"; message: string } };
+type MissingThreadReceipt = MissingThread & { matched: number[] };
 
 export function parseInboundBody(bytes: Uint8Array): unknown {
   try {
@@ -60,7 +61,7 @@ export async function runInbound(
   headers: Headers,
   body: unknown,
   now: number,
-): Promise<Result | MissingThread> {
+): Promise<Result | MissingThreadReceipt> {
   const { inbound } = record;
   const rulePlan = inbound.rulePlan ?? parseInboundRules(inbound.rules);
   const fields = Object.fromEntries(headers);
@@ -72,7 +73,7 @@ export async function runInbound(
   if (matched.length === 0) return answer;
 
   const resolved = await resolveThread(writer, record, body);
-  if ("error" in resolved) return resolved;
+  if ("error" in resolved) return { ...resolved, matched };
   const { position, thread, permissions } = resolved;
   let root = thread;
 

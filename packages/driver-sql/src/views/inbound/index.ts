@@ -12,6 +12,10 @@ export const inboundStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   inboundSeen: sql`SELECT result FROM inbound_seen
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND endpoint = ${"endpoint"} AND event_id = ${"eventId"}`,
+  inboundReceived: sql`SELECT event_id, at, result FROM inbound_seen
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND endpoint = ${"endpoint"}
+      AND at >= ${"since"} AND (at, event_id) < (${"beforeAt"}, ${"beforeId"})
+    ORDER BY at DESC, event_id DESC LIMIT ${"limit"}`,
   insertInboundSeen: sql`INSERT INTO inbound_seen (org_id, board_id, endpoint, event_id, at, result)
     SELECT ${"orgId"}, ${"boardId"}, id, ${"eventId"}, ${"at"}, ${"result"} FROM inbound_endpoints
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"endpoint"} RETURNING endpoint`,
@@ -44,6 +48,17 @@ export function inboundReads(db: Db, dialect: Dialect, keys: BoardKeys): BoardIn
     async inboundEndpoint(id) {
       const [row] = await query(db, dialect, inboundStatements.inboundEndpoint, { ...keys, id });
       return row ? record(row) : null;
+    },
+    async inboundReceived(endpoint, since, before, limit) {
+      const rows = await query(db, dialect, inboundStatements.inboundReceived, {
+        ...keys,
+        endpoint,
+        since,
+        beforeAt: before?.at ?? Number.MAX_SAFE_INTEGER,
+        beforeId: before?.eventId ?? "",
+        limit,
+      });
+      return rows.map((row) => ({ eventId: String(row.event_id), at: Number(row.at), result: String(row.result) }));
     },
     async inboundSecret(id) {
       const [row] = await query(db, dialect, inboundStatements.inboundSecret, { ...keys, id });

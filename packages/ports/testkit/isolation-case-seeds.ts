@@ -20,7 +20,7 @@ export async function seedCase(method: string, a: StoreTenant, b: StoreTenant) {
   }
   if (method.startsWith("inbound") || method === "storeInboundSecret" || method === "recordInboundSeen") {
     const inbound = await seedInbound(b.board, b.marker, b.actor);
-    if (method === "inboundSeen" || method === "recordInboundSeen") {
+    if (method === "inboundSeen" || method === "inboundReceived" || method === "recordInboundSeen") {
       await b.board.write((writer) => writer.recordInboundSeen(inbound.id, "delivery-fixture", at, "{}"));
     }
   }
