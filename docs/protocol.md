@@ -606,7 +606,11 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 ### MCP
 
 `POST /mcp/<org>/<board>` (local alias `POST /mcp`) accepts one JSON-RPC
-message per request. `initialize` advertises protocol version `2025-06-18`
+message per request. `GET` and `DELETE` return HTTP 405 with `Allow: POST`
+and a JSON error. A POST must explicitly accept `application/json` or it
+returns HTTP 406. A JSON array (batch) returns JSON-RPC error `-32600`.
+Malformed JSON returns `-32700`. Both JSON-RPC errors use HTTP 400.
+`initialize` advertises protocol version `2025-06-18`
 and the tools capability. `ping` returns an empty result. Requests receive
 JSON and notifications receive an empty HTTP 202. An unsupported
 `MCP-Protocol-Version` header returns HTTP 400 `invalid_request`. The server issues no MCP session ID. The endpoint uses the

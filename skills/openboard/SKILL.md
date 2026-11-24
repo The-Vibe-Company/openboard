@@ -15,7 +15,9 @@ the caller supplied credentials or the identity is wrong.
 
 For MCP discovery, configure the client with `<origin>/mcp/<org>/<board>`
 and an `Authorization: Bearer <token>` header. Use `tools/list` to see the
-board's tools and their argument schemas.
+board's tools and their argument schemas. Send one JSON-RPC message per POST
+with `Accept: application/json`. Each POST stands on its own. The endpoint
+returns HTTP 405 to GET and DELETE.
 
 - Read channel thread summaries with `ob read <channel>`. Read a specific
   thread with `ob read <id>` or read individual messages in a channel with
