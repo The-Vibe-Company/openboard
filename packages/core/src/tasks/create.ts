@@ -9,16 +9,16 @@ import {
   replayPost,
 } from "../messages/post.ts";
 import type { TaskCreated } from "./events.ts";
+import type { TaskNeeds } from "./needs.ts";
 import { withTask } from "./view.ts";
 
-/** A task as it is made: ready, owned by the writer's principal, made as the writer's actor. */
-function readyTask(by: Author): Task {
+function initialTask(by: Author, needs: TaskNeeds): Task {
   return {
-    state: "ready",
+    state: needs.waitingOn > 0 ? "waiting" : "ready",
     owner: by.principal,
     by: by.actor,
     for: null,
-    needs: [],
+    needs: needs.ids.map(String),
     epoch: 0,
     claim: null,
     blocked: null,
@@ -42,14 +42,15 @@ export function replayTask(state: PostState, command: CreateTaskCommand, context
 export function decideCreateTask(
   state: Pick<PostState, "head" | "actor">,
   command: CreateTaskCommand,
-  context: PostContext & { readonly blind?: boolean },
+  context: PostContext & { readonly blind?: boolean; readonly needs?: TaskNeeds },
   mentions?: Parameters<typeof decidePost>[3],
 ) {
   const { events, message } = decidePost(state, command, context, mentions);
   const post = events.at(-1);
   if (post?.type !== "message.posted") throw new Error("a task needs a root post");
   const id = post.id + 1;
-  const task = withTask(message, readyTask(context.by), id);
+  const needs = context.needs ?? { ids: [], waitingOn: 0 };
+  const task = withTask(message, initialTask(context.by, needs), id);
   const created: TaskCreated = {
     id,
     type: "task.created",
@@ -63,7 +64,8 @@ export function decideCreateTask(
     payload: {
       id: post.message,
       thread: message.thread,
-      needs: [],
+      needs: needs.ids,
+      waitingOn: needs.waitingOn,
       for: null,
       by: context.by,
       view: task,
@@ -86,7 +88,11 @@ export interface MakeTaskState {
  * Makes a ready task of the thread `re` roots, as it is (upstream `POST /tasks` with `re`): it posts nothing, and the
  * root keeps its author and text while its `task` records the writer as owner and maker. A reply is no thread's root.
  */
-export function decideMakeTask({ head, target, actor }: MakeTaskState, re: string, context: PostContext) {
+export function decideMakeTask(
+  { head, target, actor }: MakeTaskState,
+  re: string,
+  context: PostContext & { readonly needs?: TaskNeeds },
+) {
   if (!target) throw new BoardError("message_not_found", `Couldn't find message #${re}.`);
   if (target.re !== null) {
     throw new BoardError(
@@ -100,7 +106,8 @@ export function decideMakeTask({ head, target, actor }: MakeTaskState, re: strin
   if (message === null) throw new Error("invalid stored message position");
   const seen = actorSeen(actor, context, head + 1);
   const id = head + (seen ? 2 : 1);
-  const task = withTask(target, readyTask(context.by), id);
+  const needs = context.needs ?? { ids: [], waitingOn: 0 };
+  const task = withTask(target, initialTask(context.by, needs), id);
   const created: TaskCreated = {
     id,
     type: "task.created",
@@ -111,7 +118,15 @@ export function decideMakeTask({ head, target, actor }: MakeTaskState, re: strin
     actor: context.by.actor,
     principal: context.by.principal,
     visibility: 0,
-    payload: { id: message, thread: target.thread, needs: [], for: null, by: context.by, view: task },
+    payload: {
+      id: message,
+      thread: target.thread,
+      needs: needs.ids,
+      waitingOn: needs.waitingOn,
+      for: null,
+      by: context.by,
+      view: task,
+    },
   };
   return { events: seen ? [seen, created] : [created], task };
 }

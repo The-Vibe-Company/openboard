@@ -131,3 +131,11 @@ export const TaskReopenedEvent = Type.Object({
   payload: TaskReopenedPayload,
   message: Message,
 });
+
+export const TaskReadyEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("task.ready"),
+  createdAt: Type.String(),
+  payload: Type.Object({ id: Type.String() }),
+  message: Message,
+});

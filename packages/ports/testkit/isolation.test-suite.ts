@@ -225,6 +225,15 @@ const writerCases: Cases<BoardWriter> = {
   message: (a, b) => inWrite(a, async (writer) => expectNull(await writer.message(b.message))),
   newerReply: (a, b) => inWrite(a, async (writer) => expectNull(await writer.newerReply(b.message, 0))),
   taskRoot: (a, b) => inWrite(a, async (writer) => expectNull(await writer.taskRoot(b.task))),
+  taskNeeds: (a, b) =>
+    inWrite(a, async (writer) => {
+      expect(await writer.taskNeeds([b.task])).toEqual([]);
+      expect(await writer.taskNeeds([a.task])).toMatchObject([{ id: String(a.task) }]);
+    }),
+  taskDependants: (a, b) =>
+    inWrite(a, async (writer) => {
+      expect(await writer.taskDependants(b.task)).toEqual({ any: false, ready: [] });
+    }),
   taskClaimProof: async (a, b) => {
     expect(await inWrite(b, (writer) => writer.taskClaimProof(b.task))).toMatchObject({ until: at + 900_000 });
     return inWrite(a, async (writer) => expectNull(await writer.taskClaimProof(b.task)));

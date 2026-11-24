@@ -22,11 +22,13 @@ function settleTask(
   return ctx.board.write(
     async (writer) => {
       const state = await readClaimState(writer, position, token);
-      const decided = decideSettlement(state, settlement, {
-        by: ctx.by,
-        author: authorOf(ctx.by),
-        now: ctx.now(),
-      });
+      const context = { by: ctx.by, author: authorOf(ctx.by), now: ctx.now() };
+      const initial = decideSettlement(state, settlement, context);
+      let decided = initial;
+      if (position !== null && "result" in settlement) {
+        const dependants = await writer.taskDependants(position);
+        decided = decideSettlement(state, settlement, { ...context, now: ctx.now() }, dependants);
+      }
       ctx.debitWrite();
       await writer.append(decided.events);
       const { task } = decided;

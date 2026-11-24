@@ -3,9 +3,25 @@ import type { BoardKeys, BoardTaskReads, BoardTaskWriter } from "@openboard/port
 import type { Db, Dialect, Row } from "../../db.ts";
 import { query, sql } from "../../sql.ts";
 
+export const needIds = {
+  fragment: ({ name }: Dialect) =>
+    name === "sqlite" ? "json_each(input.ids)" : "jsonb_array_elements_text(input.ids::jsonb)",
+};
+
 export const taskReadStatements = {
   taskClaimProof: sql`SELECT claim_token, claim_until FROM tasks
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  taskNeeds: sql<"ids" | "orgId" | "boardId">`WITH input AS (SELECT CAST(${"ids"} AS TEXT) AS ids)
+    SELECT m.view FROM input CROSS JOIN ${needIds} AS need
+    JOIN messages m ON m.id = CAST(need.value AS BIGINT)
+    JOIN tasks t ON t.org_id = m.org_id AND t.board_id = m.board_id AND t.id = m.id
+    WHERE m.org_id = ${"orgId"} AND m.board_id = ${"boardId"}`,
+  taskDependants: sql`SELECT CASE WHEN t.state = 'waiting' AND t.waiting_on = 1 THEN m.view END AS view
+    FROM task_needs n
+    JOIN tasks t ON t.org_id = n.org_id AND t.board_id = n.board_id AND t.id = n.task
+    JOIN messages m ON m.org_id = t.org_id AND m.board_id = t.board_id AND m.id = t.id
+    WHERE n.org_id = ${"orgId"} AND n.board_id = ${"boardId"} AND n.needs = ${"id"}
+    ORDER BY n.task`,
   taskRoot: sql`SELECT m.view FROM tasks t
     JOIN messages m ON m.org_id = t.org_id AND m.board_id = t.board_id AND m.id = t.id
     WHERE t.org_id = ${"orgId"} AND t.board_id = ${"boardId"} AND t.id = ${"id"}`,
@@ -28,6 +44,20 @@ export function taskWriter(
 ): BoardTaskWriter {
   return {
     ...taskReads(db, dialect, keys),
+    async taskNeeds(ids) {
+      if (ids.length === 0) return [];
+      const rows = await query(db, dialect, taskReadStatements.taskNeeds, { ...keys, ids: JSON.stringify(ids) });
+      return rows.map((row) => JSON.parse(String(row.view)) as Message);
+    },
+    async taskDependants(id) {
+      const preloaded = preloadedProof(id);
+      if (preloaded && !preloaded.has_dependants) return { any: false, ready: [] };
+      const rows = await query(db, dialect, taskReadStatements.taskDependants, { ...keys, id });
+      return {
+        any: rows.length > 0,
+        ready: rows.flatMap((row) => (row.view == null ? [] : [JSON.parse(String(row.view)) as Message])),
+      };
+    },
     async taskClaimProof(id) {
       const row =
         preloadedProof(id) ?? (await query(db, dialect, taskReadStatements.taskClaimProof, { ...keys, id }))[0];

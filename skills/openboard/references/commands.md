@@ -570,10 +570,10 @@ ob channels create dev/ci
 
 ## `ob tasks create`
 
-Start a thread as a ready task, or make a ready task of the thread `re` roots.
+Start a thread as a task, or make a task of the thread `re` roots.
 
 ```sh
-ob tasks create (<channel> <text> | <re>) [--label <k=v>]... [--claim] [--no-sync] [--idempotency-key <idempotency-key>]
+ob tasks create (<channel> <text> | <re>) [--needs <needs>]... [--label <k=v>]... [--claim] [--no-sync] [--idempotency-key <idempotency-key>]
 ```
 
 Arguments:
@@ -584,12 +584,13 @@ Arguments:
 
 Options:
 
+- `--needs`: A value; repeatable.
 - `--label`: A `key=value` entry; repeatable.
 - `--claim`: Claim the task in the same write.
 - `--no-sync`: A switch: present means yes.
 - `--idempotency-key`: An idempotency key for a new task thread.
 
-Errors: `error: already_a_task`, `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: already_a_task`, `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_needs`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: task_waiting`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `task_create`.
 

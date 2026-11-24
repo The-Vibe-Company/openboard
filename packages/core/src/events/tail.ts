@@ -116,6 +116,7 @@ export function isTailMessage(
       event.type === "task.failed" ||
       event.type === "task.canceled" ||
       event.type === "task.reopened" ||
+      event.type === "task.ready" ||
       event.type === "task.expired" ||
       event.type === "task.released" ||
       (renewals && event.type === "task.renewed"))
@@ -136,6 +137,7 @@ export type TailMessage = Extract<
       | "task.failed"
       | "task.canceled"
       | "task.reopened"
+      | "task.ready"
       | "task.expired"
       | "task.released"
       | "task.renewed";

@@ -1,16 +1,19 @@
 import { BoardError, type createTask, type listTasks } from "@openboard/contract";
 import {
   channelFilter,
+  checkNeeds,
   decideCreateTask,
   decideMakeTask,
   formatId,
   labelFilters,
   messages,
+  needPositions,
   parseId,
   replayTask,
   taskCursor,
   taskStates,
 } from "@openboard/core";
+import type { BoardWriter } from "@openboard/ports";
 import { canListMentionActors, canReadChannel, withoutMentionDetails } from "../auth/access.ts";
 import { authorOf } from "../auth/author.ts";
 import type { BoardContext, Handler } from "./index.ts";
@@ -36,7 +39,7 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
         "`channel`, `text`, `labels`, `noSync` and `id` are a new thread's: `re` makes a task of a thread as it is",
       );
     }
-    return makeTask(ctx, re, input.claim);
+    return makeTask(ctx, re, input.claim, input.needs);
   }
   if (channel === undefined || text === undefined) {
     throw new BoardError(
@@ -65,7 +68,7 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
       const decided = decideCreateTask(
         state,
         command,
-        { ...context, blind: !canReadChannel(ctx.by, channel) },
+        { ...context, blind: !canReadChannel(ctx.by, channel), needs: await readNeeds(ctx, writer, input.needs) },
         mentions,
       );
       return { ...(await writeNewTask(ctx, writer, decided, input.claim, context.now)), replay: false };
@@ -80,14 +83,24 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
   return { task: { ...visible, task: visible.task } };
 };
 
-async function makeTask(ctx: BoardContext, re: string, claim: boolean | undefined) {
+async function readNeeds(ctx: BoardContext, writer: BoardWriter, needs: readonly string[] = [], self?: number | null) {
+  const ids = needPositions(needs, self);
+  return checkNeeds(ids, await writer.taskNeeds(ids), (root) => canReadChannel(ctx.by, root.channel));
+}
+
+async function makeTask(ctx: BoardContext, re: string, claim: boolean | undefined, needs?: readonly string[]) {
   const position = parseId(re);
   const answer = await ctx.board.write(
     async (writer) => {
       const target = position === null ? null : await writer.message(position);
       const state = { head: writer.head, target, actor: writer.actor };
       const now = ctx.now();
-      const decided = decideMakeTask(state, re, { by: ctx.by, author: authorOf(ctx.by), now });
+      const decided = decideMakeTask(state, re, {
+        by: ctx.by,
+        author: authorOf(ctx.by),
+        now,
+        needs: await readNeeds(ctx, writer, needs, position),
+      });
       ctx.debitWrite();
       return writeNewTask(ctx, writer, decided, claim, now);
     },
