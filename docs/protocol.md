@@ -276,7 +276,10 @@ Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --
 | POST | `/tasks/:id/{claim,renew,release,complete,fail,block,unblock,reopen,assign,needs,cancel}` | U | |
 | GET, POST | `/grants`; POST `/grants/batch`; PATCH `/grants/:id`; GET `/grants/explain`; POST `/grants/:id/revoke` | U | plus principal kinds `connection`, `all-connections`; `explain` takes `connection=` |
 | GET | `/schemas`, `/schemas/:id` | U | every board caller can read built-ins `git-commit@1`, `vercel-deployment@1` (upstream data, Apache-2.0) |
-| POST | `/schemas` | U-stub | 501 `no_schemas` for callers with board-wide manage access |
+| POST | `/schemas` | U | register a version with board-wide manage access. An identical repeat returns `created: false`. Changes answer 409 `schema_immutable`, and a 501st custom version answers 400 `too_many_schemas` |
+
+The list places built-ins before registered versions. Registration writes an
+`ob.schema.registered` entry to the board audit.
 
 Schema reads take a `name@version` ID. An invalid ID answers 400 `invalid_schema_id`,
 and an unknown version answers 404 `schema_not_found`.

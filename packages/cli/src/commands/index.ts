@@ -49,6 +49,7 @@ export { messagesCommand } from "./messages.ts";
 export { readCommand } from "./read.ts";
 export { replyCommand } from "./reply.ts";
 export { rotateConnectionCommand } from "./rotate.ts";
+export { createSchemaCommand } from "./schemas/create.ts";
 export { tailCommand } from "./tail.ts";
 export { useCommand } from "./use.ts";
 export { waitCommand } from "./wait.ts";

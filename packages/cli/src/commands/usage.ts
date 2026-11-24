@@ -4,6 +4,7 @@ import {
   connectCommand,
   createConnectionCommand,
   createGrantCommand,
+  createSchemaCommand,
   derivedCommands,
   loginCommand,
   messagesCommand,
@@ -27,6 +28,7 @@ export const commands: readonly AnyCommand[] = [
   useCommand,
   createConnectionCommand,
   createGrantCommand,
+  createSchemaCommand,
   rotateConnectionCommand,
   readCommand,
   messagesCommand,
@@ -86,6 +88,12 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     tools: [],
     example: "ob use main",
     errors: ["not_found", "unauthorized"],
+  },
+  "schemas create": {
+    summary: "Register an immutable schema version from a file or inline JSON.",
+    operations: ["createSchema"],
+    example: "ob schemas create sandbox@1 --file sandbox.schema.json",
+    options: { file: "Path to the JSON Schema, or - for stdin.", data: "Inline JSON Schema." },
   },
   "grants update": {
     summary: "Change a grant by its ID.",

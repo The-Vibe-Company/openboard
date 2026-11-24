@@ -14,6 +14,7 @@ import type {
   Named,
   PersonalToken,
   Role,
+  SchemaView,
 } from "@openboard/contract";
 import type {
   BoardCreation,
@@ -221,6 +222,8 @@ export interface PlatformView extends RateView {
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */
 export interface BoardWriter extends BoardTaskWriter, BoardGrantWriter, BoardJobWriter, BoardWatcherWriter {
   readonly head: number;
+  schema(id: string): Promise<SchemaView | null>;
+  schemaCount(): Promise<number>;
   /** The actors available to resolve handles under the write lock. */
   mentionActors(handles: ReadonlySet<string>): Promise<MentionActor[]>;
   /** Check the selected message versions that established candidate visibility before the lock. */
@@ -341,6 +344,8 @@ export interface BoardView extends RateView, BoardMessageReads, BoardTaskReads, 
     | "inactive"
     | null
   >;
+  schema(id: string): Promise<SchemaView | null>;
+  schemas(): Promise<SchemaView[]>;
   /**
    * Locks the board, runs `fn`, and commits what it appended, or rolls everything back if it throws. With `actor`,
    * the board's record of that actor is read at the start of the write, after the lock.

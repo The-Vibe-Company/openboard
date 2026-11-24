@@ -144,6 +144,16 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
     send("POST", `/api/x/orgs/${org}/invitations`, session, { role: "member" }),
     "invitation",
   );
+  const version = org === "alpha" ? 1 : 2;
+  const registered = await ok<{ schema: { id: string } }>(
+    send("POST", `${base}/schemas`, session, {
+      name: "isolation",
+      version,
+      description: marker,
+      schema: { type: "object" },
+    }),
+    "schema",
+  );
   return {
     invitationToken: invited.url.slice(invited.url.lastIndexOf("/") + 1),
     connection: { authorization: `Bearer ${direct.secret}` },
@@ -155,8 +165,7 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
       thread: thread.message.id,
       task: task.task.id,
       grant: granted.grant.id,
-      // Custom schemas cannot be registered yet. These versions exercise the schema lookup on each board.
-      schema: org === "alpha" ? "isolation@1" : "isolation@2",
+      schema: registered.schema.id,
       connection: fleet.connection.id,
       agent: claimed.agent.id,
       invitation: invited.invitation.id,
