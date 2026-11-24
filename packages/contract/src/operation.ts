@@ -17,6 +17,7 @@ export type RefKind =
   | "schedule"
   | "webhook"
   | "connection"
+  | "agent"
   | "member"
   | "org"
   | "invitation"

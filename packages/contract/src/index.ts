@@ -68,6 +68,7 @@ export {
   readPost,
   readThread,
   refreshAgentToken,
+  revokeAgent,
   revokeAllSessions,
   revokeConnection,
   revokeInvitation,
