@@ -5,7 +5,6 @@ milestone: M5-postgres-driver
 package: driver-sql
 writes:
   - packages/driver-sql/src/statements.ts
-  - packages/driver-sql/src/views/**
   - packages/driver-sqlite/test/explain.test.ts
   - packages/driver-postgres/test/explain.test.ts
 conformance: []
@@ -33,3 +32,5 @@ As a contributor, a statement one engine cannot parse fails CI even when no test
 - Bind `NULL` for every parameter. Where Postgres cannot infer a parameter's type, add an explicit cast in the statement (`packages/driver-sql/src/views/**`), never a per-engine exception list.
 - Each test runs in its own driver's workspace, so it builds its `Db` from its own `src/` and needs no other driver.
 - 168 waits for this ticket, since both may correct statements in `packages/driver-sql/src/views/**`.
+
+Orchestrator note: `packages/driver-sql/src/views/**` was dropped from `writes` so M3 tickets can run alongside. If a statement's plan needs a fix (an index or a rewritten query), change only that view file, add it to `writes` in your branch and name it in the PR; the orchestrator resolves overlaps at merge.
