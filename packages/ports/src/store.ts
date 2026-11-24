@@ -81,6 +81,8 @@ export interface SignInRecord {
   readonly identity: IdentityRecord;
   /** Whether an identity no person holds yet makes a new person (sign-up), with the ID `newPersonId`. */
   readonly admitNew: boolean;
+  /** An invitation to redeem atomically if sign-in creates a person, even when unconditional admission is off. */
+  readonly invitationHash?: Uint8Array;
   readonly newPersonId: string;
   readonly session: { readonly idHash: string; readonly csrf: string; readonly expiresAt: number };
   readonly now: number;
@@ -190,8 +192,8 @@ export interface PlatformView {
   findBoard(orgSlug: string, boardSlug: string): Promise<BoardKeys | null>;
   /**
    * In one transaction: the person holding the identity, their details refreshed from it, or a new person when
-   * `admitNew`; then the session. Null, and no session, when the identity is new and not admitted, or the person is
-   * disabled.
+   * `admitNew` or a live invitation admits them. A supplied invitation is redeemed for a new person before opening
+   * their session. Null when the identity is new and not admitted, or the person is disabled.
    */
   signIn(record: SignInRecord): Promise<PersonRecord | null>;
   /** The session whose cookie value hashes to `idHash`, or null when none, revoked, or its person is disabled. */

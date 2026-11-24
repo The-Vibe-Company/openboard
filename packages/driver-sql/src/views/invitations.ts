@@ -35,6 +35,48 @@ export const invitationStatements = {
     JOIN orgs o ON o.id = i.org_id WHERE i.token_hash = ${"tokenHash"} AND o.deleted_at IS NULL`,
 };
 
+/** Redeem inside the caller's transaction so sign-up and acceptance can commit together. */
+export async function redeemInvitation(tx: Db, dialect: Dialect, tokenHash: Uint8Array, personId: string, at: number) {
+  const [found] = await query(tx, dialect, invitationStatements.invitationByHash, { tokenHash });
+  if (!found) return null;
+  const orgId = Number(found.org_id);
+  const scope = { orgId, tokenHash, at };
+  const [invitation] = await query(tx, dialect, invitationStatements.lockRedeemableInvitation, scope);
+  if (!invitation) {
+    // Read again after the lock wait, so an accept or revoke that committed meanwhile is seen.
+    const [latest] = await query(tx, dialect, invitationStatements.invitationByHash, { tokenHash });
+    if (latest && (latest.accepted_at !== null || latest.revoked_at !== null || Number(latest.expires_at) <= at))
+      throw new BoardError("invitation_used", "this invitation was already used, revoked or expired");
+    return null;
+  }
+  const [person] = await query(tx, dialect, orgStatements.lockPerson, { personId });
+  if (!person) return null;
+  if (
+    typeof invitation.email === "string" &&
+    (typeof person.email !== "string" || person.email.toLowerCase() !== invitation.email)
+  ) {
+    throw new BoardError("invitation_email_mismatch", "this invitation requires a matching verified email");
+  }
+  const [joined] = await query(tx, dialect, orgStatements.personMemberships, { personId });
+  if (joined) throw new BoardError("already_in_org", "you already belong to an organization");
+  const [member] = await query(tx, dialect, invitationStatements.insertInvitedMember, { ...scope, personId });
+  if (!member) return null;
+  const userId = Number(member.user_id);
+  const role = String(invitation.role) as InvitationRole;
+  await query(tx, dialect, invitationStatements.markInvitationAccepted, { ...scope, userId });
+  const [next] = await query(tx, dialect, invitationStatements.nextInvitationEvent, { orgId });
+  const principal = `ob:user:${personId}`;
+  await query(tx, dialect, orgStatements.insertOrgEvent, {
+    orgId,
+    id: Number(next?.id),
+    type: "ob.member.added",
+    at,
+    actor: principal,
+    payload: JSON.stringify({ principal, role }),
+  });
+  return { org: { slug: String(invitation.slug), name: String(invitation.name) }, role };
+}
+
 /** The tenant resolver's membership lookup and the public preview's proof of possession. */
 export function invitationPlatform(
   db: Db,
@@ -46,46 +88,7 @@ export function invitationPlatform(
       return row ? { orgId: Number(row.org_id), role: String(row.role) as Role } : null;
     },
     acceptInvitation: (tokenHash, personId, at) =>
-      db.transaction(async (tx) => {
-        const [found] = await query(tx, dialect, invitationStatements.invitationByHash, { tokenHash });
-        if (!found) return null;
-        const orgId = Number(found.org_id);
-        const scope = { orgId, tokenHash, at };
-        const [invitation] = await query(tx, dialect, invitationStatements.lockRedeemableInvitation, scope);
-        if (!invitation) {
-          // Read again after the lock wait, so an accept or revoke that committed meanwhile is seen.
-          const [latest] = await query(tx, dialect, invitationStatements.invitationByHash, { tokenHash });
-          if (latest && (latest.accepted_at !== null || latest.revoked_at !== null || Number(latest.expires_at) <= at))
-            throw new BoardError("invitation_used", "this invitation was already used, revoked or expired");
-          return null;
-        }
-        const [person] = await query(tx, dialect, orgStatements.lockPerson, { personId });
-        if (!person) return null;
-        if (
-          typeof invitation.email === "string" &&
-          (typeof person.email !== "string" || person.email.toLowerCase() !== invitation.email)
-        ) {
-          throw new BoardError("invitation_email_mismatch", "this invitation requires a matching verified email");
-        }
-        const [joined] = await query(tx, dialect, orgStatements.personMemberships, { personId });
-        if (joined) throw new BoardError("already_in_org", "you already belong to an organization");
-        const [member] = await query(tx, dialect, invitationStatements.insertInvitedMember, { ...scope, personId });
-        if (!member) return null;
-        const userId = Number(member.user_id);
-        const role = String(invitation.role) as InvitationRole;
-        await query(tx, dialect, invitationStatements.markInvitationAccepted, { ...scope, userId });
-        const [next] = await query(tx, dialect, invitationStatements.nextInvitationEvent, { orgId });
-        const principal = `ob:user:${personId}`;
-        await query(tx, dialect, orgStatements.insertOrgEvent, {
-          orgId,
-          id: Number(next?.id),
-          type: "ob.member.added",
-          at,
-          actor: principal,
-          payload: JSON.stringify({ principal, role }),
-        });
-        return { org: { slug: String(invitation.slug), name: String(invitation.name) }, role };
-      }),
+      db.transaction((tx) => redeemInvitation(tx, dialect, tokenHash, personId, at)),
     async invitationPreview(tokenHash) {
       const [row] = await query(db, dialect, invitationStatements.invitationByHash, { tokenHash });
       return row

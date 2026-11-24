@@ -649,7 +649,14 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   the `/api` router. The pending sign-in (provider, `state`, PKCE verifier)
   lives in the browser, in the cookie `__Host-ob_signin` (10 minutes), never
   in server memory; `LoginProvider.start`/`finish` take the verifier in
-  their context. A signed-in person lands on `/new` until memberships exist.
+  their context. A signed-in member lands on `/<org>/main`, and a person
+  without a membership lands on `/new`.
+  Ticket 195 extends the pending cookie with the optional `invitation`
+  parameter from the start route. In invite mode the callback hashes the token and
+  redeems the invitation in the same transaction as creating the person and session.
+  In `invite` mode this is the only way to create a person. In `closed` mode
+  only existing identities sign in. Expired, revoked and used invitations
+  produce a JSON 410 `invitation_used` at the callback.
   `account` operations declare paths relative to `/api/x`, are matched
   before the local `/api` alias, and see `ctx.platform` and `ctx.session`
   (the live `__Host-ob_session`, read only without `authorization`); their

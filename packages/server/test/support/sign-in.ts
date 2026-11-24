@@ -31,8 +31,9 @@ export function cookiesOf(response: Response): Record<string, string> {
 }
 
 /** Runs the browser's round trip: start, GitHub's redirect back with a code, and the callback. */
-export async function signIn(target: App) {
-  const started = await get(target, "/auth/github/start");
+export async function signIn(target: App, invitation?: string) {
+  const query = invitation ? `?invitation=${encodeURIComponent(invitation)}` : "";
+  const started = await get(target, `/auth/github/start${query}`);
   const location = new URL(started.headers.get("location") ?? "");
   const pending = `__Host-ob_signin=${cookiesOf(started)["__Host-ob_signin"]}`;
   const state = location.searchParams.get("state") ?? "";

@@ -1,7 +1,7 @@
 import { BoardError, type SignInProvider } from "@openboard/contract";
 import type { PlatformView } from "@openboard/ports";
 import type { Deps, ServerConfig } from "../../deps.ts";
-import { base32 } from "../secrets.ts";
+import { base32, hashToken } from "../secrets.ts";
 import { base64url, cookieOf, hostCookie, mintSession, sameText } from "../sessions.ts";
 import { githubProvider } from "./github/index.ts";
 
@@ -28,8 +28,7 @@ export interface LoginProvider {
 /** The pending sign-in: provider, `state` and PKCE verifier, kept in the browser for 10 minutes, not on a server. */
 const SIGN_IN_COOKIE = "__Host-ob_signin";
 const SIGN_IN_SECONDS = 600;
-/** Where a person lands once signed in: creating their organization (docs/auth.md "Sign-up and sign-in"). */
-const LANDING = "/new";
+const INVITATION_TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const ROUTE = /^\/auth\/([a-z][a-z0-9-]*)\/(start|callback)$/;
 
 /** The providers this server offers: those configured with a client, when outbound HTTP is available. */
@@ -50,20 +49,24 @@ export interface SignInContext {
   readonly providers: readonly LoginProvider[];
 }
 
-async function start(provider: LoginProvider, ctx: SignInContext, redirectUri: string): Promise<Response> {
+async function start(
+  provider: LoginProvider,
+  ctx: SignInContext,
+  redirectUri: string,
+  invitation: string | null,
+): Promise<Response> {
   const state = base64url(ctx.deps.randomBytes(32));
   const verifier = base64url(ctx.deps.randomBytes(32));
   const response = await provider.start({ state, verifier, redirectUri });
-  response.headers.append(
-    "set-cookie",
-    hostCookie(SIGN_IN_COOKIE, `${provider.id}.${state}.${verifier}`, SIGN_IN_SECONDS),
-  );
+  const pending = `${provider.id}.${state}.${verifier}`;
+  const value = invitation && INVITATION_TOKEN.test(invitation) ? `${pending}.${invitation}` : pending;
+  response.headers.append("set-cookie", hostCookie(SIGN_IN_COOKIE, value, SIGN_IN_SECONDS));
   return response;
 }
 
 /** The provider's callback: checks `state`, has the provider prove who it is, then opens a session. */
 async function callback(provider: LoginProvider, ctx: SignInContext, request: Request, redirectUri: string) {
-  const [id, state = "", verifier = ""] = (cookieOf(request, SIGN_IN_COOKIE) ?? "").split(".");
+  const [id, state = "", verifier = "", invitation = ""] = (cookieOf(request, SIGN_IN_COOKIE) ?? "").split(".");
   if (id !== provider.id || !sameText(new URL(request.url).searchParams.get("state"), state)) {
     throw new BoardError("unauthorized", "this sign-in was not started in this browser, or took over 10 minutes", {
       hint: `Start again from /auth/${provider.id}/start.`,
@@ -74,19 +77,28 @@ async function callback(provider: LoginProvider, ctx: SignInContext, request: Re
   const now = ctx.deps.now();
   const session = mintSession(ctx.deps.randomBytes, now);
   const verified = emailVerified ? (email ?? null) : null;
+  const signup = ctx.config.signup ?? "closed";
+  const invitationHash =
+    signup === "invite" && INVITATION_TOKEN.test(invitation) ? Buffer.from(hashToken(invitation), "hex") : undefined;
   const person = await ctx.platform.signIn({
     identity: { provider: provider.id, subject, login, name, email: verified, avatar: avatar ?? null },
-    admitNew: (ctx.config.signup ?? "closed") === "open",
+    admitNew: signup === "open",
+    ...(invitationHash && { invitationHash }),
     newPersonId: `u_${base32(ctx.deps.randomBytes(10))}`,
     session: session.record,
     now,
   });
   if (!person) {
-    throw new BoardError("forbidden", "sign-up is closed on this server", {
-      hint: "Ask an administrator to invite you.",
-    });
+    throw new BoardError(
+      "forbidden",
+      signup === "invite" ? "sign-up requires an invitation" : "sign-up is unavailable",
+      {
+        hint: "Ask an administrator to invite you.",
+      },
+    );
   }
-  const headers = new Headers({ location: LANDING });
+  const [membership] = await ctx.platform.memberships(person.id);
+  const headers = new Headers({ location: membership ? `/${membership.org.slug}/main` : "/new" });
   headers.append("set-cookie", session.cookie);
   headers.append("set-cookie", hostCookie(SIGN_IN_COOKIE, "", 0));
   return new Response(null, { status: 302, headers });
@@ -101,5 +113,7 @@ export function signInRoute(request: Request, url: URL, ctx: SignInContext): Pro
   const provider = ctx.providers.find((candidate) => candidate.id === id);
   if (request.method !== "GET" || !provider) return null;
   const redirectUri = `${ctx.config.publicUrl}/auth/${provider.id}/callback`;
-  return step === "start" ? start(provider, ctx, redirectUri) : callback(provider, ctx, request, redirectUri);
+  return step === "start"
+    ? start(provider, ctx, redirectUri, url.searchParams.get("invitation"))
+    : callback(provider, ctx, request, redirectUri);
 }

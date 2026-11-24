@@ -1,6 +1,8 @@
+import { BoardError } from "@openboard/contract";
 import type { PersonRecord, PlatformView, SessionRecord, SignInRecord } from "@openboard/ports";
 import type { Db, Dialect, Row, SqlValue } from "../db.ts";
 import { query, sql } from "../sql.ts";
+import { redeemInvitation } from "./invitations.ts";
 
 /** People, identities and sessions: global rows, so every statement here is a platform statement. */
 export const accountStatements = {
@@ -12,7 +14,8 @@ export const accountStatements = {
   insertUser: sql`INSERT INTO users (public_id, handle, name, email, avatar, created_at)
     VALUES (${"publicId"}, ${"handle"}, ${"name"}, ${"email"}, ${"avatar"}, ${"at"}) RETURNING id`,
   insertIdentity: sql`INSERT INTO identities (provider, subject, user_id, email, created_at)
-    VALUES (${"provider"}, ${"subject"}, ${"userId"}, ${"email"}, ${"at"})`,
+    VALUES (${"provider"}, ${"subject"}, ${"userId"}, ${"email"}, ${"at"})
+    ON CONFLICT (provider, subject) DO NOTHING RETURNING user_id`,
   insertSession: sql`INSERT INTO sessions (id_hash, user_id, csrf, created_at, seen_at, expires_at)
     VALUES (${"idHash"}, ${"userId"}, ${"csrf"}, ${"at"}, ${"at"}, ${"expiresAt"})`,
   userById: sql`SELECT public_id, handle, name, email, avatar FROM users WHERE id = ${"userId"}`,
@@ -51,6 +54,8 @@ async function personOf(db: Db, dialect: Dialect, userId: number, row: Row): Pro
   };
 }
 
+class IdentityCreatedConcurrently extends Error {}
+
 /** The person holding the identity, refreshed from it, or a new one if admitted; null if refused or disabled. */
 async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<number | null> {
   const { identity, now } = record;
@@ -63,14 +68,18 @@ async function holder(tx: Db, dialect: Dialect, record: SignInRecord): Promise<n
     await query(tx, dialect, accountStatements.refreshIdentity, identity);
     return userId;
   }
-  if (!record.admitNew) return null;
+  if (!record.admitNew && !record.invitationHash) return null;
   const [created] = await query(tx, dialect, accountStatements.insertUser, {
     ...details,
     publicId: record.newPersonId,
     at: now,
   });
   const userId = Number(created?.id);
-  await query(tx, dialect, accountStatements.insertIdentity, { ...identity, userId, at: now });
+  const [inserted] = await query(tx, dialect, accountStatements.insertIdentity, { ...identity, userId, at: now });
+  if (!inserted) throw new IdentityCreatedConcurrently();
+  if (record.invitationHash && !(await redeemInvitation(tx, dialect, record.invitationHash, record.newPersonId, now))) {
+    throw new BoardError("forbidden", "a live invitation is required to sign up with this link");
+  }
   return userId;
 }
 
@@ -88,24 +97,33 @@ export function accountView(
   | "listPersonalTokens"
   | "revokePersonalToken"
 > {
+  const signIn = (record: SignInRecord) =>
+    db.transaction(async (tx) => {
+      const userId = await holder(tx, dialect, record);
+      if (userId === null) return null;
+      const { idHash, csrf, expiresAt } = record.session;
+      const at = record.now;
+      await query(tx, dialect, accountStatements.insertSession, {
+        idHash: bytes(idHash),
+        userId,
+        csrf,
+        at,
+        expiresAt,
+      });
+      const [row] = await query(tx, dialect, accountStatements.userById, { userId });
+      if (!row) throw new Error(`user ${userId} vanished during its sign-in`);
+      return personOf(tx, dialect, userId, row);
+    });
   return {
-    signIn: (record) =>
-      db.transaction(async (tx) => {
-        const userId = await holder(tx, dialect, record);
-        if (userId === null) return null;
-        const { idHash, csrf, expiresAt } = record.session;
-        const at = record.now;
-        await query(tx, dialect, accountStatements.insertSession, {
-          idHash: bytes(idHash),
-          userId,
-          csrf,
-          at,
-          expiresAt,
-        });
-        const [row] = await query(tx, dialect, accountStatements.userById, { userId });
-        if (!row) throw new Error(`user ${userId} vanished during its sign-in`);
-        return personOf(tx, dialect, userId, row);
-      }),
+    async signIn(record) {
+      try {
+        return await signIn(record);
+      } catch (error) {
+        if (!(error instanceof IdentityCreatedConcurrently)) throw error;
+        // The conflicting sign-in committed. Retry after rolling back our provisional person.
+        return signIn(record);
+      }
+    },
     async session(idHash): Promise<SessionRecord | null> {
       const [row] = await query(db, dialect, accountStatements.sessionByHash, { idHash: bytes(idHash) });
       if (!row) return null;
