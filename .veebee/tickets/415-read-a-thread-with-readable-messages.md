@@ -17,6 +17,7 @@ writes:
   - apps/web/test/markdown.test.ts
   - apps/web/e2e/markdown.spec.ts
   - apps/web/e2e/tasks.spec.ts
+  - apps/web/e2e/thread.spec.ts
   - docs/design.md
 conformance: []
 modes: [local, hosted]

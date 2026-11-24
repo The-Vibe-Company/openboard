@@ -2,6 +2,10 @@
   min-inline-size: 0;
 }
 
+.thread-page > h1[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
 .thread-page .thread-messages {
   margin: 0;
   padding: 0;

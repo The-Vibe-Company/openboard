@@ -29,6 +29,10 @@ Import primitives from `src/ui/index.ts`. Button defaults to a medium primary ac
 
 Input, Textarea and Select accept native control props. With Field, spread the render callback's props onto the control to connect its label, hint and error. Card groups content, Badge labels status, Table retains native table semantics, EmptyState contains content for an empty view, and Avatar takes a name and optional image URL.
 
+A thread title uses the root message’s first line as plain text, falling back
+to its thread ID when that line is empty. Navigation focuses the title without
+a visible outline. Interactive controls retain their keyboard focus outline.
+
 Thread messages pair an initials Avatar with the author and a muted Geist Mono timestamp.
 Markdown headings use the shared type scale. Inline code and fenced code blocks
 use Geist Mono on the surface token. A fenced block scrolls within the message

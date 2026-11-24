@@ -5,7 +5,10 @@ type Mention = NonNullable<ThreadMessage["mentions"]>[number];
 
 const actorId = String.raw`[^\[\]\s]+`;
 const actorReference = String.raw`@\[${actorId}\]`;
+const mentionToken = new RegExp(String.raw`@\[(${actorId})\]`, "gu");
 const ordinaryAt = String.raw`@(?!\[${actorId}\])`;
+
+const linkToken = String.raw`(?<image>!?)\[(?<label>(?:${actorReference}|${ordinaryAt}|[^@\[\]\n])+)\]\((?<url>(?:[^()\s]|\([^()\s]*\))+)\)`;
 
 // Keep stored references together inside labels and emphasis, where they can contain delimiters.
 const inlineTokens = new RegExp(
@@ -13,7 +16,7 @@ const inlineTokens = new RegExp(
     String.raw`<[^<>\n]*>`,
     "`(?<code>[^`\\n]+)`",
     String.raw`@\[(?<actor>${actorId})\]`,
-    String.raw`(?<image>!?)\[(?<label>(?:${actorReference}|${ordinaryAt}|[^@\[\]\n])+)\]\((?<url>(?:[^()\s]|\([^()\s]*\))+)\)`,
+    linkToken,
     String.raw`\*\*(?<bold>[^*\n]+)\*\*`,
     String.raw`(?<![\p{L}\p{N}_])_(?<italic>(?:${actorReference}|${ordinaryAt}|[^@_\n])+)_(?![\p{L}\p{N}_])`,
   ].join("|"),
@@ -21,20 +24,30 @@ const inlineTokens = new RegExp(
 );
 
 const previewLiterals = /<[^<>]*>|(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)|\uFFFC/g;
+const previewLinks = new RegExp(linkToken, "gu");
 const previewEmphasis = /\*\*((?:\*(?!\*)|[^*])+?)\*\*|(?<![\p{L}\p{N}_])_([^_]+)_(?![\p{L}\p{N}_])/gu;
 
-export function markdownPreview(text: string): string {
+export function markdownPreview(text: string, mentions: readonly Mention[] = []): string {
   const [firstLine = ""] = text.split(/\r\n?|\n/, 1);
-  const line = firstLine.replace(/^(?:[ \t]*(?:#{1,6}(?:[ \t]+|$)|>[ \t]*|(?:[-*+]|\d{1,9}\.)[ \t]+))+/, "");
+  if (fence(firstLine)) return "";
+  const atx = heading(firstLine);
+  const line = atx
+    ? (atx[2] ?? "").replace(/(?:^|[ \t]+)#+[ \t]*$/, "")
+    : firstLine.replace(/^(?:[ \t]*(?:#{1,6}(?:[ \t]+|$)|>[ \t]*|(?:[-*+]|\d{1,9}\.)[ \t]+))+/, "");
   // Emphasis can surround code without interpreting the contents of the code span.
   const literals: string[] = [];
   const masked = line.replace(previewLiterals, (token, _fence: string | undefined, code: string | undefined) => {
     literals.push(code ?? token);
-    return "\uFFFC";
+    return `\uFFFC${literals.length - 1}\uFFFC`;
   });
-  let index = 0;
-  return stripPreviewEmphasis(masked)
-    .replace(/\uFFFC/g, () => literals[index++] ?? "")
+  const captions = masked.replace(previewLinks, (...match: unknown[]) => {
+    const groups = match.at(-1) as { label: string };
+    return groups.label;
+  });
+  const handles = mentionHandles(mentions);
+  return stripPreviewEmphasis(captions)
+    .replace(mentionToken, (token, id: string) => resolveMention(token, id, handles))
+    .replace(/\uFFFC(\d+)\uFFFC/g, (_, index: string) => literals[Number(index)] ?? "")
     .trim();
 }
 
@@ -69,9 +82,7 @@ function inline(text: string, handles: ReadonlyMap<string, string>): ReactNode[]
     let element: ReactNode;
     if (code !== undefined) element = createElement("code", { key }, code);
     else if (href && label !== undefined) {
-      const caption = label.replace(new RegExp(String.raw`@\[(${actorId})\]`, "gu"), (token, id: string) =>
-        resolveMention(token, id, handles),
-      );
+      const caption = label.replace(mentionToken, (token, id: string) => resolveMention(token, id, handles));
       element = createElement("a", { key, href, target: "_blank", rel: "noopener noreferrer nofollow" }, caption);
     } else if (bold !== undefined) element = createElement("strong", { key }, inline(bold, handles));
     else if (italic !== undefined) element = createElement("em", { key }, inline(italic, handles));
@@ -100,8 +111,12 @@ function listItem(line: string) {
   return /^ {0,3}(?:[-*+]|(\d{1,9})\.)[ \t]+(.+)$/.exec(line);
 }
 
+function mentionHandles(mentions: readonly Mention[]) {
+  return new Map(mentions.flatMap(({ actor }) => (actor ? [[actor.id, actor.handle]] : [])));
+}
+
 export function renderMarkdown(text: string, mentions: readonly Mention[] = []): ReactNode[] {
-  const handles = new Map(mentions.flatMap(({ actor }) => (actor ? [[actor.id, actor.handle]] : [])));
+  const handles = mentionHandles(mentions);
   const lines = text.split(/\r\n?|\n/);
   const blocks: ReactNode[] = [];
   let index = 0;

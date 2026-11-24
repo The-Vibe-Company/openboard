@@ -9,6 +9,7 @@ import { threadErrorText, threadQuery } from "../../../../api/thread.ts";
 import { Composer } from "../../../../components/Composer.tsx";
 import { MessageView } from "../../../../components/MessageView.tsx";
 import { TaskState } from "../../../../components/TaskState.tsx";
+import { markdownPreview } from "../../../../markdown.ts";
 
 import "./thread.css";
 
@@ -53,10 +54,16 @@ function ThreadPage() {
   }
 
   const heading = useRef<HTMLHeadingElement>(null);
-  const title = data ? `Thread #${data.message.id}` : thread.isError ? threadErrorText(thread.error) : null;
+  const root = data?.message;
+  const title = root
+    ? markdownPreview(root.deleted ? "" : root.text, root.mentions) || `Thread #${root.id}`
+    : thread.isError
+      ? threadErrorText(thread.error)
+      : null;
+  const focusTarget = root ? params.id : title;
   useLayoutEffect(() => {
-    if (title) heading.current?.focus({ preventScroll: true });
-  }, [title]);
+    if (focusTarget !== null) heading.current?.focus({ preventScroll: true });
+  }, [focusTarget]);
   if (title === null) return <p role="status">Loading thread…</p>;
 
   return (

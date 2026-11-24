@@ -46,7 +46,7 @@ test("a member opens a thread from its row and returns to the same channel scrol
     await owner.postMessage({ channel: "announcements", text: "Announcement" });
     const { message: root } = await owner.postMessage({
       channel: "dev",
-      text: "Release discussion\n**Bold text**",
+      text: "**Release discussion**\n**Bold text**",
       labels: { status: "ready" },
     });
     const { message: first } = await owner.postMessage({ re: root.id, text: "First reply" });
@@ -79,7 +79,14 @@ test("a member opens a thread from its row and returns to the same channel scrol
     await row.press("Enter");
     await expect(page).toHaveURL(new RegExp(`/acme/main/t/${root.id}(?:\\?|$)`));
 
-    await expect(page.getByRole("heading", { name: `Thread #${root.id}` })).toBeFocused();
+    const title = page.getByRole("heading", { name: "Release discussion", exact: true });
+    await expect(title).toBeFocused();
+    await expect(title).toHaveCSS("outline-style", "none");
+    await expect(title.locator("*")).toHaveCount(0);
+    await page.keyboard.press("Tab");
+    const composer = page.getByRole("textbox", { name: "Message" });
+    await expect(composer).toBeFocused();
+    await expect(composer).toHaveCSS("outline-style", "solid");
     const messages = page.getByRole("list", { name: "Thread messages" }).getByRole("article");
     await expectMessages(messages, [root, first, second, third]);
 

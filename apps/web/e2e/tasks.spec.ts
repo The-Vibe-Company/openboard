@@ -77,6 +77,7 @@ test("the channel lists open tasks oldest first and the thread shows public clai
 
     await test.step("a profile-created task shows its connection as owner", async () => {
       await page.goto(`${app.url}/acme/main/t/${ready.id}`);
+      await expect(page.getByRole("heading", { name: `Thread #${ready.id}`, exact: true })).toBeVisible();
       const details = page.getByRole("region", { name: "Task details" });
       await expect(details.locator("dt")).toHaveText(["State", "Owner"]);
       await expect(details.locator("dd")).toHaveText(["ready", "agents"]);

@@ -111,3 +111,23 @@ test("renders six heading levels and keeps HTML inside headings as text", () => 
     element("p", ["#literal"]),
   ]);
 });
+
+test("extracts only the first line as plain text for a thread title", () => {
+  expect(markdownPreview("## **Release** _notes_ for [dev](https://example.com) and `v2` ##\r\nLater")).toBe(
+    "Release notes for dev and v2",
+  );
+  expect(markdownPreview("- First item\rSecond line")).toBe("First item");
+  expect(markdownPreview("[**Release**](/notes) with ![_diagram_](https://example.com/image.png)")).toBe(
+    "Release with diagram",
+  );
+  expect(markdownPreview("`[literal](/notes)`")).toBe("[literal](/notes)");
+  expect(markdownPreview("# <img src=x onerror=alert(1)>")).toBe("<img src=x onerror=alert(1)>");
+  expect(markdownPreview("   \nLater")).toBe("");
+});
+
+test("resolves title mentions outside literal code and HTML", () => {
+  const mentions = [{ written: "@old", actor: { id: "actor", handle: "ada", name: "Ada" }, candidates: [] }];
+  expect(markdownPreview("[Ask @[actor]](/notes) `@[actor]` <i data-name='@[actor]'>", mentions)).toBe(
+    "Ask @ada @[actor] <i data-name='@[actor]'>",
+  );
+});
