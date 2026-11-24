@@ -22,15 +22,15 @@ export const registerWatchers = defineOperation({
       {
         watch: Watch,
         sync: Type.Optional(Type.Array(WatcherSync)),
-        url: Type.Optional(Type.Null()),
-        path: Type.Optional(Type.Null()),
+        url: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+        path: Type.Optional(Type.Union([Type.String(), Type.Null()])),
         branch: Type.Optional(Type.Null()),
       },
       { additionalProperties: false },
     ),
   },
   output: Registration,
-  errors: ["bad_watcher", "invalid_request"],
+  errors: ["bad_watcher", "invalid_request", "no_wake_by_path", "no_wake_by_url"],
   effects: { readOnly: false, idempotent: true, emits: ["ob.watchers.registered"] },
   mcp: { tool: "register_watchers" },
 });

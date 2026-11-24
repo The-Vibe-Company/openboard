@@ -18,7 +18,7 @@ export const registerWatchersHandler: Handler<typeof registerWatchers> = async (
   { board, by, now, debitWrite },
   input,
 ) => {
-  validateWatchers(input.watch, input.sync ?? []);
+  validateWatchers(input);
   const watch = input.watch;
   const canonical = Object.entries(watch)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
