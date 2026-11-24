@@ -113,6 +113,7 @@ import {
   getWebhookHandler,
   listWebhooksHandler,
   testWebhookHandler,
+  updateWebhookHandler,
 } from "./webhooks/index.ts";
 
 /** What a board operation's handler sees: the scoped board view, never the store (docs/codebase.md 4.4). */
@@ -309,6 +310,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   showTyping: showTypingHandler,
   startDeviceSignIn: startDeviceSignInHandler,
   updateGrant: updateGrantHandler,
+  updateWebhook: updateWebhookHandler,
 };
 
 /** The handler of an operation the router matched, its input already validated against the same contract. */

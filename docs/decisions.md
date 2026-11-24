@@ -1157,3 +1157,10 @@ both descending. Use the response's `older` value as `before` for the next page.
 The cursor anchors to the scoped delivery row even if its state changes between
 reads. Test pings share this history and carry null event and thread IDs.
 ([Issue #493](https://github.com/The-Vibe-Company/openboard/issues/493))
+
+### Automatic webhook disable and the daily event quota
+
+An HTTP 410 from a webhook receiver triggers a board bookkeeping event.
+`ob.webhook.disabled` is exempt from the daily event quota, including when the
+board is already at its cap. Dispatch reserves no event slot.
+([Issue #495](https://github.com/The-Vibe-Company/openboard/issues/495))

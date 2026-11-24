@@ -81,7 +81,14 @@ import { reopenTask } from "./tasks/reopen.ts";
 import { listThreads, readThread } from "./threads.ts";
 import { ackWatcherMatch, listWatchers, pullWatcherMatches, registerWatchers } from "./watchers/index.ts";
 import { listWebhookDeliveries, retryWebhookDelivery } from "./webhooks/deliveries.ts";
-import { createWebhook, deleteWebhook, getWebhook, listWebhooks, testWebhook } from "./webhooks/index.ts";
+import {
+  createWebhook,
+  deleteWebhook,
+  getWebhook,
+  listWebhooks,
+  testWebhook,
+  updateWebhook,
+} from "./webhooks/index.ts";
 
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
 export const operations = [
@@ -187,6 +194,7 @@ export const operations = [
   showTyping,
   startDeviceSignIn,
   updateGrant,
+  updateWebhook,
 ] as const;
 
 export {
@@ -292,4 +300,5 @@ export {
   testWebhook,
   updateGrant,
   updateInbound,
+  updateWebhook,
 };

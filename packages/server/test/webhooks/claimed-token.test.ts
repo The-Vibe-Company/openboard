@@ -99,3 +99,28 @@ test("a direct connection narrowed to read and post cannot create a dev webhook"
     await app.close();
   }
 });
+
+test("a channel manager can pause a directory-enabled webhook but cannot redirect its deliveries", async () => {
+  const app = makeApp({ secretKey: new Uint8Array(32).fill(12) });
+  try {
+    const connection = await call(app, "POST", "/x/connections", {
+      name: "dev-manager",
+      direct: true,
+      can: { dev: "all" },
+    });
+    expect(connection.status).toBe(201);
+    const { secret } = (await connection.json()) as OutputOf<typeof createConnection>;
+    const created = await call(app, "POST", createWebhook.route.path, webhook);
+    expect(created.status).toBe(201);
+    const { webhook: existing } = (await created.json()) as OutputOf<typeof createWebhook>;
+    const path = `/x/webhooks/${existing.id}`;
+    const redirected = await fetchAs(app, secret, "POST", path, { url: "http://127.0.0.1:9001/hook" });
+    expect(redirected.status).toBe(403);
+    expect(await redirected.json()).toMatchObject({ error: { code: "forbidden" } });
+    const paused = await fetchAs(app, secret, "POST", path, { enabled: false });
+    expect(paused.status).toBe(200);
+    expect(await paused.json()).toMatchObject({ webhook: { url: existing.url, enabled: false } });
+  } finally {
+    await app.close();
+  }
+});

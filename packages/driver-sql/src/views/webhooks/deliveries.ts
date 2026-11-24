@@ -17,7 +17,7 @@ import { query, sql } from "../../sql.ts";
 import { actorReads } from "../actors.ts";
 import { messageEvent } from "../events.ts";
 import { messageStatements } from "../messages/statements.ts";
-import { webhookReads, webhookRecord } from "./webhooks.ts";
+import { webhookReads, webhookRecord, webhookStatements } from "./webhooks.ts";
 
 export const deliveryStatements = {
   addDelivery: sql`INSERT INTO webhook_deliveries
@@ -29,8 +29,6 @@ export const deliveryStatements = {
     FROM webhooks
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"webhook"} AND secret_id = ${"secretId"}
     RETURNING id`,
-  pingSecret: sql`SELECT ciphertext, key_version FROM webhook_secrets
-    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook_id = ${"webhook"} AND id = ${"secretId"}`,
   retryDelivery: sql`UPDATE webhook_deliveries
     SET state = 'pending', attempt = 0, next_at = ${"now"}, last_status = NULL,
         last_error = NULL, done_at = NULL, instance = NULL
@@ -42,11 +40,19 @@ export const deliveryStatements = {
   beginDelivery: sql`UPDATE webhook_deliveries SET state = 'sending', attempt = attempt + 1, instance = ${"instance"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
       AND state IN ('pending', 'sending') AND next_at <= ${"now"} AND attempt < CASE WHEN event IS NULL THEN 1 ELSE ${"maxAttempts"} END
+      AND NOT EXISTS (
+        SELECT 1 FROM webhooks w WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"}
+          AND w.id = webhook_deliveries.webhook AND w.enabled = 0
+      )
     RETURNING attempt`,
   expireFinalDelivery: sql`UPDATE webhook_deliveries
     SET state = 'dead', last_status = NULL, last_error = 'unreachable', done_at = ${"now"}, instance = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
-      AND state = 'sending' AND next_at <= ${"now"} AND attempt >= CASE WHEN event IS NULL THEN 1 ELSE ${"maxAttempts"} END`,
+      AND state = 'sending' AND next_at <= ${"now"} AND attempt >= CASE WHEN event IS NULL THEN 1 ELSE ${"maxAttempts"} END
+      AND NOT EXISTS (
+        SELECT 1 FROM webhooks w WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"}
+          AND w.id = webhook_deliveries.webhook AND w.enabled = 0
+      )`,
   deliveryInput: sql`SELECT w.config, w.secret_id, w.owner_actor, w.owner, w.directory, s.ciphertext, s.key_version, d.root_view,
       d.attempt, d.event, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal, e.payload
     FROM webhook_deliveries d
@@ -60,7 +66,13 @@ export const deliveryStatements = {
   finishDelivery: sql`UPDATE webhook_deliveries
     SET state = ${"state"}, last_status = ${"status"}, last_error = ${"error"}, done_at = ${"doneAt"},
         next_at = COALESCE(${"nextAt"}, next_at), instance = NULL
-    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND state = 'sending' AND attempt = ${"attempt"}`,
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND state = 'sending' AND attempt = ${"attempt"}
+      AND (CAST(${"revokedJobId"} AS BIGINT) IS NULL OR (
+        instance = ${"instance"} AND NOT EXISTS (
+          SELECT 1 FROM jobs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"revokedJobId"}
+        )
+      ))
+    RETURNING id`,
 };
 
 export function deliveryWriter(
@@ -75,7 +87,7 @@ export function deliveryWriter(
     async beginWebhookPing(record, id, now) {
       const params = { ...keys, id, webhook: record.webhook.id, secretId: record.secretId, now };
       if (!(await query(db, dialect, deliveryStatements.addPing, params)).length) return null;
-      const [row] = await query(db, dialect, deliveryStatements.pingSecret, params);
+      const [row] = await query(db, dialect, webhookStatements.webhookSecret, { ...params, id: record.webhook.id });
       return typeof row?.ciphertext === "string"
         ? { ciphertext: row.ciphertext, keyVersion: Number(row.key_version) }
         : null;
@@ -113,14 +125,17 @@ export function deliveryWriter(
       };
     },
     async finishWebhookAttempt(id, attempt, outcome) {
-      await query(db, dialect, deliveryStatements.finishDelivery, {
+      const rows = await query(db, dialect, deliveryStatements.finishDelivery, {
         ...keys,
         id,
         attempt,
         ...outcome,
+        revokedJobId: outcome.revokedLease?.jobId ?? null,
+        instance: outcome.revokedLease?.instanceId ?? null,
         doneAt: outcome.state === "pending" ? null : outcome.now,
         nextAt: outcome.nextAt ?? null,
       });
+      return rows.length > 0;
     },
   };
 }

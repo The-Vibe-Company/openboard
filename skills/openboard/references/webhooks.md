@@ -68,3 +68,8 @@ and [inbound rules and verification](https://github.com/The-Vibe-Company/openboa
 
 Run `ob webhooks test <id>` to send a signed `board.ping` to the receiver and
 see its HTTP status and response time. Each command makes one attempt.
+
+When a delivery receives HTTP 410, the subscription pauses and
+`ob webhooks show <id>` reports `disabled: gone`. Run
+`ob webhooks enable <id>` when the receiver is ready to accept the queued
+deliveries. Use `ob webhooks disable <id>` to pause it manually.

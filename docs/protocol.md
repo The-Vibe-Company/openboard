@@ -178,8 +178,10 @@ count the change in size, and deleting a message frees its bytes.
 A board write that would exceed 100,000 events on that board in a UTC day
 returns 429 `quota_exceeded` with reason `daily_events` and `retry-after` in
 seconds until UTC midnight. An organization override can change the limit for
-each of its boards. All events in the write count, including bookkeeping, and
-a refused write appends nothing.
+each of its boards. The automatic `ob.webhook.disabled` audit event is exempt.
+OpenBoard can append it at the cap without reserving a slot or charging it
+against the quota. All other events in a write count, and a refused write
+appends nothing.
 
 ## Route inventory: the board (relative to `BOARD_URL`)
 
@@ -830,6 +832,21 @@ distinct regardless of case. Names set by OpenBoard (`accept-encoding`,
 `content-type`, `content-length`, `host`, and `user-agent`) are reserved.
 Invalid names return HTTP 400 `invalid_signing` and identify the field.
 
+### Updating a subscription
+
+`POST {BOARD_URL}/x/webhooks/:id` accepts a partial creation spec and returns
+`{ webhook, secret? }`. Omitted fields retain their values. `body: null`
+restores the default payload. Updates use the creation rules and require manage
+access throughout both the current and the resulting tail. If the channel scope
+changes, the resulting tail must cover the channels of the subscription's
+existing deliveries. Otherwise create a separate subscription for the new scope.
+Editing the target, filter, body, headers, or signing of a subscription with
+actor-directory access requires board-wide read access.
+Replacing `signing`
+uses the creation secret rules. A generated secret appears only in the update
+response. `ob webhooks disable <id>` pauses dispatch and `ob webhooks enable
+<id>` resumes it and clears `disabledReason`.
+
 ### Delivery semantics
 
 - **Outbox:** rows inserted in the writing transaction; at-least-once.
@@ -838,7 +855,11 @@ Invalid names return HTTP 400 `invalid_signing` and identify the field.
 - **Outcomes:** 2xx within 10 s succeeds; network error, timeout, 408, 425,
   429, 5xx retry at 10 s, 30 s, 2 min, 10 min, 30 min, 1 h, 3 h, 6 h, 12 h
   (honouring `retry-after` ≤ 1 h); other 4xx dead at once; 410 disables the
-  subscription; more than 100 dead in 24 h disables it.
+  subscription and marks that delivery dead. The subscription reports
+  `enabled: false` and `disabledReason: "gone"`, and board audit records
+  `ob.webhook.disabled`. Queued deliveries wait for re-enablement and
+  events posted while the subscription is off create no deliveries for it.
+  More than 100 dead in 24 h disables it.
 - **Dead letters:** a delivery that still fails on its tenth attempt is marked
   `dead`. List delivery history with `GET /x/webhooks/:id/deliveries` or
   `ob webhooks deliveries <id> --state dead`. The response is

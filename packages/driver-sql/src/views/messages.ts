@@ -152,7 +152,12 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   } else if (event.type === "message.posted") await foldMessagePosted(tx, dialect, keys, event);
   else if (event.type === "ob.schema.registered") await foldSchemaRegistered(tx, dialect, keys, event);
   else if (event.type === "ob.watchers.registered") await foldWatchersRegistered(tx, dialect, keys, event);
-  else if (event.type === "ob.webhook.created" || event.type === "ob.webhook.deleted")
+  else if (
+    event.type === "ob.webhook.created" ||
+    event.type === "ob.webhook.deleted" ||
+    event.type === "ob.webhook.updated" ||
+    event.type === "ob.webhook.disabled"
+  )
     await foldWebhook(tx, dialect, keys, event);
   else if (
     event.type === "ob.inbound.created" ||
@@ -191,19 +196,24 @@ function eventWriter(
         day = window.day;
         count = 0;
       }
-      checkDailyEvents(count, events.length, dailyEvents.limit, dailyEventWindow(day).nextDay, now);
+      const counted = events.filter(({ type }) => type !== "ob.webhook.disabled").length;
+      if (counted) checkDailyEvents(count, counted, dailyEvents.limit, dailyEventWindow(day).nextDay, now);
       for (const event of events) {
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);
         await usage.account(event);
         if (hasWatchers) await matchWatchers(tx, dialect, keys, event);
         if (hasWebhooks) await matchWebhooks(tx, dialect, keys, jobs, event, now);
         await appendEvent(tx, dialect, keys, event);
-        if (event.type === "ob.webhook.created" && event.payload.webhook.enabled) hasWebhooks = true;
+        if (
+          (event.type === "ob.webhook.created" || event.type === "ob.webhook.updated") &&
+          event.payload.webhook.enabled
+        )
+          hasWebhooks = true;
         if (event.type === "ob.watchers.registered") hasWatchers = true;
         committed.push(event);
         head = event.id;
       }
-      count += events.length;
+      count += counted;
       await setHead(tx, dialect, keys, head, usage.boardBytes, { day, count });
     },
   };

@@ -34,11 +34,11 @@ test("treats other 4xx and request construction failures as terminal and 2xx as 
     if ([408, 425, 429].includes(status)) continue;
     expect(webhookRetryAt({ status, error: null, attempt: 1, now, retryAfter: "5" })).toBeNull();
     expect(webhookRetryAt({ status, error: "timeout", attempt: 1, now })).toBeNull();
-    expect(webhookOutcome(status)).toEqual({ state: "dead", status });
+    expect(webhookOutcome(status)).toEqual({ state: "dead", status, gone: status === 410 });
   }
   expect(webhookRetryAt({ status: null, error: "invalid_url", attempt: 1, now })).toBeNull();
   for (let status = 200; status < 300; status++) {
     expect(webhookRetryAt({ status, error: null, attempt: 1, now })).toBeNull();
-    expect(webhookOutcome(status)).toEqual({ state: "done", status });
+    expect(webhookOutcome(status)).toEqual({ state: "done", status, gone: false });
   }
 });

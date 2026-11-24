@@ -11,7 +11,7 @@ import type { ReactionAdded, ReactionRemoved } from "./messages/reactions.ts";
 import type { SchemaRegistered } from "./schemas/register.ts";
 import type { WatchFailed } from "./watchers/ack.ts";
 import type { WatchersRegistered } from "./watchers/register.ts";
-import type { WebhookCreated, WebhookDeleted } from "./webhooks/events.ts";
+import type { WebhookCreated, WebhookDeleted, WebhookUpdated } from "./webhooks/events.ts";
 
 export type {
   AgentClaimed,
@@ -80,6 +80,7 @@ export type BoardEvent =
   | WatchFailed
   | InboundEvent
   | WebhookCreated
+  | WebhookUpdated
   | WebhookDeleted;
 
 export { matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";
@@ -155,6 +156,6 @@ export { matchesWebhookFilter } from "./webhooks/filter.ts";
 export { webhookMaxAttempts, webhookOutcome, webhookRetryAt } from "./webhooks/outcome.ts";
 export { webhookPayload, webhookPing } from "./webhooks/payload.ts";
 export { validateWebhookSigning } from "./webhooks/signing.ts";
-export { validateWebhook } from "./webhooks/validate.ts";
-export type { InboundEvent, WebhookCreated, WebhookDeleted };
+export { validateWebhook, validateWebhookContent } from "./webhooks/validate.ts";
+export type { InboundEvent, WebhookCreated, WebhookDeleted, WebhookUpdated };
 export { checkNeeds, needPositions, type TaskNeeds } from "./tasks/needs.ts";
