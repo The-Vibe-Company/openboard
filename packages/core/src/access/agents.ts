@@ -99,11 +99,13 @@ function specificity(pattern: string): number {
   return pattern.endsWith("/") ? pattern.length : Number.MAX_SAFE_INTEGER;
 }
 
+export function matchingPatterns(patterns: string[], spot: string): string[] {
+  return patterns.filter((pattern) => covers(pattern, spot)).sort((a, b) => specificity(b) - specificity(a));
+}
+
 /** What `can` lets in at `spot`, implications included, by its most specific pattern covering it; nothing when none does. */
 export function allowedAt(can: Can, spot: string): readonly Permission[] {
-  const deciding = Object.keys(can)
-    .filter((pattern) => covers(pattern, spot))
-    .sort((a, b) => specificity(b) - specificity(a))[0];
+  const [deciding] = matchingPatterns(Object.keys(can), spot);
   return deciding === undefined ? [] : withImplied(can[deciding] ?? []);
 }
 

@@ -96,7 +96,7 @@ function agentRevocationSuite(driver: string, open: OpenStore): void {
       });
       expect(await board.agent(token.id)).toEqual({
         agent,
-        grantCans: [fixers.can],
+        grantCans: [{ can: fixers.can, level: "principal", capped: false }],
         connection: { id: fixers.id, name: "fixers", profiles: ["*"], tokenTtl: 3600 },
         profile: "Fixer-2",
         tokenHash: "ef".repeat(32),

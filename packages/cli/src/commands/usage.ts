@@ -6,6 +6,7 @@ import {
   createGrantCommand,
   createSchemaCommand,
   derivedCommands,
+  explainGrantsCommand,
   loginCommand,
   messagesCommand,
   readCommand,
@@ -28,6 +29,7 @@ export const commands: readonly AnyCommand[] = [
   useCommand,
   createConnectionCommand,
   createGrantCommand,
+  explainGrantsCommand,
   createSchemaCommand,
   rotateConnectionCommand,
   readCommand,
@@ -94,6 +96,12 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     operations: ["createSchema"],
     example: "ob schemas create sandbox@1 --file sandbox.schema.json",
     options: { file: "Path to the JSON Schema, or - for stdin.", data: "Inline JSON Schema." },
+  },
+  "grants explain": {
+    summary: "Show which grants decide what a caller may do on a channel.",
+    operations: ["explainGrants"],
+    example: "ob grants explain dev/web",
+    options: { "git-branch": "The branch of the GitHub run to explain." },
   },
   "grants update": {
     summary: "Change a grant by its ID.",

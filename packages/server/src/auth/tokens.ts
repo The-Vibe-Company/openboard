@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { BoardError, type Operation, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
-import { connections, grants, resolveCan, withinPin } from "@openboard/core";
+import { connections, resolveRankedCan, withinPin } from "@openboard/core";
 import type { AgentRecord, BoardView } from "@openboard/ports";
 import { agentOf, callerCan, connectionOf, credentialKind, type Principal, profileName, tokenHashOf } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
@@ -15,7 +15,7 @@ export function refuseClaimedConfiguration(
   request: Request,
   operation: Pick<Operation, "name" | "scope" | "route">,
 ): void {
-  if (operation.name === REFRESH) return;
+  if (operation.name === REFRESH || operation.name === "explainGrants") return;
   const { scope, route } = operation;
   if (
     scope !== "account" &&
@@ -85,7 +85,7 @@ export function agentTokenVerifier(now: () => number): CredentialVerifier {
         [credentialKind]: "agent",
         [connectionOf]: { name: connection.name, profiles: connection.profiles },
         [agentOf]: agent.id,
-        [callerCan]: withinPin(resolveCan(record.grantCans.map(grants.compileCan)), agent.can),
+        [callerCan]: withinPin(resolveRankedCan(record.grantCans), agent.can),
         [profileName]: profile,
         [tokenHashOf]: presented,
       };

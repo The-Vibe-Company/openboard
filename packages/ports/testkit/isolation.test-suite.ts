@@ -43,8 +43,8 @@ const boardCases: Cases<BoardView> = {
     const own = await a.board.personGrants(a.personId);
     expect(own).toEqual(
       expect.arrayContaining([
-        { can: { [a.channel]: ["read"] }, capped: false },
-        { can: { "*": "all" }, capped: true },
+        { id: "g5", level: "principal", can: { [a.channel]: ["read"] }, capped: false },
+        { id: "g1", level: "group", can: { "*": "all" }, capped: true },
       ]),
     );
     expect(own).toHaveLength(2);

@@ -8,7 +8,7 @@ import {
   type GrantPrincipal,
   grants,
   isoTime,
-  resolveCan,
+  resolveRankedCan,
 } from "@openboard/core";
 import type { BoardKeys, BoardScope, BoardView, ConnectionRecord } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
@@ -60,10 +60,12 @@ export const connectionStatements = {
   /** The active connection with its original and effective grants. Legacy rows infer the original until first edit. */
   connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.prev_secret_hash, c.prev_secret_until, c.direct, c.claims_max, c.claims_used,
     c.profiles, c.token_ttl_s, c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can,
-    (SELECT ${grantCanArray} FROM grants g
+    (SELECT ${grantCanArray} FROM (
+      SELECT g.board_id, g.can, MIN(CASE WHEN p.kind = 'connection' THEN 0 ELSE 1 END) AS rank
+      FROM grants g JOIN grant_principals p ON p.board_id = g.board_id AND p.grant_id = g.id
       WHERE g.org_id = ${"orgId"} AND g.board_id = ${"boardId"} AND g.revoked = 0
-        AND g.id IN (SELECT p.grant_id FROM grant_principals p WHERE p.board_id = ${"boardId"}
-          AND ((p.kind = 'connection' AND p.key = c.id) OR (p.kind = 'all-connections' AND p.key = '')))) AS grant_cans
+        AND ((p.kind = 'connection' AND p.key = c.id) OR (p.kind = 'all-connections' AND p.key = ''))
+      GROUP BY g.board_id, g.id, g.can) matched WHERE matched.board_id = ${"boardId"}) AS grant_cans
     FROM connections c JOIN grants g ON g.org_id = c.org_id AND g.board_id = c.board_id AND g.id = COALESCE(c.origin_grant, (
       SELECT MIN(p.grant_id) FROM grant_principals p
       WHERE p.board_id = ${"boardId"} AND p.kind = 'connection' AND p.key = c.id))
@@ -180,7 +182,7 @@ function recordOf(row: Row): ConnectionRecord {
         };
   return {
     connection,
-    effectiveCan: resolveCan(connectionGrantCans(row.grant_cans).map(grants.compileCan)),
+    effectiveCan: resolveRankedCan(connectionGrantCans(row.grant_cans)),
     grant: { id: grantId, principals, can },
     secretHash,
     previous,

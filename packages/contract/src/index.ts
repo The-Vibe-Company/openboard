@@ -1,3 +1,4 @@
+export type { Explanation, GrantLevel } from "./operations/grants/explain.ts";
 export { invalidChannelInput } from "./channel-input.ts";
 export * from "./entities/accounts.ts";
 export * from "./entities/actors.ts";
@@ -84,6 +85,7 @@ export {
   listChannels,
   listConnections,
   listGrants,
+  explainGrants,
   listMembers,
   listMessages,
   listPersonalTokens,

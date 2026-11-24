@@ -5436,6 +5436,345 @@
         }
       }
     },
+    "/grants/explain": {
+      "get": {
+        "operationId": "explainGrants",
+        "summary": "Explain which grants decide what a caller may do on a channel.",
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "maxLength": 2048,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "user",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "member", "type": "string" }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 1000, "type": "string" }
+          },
+          {
+            "name": "environment",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 1000, "type": "string" }
+          },
+          {
+            "name": "github",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 1000, "type": "string" }
+          },
+          {
+            "name": "workflow",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 1000, "type": "string" }
+          },
+          {
+            "name": "branch",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 1000, "type": "string" }
+          },
+          {
+            "name": "event",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 1000, "type": "string" }
+          },
+          {
+            "name": "oidc",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 1000, "type": "string" }
+          },
+          {
+            "name": "claim",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "array", "items": { "minLength": 1, "maxLength": 1200, "type": "string" } }
+          },
+          {
+            "name": "app",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 1000, "type": "string" }
+          }
+        ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": ["channel"],
+          "properties": {
+            "channel": {
+              "maxLength": 2048,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+              "type": "string"
+            },
+            "user": { "minLength": 1, "maxLength": 128, "x-ref": "member", "type": "string" },
+            "project": { "minLength": 1, "maxLength": 1000, "type": "string" },
+            "environment": { "minLength": 1, "maxLength": 1000, "type": "string" },
+            "github": { "minLength": 1, "maxLength": 1000, "type": "string" },
+            "workflow": { "minLength": 1, "maxLength": 1000, "type": "string" },
+            "branch": { "minLength": 1, "maxLength": 1000, "type": "string" },
+            "event": { "minLength": 1, "maxLength": 1000, "type": "string" },
+            "oidc": { "minLength": 1, "maxLength": 1000, "type": "string" },
+            "claim": { "type": "array", "items": { "minLength": 1, "maxLength": 1200, "type": "string" } },
+            "app": { "minLength": 1, "maxLength": 1000, "type": "string" }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["channel", "pattern", "over", "level", "grants", "capped", "can"],
+                  "properties": {
+                    "channel": {
+                      "maxLength": 2048,
+                      "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+                      "type": "string"
+                    },
+                    "pattern": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                    "over": { "type": "array", "items": { "type": "string" } },
+                    "level": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            { "const": "principal", "type": "string" },
+                            { "const": "group", "type": "string" },
+                            { "const": "everyone", "type": "string" }
+                          ]
+                        },
+                        { "type": "null" }
+                      ]
+                    },
+                    "grants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "principals", "can", "capped", "by", "at"],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "principals": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "userId", "email"],
+                                  "properties": {
+                                    "kind": { "const": "user", "type": "string" },
+                                    "userId": { "type": "string" },
+                                    "email": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "projectId", "name", "environments", "teamId"],
+                                  "properties": {
+                                    "kind": { "const": "project", "type": "string" },
+                                    "projectId": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "name": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                    "environments": {
+                                      "type": "array",
+                                      "items": { "minLength": 1, "maxLength": 512, "type": "string" }
+                                    },
+                                    "teamId": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "environments"],
+                                  "properties": {
+                                    "kind": { "const": "all-projects", "type": "string" },
+                                    "environments": {
+                                      "type": "array",
+                                      "items": { "minLength": 1, "maxLength": 512, "type": "string" }
+                                    }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "repository", "repositoryId"],
+                                  "properties": {
+                                    "kind": { "const": "github", "type": "string" },
+                                    "repository": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "workflow": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "branch": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "event": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "repositoryId": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "issuer", "claims"],
+                                  "properties": {
+                                    "kind": { "const": "oidc", "type": "string" },
+                                    "issuer": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "claims": {
+                                      "type": "object",
+                                      "patternProperties": {
+                                        "^(.*)$": {
+                                          "anyOf": [
+                                            { "minLength": 1, "maxLength": 1000, "type": "string" },
+                                            {
+                                              "minItems": 1,
+                                              "type": "array",
+                                              "items": { "minLength": 1, "maxLength": 1000, "type": "string" }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "clientId", "name"],
+                                  "properties": {
+                                    "kind": { "const": "app", "type": "string" },
+                                    "clientId": { "minLength": 1, "maxLength": 512, "type": "string" },
+                                    "name": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind", "connection"],
+                                  "properties": {
+                                    "kind": { "const": "connection", "type": "string" },
+                                    "connection": { "type": "string" }
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind"],
+                                  "properties": { "kind": { "const": "all-users", "type": "string" } }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind"],
+                                  "properties": { "kind": { "const": "all-apps", "type": "string" } }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind"],
+                                  "properties": { "kind": { "const": "everyone", "type": "string" } }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["kind"],
+                                  "properties": { "kind": { "const": "all-connections", "type": "string" } }
+                                }
+                              ]
+                            }
+                          },
+                          "can": {
+                            "type": "object",
+                            "patternProperties": {
+                              "^(.*)$": {
+                                "anyOf": [
+                                  { "const": "all", "type": "string" },
+                                  {
+                                    "maxItems": 6,
+                                    "type": "array",
+                                    "items": {
+                                      "anyOf": [
+                                        { "const": "read", "type": "string" },
+                                        { "const": "post", "type": "string" },
+                                        { "const": "react", "type": "string" },
+                                        { "const": "label", "type": "string" },
+                                        { "const": "sync", "type": "string" },
+                                        { "const": "manage", "type": "string" }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "capped": { "type": "boolean" },
+                          "by": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "at": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                        }
+                      }
+                    },
+                    "capped": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                    "can": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          { "const": "read", "type": "string" },
+                          { "const": "post", "type": "string" },
+                          { "const": "react", "type": "string" },
+                          { "const": "label", "type": "string" },
+                          { "const": "sync", "type": "string" },
+                          { "const": "manage", "type": "string" }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/api/x/orgs/{org}/members": {
       "get": {
         "operationId": "listMembers",

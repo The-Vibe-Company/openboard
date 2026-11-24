@@ -531,10 +531,11 @@ token can do none of that, so it cannot run the kit. Use:
   then `BOARD_URL=http://127.0.0.1:8787/api/local/main BOARD_TOKEN="$(cat conformance.secret)" vb conformance`.
 - **Hosted:** the same kind of connection on a board of a dedicated staging
   organization (for example `conformance-ci/main`), created by an admin.
-- **Why a connection and not the owner:** the kit skips the lockout check for a
-  run that owns the board ("A run that owns the board skips the check"); a
-  connection is not an owner, so that check runs. The local owner token also
-  works but skips it.
+- **Second pass on a freshly booted test board (D43):** run as the local
+  board owner in SQLite and as the conformance organization's owner with a
+  personal token in Postgres. Use the owner result only for checks the
+  connection skipped. The connection exercises lockout, and the owner can
+  exercise checks that need to keep a named principal inside a closed pattern.
 - **Still skipped:** the app check (no apps; default options name none), the
   viewer check (no viewer passed), every sync check after registration (403,
   D19), the root-edit-blocks task check (it imports through sync), and the

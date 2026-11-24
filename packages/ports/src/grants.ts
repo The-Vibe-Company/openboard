@@ -1,6 +1,8 @@
-import type { CanInput, GrantView, Role } from "@openboard/contract";
+import type { CanInput, GrantLevel, GrantView, Role } from "@openboard/contract";
 
 export interface PersonGrant {
+  readonly id: string;
+  readonly level: GrantLevel;
   readonly can: CanInput;
   readonly capped: boolean;
 }

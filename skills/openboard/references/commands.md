@@ -160,6 +160,37 @@ Example:
 ob grants create --connection cn_7k2m4q3t5v2w6x7y --can 'deploys/=read,post'
 ```
 
+## `ob grants explain`
+
+Show which grants decide what a caller may do on a channel.
+
+```sh
+ob grants explain <channel> [--user <id> | --project <id> [--environment <name>] | --github <repository> [--workflow <file>] [--git-branch <branch>] [--event <event>] | --oidc <issuer> [--claim <name=value>]… | --app <id>]
+```
+
+Options:
+
+- `--user`: A member ID.
+- `--project`: Text.
+- `--environment`: Text.
+- `--github`: Text.
+- `--workflow`: Text.
+- `--git-branch`: The branch of the GitHub run to explain.
+- `--event`: Text.
+- `--oidc`: Text.
+- `--claim`: A value; repeatable.
+- `--app`: Text.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `explain_grants`.
+
+Example:
+
+```sh
+ob grants explain dev/web
+```
+
 ## `ob schemas create`
 
 Register an immutable schema version from a file or inline JSON.

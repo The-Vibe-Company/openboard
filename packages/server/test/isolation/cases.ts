@@ -53,6 +53,7 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
   createBoard: (tenant) => ({ body: { slug: `${tenant.org}-new`, name: `${tenant.marker} new` } }),
   claimConnection: () => ({ body: { profile: "fresh" } }),
   listMessages: () => ({ query: { channel: "dev" } }),
+  explainGrants: () => ({ query: { channel: "dev" } }),
   listThreads: () => ({ query: { channel: "dev" } }),
   approveDeviceSignIn: (tenant) => ({ body: { userCode: tenant.userCode, org: tenant.org } }),
   previewDeviceSignIn: (tenant) => ({ params: { userCode: tenant.userCode } }),

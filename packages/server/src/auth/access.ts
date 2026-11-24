@@ -1,5 +1,5 @@
 import { BoardError, type Can, type Message, type Operation, type Role } from "@openboard/contract";
-import { agents, grants, parseId, resolveCan } from "@openboard/core";
+import { agents, grants, parseId, resolveRankedCan } from "@openboard/core";
 import type { BoardView, PersonGrant } from "@openboard/ports";
 import { callerCan, credentialKind, memberOf, type Principal } from "../deps.ts";
 
@@ -16,12 +16,7 @@ function permissionsFor(permission: Permission, input: unknown): Permission[] {
 const EVERY = "on every channel";
 
 export function personGrantCan(active: readonly PersonGrant[], role: Role): Can {
-  return resolveCan(
-    active.map(({ can, capped }) => {
-      const compiled = grants.compileCan(can);
-      return capped ? grants.capByRole(compiled, role) : compiled;
-    }),
-  );
+  return resolveRankedCan(active, role);
 }
 
 /** Why `by` may not `permission` `where`, in the words of the credential it holds, with one way out. */

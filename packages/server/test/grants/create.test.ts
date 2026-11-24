@@ -147,7 +147,7 @@ test("a GitHub grant matches the linked identity on the next session and persona
 test("an all-connections grant applies to a direct secret and stays outside an existing agent pin", async () => {
   const app = makeApp();
   try {
-    const direct = await call(app, "POST", "/x/connections", { name: "fleet", can: { dev: ["read"] }, direct: true });
+    const direct = await call(app, "POST", "/x/connections", { name: "fleet", can: { "*": ["read"] }, direct: true });
     const { secret } = (await direct.json()) as OutputOf<typeof createConnection>;
     function send(token: string, path: string, body: unknown) {
       return app.fetch(
