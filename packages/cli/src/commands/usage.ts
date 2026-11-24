@@ -6,9 +6,9 @@ import {
   createGrantCommand,
   createSchemaCommand,
   derivedCommands,
+  downloadOrgExportCommand,
   explainGrantsCommand,
   exportOrgCommand,
-  downloadOrgExportCommand,
   loginCommand,
   messagesCommand,
   readCommand,
@@ -96,8 +96,9 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
   login: {
     summary: "Sign a person in from the terminal with a device code, and store the personal credential.",
     operations: ["startDeviceSignIn", "pollDeviceSignIn"],
-    example: "ob login https://board.example",
-    errors: ["remote_error", "not_found"],
+    example: "ob login https://board.example --can 'dev=read'",
+    options: { can: "Limit the token to channel patterns and permissions, for example `dev=read`." },
+    errors: ["remote_error", "not_found", "invalid_scope"],
   },
   use: {
     summary: "Point `ob` at another board of the signed-in person's organization.",

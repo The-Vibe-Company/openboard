@@ -2,8 +2,8 @@ import { BoardError, decodeInput, type operations, type previewInvitation, type 
 import type { BoardView, Bucket, PlatformView, RateLimits } from "@openboard/ports";
 import { keepInsideCan, narrowCaller } from "../auth/access.ts";
 import { authenticate, type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
+import { accountPersonalToken, exportTokenPerson } from "../auth/personal-tokens.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
-import { bearer, hashToken } from "../auth/secrets.ts";
 import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
@@ -98,7 +98,11 @@ async function runAccount(
   pipeline: Pipeline & RequestLimits,
 ) {
   const { config, deps, platform } = pipeline;
-  const session = await sessionOf(request, platform, deps.now(), config.publicUrl);
+  const at = deps.now();
+  const tokenPersonId = request.headers.has("authorization")
+    ? await limitAuthentication(pipeline, () => accountPersonalToken(request, platform, at))
+    : null;
+  const session = await sessionOf(request, platform, at, config.publicUrl);
   const input = validate(operation, {
     params,
     query: readQuery(operation, url.searchParams),
@@ -109,6 +113,7 @@ async function runAccount(
     {
       platform,
       session,
+      tokenPersonId: operation.accountBearer === "personal" ? tokenPersonId : null,
       now: deps.now,
       mode: config.mode,
       providers,
@@ -120,18 +125,6 @@ async function runAccount(
   const response = operationResponse(operation, output);
   response.headers.set("cache-control", "no-store");
   return response;
-}
-
-async function exportTokenPerson(request: Request, slug: string, pipeline: Pipeline, at: number) {
-  const token = bearer(request);
-  if (!token || !/^obp_[a-z2-7]{16}_[A-Za-z0-9_-]{43}$/.test(token)) {
-    throw new BoardError("unauthorized", "a personal token is required");
-  }
-  const board = await pipeline.tenants.board({ org: slug, board: "main", mount: "", rest: "" }, async () => false);
-  const person = await board.personalToken(hashToken(token), at);
-  if (!person) throw notFound();
-  if (person === "inactive") throw new BoardError("unauthorized", "the personal token is inactive");
-  return person;
 }
 
 /**
@@ -151,7 +144,8 @@ async function runOrg(
   const live = await liveSession(request, platform, at);
   const slug = params.org ?? "";
   const by =
-    live?.record.person ?? (operation.orgPersonalToken ? await exportTokenPerson(request, slug, pipeline, at) : null);
+    live?.record.person ??
+    (operation.orgPersonalToken ? await exportTokenPerson(request, slug, pipeline.tenants, at) : null);
   if (!by) throw new BoardError("unauthorized", "sign in first");
   const resolve = operation.orgPersonalToken
     ? pipeline.tenants.ownerOrg

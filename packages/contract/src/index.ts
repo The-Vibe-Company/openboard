@@ -1,3 +1,4 @@
+export { parseCanScope } from "./can-scope.ts";
 export { invalidChannelInput } from "./channel-input.ts";
 export * from "./entities/accounts.ts";
 export * from "./entities/actors.ts";
@@ -5,10 +6,10 @@ export * from "./entities/channels.ts";
 export * from "./entities/connections.ts";
 export * from "./entities/discovery.ts";
 export * from "./entities/events.ts";
-export * from "./entities/org/exports.ts";
 export { GrantPrincipal, GrantPrincipalInput, GrantRemovalPrincipal, GrantView } from "./entities/grants.ts";
 export * from "./entities/invitations.ts";
 export * from "./entities/messages.ts";
+export * from "./entities/org/exports.ts";
 export * from "./entities/orgs.ts";
 export * from "./entities/schemas/view.ts";
 export * from "./entities/task-events.ts";

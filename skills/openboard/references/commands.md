@@ -38,17 +38,21 @@ ob connect https://board.example/api/acme/main --as fixer-2 --secret-file ./secr
 Sign a person in from the terminal with a device code, and store the personal credential.
 
 ```sh
-ob login <origin>
+ob login <origin> [--can <scope>]
 ```
 
-Errors: `error: internal`, `error: invalid_request`, `error: not_found`, `error: rate_limited`, `error: remote_error`, `error: unreachable`.
+Options:
+
+- `--can`: Limit the token to channel patterns and permissions, for example `dev=read`.
+
+Errors: `error: internal`, `error: invalid_request`, `error: invalid_scope`, `error: not_found`, `error: rate_limited`, `error: remote_error`, `error: unreachable`.
 
 MCP tool: none.
 
 Example:
 
 ```sh
-ob login https://board.example
+ob login https://board.example --can 'dev=read'
 ```
 
 ## `ob org export`
@@ -752,6 +756,24 @@ Example:
 
 ```sh
 ob grants
+```
+
+## `ob tokens`
+
+List the signed-in person's personal token metadata.
+
+```sh
+ob tokens
+```
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob tokens
 ```
 
 ## `ob schemas`

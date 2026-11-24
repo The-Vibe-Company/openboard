@@ -1088,3 +1088,11 @@ extensions and account and organization routes. The gateway enforces the
 allowlist and supplies the pinned headers. Claimed-token enforcement continues
 to use its existing rules.
 ([Issue #538](https://github.com/The-Vibe-Company/openboard/issues/538#issuecomment-7135210537))
+
+### D67. Personal token scope at device approval
+
+- **Status:** accepted (orchestrator, [issue #473](https://github.com/The-Vibe-Company/openboard/issues/473)).
+- **Decision.** Device start stores the requested scope and approval records
+  the resulting per-board caps. Token management accepts a browser session or an
+  unrestricted personal bearer. Narrowed personal bearers receive 403
+  `forbidden` on account routes.

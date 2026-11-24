@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { Can } from "./connections.ts";
 
 /** A signed-in person as they see themselves (docs/auth.md "Organizations, boards, people"). */
 export const Person = Type.Object({
@@ -40,6 +41,7 @@ export const PersonalTokenId = Type.String({ pattern: "^pt_[a-z2-7]{16}$" });
 /** Personal token metadata visible only to its holder. */
 export const PersonalToken = Type.Object({
   id: PersonalTokenId,
+  can: Type.Optional(Can),
   name: Type.String(),
   org: Type.String(),
   createdAt: Type.Integer(),

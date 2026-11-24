@@ -26,6 +26,10 @@ export function isNarrowedCaller(by: Principal): boolean {
   return by[requestNarrowed] === true || by[credentialKind] === "agent";
 }
 
+export function isNarrowedPersonal(by: Principal): boolean {
+  return by[credentialKind] === "personal" && by[requestNarrowed] === true;
+}
+
 type Permission = NonNullable<Operation["access"]>["permission"] | "label";
 type Access = { readonly permission: Permission; readonly channel: NonNullable<Operation["access"]>["channel"] };
 
