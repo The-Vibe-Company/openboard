@@ -511,6 +511,7 @@ Keeping `Verify` under two minutes (armada: `docs/ci-budget.md`): the six jobs r
    `apps/web/src/routeTree.gen.ts` is generated from `apps/web/src/routes/` and not committed: the Vite plugin writes it on `dev` and `build`, and `apps/web/scripts/routes.ts` writes it before `typecheck`, both from `apps/web/router.options.ts`.
    Run `bun run e2e` to build the front and exercise it in Chromium with a SQLite-backed app and a fake sign-in provider. Set `OPENBOARD_TEST_DATABASE_URL` to include the hosted project, which alternates requests across two app instances on an isolated Postgres database.
    Install Chromium first with `bun run --cwd apps/web --bun playwright install chromium`.
+   Use the shared [design tokens and UI primitives](design.md). Keep page and component styles in scoped sibling CSS files.
 3. Targets `bun-linux-x64`, `bun-linux-arm64`, `bun-darwin-arm64`, `bun-darwin-x64` -> `dist/openboard-<target>`, copied as `dist/ob-<target>` (same bytes; the name only changes the default help). Both drivers are in every binary; `OPENBOARD_DATABASE_URL` selects one at startup.
 4. `packages/cli` is also bundled for npm (`bun build --target=node`) as a client-only `ob`: `ob serve` there answers with a `next` hint to install the executable or run the image.
 5. `packages/sdk` is bundled to ESM + `.d.ts` with the contract inlined.

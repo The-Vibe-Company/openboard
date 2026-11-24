@@ -1,0 +1,4 @@
+.ui-textarea {
+  inline-size: 100%;
+  resize: vertical;
+}

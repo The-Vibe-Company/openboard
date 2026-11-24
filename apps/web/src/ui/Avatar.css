@@ -1,0 +1,15 @@
+.ui-avatar {
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--control-small);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+
+.ui-avatar img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}

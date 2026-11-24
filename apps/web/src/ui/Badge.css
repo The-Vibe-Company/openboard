@@ -1,0 +1,8 @@
+.ui-badge {
+  display: inline-block;
+  padding-inline: calc(2 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--type-small);
+  background: var(--surface);
+}

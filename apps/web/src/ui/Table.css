@@ -1,0 +1,10 @@
+.ui-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  text-align: start;
+}
+
+.ui-table :is(th, td) {
+  padding: calc(2 * var(--space));
+  border-block-end: var(--stroke) solid var(--border);
+}

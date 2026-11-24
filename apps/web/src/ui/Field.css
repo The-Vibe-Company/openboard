@@ -1,0 +1,8 @@
+.ui-field {
+  display: grid;
+  gap: var(--space);
+}
+
+.ui-field > span {
+  color: var(--muted);
+}
