@@ -2396,6 +2396,10 @@
             "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
+          "409": {
+            "description": "grant_lockout",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
           "429": {
             "description": "quota_exceeded, rate_limited",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },

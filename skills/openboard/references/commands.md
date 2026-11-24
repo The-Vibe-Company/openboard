@@ -150,7 +150,7 @@ Options:
 - `--connection`: A connection ID on this board.
 - `--all-connections`: Every connection on this board.
 
-Errors: `error: forbidden`, `error: grant_empty`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: grant_empty`, `error: grant_lockout`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `create_grant`.
 

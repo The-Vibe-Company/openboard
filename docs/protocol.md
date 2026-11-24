@@ -304,7 +304,6 @@ OpenBoard selector `connection=<id>`. Selecting a connection explicitly
 requires board ownership or `manage` at `*`. Claimed agent tokens can only
 explain their own access without a subject selector. The explanation considers the
 connection's grants, `all-connections` and applicable `everyone` restrictions.
-Live enforcement of `everyone` restrictions is tracked separately.
 An unknown or revoked connection returns an empty explanation.
 Explaining another subject requires `manage` at `*` or board ownership.
 A self-explanation omits grant records when the caller cannot list them.
@@ -391,9 +390,18 @@ A GitHub Actions bearer with the board URL as its audience writes as
 `github:repo:<repository_id>` with permissions from matching repository grants.
 For an OIDC identity, `GET /me` returns the token expiry as epoch milliseconds
 and `openboard.credential` is `oidc`.
-Project and app principal kinds are preserved for display. Grant creation
+Project and app principal kinds are preserved for display. Project explanations
+treat the hypothetical project as belonging to the board’s organization, and
+`all-projects` matches its selected environment.
+An `everyone` grant takes effect only where another grant already covers the subject.
+The most specific channel pattern decides first. At that pattern, a named
+principal outranks a group, and a group outranks `everyone`. Grants tied at
+the deciding pattern and level add their permissions. Grant creation
 appears as `ob.grant.created` in the board audit. The response and subsequent listings
 keep `can` as submitted, including `"all"`, the order of permission lists, and empty lists.
+For a caller other than a local owner, organization owner, or admin, creation
+returns 409 `grant_lockout` if the grant would leave its maker unable to manage
+it. Setting `lockMeOut: true` allows creation in that case.
 An empty list contributes no permissions when its pattern decides access. Grants tied
 at that pattern can still add permissions. In the CLI,
 `--can 'ops/=read' --can 'ops/secret/=none'` allows reading under `ops/` and closes `ops/secret/`.
