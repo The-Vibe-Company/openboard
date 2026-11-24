@@ -229,8 +229,11 @@ local owner person `ob:user:local-<os user>`, and writes an owner token to
 `~/.config/openboard/local/<port>.json` (mode 0600), as upstream's `vb serve`
 writes a token file only the user can read (`docs/01-board/03-identity.md`,
 "Where tokens come from"). `ob` reads it automatically for a loopback
-`BOARD_URL`. No sign-up, no network. Sign-in providers are off unless
-configured.
+`BOARD_URL`. Local mode binds to loopback by default. An off-loopback listener
+still requires authentication for protected routes. The owner token grants owner
+access and is written with mode 0600 to the container's data volume at
+`/data/.config/openboard/local/<port>.json`. Sign-up and sign-in providers are
+off unless configured.
 
 ## Connections
 

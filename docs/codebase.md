@@ -375,6 +375,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 |---|---|
 | `OPENBOARD_DATABASE_URL` | set: hosted mode on Postgres (`postgres://…`), with organizations and sign-up; unset: local mode on SQLite, with the implicit organization `local` and board `main` |
 | `OPENBOARD_BACKUP_S3_ENDPOINT`, `_BUCKET`, `_REGION`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY` | Hosted log shipping to a private S3-compatible bucket. Set all five (using the `OPENBOARD_BACKUP_S3_` prefix) or none. The secret access key can also come from `OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY_FILE`. |
+| `OPENBOARD_HOST` | Listener hostname or IP address (default `127.0.0.1` in local mode, `0.0.0.0` in hosted mode) |
 | `OPENBOARD_DATA_DIR` | SQLite mode: database, blobs, backups (default `./.openboard`) |
 | `OPENBOARD_SIGNUP` | `open`, `invite` or `closed` (docs/auth.md); local mode defaults to `closed`, no sign-up unless set (D48) |
 | `OPENBOARD_PUBLIC_URL` | canonical origin, never derived from `Host` |
@@ -513,7 +514,7 @@ Keeping `Verify` under two minutes (armada: `docs/ci-budget.md`): the six jobs r
 
 ### 7.2 Docker image
 
-One image for both modes. Build stage `oven/bun:<pinned>`; runtime stage `debian:bookworm-slim` (D-level choice in `docs/architecture.md` "Topology"), non-root, installs the Postgres client major pinned in `docker-compose.test.yml`, copies `dist/openboard-linux-<arch>` to `/usr/local/bin/openboard`, `ENV OPENBOARD_DATA_DIR=/data`, `VOLUME /data`, `EXPOSE 8787`, `ENTRYPOINT ["openboard"]`, `CMD ["serve"]`. Published as `ghcr.io/the-vibe-company/openboard:<version>` and `:main-<sha>`. In hosted mode the volume is simply unused.
+One image for both modes. Build stage `oven/bun:<pinned>`; runtime stage `debian:bookworm-slim` (D-level choice in `docs/architecture.md` "Topology"), non-root, installs the Postgres client major pinned in `docker-compose.test.yml`, copies `dist/openboard-linux-<arch>` to `/usr/local/bin/openboard`, `ENV OPENBOARD_DATA_DIR=/data`, `OPENBOARD_HOST=0.0.0.0`, `EXPOSE 8787`, `ENTRYPOINT ["openboard"]`, `CMD ["serve"]`. Published as `ghcr.io/the-vibe-company/openboard:<version>` and `:main-<sha>`. Mount a data volume explicitly in local mode (7.6). Railway runs the same image without a volume.
 
 ### 7.3 Versions
 
@@ -538,7 +539,7 @@ One image for both modes. Build stage `oven/bun:<pinned>`; runtime stage `debian
 
 ### 7.6 Self-host
 
-- **Local, one command**: install the executable and run `ob serve` (the same as `openboard serve`) (SQLite in `./.openboard`, the implicit organization `local` and board `main`; the owner token is written to `~/.config/openboard/local/<port>.json` with mode 0600, never printed, and `ob` reads it for a loopback `BOARD_URL`), or `docker run -p 8787:8787 -v openboard:/data ghcr.io/the-vibe-company/openboard`.
-- **Self-hosted server**: the same image as one container with one volume at `/data`, no Postgres. Deploys restart it in place with a few seconds of unavailability that clients absorb by reconnecting with their cursor. Snapshots are written by a scheduled job (`VACUUM INTO`, D25) and `openboard restore` reads them back.
+- **Local, one command**: install the executable and run `ob serve` (the same as `openboard serve`) (SQLite in `./.openboard`, the implicit organization `local` and board `main`; the owner token is written to `~/.config/openboard/local/<port>.json` with mode 0600, never printed, and `ob` reads it for a loopback `BOARD_URL`), or `docker run -p 8787:8787 -v openboard-data:/data ghcr.io/the-vibe-company/openboard`.
+- **Self-hosted server**: the same image as one container with one volume at `/data`, no Postgres. The image uses `/data` as the account home, so the local owner token is on the volume at `/data/.config/openboard/local/<port>.json`. The in-container CLI defaults to `BOARD_URL=http://127.0.0.1:8787/api/local/main`. Set `BOARD_URL` for an in-container CLI command if you change the listener port. Deploys restart it in place with a few seconds of unavailability that clients absorb by reconnecting with their cursor. Snapshots are written under `/data/backups` (`VACUUM INTO`, D25) and `openboard restore` reads them back.
 - **Self-hosted HA**: the same image with `OPENBOARD_DATABASE_URL` and two or more containers, exactly like the hosted service; `OPENBOARD_SIGNUP` decides whether sign-up is open.
 - Moving from local to Postgres is an organization export and import (seam in 4.5), not a database copy.
