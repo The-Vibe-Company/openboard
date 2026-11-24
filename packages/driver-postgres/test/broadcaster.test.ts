@@ -86,10 +86,10 @@ if (url) {
   test("notifications delivered together wake one read from the subscriber's cursor", async () => {
     const subscriber = await open();
     const writer = await open();
-    const sql = new SQL(database.url);
+    await using sql = new SQL(database.url);
     const notifications: string[] = [];
     const receivedBoth = Promise.withResolvers<void>();
-    const listener = await sql.listen("ob_events", (payload) => {
+    await using _listener = await sql.listen("ob_events", (payload) => {
       notifications.push(payload);
       if (notifications.length === 2) receivedBoth.resolve();
     });
@@ -104,37 +104,31 @@ if (url) {
       expect(subscription.reads).toEqual([cursor]);
     } finally {
       subscription.stop();
-      await listener.unlisten();
-      await sql.close();
     }
   }, 850);
 
-  test("a rolled-back write sends no notification", async () => {
+  test("rolled-back and no-op writes send no notification", async () => {
     const writer = await open();
-    const sql = new SQL(database.url);
+    await using sql = new SQL(database.url);
     const observed: string[] = [];
     const fence = Promise.withResolvers<void>();
-    const listener = await sql.listen("ob_events", (payload) => {
+    await using _listener = await sql.listen("ob_events", (payload) => {
       if (payload === "fence") fence.resolve();
       else observed.push(payload);
     });
-    try {
-      const { head } = await writer.board.readEvents();
-      await expect(
-        writer.board.write(async (tx) => {
-          await append(tx);
-          throw new Error("rollback");
-        }),
-      ).rejects.toThrow("rollback");
+    const { head } = await writer.board.readEvents();
+    await writer.board.write((tx) => tx.append([]));
+    await expect(
+      writer.board.write(async (tx) => {
+        await append(tx);
+        throw new Error("rollback");
+      }),
+    ).rejects.toThrow("rollback");
 
-      // PostgreSQL delivers notifications in commit order. The fence lets us check absence without sleeping.
-      await sql.notify("ob_events", "fence");
-      await fence.promise;
-      expect(observed).toEqual([]);
-      expect((await writer.board.readEvents()).head).toBe(head);
-    } finally {
-      await listener.unlisten();
-      await sql.close();
-    }
+    // PostgreSQL delivers notifications in commit order. The fence lets us check absence without sleeping.
+    await sql.notify("ob_events", "fence");
+    await fence.promise;
+    expect(observed).toEqual([]);
+    expect((await writer.board.readEvents()).head).toBe(head);
   }, 850);
 }
