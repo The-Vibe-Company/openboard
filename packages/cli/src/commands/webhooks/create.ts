@@ -2,19 +2,26 @@ import { closeSync, openSync, readFileSync, unlinkSync, writeFileSync } from "no
 import { BoardError, type WebhookSpec } from "@openboard/contract";
 import { type Command, Misuse } from "../index.ts";
 
-export function secretFileOptions(args: readonly string[], optionsEnd: number) {
+function fileOptions(args: readonly string[], optionsEnd: number, usage: string) {
   const flags = new Map<string, string>();
   for (let i = 0; i < args.length; i += 2) {
     const flag = args[i];
     const value = args[i + 1];
     if ((flag !== "--file" && flag !== "--secret-file") || !value || i + 1 >= optionsEnd || flags.has(flag)) {
-      throw new Misuse("expected --file <spec.json> --secret-file <path>");
+      throw new Misuse(usage);
     }
     flags.set(flag, value);
   }
   const spec = flags.get("--file");
   const secret = flags.get("--secret-file");
-  if (!spec || !secret) throw new Misuse("expected --file <spec.json> --secret-file <path>");
+  if (!spec) throw new Misuse(usage);
+  return { spec, secret };
+}
+
+export function secretFileOptions(args: readonly string[], optionsEnd: number) {
+  const usage = "expected --file <spec.json> --secret-file <path>";
+  const { spec, secret } = fileOptions(args, optionsEnd, usage);
+  if (!secret) throw new Misuse(usage);
   return { spec, secret };
 }
 
@@ -51,12 +58,18 @@ export function reserveSecret(path: string, verbatim: boolean, custom = false): 
 
 export const createWebhookCommand: Command = {
   words: ["webhooks", "create"],
-  usage: "ob webhooks create --file <spec.json> --secret-file <path>",
+  usage: "ob webhooks create --file <spec.json> [--secret-file <path>]",
   async run(ctx) {
-    const paths = secretFileOptions(ctx.args, ctx.optionsEnd);
+    const paths = fileOptions(ctx.args, ctx.optionsEnd, "expected --file <spec.json> [--secret-file <path>]");
     const spec = readSpec<WebhookSpec>(paths.spec);
     if (spec.signing?.secret !== undefined) throw new Misuse("put the signing secret in --secret-file");
     const preset = spec.signing?.preset;
+    if (preset === "none") {
+      const { webhook } = await ctx.client.createWebhook(spec);
+      ctx.output.out(webhook.id);
+      return 0;
+    }
+    if (!paths.secret) throw new Misuse("expected --file <spec.json> --secret-file <path>");
     const custom = preset === undefined && spec.signing?.algorithm !== undefined;
     const verbatim = custom || preset === "stripe" || preset === "ts-id-body";
     const file = reserveSecret(paths.secret, preset === "github" || verbatim, custom);

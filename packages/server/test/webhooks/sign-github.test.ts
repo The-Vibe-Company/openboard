@@ -2,13 +2,13 @@ import { expect, test } from "bun:test";
 import { createHmac } from "node:crypto";
 import type { createWebhook, OutputOf } from "@openboard/contract";
 import type { Jobs } from "@openboard/ports";
-import { signWebhook, webhookSigningScheme } from "../../src/jobs/sign.ts";
+import { signWebhook } from "../../src/jobs/sign.ts";
 import { call, makeApp, NOW } from "../support/app.ts";
 
 test("matches the published GitHub signature and sends the delivery ID", () => {
   const id = "dl_aaaaaaaaaaaaaaaa";
   const headers = signWebhook(
-    webhookSigningScheme({ preset: "github" }),
+    { preset: "github" },
     id,
     NOW,
     "Hello, World!",

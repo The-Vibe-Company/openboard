@@ -2,7 +2,7 @@ import type { Webhook } from "@openboard/contract";
 import { webhookPayload, webhookPing } from "@openboard/core";
 import type { WebhookAttempt } from "@openboard/ports";
 import type { ServerConfig } from "../deps.ts";
-import { signWebhook, webhookSigningScheme } from "../jobs/sign.ts";
+import { signWebhook } from "../jobs/sign.ts";
 import { projectEvent } from "../operations/events.ts";
 import type { WebhookCredentials } from "./secret-box.ts";
 
@@ -42,7 +42,6 @@ export function signedWebhookRequest(
   body: string,
 ): SignedWebhookRequest {
   const headers = new Headers(credentials.headers);
-  const scheme = webhookSigningScheme(signing);
-  for (const [key, value] of signWebhook(scheme, id, now, body, credentials.secret, url)) headers.set(key, value);
+  for (const [key, value] of signWebhook(signing, id, now, body, credentials.secret, url)) headers.set(key, value);
   return { headers, body };
 }

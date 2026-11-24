@@ -1195,3 +1195,14 @@ that would set a custom scheme return HTTP 400 `invalid_signing`. Replicas
 that support custom schemes can process stored custom subscriptions
 regardless of their flag setting.
 ([Issue #500](https://github.com/The-Vibe-Company/openboard/issues/500#issuecomment-7141464319))
+
+### Unsigned webhook rollout and receiver credentials
+
+The `none` preset shares the default-off `OPENBOARD_WEBHOOK_CUSTOM_SIGNING`
+write gate. Nonempty static header writes use the same gate, including on
+signed subscriptions, so older replicas cannot redirect newly stored receiver
+credentials. Turn the flag off before rolling out this release and enable it
+after all replicas support unsigned deliveries and enforce the receiver-origin
+check. A URL change to another origin requires replacing or clearing any stored static
+headers in that request. Same-origin URL changes can retain the headers.
+([Issue #501](https://github.com/The-Vibe-Company/openboard/issues/501))

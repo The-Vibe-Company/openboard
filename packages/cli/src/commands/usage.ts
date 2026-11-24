@@ -186,7 +186,10 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     summary: "Subscribe to board events and store the signing secret privately.",
     operations: ["createWebhook"],
     example: "ob webhooks create --file dev-ready.json --secret-file ./hook.secret",
-    options: { file: "JSON subscription spec.", "secret-file": "Existing signing secret or a new 0600 file." },
+    options: {
+      file: "JSON subscription spec.",
+      "secret-file": "Existing signing secret or a new 0600 file. Required unless the preset is none.",
+    },
   },
   "connections create": {
     summary: "Create a connection: a secret agents claim tokens from, with the permissions they get.",

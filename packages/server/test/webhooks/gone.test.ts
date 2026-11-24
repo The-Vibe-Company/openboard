@@ -119,7 +119,7 @@ test("partial webhook edits share creation validation and rotate signing credent
       [{ name: "" }, "invalid_request"],
       [{ url: "file:///tmp/webhook" }, "invalid_url"],
       [{ filter: { tail: "dev$", types: ["message.posted"] } }, "bad_watcher"],
-      [{ headers: { "x-custom": "value" } }, "invalid_signing"],
+      [{ headers: { "content-type": "text/plain" } }, "invalid_request"],
       [{ body: "invalid" }, "invalid_request"],
     ] as const) {
       const invalid = await call(app, "POST", route, patch);

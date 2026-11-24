@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runCli } from "../src/main.ts";
@@ -179,3 +179,23 @@ test("webhooks show escapes terminal controls in a stored name", async () => {
   expect(await capture.run(["show", webhook.id])).toBe(0);
   expect(capture.out).toEqual([`${webhook.id}  line\\u{a}\\u{1b}[2K  ${webhook.url}  disabled: gone`]);
 });
+
+test.each(["omitted", "new", "existing"])(
+  "ob webhooks create with none skips the %s signing secret file",
+  async (file) => {
+    const config = join(directory, "spec.json");
+    const path = join(directory, "hook.secret");
+    const unsigned = { ...spec, signing: { preset: "none" } };
+    writeFileSync(config, JSON.stringify(unsigned));
+    if (file === "existing") writeFileSync(path, "fixture");
+    const capture = fixture({ webhook }, 201);
+    const flags = file === "omitted" ? [] : ["--secret-file", path];
+    expect(await capture.run(["create", "--file", config, ...flags])).toBe(0);
+    expect(capture.requests).toHaveLength(1);
+    expect(await capture.requests[0]?.json()).toEqual(unsigned);
+    if (file === "existing") expect(readFileSync(path, "utf8")).toBe("fixture");
+    else expect(existsSync(path)).toBe(false);
+    expect(capture.out).toEqual([webhook.id]);
+    expect(capture.errors).toEqual([]);
+  },
+);
