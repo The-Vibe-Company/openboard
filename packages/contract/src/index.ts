@@ -123,6 +123,7 @@ export {
   readSchema,
   readSource,
   readThread,
+  receiveInboundEvent,
   receiveWebhook,
   recordSyncReceipt,
   refreshAgentToken,

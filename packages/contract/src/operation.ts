@@ -81,6 +81,8 @@ export type Operation<
   /** Relative to `BOARD_URL` for `board` operations; upstream's path where one exists. */
   readonly route: { readonly method: Method; readonly path: string; readonly mount?: "/api/x" };
   readonly scope: S;
+  /** A board operation authenticated by a signature over its raw request body. */
+  readonly auth?: S extends "board" ? "signature" : never;
   /** An account operation that also accepts an unrestricted personal bearer. */
   readonly accountBearer?: "personal";
   readonly input: I;

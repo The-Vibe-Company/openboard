@@ -71,3 +71,22 @@ test("only opted-in account operations send the personal bearer", async () => {
     null,
   ]);
 });
+
+test("signed events send the supplied headers and raw bytes", async () => {
+  const bytes = Uint8Array.of(0xef, 0xbb, 0xbf, 0xff);
+  const result = { ok: true as const, matched: [], results: [] };
+  const client = createClient({
+    url: "http://127.0.0.1:8787/api/acme/main",
+    token: "board bearer fixture",
+    fetch: async (request) => {
+      expect(new URL(request.url).pathname).toBe("/api/acme/main/x/inbound/ib_fixture/events");
+      expect(request.method).toBe("POST");
+      expect(request.headers.get("webhook-signature")).toBe("signature fixture");
+      expect(request.headers.has("authorization")).toBe(false);
+      expect(new Uint8Array(await request.arrayBuffer())).toEqual(bytes);
+      return Response.json(result);
+    },
+  });
+  const headers = { "webhook-signature": "signature fixture" };
+  expect(await client.receiveInboundEvent({ id: "ib_fixture" }, { signed: { headers, body: bytes } })).toEqual(result);
+});

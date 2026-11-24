@@ -4,19 +4,36 @@ title: Refuse an inbound event with a bad signature
 milestone: M11-webhooks-and-watchers
 package: server
 writes:
-  - packages/contract/src/operations/inbound-events.ts
+  - packages/contract/src/operations/inbound/index.ts
   - packages/contract/src/operations/index.ts
   - packages/contract/src/operation.ts
   - packages/server/src/inbound/verify.ts
   - packages/server/src/inbound/receive.ts
   - packages/server/src/operations/index.ts
   - packages/server/src/http/pipeline.ts
+  - packages/server/src/http/request-id.ts
+  - packages/server/src/http/limits.ts
   - packages/server/test/inbound/signature.test.ts
+  - packages/server/test/boards-delete.test.ts
+  - packages/contract/src/index.ts
+  - packages/server/src/auth/chain.ts
+  - packages/server/src/http/openapi.ts
+  - packages/server/src/jobs/sign.ts
+  - packages/server/openapi.json
+  - packages/server/test/isolation/cases.ts
+  - packages/server/test/isolation/isolation.test.ts
+  - packages/ports/src/inbound/index.ts
+  - packages/ports/src/seams.ts
+  - packages/ports/testkit/isolation.test-suite.ts
+  - packages/driver-sql/src/views/inbound/index.ts
+  - packages/sdk/src/client.ts
+  - packages/sdk/test/client.test.ts
+  - docs/protocol.md
 conformance: []
 modes: [local, hosted]
 depends_on: [326]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 512
 ---
 

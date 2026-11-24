@@ -9,15 +9,26 @@ import {
   type OutputOf,
   operations,
   PROFILE_HEADER,
+  type receiveInboundEvent,
 } from "@openboard/contract";
 
 type Contracted = (typeof operations)[number];
+
+type CallOptions = { readonly signal?: AbortSignal };
+type SignedCallOptions = CallOptions & {
+  readonly signed: {
+    readonly headers: NonNullable<RequestInit["headers"]>;
+    readonly body: string | Uint8Array<ArrayBuffer> | ArrayBuffer | Blob;
+  };
+};
 
 /** One method per contract operation: `client.postMessage({ channel, text })` (docs/codebase.md 4.2). */
 export type Client = {
   readonly [Op in Contracted as Op["name"]]: (
     input: InputOf<Op>,
-    options?: { readonly signal?: AbortSignal },
+    ...options: Op["name"] extends typeof receiveInboundEvent.name
+      ? [options: SignedCallOptions]
+      : [options?: CallOptions]
   ) => Promise<OutputOf<Op>>;
 };
 
@@ -40,6 +51,7 @@ export function requestOf(
   input: Readonly<Record<string, unknown>>,
   options: ClientOptions,
   signal?: AbortSignal,
+  signed?: SignedCallOptions["signed"],
 ) {
   const params = fieldsOf(operation.input.params);
   const query = fieldsOf(operation.input.query);
@@ -50,6 +62,10 @@ export function requestOf(
   const url = platformMount
     ? new URL(platformMount + path, options.url)
     : new URL(`${options.url.replace(/\/+$/, "")}${path}`);
+  if (operation.auth === "signature") {
+    if (!signed) throw new TypeError("a signed operation requires headers and a raw body");
+    return new Request(url, { method: operation.route.method, ...signed, signal });
+  }
   const body: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(input)) {
     if (value === undefined || params.has(name)) continue;
@@ -145,8 +161,11 @@ export function createClient(options: ClientOptions): Client {
   const send = options.fetch ?? ((request: Request) => fetch(request));
   const methods = operations.map((operation) => [
     operation.name,
-    async (input: Readonly<Record<string, unknown>>, request?: { readonly signal?: AbortSignal }) =>
-      answerOf(await reach(send, requestOf(operation, input, options, request?.signal)), operation.responseType),
+    async (input: Readonly<Record<string, unknown>>, request?: CallOptions & Partial<SignedCallOptions>) =>
+      answerOf(
+        await reach(send, requestOf(operation, input, options, request?.signal, request?.signed)),
+        operation.responseType,
+      ),
   ]);
   return Object.freeze(Object.fromEntries(methods)) as Client;
 }

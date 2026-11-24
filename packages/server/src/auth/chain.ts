@@ -81,7 +81,7 @@ export async function limitAuthentication<T>({ rateLimits, ip }: RequestLimits, 
   try {
     return await verify();
   } catch (error) {
-    failed = error instanceof BoardError && error.code === "unauthorized";
+    failed = error instanceof BoardError && (error.code === "unauthorized" || error.code === "bad_signature");
     throw error;
   } finally {
     finish(failed);

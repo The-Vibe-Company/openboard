@@ -20,7 +20,7 @@ function parameters(schema: OperationInput["params"], location: "path" | "query"
 
 function errorResponses(operation: Operation) {
   const codes = new Set<ErrorCode>(["invalid_request", "internal", ...operation.errors]);
-  if (operation.scope !== "public") {
+  if (operation.scope !== "public" && operation.auth !== "signature") {
     codes.add("unauthorized");
     codes.add("not_found");
     codes.add("invalid_profile");
@@ -90,6 +90,14 @@ function describeOperation(operation: Operation) {
     operationId: operation.operationId ?? operation.name,
     summary: operation.summary,
     ...(operation.scope === "public" && { security: [] }),
+    ...(operation.auth === "signature" && {
+      security: [],
+      "x-openboard-auth": "signature",
+      requestBody: {
+        required: true,
+        content: { "*/*": { schema: { type: "string", format: "binary" } } },
+      },
+    }),
     ...(sessionAuth && {
       servers: [{ url: "/" }],
       security: [{ sessionAuth: [] }, ...(personalBearer ? [{ bearerAuth: [] }] : [])],

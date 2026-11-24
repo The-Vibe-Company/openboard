@@ -44,6 +44,8 @@ export function requestRateLimits(
   type Waiter = (admission: Admission) => void;
   type Pending = { count: number; waiters: Set<Waiter> };
   const pending = new Map<string, Pending>();
+  let inbound = 0;
+  const inboundByIp = new Map<string, number>();
   const byOrg = new Map<string, number>();
   const byPrincipal = new Map<string, number>();
 
@@ -67,6 +69,16 @@ export function requestRateLimits(
   }
 
   return {
+    reserveInbound(ip = "unknown") {
+      const fromIp = inboundByIp.get(ip) ?? 0;
+      if (inbound >= 20 || fromIp >= 4) return undefined;
+      inbound++;
+      inboundByIp.set(ip, fromIp + 1);
+      return () => {
+        inbound--;
+        decrement(inboundByIp, ip);
+      };
+    },
     reserveStream(org, principal) {
       const orgCount = byOrg.get(org) ?? 0;
       const principalCount = byPrincipal.get(principal) ?? 0;

@@ -87,3 +87,24 @@ export const deleteInbound = defineOperation({
   effects: { readOnly: false, idempotent: false, emits: ["ob.inbound.deleted", "ob.grant.revoked"] },
   cli: { command: ["inbound", "delete"], args: ["id"] },
 });
+
+export const receiveInboundEvent = defineOperation({
+  name: "receiveInboundEvent",
+  summary: "Receive an event signed with the inbound endpoint's configured scheme.",
+  scope: "board",
+  auth: "signature",
+  upstream: false,
+  access: null,
+  route: { method: "POST", path: "/x/inbound/:id/events" },
+  input: { params },
+  output: Type.Object({
+    ok: Type.Literal(true),
+    matched: Type.Array(Type.Unknown()),
+    results: Type.Array(Type.Unknown()),
+  }),
+  errors: ["invalid_request", "bad_signature", "not_found", "too_large", "unavailable"],
+  effects: { readOnly: false, idempotent: false, emits: [] },
+  cli: false,
+  mcp: false,
+  why: "External event senders authenticate with the endpoint's signing scheme.",
+});

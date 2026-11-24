@@ -90,11 +90,13 @@ test("an admin deletes a board, records one audit event and shuts off its authen
       expect.objectContaining({ actor: principal, createdAt: deletion.deletedAt, payload: deletion }),
     ]);
 
-    for (const { scope, route } of operations) {
+    for (const { auth, scope, route } of operations) {
       if (scope !== "board" || route.mount) continue;
       const path = ops + route.path.replace(/:\w+/g, "sample");
       for (const headers of [connection, agent]) {
-        await expectError(await send(route.method, path, headers), 401, "unauthorized");
+        const response = await send(route.method, path, headers);
+        if (auth === "signature") await expectError(response, 404, "not_found");
+        else await expectError(response, 401, "unauthorized");
       }
       await expectError(await send(route.method, path, member), 404, "not_found");
     }
