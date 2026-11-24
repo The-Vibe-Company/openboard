@@ -12,7 +12,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [173]
-status: claimed
+status: done
 claimed_by: claude-t175
 issue: 255
 ---
@@ -21,8 +21,8 @@ issue: 255
 As the owner, I decide whether hosted mode turns on Postgres row-level security knowing what it costs per read and per write.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun packages/driver-postgres/bench/rls.ts` seeds a fresh database with the bench workload, then prints p50 and p99 of a channel read and of a post, and round trips per operation, with and without RLS policies (`org_id = current_setting('app.org_id')::bigint`) and the tenant set per transaction
-- [ ] `docs/decisions.md` has a new decision record with those numbers, the database and machine they were taken on, and a recommendation; docs/data-model.md "Tenancy" points to it
+- [x] `OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun packages/driver-postgres/bench/rls.ts` seeds a fresh database with the bench workload, then prints p50 and p99 of a channel read and of a post, and round trips per operation, with and without RLS policies (`org_id = current_setting('app.org_id')::bigint`) and the tenant set per transaction
+- [x] `docs/decisions.md` has a new decision record with those numbers, the database and machine they were taken on, and a recommendation; docs/data-model.md "Tenancy" points to it
 
 ## Out of scope
 - Turning RLS on: a later ticket, only if the owner decides so.

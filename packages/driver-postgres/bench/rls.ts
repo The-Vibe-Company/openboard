@@ -2,14 +2,17 @@
  * What Postgres row-level security would cost hosted mode (ticket 175, docs/decisions.md D56). Seeds a scratch
  * database cloned from a migrated template with the bench workload, adds RLS policies
  * (`org_id = current_setting('app.org_id')::bigint`) to every table that carries `org_id` on that scratch database
- * only, then times a channel read of 50 and a post, interleaved, through two stores on the same database:
+ * only, then times a channel read of 50 and a post, interleaved, through three stores on the same database:
  *
- * - `plain`: the driver as it ships, connected as the URL's user (a superuser, so no policy is ever evaluated);
- * - `rls`: the same views on a connection whose role is subject to the policies, every statement run in a
- *   transaction that first sets the tenant with `set_config('app.org_id', $1, true)`.
+ * - `plain`: the driver's views and connection as they ship, connected as the URL's user;
+ * - `tenant`: the same, with every statement run in a transaction that first sets the tenant with
+ *   `set_config('app.org_id', $1, true)`; as the URL's user, no policy applies, so this is the round trips alone;
+ * - `rls`: `tenant` connected as a role the policies apply to.
  *
- * Measurement only: nothing here ships, no migration changes. Usage, with a Postgres the bench may create a database
- * and a role on: `OPENBOARD_TEST_DATABASE_URL=postgres://… bun packages/driver-postgres/bench/rls.ts`.
+ * Measurement only: nothing here ships, no migration changes. Usage: `OPENBOARD_TEST_DATABASE_URL=postgres://… bun
+ * packages/driver-postgres/bench/rls.ts`. The URL's user must be a superuser (or own the tables and be allowed to
+ * `SET ROLE` to a role it creates): the bench creates a database and a role, and `plain` and `tenant` rely on
+ * bypassing the policies. The docker-compose Postgres of `verify:pg` is one.
  */
 import { messages } from "@openboard/core";
 import { createViews, type Db, postgresText } from "@openboard/driver-sql";
@@ -18,7 +21,7 @@ import { SQL } from "bun";
 import { postgresBroadcaster } from "../src/broadcaster.ts";
 import { type StatementCounter, statementCounter } from "../src/counters.ts";
 import { createTestDatabases } from "../src/database.ts";
-import { connection, openPool } from "../src/pool.ts";
+import { connection } from "../src/pool.ts";
 import { postgresBenchUrl } from "../test/support/env.ts";
 
 /** The bench workload of docs/codebase.md 6.6 on the measured board, and a smaller board in each other organization. */
@@ -30,7 +33,10 @@ const CHANNEL = "general";
 const READ_LIMIT = 50;
 const by = { actor: "ob:user:bench", principal: "ob:user:bench", profile: null };
 
-/** The bench mints its scopes as the driver tests do (`@openboard/ports/testkit`); only the tenant resolver does so in the server. */
+/**
+ * The bench mints its scopes with the same cast as `@openboard/ports/testkit`'s `testScope`, which only test files may
+ * import; only the tenant resolver mints one in the server.
+ */
 const scope = (orgId: number, boardId: number) => ({ orgId, boardId }) as BoardScope;
 
 function post(board: BoardView, channel: string, text: string): Promise<number> {
@@ -116,19 +122,26 @@ function tenantDb(db: Db, orgId: number): Db {
   };
 }
 
+type Name = "plain" | "tenant" | "rls";
+const NAMES: readonly Name[] = ["plain", "tenant", "rls"];
+
 interface Variant {
-  readonly name: "plain" | "rls";
+  readonly name: Name;
   readonly sql: SQL;
   readonly counter: StatementCounter;
   readonly board: (scope: BoardScope) => BoardView;
 }
 
-/** The driver's own views on a pool of `url`; with `role`, connected as that role with the tenant set per transaction. */
-function openVariant(name: Variant["name"], url: string, role?: string): Variant {
+/**
+ * The driver's own views and connection on a pool of `url`: as they ship (`plain`), with the tenant set per
+ * transaction (`tenant`), or that and connected as `role`, which the policies apply to (`rls`). All three pools are
+ * opened alike, without `openPool`'s timeout settings, so the variants differ only in what they measure.
+ */
+function openVariant(name: Name, url: string, role?: string): Variant {
   const counter = statementCounter();
-  const sql = role ? new SQL(url, { connectionTimeout: 3, connection: { role } }) : openPool(url);
+  const sql = new SQL(url, { connectionTimeout: 3, connection: name === "rls" && role ? { role } : {} });
   const db = connection(sql, counter);
-  const views = createViews(role ? tenantDb(db, 1) : db, postgresText, postgresBroadcaster());
+  const views = createViews(name === "plain" ? db : tenantDb(db, 1), postgresText, postgresBroadcaster());
   return { name, sql, counter, board: (s) => views.board(s) };
 }
 
@@ -141,21 +154,28 @@ function run(variant: Variant, operation: Operation, n: number): Promise<unknown
   return post(board, CHANNEL, `measured ${variant.name} ${n}`);
 }
 
-/** Times `SAMPLES` of each operation per variant, alternating variants op by op so drift hits both alike. */
+/**
+ * Times `SAMPLES` of each operation per variant, alternating variants op by op, and rotating which goes first, so
+ * drift and warm caches favour none. Keeps every distinct round-trip count an operation took.
+ */
 async function measure(variants: readonly Variant[]) {
   const samples = new Map<string, number[]>();
-  const trips = new Map<string, number>();
+  const trips = new Map<string, Set<number>>();
   for (const operation of OPERATIONS) {
     for (let n = 0; n < WARMUP + SAMPLES; n++) {
-      for (const variant of variants) {
+      for (let at = 0; at < variants.length; at++) {
+        const variant = variants[(at + n) % variants.length];
+        if (!variant) continue;
         const before = variant.counter.statements;
         const started = performance.now();
         await run(variant, operation, n);
         const elapsed = performance.now() - started;
         if (n < WARMUP) continue;
         const key = `${variant.name} ${operation}`;
-        samples.set(key, [...(samples.get(key) ?? []), elapsed]);
-        trips.set(key, variant.counter.statements - before);
+        const timed = samples.get(key) ?? [];
+        timed.push(elapsed);
+        samples.set(key, timed);
+        trips.set(key, (trips.get(key) ?? new Set()).add(variant.counter.statements - before));
       }
     }
   }
@@ -166,13 +186,28 @@ function percentile(sorted: readonly number[], p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)] ?? Number.NaN;
 }
 
-/** Proves the policies bite: the RLS store, tenant 1, reads nothing of another organization's board. */
-async function checkPolicies(plain: Variant, rls: Variant, other: BoardScope): Promise<string> {
-  const query = { channel: CHANNEL, limit: READ_LIMIT };
-  const seen = (await plain.board(other).channelMessages(query))?.length ?? 0;
-  const leaked = (await rls.board(other).channelMessages(query))?.length ?? 0;
-  if (seen === 0 || leaked !== 0) throw new Error(`policy check failed: plain saw ${seen}, rls saw ${leaked}`);
-  return `rls store as organization 1 read 0 of ${seen} messages on organization ${other.orgId}'s board`;
+/** The IDs of the latest messages a variant reads on a board. */
+async function readIds(variant: Variant, on: BoardScope): Promise<string> {
+  const read = await variant.board(on).channelMessages({ channel: CHANNEL, limit: READ_LIMIT });
+  return (read ?? []).map((message) => message.id).join(",");
+}
+
+/**
+ * Proves the policies bite and the timed reads are the real ones: as organization 1, the RLS store reads nothing of
+ * another organization's board, and on its own board it reads exactly what the other variants read.
+ */
+async function checkPolicies(variants: readonly Variant[], other: BoardScope): Promise<string> {
+  const [plain, ...tenanted] = variants;
+  const rls = variants.find((variant) => variant.name === "rls");
+  if (!plain || !rls) throw new Error("policy check needs the plain and rls variants");
+  const seen = (await plain.board(other).channelMessages({ channel: CHANNEL, limit: READ_LIMIT }))?.length ?? 0;
+  const leaked = await readIds(rls, other);
+  if (seen === 0 || leaked !== "") throw new Error(`policy check failed: plain saw ${seen}, rls saw ${leaked}`);
+  const own = await readIds(plain, scope(1, 1));
+  for (const variant of tenanted) {
+    if ((await readIds(variant, scope(1, 1))) !== own) throw new Error(`${variant.name} reads differ from plain's`);
+  }
+  return `as organization 1, rls read 0 of ${seen} messages on organization ${other.orgId}'s board and the same ${READ_LIMIT} as plain on its own`;
 }
 
 async function machine(admin: SQL): Promise<string[]> {
@@ -195,12 +230,12 @@ async function machine(admin: SQL): Promise<string[]> {
 function report(result: Awaited<ReturnType<typeof measure>>): string[] {
   const lines = ["operation  variant  p50 ms  p99 ms  round trips"];
   for (const operation of OPERATIONS) {
-    for (const name of ["plain", "rls"]) {
+    for (const name of NAMES) {
       const key = `${name} ${operation}`;
       const sorted = [...(result.samples.get(key) ?? [])].sort((a, b) => a - b);
       const cells = [percentile(sorted, 50).toFixed(2), percentile(sorted, 99).toFixed(2)];
       lines.push(
-        `${operation.padEnd(9)}  ${name.padEnd(7)}  ${cells[0]?.padStart(6)}  ${cells[1]?.padStart(6)}  ${String(result.trips.get(key)).padStart(11)}`,
+        `${operation.padEnd(9)}  ${name.padEnd(7)}  ${cells[0]?.padStart(6)}  ${cells[1]?.padStart(6)}  ${[...(result.trips.get(key) ?? [])].sort().join("/").padStart(11)}`,
       );
     }
   }
@@ -229,6 +264,8 @@ async function main(): Promise<void> {
 
     const plain = openVariant("plain", database.url);
     cleanup.push(() => plain.sql.close());
+    const tenant = openVariant("tenant", database.url);
+    cleanup.push(() => tenant.sql.close());
     const seeding = performance.now();
     const others = await seed(admin, plain.board);
     const total = WORKLOAD.posts + WORKLOAD.replies + WORKLOAD.otherOrgs * WORKLOAD.otherPosts;
@@ -241,10 +278,11 @@ async function main(): Promise<void> {
     write([`policies: ${tables.length} tables (${tables.join(", ")})`]);
     const rls = openVariant("rls", database.url, role);
     cleanup.push(() => rls.sql.close());
-    write([`policy check: ${await checkPolicies(plain, rls, others[0] ?? scope(1, 1))}`]);
+    const variants = [plain, tenant, rls];
+    write([`policy check: ${await checkPolicies(variants, others[0] ?? scope(1, 1))}`]);
 
     write([`samples: ${SAMPLES} per operation and variant after ${WARMUP} warm-up, read = ${READ_LIMIT} latest`]);
-    write(report(await measure([plain, rls])));
+    write(report(await measure(variants)));
   } finally {
     for (const step of cleanup.reverse()) await step().catch((error: unknown) => process.stderr.write(`${error}\n`));
   }

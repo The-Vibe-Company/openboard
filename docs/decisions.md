@@ -400,7 +400,7 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
     `board_id`; not schema- or database-per-tenant (migration and pool cost
     at thousands of small tenants).
   - No Postgres RLS in v1: it costs a round trip on every read to set the
-    tenant per transaction. Isolation by construction (only the tenant
+    tenant per transaction (measured in D56: three round trips). Isolation by construction (only the tenant
     resolver mints a `BoardScope`; store functions take it; a static check
     that every statement filters on `board_id` or `org_id`; a tenant
     isolation test suite). `org_id` on every row keeps RLS a later option.
@@ -796,32 +796,45 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   the 13 tables that carry `org_id`, on that database only, and checks that
   they apply: the RLS store, set to organization 1, reads 0 of 50 messages on
   organization 2's board. It times the store's channel read (the latest 50)
-  and its post, 1,000 of each per variant after 100 warm-up runs, with the
-  two variants alternating operation by operation. `plain` is the driver as
-  it ships. `rls` runs the same views as a role the policies apply to, with
-  every statement in a transaction that first calls
-  `set_config('app.org_id', $1, true)`. Round trips are the statements the
-  driver's counter saw, `BEGIN` and `COMMIT` included.
+  and its post, 1,000 of each per variant after 100 warm-up runs. The three
+  variants alternate operation by operation, and the one that goes first
+  rotates. `plain` is the driver's views and connection as they ship.
+  `tenant` runs every statement in a transaction that first calls
+  `set_config('app.org_id', $1, true)`, as a superuser, so the policies are
+  bypassed: its cost is the extra round trips alone. `rls` is `tenant`
+  connected as a role the policies apply to. Before timing, the bench checks
+  that `tenant` and `rls` read the same 50 messages as `plain` on their own
+  board. Round trips are the statements the driver's counter saw, `BEGIN` and
+  `COMMIT` included.
 
   | Operation | Variant | p50 ms | p99 ms | Round trips |
   |---|---|---|---|---|
-  | channel read | plain | 0.13 | 0.22 | 1 |
-  | channel read | rls | 0.30 | 0.79 | 4 |
-  | post | plain | 0.48 | 0.82 | 7 |
-  | post | rls | 0.58 | 0.95 | 8 |
+  | channel read | plain | 0.15 | 0.24 | 1 |
+  | channel read | tenant | 0.29 | 0.42 | 4 |
+  | channel read | rls | 0.30 | 0.86 | 4 |
+  | post | plain | 0.49 | 0.96 | 7 |
+  | post | tenant | 0.53 | 0.86 | 8 |
+  | post | rls | 0.56 | 0.85 | 8 |
 
   Taken on 2026-11-24 on PostgreSQL 17.12 (PGDG build for Debian 12, UTF8,
   default settings, no Docker) over loopback TCP, on a VM with an AMD EPYC
   9654, 17 threads and 2.2 GiB. The client was Bun 1.4.2, with one operation
-  in flight. Across three runs the round trips were identical. The p50s
-  stayed within 0.06 ms (read 0.13 to 0.15 plain, 0.30 to 0.31 rls; post
-  0.47 to 0.50 plain, 0.52 to 0.58 rls). The p99s varied more (read 0.22 to
-  0.73 plain, 0.48 to 0.79 rls). The extra round trips account for most of
-  the cost. The read's extra 0.16 ms is three extra round trips of about
-  0.05 ms each on loopback, so the policy itself adds little. On a network
-  round trip of 0.5 ms (D33's figure), three extra round trips would add about
-  1.5 ms to every read statement, and one extra round trip about 0.5 ms to
-  every write. That is an estimate, not a measurement.
+  in flight. Across three runs the round trips were identical, and the p50s
+  ranged as follows:
+
+  | Operation | plain | tenant | rls |
+  |---|---|---|---|
+  | channel read | 0.13 to 0.15 | 0.26 to 0.29 | 0.29 to 0.30 |
+  | post | 0.48 to 0.50 | 0.51 to 0.53 | 0.52 to 0.57 |
+
+  The p99s varied more: a read took 0.21 to 0.24 ms plain, 0.40 to 0.81 ms
+  with the tenant set, and 0.38 to 0.86 ms with RLS. The extra round trips
+  are the cost. Setting the tenant doubles a read's p50; evaluating the
+  policies adds 0.01 to 0.05 ms at p50 on top (`rls` minus `tenant`). On
+  loopback a round trip costs about 0.05 ms. On a network round trip of
+  0.5 ms (D33's figure), three extra round trips would add about 1.5 ms to
+  every read statement, and one extra round trip about 0.5 ms to every
+  write. That is an estimate, not a measurement.
 - **What turning it on would also take.** The tenant has to reach the
   driver's `Db` with each transaction; today the views pass only SQL and
   values. The platform statements (a board by its slugs, a person's
