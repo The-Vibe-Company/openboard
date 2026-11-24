@@ -25,7 +25,7 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
     if (channel !== undefined || text !== undefined || input.labels !== undefined || input.noSync !== undefined) {
       throw new BoardError(
         "invalid_request",
-        "`text`, `labels` and `noSync` are a new thread's: `re` makes a task of a thread as it is",
+        "`channel`, `text`, `labels` and `noSync` are a new thread's: `re` makes a task of a thread as it is",
       );
     }
     return makeTask(ctx, re);

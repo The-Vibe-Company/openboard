@@ -4,7 +4,7 @@ import { type Command, type CommandContext, Misuse } from "./index.ts";
 
 type Contracted = (typeof operations)[number];
 type Invoke = (input: Readonly<Record<string, unknown>>) => Promise<unknown>;
-type Field = { readonly type?: unknown };
+type Field = { readonly type?: unknown; readonly "x-ref"?: unknown };
 type Part = { readonly properties: Readonly<Record<string, Field>>; readonly required?: readonly string[] };
 
 /** Every input field of an operation, with whether a request must carry it. */
@@ -94,11 +94,20 @@ function inputOf(
     else input[name] = optionValue(field, value);
     at += 1;
   }
-  if (alternative !== undefined && positional.length === alternative.length) {
-    alternative.forEach((name, at) => {
-      input[name] = positional[at];
-    });
-    return input;
+  if (alternative !== undefined) {
+    const forms = [args, alternative].map((form) => form.map((name) => `<${name}>`).join(" ")).join(", or ");
+    if (positional.length === alternative.length) {
+      alternative.forEach((name, at) => {
+        const value = positional[at] ?? "";
+        // A message ID is decimal: anything else is the other form missing an argument.
+        if (fields.get(name)?.schema["x-ref"] === "message" && !/^\d+$/.test(value)) {
+          throw new Misuse(`expected ${forms}`);
+        }
+        input[name] = value;
+      });
+      return input;
+    }
+    if (positional.length !== args.length) throw new Misuse(`expected ${forms}`);
   }
   const needed = requiredPositionals(args, fields);
   const entries = takesEntries(args, fields);

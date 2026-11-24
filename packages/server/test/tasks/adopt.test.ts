@@ -90,10 +90,23 @@ test("making a task of a thread needs label in its channel, and a refusal leaves
   expect(((await read.json()) as { message: Message }).message).toEqual(root);
 });
 
+test("a deleted thread is 400 message_deleted, and nothing is written", async () => {
+  app = makeApp();
+  const root = await post("flaky test in ci");
+  expect((await call(app, "POST", `/messages/${root.id}/delete`, {})).status).toBe(200);
+  const cursor = await head();
+  const response = await call(app, "POST", "/tasks", { re: root.id });
+  expect(response.status).toBe(400);
+  expect(await response.json()).toMatchObject({ error: { code: "message_deleted" } });
+  expect(await head()).toBe(cursor);
+});
+
 test.each([
   ["a reply", (reply: string) => ({ re: reply }), 400, "invalid_request"],
   ["a missing message", () => ({ re: "999" }), 404, "message_not_found"],
   ["a thread with new text", (_: string, root: string) => ({ re: root, text: "again" }), 400, "invalid_request"],
+  ["a thread with labels", (_: string, root: string) => ({ re: root, labels: { k: "v" } }), 400, "invalid_request"],
+  ["a thread and a channel", (_: string, root: string) => ({ re: root, channel: "dev" }), 400, "invalid_request"],
   ["neither a thread nor a channel", () => ({ text: "orphan" }), 400, "invalid_request"],
   ["a channel without text", () => ({ channel: "dev" }), 400, "invalid_request"],
 ] as const)("making a task of %s is refused", async (_, body, status, code) => {

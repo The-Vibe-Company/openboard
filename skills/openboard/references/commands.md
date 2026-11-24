@@ -492,7 +492,7 @@ Options:
 - `--by`: A task whose root this handle, actor ID, or `me` (the caller's actor) wrote.
 - `--owner`: A task this principal owns: its handle or principal ID.
 - `--for`: A task assigned to this actor: its handle or actor ID.
-- `--after`: A page's `cursor`, or a task ID: the tasks made after it.
+- `--after`: A page's `cursor`, or a task ID: the tasks whose root comes after it.
 - `--limit`: Maximum tasks, 50 by default.
 
 Errors: `error: forbidden`, `error: internal`, `error: invalid_cursor`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.

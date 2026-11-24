@@ -24,10 +24,12 @@ writes:
   - packages/cli/src/commands/derived.ts
   - packages/cli/src/commands/usage.ts
   - skills/openboard/references/commands.md
+  - packages/contract/src/operations/tasks/list.ts
+  - packages/driver-sql/src/views/tasks/list.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [239]
-status: claimed
+status: done
 claimed_by: claude-opus
 issue: 413
 ---

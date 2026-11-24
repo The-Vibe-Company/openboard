@@ -41,7 +41,7 @@ export const listTasks = defineOperation({
           Type.String({
             minLength: 1,
             maxLength: 128,
-            description: "A page's `cursor`, or a task ID: the tasks made after it.",
+            description: "A page's `cursor`, or a task ID: the tasks whose root comes after it.",
           }),
         ),
         limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 500, description: "Maximum tasks, 50 by default." })),

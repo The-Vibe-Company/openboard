@@ -37,6 +37,16 @@ test("ob tasks create <id> makes a task of the thread that message roots and pri
   expect(lines).toEqual(["2"]);
 });
 
+test.each([[[]], [["dev"]], [["dev", "a", "b"]]])("ob tasks create %j is a misuse, sent nowhere", async (args) => {
+  const lines: string[] = [];
+  const fetch = async () => {
+    throw new Error("nothing should be sent");
+  };
+  const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  expect(await runCli(["tasks", "create", ...args], ENV, { fetch, output })).toBe(2);
+  expect(lines[0]).toStartWith("error: invalid_request: expected <channel> <text>, or <re>: ob tasks create");
+});
+
 const ENV = { BOARD_URL: "http://127.0.0.1:8787/api/local/main" };
 
 function root(id: string, text: string, labels: Record<string, string>) {
