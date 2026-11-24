@@ -6,27 +6,31 @@ import { resolveCan } from "./resolve.ts";
 export interface GrantAuthority {
   readonly effective: Can;
   readonly own: Can;
+  readonly scope?: Can;
 }
 
 /** A write needs manage at the named patterns, and throughout their reach under the caller's own limits. */
 export function unmanagedGrantPattern(
-  { effective, own }: GrantAuthority,
+  { effective, own, scope }: GrantAuthority,
   can: CanInput,
   namesIssuer = false,
 ): string | undefined {
+  const scopes = scope === undefined ? [own] : [own, scope];
   // An issuer authorizes board-wide key discovery, so even everyone's limits count for this check.
   if (namesIssuer) {
-    return ["*", ...Object.keys(effective), ...Object.keys(own)].find(
-      (spot) => !allowedAt(effective, spot).includes("manage") || !allowedAt(own, spot).includes("manage"),
-    );
+    return [effective, ...scopes]
+      .flatMap(Object.keys)
+      .concat("*")
+      .find((spot) => [effective, ...scopes].some((limit) => !allowedAt(limit, spot).includes("manage")));
   }
-  const limits = Object.keys(own);
   for (const pattern of Object.keys(can)) {
-    if (!allowedAt(effective, pattern).includes("manage") || !allowedAt(own, pattern).includes("manage")) {
-      return pattern;
-    }
-    for (const spot of limits) {
-      if (matchingPatterns([pattern], spot).length && !allowedAt(own, spot).includes("manage")) return spot;
+    if (!allowedAt(effective, pattern).includes("manage")) return pattern;
+    for (const limit of scopes) {
+      if (!allowedAt(limit, pattern).includes("manage")) return pattern;
+      const blocked = Object.keys(limit).find(
+        (spot) => matchingPatterns([pattern], spot).length && !allowedAt(limit, spot).includes("manage"),
+      );
+      if (blocked !== undefined) return blocked;
     }
   }
 }

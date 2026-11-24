@@ -7,7 +7,7 @@ import { validateGrantIssuers } from "./oidc.ts";
 
 export const createGrantsHandler: Handler<typeof createGrants> = async (ctx, input) => {
   const drafts: Awaited<ReturnType<typeof prepareGrant>>[] = [];
-  for (const grant of input.grants) drafts.push(await prepareGrant(ctx, grant));
+  for (const grant of input.grants) drafts.push(prepareGrant(grant));
   return ctx.board.write(async (writer) => {
     const { by, authority } = await currentAuthority(ctx.by, writer, "creating", ctx.now);
     for (const { can, principals, namesIssuer } of drafts) {

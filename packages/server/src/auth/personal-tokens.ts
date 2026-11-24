@@ -1,7 +1,15 @@
 import { BoardError, CAN_HEADER } from "@openboard/contract";
 import { narrowCan } from "@openboard/core";
 import type { PlatformView } from "@openboard/ports";
-import { callerCan, credentialExpiry, credentialKind, credentialName, memberOf, requestNarrowed } from "../deps.ts";
+import {
+  callerCan,
+  credentialExpiry,
+  credentialKind,
+  credentialName,
+  memberOf,
+  personalPin,
+  requestNarrowed,
+} from "../deps.ts";
 import { notFound, type Tenants } from "../http/scope.ts";
 import { personGrantCan } from "./access.ts";
 import type { CredentialVerifier } from "./chain.ts";
@@ -61,7 +69,7 @@ export function personalTokenVerifier(now: () => number): CredentialVerifier {
         [credentialName]: tokenName,
         [memberOf]: { handle, name, avatar, ...member },
         [callerCan]: can === undefined ? effective : narrowCan(effective, can),
-        ...(can === undefined ? {} : { [requestNarrowed]: true as const }),
+        ...(can === undefined ? {} : { [requestNarrowed]: true as const, [personalPin]: can }),
       };
     },
   };

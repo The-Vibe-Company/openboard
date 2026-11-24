@@ -434,11 +434,12 @@ the deciding pattern and level add their permissions. Grant creation
 appears as `ob.grant.created` in the board audit. The response and subsequent listings
 keep `can` as submitted, including `"all"`, the order of permission lists, and empty lists.
 Creating a grant needs `manage` at each named pattern and under it wherever
-the caller's own grants limit access. A narrower `everyone` closure still
-applies at any pattern explicitly named in the grant. The caller must also
+the caller's own grants or `x-board-can` limit access. A narrower `everyone`
+closure still applies at any pattern explicitly named in the grant. The caller must also
 hold all permissions that `everyone` would give anywhere on the resulting
 board. Naming an `oidc` principal needs `manage` throughout the board.
-Board owners may change grants regardless of their board grants.
+Board owners may change grants regardless of their board grants, within any
+`x-board-can` they send.
 Creating, updating, or revoking a grant returns 409 `grant_lockout` if the
 change would leave its maker unable to manage the affected grant patterns.
 The error may include an OpenBoard `next` command to keep the caller in.

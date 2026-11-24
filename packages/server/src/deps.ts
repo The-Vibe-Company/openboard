@@ -85,6 +85,10 @@ export type Principal = Author & {
   readonly [callerCan]?: Can;
   /** The caller supplied an x-board-can header. */
   readonly [requestNarrowed]?: true;
+  /** The compiled header before intersecting it with board grants. */
+  readonly [requestScope]?: Can;
+  /** The permission pin stored on a narrowed personal token. */
+  readonly [personalPin]?: Can;
   /** A profile's name as the caller spelled it, which is how it is shown; `profile` is its lowercase. */
   readonly [profileName]?: string;
   readonly [profileAvatar]?: string | null;
@@ -119,6 +123,8 @@ export const connectionOf = Symbol("connection");
 export const agentOf = Symbol("agent");
 export const callerCan = Symbol("caller can");
 export const requestNarrowed = Symbol("request narrowed");
+export const requestScope = Symbol("request scope");
+export const personalPin = Symbol("personal token pin");
 export const profileName = Symbol("profile name");
 export const profileAvatar = Symbol("profile avatar");
 export const tokenHashOf = Symbol("token hash");

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import type { Can, GrantView } from "@openboard/contract";
 import { missingEveryonePermission, unmanagedGrantPattern } from "../../src/access/grant-changes.ts";
+import { compileCan } from "../../src/access/grants.ts";
 
 test("grant reach allows a narrower everyone closure but honors the caller's own limits", () => {
   const own: Can = { "work/": ["manage"] };
@@ -28,4 +29,15 @@ test("everyone permissions must fit even at a caller limit outside the new grant
     pattern: "public/closed",
     permission: "react",
   });
+});
+
+test("the request scope limits a subtree independently of everyone and the caller's own grants", () => {
+  const own = compileCan({ "*": "all" });
+  const effective = compileCan({ "*": "all", "ops/secret/": [] });
+  const scope = compileCan({ "*": "all", "ops/secret/": [] });
+  const authority = { own, effective, scope };
+  expect(unmanagedGrantPattern(authority, { "ops/": ["read"] })).toBe("ops/secret/");
+  expect(unmanagedGrantPattern(authority, { "*": ["read"] })).toBe("ops/secret/");
+  expect(unmanagedGrantPattern(authority, { "ops/ci/": ["post"] })).toBeUndefined();
+  expect(unmanagedGrantPattern(authority, { "ops/ci/": ["post"] }, true)).toBe("ops/secret/");
 });

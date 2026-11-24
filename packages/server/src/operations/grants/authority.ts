@@ -1,6 +1,7 @@
 import { BoardError, type GrantView } from "@openboard/contract";
 import {
   type GrantAuthority,
+  grants,
   missingEveryonePermission,
   narrowCan,
   resolveRankedCan,
@@ -10,7 +11,16 @@ import {
 import type { BoardWriter } from "@openboard/ports";
 import { isNarrowedPersonal, personGrantCan } from "../../auth/access.ts";
 import { currentWorkload } from "../../auth/oidc.ts";
-import { callerCan, credentialKind, type Deps, memberOf, type Principal, workloadOf } from "../../deps.ts";
+import {
+  callerCan,
+  credentialKind,
+  type Deps,
+  memberOf,
+  type Principal,
+  personalPin,
+  requestScope,
+  workloadOf,
+} from "../../deps.ts";
 import { canListGrants } from "./list.ts";
 
 type Action = "creating" | "updating" | "revoking";
@@ -25,7 +35,7 @@ export async function currentAuthority(
   const kind = by[credentialKind];
   const member = by[memberOf];
   const workload = by[workloadOf];
-  if (kind === "local") return { by, authority: null };
+  if (kind === "local") return ownerAuthority(by);
   if (member) {
     const current = await writer.grantMember(by.principal.slice("ob:user:".length));
     if (!current) throw unreachable(action);
@@ -33,31 +43,43 @@ export async function currentAuthority(
     const cap = isNarrowedPersonal(by) ? (by[callerCan] ?? {}) : undefined;
     const effective = personGrantCan(grants, role);
     const own = personGrantCan(withoutEveryone(grants), role);
-    const authority = cap ? { effective: narrowCan(effective, cap), own: narrowCan(own, cap) } : { effective, own };
-    return {
-      by: { ...by, [memberOf]: { ...member, role }, [callerCan]: authority.effective },
-      authority: role === "owner" && cap === undefined ? null : authority,
-    };
+    const refreshed = { ...by, [memberOf]: { ...member, role } };
+    const pin = by[personalPin];
+    if (role === "owner" && pin === undefined) return ownerAuthority({ ...refreshed, [callerCan]: effective });
+    return scopedAuthority(refreshed, cap ? narrowCan(effective, cap) : effective, pin ? narrowCan(own, pin) : own);
   }
   if (kind === "connection") {
     const id = by.principal.slice("ob:conn:".length);
     const record = await writer.connection(id);
     const effective = record?.effectiveCan ?? {};
     const own = record ? resolveRankedCan(withoutEveryone(record.grantCans)) : {};
-    return { by: { ...by, [callerCan]: effective }, authority: { effective, own } };
+    return scopedAuthority(by, effective, own);
   }
   if (workload) {
     const active = await writer.listGrants();
     const current = await currentWorkload(by, { listGrants: async () => active }, now);
-    return {
-      by: current,
-      authority: {
-        effective: current[callerCan] ?? {},
-        own: resolveRankedCan(withoutEveryone(subjectGrants(active, workload))),
-      },
-    };
+    return scopedAuthority(
+      current,
+      current[callerCan] ?? {},
+      resolveRankedCan(withoutEveryone(subjectGrants(active, workload))),
+    );
   }
   throw unreachable(action);
+}
+
+function ownerAuthority(by: Principal) {
+  if (by[requestScope] === undefined) return { by, authority: null };
+  const all = { "*": [...grants.PERMISSIONS] };
+  return scopedAuthority(by, all, all);
+}
+
+function scopedAuthority(by: Principal, effective: GrantAuthority["effective"], own: GrantAuthority["own"]) {
+  const scope = by[requestScope];
+  const can = scope === undefined ? effective : narrowCan(effective, scope);
+  return {
+    by: { ...by, [callerCan]: can },
+    authority: { effective, own, ...(scope === undefined ? {} : { scope }) },
+  };
 }
 
 function withoutEveryone<T extends { level: string }>(grants: readonly T[]): T[] {
@@ -100,7 +122,14 @@ export function requireGrantPatternManage(
 ) {
   if (!authority) return;
   const pattern = unmanagedGrantPattern(authority, can);
-  if (pattern !== undefined) throw new BoardError("forbidden", `changing this grant needs manage at ${pattern}`);
+  if (pattern !== undefined) {
+    throw new BoardError(
+      "forbidden",
+      authority.scope === undefined
+        ? `changing this grant needs manage at ${pattern}`
+        : "changing this grant needs manage wherever it reaches",
+    );
+  }
   if (namesIssuer && unmanagedGrantPattern(authority, can, true) !== undefined) {
     throw new BoardError("forbidden", "naming an oidc issuer needs manage on every channel");
   }
