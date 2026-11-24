@@ -6,11 +6,13 @@ package: web
 writes:
   - apps/web/src/routes/$org/$board/settings/connections.tsx
   - apps/web/e2e/connections-revoke.spec.ts
+  - apps/web/e2e/connections.spec.ts
+  - docs/auth.md
 conformance: []
 modes: [local, hosted]
 depends_on: [234]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 396
 ---
 
@@ -18,8 +20,8 @@ issue: 396
 As a board admin, I revoke a connection I no longer trust, and its secret and every agent it claimed stop working at once.
 
 ## Done when
-- [ ] `bun run e2e apps/web/e2e/connections-revoke.spec.ts` passes: on `/acme/main/settings/connections`, "Revoke" on `fixer` asks for confirmation naming it, then removes it from the list; afterwards a post with its secret and one with an agent token it claimed both answer 401 `unauthorized`
-- [ ] in the same spec, the list shows each connection's live agents and last use (D51), and revoking an already revoked connection from a stale page shows "This connection no longer exists" and refreshes the list
+- [x] `bun run e2e apps/web/e2e/connections-revoke.spec.ts` passes: on `/acme/main/settings/connections`, "Revoke" on `fixer` asks for confirmation naming it, then removes it from the list; afterwards a post with its secret and one with an agent token it claimed both answer 401 `unauthorized`
+- [x] in the same spec, the list shows each connection's live agents and last use (D51), and revoking an already revoked connection from a stale page shows "This connection no longer exists" and refreshes the list
 
 ## Out of scope
 - Revoking one agent, rotating a secret (not planned in the cut).
