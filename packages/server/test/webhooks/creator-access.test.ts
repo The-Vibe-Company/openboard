@@ -333,7 +333,7 @@ test("a legacy OIDC webhook without a stored workload identity is disabled as un
       body: null,
       enabled: true,
       disabledReason: null,
-      createdAt: new Date(NOW).toISOString(),
+      createdAt: "2023-11-14T22:13:20.000Z",
     };
     const principal = `oidc:${issuer}:${subject}`;
     // Replay the pre-migration create event, which had no workload attribute.
