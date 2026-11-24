@@ -10,7 +10,7 @@ export const upload = defineOperation({
   input: { binary: { maxBytes: ATTACHMENT_BYTES } },
   output: Type.Object({ attachment: Attachment }),
   status: 201,
-  errors: ["invalid_request", "too_large", "forbidden", "quota_exceeded"],
+  errors: ["invalid_request", "invalid_attachment", "too_large", "forbidden", "quota_exceeded"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: [] },
   cli: false,

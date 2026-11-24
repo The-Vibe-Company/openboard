@@ -6,6 +6,7 @@
     "grants/lets a project on another team in, in its environments": "Grants across teams are unspecified."
   },
   "local": [
+    "attachments/refuses a name that would download as a dotfile",
     "attachments/takes a file, posts it, and gives it back",
     "core/answers 400 for a request that does not validate",
     "core/answers 404 for an ID that names nothing",
@@ -80,6 +81,7 @@
     "watchers/wakes by path only where its discovery says so, and only a Vercel project"
   ],
   "hosted": [
+    "attachments/refuses a name that would download as a dotfile",
     "attachments/takes a file, posts it, and gives it back",
     "core/answers 400 for a request that does not validate",
     "core/answers 404 for an ID that names nothing",
