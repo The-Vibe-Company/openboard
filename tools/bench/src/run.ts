@@ -18,10 +18,12 @@ const selected = modes.filter((mode) => values.mode === undefined || values.mode
 if (selected.length === 0) throw new Error("--mode must be local or hosted");
 
 const sizes = values.quick ? quickSizes : fullSizes;
+// At 100 samples, nearest-rank p99 is the 99th observation instead of the maximum.
+const taskCycles = values.quick ? 100 : 500;
 const tables: string[] = [];
 const failures: string[] = [];
 for (const mode of selected) {
-  const report = await measure(mode, sizes, { includeSse: true });
+  const report = await measure(mode, sizes, { includeSse: true, taskCycles });
   tables.push(formatTable(report));
   // The required check holds both modes' counters and local latencies only (docs/codebase.md 6.7): hosted latencies
   // are held by the full bench, since a quick run's round trips to a shared runner's Postgres jitter too much.

@@ -53,3 +53,29 @@ export function percentile(values: readonly number[], p: number): number {
   const rank = Math.max(1, Math.ceil((p / 100) * sorted.length));
   return sorted[rank - 1] as number;
 }
+
+export type WorkloadName = "post" | "reply" | "channelRead" | "taskCreate" | "taskClaim" | "taskComplete";
+
+/** One workload's result: counters are the most any single run took (exact), times are in milliseconds. */
+export interface WorkloadResult {
+  readonly workload: WorkloadName;
+  readonly operation: string;
+  readonly runs: number;
+  readonly statements: number;
+  readonly roundTrips: number;
+  readonly p50: number;
+  readonly p99: number;
+}
+
+export function summarize(workload: WorkloadName, operation: string, costs: readonly Cost[]): WorkloadResult {
+  const times = costs.map(({ ms }) => ms);
+  return {
+    workload,
+    operation,
+    runs: costs.length,
+    statements: Math.max(...costs.map(({ statements }) => statements)),
+    roundTrips: Math.max(...costs.map(({ roundTrips }) => roundTrips)),
+    p50: percentile(times, 50),
+    p99: percentile(times, 99),
+  };
+}

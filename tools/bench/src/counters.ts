@@ -1,7 +1,9 @@
 import { boot, type Mode, type Server } from "./drivers";
 import { countArmedTimers } from "./timers";
-import { runMessageWorkloads, type Sizes, type WorkloadResult } from "./workloads/messages";
+import { runMessageWorkloads, type Sizes } from "./workloads/messages";
+import type { WorkloadResult } from "./workloads/request";
 import { runSseWorkload, type SseResult } from "./workloads/sse";
+import { runTaskWorkload } from "./workloads/tasks";
 
 export interface ModeReport {
   readonly mode: Mode;
@@ -14,7 +16,7 @@ export interface ModeReport {
 export async function measure(
   mode: Mode,
   sizes: Sizes,
-  { includeSse = false }: { readonly includeSse?: boolean } = {},
+  { includeSse = false, taskCycles }: { readonly includeSse?: boolean; readonly taskCycles?: number } = {},
 ): Promise<ModeReport> {
   let server: Server | undefined;
   try {
@@ -23,6 +25,7 @@ export async function measure(
     });
     if (!server) throw new Error(`${mode} did not boot`);
     const workloads = await runMessageWorkloads(server, sizes);
+    if (taskCycles !== undefined) workloads.push(...(await runTaskWorkload(server, taskCycles)));
     const sse = includeSse && mode === "local" ? await runSseWorkload(server) : undefined;
     return { mode, workloads, idleTimers, sse };
   } finally {

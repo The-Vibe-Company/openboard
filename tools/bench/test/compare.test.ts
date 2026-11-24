@@ -3,7 +3,7 @@ import budgets from "../budgets.json";
 import { compareBudgets } from "../src/compare";
 import type { ModeReport } from "../src/counters";
 
-const localReport: ModeReport = {
+const localReport = {
   mode: "local",
   idleTimers: 0,
   workloads: [
@@ -11,7 +11,7 @@ const localReport: ModeReport = {
     { workload: "reply", operation: "postMessage", runs: 1, statements: 11, roundTrips: 0, p50: 0.1, p99: 0.2 },
     { workload: "channelRead", operation: "listMessages", runs: 1, statements: 2, roundTrips: 0, p50: 0.1, p99: 0.2 },
   ],
-};
+} satisfies ModeReport;
 
 const all = { latency: true };
 

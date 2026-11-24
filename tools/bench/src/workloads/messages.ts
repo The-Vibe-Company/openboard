@@ -1,5 +1,5 @@
 import type { Instance, Server } from "../drivers";
-import { type Cost, percentile, send } from "./request";
+import { type Cost, send, summarize, type WorkloadResult } from "./request";
 
 /** How many times each workload runs: the full bench, or the reduced quick one the required check runs. */
 export interface Sizes {
@@ -12,36 +12,10 @@ export interface Sizes {
 export const fullSizes: Sizes = { posts: 2000, replies: 2000, reads: 200 };
 export const quickSizes: Sizes = { posts: 500, replies: 500, reads: 100 };
 
-export type WorkloadName = "post" | "reply" | "channelRead";
-
-/** One workload's result: counters are the most any single run took (exact), times are in milliseconds. */
-export interface WorkloadResult {
-  readonly workload: WorkloadName;
-  readonly operation: string;
-  readonly runs: number;
-  readonly statements: number;
-  readonly roundTrips: number;
-  readonly p50: number;
-  readonly p99: number;
-}
-
 const CHANNEL = "bench";
 /** Unmeasured requests first, so the measured ones run on warm code and an existing channel. */
 const WARMUP = 50;
 const READ_LIMIT = 50;
-
-function summarize(workload: WorkloadName, operation: string, costs: readonly Cost[]): WorkloadResult {
-  const times = costs.map(({ ms }) => ms);
-  return {
-    workload,
-    operation,
-    runs: costs.length,
-    statements: Math.max(...costs.map(({ statements }) => statements)),
-    roundTrips: Math.max(...costs.map(({ roundTrips }) => roundTrips)),
-    p50: percentile(times, 50),
-    p99: percentile(times, 99),
-  };
-}
 
 const messageId = (body: unknown) => (body as { message: { id: string } }).message.id;
 
