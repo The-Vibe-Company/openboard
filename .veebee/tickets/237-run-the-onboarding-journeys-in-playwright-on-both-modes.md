@@ -5,17 +5,23 @@ milestone: M8-front
 package: web
 writes:
   - apps/web/e2e/onboarding.spec.ts
+  - apps/web/e2e/scroll.spec.ts
   - apps/web/e2e/support/serve.ts
   - apps/web/playwright.config.ts
   - .github/workflows/web.yml
   - .github/workflows/nightly.yml
   - scripts/ci/boundaries.json
   - package.json
+  - apps/web/package.json
+  - apps/web/tsconfig.json
+  - bun.lock
+  - docs/codebase.md
+  - .oxlintrc.json
 conformance: []
 modes: [local, hosted]
 depends_on: [192, 219, 220, 227, 228, 234]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 398
 ---
 

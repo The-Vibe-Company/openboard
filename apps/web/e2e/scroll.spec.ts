@@ -51,6 +51,49 @@ async function postAfterPaging(page: Page, list: Locator) {
   await expect(list.getByRole("listitem").first()).toContainText("Posted after reading history");
 }
 
+async function openHistory(page: Page, origin: string, url: string, list: Locator) {
+  const threadsPath = "/api/acme/main/threads";
+  const stream = Promise.withResolvers<void>();
+  await page.route(
+    `${origin}/api/acme/main/events`,
+    async (route) => {
+      await stream.promise;
+      await route.continue();
+    },
+    { times: 1 },
+  );
+
+  try {
+    await page.goto(url);
+    await expect(list.getByText(threadLabel(threadCount), { exact: true })).toBeInViewport();
+    // Open the stream after the first read so its reconciliation finishes before scrolling.
+    const reconciled = page.waitForResponse((response) => {
+      const request = new URL(response.url());
+      return request.pathname === threadsPath && !request.searchParams.has("before");
+    });
+    stream.resolve();
+    const head = await reconciled;
+    expect(head.ok()).toBe(true);
+    expect(await head.finished()).toBeNull();
+  } finally {
+    stream.resolve();
+  }
+
+  const counts = new Map<string | null, number>([[null, 1]]);
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname !== threadsPath) return;
+    const cursor = url.searchParams.get("before");
+    counts.set(cursor, (counts.get(cursor) ?? 0) + 1);
+  });
+  return counts;
+}
+
+function expectEachPageOnce(cursors: ReadonlyMap<string | null, number>) {
+  expect(cursors.size).toBe(threadCount / pageSize);
+  expect([...cursors.values()]).toEqual(Array(threadCount / pageSize).fill(1));
+}
+
 test("a member pages through 2,000 threads with bounded DOM rows and returns to the opened row", async ({ page }) => {
   test.setTimeout(120_000);
   let now = Date.now();
@@ -61,17 +104,10 @@ test("a member pages through 2,000 threads with bounded DOM rows and returns to 
       now += 60_000;
     });
     const peak = await observeRowCount(page);
-    const cursors: (string | null)[] = [];
-    page.on("request", (request) => {
-      const url = new URL(request.url());
-      if (url.pathname === "/api/acme/main/threads") cursors.push(url.searchParams.get("before"));
-    });
-
     const channelUrl = `${server.url}/acme/main?channel=history`;
-    await page.clock.install();
-    await page.goto(channelUrl);
     const list = page.getByRole("list", { name: "Latest threads" });
-    await expect(list.getByText(threadLabel(threadCount), { exact: true })).toBeInViewport();
+    await page.clock.install();
+    const cursors = await openHistory(page, server.url, channelUrl, list);
     const oldest = list.getByText(threadLabel(1), { exact: true });
     await expect
       .poll(
@@ -87,12 +123,11 @@ test("a member pages through 2,000 threads with bounded DOM rows and returns to 
         { timeout: 30_000, intervals: [100] },
       )
       .toBe(true);
-    expect(cursors).toHaveLength(threadCount / pageSize);
-    expect(new Set(cursors).size).toBe(cursors.length);
+    expectEachPageOnce(cursors);
     expect(peak.rows).toBeGreaterThan(0);
     expect(peak.rows).toBeLessThan(100);
     process.stdout.write(
-      `Oldest thread visible after ${cursors.length} requests with unique cursors. Peak DOM rows: ${peak.rows}.\n`,
+      `Oldest thread visible after ${cursors.size} requests with unique cursors. Peak DOM rows: ${peak.rows}.\n`,
     );
 
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight / 2));
@@ -119,13 +154,13 @@ test("a member pages through 2,000 threads with bounded DOM rows and returns to 
     await expect(page).toHaveURL(channelUrl);
     await expect(row).toBeInViewport();
     await expect(row).toBeFocused();
-    expect(cursors).toHaveLength(threadCount / pageSize);
+    expectEachPageOnce(cursors);
     expect(peak.rows).toBeLessThan(100);
     process.stdout.write(
       `Back restored and focused the opened row (${label?.trim().split(" wrapped row ")[0]}) after resizing, with no extra page requests.\n`,
     );
     await postAfterPaging(page, list);
-    expect(cursors).toHaveLength(threadCount / pageSize);
+    expectEachPageOnce(cursors);
     process.stdout.write("Posting after paging showed the new thread without replaying history.\n");
   } finally {
     await server.stop();
