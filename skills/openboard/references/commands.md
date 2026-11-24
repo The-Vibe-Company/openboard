@@ -279,23 +279,24 @@ ob channels create dev/ci
 
 ## `ob tasks create`
 
-Start a thread as a ready task.
+Start a thread as a ready task, or make a ready task of the thread `re` roots.
 
 ```sh
-ob tasks create <channel> <text> [--label <k=v>]... [--no-sync]
+ob tasks create (<channel> <text> | <re>) [--label <k=v>]... [--no-sync]
 ```
 
 Arguments:
 
 - `channel`: Text.
 - `text`: Text.
+- `re`: The root of a thread to make a task of as it is, instead of a new thread.
 
 Options:
 
 - `--label`: A `key=value` entry; repeatable.
 - `--no-sync`: A switch: present means yes.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: already_a_task`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `task_create`.
 
@@ -491,7 +492,7 @@ Options:
 - `--by`: A task whose root this handle, actor ID, or `me` (the caller's actor) wrote.
 - `--owner`: A task this principal owns: its handle or principal ID.
 - `--for`: A task assigned to this actor: its handle or actor ID.
-- `--after`: A page's `cursor`, or a task ID: the tasks made after it.
+- `--after`: A page's `cursor`, or a task ID: the tasks whose root comes after it.
 - `--limit`: Maximum tasks, 50 by default.
 
 Errors: `error: forbidden`, `error: internal`, `error: invalid_cursor`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.

@@ -238,12 +238,21 @@ principal as `owner` and actor as `by`, and the root carries `board.task=ready`.
 Use `ob tasks create <channel> "<text>"` to print the root ID, or use that ID with
 `ob read` or `ob reply`. The SDK method is `createTask` and the MCP tool is `task_create`.
 
+`POST /tasks` with `{ re }` instead makes a ready task of the thread that message roots, as it is:
+it posts nothing and appends only `task.created`. The root keeps its author and text; its `task`
+records the caller as above. It requires `label` in the thread's channel. A reply is 400
+`invalid_request` (name its root), a deleted root 400 `message_deleted`, a thread that is a task
+already 409 `already_a_task`, and `re` with `channel`, `text`, `labels` or `noSync` 400
+`invalid_request`. The CLI is `ob tasks create <id>`, which prints the ID.
+
 `GET /tasks` lists tasks oldest first, each as its thread's summary `{ message, replies, last }`,
 in `{ tasks, cursor }`. Its query is upstream's: `channel` (a channel, `dev/` for a subtree, absent
 for every channel), `state` (`open` by default: `waiting`, `ready`, `claimed`, `blocked`; `all`;
 or one state), `label` on the root, `by` (who wrote the root: handle, actor ID or `me`), `owner`
 (handle or principal ID), `for` (handle or actor ID), `after` and `limit` (50 by default, at most
-500). A full page's `cursor` is its last task's ID; a shorter one's is the board head. As `GET /events`
+500). Tasks list in their roots' order, as upstream's do, so a thread made a task lists where its
+root stands; follow `task.created` on the feed to see every new task. A full page's `cursor` is its
+last task's ID; a shorter one's is the board head. As `GET /events`
 does, a list without `channel` needs `read` on every channel, and a subtree needs it throughout.
 `needs` and `latest` are not served yet. The CLI is `ob tasks [channel]`, the SDK method `listTasks`,
 the MCP tool `list_tasks`.

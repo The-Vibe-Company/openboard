@@ -14,11 +14,23 @@ writes:
   - packages/server/test/tasks/adopt.test.ts
   - packages/cli/src/commands/tasks.ts
   - packages/cli/test/tasks.test.ts
+  - .veebee/tickets/240-make-a-task-of-a-thread-that-was-there.md
+  - docs/protocol.md
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/tasks/create.ts
+  - packages/core/src/index.ts
+  - packages/server/src/auth/access.ts
+  - packages/server/openapi.json
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/src/commands/usage.ts
+  - skills/openboard/references/commands.md
+  - packages/contract/src/operations/tasks/list.ts
+  - packages/driver-sql/src/views/tasks/list.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [239]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus
 issue: 413
 ---
 

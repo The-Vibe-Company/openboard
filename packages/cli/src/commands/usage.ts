@@ -245,6 +245,7 @@ function referenceOf(command: AnyCommand): CommandReference {
   if (!derived && !handwritten) throw new Error(`ob ${words}: no summary or example; describe it in usage.ts`);
   const used = derived ? [derived] : operations.filter((operation) => handwritten?.operations.includes(operation.name));
   const args = derived && derived.cli ? derived.cli.args : [];
+  const alternative = (derived && derived.cli && derived.cli.alternative) || [];
   const fields = derived ? fieldsOf(derived) : new Map<string, Schema>();
   const shown = command.usage.slice(`ob ${words}`.length).trim();
   // The leading `<arg>` words of the usage line are the required arguments.
@@ -253,7 +254,7 @@ function referenceOf(command: AnyCommand): CommandReference {
     command: `ob ${words}`,
     usage: command.usage,
     summary: derived?.summary ?? handwritten?.summary ?? "",
-    arguments: args.map((name) => ({ name, meaning: meaningOf(fields.get(name) ?? {}) })),
+    arguments: [...args, ...alternative].map((name) => ({ name, meaning: meaningOf(fields.get(name) ?? {}) })),
     options: optionsOf(command, used, handwritten?.options ?? {}),
     errors: errorsOf(used, handwritten?.errors ?? []),
     mcpTools: used
