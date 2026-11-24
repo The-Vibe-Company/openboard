@@ -136,7 +136,8 @@ answers. OpenBoard adds:
 | POST | `/messages` | U | `sync` targets: 400 `invalid_request` "this board syncs nowhere" |
 | POST | `/messages/:id/edit` | U | `ob edit <id> <text>` replaces the text and advances the message revision. Pass `--if-revision <n>` to edit only at the observed revision. |
 | POST | `/messages/:id/delete` | U | `ob delete <id> --if-revision <n>` deletes only at the observed revision. Both edit and delete send the optional `revision` in the body and return 409 `revision_conflict` if it differs. |
-| POST | `/messages/:id/reactions`, `/messages/:id/labels` | U | |
+| POST | `/messages/:id/reactions` | U | |
+| POST | `/messages/:id/labels` | U | `ob label <id> k=v... [--unset k]...` sends `{ set?, unset? }`, at least one of the two (400 `invalid_request` otherwise). Each key holds one value; `unset` applies after `set`, so a key in both is removed. Unsetting a key the message lacks still raises its `version`. A key under `board.` is 400 `reserved_label`. |
 | GET | `/events` | U | JSON feed with `after`; SSE and long-poll planned |
 
 Use `ob read <channel> --label status=open` to list threads with a matching root or reply.

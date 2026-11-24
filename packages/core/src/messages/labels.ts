@@ -69,16 +69,35 @@ export interface LabelState {
   readonly actor?: Actor | null;
 }
 
+/** A label write: keys to set, each to one value, and keys to remove; at least one of the two. */
+export interface LabelChange {
+  readonly id: string;
+  readonly set?: Readonly<Record<string, string>>;
+  readonly unset?: readonly string[];
+}
+
+/** The message's labels after a write: `set` merged in, then `unset` removed, so a key in both ends up removed. */
+function applyLabels(labels: Readonly<Record<string, string>>, set: LabelChange["set"], unset: readonly string[]) {
+  const removed = new Set(unset);
+  return Object.fromEntries(Object.entries({ ...labels, ...set }).filter(([key]) => !removed.has(key)));
+}
+
 /**
- * Sets labels on a message, each key to one value, and raises its version; a write that changes no value still appends
- * its event, as upstream's does. It follows the writer's `actor.seen` when needed.
+ * Sets and unsets labels on a message, each key to one value, and raises its version; a write that changes no value,
+ * such as unsetting a key the message lacks, still appends its event, as upstream's does. It follows the writer's
+ * `actor.seen` when needed.
  */
 export function decideLabels(
   { head, target, actor }: LabelState,
-  { id, set }: { readonly id: string; readonly set: Readonly<Record<string, string>> },
+  { id, set = {}, unset: keys = [] }: LabelChange,
   context: PostContext,
 ): readonly (ActorSeen | LabelsChanged)[] {
+  if (Object.keys(set).length === 0 && keys.length === 0) {
+    throw new BoardError("invalid_request", "a label write sets or unsets at least one label");
+  }
   checkLabels(set);
+  for (const key of keys) checkLabelKey(key);
+  const unset = [...new Set(keys)];
   if (!target) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
   if (target.deleted) throw new BoardError("message_deleted", `Message #${id} is deleted.`);
   const message = parseId(target.id);
@@ -101,9 +120,9 @@ export function decideLabels(
       id: target.id,
       thread: target.thread,
       set: { ...set },
-      unset: [],
+      unset,
       by,
-      view: { ...target, labels: { ...target.labels, ...set }, version },
+      view: { ...target, labels: applyLabels(target.labels, set, unset), version },
     },
   };
   return seen ? [seen, event] : [event];

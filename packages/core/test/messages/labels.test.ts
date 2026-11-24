@@ -60,6 +60,22 @@ test("a label write merges its labels into the message's and raises the version 
   expect(target.labels).toEqual({ a: "1" });
 });
 
+test("a label write removes each unset key after setting, so a key in both ends up removed", () => {
+  const labeled = { ...target, labels: { a: "1", status: "open" } };
+  const change = { id: "1", set: { status: "done", b: "2" }, unset: ["status", "a", "status"] };
+  const [event] = decideLabels({ head: 4, target: labeled }, change, { by, now });
+  expect(event?.type === "labels.changed" && event.payload).toMatchObject({
+    set: { status: "done", b: "2" },
+    unset: ["status", "a"],
+    view: { labels: { b: "2" }, version: 5 },
+  });
+});
+
+test("unsetting a key the message lacks still appends its event and keeps the other labels", () => {
+  const [event] = decideLabels({ head: 2, target }, { id: "1", unset: ["status"] }, { by, now });
+  expect(event?.type === "labels.changed" && event.payload.view).toMatchObject({ labels: { a: "1" }, version: 3 });
+});
+
 test("a label write that changes no value still appends its event", () => {
   expect(decideLabels({ head: 2, target }, { id: "1", set: { a: "1" } }, { by, now })).toHaveLength(1);
 });
@@ -82,4 +98,12 @@ test.each([
   expect(() => decideLabels({ head: 2, target: message }, { id: "1", set }, { by, now })).toThrow(
     expect.objectContaining({ code }),
   );
+});
+
+test.each([
+  ["nothing to set or unset", { id: "1", set: {}, unset: [] }, "invalid_request"],
+  ["unsetting a label under board.", { id: "1", unset: ["board.task"] }, "reserved_label"],
+  ["unsetting a malformed key", { id: "1", unset: ["Status"] }, "invalid_request"],
+])("refuses %s", (_, change, code) => {
+  expect(() => decideLabels({ head: 2, target }, change, { by, now })).toThrow(expect.objectContaining({ code }));
 });

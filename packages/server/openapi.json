@@ -1355,7 +1355,7 @@
     "/messages/{id}/labels": {
       "post": {
         "operationId": "label",
-        "summary": "Set labels on a message, each key to one value, raising its version.",
+        "summary": "Set and unset labels on a message, each key to one value, raising its version; unset applies last.",
         "parameters": [
           {
             "name": "id",
@@ -1371,13 +1371,13 @@
               "schema": {
                 "additionalProperties": false,
                 "type": "object",
-                "required": ["set"],
                 "properties": {
                   "set": {
                     "additionalProperties": false,
                     "type": "object",
                     "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
-                  }
+                  },
+                  "unset": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$", "type": "string" } }
                 }
               }
             }
