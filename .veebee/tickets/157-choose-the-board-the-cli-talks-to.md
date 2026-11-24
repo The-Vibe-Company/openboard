@@ -14,7 +14,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [153, 156]
-status: claimed
+status: done
 claimed_by: claude-opus-t157
 issue: 158
 ---
@@ -23,7 +23,7 @@ issue: 158
 As a person with several boards, I point the CLI at one of them.
 
 ## Done when
-- [ ] `ob use ops` then `ob post dev hi` posts to `acme/ops`; `ob use acme/main` switches back
+- [x] `ob use ops` then `ob post dev hi` posts to `acme/ops`; `ob use acme/main` switches back
 
 ## Out of scope
 - Switching organizations: one per person in v1.

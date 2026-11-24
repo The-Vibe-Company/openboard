@@ -17,7 +17,7 @@ import { BoardError } from "@the-vibe-company/openboard";
 export type CliEnvironment = Readonly<Record<string, string | undefined>>;
 
 type AgentConfig = { readonly boardUrl: string; readonly token: string; readonly profile: string };
-type PersonalContext = { readonly origin: string; readonly org: string; readonly board: string };
+export type PersonalContext = { readonly origin: string; readonly org: string; readonly board: string };
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}$/;
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
 /** A token file that is missing or that this user cannot read is no token: the request goes without one. */
@@ -51,7 +51,8 @@ function readSavedFile(path: string): { text: string; savedAt: bigint } {
   }
 }
 
-function storedPersonal(env: CliEnvironment) {
+/** The saved personal sign-in: its token and the `{ origin, org, board }` context it talks to. */
+export function storedPersonal(env: CliEnvironment) {
   const path = personalConfigPath(env);
   if (!path) return undefined;
   try {
@@ -68,11 +69,22 @@ function storedPersonal(env: CliEnvironment) {
       !SLUG.test(saved.board)
     )
       return undefined;
-    return { boardUrl: `${saved.origin}/api/${saved.org}/${saved.board}`, token: saved.token, savedAt };
+    const { origin, org, board, token } = saved;
+    return { origin, org, board, token, boardUrl: personalBoardUrl({ origin, org, board }), savedAt };
   } catch (error) {
     if (error instanceof SyntaxError || UNREADABLE.has((error as NodeJS.ErrnoException).code ?? "")) return undefined;
     throw new BoardError("invalid_request", "could not read the stored personal credential");
   }
+}
+
+/** `BOARD_URL` of a personal context: `<origin>/api/<org>/<board>` (docs/auth.md "CLI sign-in"). */
+export function personalBoardUrl(context: PersonalContext): string {
+  return `${context.origin}/api/${context.org}/${context.board}`;
+}
+
+/** An organization or board slug as the server accepts it. */
+export function isSlug(value: unknown): value is string {
+  return typeof value === "string" && SLUG.test(value);
 }
 
 export function boardAddress(address: string | undefined): string | undefined {
