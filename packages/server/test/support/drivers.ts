@@ -3,7 +3,7 @@ import { createTestDatabases, postgresDriver } from "@openboard/driver-postgres"
 import { type Catalog, postgresCatalog } from "@openboard/driver-postgres/catalog";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { sqliteCatalog } from "@openboard/driver-sqlite/catalog";
-import type { Store } from "@openboard/ports";
+import type { BoardView, Store } from "@openboard/ports";
 import { postgresTestUrl } from "./env.ts";
 
 export type { Catalog };
@@ -50,10 +50,12 @@ function postgresStore(url: string, now: () => number): Store {
   };
   let database: { readonly drop: () => Promise<void> } | undefined;
   let opening: Promise<Store> | undefined;
+  let ready: Store | undefined;
   const open = async () => {
     const created = await (await template()).create();
     database = created;
-    return postgresDriver({ url: created.url }, now);
+    ready = await postgresDriver({ url: created.url }, now);
+    return ready;
   };
   let closed: Promise<void> | undefined;
   const opened = () => {
@@ -68,7 +70,17 @@ function postgresStore(url: string, now: () => number): Store {
   };
   const store: Store = {
     platform: () => deferred(async () => (await opened()).platform()),
-    board: (scope) => deferred(async () => (await opened()).board(scope)),
+    board: (scope) => {
+      // HTTP resolves the board through the platform view before requesting its scoped view.
+      if (ready && !closed) return ready.board(scope);
+      return deferred<BoardView>(async () => (await opened()).board(scope), {
+        subscribeEvents(fromPosition, wake) {
+          if (closed) throw new Error("The store is closed");
+          if (!ready) throw new Error("Open the store before subscribing to events");
+          return ready.board(scope).subscribeEvents(fromPosition, wake);
+        },
+      });
+    },
     org: (scope) => deferred(async () => (await opened()).org(scope)),
     // Tests close an app and its store, often both: the second close is the first one's promise.
     close: () => {
@@ -91,12 +103,13 @@ function postgresStore(url: string, now: () => number): Store {
   return store;
 }
 
-/** A view whose every method waits for `view`, then calls it: every store view method is asynchronous. */
-function deferred<View extends object>(view: () => Promise<View>): View {
-  return new Proxy({} as View, {
-    get(_, method) {
+/** Defers async view methods until the store opens, leaving synchronous methods on the proxy target. */
+function deferred<View extends object>(view: () => Promise<View>, synchronous: Partial<View> = {}): View {
+  return new Proxy(synchronous as View, {
+    get(target, method) {
       // Not a thenable: awaiting a view must not call `then` on the store.
       if (typeof method !== "string" || method === "then") return undefined;
+      if (Object.hasOwn(target, method)) return Reflect.get(target, method);
       return async (...args: unknown[]) => {
         const target = (await view()) as unknown as Record<string, (...args: unknown[]) => unknown>;
         const call = target[method];
