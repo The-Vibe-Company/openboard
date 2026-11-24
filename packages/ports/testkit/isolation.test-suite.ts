@@ -57,6 +57,13 @@ const boardCases: Cases<BoardView> = {
     expect(root?.task?.owner).toBe(a.actor);
     return root;
   },
+  listTasks: async (a, b) => {
+    const query = { states: ["ready"], limit: 500 };
+    expect((await a.board.listTasks({ ...query, channel: b.channel })).tasks).toEqual([]);
+    const page = await a.board.listTasks(query);
+    expect(page.tasks.map(({ message }) => message.id)).toEqual([String(a.task)]);
+    return page;
+  },
   thread: async (a, b) => {
     expectNull(await a.board.thread(b.message));
     return a.board.thread(a.message);
@@ -156,6 +163,7 @@ async function digestOf(b: StoreTenant): Promise<string> {
     await b.board.auditEvents(0, 500),
     await b.board.thread(b.message),
     await b.board.taskRoot(b.task),
+    await b.board.listTasks({ states: ["ready"], limit: 500 }),
     await b.org.listMembers(),
     await b.org.auditEvents(0, 500),
     await b.org.listBoards(),

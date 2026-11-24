@@ -13,6 +13,7 @@ import { invitationsSuite } from "./store/invitations.test-suite.ts";
 import { membershipsSuite } from "./store/memberships.test-suite.ts";
 import { messagesSuite } from "./store/messages.test-suite.ts";
 import { orgsSuite } from "./store/orgs.test-suite.ts";
+import { tasksSuite } from "./store/tasks.test-suite.ts";
 import { threadsSuite } from "./store/threads.test-suite.ts";
 
 export {
@@ -27,6 +28,7 @@ export {
   membershipsSuite,
   messagesSuite,
   orgsSuite,
+  tasksSuite,
   threadsSuite,
 };
 
@@ -56,6 +58,7 @@ export function runStoreSuite(driver: string, open: OpenStore): void {
   membershipsSuite(driver, open);
   messagesSuite(driver, open);
   orgsSuite(driver, open);
+  tasksSuite(driver, open);
   threadsSuite(driver, open);
 }
 

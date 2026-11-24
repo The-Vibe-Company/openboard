@@ -3,6 +3,7 @@ import type {
   getConnection,
   listChannels,
   listConnections,
+  listTasks,
   ManagedConnection,
   OutputOf,
 } from "@openboard/contract";
@@ -82,6 +83,58 @@ function channelsText(output: unknown, input: Readonly<Record<string, unknown>>)
   return [...lines, "", `(more not shown: ${argv.map(shellWord).join(" ")})`].join("\n");
 }
 
+type TasksInput = {
+  readonly channel?: string;
+  readonly state?: string;
+  readonly label?: readonly string[];
+  readonly by?: string;
+  readonly owner?: string;
+  readonly for?: string;
+  readonly limit?: number;
+};
+
+/** A task on one line: its ID, state, the first line of its text, then its root's labels but the state's. */
+function taskLine({ message }: OutputOf<typeof listTasks>["tasks"][number]): string {
+  const [first = "", ...rest] = message.text.trim().split(/\r?\n/);
+  const labels = Object.entries(message.labels ?? {})
+    .filter(([key]) => key !== "board.task")
+    .map(([key, value]) => `${key}=${value}`);
+  const text = `${first.trimEnd()}${rest.length > 0 ? " …" : ""}`;
+  return [`#${message.id}`, message.task?.state ?? "", text, ...(labels.length > 0 ? [labels.join(" ")] : [])].join(
+    "  ",
+  );
+}
+
+/** One line per task, oldest first, then on a full page the command that reads the next one (upstream `vb tasks`). */
+function tasksText(output: unknown, input: Readonly<Record<string, unknown>>): string {
+  const { tasks, cursor } = output as OutputOf<typeof listTasks>;
+  const { channel, state, label = [], by, owner, for: assignee, limit } = input as TasksInput;
+  if (tasks.length === 0) {
+    const which = state === undefined || state === "open" ? "open " : state === "all" ? "" : `${state} `;
+    return `no ${which}tasks${channel === undefined ? "" : ` in ${channel}`}`;
+  }
+  const lines = tasks.map(taskLine);
+  if (tasks.length < (limit ?? 50)) return lines.join("\n");
+  const named = (flag: string, value: string | undefined) => (value === undefined ? [] : [flag, value]);
+  const options = [
+    ...named("--state", state),
+    ...label.flatMap((value) => ["--label", value]),
+    ...named("--by", by),
+    ...named("--owner", owner),
+    ...named("--for", assignee),
+    ...named("--limit", limit === undefined ? undefined : String(limit)),
+    "--after",
+    cursor,
+  ];
+  const argv =
+    channel === undefined
+      ? ["ob", "tasks", ...options]
+      : channel.startsWith("-") || channel === "create"
+        ? ["ob", "tasks", ...options, "--", channel]
+        : ["ob", "tasks", channel, ...options];
+  return [...lines, `(more not shown: ${argv.map(shellWord).join(" ")})`].join("\n");
+}
+
 /** A connection on one line, then one indented line per live agent; the hint is never enough to use its secret. */
 function connectionText(connection: ManagedConnection): string {
   const { name, id, secretHint, lastUsedAt, agents } = connection;
@@ -104,5 +157,6 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
       return connections.length === 0 ? "no connections" : connections.map(connectionText).join("\n");
     },
     createTask: (output: unknown) => (output as { task: { id: string } }).task.id,
+    listTasks: tasksText,
     postMessage: (output: unknown) => (output as { message: { id: string } }).message.id,
   });

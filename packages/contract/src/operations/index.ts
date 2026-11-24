@@ -57,6 +57,7 @@ import {
   recordSyncReceipt,
 } from "./sync/records.ts";
 import { createTask } from "./tasks/create.ts";
+import { listTasks } from "./tasks/list.ts";
 import { listThreads, readThread } from "./threads.ts";
 
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
@@ -97,6 +98,7 @@ export const operations = [
   listPersonalTokens,
   listSyncCopies,
   listSyncTargets,
+  listTasks,
   listThreads,
   pollDeviceSignIn,
   postMessage,
@@ -161,6 +163,7 @@ export {
   listPersonalTokens,
   listSyncCopies,
   listSyncTargets,
+  listTasks,
   listThreads,
   pollDeviceSignIn,
   postMessage,

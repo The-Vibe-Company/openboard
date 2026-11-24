@@ -25,6 +25,7 @@ import { invitationPlatform, invitationView } from "./views/invitations.ts";
 import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
+import { taskListReads } from "./views/tasks/list.ts";
 import { threadReads } from "./views/threads.ts";
 
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
@@ -84,6 +85,7 @@ export function createViews(
       ...agentReads(db, dialect, scope),
       ...auditReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),
+      ...taskListReads(db, dialect, scope),
       ...channelReads(db, dialect, scope),
       ...connectionReads(db, dialect, scope),
       ...eventReads(db, dialect, scope),

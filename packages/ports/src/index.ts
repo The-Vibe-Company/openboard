@@ -23,4 +23,4 @@ export type {
   SignInRecord,
   Store,
 } from "./store.ts";
-export type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
+export type { BoardTaskReads, BoardTaskWriter, TaskListQuery } from "./tasks.ts";
