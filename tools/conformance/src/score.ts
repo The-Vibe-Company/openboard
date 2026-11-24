@@ -1,9 +1,19 @@
 import type { CheckResult } from "@vercel/board/conformance";
 
-export type Score = {
-  local: readonly string[];
-  hosted: readonly string[];
+type Mode = "local" | "hosted";
+
+export type Score = Record<Mode, readonly string[]> & {
+  expectedSkips: Readonly<Record<string, string>>;
 };
+
+export function expectedSkipResults(expectedSkips: Score["expectedSkips"], checks: readonly CheckResult[]) {
+  const statuses = new Map(checks.map(({ group, name, status }) => [`${group}/${name}`, status]));
+  return Object.entries(expectedSkips).map(([name, reason]) => ({
+    name,
+    reason,
+    status: statuses.get(name) ?? "missing",
+  }));
+}
 
 function passedNames(checks: readonly CheckResult[]): Set<string> {
   return new Set(checks.filter((check) => check.status === "passed").map((check) => `${check.group}/${check.name}`));
@@ -24,7 +34,7 @@ export function newChecks(recorded: readonly string[], checks: readonly CheckRes
  * Adds checks to one mode's list, sorted so the file reads the same whoever records. Never removes an entry: that is
  * the owner's call (AGENTS.md, non-negotiable 4).
  */
-export function recordChecks(score: Score, mode: keyof Score, added: readonly string[]): Score {
+export function recordChecks(score: Score, mode: Mode, added: readonly string[]): Score {
   const names = [...new Set([...score[mode], ...added])].sort();
   return { ...score, [mode]: names };
 }

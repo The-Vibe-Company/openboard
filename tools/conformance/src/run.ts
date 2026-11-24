@@ -11,7 +11,7 @@ import {
 } from "@openboard/contract";
 import type { CheckGroup, CheckResult } from "@vercel/board/conformance";
 import { boot } from "./drivers";
-import { fillSkipped, lostChecks, newChecks, recordChecks, type Score } from "./score";
+import { expectedSkipResults, fillSkipped, lostChecks, newChecks, recordChecks, type Score } from "./score";
 
 const groups: readonly CheckGroup[] = [
   "core",
@@ -238,7 +238,17 @@ async function main() {
   const lost = lostChecks(score[mode], checks);
   for (const name of lost) console.error(`Lost conformance check (${mode}): ${name}`);
   if (lost.length > 0) process.exitCode = 1;
-  const added = newChecks(score[mode], checks);
+  let unexpected = false;
+  for (const { name, reason, status } of expectedSkipResults(score.expectedSkips, checks)) {
+    if (status === "skipped") {
+      console.log(`Expected conformance skip (${mode}): ${name} — ${reason}`);
+    } else {
+      console.error(`Expected conformance skip (${mode}): ${name} — ${reason} Got ${status}.`);
+      unexpected = true;
+    }
+  }
+  if (unexpected) process.exitCode = 1;
+  const added = newChecks(score[mode], checks).filter((name) => !Object.hasOwn(score.expectedSkips, name));
   const hint = update ? "" : " (not recorded: run with --update)";
   for (const name of added) console.log(`New conformance check (${mode}): ${name}${hint}`);
   if (update && added.length > 0) {
