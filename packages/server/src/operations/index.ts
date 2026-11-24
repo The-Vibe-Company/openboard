@@ -37,6 +37,7 @@ import {
 } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
+import { createGrantHandler } from "./grants/create.ts";
 import {
   acceptInvitationHandler,
   createInvitationHandler,
@@ -167,6 +168,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   createBoard: createBoardHandler,
   createChannel: createChannelHandler,
   createConnection: createConnectionHandler,
+  createGrant: createGrantHandler,
   createInvitation: createInvitationHandler,
   createOrg: createOrgHandler,
   createTask: createTaskHandler,

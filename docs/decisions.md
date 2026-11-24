@@ -922,3 +922,11 @@ Only product choices; each has a recommendation.
   redirect. *Recommendation:* yes; display names stay editable.
 - **Q8. Platform sync (Slack, GitHub) in the first release?**
   *Recommendation:* no.
+
+### D58. GitHub as a grant principal
+
+- **Decision.** The upstream `github` principal and `--github` flag are
+  board protocol features. An unfiltered principal can name a person by the
+  exact subject of their locally linked GitHub identity.
+- **Consequence.** GitHub remains the only people sign-in provider. Grant
+  creation and resolution use local data, with no GitHub API calls.

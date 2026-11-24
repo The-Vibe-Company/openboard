@@ -17,6 +17,7 @@ import {
   nextGrant,
   profileHolder,
 } from "./connections.ts";
+import { foldGrantEvent, grantReads } from "./grants.ts";
 import { foldTaskEvent } from "./tasks/task-folds.ts";
 import { taskReads } from "./tasks/tasks.ts";
 
@@ -187,6 +188,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
     payload: JSON.stringify(event.payload),
   });
   if (event.type === "channel.created") await foldChannelCreated(tx, dialect, keys, event);
+  else if (event.type === "ob.grant.created") await foldGrantEvent(tx, dialect, keys, event);
   else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
   else if (event.type === "ob.connection.revoked") await foldConnectionRevoked(tx, dialect, keys, event);
   else if (event.type === "actor.seen") await foldActorSeen(tx, dialect, keys, event);
@@ -305,10 +307,11 @@ export function boardView(
   dialect: Dialect,
   scope: BoardScope,
   broadcaster: Broadcaster,
-): Pick<BoardView, "write" | "channelMessages" | "ownClientPost" | "mentionEvidence" | "taskRoot"> {
+): Pick<BoardView, "write" | "channelMessages" | "ownClientPost" | "mentionEvidence" | "taskRoot" | "personGrants"> {
   const keys: BoardKeys = { orgId: scope.orgId, boardId: scope.boardId };
   return {
     ...taskReads(db, dialect, keys),
+    ...grantReads(db, dialect, keys),
     async write(fn, as) {
       const { result, page } = await db.transaction(async (tx) => {
         const { head, actor } =

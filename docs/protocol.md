@@ -257,6 +257,14 @@ does, a list without `channel` needs `read` on every channel, and a subtree need
 `needs` and `latest` are not served yet. The CLI is `ob tasks [channel]`, the SDK method `listTasks`,
 the MCP tool `list_tasks`.
 
+`POST /grants` returns 200 with `{ grant }` in the upstream grant view.
+OpenBoard accepts `connection` (a board connection ID) and `all-connections`.
+A `user` takes a board member's OpenBoard person ID. For a `github` principal
+without workflow, branch or event filters, the `repository` field can also
+carry the exact subject of a person's locally linked GitHub identity.
+Project and app principal kinds are preserved for display. Grant creation
+appears as `ob.grant.created` in the board audit.
+
 ### Watchers (the pull/ack variant)
 
 | Method | Path | | Notes |

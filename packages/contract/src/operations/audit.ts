@@ -1,5 +1,6 @@
 import { type Static, type TObject, type TProperties, Type } from "@sinclair/typebox";
 import { ClaimedAgent, Connection } from "../entities/connections.ts";
+import { GrantView } from "../entities/grants.ts";
 import { InvitationRole } from "../entities/invitations.ts";
 import { Author } from "../entities/messages.ts";
 import { Named, Role, Slug } from "../entities/orgs.ts";
@@ -19,6 +20,7 @@ function entry<Kind extends string, Payload extends TProperties>(type: Kind, pay
 
 /** A board's `ob.*` event as the audit shows it (docs/auth.md "Audit"). */
 export const AuditEvent = Type.Union([
+  entry("ob.grant.created", { grant: GrantView }),
   entry("ob.connection.created", {
     connection: Connection,
     /** How many claims the secret makes before it is spent, or null for no limit. */

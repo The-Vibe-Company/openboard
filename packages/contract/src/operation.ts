@@ -77,6 +77,7 @@ export type Operation<
   readonly scope: S;
   readonly input: I;
   readonly output: O;
+  readonly invalidInputCode?: ErrorCode;
   /** Optional alternate HTTP representation, negotiated through Accept. */
   readonly eventStream?: "text/event-stream";
   /** The success status, or the boolean output field that distinguishes 201 from 200. */
@@ -175,9 +176,16 @@ function decodePart(schema: TObject | undefined, value: unknown, where: string, 
 
 /** Validates a request's parts against an operation's input and returns the flat input, or throws `invalid_request`. */
 export function decodeInput<Op extends Operation>(operation: Op, raw: RawInput): InputOf<Op> {
-  return {
-    ...decodePart(operation.input.params, raw.params, "path", true),
-    ...decodePart(operation.input.query, raw.query, "query", true),
-    ...decodePart(operation.input.body, raw.body, "body", false),
-  } as InputOf<Op>;
+  try {
+    return {
+      ...decodePart(operation.input.params, raw.params, "path", true),
+      ...decodePart(operation.input.query, raw.query, "query", true),
+      ...decodePart(operation.input.body, raw.body, "body", false),
+    } as InputOf<Op>;
+  } catch (error) {
+    if (operation.invalidInputCode && error instanceof BoardError && error.code === "invalid_request") {
+      throw new BoardError(operation.invalidInputCode, error.message);
+    }
+    throw error;
+  }
 }
