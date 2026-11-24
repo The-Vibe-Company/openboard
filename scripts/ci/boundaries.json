@@ -55,6 +55,11 @@
     "tools/bench": {
       "may": ["server", "ports", "driver-sqlite", "driver-postgres", "sdk", "contract"],
       "external": ["node:*"]
+    },
+    "examples/webhook-receiver": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] },
+    "examples/webhook-receiver/test": {
+      "may": ["sdk", "cli", "server", "driver-sqlite"],
+      "external": ["bun", "node:*"]
     }
   },
   "drivers": {
@@ -66,7 +71,8 @@
       "apps/web/e2e/support/serve.ts",
       "packages/server/test/support/drivers.ts",
       "tools/conformance/src/drivers.ts",
-      "tools/bench/src/drivers.ts"
+      "tools/bench/src/drivers.ts",
+      "examples/webhook-receiver/test/receiver.test.ts"
     ]
   },
   "dbClients": {

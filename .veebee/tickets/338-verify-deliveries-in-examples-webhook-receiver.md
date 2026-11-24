@@ -12,11 +12,14 @@ writes:
   - examples/webhook-receiver/test/receiver.test.ts
   - package.json
   - scripts/ci/boundaries.json
+  - docs/codebase.md
+  - bun.lock
+  - scripts/ci/fixtures/boundaries/driver/driver.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [171, 237, 305]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 523
 ---
 

@@ -8,7 +8,7 @@ import { checkBoundaries, findWorkspaces, loadConfig } from "../../../boundaries
 const config = await loadConfig(join(import.meta.dir, "../../../boundaries.json"));
 const roots: string[] = [];
 const ROOTS =
-  "apps/openboard/src/compose.ts, apps/web/e2e/support/serve.ts, packages/server/test/support/drivers.ts, tools/conformance/src/drivers.ts, tools/bench/src/drivers.ts";
+  "apps/openboard/src/compose.ts, apps/web/e2e/support/serve.ts, packages/server/test/support/drivers.ts, tools/conformance/src/drivers.ts, tools/bench/src/drivers.ts, examples/webhook-receiver/test/receiver.test.ts";
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));

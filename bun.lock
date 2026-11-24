@@ -57,6 +57,16 @@
         "vite": "^8.3.8",
       },
     },
+    "examples/webhook-receiver": {
+      "name": "@openboard/webhook-receiver",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@openboard/driver-sqlite": "workspace:*",
+        "@openboard/server": "workspace:*",
+        "@the-vibe-company/openboard": "workspace:*",
+        "@types/bun": "1.4.5",
+      },
+    },
     "packages/cli": {
       "name": "@the-vibe-company/openboard-cli",
       "version": "0.0.0",
@@ -271,6 +281,8 @@
     "@openboard/server": ["@openboard/server@workspace:packages/server"],
 
     "@openboard/web": ["@openboard/web@workspace:apps/web"],
+
+    "@openboard/webhook-receiver": ["@openboard/webhook-receiver@workspace:examples/webhook-receiver"],
 
     "@oxc-project/types": ["@oxc-project/types@0.156.0", "", {}, "sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw=="],
 
