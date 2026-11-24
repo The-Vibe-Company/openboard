@@ -10,7 +10,7 @@ test("grants create sends the upstream modifiers with their principal and prints
       { kind: "github", repository: "example/web", workflow: "ci.yml", branch: "main" },
       { kind: "oidc", issuer: "https://issuer.example", claims: { sub: "repo:example/*", group: ["one", "two"] } },
     ],
-    can: { "deploys/": ["read", "post"], ops: "all" },
+    can: { "deploys/": ["read", "post"], "deploys/secret/": [], ops: "all" },
   };
   const out: string[] = [];
   const code = await runCli(
@@ -36,6 +36,8 @@ test("grants create sends the upstream modifiers with their principal and prints
       "--can",
       "deploys/=read,post",
       "--can",
+      "deploys/secret/=none",
+      "--can",
       "ops=all",
     ],
     { BOARD_URL },
@@ -55,7 +57,7 @@ test("grants create sends the upstream modifiers with their principal and prints
   );
   expect(code).toBe(0);
   expect(out).toEqual([
-    `created g5  --connection ${id} --github example/web --workflow ci.yml --git-branch main --oidc https://issuer.example --claim sub=repo:example/* --claim group=one --claim group=two  deploys/=read,post ops=all`,
+    `created g5  --connection ${id} --github example/web --workflow ci.yml --git-branch main --oidc https://issuer.example --claim sub=repo:example/* --claim group=one --claim group=two  deploys/=read,post deploys/secret/=none ops=all`,
   ]);
 });
 

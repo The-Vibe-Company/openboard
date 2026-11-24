@@ -7,7 +7,9 @@ function canEntries(text: string): [string, CanInput[string]][] {
     const at = entry.indexOf("=");
     if (at <= 0 || at === entry.length - 1) throw new Misuse("--can takes pattern=permissions");
     const given = entry.slice(at + 1);
-    return [entry.slice(0, at), given === "all" ? "all" : (given.split(",") as Permission[])];
+    const pattern = entry.slice(0, at);
+    if (given === "none") return [pattern, []];
+    return [pattern, given === "all" ? "all" : (given.split(",") as Permission[])];
   });
 }
 
@@ -58,7 +60,7 @@ function grantLine(
 ): string {
   const named = grant.principals.map(describeGrantPrincipal).join(" ");
   const can = Object.entries(grant.can)
-    .map(([pattern, given]) => `${pattern}=${given}`)
+    .map(([pattern, given]) => `${pattern}=${given.length === 0 ? "none" : given}`)
     .join(" ");
   return `${verb} ${grant.id}  ${named}  ${can}`;
 }

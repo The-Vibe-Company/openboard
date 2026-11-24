@@ -1,7 +1,7 @@
 import { type Author, BoardError, type CanInput, type Connection } from "@openboard/contract";
 import { isoTime } from "../ids.ts";
 import { ttlSeconds } from "./agents.ts";
-import { compileCan, formatGrantId, type Grant } from "./grants.ts";
+import { compileRequiredCan, formatGrantId, type Grant } from "./grants.ts";
 
 /** What a new connection's write needs to know, read under the board lock. */
 export interface ConnectionState {
@@ -60,7 +60,7 @@ export function connectionPrincipal(id: string): string {
 
 /**
  * A new connection holding one grant whose only principal is the connection itself. A name already used on the
- * board is 409 `slug_taken`; the grant's `can` is compiled (`grants.compileCan`). A direct connection takes no
+ * board is 409 `slug_taken`; the grant's `can` is compiled (`grants.compileRequiredCan`). A direct connection takes no
  * `claims`: its secret is a bearer on every route, which counting claims could never spend (400 `invalid_request`).
  */
 export function decideCreate(
@@ -81,7 +81,7 @@ export function decideCreate(
   const grant: Grant = {
     id: state.nextGrant,
     principals: [{ kind: "connection", connection: secret.id }],
-    can: compileCan(command.can),
+    can: compileRequiredCan(command.can),
   };
   const connection: Connection = {
     id: secret.id,
