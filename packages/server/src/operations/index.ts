@@ -85,6 +85,7 @@ import {
   recordSyncReceiptHandler,
   showTypingHandler,
 } from "./sync/stubs.ts";
+import { cancelTaskHandler } from "./tasks/cancel.ts";
 import { claimTaskHandler } from "./tasks/claim.ts";
 import { completeTaskHandler, failTaskHandler } from "./tasks/complete.ts";
 import { releaseTaskHandler } from "./tasks/release.ts";
@@ -201,6 +202,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   ackWatcherMatch: ackWatcherMatchHandler,
   approveDeviceSignIn: approveDeviceSignInHandler,
   attachSync: attachSyncHandler,
+  cancelTask: cancelTaskHandler,
   changeMemberRole: changeMemberRoleHandler,
   claimConnection: claimConnectionHandler,
   claimTask: claimTaskHandler,

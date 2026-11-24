@@ -2,6 +2,7 @@ import { Type } from "@sinclair/typebox";
 import { Author, ChannelPath, Labels, Message, MessageAuthor } from "./messages.ts";
 
 import {
+  TaskCanceledEvent,
   TaskClaimedEvent,
   TaskCompletedEvent,
   TaskCreatedEvent,
@@ -111,6 +112,7 @@ export const Event = Type.Union([
   ActorSeenEvent,
   ChannelCreatedEvent,
   TaskCreatedEvent,
+  TaskCanceledEvent,
   TaskClaimedEvent,
   TaskCompletedEvent,
   TaskExpiredEvent,

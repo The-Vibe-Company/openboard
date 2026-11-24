@@ -19,6 +19,9 @@ export const taskFoldStatements = {
   failTask: sql`UPDATE tasks SET state = 'failed', reason = ${"reason"},
     claim_actor = NULL, claim_until = NULL, claim_token = NULL
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  cancelTask: sql`UPDATE tasks SET state = 'canceled', reason = ${"reason"},
+    claim_actor = NULL, claim_until = NULL, claim_token = NULL, blocked_kind = NULL, blocked_reason = NULL
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   projectTaskRoot: sql`UPDATE messages SET labels = ${"labels"}, version = ${"version"}, view = ${"view"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND re IS NULL`,
 };
@@ -53,8 +56,9 @@ function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: TaskEvent
       result: event.payload.result,
     });
   }
-  if (event.type === "task.failed") {
-    return query(tx, dialect, taskFoldStatements.failTask, {
+  if (event.type === "task.failed" || event.type === "task.canceled") {
+    const statement = event.type === "task.failed" ? taskFoldStatements.failTask : taskFoldStatements.cancelTask;
+    return query(tx, dialect, statement, {
       ...keys,
       id: event.message,
       reason: event.payload.reason,

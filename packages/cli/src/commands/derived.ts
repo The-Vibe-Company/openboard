@@ -1,6 +1,7 @@
 import { type CliSpec, operations } from "@openboard/contract";
 import { formats } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
+import { runCancelTask } from "./tasks/cancel.ts";
 import { runTaskCommand } from "./tasks/claim.ts";
 import { runSettleTask } from "./tasks/complete.ts";
 import { runRenewTask } from "./tasks/renew.ts";
@@ -172,6 +173,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
         if (ctx.profile === undefined || input.can === undefined) throw new Misuse("policy requires --as and --can");
         input.profile = ctx.profile;
       }
+      if (operation.name === "cancelTask") return runCancelTask(ctx, input as { id: string; reason: string });
       if (operation.name === "renewTask") return runRenewTask(ctx, input as { id: string; lease?: number });
       if (operation.name === "failTask") {
         return runSettleTask(ctx, String(input.id), "failed", (proof) =>

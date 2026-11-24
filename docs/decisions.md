@@ -1082,6 +1082,14 @@ Parked event reads wake on deletion and reauthorize against the tombstone.
   older watcher reader can lease every persisted match. Other job kinds
   follow the general release rule in codebase.md §5.7.
 
+### Task cancellation during a rolling deploy
+
+- **Status:** accepted (orchestrator, [issue #423](https://github.com/The-Vibe-Company/openboard/issues/423#issuecomment-7136494405)).
+- **Decision.** As in D66, this release leaves `task.canceled` out of the
+  persisted pull-watcher allowlist because older replicas can lease matches
+  they cannot decode. The event feed serves it on upgraded replicas. A later
+  ticket adds persisted matches for task expiry and cancellation together.
+
 ### Gateway allowlists for direct connections
 
 The gateway policy takes the routes allowed by the claimed-token guard and

@@ -4,7 +4,7 @@ title: Cancel a task
 milestone: M9-tasks
 package: server
 writes:
-  - packages/contract/src/operations/task-changes.ts
+  - packages/contract/src/operations/tasks/cancel.ts
   - packages/contract/src/operations/index.ts
   - packages/core/src/tasks/cancel.ts
   - packages/core/test/tasks/cancel.test.ts
@@ -12,19 +12,30 @@ writes:
   - packages/core/test/tasks/ownership.test.ts
   - packages/contract/src/entities/task-events.ts
   - packages/core/src/tasks/events.ts
-  - packages/driver-sql/src/views/task-folds.ts
-  - packages/driver-sql/src/statements.ts
-  - packages/server/src/operations/task-changes.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/server/src/operations/tasks/cancel.ts
   - packages/server/src/operations/index.ts
   - packages/server/test/tasks/cancel.test.ts
   - packages/server/test/isolation/cases.ts
-  - packages/cli/src/commands/tasks.ts
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/src/commands/tasks/cancel.ts
   - packages/cli/test/tasks.test.ts
+  - docs/protocol.md
+  - docs/decisions.md
+  - packages/contract/src/entities/events.ts
+  - packages/contract/src/index.ts
+  - packages/core/src/events/tail.ts
+  - packages/core/src/index.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/watchers/index.ts
+  - packages/server/src/operations/events.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [249]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 423
 ---
 

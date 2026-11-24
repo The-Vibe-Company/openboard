@@ -44,6 +44,7 @@ export type { GrantCreated, GrantRevoked, GrantUpdated };
 
 import type { TaskEvent } from "./tasks/events.ts";
 
+export { decideCancelTask } from "./tasks/cancel.ts";
 export { decideClaimTask } from "./tasks/claim.ts";
 export { decideCreateTask, decideMakeTask, type MakeTaskState, replayTask } from "./tasks/create.ts";
 export type { TaskClaimed, TaskCreated, TaskEvent, TaskExpired } from "./tasks/events.ts";

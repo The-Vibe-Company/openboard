@@ -67,6 +67,7 @@ import {
   pushInbox,
   recordSyncReceipt,
 } from "./sync/records.ts";
+import { cancelTask } from "./tasks/cancel.ts";
 import { claimTask } from "./tasks/claim.ts";
 import { completeTask } from "./tasks/complete.ts";
 import { createTask } from "./tasks/create.ts";
@@ -86,6 +87,7 @@ export const operations = [
   ackWatcherMatch,
   approveDeviceSignIn,
   attachSync,
+  cancelTask,
   changeMemberRole,
   claimConnection,
   claimTask,
@@ -182,6 +184,7 @@ export {
   ackWatcherMatch,
   approveDeviceSignIn,
   attachSync,
+  cancelTask,
   changeMemberRole,
   claimConnection,
   claimTask,

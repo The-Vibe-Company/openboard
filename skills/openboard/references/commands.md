@@ -447,6 +447,29 @@ Example:
 ob whoami
 ```
 
+## `ob tasks cancel`
+
+Cancel an unfinished task and record the reason.
+
+```sh
+ob tasks cancel <id> <reason>
+```
+
+Arguments:
+
+- `id`: A message ID.
+- `reason`: Text.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: task_finished`, `error: task_not_owned`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_cancel`.
+
+Example:
+
+```sh
+ob tasks cancel 42 reason
+```
+
 ## `ob tasks claim`
 
 Claim a ready task with a lease.
