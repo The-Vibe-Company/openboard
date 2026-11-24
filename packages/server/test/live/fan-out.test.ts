@@ -3,13 +3,11 @@ import type { CreatedConnection } from "@openboard/contract";
 import type { BoardView, CommittedEvents, Store } from "@openboard/ports";
 import { tailBoard } from "../../src/live/fan-out.ts";
 import { BOARD_URL, call, makeApp, NOW, OWNER } from "../support/app.ts";
-import { openStore } from "../support/drivers.ts";
+import { openStore, type TestStore } from "../support/drivers.ts";
 
-/** A test store that counts the feed reads every board view sends to storage. */
-function countingStore() {
-  const store = openStore(() => NOW);
-  const counted = { reads: 0 };
-  const wrapped: Store = {
+/** `store`, counting the feed reads every board view sends to storage in `counted`. */
+function counting(store: Store, counted: { reads: number }): Store {
+  return {
     ...store,
     board(scope) {
       const board = store.board(scope);
@@ -24,7 +22,26 @@ function countingStore() {
       });
     },
   };
+}
+
+/** A test store that counts the feed reads of every instance on it, the second instance's included. */
+function countingStore() {
+  const store = openStore(() => NOW);
+  const counted = { reads: 0 };
+  const { sibling } = store;
+  const wrapped: TestStore = {
+    ...counting(store, counted),
+    ...(sibling && { sibling: () => counting(sibling(), counted) }),
+  };
   return { store: wrapped, counted };
+}
+
+/**
+ * The store reads a write costs its caught-up tails: none on the instance that wrote, which holds the committed page in
+ * memory, and one for each tail on another instance, which a notification wakes with only the new head (D36).
+ */
+function remoteReads(tails: readonly { readonly instance: number }[], writer: number) {
+  return tails.filter((tail) => tail.instance !== writer).length;
 }
 
 type Stream = Awaited<ReturnType<typeof openStream>>;
@@ -42,7 +59,7 @@ async function openStream(app: ReturnType<typeof makeApp>, query: string, token 
   const next = async () => decoder.decode((await reader.read()).value);
   expect(await next()).toBe(": connected\n\n");
   await next(); // The first page: the cursor the stream starts from.
-  return { next, close: () => reader.cancel() };
+  return { next, close: () => reader.cancel(), instance: app.served.at(-1)! };
 }
 
 /** The `id:` lines of one page, each tagged with whether it carries an event or only a cursor. */
@@ -56,11 +73,11 @@ const post = async (app: ReturnType<typeof makeApp>, channel: string, text: stri
   return ((await response.json()) as { message: { id: string } }).message.id;
 };
 
-function streamingApp(store: Store) {
+function streamingApp(store: TestStore) {
   return makeApp({ store, schedule: () => () => {} });
 }
 
-test("a commit reaches every caught-up tail from memory, without a store read", async () => {
+test("a commit reaches every caught-up tail on its instance from memory, without a store read", async () => {
   const { store, counted } = countingStore();
   const app = streamingApp(store);
   const streams: Stream[] = [];
@@ -69,7 +86,7 @@ test("a commit reaches every caught-up tail from memory, without a store read", 
     counted.reads = 0;
     const id = await post(app, "dev", "hello");
     for (const stream of streams) expect(ids(await stream.next())).toEqual([id]);
-    expect(counted.reads).toBe(0);
+    expect(counted.reads).toBe(remoteReads(streams, app.served.at(-1)!));
   } finally {
     await Promise.all(streams.map((stream) => stream.close()));
     await app.close();
@@ -86,17 +103,25 @@ test("a slow tail never delays the others: it keeps one queued page, then catche
     const pending = slow.next();
     counted.reads = 0;
     const posted: string[] = [];
+    const writers: number[] = [];
     for (const text of ["one", "two", "three", "four"]) {
       posted.push(await post(app, "dev", text));
+      writers.push(app.served.at(-1)!);
       expect(ids(await fast.next())).toEqual([posted.at(-1)!]);
     }
-    expect(counted.reads).toBe(0);
-    // The first post filled the waiting read and the second the stream's one queued frame. The tail queued the third
-    // page; the fourth found that queue full, so both were dropped and the slow tail reads them from the store.
-    expect(ids(await pending)).toEqual([posted[0]!]);
-    expect(ids(await slow.next())).toEqual([posted[1]!]);
-    expect(ids(await slow.next())).toEqual(posted.slice(2));
-    expect(counted.reads).toBe(1);
+    const reads = counted.reads;
+    const pages = [ids(await pending)];
+    while (pages.flat().length < posted.length) pages.push(ids(await slow.next()));
+    expect(pages.flat()).toEqual(posted);
+    // The queue holds pages committed on the tails' own instance; a write on another one wakes them without a page, at a
+    // time the notification decides, so only one instance fixes how the slow tail's pages split.
+    if (writers.every((writer) => writer === fast.instance && writer === slow.instance)) {
+      expect(reads).toBe(0);
+      // The first post filled the waiting read and the second the stream's one queued frame. The tail queued the third
+      // page; the fourth found that queue full, so both were dropped and the slow tail reads them from the store.
+      expect(pages).toEqual([[posted[0]!], [posted[1]!], posted.slice(2)]);
+      expect(counted.reads).toBe(1);
+    }
   } finally {
     await Promise.all([fast.close(), slow.close()]);
     await app.close();
@@ -118,16 +143,22 @@ test("a filtered tail and a channel-limited caller still receive only what they 
   const limited = await openStream(app, "?channel=dev", secret);
   try {
     counted.reads = 0;
-    const hidden = await post(app, "dev/secret", "not for the reader");
+    let expected = 0;
+    const write = async (channel: string, text: string) => {
+      const id = await post(app, channel, text);
+      expected += remoteReads([filtered, limited], app.served.at(-1)!);
+      return id;
+    };
+    const hidden = await write("dev/secret", "not for the reader");
     expect(ids(await filtered.next())).toEqual([`cursor ${hidden}`]);
     expect(ids(await limited.next())).toEqual([`cursor ${hidden}`]);
-    const dev = await post(app, "dev", "for the reader");
+    const dev = await write("dev", "for the reader");
     expect(ids(await filtered.next())).toEqual([`cursor ${dev}`]);
     expect(ids(await limited.next())).toEqual([dev]);
-    const ops = await post(app, "ops", "for the filter");
+    const ops = await write("ops", "for the filter");
     expect(ids(await filtered.next())).toEqual([ops]);
     expect(ids(await limited.next())).toEqual([`cursor ${ops}`]);
-    expect(counted.reads).toBe(0);
+    expect(counted.reads).toBe(expected);
   } finally {
     await Promise.all([filtered.close(), limited.close()]);
     await app.close();
@@ -176,6 +207,7 @@ test("a page served from memory carries the same events a store read returns", a
     for (const query of queries) streams.push(await openStream(app, `?after=0${query}`));
     counted.reads = 0;
     const id = await post(app, "dev", "first");
+    let expected = remoteReads(streams, app.served.at(-1)!);
     const writes = [
       () => call(app, "POST", `/messages/${id}/edit`, { text: "edited" }),
       () => call(app, "POST", `/messages/${id}/labels`, { set: { status: "open" } }),
@@ -192,9 +224,10 @@ test("a page served from memory carries the same events a store read returns", a
     await collect();
     for (const write of writes) {
       expect((await write()).status).toBeLessThan(300);
+      expected += remoteReads(streams, app.served.at(-1)!);
       await collect();
     }
-    expect(counted.reads).toBe(0);
+    expect(counted.reads).toBe(expected);
     for (const [i, query] of queries.entries()) {
       const stored = (await (await call(app, "GET", `/events?after=0${query}`)).json()) as { events: unknown[] };
       expect(streamed[i]).toEqual(stored.events);

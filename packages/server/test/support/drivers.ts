@@ -27,16 +27,23 @@ export function shareTemplate(): () => Promise<void> {
 }
 
 /**
+ * A test store, and on Postgres a way to open another instance's store on its database: `sibling()` is a driver of its
+ * own (own pool and listener) on the same database, as a second process would open; on SQLite, one process holds the
+ * database, so there is none.
+ */
+export type TestStore = Store & { readonly sibling?: () => Store };
+
+/**
  * The store HTTP tests run on: in-memory SQLite, or with `OPENBOARD_TEST_DRIVER=postgres` a fresh database cloned from
  * a migrated template. The Postgres store connects on its first use, so `makeApp()` stays synchronous; a database that
  * cannot be reached fails that use, never skips it.
  */
-export function openStore(now: () => number): Store {
+export function openStore(now: () => number): TestStore {
   const url = postgresTestUrl();
   return url ? postgresStore(url, now) : sqliteDriver({ memory: true }, now);
 }
 
-function postgresStore(url: string, now: () => number): Store {
+function postgresStore(url: string, now: () => number): TestStore {
   // Without a run's template, the store migrates its own and drops it with its database.
   const shared = run;
   let own: Promise<TestDatabases> | undefined;
@@ -48,13 +55,37 @@ function postgresStore(url: string, now: () => number): Store {
     shared.template ??= createTestDatabases(url);
     return shared.template;
   };
-  let database: { readonly drop: () => Promise<void> } | undefined;
-  let opening: Promise<Store> | undefined;
-  const open = async () => {
-    const created = await (await template()).create();
-    database = created;
-    return postgresDriver({ url: created.url }, now);
+  let database: Promise<{ readonly url: string; readonly drop: () => Promise<void> }> | undefined;
+  const created = () => {
+    database ??= template().then((databases) => databases.create());
+    return database;
   };
+  const instances: Store[] = [];
+  const instance = (): Store => {
+    const store = driverOn(async () => postgresDriver({ url: (await created()).url }, now));
+    instances.push(store);
+    return store;
+  };
+  // Runs when the test, or the file or describe block, that opened the store ends: every instance is closed, then the
+  // database they share is dropped.
+  afterAll(async () => {
+    try {
+      await Promise.all(instances.map((store) => store.close()));
+    } finally {
+      try {
+        const opened = await database?.catch(() => undefined);
+        await opened?.drop();
+      } finally {
+        if (own) await (await own).close();
+      }
+    }
+  });
+  return { ...instance(), sibling: instance };
+}
+
+/** A store that opens its driver on first use, so it can be handed out synchronously. */
+function driverOn(open: () => Promise<Store>): Store {
+  let opening: Promise<Store> | undefined;
   let closed: Promise<void> | undefined;
   const opened = () => {
     // As a closed SQLite store does: a store used after its close fails, and does not open a fresh database.
@@ -66,7 +97,7 @@ function postgresStore(url: string, now: () => number): Store {
     const store = await opening?.catch(() => undefined);
     await store?.close();
   };
-  const store: Store = {
+  return {
     platform: () => deferred(async () => (await opened()).platform()),
     board: (scope) => deferred(async () => (await opened()).board(scope)),
     org: (scope) => deferred(async () => (await opened()).org(scope)),
@@ -76,19 +107,6 @@ function postgresStore(url: string, now: () => number): Store {
       return closed;
     },
   };
-  // Runs when the test, or the file or describe block, that opened the store ends: every store is closed and dropped.
-  afterAll(async () => {
-    try {
-      await store.close();
-    } finally {
-      try {
-        await database?.drop();
-      } finally {
-        if (own) await (await own).close();
-      }
-    }
-  });
-  return store;
 }
 
 /** A view whose every method waits for `view`, then calls it: every store view method is asynchronous. */

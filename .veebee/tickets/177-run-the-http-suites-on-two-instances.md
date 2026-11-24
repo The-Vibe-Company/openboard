@@ -6,11 +6,12 @@ package: server
 writes:
   - packages/server/test/**
   - packages/server/src/live/**
+  - .veebee/tickets/177-run-the-http-suites-on-two-instances.md
 conformance: []
 modes: [local, hosted]
 depends_on: [176]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-t177
 issue: 257
 ---
 
