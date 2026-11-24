@@ -1,5 +1,6 @@
 import { type Static, type TSchema, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
+import { Ref } from "../../operation.ts";
 import { CanInput } from "../connections.ts";
 import { Webhook, WebhookSpec } from "../webhooks/index.ts";
 
@@ -42,7 +43,10 @@ const RuleAction = Type.Union([
   action("task.unblock", empty),
   action("task.cancel", reason),
   action("task.expire", empty),
-  action("agents.revoke", Type.Object({ connection: text, profile: text }, { additionalProperties: false })),
+  action(
+    "agents.revoke",
+    Type.Object({ connection: Ref("connection"), profile: text }, { additionalProperties: false }),
+  ),
 ]);
 const Match = Type.Union([text, Type.Number(), Type.Boolean(), Type.Null()]);
 export const InboundRules = Type.Array(

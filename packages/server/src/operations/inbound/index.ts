@@ -22,7 +22,9 @@ import {
 import type { BoardWriter, InboundRecord } from "@openboard/ports";
 import { unrestrictedLocalOwner } from "../../auth/access.ts";
 import { callerCan, requestScope } from "../../deps.ts";
+import { webhookSigningScheme } from "../../jobs/sign.ts";
 import { INBOUND_VERIFY_INFO, sealSecret } from "../../webhooks/secret-box.ts";
+import { requireManager } from "../connections.ts";
 import { currentAuthority, requireGrantPatternManage, requireNewGrantManage } from "../grants/authority.ts";
 import { appendGrant, writtenCan } from "../grants/create.ts";
 import { refuseGrantLockout } from "../grants/lockout.ts";
@@ -68,6 +70,32 @@ async function requireWriteManage(ctx: BoardContext, writer: BoardWriter, record
   return { ...current, grant };
 }
 
+async function validateRevokeConnections(
+  ctx: BoardContext,
+  writer: BoardWriter,
+  plan: ReturnType<typeof parseInboundRules>,
+  signing: Inbound["verify"],
+) {
+  const checked = new Set<string>();
+  for (const [ruleIndex, rule] of plan.entries()) {
+    for (const [actionIndex, action] of rule.do.entries()) {
+      if (!("agents.revoke" in action)) continue;
+      const { connection } = action["agents.revoke"];
+      if (checked.has(connection)) continue;
+      requireManager(ctx, "configure agent revocation");
+      const field = `rules[${ruleIndex}].do[${actionIndex}].agents.revoke`;
+      const scheme = webhookSigningScheme(signing);
+      if (scheme.idHeader && !scheme.signedPayload.includes("{id}")) {
+        throw new BoardError("invalid_rule", `${field}: the verification scheme must sign the delivery ID`);
+      }
+      if (!(await writer.connection(connection))) {
+        throw new BoardError("invalid_rule", `${field}.connection: expected an active connection on this board`);
+      }
+      checked.add(connection);
+    }
+  }
+}
+
 export const createInboundHandler: Handler<typeof createInbound> = async (ctx, spec) => {
   const rulePlan = parseInboundRules(spec.rules);
   validateInboundActions(rulePlan);
@@ -98,6 +126,7 @@ export const createInboundHandler: Handler<typeof createInbound> = async (ctx, s
   await ctx.board.write(async (writer) => {
     const { by, authority } = await currentAuthority(ctx.by, writer, "creating", ctx.now);
     await requireNewGrantManage(writer, authority, draft, false);
+    await validateRevokeConnections({ ...ctx, by }, writer, rulePlan, configured.verify);
     ctx.debitWrite();
     const quota = await writer.inboundQuota();
     if (quota) throw countQuotaError("inbound", quota.quota);
@@ -140,7 +169,8 @@ export const updateInboundHandler: Handler<typeof updateInbound> = (ctx, { id, r
   validateInboundActions(rulePlan);
   return ctx.board.write(async (writer) => {
     const record = requireEndpoint(await writer.inboundEndpoint(id));
-    await requireWriteManage(ctx, writer, record);
+    const { by } = await requireWriteManage(ctx, writer, record);
+    await validateRevokeConnections({ ...ctx, by }, writer, rulePlan, record.inbound.verify);
     ctx.debitWrite();
     await writer.append([
       { ...audit(ctx, writer.head + 1), type: "ob.inbound.updated", payload: { id, rules: input, rulePlan } },

@@ -42,7 +42,8 @@ function actionTemplates(value: unknown, field: string): unknown {
 
 type Action = InboundRules[number]["do"][number];
 type ActionPlan =
-  | Parsed<Exclude<Action, { "task.block": unknown }>>
+  | Parsed<Exclude<Action, { "task.block": unknown } | { "agents.revoke": unknown }>>
+  | { "agents.revoke": { connection: string; profile: Template } }
   | {
       "task.block": { kind: "agent" | "human"; reason: Template };
     };
@@ -62,6 +63,13 @@ export function parseInboundRules(input: unknown) {
       }),
       do: rule.do.map((action, index) => {
         const at = `${field}.do[${index}]`;
+        if ("agents.revoke" in action) {
+          const { connection, profile } = action["agents.revoke"];
+          const field = `${at}.agents.revoke`;
+          if (!/^cn_[a-z2-7]{16}$/.test(connection))
+            invalidRule(`${field}.connection`, "expected a literal connection ID");
+          return { "agents.revoke": { connection, profile: template(profile, `${field}.profile`, "body|thread") } };
+        }
         if ("task.block" in action) {
           const { kind, reason } = action["task.block"];
           return { "task.block": { kind, reason: template(reason, `${at}.task.block.reason`, "body|thread") } };

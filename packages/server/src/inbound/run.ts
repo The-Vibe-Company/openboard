@@ -1,6 +1,7 @@
 import { BoardError, type OutputOf, type Permission, type receiveInboundEvent } from "@openboard/contract";
 import {
   agents,
+  connections,
   decideBlockTask,
   decideCancelTask,
   decideLabels,
@@ -9,6 +10,7 @@ import {
   effectiveTask,
   expireTask,
   grants,
+  inboundActionNeedsThread,
   inboundActionPermission,
   inboundThreadPosition,
   matchingInboundRules,
@@ -16,6 +18,7 @@ import {
   parseInboundRules,
   parseInboundThread,
   renderInboundAction,
+  renderInboundRevoke,
   taskForUnblock,
 } from "@openboard/core";
 import type { BoardWriter, InboundRecord } from "@openboard/ports";
@@ -45,8 +48,12 @@ function missingThread(message = "the inbound reference did not identify an avai
   return { error: { code: "thread_not_found", message } };
 }
 
-async function resolveThread(writer: BoardWriter, record: InboundRecord, body: unknown) {
-  const can = await endpointGrant(writer, record);
+async function resolveThread(
+  writer: BoardWriter,
+  record: InboundRecord,
+  body: unknown,
+  can: Awaited<ReturnType<typeof endpointGrant>>,
+) {
   const { inbound } = record;
   const plan = inbound.threadPlan ?? parseInboundThread(inbound.thread);
   const target = inboundThreadPosition(plan, body);
@@ -99,6 +106,22 @@ async function decideTaskAction(
   return { ...change, result: { "task.unblock": action.input.id, outcome: change.outcome } };
 }
 
+async function revokeProfile(
+  writer: BoardWriter,
+  { connection, profile }: ReturnType<typeof renderInboundRevoke>,
+  context: ActionContext,
+) {
+  const holder = profile && (await writer.profileHolder(connection, profile));
+  if (!holder || holder.tokenExpires <= context.now) return "none";
+  const event = connections.decideRevokeAgent(
+    writer.head,
+    { connection, agent: { id: holder.id, connection } },
+    context,
+  );
+  await writer.append([event]);
+  return holder.id;
+}
+
 export async function runInbound(
   writer: BoardWriter,
   record: InboundRecord,
@@ -116,10 +139,11 @@ export async function runInbound(
   const answer = { ok: true as const, matched, results };
   if (matched.length === 0) return answer;
 
-  const resolved = await resolveThread(writer, record, body);
-  if ("error" in resolved) return { ...resolved, matched };
-  const { position, thread, permissions } = resolved;
-  let root = thread;
+  const actions = matching.flatMap(({ actions }) => actions);
+  const can = await endpointGrant(writer, record);
+  const resolved = actions.some(inboundActionNeedsThread) ? await resolveThread(writer, record, body, can) : null;
+  if (resolved && "error" in resolved) return { ...resolved, matched };
+  let root = resolved?.thread;
 
   const { principal } = inbound;
   const context = {
@@ -128,42 +152,47 @@ export async function runInbound(
     now,
   };
   let actor = writer.actor;
-  const target = { id: position, thread: position, channel: thread.channel };
-  for (const { actions } of matching) {
-    for (const action of actions) {
-      const required = inboundActionPermission(action);
-      if (!permissions.includes(required)) {
-        throw new BoardError("forbidden", `the inbound endpoint needs ${required} in the thread's channel`);
-      }
-      const rendered = renderInboundAction(action, body, root);
-      const { permission, input } = rendered;
-      const state = { head: writer.head, actor, target: root };
-      if (permission === "manage") {
-        const { events, task, result } = await decideTaskAction(writer, state, rendered, context, permissions);
-        if (events.length > 0) {
-          await writer.append(events);
-          if (events.some((event) => event.type === "actor.seen")) actor = { id: principal, ...context.author };
-        }
-        root = task;
-        results.push(result);
-        continue;
-      }
-      if (permission === "post") {
-        const { events, message } = messages.decidePost({ ...state, target }, input, context);
-        await writer.append(events);
-        results.push({ reply: message.id });
-      } else {
-        const events =
-          permission === "label" ? decideLabels(state, input, context) : decideReaction(state, input, context);
-        results.push(permission === "label" ? { label: root.id } : { react: root.id });
-        if (events.length === 0) continue;
-        await writer.append(events);
-        for (const event of events) {
-          if (event.type !== "actor.seen") root = event.payload.view;
-        }
-      }
-      actor = { id: principal, ...context.author };
+  for (const action of actions) {
+    if ("agents.revoke" in action) {
+      const target = renderInboundRevoke(action, body, resolved?.thread);
+      results.push({ "agents.revoke": await revokeProfile(writer, target, context) });
+      continue;
     }
+    if (!resolved || !root) throw new Error("thread action was classified as threadless");
+    const { position, permissions } = resolved;
+    const target = { id: position, thread: position, channel: root.channel };
+    const required = inboundActionPermission(action);
+    if (!required || !permissions.includes(required)) {
+      throw new BoardError("forbidden", `the inbound endpoint needs ${required} in the thread's channel`);
+    }
+    const rendered = renderInboundAction(action, body, root);
+    const { permission, input } = rendered;
+    const state = { head: writer.head, actor, target: root };
+    if (permission === "manage") {
+      const { events, task, result } = await decideTaskAction(writer, state, rendered, context, permissions);
+      if (events.length > 0) {
+        await writer.append(events);
+        if (events.some((event) => event.type === "actor.seen")) actor = { id: principal, ...context.author };
+      }
+      root = task;
+      results.push(result);
+      continue;
+    }
+    if (permission === "post") {
+      const { events, message } = messages.decidePost({ ...state, target }, input, context);
+      await writer.append(events);
+      results.push({ reply: message.id });
+    } else {
+      const events =
+        permission === "label" ? decideLabels(state, input, context) : decideReaction(state, input, context);
+      results.push(permission === "label" ? { label: root.id } : { react: root.id });
+      if (events.length === 0) continue;
+      await writer.append(events);
+      for (const event of events) {
+        if (event.type !== "actor.seen") root = event.payload.view;
+      }
+    }
+    actor = { id: principal, ...context.author };
   }
   return answer;
 }

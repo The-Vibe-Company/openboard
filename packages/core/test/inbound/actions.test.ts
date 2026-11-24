@@ -1,5 +1,12 @@
 import { expect, test } from "bun:test";
-import { decideCreateTask, parseInboundRules, renderInboundAction, validateInboundActions } from "../../src/index.ts";
+import {
+  decideCreateTask,
+  inboundActionNeedsThread,
+  parseInboundRules,
+  renderInboundAction,
+  renderInboundRevoke,
+  validateInboundActions,
+} from "../../src/index.ts";
 
 test("renders task reasons against the root and enforces the task route's character limit", () => {
   const { task } = decideCreateTask(
@@ -41,9 +48,34 @@ test("renders task expiry as a manage action on the root", () => {
   });
 });
 
-test("still refuses the unsupported agents.revoke action", () => {
-  const plan = parseInboundRules([{ when: {}, do: [{ "agents.revoke": { connection: "runner", profile: "test" } }] }]);
-  expect(() => validateInboundActions(plan)).toThrow(
-    expect.objectContaining({ code: "invalid_rule", message: expect.stringContaining("rules[0].do[0].agents.revoke") }),
+test("only thread-based revoke profiles require a thread", () => {
+  const connection = "cn_abcdefghijklmnop";
+  const [rule] = parseInboundRules([
+    {
+      when: {},
+      do: [
+        { "agents.revoke": { connection, profile: "{{body.profile}}" } },
+        { "agents.revoke": { connection, profile: "{{thread.claim.profile}}" } },
+      ],
+    },
+  ]);
+  const [fromBody, fromThread] = rule?.do ?? [];
+  if (!fromBody || !("agents.revoke" in fromBody) || !fromThread) throw new Error("missing actions");
+  expect(inboundActionNeedsThread(fromBody)).toBe(false);
+  expect(inboundActionNeedsThread(fromThread)).toBe(true);
+  expect(renderInboundRevoke(fromBody, { profile: "Worker-1" })).toEqual({ connection, profile: "Worker-1" });
+  expect(renderInboundRevoke(fromBody, { profile: "worker\0other" })).toEqual({ connection, profile: null });
+});
+
+test("rejects a templated revoke connection so a delivery cannot pick a different connection", () => {
+  expect(() =>
+    parseInboundRules([
+      { when: {}, do: [{ "agents.revoke": { connection: "{{body.connection}}", profile: "worker" } }] },
+    ]),
+  ).toThrow(
+    expect.objectContaining({
+      code: "invalid_rule",
+      message: expect.stringContaining("rules[0].do[0].agents.revoke.connection"),
+    }),
   );
 });
