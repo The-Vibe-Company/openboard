@@ -4,9 +4,15 @@ title: Show generic avatars at /avatars/:name
 milestone: M8-front
 package: server
 writes:
-  - packages/contract/src/operations/avatars.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operation.ts
+  - packages/sdk/src/client.ts
+  - packages/sdk/test/client.test.ts
+  - packages/server/src/http/openapi.ts
+  - skills/openboard/SKILL.md
+  - packages/contract/src/operations/avatars/get.ts
   - packages/contract/src/operations/index.ts
-  - packages/server/src/operations/avatars.ts
+  - packages/server/src/operations/avatars/get.ts
   - packages/server/src/operations/index.ts
   - packages/server/src/http/respond.ts
   - packages/server/test/avatars.test.ts
@@ -15,8 +21,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [216]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 387
 ---
 

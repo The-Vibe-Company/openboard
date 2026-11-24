@@ -32,3 +32,21 @@ test("CSRF covers a board write and is omitted on reads", async () => {
   await client.getSession({});
   expect(requests.map((request) => request.headers.get("x-ob-csrf"))).toEqual(["fixture", null]);
 });
+
+test("getAvatar reads SVG and preserves JSON errors", async () => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg"/>';
+  const client = createClient({
+    url: "http://127.0.0.1:8787/api/acme/main",
+    fetch: async (request) => {
+      expect(request.headers.get("accept")).toBe("image/svg+xml");
+      const path = new URL(request.url).pathname;
+      if (path === "/api/acme/main/avatars/agent") {
+        return new Response(svg, { headers: { "content-type": "image/svg+xml" } });
+      }
+      expect(path).toBe("/api/acme/main/avatars/unknown");
+      return Response.json({ error: { code: "not_found", message: "no such avatar" } }, { status: 404 });
+    },
+  });
+  expect(await client.getAvatar({ name: "agent" })).toBe(svg);
+  await expect(client.getAvatar({ name: "unknown" })).rejects.toMatchObject({ code: "not_found" });
+});

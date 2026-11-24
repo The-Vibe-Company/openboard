@@ -64,6 +64,7 @@ export {
   findLinkedThread,
   findSync,
   getAccount,
+  getAvatar,
   getConnection,
   getMe,
   getOpenApi,

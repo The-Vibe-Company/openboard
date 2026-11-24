@@ -4530,6 +4530,29 @@
         }
       }
     },
+    "/avatars/{name}": {
+      "get": {
+        "operationId": "avatar",
+        "summary": "Fetch a generic profile avatar as SVG. No token.",
+        "security": [],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Success", "content": { "image/svg+xml": { "schema": { "type": "string" } } } },
+          "400": {
+            "description": "invalid_request",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/x/connections/{id}": {
       "get": {
         "operationId": "getConnection",

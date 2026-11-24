@@ -81,6 +81,8 @@ export type Operation<
   /** The route accepts an omitted request body as well as a JSON body. */
   readonly bodyOptional?: true;
   readonly output: O;
+  /** The success media type for a raw string body. Defaults to JSON. */
+  readonly responseType?: "image/svg+xml";
   readonly invalidInputCode?: ErrorCode;
   /** Optional alternate HTTP representation, negotiated through Accept. */
   readonly eventStream?: "text/event-stream";

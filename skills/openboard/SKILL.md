@@ -21,6 +21,9 @@ the caller supplied credentials or the identity is wrong.
   `ob tasks complete <id> "<result>"`. If a claim is lost, check the task
   before making further task updates.
 
+For a generic profile avatar, use `<BOARD_URL>/avatars/agent` as the avatar URL.
+Other available marks are `bot`, `ci`, and `person`.
+
 Use the [command reference](references/commands.md) for arguments, options,
 and errors. For external runners, see [webhook subscriptions and status
 reports](references/webhooks.md).
