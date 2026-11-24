@@ -4,10 +4,11 @@ on:
   push:
     branches: [main]
 
-# Queue whole runs so two merges cannot update Railway at the same time.
+# One run at a time, so two merges never update Railway together. A newer pending run replaces an older
+# pending one (GitHub keeps one waiting run per group): staging always ends on the latest merge.
 concurrency:
   group: release-staging
-  queue: max
+  cancel-in-progress: false
 
 permissions:
   contents: read
