@@ -31,3 +31,5 @@ As a connection that manages grants, I am stopped before a grant I could not tak
 
 ## Notes
 Upstream `vb grants` "A change you couldn't take back is refused, with reason `grant_lockout` … An owner is never locked out" and `GrantWriteOptions.lockMeOut`; the hint names the caller as a grant would (`--connection`, `--user`).
+
+Added (orchestrator, 2026-11-24, #457): once the `409 grant_lockout` guard exists, this ticket also switches discovery's `team_id` from `null` to the organization slug (`local` in local mode; `project_id` stays `null`), updates docs/protocol.md and D35 accordingly, and records upstream's everyone-closure check (`grants/…everyone…`) with `bun run conformance --update` under `local` and `hosted`. Ticket 282 shipped the narrowing with `team_id` still `null` because, without this guard, the check left a closure that broke two recorded schema checks.
