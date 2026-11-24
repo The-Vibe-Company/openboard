@@ -115,7 +115,7 @@ MCP tool: none.
 Example:
 
 ```sh
-ob connections rotate cn_7k2m4q9t3v8w5x6y --overlap 10m --secret-file ./secret
+ob connections rotate cn_7k2m4q3t5v2w6x7y --overlap 10m --secret-file ./secret
 ```
 
 ## `ob read`
@@ -349,7 +349,7 @@ MCP tool: none.
 Example:
 
 ```sh
-ob connections show cn_7k2m4q9t3v8w5x6y
+ob connections show cn_7k2m4q3t5v2w6x7y
 ```
 
 ## `ob label`
@@ -567,7 +567,7 @@ MCP tool: none.
 Example:
 
 ```sh
-ob connections revoke-agent cn_7k2m4q9t3v8w5x6y ag_3n5p7r2s4t6v8w9x
+ob connections revoke-agent cn_7k2m4q3t5v2w6x7y ag_3n5p7r2s4t6v2w3x
 ```
 
 ## `ob connections revoke`
@@ -589,5 +589,5 @@ MCP tool: none.
 Example:
 
 ```sh
-ob connections revoke cn_7k2m4q9t3v8w5x6y
+ob connections revoke cn_7k2m4q3t5v2w6x7y
 ```

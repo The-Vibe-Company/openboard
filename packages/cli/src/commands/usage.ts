@@ -98,7 +98,7 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
   "connections rotate": {
     summary: "Replace a connection's secret, optionally keeping the old one working for a while.",
     operations: ["rotateConnection"],
-    example: "ob connections rotate cn_7k2m4q9t3v8w5x6y --overlap 10m --secret-file ./secret",
+    example: "ob connections rotate cn_7k2m4q3t5v2w6x7y --overlap 10m --secret-file ./secret",
     options: {
       overlap: "How long the old secret keeps working (`10m`, at most `24h`); absent, it stops at once.",
       "secret-file": SECRET_FILE,
@@ -147,8 +147,8 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
 
 /** Sample values of arguments, for derived commands' examples: by the kind of ID a field names, then by name. */
 const SAMPLE_IDS: Readonly<Record<string, string>> = {
-  agent: "ag_3n5p7r2s4t6v8w9x",
-  connection: "cn_7k2m4q9t3v8w5x6y",
+  agent: "ag_3n5p7r2s4t6v2w3x",
+  connection: "cn_7k2m4q3t5v2w6x7y",
   message: "42",
 };
 const SAMPLES: Readonly<Record<string, string>> = {

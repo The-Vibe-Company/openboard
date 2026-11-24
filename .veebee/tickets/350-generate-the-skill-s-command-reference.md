@@ -15,7 +15,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: []
-status: claimed
+status: done
 claimed_by: claude-t350
 issue: 535
 ---
