@@ -1,18 +1,12 @@
-import { type Actor, BoardError, type Message } from "@openboard/contract";
+import { BoardError } from "@openboard/contract";
 import { parseId } from "../ids.ts";
 import { actorSeen, type PostContext } from "../messages/post.ts";
 import type { TaskCompleted, TaskFailed } from "./events.ts";
+import { type HeldTaskState, requireHeldTask } from "./fence.ts";
 import { withTask } from "./view.ts";
 
-export interface SettlementState {
-  readonly head: number;
-  readonly target: Message | null;
-  readonly actor: Actor | null;
-  readonly proof: { readonly tokenMatches: boolean; readonly until: number } | null;
-}
-
 export function decideCompleteTask(
-  { head, target: stored, actor, proof }: SettlementState,
+  { head, target: stored, actor, proof }: HeldTaskState,
   { id, epoch, result = null }: { id: string; epoch: number; result?: string | null },
   context: PostContext,
 ) {
@@ -22,7 +16,7 @@ export function decideCompleteTask(
 type Settlement = { id: string; epoch: number } & ({ result: string | null } | { reason: string });
 
 export function decideSettlement(
-  { head, target: stored, actor, proof }: SettlementState,
+  { head, target: stored, actor, proof }: HeldTaskState,
   settlement: Settlement,
   context: PostContext,
 ) {
@@ -65,20 +59,4 @@ export function decideSettlement(
     payload: { ...payload, result, view },
   };
   return { task: view, events: seen ? [seen, completed] : [completed] };
-}
-
-export function requireHeldTask(
-  target: Message | null,
-  proof: SettlementState["proof"],
-  id: string,
-  epoch: number,
-  now: number,
-) {
-  if (!target) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
-  const { task } = target;
-  if (!task || target.deleted) throw new BoardError("not_a_task", `#${id} is not a task.`);
-  if (task.state !== "claimed" || task.epoch !== epoch || !task.claim || !proof?.tokenMatches || !(proof.until > now)) {
-    throw new BoardError("claim_lost", `This claim on #${id} is over: claim it again.`);
-  }
-  return { ...target, task };
 }

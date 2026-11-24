@@ -11,11 +11,17 @@ writes:
   - packages/core/src/tasks/claim.ts
   - packages/server/src/operations/task-claims.ts
   - packages/server/test/tasks/fencing.test.ts
+  - packages/core/src/tasks/renew.ts
+  - packages/server/src/operations/tasks/claim-proof.ts
+  - packages/server/src/operations/tasks/complete.ts
+  - packages/server/src/operations/tasks/release.ts
+  - packages/server/src/operations/tasks/renew.ts
+  - docs/protocol.md
 conformance: []
 modes: [local, hosted]
 depends_on: [248]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 422
 ---
 
