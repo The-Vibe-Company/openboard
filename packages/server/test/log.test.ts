@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { type createApp, jsonLogger, mintLocalOwnerToken } from "../src/index.ts";
-import { BOARD_URL, call, LOCAL_OWNER, makeApp, NOW, OWNER } from "./support/app.ts";
+import { BOARD_URL, call, LOCAL_OWNER, makeApp, NOW, OWNER, PUBLIC_URL } from "./support/app.ts";
 
 let app: ReturnType<typeof createApp>;
 
@@ -89,6 +89,21 @@ describe("one JSON log line per request", () => {
     ]);
     const printed = JSON.stringify(lines);
     for (const secret of [stranger.token, OWNER.token, "Bearer"]) expect(printed).not.toContain(secret);
+  });
+});
+
+describe("sensitive request paths", () => {
+  afterEach(() => app.close());
+
+  test("redacts the device approval code from request paths before route matching", async () => {
+    const lines = loggedApp();
+    const path = `${PUBLIC_URL}/api/x/auth/device/AAAA-AAAA-AAAA-AAAA`;
+    await app.fetch(new Request(path));
+    await app.fetch(new Request(path, { method: "DELETE" }));
+    expect(requestLines(lines).map(({ req, op }) => ({ req, op }))).toEqual([
+      { req: "GET /api/x/auth/device/[redacted]", op: "previewDeviceSignIn" },
+      { req: "DELETE /api/x/auth/device/[redacted]", op: null },
+    ]);
   });
 });
 

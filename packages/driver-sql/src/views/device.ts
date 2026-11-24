@@ -7,6 +7,8 @@ export const devicePlatform = {
   pruneDevices: sql`DELETE FROM device_codes WHERE expires_at <= ${"now"}`,
   startDevice: sql`INSERT INTO device_codes (device_hash, user_code, client_name, expires_at)
     VALUES (${"deviceHash"}, ${"userCode"}, ${"clientName"}, ${"expiresAt"})`,
+  previewDevice: sql`SELECT client_name, expires_at FROM device_codes
+    WHERE user_code = ${"userCode"} AND expires_at > ${"now"} AND approved_at IS NULL`,
   approveDevice: sql`UPDATE device_codes SET org_id = o.id, user_id = u.id, approved_at = ${"now"}
     FROM orgs o JOIN memberships m ON m.org_id = o.id JOIN users u ON u.id = m.user_id
     WHERE o.slug = ${"org"} AND o.deleted_at IS NULL AND u.public_id = ${"personId"} AND u.disabled_at IS NULL
@@ -38,7 +40,7 @@ const bytes = (hex: string) => Uint8Array.from(Buffer.from(hex, "hex"));
 export function deviceView(
   db: Db,
   dialect: Dialect,
-): Pick<PlatformView, "startDevice" | "approveDevice" | "pollDevice"> {
+): Pick<PlatformView, "startDevice" | "previewDevice" | "approveDevice" | "pollDevice"> {
   return {
     startDevice: (hash, userCode, clientName, now, expiresAt) =>
       db.transaction(async (tx) => {
@@ -50,6 +52,10 @@ export function deviceView(
           expiresAt,
         });
       }),
+    async previewDevice(userCode, now) {
+      const [row] = await query(db, dialect, devicePlatform.previewDevice, { userCode, now });
+      return row ? { clientName: String(row.client_name), expiresAt: Number(row.expires_at) } : null;
+    },
     async approveDevice(userCode, org, personId, now) {
       const [row] = await query(db, dialect, devicePlatform.approveDevice, { userCode, org, personId, now });
       return row?.approved_at != null;

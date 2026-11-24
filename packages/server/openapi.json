@@ -6961,6 +6961,56 @@
         }
       }
     },
+    "/api/x/auth/device/{userCode}": {
+      "get": {
+        "operationId": "previewDeviceSignIn",
+        "summary": "Read the client name and expiry of an available terminal sign-in.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "userCode",
+            "in": "path",
+            "required": true,
+            "schema": { "pattern": "^[A-Z2-7]{4}(?:-[A-Z2-7]{4}){3}$", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["clientName", "expiresAt"],
+                  "properties": { "clientName": { "type": "string" }, "expiresAt": { "type": "integer" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/api/x/invitations/{token}": {
       "get": {
         "operationId": "previewInvitation",

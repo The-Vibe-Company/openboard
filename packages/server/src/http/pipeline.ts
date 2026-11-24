@@ -309,9 +309,11 @@ function requestIdOf(request: Request, deps: Deps): string {
   return given !== null && echoable.test(given) ? given : deps.requestId();
 }
 
-/** Invitation links contain a secret even when the method or token names no route. */
+/** Redact invitation tokens and user approval codes before route matching. */
 function loggedPath(path: string): string {
-  return path.replace(/^(\/api\/x\/invitations|\/invite)\/.*$/, "$1/[redacted]");
+  return path
+    .replace(/^(\/api\/x\/invitations|\/invite)\/.*$/, "$1/[redacted]")
+    .replace(/^(\/api\/x\/auth\/device)\/(?!approve$|token$).*$/, "$1/[redacted]");
 }
 
 /** Every request goes through here, once: tenant from the path, auth, scope, validation, handler (4.4). */
@@ -341,6 +343,7 @@ export async function handle(request: Request, pipeline: Pipeline, ip?: string):
     logged.op === "startDeviceSignIn" ||
     logged.op === "pollDeviceSignIn" ||
     logged.op === "approveDeviceSignIn" ||
+    logged.op === "previewDeviceSignIn" ||
     logged.op === "createInvitation" ||
     logged.op === "previewInvitation" ||
     logged.op === "acceptInvitation" ||

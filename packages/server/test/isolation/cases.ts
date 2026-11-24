@@ -55,6 +55,7 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
   listMessages: () => ({ query: { channel: "dev" } }),
   listThreads: () => ({ query: { channel: "dev" } }),
   approveDeviceSignIn: (tenant) => ({ body: { userCode: tenant.userCode, org: tenant.org } }),
+  previewDeviceSignIn: (tenant) => ({ params: { userCode: tenant.userCode } }),
   acceptInvitation: (tenant) => ({ body: { token: tenant.invitationToken } }),
   attachSync: () => ({ body: { target: "elsewhere" } }),
   findLinkedThread: () => ({ query: { url: "https://example.com/thread/1" } }),

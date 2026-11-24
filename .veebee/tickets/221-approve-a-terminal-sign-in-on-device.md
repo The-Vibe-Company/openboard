@@ -13,11 +13,19 @@ writes:
   - packages/server/test/device-preview.test.ts
   - packages/server/openapi.json
   - docs/protocol.md
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/http/pipeline.ts
+  - docs/auth.md
+  - packages/server/test/isolation/cases.ts
+  - apps/web/src/routes/device.css
+  - packages/server/test/log.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [218]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 382
 ---
 

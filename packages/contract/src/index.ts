@@ -93,6 +93,7 @@ export {
   operations,
   pollDeviceSignIn,
   postMessage,
+  previewDeviceSignIn,
   previewInvitation,
   pullWatcherMatches,
   pushInbox,
