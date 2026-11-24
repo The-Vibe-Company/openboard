@@ -2,7 +2,7 @@
 
 Legend.
 - One line per ticket: `NN  title   ← deps`. Numbers run across the whole project in construction order; a ticket depends only on lower numbers.
-- Ticket files exist for M0-M10 (`.veebee/tickets/NN-slug.md`); from M11 on, these lines are the plan and files are written when the milestone before is nearly done.
+- Ticket files exist for M0-M12 (`.veebee/tickets/NN-slug.md`); from M13 on, these lines are the plan and files are written when the milestone before is nearly done.
 - `[c]` marks a line that claims upstream conformance checks, `[s]` one that records `expectedSkips`; every one of the 91 checks is placed exactly once.
 - `writes` exclude generated files and the shared append points of `docs/project.md` section 5; tickets touching `contract`, `ports` or migrations are also serialized at claim time.
 
@@ -347,70 +347,78 @@ M9 and M10 changes made when their ticket files were written (each ticket's Note
 
 ## M11 Webhooks and watchers (39)
 
-300  Ack a registered watcher's match [c]   ← 215
+300  Ack a registered watcher's match [c]   ← 97, 198, 215, 276
 301  Answer 501 to a wake-by-path registration [c]   ← 300
 302  Refuse a narrowed caller's watchers [c]   ← 286, 300
 303  Fail a match after five tries   ← 300
-304  Deliver a signed board event to a webhook   ← 181
-305  Refuse a private or loopback webhook URL   ← 304
-306  Send a test ping to a webhook   ← 304
-307  Retry a failed delivery with backoff   ← 304
+304  Deliver a signed board event to a webhook   ← 181, 213, 245, 286, 300
+305  Refuse a private or loopback webhook URL   ← 282, 304
+306  Send a test ping to a webhook   ← 282, 304
+307  Retry a failed delivery with backoff   ← 306
 308  Dead-letter a delivery after its last attempt   ← 307
 309  Re-send a dead delivery   ← 308
-310  Disable a subscription answered 410   ← 307
-311  Disable a subscription after 100 dead deliveries in a day   ← 308
+310  Disable a subscription answered 410   ← 309
+311  Disable a subscription after 100 dead deliveries in a day   ← 310
 312  Sign deliveries with the github preset   ← 304
 313  Sign deliveries with the stripe preset   ← 312
 314  Sign deliveries with the ts-id-body preset   ← 313
 315  Sign deliveries with a custom scheme   ← 314
-316  Send static headers with no signature   ← 304
+316  Send static headers with no signature   ← 315
 317  Shape a delivery's body with a template   ← 304
 318  Refuse a template with an unknown path   ← 317
 319  Fire only when a task becomes ready   ← 254, 304
-320  Deliver one thread's events in order   ← 307
-321  Skip events the creator can no longer read   ← 281, 304
-322  Deliver each event exactly once across two instances   ← 320
-323  Encrypt signing secrets at rest   ← 304
-324  Cap deliveries per organization   ← 304
+320  Deliver one thread's events in order   ← 311
+321  Skip events the creator can no longer read   ← 281, 320
+322  Deliver each event exactly once across two instances   ← 321
+323  Encrypt signing secrets at rest   ← 305, 322
+324  Cap deliveries per organization   ← 323
 325  Refuse webhook configuration to a claimed token   ← 304
-326  Create an inbound endpoint   ← 181
-327  Refuse an inbound event with a bad signature   ← 326
-328  Reply in a thread from an inbound rule   ← 327
+326  Create an inbound endpoint   ← 181, 304
+327  Refuse an inbound event with a bad signature   ← 287, 326
+328  Reply in a thread from an inbound rule   ← 317, 327
 329  Label a thread from an inbound rule   ← 328
-330  Hold, release or cancel a task from an inbound rule   ← 263, 328
-331  End a claim early from an inbound rule   ← 245, 328
-332  Revoke an agent from an inbound rule   ← 328
+330  Hold, release or cancel a task from an inbound rule   ← 263, 329
+331  End a claim early from an inbound rule   ← 245, 330
+332  Revoke an agent from an inbound rule   ← 331
 333  Answer a repeated inbound event with its first result   ← 328
-334  Answer 422 when no thread matches an inbound event   ← 328
+334  Answer 422 when no thread matches an inbound event   ← 306, 333
 335  Refuse an inbound rule that does not parse   ← 326
 336  List what an inbound endpoint received   ← 333
-337  Manage webhooks in board settings   ← 216, 304
-338  Verify deliveries in examples/webhook-receiver   ← 304
+337  Manage webhooks in board settings   ← 216, 299, 304
+338  Verify deliveries in examples/webhook-receiver   ← 171, 237, 305
 
 ## M12 MCP, SDK, skill (22)
 
-339  List the board's tools over MCP   ← 215
+339  List the board's tools over MCP   ← 209, 215, 282, 334
 340  Answer 405 to GET on the MCP endpoint   ← 339
-341  Read a channel over MCP   ← 339
+341  Read a channel over MCP   ← 327, 340
 342  Post over MCP   ← 341
 343  Reply over MCP   ← 342
-344  Claim the next task over MCP   ← 267, 343
+344  Claim the next task over MCP   ← 267, 290, 343
 345  Complete a task over MCP   ← 344
 346  Wait for events over MCP   ← 341
-347  Connect the SDK with a secret   ← 215
+347  Connect the SDK with a secret   ← 103, 215
 348  Publish the SDK to npm   ← 194, 347
 349  Publish the client-only CLI to npm   ← 348
 350  Generate the skill's command reference   ← 215
-351  Install the skill with npx skills add   ← 350
+351  Install the skill with npx skills add   ← 338, 350
 352  Onboard an agent read-only first through the skill   ← 351
 353  Serve a proxy policy for injecting gateways   ← 215
-354  Run a sandboxed agent with no long-lived secret in its VM   ← 349, 353
+354  Run a sandboxed agent with no long-lived secret in its VM   ← 338, 349, 353
 355  Launch an agent from a ready task through a remote routine   ← 319, 354
 356  Link the agent's run in its thread   ← 355
-357  Leave a note when a turn ends without settling the task   ← 328, 355
-358  Return the task when a run fails or expires   ← 331, 332, 355
-359  Wake the run when a person replies   ← 355
+357  Leave a note when a turn ends without settling the task   ← 328, 356
+358  Return the task when a run fails or expires   ← 331, 332, 357
+359  Wake the run when a person replies   ← 358
 360  Complete a task on production with only the skill   ← 345, 349, 352
+
+M11 and M12 changes made when their ticket files were written (each ticket's Notes say why):
+- Arrows added where parallel tickets would share a file that is no append point: the dispatcher lane 306 → 307 → 308 → 309 → 310 → 311 → 320 → 321 → 322 → 323 → 324 (`jobs/webhooks.ts`, `views/deliveries.ts`, `core/webhooks/outcome.ts`; 307 ← 306 not 304, 310 ← 309 not 307, 311 ← 310 not 308, 320 ← 311 not 307, 321 ← 320 not 304, 322 ← 321, 323 ← 305 and 322 not 304, 324 ← 323 not 304); the signing lane 312 → … → 316 (316 ← 315 not 304: `core/webhooks/signing.ts`, `jobs/sign.ts`); the inbound actions 328 → 329 → 330 → 331 → 332 (330 ← 329, 331 ← 330, 332 ← 331, not 328: `core/inbound/actions.ts`, `inbound/run.ts`); 334 ← 333 not 328 (`inbound/receive.ts`) and ← 306 (docs/protocol.md); the remote-routine recipe 355 → 356 → 357 → 358 → 359 (357 ← 356, 358 ← 357, 359 ← 358, not 355); 341 ← 340 (`mcp/facade.ts`).
+- Arrows added for code a ticket reuses: 304 ← 300 (the tail parser and the write-path hook webhooks share with watchers); 326 ← 304 (the secret box, the signing validator, `core/orgs/quotas.ts`); 328 ← 317 (inbound replies render with the body template).
+- Arrows added to the earlier tickets that last change a shared file: 300 ← 97 (long-poll; M3 is not upstream of M7, question 13), 198 (`views/boards.ts`), 276 (`views/messages.ts`, `core/src/index.ts`); 304 ← 213 (`apps/openboard/src/config.ts`), 245 (`jobs/registry.ts`), 286 (`server/src/deps.ts`); 305 ← 282 (docs/decisions.md); 306 ← 282 (docs/protocol.md); 327 ← 287 and 341 ← 327 (`http/pipeline.ts`); 337 ← 299 (board settings routes); 338 ← 171, 237 (root `package.json`, `scripts/ci/boundaries.json`); 339 ← 209, 282, 334 (`http/scope.ts`, docs/protocol.md); 344 ← 290 (`task-queue.ts`); 347 ← 103 (`sdk/src/index.ts`); 351 ← 338 and 354 ← 338 (root `package.json`, `boundaries.json`); 338 ← 305 not 304 (the loopback rule its manual run needs).
+- Left as is: 300, 304 and 326 share the hand-written migration list in `packages/driver-sql/src/index.ts` with 210 and 260; tickets touching migrations are serialized at claim time.
+- Scope made explicit, titles unchanged: 304 lands the whole webhook wire shape in the contract, encrypts its signing secret from the first webhook (D29) and refuses every target in hosted mode until 305 writes the address guard into the same function, so no merge stores a secret in clear or opens an SSRF hole; 323 then makes the key always present (a generated local key, hosted refuses to start without one) and fails closed. 330's "release" is lifting a hold (`task.unblock`), since D18 leaves claim releases to the agent. 343 is `post_message` with `re`: docs/protocol.md's MCP tool names (`reply`, `read_channel`, …) are replaced by the contract's (339).
+- Owner decisions the tickets propose (questions 18 to 23 below).
 
 ## M13 Data, files, schedules (21)
 
@@ -505,6 +513,13 @@ M9 and M10 changes made when their ticket files were written (each ticket's Note
 15. **Discovery's `team_id` (282).** Upstream's `everyone` check stops with "this board names no team" while `team_id` is null (docs/protocol.md "Discovery"). Proposed: answer the organization's slug; otherwise the check joins 293's `expectedSkips` and M10 passes nine grant checks.
 16. **Child connections.** docs/auth.md "Connections" says an orchestrator holding `manage` mints child connections, that revoking a parent revokes descendants, and that this arrives "with the M10 grant-change rules"; no line of the cut builds it.
 17. **Lease floor.** docs/data-model.md says a lease is granted at least 300 s; upstream's check renews for 60 s and expects 60 s. 244 corrects docs/data-model.md to upstream's reading (a board's cap is never under 300 s).
+
+18. **Loopback webhook targets in local mode (305).** docs/auth.md's guard is https-only with no loopback, and names no exception for `ob serve`. Proposed: in local mode loopback `http` targets are allowed with no setting (a receiver on the same machine, 338), private and link-local stay refused; hosted allows a private host only through `OPENBOARD_WEBHOOK_ALLOWED_HOSTS`.
+19. **The local secret key (323).** D29 encrypts with `OPENBOARD_SECRET_KEY`, which `ob serve` does not have by default. Proposed: generate it once beside the owner token file (`~/.config/openboard/local/<port>.key`, 0600), outside the data directory; hosted mode refuses to start without the variable.
+20. **The per-organization delivery cap (324).** docs/auth.md and docs/architecture.md name the cap but no number. Proposed: 600 deliveries per organization per minute, counted in Postgres.
+21. **A test ping's payload type (306).** Not in docs. Proposed: `board.ping`, with `delivery` and `board` only.
+22. **`became` on labels.** The owner's example trigger is "label `status=ready` set in `dev`". With 304's filter (`dev --label status=ready`, `labels.changed`) a receiver also gets the change that removes the label, and must check `event.payload.set`. `became` (319) covers only task states. A line "Fire only when a label takes a value" (`became: { labels: { status: "ready" } }`) is not in the cut.
+23. **A webhook verification helper in the SDK.** Receivers (338, 355) each carry ~40 lines of Standard Webhooks verification because recipes cannot import each other. An SDK `verifyWebhook(request, secret)` would make the consumer side one call; no line of the cut builds it.
 
 ### Contradictions between docs (decisions.md followed where it speaks)
 
