@@ -1,10 +1,58 @@
+import { findBlockFences } from "@openboard/contract";
+import { Fragment } from "react";
 import type { ThreadMessage } from "../api/thread.ts";
-import { renderMarkdown } from "../markdown.ts";
+import { markdownCodeRanges, renderMarkdown } from "../markdown.ts";
 import { Avatar } from "../ui/index.ts";
+import { BlockView } from "./BlockView.tsx";
 import "./MessageView.css";
 import "./markdown.css";
 
-export function MessageView({ message }: { message: ThreadMessage }) {
+type Board = { org: string; board: string };
+
+function matchesBlock(
+  block: unknown,
+  id: string,
+): block is { schema: string; version: number; data: Record<string, unknown> } {
+  if (!block || typeof block !== "object" || !("schema" in block) || !("version" in block) || !("data" in block))
+    return false;
+  const { schema, version, data } = block;
+  return (
+    typeof schema === "string" &&
+    typeof version === "number" &&
+    id === `${schema}@${version}` &&
+    data !== null &&
+    typeof data === "object" &&
+    !Array.isArray(data)
+  );
+}
+
+function messageBody(message: ThreadMessage, board: Board) {
+  const { text, mentions, blocks } = message;
+  if (!blocks?.length) return renderMarkdown(text, mentions);
+  const fences = findBlockFences(text);
+  if (fences.length !== blocks.length) return renderMarkdown(text, mentions);
+
+  const code = markdownCodeRanges(text);
+  let codeIndex = 0;
+  const parts = [];
+  let cursor = 0;
+  for (const [index, { id, source, start, end, closed }] of fences.entries()) {
+    const block = blocks[index];
+    while ((code[codeIndex]?.end ?? Infinity) <= start) codeIndex++;
+    const range = code[codeIndex];
+    if (!closed || !matchesBlock(block, id) || (range && range.start < start)) continue;
+    parts.push(
+      <Fragment key={start}>
+        {renderMarkdown(text.slice(cursor, start), mentions)}
+        <BlockView id={id} data={block.data} source={source} board={board} />
+      </Fragment>,
+    );
+    cursor = end;
+  }
+  return [...parts, <Fragment key={text.length}>{renderMarkdown(text.slice(cursor), mentions)}</Fragment>];
+}
+
+export function MessageView({ message, board }: { message: ThreadMessage; board: Board }) {
   const author = message.author?.name ?? message.from ?? message.by.profile ?? message.by.actor;
   const labels = Object.entries(message.labels);
   const reactions = Object.entries(message.reactions);
@@ -25,7 +73,7 @@ export function MessageView({ message }: { message: ThreadMessage }) {
           <em>Message deleted</em>
         </p>
       ) : (
-        <div className="thread-message-text">{renderMarkdown(message.text, message.mentions)}</div>
+        <div className="thread-message-text">{messageBody(message, board)}</div>
       )}
       {labels.length > 0 && (
         <ul className="thread-message-metadata" aria-label="Labels">

@@ -1,0 +1,30 @@
+.message-block {
+  overflow: auto;
+  padding: calc(3 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.message-block h3 {
+  font-family: var(--font-mono);
+  font-size: var(--type-base);
+  margin: 0;
+}
+
+.message-block :is(dl, ul) {
+  margin-block: var(--space);
+}
+
+.message-block dt {
+  font-weight: 600;
+}
+
+.message-block dd {
+  margin-inline-start: calc(3 * var(--space));
+}
+
+.message-block summary {
+  cursor: pointer;
+  min-block-size: calc(8 * var(--space));
+  align-content: center;
+}

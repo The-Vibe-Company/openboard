@@ -161,3 +161,4 @@ export {
   updateWebhook,
 } from "./operations/webhooks/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";
+export { findBlockFences } from "./entities/schemas/fences.ts";

@@ -84,7 +84,7 @@ function ThreadPage() {
           <ol className="thread-messages" aria-label="Thread messages">
             {[data.message, ...data.replies].map((item) => (
               <li key={item.id}>
-                <MessageView message={item} />
+                <MessageView message={item} board={params} />
               </li>
             ))}
           </ol>
