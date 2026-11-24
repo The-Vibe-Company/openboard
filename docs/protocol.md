@@ -695,6 +695,9 @@ POST {BOARD_URL}/x/webhooks
   mode any instance sends it on time (jobs); in local mode the process must be
   running.
 
+In the web UI, open `/:org/:board/settings/webhooks` to create a subscription,
+copy its signing secret once, see whether it is enabled, or delete it.
+
 Create shows the signing secret once. Use
 `ob webhooks create --file dev-ready.json --secret-file hook.secret` to keep it
 in a private file. Until hosted target validation ships, local mode accepts
@@ -724,6 +727,15 @@ a dispatcher may finish.
   task with it.
 - `event` is exactly what `GET /events` serves for that event.
 - Cap 256 KB; a longer message text is truncated with `"truncated": true`.
+
+`POST {BOARD_URL}/x/webhooks/:id/test` sends a signed ping while the board
+admin waits. Its version 1 body has `type: "board.ping"` and the same
+`delivery` and `board` objects shown above. The response is
+`{ "delivery": { "id": "dl_…", "status": 200, "ok": true, "ms": 12 } }`.
+A non-2xx receiver response sets `ok: false` and keeps the receiver's status.
+If no status is available, the response has `status: null`, `ok: false`, and
+`error: "unreachable"`. Unknown and deleted IDs return 404 `not_found`.
+A ping is recorded as one attempt and never contributes to disabling a webhook.
 
 ### Body templates
 

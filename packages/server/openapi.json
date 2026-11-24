@@ -8880,6 +8880,76 @@
         }
       }
     },
+    "/x/webhooks/{id}/test": {
+      "post": {
+        "operationId": "testWebhook",
+        "summary": "Send a signed, single-attempt ping to a webhook receiver.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "webhook", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["delivery"],
+                  "properties": {
+                    "delivery": {
+                      "type": "object",
+                      "required": ["id", "status", "ok", "ms"],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "status": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                        "ok": { "type": "boolean" },
+                        "ms": { "minimum": 0, "type": "integer" },
+                        "error": { "const": "unreachable", "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/api/x/auth/device/token": {
       "post": {
         "operationId": "pollDeviceSignIn",

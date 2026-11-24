@@ -1,3 +1,4 @@
+import type { Webhook } from "@openboard/contract";
 import { webhookPayload } from "@openboard/core";
 import type { WebhookAttempt } from "@openboard/ports";
 import type { ServerConfig } from "../deps.ts";
@@ -22,7 +23,29 @@ export function webhookRequest(
   const template = input.webhook.body as object | null;
   const body = webhookPayload(config.publicUrl, org, board, delivery, event, input.root ?? event.message, template);
   if (body === null) return null;
+  return signedRequest(url, id, now, credentials, body);
+}
+
+export function webhookPingRequest(
+  mode: ServerConfig["mode"],
+  webhook: Webhook,
+  id: string,
+  now: number,
+  credentials: WebhookCredentials,
+  body: string,
+): Request {
+  return signedRequest(webhookTarget(webhook.url, mode), id, now, credentials, body, "manual");
+}
+
+function signedRequest(
+  url: URL,
+  id: string,
+  now: number,
+  credentials: WebhookCredentials,
+  body: string,
+  redirect: "error" | "manual" = "error",
+): Request {
   const headers = new Headers(credentials.headers);
   for (const [key, value] of signWebhook(id, now, body, credentials.secret)) headers.set(key, value);
-  return new Request(url.href, { method: "POST", headers, body, redirect: "error" });
+  return new Request(url.href, { method: "POST", headers, body, redirect });
 }

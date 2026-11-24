@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { Migration } from "@openboard/driver-sql";
-import { renderDdl } from "./ddl.ts";
+import { renderMigration } from "./ddl.ts";
 
 /** Applies every migration the database has not recorded, each in its own transaction, in order. */
 export function migrate(
@@ -29,7 +29,7 @@ export function migrate(
     database
       .transaction(() => {
         if (applied.get(migration.version)) return;
-        const ddl = renderDdl(migration.sql);
+        const ddl = renderMigration(migration);
         if (ddl) database.run(ddl);
         database.run("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)", [migration.version, now]);
       })

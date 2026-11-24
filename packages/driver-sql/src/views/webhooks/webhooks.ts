@@ -48,7 +48,7 @@ export function webhookWriter(
   db: Db,
   dialect: Dialect,
   keys: BoardKeys,
-): Omit<BoardWebhookWriter, "beginWebhookAttempt" | "finishWebhookAttempt"> {
+): Omit<BoardWebhookWriter, "beginWebhookPing" | "beginWebhookAttempt" | "finishWebhookAttempt"> {
   return {
     ...webhookReads(db, dialect, keys),
     async webhookQuota() {

@@ -1106,3 +1106,10 @@ the creator prevents creation with 409 `channel_granted`. Grants there can outra
   the resulting per-board caps. Token management accepts a browser session or an
   unrestricted personal bearer. Narrowed personal bearers receive 403
   `forbidden` on account routes.
+
+### Webhook test pings are single-attempt deliveries
+
+A test sends `board.ping` once during the administrative request. Its
+delivery row has a null event and thread, so readers can identify it without
+an event join. Ping failures never count toward disabling a subscription.
+([Issue #491](https://github.com/The-Vibe-Company/openboard/issues/491#issuecomment-7136782211))

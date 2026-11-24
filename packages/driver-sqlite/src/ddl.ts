@@ -1,4 +1,4 @@
-import { splitStatements } from "@openboard/driver-sql";
+import { type Migration, migrations, splitStatements } from "@openboard/driver-sql";
 
 /**
  * Renders a migration written for Postgres to SQLite, by the mechanical differences of docs/data-model.md "DDL":
@@ -18,6 +18,30 @@ export function renderDdl(postgres: string): string {
     .map((statement) => renderTaskExpiryTrigger(statement, statements) ?? renderStatement(statement))
     .map((statement) => `${statement};`)
     .join("\n");
+}
+
+/** Rebuild the table for system SQLite versions without ALTER COLUMN DROP NOT NULL. */
+export function renderMigration(migration: Migration): string {
+  if (migration.name !== "0034-webhook-pings") return renderDdl(migration.sql);
+  const original = migrations.find(({ name }) => name === "0032-webhooks");
+  const schema = splitStatements(original?.sql ?? "");
+  const table = schema.find((statement) => statement.startsWith("CREATE TABLE webhook_deliveries "));
+  if (!table) throw new Error("missing webhook deliveries schema");
+  const copy = table
+    .replace("CREATE TABLE webhook_deliveries ", "CREATE TABLE webhook_deliveries_new ")
+    .replace(/\b(event|thread) BIGINT NOT NULL\b/g, "$1 BIGINT");
+  const indexes = schema.filter((statement) => statement.includes(" ON webhook_deliveries "));
+  const additive = splitStatements(migration.sql).filter((statement) => !statement.endsWith(" DROP NOT NULL"));
+  return renderDdl(
+    [
+      copy,
+      "INSERT INTO webhook_deliveries_new SELECT * FROM webhook_deliveries",
+      "DROP TABLE webhook_deliveries",
+      "ALTER TABLE webhook_deliveries_new RENAME TO webhook_deliveries",
+      ...indexes,
+      ...additive,
+    ].join(";\n"),
+  );
 }
 
 // The task expiry trigger uses shared SQL; SQLite inlines the function's DML.

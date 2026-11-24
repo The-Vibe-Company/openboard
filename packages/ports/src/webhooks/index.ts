@@ -32,6 +32,7 @@ export interface BoardWebhookWriter extends BoardWebhookReads {
   webhookQuota(): Promise<QuotaOutcome | null>;
   storeWebhookSecret(id: string, secretId: string, secret: WebhookSecret, now: number): Promise<void>;
   removeWebhookSecret(record: WebhookRecord): Promise<void>;
+  beginWebhookPing(record: WebhookRecord, id: string, now: number): Promise<WebhookSecret | null>;
   beginWebhookAttempt(id: string, instance: string, now: number): Promise<WebhookAttempt | null>;
   finishWebhookAttempt(
     id: string,

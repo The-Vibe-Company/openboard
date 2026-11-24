@@ -78,7 +78,7 @@ import { listThreads, readThread } from "./threads.ts";
 import { ackWatcherMatch, listWatchers, pullWatcherMatches, registerWatchers } from "./watchers/index.ts";
 
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */
-import { createWebhook, deleteWebhook, getWebhook, listWebhooks } from "./webhooks/index.ts";
+import { createWebhook, deleteWebhook, getWebhook, listWebhooks, testWebhook } from "./webhooks/index.ts";
 
 export const operations = [
   acceptInvitation,
@@ -140,6 +140,7 @@ export const operations = [
   listThreads,
   listWatchers,
   listWebhooks,
+  testWebhook,
   pollDeviceSignIn,
   postMessage,
   previewDeviceSignIn,
@@ -267,5 +268,6 @@ export {
   rotateConnection,
   showTyping,
   startDeviceSignIn,
+  testWebhook,
   updateGrant,
 };
