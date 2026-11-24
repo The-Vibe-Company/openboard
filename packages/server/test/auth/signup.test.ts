@@ -90,7 +90,13 @@ test("invite sign-up refuses a new identity without a link and joins a new perso
     );
     expect(members.status).toBe(200);
     expect(await members.json()).toMatchObject({
-      members: expect.arrayContaining([{ principal: person?.principal, role: "admin" }]),
+      members: expect.arrayContaining([
+        {
+          principal: person?.principal,
+          role: "admin",
+          profile: { handle: "ada", name: "Ada Lovelace", avatar: "https://avatars.test/ada" },
+        },
+      ]),
     });
     const preview = await app.fetch(new Request(`${PUBLIC_URL}/api/x/invitations/${token}`));
     await expectRefused(preview, 410, "invitation_used");

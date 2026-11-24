@@ -19,7 +19,14 @@ function issueAndJoin(driver: string, open: OpenStore): void {
       const personId = `u_${"a".repeat(16)}`;
       const by = `ob:user:${personId}`;
       await platform.signIn({
-        identity: { provider: "github", subject: "ada", login: "ada", name: "Ada", email: null, avatar: null },
+        identity: {
+          provider: "github",
+          subject: "ada",
+          login: "ada",
+          name: "Ada",
+          email: null,
+          avatar: "https://example.com/ada.png",
+        },
         admitNew: true,
         newPersonId: personId,
         session: { idHash: "a".repeat(64), csrf: "fixture", expiresAt: at + 86_400_000 },
@@ -60,8 +67,12 @@ function issueAndJoin(driver: string, open: OpenStore): void {
       });
       const org = store.org({ orgId: membership.orgId } as OrgScope);
       expect(await org.listMembers()).toEqual([
-        { principal: by, role: "owner" },
-        { principal: `ob:user:${recipient}`, role: "member" },
+        {
+          principal: by,
+          role: "owner",
+          profile: { handle: "ada", name: "Ada", avatar: "https://example.com/ada.png" },
+        },
+        { principal: `ob:user:${recipient}`, role: "member", profile: { handle: "lin", name: "Lin", avatar: null } },
       ]);
       expect(await platform.orgMembership("local", recipient)).toBeNull();
       expect(await platform.invitationPreview(tokenHash)).toMatchObject({ used: true });
@@ -101,7 +112,9 @@ function refuseSecondOrganization(driver: string, open: OpenStore): void {
       expect(await org.createInvitation({ ...record, personId: acme.personId, at, tokenHash })).toBe(true);
       const refused = platform.acceptInvitation(tokenHash, beta.personId, at + 1);
       await expect(refused).rejects.toMatchObject({ code: "already_in_org" });
-      expect(await org.listMembers()).toEqual([{ principal: acme.by, role: "owner" }]);
+      expect(await org.listMembers()).toEqual([
+        { principal: acme.by, role: "owner", profile: { handle: "acme", name: "acme", avatar: null } },
+      ]);
       expect(await platform.orgMembership("acme", beta.personId)).toBeNull();
       expect(await platform.invitationPreview(tokenHash)).toMatchObject({ used: false });
     } finally {
@@ -153,7 +166,9 @@ function revokeLink(driver: string, open: OpenStore): void {
       expect(await platform.invitationPreview(tokenHash)).toMatchObject({ used: true });
       const refused = platform.acceptInvitation(tokenHash, recipient, at + 3);
       await expect(refused).rejects.toMatchObject({ code: "invitation_used" });
-      expect(await org.listMembers()).toEqual([{ principal: by, role: "owner" }]);
+      expect(await org.listMembers()).toEqual([
+        { principal: by, role: "owner", profile: { handle: "ada", name: "ada", avatar: null } },
+      ]);
     } finally {
       await store.close();
     }
@@ -212,9 +227,9 @@ function refuseUsedOrExpired(driver: string, open: OpenStore): void {
         role: "member",
       });
       expect(await org.listMembers()).toEqual([
-        { principal: by, role: "owner" },
-        { principal: `ob:user:${first}`, role: "member" },
-        { principal: `ob:user:${second}`, role: "member" },
+        { principal: by, role: "owner", profile: { handle: "a", name: "a", avatar: null } },
+        { principal: `ob:user:${first}`, role: "member", profile: { handle: "b", name: "b", avatar: null } },
+        { principal: `ob:user:${second}`, role: "member", profile: { handle: "d", name: "d", avatar: null } },
       ]);
     } finally {
       await store.close();

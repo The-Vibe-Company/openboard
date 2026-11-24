@@ -1,47 +1,22 @@
-.organization-members ul {
-  padding-inline-start: 1.25rem;
-}
-
-.organization-members li {
-  border-bottom: 1px solid #ddd;
-  padding: 0.75rem 0;
-}
-
-.organization-members .member-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  overflow-wrap: anywhere;
-}
-
 .organization-members dialog {
-  box-sizing: border-box;
-  width: min(26rem, calc(100% - 2rem));
-  border: 1px solid #ddd;
-  border-radius: 0.5rem;
-  padding: 1rem;
+  width: min(28rem, calc(100% - 8 * var(--space)));
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-card);
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--overlay-shadow);
 }
 
-.organization-members dialog h3 {
-  margin-top: 0;
+.organization-members .member-profile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: calc(2 * var(--space));
 }
 
-.organization-members dialog input,
-.organization-members dialog select {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  font: inherit;
-  padding: 0.5rem;
-}
-
-.organization-members dialog label:has(input[readonly]) {
-  margin-bottom: 0.75rem;
-}
-
-.organization-members .invitation-actions {
-  margin-top: 0.75rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.organization-members .member-profile code {
+  display: block;
+  color: var(--muted);
+  font-size: var(--type-small);
 }

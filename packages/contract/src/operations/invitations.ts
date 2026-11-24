@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import { Person } from "../entities/accounts.ts";
 import { Invitation, InvitationPreview, InvitationRole } from "../entities/invitations.ts";
 import { Membership, Role, Slug } from "../entities/orgs.ts";
 import { defineOperation, Ref } from "../operation.ts";
@@ -93,7 +94,15 @@ export const listMembers = defineOperation({
   route: { method: "GET", path: "/orgs/:org/members" },
   scope: "org",
   input: { params: Type.Object({ org: Slug }) },
-  output: Type.Object({ members: Type.Array(Type.Object({ principal: Type.String(), role: Role })) }),
+  output: Type.Object({
+    members: Type.Array(
+      Type.Object({
+        principal: Type.String(),
+        role: Role,
+        profile: Type.Optional(Type.Pick(Person, ["handle", "name", "avatar"])),
+      }),
+    ),
+  }),
   errors: ["not_found", "unauthorized", "forbidden"],
   access: { permission: "read", channel: "any" },
   effects: { readOnly: true, idempotent: true, emits: [] },

@@ -598,7 +598,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/api/x/orgs/:org/exports` | owner | Queue a hosted export. A narrowed personal bearer receives 403 `forbidden` on all export routes. Returns 202 `{ export: { id, status: "pending", expiresAt: null } }`. |
 | GET | `/api/x/orgs/:org/exports/:id` | owner | Returns `{ export: { id, status, expiresAt } }`. Status is `pending`, `ready`, or `failed`. A non-null `expiresAt` is an epoch millisecond timestamp. |
 | GET | `/api/x/orgs/:org/exports/:id/download` | owner | Stream a ready archive as `application/gzip` with `Cache-Control: no-store`. Pending, failed, expired, unknown, and foreign IDs return 404 `not_found`. |
-| GET | `/api/x/orgs/:org/members` | member | `{ members: [{ principal, role }] }` |
+| GET | `/api/x/orgs/:org/members` | member | `{ members: [{ principal, role, profile? }] }`. The profile contains `handle`, `name`, and nullable `avatar`. |
 | POST | `/api/x/orgs/:org/members/:user/role` | admin (owner to grant `owner`) | `{ role }` → `{ principal, role }`; only an owner can demote another owner or themself; 409 `last_owner` if no other owner remains |
 | POST | `/api/x/orgs/:org/members/:user/remove` | admin, or the person themself | `{ principal }` on success (200); only an owner can remove an owner; 409 `last_owner` if no other owner remains; subsequent authenticated board requests from the removed person return 404 |
 | GET, POST | `/api/x/orgs/:org/invitations` | admin | `{ role, email?, send? }` → `{ invitation, url }` |

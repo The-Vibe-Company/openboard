@@ -3,6 +3,7 @@ import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { browserClient } from "../../../api/client.ts";
+import { Avatar, Button, Card, Field, Input, Select, Table } from "../../../ui/index.ts";
 import "./members.css";
 
 export const Route = createFileRoute("/$org/settings/members")({ component: OrganizationMembers });
@@ -23,28 +24,45 @@ function Members({ org, mayInvite }: { org: string; mayInvite: boolean }) {
 
   return (
     <section className="organization-members" aria-labelledby="members-title">
-      <h2 id="members-title">Members</h2>
-      {members.isPending && <p role="status">Loading members…</p>}
-      {members.isError && (
-        <p role="alert">{members.error instanceof BoardError ? members.error.message : "Could not load members."}</p>
-      )}
-      {members.data && (
-        <ul>
-          {members.data.members.map(({ principal, role }) => (
-            <li key={principal}>
-              <div className="member-row">
-                <span>{principal}</span>
-                <span>{role}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      {mayInvite && (
-        <button type="button" onClick={() => setInviting(true)}>
-          Invite
-        </button>
-      )}
+      <Card>
+        <h2 id="members-title">Members</h2>
+        {members.isPending && <p role="status">Loading members…</p>}
+        {members.isError && (
+          <p role="alert">{members.error instanceof BoardError ? members.error.message : "Could not load members."}</p>
+        )}
+        {members.data && (
+          <Table aria-labelledby="members-title">
+            <thead>
+              <tr>
+                <th scope="col">Member</th>
+                <th scope="col">Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.data.members.map(({ principal, role, profile }) => (
+                <tr key={principal}>
+                  <td>
+                    <div className="member-profile">
+                      <Avatar name={profile?.handle ?? "Unknown member"} src={profile?.avatar ?? undefined} />
+                      <div>
+                        <strong>{profile?.handle ?? "Unknown member"}</strong>
+                        {profile?.name && profile.name !== profile.handle && <div>{profile.name}</div>}
+                        <code>{principal}</code>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{role}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+        {mayInvite && (
+          <footer className="settings-card-footer">
+            <Button onClick={() => setInviting(true)}>Invite</Button>
+          </footer>
+        )}
+      </Card>
       {mayInvite && inviting && <InviteDialog org={org} onClose={() => setInviting(false)} />}
     </section>
   );
@@ -93,12 +111,14 @@ function InviteDialog({ org, onClose }: { org: string; onClose: () => void }) {
 
   return (
     <dialog ref={dialog} aria-labelledby="invite-title" onClose={onClose}>
-      <h3 id="invite-title">{url ? "Invitation link" : "Invite a member"}</h3>
-      {url ? (
-        <InvitationLink url={url} />
-      ) : (
-        <InviteForm pending={pending} error={error} onSubmit={submit} onCancel={() => dialog.current?.close()} />
-      )}
+      <Card>
+        <h3 id="invite-title">{url ? "Invitation link" : "Invite a member"}</h3>
+        {url ? (
+          <InvitationLink url={url} />
+        ) : (
+          <InviteForm pending={pending} error={error} onSubmit={submit} onCancel={() => dialog.current?.close()} />
+        )}
+      </Card>
     </dialog>
   );
 }
@@ -121,16 +141,15 @@ function InvitationLink({ url }: { url: string }) {
   return (
     <>
       <p>Copy this link now. It is shown only once.</p>
-      <label>
-        Invitation link
-        <input ref={link} readOnly value={url} />
-      </label>
-      <button type="button" onClick={copy}>
-        Copy
-      </button>
+      <Field label="Invitation link">{(props) => <Input {...props} ref={link} readOnly value={url} />}</Field>
       <p role="status">{copyStatus}</p>
       <form method="dialog">
-        <button type="submit">Done</button>
+        <footer className="settings-card-footer">
+          <Button variant="secondary" onClick={copy}>
+            Copy
+          </Button>
+          <Button type="submit">Done</Button>
+        </footer>
       </form>
     </>
   );
@@ -150,26 +169,18 @@ function InviteForm({
   return (
     <form onSubmit={onSubmit}>
       <fieldset disabled={pending}>
-        <label>
-          Role
-          <select name="role" defaultValue="member">
-            <option value="member">Member</option>
-            <option value="admin">Admin</option>
-          </select>
-        </label>
-        <label>
-          Email (optional)
-          <input name="email" type="email" maxLength={254} />
-        </label>
+        <Field label="Role">
+          {(props) => (
+            <Select {...props} name="role" defaultValue="member">
+              <option value="member">Member</option>
+              <option value="admin">Admin</option>
+            </Select>
+          )}
+        </Field>
+        <Field label="Email (optional)">
+          {(props) => <Input {...props} name="email" type="email" maxLength={254} />}
+        </Field>
       </fieldset>
-      <div className="invitation-actions">
-        <button type="submit" disabled={pending}>
-          Create invitation
-        </button>
-        <button type="button" onClick={onCancel}>
-          Close
-        </button>
-      </div>
       {pending && (
         <p role="status">Creating invitation… If you close this dialog, the invitation may still be created.</p>
       )}
@@ -179,6 +190,14 @@ function InviteForm({
           {error.hint && <p>{error.hint}</p>}
         </div>
       )}
+      <footer className="settings-card-footer">
+        <Button variant="secondary" onClick={onCancel}>
+          Close
+        </Button>
+        <Button type="submit" pending={pending}>
+          Create invitation
+        </Button>
+      </footer>
     </form>
   );
 }

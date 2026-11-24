@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { browserClient } from "../../../api/client.ts";
 import "./settings.css";
@@ -20,25 +20,28 @@ export const Route = createFileRoute("/$org/settings")({
 
 function OrganizationSettings() {
   const { org } = Route.useLoaderData();
-  const { pathname } = useLocation();
-  const base = `/${encodeURIComponent(org.slug)}/settings`;
-  const links = [
-    { label: "General", href: base },
-    { label: "Members", href: `${base}/members` },
-    { label: "Boards", href: `${base}/boards` },
-  ];
+  const params = { org: org.slug };
+  const exact = { exact: true, includeSearch: false };
 
   return (
     <main className="organization-settings">
       <h1>{org.name}</h1>
-      <nav aria-label="Organization settings">
-        {links.map(({ href, label }) => (
-          <a key={href} href={href} aria-current={pathname.replace(/\/$/, "") === href ? "page" : undefined}>
-            {label}
-          </a>
-        ))}
-      </nav>
-      <Outlet />
+      <div className="settings-layout">
+        <nav aria-label="Organization settings" className="settings-tabs">
+          <Link to="/$org/settings" params={params} activeOptions={exact}>
+            General
+          </Link>
+          <Link to="/$org/settings/members" params={params} activeOptions={exact}>
+            Members
+          </Link>
+          <Link to="/$org/settings/boards" params={params} activeOptions={exact}>
+            Boards
+          </Link>
+        </nav>
+        <div className="settings-content">
+          <Outlet />
+        </div>
+      </div>
     </main>
   );
 }

@@ -138,7 +138,11 @@ test("the owner of another organization is refused an invitation and stays out o
     const members = (headers: Record<string, string>) =>
       app.fetch(new Request(`${PUBLIC_URL}/api/x/orgs/acme/members`, { headers }));
     expect((await members(other)).status).toBe(404);
-    expect(await (await members(acme)).json()).toEqual({ members: [{ principal: "ob:user:u_acme", role: "owner" }] });
+    expect(await (await members(acme)).json()).toEqual({
+      members: [
+        { principal: "ob:user:u_acme", role: "owner", profile: { handle: "acme", name: "acme", avatar: null } },
+      ],
+    });
   } finally {
     await app.close();
   }
@@ -201,8 +205,8 @@ test("a second person signs in, accepts a link and sees both organization member
     expect(roster.status).toBe(200);
     expect(await roster.json()).toEqual({
       members: [
-        { principal: ada.principal, role: "owner" },
-        { principal: lin.principal, role: "member" },
+        { principal: ada.principal, role: "owner", profile: { handle: "ada", name: "ada", avatar: null } },
+        { principal: lin.principal, role: "member", profile: { handle: "lin", name: "lin", avatar: null } },
       ],
     });
     expect((await post("/orgs/acme/invitations", { role: "member" }, lin.headers)).status).toBe(403);

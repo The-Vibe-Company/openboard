@@ -37,7 +37,9 @@ test("an owner promotes a member, a member receives forbidden, and an admin can 
     process.stdout.write(`member: ${transcript} -> ${refused.status} ${JSON.stringify(refusedBody)}\n`);
 
     const roster = await app.fetch(new Request(`${PUBLIC_URL}/api/x/orgs/acme/members`, { headers: mei.headers }));
-    expect(await roster.json()).toMatchObject({ members: expect.arrayContaining([promotedBody]) });
+    expect(await roster.json()).toMatchObject({
+      members: expect.arrayContaining([expect.objectContaining(promotedBody)]),
+    });
 
     expect((await post(path, body)).status).toBe(401);
     expect((await post(path, body, { ...ada.headers, "x-ob-csrf": "wrong" })).status).toBe(403);
@@ -83,7 +85,9 @@ test("a signed-in owner cannot demote the only owner", async () => {
     const roster = await request(rosterPath, ada.headers);
     const body = await roster.json();
     expect(roster.status).toBe(200);
-    expect(body).toEqual({ members: [{ principal: ada.principal, role: "owner" }] });
+    expect(body).toEqual({
+      members: [{ principal: ada.principal, role: "owner", profile: { handle: "ada", name: "ada", avatar: null } }],
+    });
     process.stdout.write(`GET /api/x${rosterPath} -> ${roster.status} ${JSON.stringify(body)}\n`);
   } finally {
     await app.close();
