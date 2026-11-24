@@ -1,4 +1,4 @@
-import { BoardError, decodeInput, type operations, type previewInvitation, type RawInput } from "@openboard/contract";
+import { BoardError, getMe, type operations, type previewInvitation } from "@openboard/contract";
 import type { BoardView, Bucket, PlatformView, RateLimits } from "@openboard/ports";
 import { keepInsideCan, narrowCaller } from "../auth/access.ts";
 import { authenticate, type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
@@ -9,6 +9,7 @@ import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { runSigned } from "../inbound/receive.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
+import { mcpPost } from "../mcp/facade.ts";
 import { streamEvents } from "../operations/events.ts";
 import {
   type AccountOperation,
@@ -17,13 +18,14 @@ import {
   type OrgOperation,
   type PublicOperation,
 } from "../operations/index.ts";
-import { errorResponse, recoverGrant, rejectedInput } from "./errors.ts";
+import { errorResponse, recoverGrant } from "./errors.ts";
 import { healthProbe } from "./health.ts";
+import { readBody, readQuery, validate } from "./input.ts";
 import { limitStream, limitWrite, type RequestLimits } from "./limits.ts";
 import { REQUEST_ID, requestIdOf } from "./request-id.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
-import { type BoardPath, boardPath, notFound, type Tenants } from "./scope.ts";
+import { type BoardPath, boardPath, mcpPath, notFound, type Tenants } from "./scope.ts";
 
 type Contracted = (typeof operations)[number];
 type Params = Readonly<Record<string, string>>;
@@ -45,36 +47,6 @@ export interface Pipeline {
   readonly platform: PlatformView;
   readonly chain: readonly CredentialVerifier[];
   readonly providers: readonly LoginProvider[];
-}
-
-/** Array query fields take one element per occurrence. Scalar fields retain the last value. */
-function readQuery(operation: Contracted, params: URLSearchParams): Record<string, string | string[]> {
-  const query: Record<string, string | string[]> = Object.fromEntries(params);
-  if ("query" in operation.input) {
-    for (const [name, schema] of Object.entries(operation.input.query.properties)) {
-      if (schema.type === "array" && params.has(name)) query[name] = params.getAll(name);
-    }
-  }
-  return query;
-}
-
-async function readBody(request: Request): Promise<unknown> {
-  const text = await request.text();
-  if (text === "") return undefined;
-  try {
-    return JSON.parse(text);
-  } catch (error) {
-    if (error instanceof SyntaxError) throw new BoardError("invalid_request", "the body is not JSON");
-    throw error;
-  }
-}
-
-function validate<Op extends Contracted>(operation: Op, raw: RawInput) {
-  try {
-    return decodeInput(operation, raw);
-  } catch (error) {
-    throw rejectedInput(error, operation, raw);
-  }
 }
 
 /** A `public` operation: no tenant lookup and no credential, so it cannot say whether the board exists (D35). */
@@ -238,6 +210,10 @@ async function run(
     const response = await runPlatform(request, url, pipeline, logged);
     if (response) return response;
   }
+  if (request.method === "POST") {
+    const path = mcpPath(url.pathname, pipeline.config.mode);
+    if (path) return runMcp(request, path, pipeline, logged);
+  }
   const path = boardPath(url.pathname, pipeline.config.mode);
   if (!path) throw notFound();
   logged.org = path.org;
@@ -278,6 +254,35 @@ function requestBoard(pipeline: Pipeline, path: BoardPath, request: Request, cha
   });
 }
 
+function authenticateBoard(
+  request: Request,
+  path: BoardPath,
+  pipeline: Pipeline & RequestLimits,
+  operation: string,
+  audience: string,
+) {
+  const { chain } = pipeline;
+  return limitAuthentication(pipeline, async () => {
+    const board = await requestBoard(pipeline, path, request, chain);
+    const by = narrowCaller(request, await authenticate(request, chain, board, operation, audience));
+    return { board, by };
+  });
+}
+
+async function runMcp(request: Request, path: BoardPath, pipeline: Pipeline & RequestLimits, logged: RequestFields) {
+  logged.org = path.org;
+  const { publicUrl } = pipeline.config;
+  const audience = `${publicUrl}/api/${path.org}/${path.board}`;
+  // Discovery accepts the same credentials as whoami and executes no board operation.
+  const { by } = await authenticateBoard(request, path, pipeline, getMe.name, audience);
+  logged.actor = by.actor;
+  const origin = request.headers.get("origin");
+  if (origin !== null && origin !== new URL(publicUrl).origin) {
+    throw new BoardError("forbidden", "the MCP Origin must match this server");
+  }
+  return mcpPost(request);
+}
+
 type RouteMatch = { operation: Extract<Contracted, { scope: "board" }>; params: Params };
 
 async function runBoard(
@@ -291,10 +296,7 @@ async function runBoard(
   const { operation } = matched;
   const { chain } = pipeline;
   const audience = `${pipeline.config.publicUrl}${path.mount}`;
-  const { board, by } = await limitAuthentication(pipeline, async () => {
-    const board = await requestBoard(pipeline, path, request, chain);
-    return { board, by: narrowCaller(request, await authenticate(request, chain, board, operation.name, audience)) };
-  });
+  const { board, by } = await authenticateBoard(request, path, pipeline, operation.name, audience);
   logged.actor = by.actor;
   refuseClaimedConfiguration(request, operation);
   const raw = {
