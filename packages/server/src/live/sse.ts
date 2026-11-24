@@ -47,7 +47,11 @@ export function eventStream(
         controller.close();
         return;
       }
-      const page = await read(cursor, signal);
+      // A failed read errors the stream without calling `cancel`: abort so the pings stop with it.
+      const page = await read(cursor, signal).catch((error: unknown) => {
+        abort.abort();
+        throw error;
+      });
       if (signal.aborted) {
         if (!abort.signal.aborted) controller.close();
         return;

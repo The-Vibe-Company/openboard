@@ -111,7 +111,7 @@ test.each([
   ["?channel=dev", "1", "invalid_cursor"],
   ["?channel=dev&last=1&wait=0", "0", "invalid_request"],
 ] as const)("rejects %s with Last-Event-ID %s before opening a stream", async (query, lastEventId, code) => {
-  const app = streamingApp();
+  const app = makeApp();
   try {
     const response = await subscribe(app, query, undefined, lastEventId);
     expect(response.status).toBe(400);
@@ -139,7 +139,7 @@ test("ends a pending stream read when the request aborts", async () => {
 });
 
 test("returns JSON errors before opening a stream", async () => {
-  const app = streamingApp();
+  const app = makeApp();
   try {
     const invalid = await subscribe(app, "?after=1");
     expect(invalid.status).toBe(400);
@@ -253,6 +253,41 @@ test("stops pinging when the request aborts", async () => {
     expect(timers.pending.size).toBe(0);
   } finally {
     await reader.cancel();
+    await app.close();
+  }
+});
+
+test("stops pinging when a stream read fails", async () => {
+  const timers = manualTimers();
+  const store = openStore(() => NOW);
+  let reads = 0;
+  const app = makeApp({
+    schedule: timers.schedule,
+    store: {
+      ...store,
+      board(scope) {
+        const board = store.board(scope);
+        return new Proxy(board, {
+          get(target, key) {
+            if (key !== "readEvents") return Reflect.get(target, key);
+            return async (...args: Parameters<typeof board.readEvents>) => {
+              if (++reads > 1) throw new Error("storage failed");
+              return board.readEvents(...args);
+            };
+          },
+        });
+      },
+    },
+  });
+  const response = await subscribe(app);
+  const reader = response.body!.getReader();
+  try {
+    await reader.read();
+    await reader.read();
+    expect(timers.pending.size).toBe(1);
+    await expect(reader.read()).rejects.toThrow("storage failed");
+    expect(timers.pending.size).toBe(0);
+  } finally {
     await app.close();
   }
 });
