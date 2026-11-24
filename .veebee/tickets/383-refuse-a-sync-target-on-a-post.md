@@ -11,7 +11,7 @@ writes:
   - docs/protocol.md
 conformance: []
 modes: [local, hosted]
-depends_on: [381, 382]
+depends_on: [382]
 status: draft
 claimed_by: null
 issue: 578
@@ -32,3 +32,5 @@ As an agent that asks for a new thread to start in a platform channel, I am told
 - **Proposal for the owner:** 400 `invalid_target` (upstream's code for "a target it can't read", already in `packages/contract/src/errors.ts`). Docs name no code for this case; record it in docs/protocol.md.
 - `sync` joins the post body in the contract (`packages/contract/src/operations/messages.ts`) so the refusal is specific and not the strict body's generic `invalid_request`.
 - Depends on 381, the last ticket before it to change docs/protocol.md.
+
+No longer waits for 381 (orchestrator, 2026-11-24): that dependency only ordered edits to a shared file; whichever ticket lands second rebases.

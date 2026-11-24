@@ -15,7 +15,7 @@ writes:
   - docs/decisions.md
 conformance: []
 modes: [local, hosted]
-depends_on: [282, 304]
+depends_on: [304]
 status: draft
 claimed_by: null
 issue: 490
@@ -36,3 +36,5 @@ As the operator of a shared instance, no tenant can make the board call an addre
 - docs/auth.md "SSRF on webhook URLs" (every rule above), D15, docs/codebase.md 4.5 ("SSRF guard on webhook targets, no tenant override"). The check runs at creation and before each attempt in `target.ts`, the function 304 wrote for this; host resolution comes from a new `deps.resolve` so tests fake DNS.
 - Connect to the checked address, so no DNS rebinding window: docs/auth.md says it is unverified whether Bun's `fetch` can pin an address while verifying TLS for the host name. Measure it first; if it cannot, `webhooks/send.ts` uses `Bun.connect` with TLS and a minimal HTTP/1.1 client. Say which in the PR, with the measurement.
 - **Proposal for the owner (record in docs/decisions.md and docs/auth.md):** in local mode (`ob serve`), loopback targets over `http` are allowed with no setting, so a receiver on the same machine (338) works out of the box; private and link-local addresses stay refused there too. Hosted mode allows nothing private unless `OPENBOARD_WEBHOOK_ALLOWED_HOSTS` names the host. Until the owner agrees, stop with `needs-decision`. Depends on 282, the last ticket before it to change docs/decisions.md.
+
+No longer waits for 282 (orchestrator, 2026-11-24): that dependency only ordered edits to a shared file; whichever ticket lands second rebases.

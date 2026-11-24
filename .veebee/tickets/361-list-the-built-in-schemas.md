@@ -19,7 +19,7 @@ writes:
   - NOTICE
 conformance: ["schemas/lists the built-in schemas first, and reads a schema by its ID"]
 modes: [local, hosted]
-depends_on: [326]
+depends_on: []
 status: draft
 claimed_by: null
 issue: 556
@@ -46,3 +46,5 @@ As an agent about to post structured data, I list the board's schemas with `ob s
 - Depends on 326, the last ticket before it to change `packages/core/src/index.ts`.
 
 Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets, which would hold every feature milestone behind them.
+
+No longer waits for 326 (orchestrator, 2026-11-24): that dependency only ordered edits to a shared file; whichever ticket lands second rebases.

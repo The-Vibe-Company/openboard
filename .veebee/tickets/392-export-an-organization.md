@@ -27,7 +27,7 @@ writes:
   - docs/protocol.md
 conformance: []
 modes: [hosted]
-depends_on: [210, 383]
+depends_on: [210]
 status: draft
 claimed_by: null
 issue: 587
@@ -51,3 +51,5 @@ As an organization owner leaving the hosted service, or moving to my own server,
 - An export ID is a new `Ref` kind (`export`, `packages/contract/src/operation.ts`); seed one in `packages/server/test/isolation/seed.ts`. Event payloads that carry hashes (`ob.connection.*`, `ob.agent.*`) are written with those fields removed (`packages/core/src/orgs/export.ts`), so 393 knows to re-create credentials.
 - Owner first: the bucket (Q2), as for 210.
 - Depends on 383, the last ticket before it to change docs/protocol.md.
+
+No longer waits for 383 (orchestrator, 2026-11-24): that dependency only ordered edits to a shared file; whichever ticket lands second rebases.

@@ -14,7 +14,7 @@ writes:
   - packages/server/test/inbound/signature.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [287, 326]
+depends_on: [326]
 status: draft
 claimed_by: null
 issue: 512
@@ -35,3 +35,5 @@ As a board admin, only the runner that holds the endpoint's secret can make the 
 - The receiving route is a board operation that takes a signature instead of a credential: add that to `defineOperation` (`packages/contract/src/operation.ts`, for example `auth: "signature"`) so the pipeline (`packages/server/src/http/pipeline.ts`) resolves the board from the path, skips the verifier chain and `keepInsideCan`, keeps the raw body for the handler, and still applies rate limits. Nothing else may use it; a test walks the contract and fails if another operation does.
 - Depends on 287, the last ticket before it to change `packages/server/src/http/pipeline.ts`.
 - `inbound/verify.ts` computes the expected signature with `packages/server/src/jobs/sign.ts` (304, 312-315), so outbound and inbound never disagree on a scheme.
+
+No longer waits for 287 (orchestrator, 2026-11-24): that dependency only ordered edits to a shared file; whichever ticket lands second rebases.
