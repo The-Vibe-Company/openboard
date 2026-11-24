@@ -420,7 +420,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 | Client | SDK and CLI against an in-process app via injected `fetch` | `packages/sdk/test/**`, `packages/cli/test/**` | SQLite | < 50 ms |
 | Web unit | pure view state | `apps/web/test/**` | none | < 20 ms |
 | Conformance | upstream's kit (6.3) | `tools/conformance` | SQLite one instance; Postgres two instances | < 60 s per run |
-| Browser | Playwright journeys | `apps/web/e2e/**` | SQLite multi-tenant | < 3 min |
+| Browser | Playwright journeys | `apps/web/e2e/**` | SQLite one instance; Postgres two instances | < 3 min |
 | Benchmark | workloads and budgets (6.6) | `tools/bench` | both | quick < 60 s per mode |
 
 `packages/server/test/support/app.ts` exposes `makeApp()`. With `OPENBOARD_TEST_DRIVER` unset it returns one app on in-memory SQLite. With `OPENBOARD_TEST_DRIVER=postgres` it returns a two-instance cluster on a fresh Postgres database whose `fetch` alternates requests between the instances. Every HTTP and isolation test runs unchanged in both.
