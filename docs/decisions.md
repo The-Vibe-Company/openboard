@@ -352,10 +352,13 @@ storage hosted, per-organization keys).
 ### D29. Recoverable secrets encrypted with `OPENBOARD_SECRET_KEY`
 
 - **Decision.** Webhook signing secrets, receiver headers, and inbound verify
-  secrets are stored AES-256-GCM encrypted under a key held only in the
-  service's environment; bearer credentials are only ever hashed.
-- **Consequence.** A stolen volume or backup does not yield usable secrets;
-  losing the key means re-entering those secrets.
+  secrets are stored AES-256-GCM encrypted. Hosted startup requires the key
+  from `OPENBOARD_SECRET_KEY` or `OPENBOARD_SECRET_KEY_FILE`. Plain local
+  startup can generate a key in `~/.config/openboard/secret-key` outside the
+  data directory. Docker uses a separate key source and leaves secret storage
+  unavailable until one is configured. Bearer credentials are only ever hashed.
+- **Consequence.** A stolen data volume or database backup does not yield
+  usable secrets. Losing the key means re-entering the secrets.
 
 ### D30. A claimed token refuses a different profile instead of overwriting it
 

@@ -27,18 +27,24 @@ import { sendWebhook } from "../webhooks/send.ts";
 import type { TargetConfig } from "../webhooks/target.ts";
 import type { ExternalBoardJobHandler } from "./registry.ts";
 
+const unreadableSecret = "signing_secret_undecryptable";
+
+function readCredentials(key: Uint8Array, { webhook, secretId }: WebhookRecord, secret: WebhookSecret | null) {
+  return secret && openWebhookSecret(key, `${webhook.id}.${secretId}`, secret);
+}
+
 function prepareWebhook(
   config: Pick<ServerConfig, "secretKey">,
-  { webhook, secretId }: WebhookRecord,
+  record: WebhookRecord,
   secret: WebhookSecret | null,
   build: (credentials: NonNullable<ReturnType<typeof openWebhookSecret>>) => SignedWebhookRequest | null,
 ) {
   const key = config.secretKey;
-  if (!key || !secret) return { error: "signing_secret_missing" };
-  const credentials = openWebhookSecret(key, `${webhook.id}.${secretId}`, secret);
-  if (credentials === null) return { error: "signing_secret_undecryptable" };
+  if (!key) return { error: "signing_secret_missing" };
+  const credentials = readCredentials(key, record, secret);
+  if (credentials === null) return { error: unreadableSecret };
   const payload = build(credentials);
-  if (!payload) return { error: webhook.body == null ? "payload_too_large" : "too_large" };
+  if (!payload) return { error: record.webhook.body == null ? "payload_too_large" : "too_large" };
   return { payload };
 }
 
@@ -161,7 +167,11 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
       if (!prepared) return false;
       const { input, id } = prepared;
       let authorizedTransport: WebhookRecord | undefined;
-      const { status, error, retryAfter } = await sendWebhook(
+      const {
+        status,
+        error: transportError,
+        retryAfter,
+      } = await sendWebhook(
         input.record.webhook.url,
         config,
         deps,
@@ -183,12 +193,20 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
         },
         leaseUntil - deps.now(),
       );
-      if (error === "delivery_skipped") return false;
+      if (transportError === "delivery_skipped") return false;
       return board.write(async (writer) => {
         const now = deps.now();
         const taken = await writer.takeJob(job.id, lease, now);
-        // A DNS timeout can win the transport race before the first authorization check.
-        if (taken && !authorizedTransport && !(await authorizeDelivery(writer, input, id, now, config))) return false;
+        let error = transportError;
+        if (taken && !authorizedTransport) {
+          // DNS can time out before preparation. Still check access and the current credentials under the lease.
+          const authorized = await authorizeDelivery(writer, input, id, now, config);
+          if (!authorized) return false;
+          if (config.secretKey && !readCredentials(config.secretKey, authorized.record, authorized.secret)) {
+            error = unreadableSecret;
+            authorizedTransport = authorized.record;
+          }
+        }
         const nextAt =
           input.event === null ? null : webhookRetryAt({ status, error, retryAfter, attempt: input.attempt, now });
         const { state, gone } = webhookOutcome(status);
@@ -204,8 +222,9 @@ export function webhookJob(config: ServerConfig, deps: Deps): ExternalBoardJobHa
           });
           if (settled && taken && terminal === "dead" && input.event !== null) {
             const webhookId = input.record.webhook.id;
+            const reason = error === unreadableSecret ? "secret_unreadable" : gone ? "gone" : null;
             const paused =
-              gone && (await disableWebhook(writer, webhookId, now, "gone", authorizedTransport ?? input.record));
+              reason && (await disableWebhook(writer, webhookId, now, reason, authorizedTransport ?? input.record));
             if (!paused) await checkDeadDeliveries(writer, webhookId, now);
           }
           return settled;

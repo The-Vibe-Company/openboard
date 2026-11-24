@@ -2,6 +2,7 @@ node_modules/
 .tsbuild/
 *.tsbuildinfo
 dist/
+/openboard-key.txt
 .DS_Store
 
 # Local agent run artifacts (ship-pr-dev)

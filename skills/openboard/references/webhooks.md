@@ -96,6 +96,8 @@ A subscription pauses on HTTP 410 or after its 101st dead event delivery in
 `disabled: dead_deliveries`, respectively. Test pings never count toward the
 limit. Run `ob webhooks enable <id>` when the receiver is ready to accept the
 queued deliveries. Use `ob webhooks disable <id>` to pause it manually.
+A subscription that reports `disabled: secret_unreadable` needs the original
+server key or replacement receiver credentials to resume delivery.
 
 For a receiver that uses static headers, set `signing.preset` to `none` and
 create the webhook with `ob webhooks create --file <spec.json>`. Protect

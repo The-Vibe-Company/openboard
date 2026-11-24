@@ -8,6 +8,17 @@ interface Table {
   readonly columns: readonly { readonly name: string }[];
 }
 
+/** Reads every application table in a dedicated test database. */
+export async function databaseRows(db: Pick<Db, "query">, tables: readonly Table[]) {
+  return Object.fromEntries(
+    await Promise.all(
+      tables.map(
+        async ({ name }) => [name, await db.query(`SELECT * FROM "${name.replaceAll('"', '""')}"`, [])] as const,
+      ),
+    ),
+  );
+}
+
 /** Test evidence from the actual schema and rows, independent of the purge queries. */
 export async function tenantRows(
   db: Pick<Db, "query">,

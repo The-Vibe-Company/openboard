@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ConfigError, loadConfig } from "../src/config.ts";
+import { serveSecretKey } from "../src/local-secret-key.ts";
 
 const load = (env: Record<string, string>) => loadConfig({ OPENBOARD_DATA_DIR: "./.openboard-test", ...env });
 
@@ -206,4 +207,106 @@ test("opts in to custom webhook signing only with the rollout flag", () => {
   expect(load({ OPENBOARD_WEBHOOK_CUSTOM_SIGNING: "off" }).webhookCustomSigning).toBe(false);
   expect(load({ OPENBOARD_WEBHOOK_CUSTOM_SIGNING: "on" }).webhookCustomSigning).toBe(true);
   expect(() => load({ OPENBOARD_WEBHOOK_CUSTOM_SIGNING: "true" })).toThrow("expected on or off");
+});
+
+function keyFixture() {
+  const home = mkdtempSync(join(tmpdir(), "openboard-key-"));
+  const configDir = join(home, ".config", "openboard");
+  return {
+    home,
+    configDir,
+    keyFile: join(configDir, "secret-key"),
+    close: () => rmSync(home, { recursive: true, force: true }),
+  };
+}
+
+test("hosted serve requires a configured secret key", async () => {
+  const config = load({ OPENBOARD_DATABASE_URL: "postgres://127.0.0.1:1/board" });
+  await expect(serveSecretKey(config, "/unused")).rejects.toThrow("OPENBOARD_SECRET_KEY is required in hosted mode");
+});
+
+test("plain local startup persists a private key shared by concurrent and later startups", async () => {
+  const fixture = keyFixture();
+  const data = join(fixture.home, "data");
+  const config = load({ OPENBOARD_DATA_DIR: data });
+  try {
+    const [key, concurrent] = await Promise.all([
+      serveSecretKey(config, fixture.home),
+      serveSecretKey(config, fixture.home),
+    ]);
+    expect(key?.length).toBe(32);
+    expect(Buffer.from(key ?? []).equals(Buffer.from(concurrent ?? []))).toBe(true);
+    const first = statSync(fixture.keyFile);
+    expect(first.mode & 0o777).toBe(0o600);
+    expect(statSync(fixture.configDir).mode & 0o777).toBe(0o700);
+    expect(existsSync(data)).toBe(false); // The SQLite driver creates and sets the mode of its own directory.
+    const reopened = await serveSecretKey(config, fixture.home);
+    expect(Buffer.from(key ?? []).equals(Buffer.from(reopened ?? []))).toBe(true);
+    expect(statSync(fixture.keyFile).ino).toBe(first.ino);
+  } finally {
+    fixture.close();
+  }
+});
+
+test("plain local startup rejects a data directory that resolves to the key directory", async () => {
+  const fixture = keyFixture();
+  try {
+    const message = "OPENBOARD_DATA_DIR must not contain the local secret-key directory";
+    await expect(serveSecretKey(load({ OPENBOARD_DATA_DIR: fixture.configDir }), fixture.home)).rejects.toThrow(
+      message,
+    );
+    const alias = join(fixture.home, "data");
+    symlinkSync(fixture.configDir, alias);
+    await expect(serveSecretKey(load({ OPENBOARD_DATA_DIR: alias }), fixture.home)).rejects.toThrow(message);
+    expect(existsSync(fixture.keyFile)).toBe(false);
+  } finally {
+    fixture.close();
+  }
+});
+
+test("Docker startup uses only a configured key outside the data directory", async () => {
+  const fixture = keyFixture();
+  const secrets = mkdtempSync(join(tmpdir(), "openboard-mounted-secret-"));
+  const env = { OPENBOARD_DATA_DIR: fixture.home, OPENBOARD_DOCKER: "on" };
+  try {
+    expect(await serveSecretKey(load(env), fixture.home)).toBeUndefined();
+    const key = Buffer.alloc(32, 5);
+    const mount = join(secrets, "key");
+    writeFileSync(mount, key.toString("base64"), { mode: 0o600 });
+    const configured = await serveSecretKey(load({ ...env, OPENBOARD_SECRET_KEY_FILE: mount }), fixture.home);
+    expect(Buffer.from(configured ?? []).equals(key)).toBe(true);
+
+    const misplaced = join(fixture.home, "key");
+    writeFileSync(misplaced, key.toString("base64"), { mode: 0o600 });
+    for (const docker of ["off", "on"]) {
+      const config = load({ ...env, OPENBOARD_DOCKER: docker, OPENBOARD_SECRET_KEY_FILE: misplaced });
+      await expect(serveSecretKey(config, fixture.home)).rejects.toThrow("OPENBOARD_SECRET_KEY_FILE must be outside");
+    }
+    expect(existsSync(fixture.keyFile)).toBe(false);
+  } finally {
+    rmSync(secrets, { recursive: true, force: true });
+    fixture.close();
+  }
+});
+
+test("rejects a key file path whose canonical spelling selects a different file", async () => {
+  const fixture = keyFixture();
+  try {
+    const data = join(fixture.home, "data");
+    const nested = join(data, "nested");
+    const outside = join(fixture.home, "outside");
+    mkdirSync(nested, { recursive: true });
+    mkdirSync(outside);
+    writeFileSync(join(data, "key"), Buffer.alloc(32, 5).toString("base64"), { mode: 0o600 });
+    writeFileSync(join(outside, "key"), Buffer.alloc(32, 6).toString("base64"), { mode: 0o600 });
+    symlinkSync(nested, join(outside, "alias"));
+    const config = load({
+      OPENBOARD_DATA_DIR: data,
+      OPENBOARD_DOCKER: "on",
+      OPENBOARD_SECRET_KEY_FILE: `${outside}/alias/../key`,
+    });
+    await expect(serveSecretKey(config, fixture.home)).rejects.toThrow(/OPENBOARD_SECRET_KEY_FILE/);
+  } finally {
+    fixture.close();
+  }
 });

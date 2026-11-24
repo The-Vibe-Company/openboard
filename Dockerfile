@@ -19,7 +19,8 @@ RUN useradd --uid 10001 --user-group --home-dir /data --no-create-home openboard
     && install -d -o openboard -g openboard /data
 COPY --from=build /build/dist/openboard-linux-* /usr/local/bin/openboard
 USER openboard
-ENV OPENBOARD_DATA_DIR=/data \
+ENV OPENBOARD_DOCKER=on \
+    OPENBOARD_DATA_DIR=/data \
     OPENBOARD_HOST=0.0.0.0 \
     BOARD_URL=http://127.0.0.1:8787/api/local/main
 EXPOSE 8787

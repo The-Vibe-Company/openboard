@@ -2,6 +2,7 @@ import { Database, type SQLQueryBindings } from "bun:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import {
+  databaseRows,
   type Db,
   migrations,
   type Row,
@@ -88,6 +89,7 @@ export function sqlitePurgeFixture(now: () => number) {
     let closing: Promise<void> | undefined;
     return {
       ...store,
+      databaseRows: () => withTestDb(file, (db, database) => databaseRows(db, readCatalog(database).tables)),
       tenantRows: ({ orgId, boardId }: BoardKeys, extraBoards: readonly number[] = []) =>
         withTestDb(file, (db, database) =>
           tenantRows(db, "?", readCatalog(database).tables, orgId, [boardId, ...extraBoards]),

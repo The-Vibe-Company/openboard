@@ -153,7 +153,7 @@ test("records failed HTTP and signing attempts and stops sends after deletion", 
   await label();
   await run();
   expect(requests).toHaveLength(1);
-  expect((await deliveries())?.map((row) => row.state).sort()).toEqual(["dead", "pending", "skipped"]);
+  expect((await deliveries())?.map((row) => row.state).sort()).toEqual(["dead", "pending"]);
 });
 
 test("enforces the 20-webhook quota per board", async () => {
