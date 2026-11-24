@@ -1,5 +1,7 @@
 import type { Message } from "@openboard/contract";
 import {
+  type ActorSeen,
+  type ChannelCreated,
   channelFilter,
   type EventFilters,
   type LabelsChanged,
@@ -19,6 +21,9 @@ const NEWEST_LOOKBACK = 2000;
 const feedTypes: Fragment = {
   fragment: () => "('message.posted', 'message.edited', 'message.deleted', 'labels.changed')",
 };
+
+/** Bookkeeping: events that concern no message, served only with `all` (docs/data-model.md, `visibility` 1). */
+const bookkeepingTypes: Fragment = { fragment: () => "('actor.seen', 'channel.created')" };
 
 function eventPage(newest: boolean) {
   const projectedView: Fragment = { fragment: () => (newest ? ", m.view AS current" : ", NULL AS current") };
@@ -49,7 +54,8 @@ function eventPage(newest: boolean) {
     FROM boards b LEFT JOIN events e ON e.org_id = b.org_id AND e.board_id = b.id
       AND e.id > COALESCE(${"after"}, ${start}) AND e.id <= b.head
       AND (${newestOnly} = 0 OR (
-        e.visibility = 0 AND e.type IN ${feedTypes}
+        ((e.visibility = 0 AND e.type IN ${feedTypes})
+          OR (${"all"} = 1 AND e.visibility = 1 AND e.type IN ${bookkeepingTypes}))
         AND (CAST(${"channel"} AS TEXT) IS NULL OR e.channel = ${"channel"} OR e.channel LIKE ${"under"} ESCAPE '\\')
         AND (CAST(${"thread"} AS BIGINT) IS NULL OR e.thread = ${"thread"})
       ))
@@ -95,7 +101,34 @@ function snapshot(payload: unknown): Parameters<typeof matchesEventMessage>[0] |
   return state.view ?? state;
 }
 
-function filteredEvent(row: Row, filters: EventFilters): (FeedEvent & { current?: Message })[] {
+function bookkeepingEvent(row: Row): ActorSeen | ChannelCreated {
+  const common = {
+    id: Number(row.id),
+    at: Number(row.at),
+    thread: null,
+    message: null,
+    actor: String(row.actor),
+    principal: String(row.principal),
+    visibility: 1 as const,
+  };
+  const payload = JSON.parse(String(row.payload)) as unknown;
+  return row.type === "actor.seen"
+    ? { ...common, type: "actor.seen", channel: null, payload: payload as ActorSeen["payload"] }
+    : {
+        ...common,
+        type: "channel.created",
+        channel: String(row.channel),
+        payload: payload as ChannelCreated["payload"],
+      };
+}
+
+function filteredEvent(
+  row: Row,
+  filters: EventFilters,
+  all: boolean,
+): ((FeedEvent & { current?: Message }) | ActorSeen | ChannelCreated)[] {
+  if (all && Number(row.visibility) === 1 && (row.type === "actor.seen" || row.type === "channel.created"))
+    return [bookkeepingEvent(row)];
   if (
     Number(row.visibility) !== 0 ||
     (row.type !== "message.posted" &&
@@ -123,6 +156,18 @@ export function eventReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<Bo
     async readEvents(after, filters = {}) {
       const { last } = filters;
       const selected = filters.channel === undefined ? undefined : channelFilter(filters.channel);
+      // Bookkeeping concerns no message, so any filter leaves it out (upstream `03-http.md`, "Event types").
+      const all =
+        filters.all === true &&
+        [
+          filters.channel,
+          filters.thread,
+          filters.labels?.length ? filters.labels : undefined,
+          filters.text,
+          filters.from,
+          filters.authors,
+          filters.mentions,
+        ].every((value) => value === undefined);
       const history = filters.text !== undefined || filters.mentions !== undefined || Boolean(filters.labels?.length);
       // Like upstream's local feed, bound the lookback when filtering historical payloads.
       const limit =
@@ -145,13 +190,14 @@ export function eventReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<Bo
           limit,
           history: history ? 1 : 0,
           rootLabels: filters.labels?.length ? 1 : 0,
+          all: all ? 1 : 0,
         },
       );
       const first = rows[0];
       if (!first) throw new Error("the scoped board is missing");
       const head = Number(first.head);
       const cursor = Number(rows.at(-1)?.id ?? head);
-      const events = rows.flatMap((row) => filteredEvent(row, filters));
+      const events = rows.flatMap((row) => filteredEvent(row, filters, all));
       if (last === undefined) return { head, cursor, events };
       return { head, cursor: head, events: events.slice(0, last).reverse() };
     },

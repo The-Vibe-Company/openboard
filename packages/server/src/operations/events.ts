@@ -15,7 +15,7 @@ import type { Handler } from "./index.ts";
 
 export const readEventsHandler: Handler<typeof readEvents> = async (
   { board, by, schedule, signal, reauthorize },
-  { after, last, wait, channel, re, label, from, text, by: author, mentions },
+  { after, last, wait, all, channel, re, label, from, text, by: author, mentions },
 ) => {
   if (last !== undefined && (after !== undefined || wait !== undefined)) {
     throw new BoardError("invalid_request", "`last` reads the newest events at once: it takes no `after` or `wait`");
@@ -51,6 +51,8 @@ export const readEventsHandler: Handler<typeof readEvents> = async (
         : [];
     const { events, cursor, head } = await board.readEvents(after, {
       ...filters,
+      // Events about no message show only to a caller that reads every channel (upstream `03-http.md`).
+      all: (all === "true" || all === "1") && everywhere,
       authors: author === undefined ? undefined : eventAuthors(author, current.actor, actors),
       mentions: mentions === undefined ? undefined : eventMentions(mentions, current.actor, mentionActors),
     });
@@ -70,7 +72,7 @@ export const readEventsHandler: Handler<typeof readEvents> = async (
       head,
       cursor,
       events: events
-        .filter((event) => canReadChannel(current, event.channel))
+        .filter((event) => (event.visibility === 1 ? revealMentions : canReadChannel(current, event.channel)))
         .flatMap((event) => projectEvent(event, revealMentions, text !== undefined || mentions !== undefined)),
     };
   });
@@ -92,6 +94,12 @@ function sameActors(before: FilterActors, after: FilterActors): boolean {
 type FeedEvent = Awaited<ReturnType<Parameters<typeof readEventsHandler>[0]["board"]["readEvents"]>>["events"][number];
 
 function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boolean): OutputOf<typeof readEvents>["events"] {
+  if (event.visibility === 1) {
+    const common = { cursor: formatId(event.id), createdAt: isoTime(event.at) };
+    return event.type === "actor.seen"
+      ? [{ ...common, type: event.type, payload: { ...event.payload } }]
+      : [{ ...common, type: event.type, payload: { ...event.payload } }];
+  }
   const current = event.current;
   const historical = event.type === "message.posted" ? messages.messageView(event) : event.payload.view;
   if (current !== undefined && byWords && (current.deleted || current.text !== historical.text)) return [];

@@ -3092,6 +3092,20 @@
             }
           },
           {
+            "name": "all",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "`true` or `1` adds bookkeeping events (`actor.seen`, `channel.created`) when no filter is set and the caller reads every channel.",
+              "anyOf": [
+                { "const": "true", "type": "string" },
+                { "const": "1", "type": "string" },
+                { "const": "false", "type": "string" },
+                { "const": "0", "type": "string" }
+              ]
+            }
+          },
+          {
             "name": "channel",
             "in": "query",
             "required": false,
@@ -3175,6 +3189,15 @@
               "maximum": 300,
               "description": "Long-poll timeout in seconds. The server may return early and waits at most 120 seconds.",
               "type": "number"
+            },
+            "all": {
+              "description": "`true` or `1` adds bookkeeping events (`actor.seen`, `channel.created`) when no filter is set and the caller reads every channel.",
+              "anyOf": [
+                { "const": "true", "type": "string" },
+                { "const": "1", "type": "string" },
+                { "const": "false", "type": "string" },
+                { "const": "0", "type": "string" }
+              ]
             },
             "channel": {
               "maxLength": 2049,
@@ -3913,6 +3936,66 @@
                                     ]
                                   },
                                   "blocks": { "type": "array", "items": {} }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "actor.seen", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["actor", "kind", "handle", "name", "avatar"],
+                                "properties": {
+                                  "actor": { "type": "string" },
+                                  "kind": {
+                                    "anyOf": [
+                                      { "const": "person", "type": "string" },
+                                      { "const": "workflow", "type": "string" },
+                                      { "const": "agent", "type": "string" }
+                                    ]
+                                  },
+                                  "handle": { "type": "string" },
+                                  "name": { "type": "string" },
+                                  "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "via": {
+                                    "type": "object",
+                                    "required": ["name", "environment"],
+                                    "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "channel.created", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["channel", "by"],
+                                "properties": {
+                                  "channel": {
+                                    "maxLength": 2048,
+                                    "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+                                    "type": "string"
+                                  },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  }
                                 }
                               }
                             }

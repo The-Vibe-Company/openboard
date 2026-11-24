@@ -1,19 +1,34 @@
 import type { Message, Thread, ThreadSummary } from "@openboard/contract";
-import type { EventFilters, LabelsChanged, MessageDeleted, MessageEdited, MessagePosted } from "@openboard/core";
+import type {
+  ActorSeen,
+  ChannelCreated,
+  EventFilters,
+  LabelsChanged,
+  MessageDeleted,
+  MessageEdited,
+  MessagePosted,
+} from "@openboard/core";
 import type { ThreadPosition } from "./store.ts";
+
+/** Events that concern no message, served only on request (docs/data-model.md, `visibility` 1). */
+export type Bookkeeping = ActorSeen | ChannelCreated;
 
 export interface BoardMessageReads {
   /**
    * Scans up to 200 entries forward and returns the scanned cursor. With `last`, reads newest matching events
-   * in ascending order with their current message views and the snapshot's board head as cursor.
+   * in ascending order with their current message views and the snapshot's board head as cursor. With `all` and no
+   * other filter, bookkeeping events (`visibility` 1: `actor.seen`, `channel.created`) are read too.
    */
   readEvents(
     after?: number,
-    filters?: EventFilters & { readonly last?: number },
+    filters?: EventFilters & { readonly last?: number; readonly all?: boolean },
   ): Promise<{
     head: number;
     cursor: number;
-    events: ((MessagePosted | MessageEdited | MessageDeleted | LabelsChanged) & { current?: Message })[];
+    events: (
+      | ((MessagePosted | MessageEdited | MessageDeleted | LabelsChanged) & { current?: Message })
+      | Bookkeeping
+    )[];
   }>;
   /**
    * The root and selected replies in ascending order, or null when no message has the requested ID.

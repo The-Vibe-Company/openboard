@@ -339,6 +339,11 @@ with the current message views and the board head as `cursor`. Pass that cursor 
 `after` to continue from the same point. `last` accepts integers from 1 through
 100. Combining it with `after` or `wait` returns 400 `invalid_request`.
 
+`all=true` (or `1`) adds the bookkeeping events, which concern no message:
+`actor.seen` and `channel.created`. They appear only without other filters, and
+only to a caller that reads every channel. `all=false` (or `0`) is the default;
+any other value returns 400 `invalid_request`.
+
 The feed carries upstream's event types with upstream payloads
 (`03-http.md`, "Event types"): `message.posted|edited|deleted`,
 `reaction.added|removed`, `labels.changed`, `channel.created`, `actor.seen`,
