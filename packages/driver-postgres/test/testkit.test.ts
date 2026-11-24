@@ -21,8 +21,11 @@ if (url) {
       // Suites close from a file-level `afterEach`, so a store may be closed again after later cases.
       let closed: Promise<void> | undefined;
       const close = async () => {
-        await store.close();
-        await database.drop();
+        try {
+          await store.close();
+        } finally {
+          await database.drop();
+        }
       };
       return { ...store, close: () => (closed ??= close()) };
     } catch (error) {

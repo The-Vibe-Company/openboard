@@ -15,7 +15,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [162]
-status: done
+status: claimed
 claimed_by: claude-opus-163
 issue: 243
 ---
