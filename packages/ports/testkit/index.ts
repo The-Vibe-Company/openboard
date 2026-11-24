@@ -1,4 +1,5 @@
 import type { BoardKeys, BoardScope, OrgScope, Store } from "../src/index.ts";
+import { isolationSuite } from "./isolation.test-suite.ts";
 import { accountsSuite } from "./store/accounts.test-suite.ts";
 import { actorsSuite } from "./store/actors.test-suite.ts";
 import { boardsSuite } from "./store/boards.test-suite.ts";
@@ -37,4 +38,9 @@ export function runStoreSuite(driver: string, open: OpenStore): void {
   messagesSuite(driver, open);
   orgsSuite(driver, open);
   threadsSuite(driver, open);
+}
+
+/** Every scoped store method across two organizations: nothing of B reaches A (docs/codebase.md 6.5). */
+export function runIsolationSuite(driver: string, open: OpenStore): void {
+  isolationSuite(driver, open);
 }

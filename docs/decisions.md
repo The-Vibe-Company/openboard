@@ -740,6 +740,35 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   channel, or a smaller subtree it reads throughout. Later subtree filters
   (events, tasks) reuse the same check.
 
+### D54. What an isolation ID case accepts
+
+- **Context.** Ticket 135 generates the tenant isolation cases from the
+  contract (docs/codebase.md 6.5). A `Ref` field does not always answer 404 for
+  an ID its board lacks: `after` in `postMessage` answers 400 `invalid_after`,
+  `after` in `readThread` 400 `invalid_request`, as they do for any ID that is no
+  message of the thread.
+- **Decision.** ID cases cover every `Ref` field of every `board`, `org` and
+  `account` operation, called as A's owner on A's own URL. A case with B's ID
+  passes when its answer carries none of B's names and has the same status and
+  error code as the same call with an ID no board holds: B's ID must be
+  indistinguishable from an unknown one. A message ID both boards hold is tried
+  on read-only operations and must answer 200 with A's message; seeded messages
+  carry their own ID as client ID, so `readPost` gets the same cases. Every
+  case's input is checked against the contract first, so none passes by
+  stopping at validation. Path cases send B's own IDs and input to B's board or
+  organization and expect exactly 401 `unauthorized` (a board-bound credential
+  off its board) or 404 `not_found` (a person outside the organization). B's
+  digest is what B's owner reads through every read-only operation, plus `/me`
+  with each of B's board-bound credentials and B's invitation preview. An
+  invitation's token is a capability, not a tenant ID: the seed's `invitation`
+  ID is its `inv_` ID. The storage twin types one case per `BoardView`,
+  `BoardWriter` and `OrgView` member, so a port method without a case does not
+  compile.
+- **Consequence.** A new operation needs a sample input in
+  `packages/server/test/isolation/cases.ts` only when its body or query has
+  required fields (the suite says so), and a new `Ref` kind needs a seed. No
+  case is ever excluded.
+
 ## Hard blockers found
 
 None. Limits worth knowing:
