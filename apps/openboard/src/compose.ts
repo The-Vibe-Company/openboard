@@ -54,6 +54,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
   const now = () => Date.now();
   const deps: Deps = {
     now,
+    residentBytes: () => process.memoryUsage.rss(),
     log: jsonLogger({ now }),
     requestId: () => crypto.randomUUID(),
     schedule: (delayMs, run) => {
@@ -87,6 +88,7 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
       webhookCustomSigning: config.webhookCustomSigning,
       localOwner,
       instanceId: config.instanceId,
+      ...(config.metricsTokenHash && { metricsTokenHash: config.metricsTokenHash }),
       deploymentTag: config.deploymentTag,
       ...(mode === "local" && localOwnerTokenHash && { localOwnerTokenHash }),
       signup,

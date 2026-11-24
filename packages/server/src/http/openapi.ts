@@ -89,7 +89,8 @@ function describeOperation(operation: Operation) {
   return {
     operationId: operation.operationId ?? operation.name,
     summary: operation.summary,
-    ...(operation.scope === "public" && { security: [] }),
+    ...(operation.scope === "public" && !operation.auth && { security: [] }),
+    ...(operation.auth === "operator" && { security: [{ operatorAuth: [] }] }),
     ...(operation.auth === "signature" && {
       security: [],
       "x-openboard-auth": "signature",
@@ -130,6 +131,7 @@ export function createOpenApi() {
     components: {
       schemas: { ErrorEnvelope },
       securitySchemes: {
+        operatorAuth: { type: "http", scheme: "bearer", description: "Configured OpenBoard operator metrics token" },
         bearerAuth: { type: "http", scheme: "bearer" },
         sessionAuth: { type: "apiKey", in: "cookie", name: "__Host-ob_session" },
       },

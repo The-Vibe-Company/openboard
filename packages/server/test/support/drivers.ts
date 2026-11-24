@@ -8,7 +8,7 @@ import {
 import { type Catalog, postgresCatalog, postgresPurgeFixture } from "@openboard/driver-postgres/catalog";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { sqliteCatalog, sqlitePurgeFixture } from "@openboard/driver-sqlite/catalog";
-import type { Store } from "@openboard/ports";
+import type { Store, StoreMetrics } from "@openboard/ports";
 import { postgresTestUrl } from "./env.ts";
 
 export type { Catalog };
@@ -108,12 +108,16 @@ function postgresStore(url: string, now: () => number): TestStore & ReturnType<t
 
 /** A store that opens its driver on first use, so it can be handed out synchronously. */
 function driverOn(open: () => Promise<Store>): Store {
+  let metrics: StoreMetrics | undefined;
   let opening: Promise<Store> | undefined;
   let closed: Promise<void> | undefined;
   const opened = () => {
     // As a closed SQLite store does: a store used after its close fails, and does not open a fresh database.
     if (closed) return Promise.reject(new Error("The store is closed"));
-    opening ??= open();
+    opening ??= open().then((store) => {
+      if (metrics) store.observeMetrics?.(metrics);
+      return store;
+    });
     return opening;
   };
   const close = async () => {
@@ -121,7 +125,11 @@ function driverOn(open: () => Promise<Store>): Store {
     await store?.close();
   };
   return {
+    observeMetrics(observer) {
+      metrics = observer;
+    },
     jobs: {
+      dueMetrics: async (...args) => (await opened()).jobs.dueMetrics(...args),
       claim: async (...args) => (await opened()).jobs.claim(...args),
       release: async (...args) => (await opened()).jobs.release(...args),
       watch: (...args) => subscribeLater(async () => (await opened()).jobs, "watch")(...args),

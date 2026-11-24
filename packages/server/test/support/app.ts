@@ -19,7 +19,14 @@ export function unexpectedTimer(): never {
 
 type AppOptions = Pick<
   ServerConfig,
-  "signup" | "signIn" | "webDir" | "secretKey" | "webhookTargets" | "webhookCustomSigning"
+  | "signup"
+  | "signIn"
+  | "webDir"
+  | "secretKey"
+  | "webhookTargets"
+  | "webhookCustomSigning"
+  | "metricsTokenHash"
+  | "instanceId"
 > &
   Pick<Deps, "fetch" | "resolveHost" | "webhookFetch"> & {
     readonly mode?: ServerConfig["mode"];
@@ -49,6 +56,8 @@ export function makeApp(options: AppOptions = {}) {
   let drawn = 0;
   const config: ServerConfig = {
     mode,
+    instanceId: options.instanceId,
+    ...(options.metricsTokenHash && { metricsTokenHash: options.metricsTokenHash }),
     publicUrl: options.publicUrl ?? PUBLIC_URL,
     localOwner: LOCAL_OWNER,
     // Keep a configured hash in hosted tests to exercise the verifier's mode guard.
@@ -62,6 +71,7 @@ export function makeApp(options: AppOptions = {}) {
   };
   const deps: Deps = {
     now,
+    residentBytes: () => 1024,
     log,
     requestId: () => `req-${++minted}`,
     schedule: options.schedule ?? unexpectedTimer,

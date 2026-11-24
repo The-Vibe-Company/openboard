@@ -43,6 +43,7 @@ import {
   updateInbound,
 } from "./inbound/index.ts";
 import { listInboundReceived } from "./inbound/received.ts";
+import { getMetrics } from "./metrics/index.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
 import { changeMemberRole, removeMember } from "./memberships.ts";
 import {
@@ -180,6 +181,7 @@ export const operations = [
   postMessage,
   previewDeviceSignIn,
   previewInvitation,
+  getMetrics,
   pullWatcherMatches,
   pushInbox,
   reactToMessage,
@@ -289,6 +291,7 @@ export {
   postMessage,
   previewDeviceSignIn,
   previewInvitation,
+  getMetrics,
   pullWatcherMatches,
   pushInbox,
   reactToMessage,

@@ -1,6 +1,6 @@
 import { expect } from "bun:test";
 import type { SessionState } from "@openboard/contract";
-import type { Deps } from "../../src/index.ts";
+import type { Deps, ServerConfig } from "../../src/index.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./app.ts";
 import { createCluster } from "./cluster.ts";
 import { openStore } from "./drivers.ts";
@@ -56,10 +56,12 @@ export function makeBrowserApp(
   store = openStore(() => NOW),
   now = () => NOW,
   schedule: Deps["schedule"] = unexpectedTimer,
+  metrics: Pick<ServerConfig, "metricsTokenHash" | "instanceId"> = {},
 ) {
   let drawn = 0;
   return createCluster(
     {
+      ...metrics,
       mode: "local",
       publicUrl: PUBLIC_URL,
       localOwner: LOCAL_OWNER,
@@ -70,6 +72,7 @@ export function makeBrowserApp(
     { store },
     {
       now,
+      residentBytes: () => 1024,
       requestId: () => "req-1",
       schedule,
       randomBytes: (length) => new Uint8Array(length).fill(++drawn),

@@ -82,8 +82,8 @@ export type Operation<
   /** Relative to `BOARD_URL` for `board` operations; upstream's path where one exists. */
   readonly route: { readonly method: Method; readonly path: string; readonly mount?: "/api/x" };
   readonly scope: S;
-  /** A board operation authenticated by a signature over its raw request body. */
-  readonly auth?: S extends "board" ? "signature" : never;
+  /** Alternate authentication for signed board requests or an operator bearer on a tenant-free route. */
+  readonly auth?: S extends "board" ? "signature" : S extends "public" ? "operator" : never;
   /** An account operation that also accepts an unrestricted personal bearer. */
   readonly accountBearer?: "personal";
   readonly input: I;
@@ -93,7 +93,7 @@ export type Operation<
   readonly bodyDefaults?: false;
   readonly output: O;
   /** The success media type for a raw string body. Defaults to JSON. */
-  readonly responseType?: "image/svg+xml" | "application/gzip";
+  readonly responseType?: "image/svg+xml" | "application/gzip" | "text/plain";
   readonly orgPersonalToken?: true;
   readonly invalidInputCode?: ErrorCode;
   /** Report a named body array's maxItems violation before validating individual items. */

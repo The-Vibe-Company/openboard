@@ -1,6 +1,8 @@
 import { operations } from "@openboard/contract";
 import {
   BACKFILL_BOARD_ORG_JOB,
+  EXPORT_ORG_JOB,
+  TASK_EXPIRY_JOB,
   type Bucket,
   type Jobs,
   type Store,
@@ -20,8 +22,9 @@ import { startBoardOrgBackfill } from "./jobs/board-org-startup.ts";
 import { startDumpJob } from "./jobs/dump.ts";
 import { startExportJobs } from "./jobs/export-org.ts";
 import { type JobHandlers, startBoardJobs, startJobs } from "./jobs/registry.ts";
-import { logShippingJobs } from "./jobs/ship-log.ts";
+import { logShippingJobs, SHIP_LOG_JOB } from "./jobs/ship-log.ts";
 import { sweepOnActivity } from "./jobs/sweep.ts";
+import { instanceMetrics } from "./metrics.ts";
 import { webhookJob } from "./jobs/webhooks.ts";
 
 export const DRAIN_TIMEOUT_MS = 10_000;
@@ -43,7 +46,23 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
   };
   const platform = ports.store.platform();
   const bucket = config.mode === "hosted" ? ports.bucket : undefined;
+  const metrics =
+    config.metricsTokenHash && deps.residentBytes
+      ? instanceMetrics(config.instanceId ?? deps.requestId(), deps.residentBytes)
+      : undefined;
+  if (metrics) ports.store.observeMetrics?.(metrics);
   const pipeline: Pipeline = {
+    metrics,
+    dueMetrics: ports.jobs.dueMetrics,
+    jobKinds: [
+      ...new Set([
+        ...Object.keys(handlers),
+        TASK_EXPIRY_JOB,
+        ...(bucket ? [EXPORT_ORG_JOB, SHIP_LOG_JOB] : []),
+        WEBHOOK_DELIVERY_JOB,
+        WEBHOOK_RESEND_JOB,
+      ]),
+    ].sort(),
     bucket,
     shutdown: shutdown.signal,
     staticFiles: staticFiles(config.publicUrl, config.webDir),
@@ -51,7 +70,7 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     track,
     config,
     deps,
-    rateLimits: requestRateLimits(deps.now, platform, config.streamLimits),
+    rateLimits: requestRateLimits(deps.now, platform, config.streamLimits, metrics?.stream),
     routes: routeTable(
       operations.filter(({ scope, route }) => scope === "board" || (scope === "public" && !route.mount)),
     ),

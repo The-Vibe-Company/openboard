@@ -1242,3 +1242,14 @@ are active. An idle server arms no retention timer. Done and skipped
 webhook deliveries age out after seven days and dead deliveries after 30 days.
 A swept history cursor returns an empty page with no older cursor.
 ([Issue #590](https://github.com/The-Vibe-Company/openboard/issues/590))
+
+### Operator authentication for metrics
+
+Configure a dedicated operator bearer in `OPENBOARD_METRICS_TOKEN` or
+`OPENBOARD_METRICS_TOKEN_FILE` to expose `GET /api/x/metrics` in either mode.
+The server compares SHA-256 digests in constant time. Tenant credentials have
+their own namespace and cannot grant scrape access. An unset token disables
+the route. Each scrape reports the serving instance's observations and a
+fresh aggregate of dispatchable jobs from the database. Webhook outcomes
+are counted after the transaction that records the delivery state commits.
+([Issue #589](https://github.com/The-Vibe-Company/openboard/issues/589))

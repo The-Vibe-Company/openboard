@@ -2,8 +2,8 @@ import { Database, SQLiteError, type SQLQueryBindings } from "bun:sqlite";
 import { closeSync, mkdirSync, openSync } from "node:fs";
 import { join } from "node:path";
 import { BoardError } from "@openboard/contract";
-import { createViews, type Db, migrations, type Row, type SqlValue } from "@openboard/driver-sql";
-import type { Store } from "@openboard/ports";
+import { createViews, type Db, migrations, type Row, type SqlValue, withWebhookMetrics } from "@openboard/driver-sql";
+import type { Store, StoreMetrics } from "@openboard/ports";
 import { sqliteBroadcaster } from "./broadcaster.ts";
 import type { StatementCounter } from "./counters.ts";
 import { sqliteDialect } from "./dialect.ts";
@@ -67,7 +67,11 @@ function unavailable(error: unknown): never {
  * One connection, and one queue in front of it: a write transaction holds the queue from `BEGIN IMMEDIATE` to
  * `COMMIT`, so no other statement interleaves with it between awaits (the process write mutex of D33).
  */
-function connection(database: Database, counter?: StatementCounter): Db {
+function connection(
+  database: Database,
+  counter: StatementCounter | undefined,
+  boardLockObserver: () => ((ms: number) => void) | undefined,
+): Db {
   let tail: Promise<unknown> = Promise.resolve();
   const exclusive = <T>(task: () => Promise<T>): Promise<T> => {
     const run = tail.then(task).catch(unavailable);
@@ -88,18 +92,31 @@ function connection(database: Database, counter?: StatementCounter): Db {
   };
   return {
     query: (text, values) => exclusive(() => run(text, values)),
-    transaction: (fn) =>
-      exclusive(async () => {
+    transaction: (fn) => {
+      const observe = boardLockObserver();
+      const started = observe ? performance.now() : 0;
+      return exclusive(async () => {
         control("BEGIN IMMEDIATE");
+        const wait = observe ? performance.now() - started : 0;
+        const tx: Db = observe
+          ? {
+              ...inTransaction,
+              measureBoardLock(work) {
+                observe(wait);
+                return work();
+              },
+            }
+          : inTransaction;
         try {
-          const result = await fn(inTransaction);
+          const result = await fn(tx);
           control("COMMIT");
           return result;
         } catch (error) {
           if (database.inTransaction) control("ROLLBACK");
           throw error;
         }
-      }),
+      });
+    },
   };
 }
 
@@ -111,10 +128,17 @@ export function sqliteDriver(options: SqliteOptions, now: () => number = Date.no
   const database = openDatabase(options, now);
   const stopSnapshots =
     "dir" in options ? startSnapshots(database.filename, join(options.dir, "backups"), now, options) : undefined;
-  const db = connection(database, counter);
+  let metrics: StoreMetrics | undefined;
+  const db = withWebhookMetrics(
+    connection(database, counter, () => metrics?.boardLock),
+    () => metrics,
+  );
   const jobs = sqliteJobs(db, now);
   return {
     jobs,
+    observeMetrics(observer) {
+      metrics = observer;
+    },
     ...createViews(db, sqliteDialect, sqliteBroadcaster(), { now, committed: jobs.committed }),
     async close() {
       jobs.close();
