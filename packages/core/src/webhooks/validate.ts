@@ -1,6 +1,7 @@
 import { BoardError, type WebhookSpec } from "@openboard/contract";
 import { validateWebhookFilter } from "./filter.ts";
 import { validateWebhookSigning } from "./signing.ts";
+import { validateWebhookTemplate } from "./template.ts";
 
 const templateLimit = 16 * 1024;
 const encoder = new TextEncoder();
@@ -13,6 +14,7 @@ function validateBody(value: unknown): object | null {
   if (encoder.encode(JSON.stringify(value)).length > templateLimit) {
     throw new BoardError("invalid_request", "webhook body template must be at most 16 KB");
   }
+  validateWebhookTemplate(value);
   return value;
 }
 

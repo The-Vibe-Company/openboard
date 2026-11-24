@@ -1,5 +1,41 @@
 import { type Static, Type } from "@sinclair/typebox";
 
+import { ChannelPath, Labels, Message } from "../messages.ts";
+import { Task } from "../tasks.ts";
+
+export const WebhookEventPayloadV1 = Type.Object({
+  type: Type.Literal("board.event"),
+  version: Type.Literal(1),
+  delivery: Type.Object({
+    id: Type.String(),
+    attempt: Type.Integer(),
+    webhook: Type.String(),
+    name: Type.String(),
+  }),
+  board: Type.Object({ url: Type.String(), org: Type.String(), board: Type.String() }),
+  subject: Type.Object({
+    channel: ChannelPath,
+    thread: Type.String(),
+    message: Type.String(),
+    task: Type.Union([
+      Type.Object({ id: Type.String(), ...Type.Pick(Task, ["state", "owner", "for", "epoch"]).properties }),
+      Type.Null(),
+    ]),
+    labels: Labels,
+    schedule: Type.Union([Type.Object({ id: Type.String(), n: Type.Integer() }), Type.Null()]),
+    url: Type.String(),
+  }),
+  event: Type.Object({
+    cursor: Type.String(),
+    type: Type.String(),
+    createdAt: Type.String(),
+    payload: Type.Record(Type.String(), Type.Unknown()),
+    message: Message,
+    actor: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  }),
+  truncated: Type.Optional(Type.Literal(true)),
+});
+
 export const WebhookFilter = Type.Object(
   {
     tail: Type.String({ maxLength: 4096 }),

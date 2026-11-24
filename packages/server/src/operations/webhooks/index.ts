@@ -123,7 +123,7 @@ async function updateCredentials(
   ctx: BoardContext,
   writer: BoardWriter,
   record: WebhookRecord,
-  spec: WebhookSpec,
+  spec: Omit<WebhookSpec, "body">,
   patch: Partial<WebhookSpec>,
   now: number,
 ) {
@@ -185,7 +185,7 @@ export const updateWebhookHandler: Handler<typeof updateWebhook> = async (ctx, {
     const filter = patch.filter ?? current.filter;
     const { tail, body } = validateWebhookContent({
       filter,
-      body: patch.body === undefined ? current.body : patch.body,
+      body: patch.body,
     });
     requireManage(ctx, tail.channel);
     if (target === undefined) ctx.debitWrite();
@@ -205,7 +205,7 @@ export const updateWebhookHandler: Handler<typeof updateWebhook> = async (ctx, {
       ctx,
       writer,
       record,
-      { name, url, filter, body },
+      { name, url, filter },
       patch,
       now,
     );
@@ -215,7 +215,7 @@ export const updateWebhookHandler: Handler<typeof updateWebhook> = async (ctx, {
       name,
       url,
       filter,
-      body,
+      body: patch.body === undefined ? current.body : body,
       enabled,
       signing,
       headers,

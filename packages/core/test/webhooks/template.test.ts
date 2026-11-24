@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { renderWebhookTemplate } from "../../src/webhooks/template.ts";
+import { WebhookEventPayloadV1 } from "@openboard/contract";
+import { renderWebhookTemplate, validateWebhookTemplate } from "../../src/webhooks/template.ts";
 
 const payload = {
   subject: { thread: "2", labels: { status: "ready" } },
@@ -58,4 +59,34 @@ test("counts UTF-8 bytes after rendering", () => {
   const bytes = new TextEncoder().encode(expected).length;
   expect(renderWebhookTemplate(template, data, bytes)).toBe(expected);
   expect(renderWebhookTemplate(template, data, bytes - 1)).toBeNull();
+});
+
+test("validates template paths from the TypeBox payload and message schemas", () => {
+  const schema = WebhookEventPayloadV1.properties;
+  const paths = [
+    ...Object.keys(schema),
+    ...Object.keys(schema.subject.properties).map((key) => `subject.${key}`),
+    ...Object.keys(schema.event.properties.message.properties).map((key) => `event.message.${key}`),
+    "subject.task.state",
+    "subject.schedule.n",
+    "event.message.author.via.name",
+    "event.message.mentions.0.actor.handle",
+    "event.message.reactions.thumbs-up.0",
+    "event.payload.custom.0.nested",
+    "subject.labels.next-state",
+  ];
+  expect(() => validateWebhookTemplate(paths.map((path) => `{{${path}}}`))).not.toThrow();
+  expect(() => validateWebhookTemplate(["{{event.message.mentions.length}}"])).toThrow(
+    /closest valid path is "event.message.mentions"/,
+  );
+  expect(() => validateWebhookTemplate(["{{subject.constructor}}"])).toThrow(/unknown webhook template path/);
+});
+
+test("validates only string values and rejects unmatched openings", () => {
+  expect(() =>
+    validateWebhookTemplate({
+      "{{unknown": ["{{subject.thread}}", "{{delivery.attempt + 1}}", "{{{{subject.thread}}}}"],
+    }),
+  ).not.toThrow();
+  expect(() => validateWebhookTemplate(["{{unknown {{subject.thread}}"])).toThrow(/unclosed \{\{/);
 });
