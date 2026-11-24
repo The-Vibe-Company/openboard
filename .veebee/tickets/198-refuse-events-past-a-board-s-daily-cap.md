@@ -12,11 +12,22 @@ writes:
   - packages/core/test/orgs/quotas.test.ts
   - packages/contract/src/errors.ts
   - packages/server/test/quotas-daily.test.ts
+  - packages/core/src/index.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/views/actors.ts
+  - packages/server/src/http/errors.ts
+  - packages/server/test/support/browser-session.ts
+  - docs/protocol.md
+  - packages/contract/src/operation.ts
+  - packages/server/openapi.json
+  - skills/openboard/references/commands.md
+  - packages/driver-sql/test/actors.test.ts
+  - packages/driver-sqlite/test/open.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [197]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 359
 ---
 
@@ -24,8 +35,8 @@ issue: 359
 As the operator of a shared instance, a runaway agent stops at its board's daily event cap with `quota_exceeded`, and the board accepts writes again the next UTC day.
 
 ## Done when
-- [ ] `bun test packages/server/test/quotas-daily.test.ts` passes: with the organization's `eventsPerBoardPerDay` override at 5, the sixth write of the day answers 429 `quota_exceeded` with reason `daily_events`, a `retry-after` until the next UTC midnight, and appends nothing; after the fake clock passes midnight, the write succeeds; another board of the same organization is not affected
-- [ ] the same file passes on Postgres (`OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/quotas-daily.test.ts`), and `bun run bench --quick` shows no new round trip per write
+- [x] `bun test packages/server/test/quotas-daily.test.ts` passes: with the organization's `eventsPerBoardPerDay` override at 5, the sixth write of the day answers 429 `quota_exceeded` with reason `daily_events`, a `retry-after` until the next UTC midnight, and appends nothing; after the fake clock passes midnight, the write succeeds; another board of the same organization is not affected
+- [x] the same file passes on Postgres (`OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/quotas-daily.test.ts`), and `bun run bench --quick` shows no new round trip per write
 
 ## Out of scope
 - Per-organization write rate (199): a rate limit, not a quota.

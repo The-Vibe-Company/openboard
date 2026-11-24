@@ -23,7 +23,7 @@ Options:
 - `--as`: The profile the agent token is stored under and claimed as.
 - `--secret-file`: A file holding the connection secret; otherwise `OPENBOARD_SECRET_FILE`, `OPENBOARD_SECRET`, then stdin.
 
-Errors: `error: forbidden`, `error: grant_empty`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: profile_taken`, `error: remote_error`, `error: secret_spent`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: grant_empty`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: profile_taken`, `error: quota_exceeded`, `error: remote_error`, `error: secret_spent`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: none.
 
@@ -68,7 +68,7 @@ Options:
 - `--can`: Replace the grant’s channel patterns and permissions. Repeat for multiple patterns.
 - `--lock-me-out`: A switch: present means yes.
 
-Errors: `error: forbidden`, `error: grant_empty`, `error: grant_not_found`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: not_in_grant`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: grant_empty`, `error: grant_not_found`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: not_in_grant`, `error: quota_exceeded`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `update_grant`.
 
@@ -150,7 +150,7 @@ Options:
 - `--connection`: A connection ID on this board.
 - `--all-connections`: Every connection on this board.
 
-Errors: `error: forbidden`, `error: grant_empty`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: grant_empty`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `create_grant`.
 
@@ -173,7 +173,7 @@ Options:
 - `--overlap`: How long the old secret keeps working (`10m`, at most `24h`); absent, it stops at once.
 - `--secret-file`: Where the new secret is written, created with mode 0600; the secret is never printed.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: none.
 
@@ -337,7 +337,7 @@ Options:
 
 - `--lease`: Lease in seconds, default 900.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: remote_error`, `error: task_assigned`, `error: task_blocked`, `error: task_claimed`, `error: task_finished`, `error: task_waiting`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: task_assigned`, `error: task_blocked`, `error: task_claimed`, `error: task_finished`, `error: task_waiting`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `task_claim`.
 
@@ -359,7 +359,7 @@ Arguments:
 
 - `path`: Text.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `create_channel`.
 
@@ -416,7 +416,7 @@ Options:
 
 - `--if-revision`: The message revision observed before editing or deleting.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: revision_conflict`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: revision_conflict`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `delete_message`.
 
@@ -494,7 +494,7 @@ Options:
 - `--if`: Required current label values, or null for labels that must be absent.
 - `--if-unset`: A label key that must be absent; repeatable.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: label_conflict`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: label_conflict`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `label_message`.
 
@@ -665,7 +665,7 @@ Options:
 
 - `--remove`: A switch: present means yes.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `react_to_message`.
 
@@ -733,7 +733,7 @@ Arguments:
 - `id`: A connection ID.
 - `agent`: An agent ID.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: none.
 
@@ -755,7 +755,7 @@ Arguments:
 
 - `id`: A connection ID.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: none.
 
@@ -781,7 +781,7 @@ Options:
 
 - `--lock-me-out`: A switch: present means yes.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `revoke_grant`.
 

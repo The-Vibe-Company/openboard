@@ -47,7 +47,7 @@ export async function browserSession(send: (request: Request) => Promise<Respons
   return { headers: { cookie, "x-ob-csrf": session.csrf, origin: PUBLIC_URL }, principal: session.person.principal };
 }
 
-export function makeBrowserApp(localOwnerTokenHash?: string, store = openStore(() => NOW)) {
+export function makeBrowserApp(localOwnerTokenHash?: string, store = openStore(() => NOW), now = () => NOW) {
   let drawn = 0;
   return createCluster(
     {
@@ -60,7 +60,7 @@ export function makeBrowserApp(localOwnerTokenHash?: string, store = openStore((
     },
     { store },
     {
-      now: () => NOW,
+      now,
       requestId: () => "req-1",
       schedule: unexpectedTimer,
       randomBytes: (length) => new Uint8Array(length).fill(++drawn),

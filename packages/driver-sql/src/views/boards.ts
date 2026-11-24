@@ -1,5 +1,5 @@
 import type { Named } from "@openboard/contract";
-import { type BoardCreation, type OrgQuotaOverrides, storedBytesLimit } from "@openboard/core";
+import { type BoardCreation, dailyEventsLimit, type OrgQuotaOverrides, storedBytesLimit } from "@openboard/core";
 import type { BoardKeys, OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
@@ -21,6 +21,16 @@ const skipLocked: Fragment = Object.freeze({
 });
 const serverTimeline: Fragment = Object.freeze({ fragment: (dialect: Dialect) => dialect.serverTimeline });
 
+// Keep the count and the head it covers together. An older writer only advances boards.head.
+const eventTally: Fragment = Object.freeze({
+  fragment: ({ name }: Dialect) =>
+    name === "postgres" ? "CAST(boards.daily_event_tally AS JSON)" : "boards.daily_event_tally",
+});
+const eventDay: Fragment = Object.freeze({
+  fragment: () =>
+    "CASE WHEN boards.daily_event_day > quota_clock.day THEN boards.daily_event_day ELSE quota_clock.day END",
+});
+
 /** How far a write moves the head past a timeline change, above any cursor handed out before it (D37). */
 export const TIMELINE_ADVANCE = 1_000_000;
 
@@ -29,6 +39,14 @@ export const boardStatements = {
   orgBySlug: sql`SELECT id FROM orgs WHERE slug = ${"slug"} AND deleted_at IS NULL`,
   boardBySlug: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"} AND deleted_at IS NULL`,
   lockBoard: sql`SELECT boards.head, boards.timeline, ${serverTimeline} AS server_timeline, orgs.quotas,
+    ${eventDay} AS event_day,
+    CASE WHEN boards.daily_event_day >= quota_clock.day THEN CAST(${eventTally} ->> 'count' AS BIGINT)
+      ELSE 0 END +
+    CASE WHEN boards.head = 0 OR CAST(${eventTally} ->> 'head' AS BIGINT) = boards.head THEN 0 ELSE (
+      SELECT COUNT(*) FROM events e WHERE e.org_id = ${"orgId"} AND e.board_id = ${"boardId"}
+        AND e.at >= (${eventDay}) AND e.at < (${eventDay}) + (quota_clock.next_day - quota_clock.day)
+        AND e.id > COALESCE(CAST(${eventTally} ->> 'head' AS BIGINT), 0)
+    ) END AS event_count,
     actors.id, actors.kind, actors.handle, actors.name, actors.avatar, actors.via,
     CASE WHEN boards.stored_bytes_head = boards.head THEN boards.stored_bytes ELSE (
       SELECT COALESCE(SUM(${messageBytes}), 0)
@@ -43,10 +61,12 @@ export const boardStatements = {
       FROM messages m WHERE m.org_id = ${"orgId"} AND m.board_id = sibling.id AND m.deleted = 0
     ) END), 0) FROM boards sibling WHERE sibling.org_id = ${"orgId"} AND sibling.id <> ${"boardId"}) AS other_bytes
     FROM boards JOIN orgs ON orgs.id = boards.org_id
+    CROSS JOIN (SELECT CAST(${"day"} AS BIGINT) AS day, CAST(${"nextDay"} AS BIGINT) AS next_day) quota_clock
     LEFT JOIN actors ON actors.org_id = boards.org_id AND actors.board_id = boards.id AND actors.id = ${"actor"}
     WHERE boards.org_id = ${"orgId"} AND boards.id = ${"boardId"}${boardLock}`,
   setHead: sql`UPDATE boards SET head = ${"head"}, timeline = ${serverTimeline},
-    stored_bytes = ${"storedBytes"}, stored_bytes_head = ${"head"}
+    stored_bytes = ${"storedBytes"}, stored_bytes_head = ${"head"},
+    daily_event_day = ${"eventDay"}, daily_event_tally = ${"eventTally"}
     WHERE org_id = ${"orgId"} AND id = ${"boardId"}${notifyHead}`,
   repairStoredBytes: sql`WITH stale AS (
     SELECT id, head, org_id FROM boards
@@ -93,13 +113,20 @@ export interface BoardStorage {
  * with the new head, so a write that appends nothing changes nothing. A board that recorded no timeline yet (`0`)
  * does not advance, and an engine whose timeline is the constant `0` (SQLite) never does.
  */
-export async function lockBoard(tx: Db, dialect: Dialect, keys: BoardKeys, actor: string | null) {
+export async function lockBoard(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  actor: string | null,
+  window: { readonly day: number; readonly nextDay: number },
+) {
+  const params = { ...keys, ...window };
   let actorLoaded = dialect.name === "sqlite";
-  let [row] = await query(tx, dialect, boardStatements.lockBoard, { ...keys, actor: actorLoaded ? actor : null });
+  let [row] = await query(tx, dialect, boardStatements.lockBoard, { ...params, actor: actorLoaded ? actor : null });
   // A waiting Postgres statement refreshes only the locked row. If another writer advanced it, get a
   // fresh snapshot of sibling usage, the legacy own-board fallback and the actor together.
   if (row?.snapshot_head != null && Number(row.snapshot_head) !== Number(row.head)) {
-    [row] = await query(tx, dialect, boardStatements.lockBoard, { ...keys, actor });
+    [row] = await query(tx, dialect, boardStatements.lockBoard, { ...params, actor });
     actorLoaded = true;
   }
   if (!row) throw new Error(`board ${keys.boardId} of organization ${keys.orgId} is missing`);
@@ -111,6 +138,11 @@ export async function lockBoard(tx: Db, dialect: Dialect, keys: BoardKeys, actor
     row,
     actorLoaded,
     head: timeline === 0 || recorded === 0 || timeline === recorded ? head : head + TIMELINE_ADVANCE,
+    dailyEvents: {
+      day: Number(row.event_day),
+      count: Number(row.event_count),
+      limit: dailyEventsLimit(overrides ?? {}),
+    },
     storage: {
       boardBytes: Number(row.board_bytes),
       otherBytes: Number(row.other_bytes),
@@ -121,8 +153,21 @@ export async function lockBoard(tx: Db, dialect: Dialect, keys: BoardKeys, actor
 }
 
 /** Moves the board's head and records its folded size and the server's timeline (D37). */
-export async function setHead(tx: Db, dialect: Dialect, keys: BoardKeys, head: number, storedBytes: number) {
-  await query(tx, dialect, boardStatements.setHead, { ...keys, head, storedBytes });
+export async function setHead(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  head: number,
+  storedBytes: number,
+  dailyEvents: { readonly day: number; readonly count: number },
+) {
+  await query(tx, dialect, boardStatements.setHead, {
+    ...keys,
+    head,
+    storedBytes,
+    eventDay: dailyEvents.day,
+    eventTally: JSON.stringify({ head, count: dailyEvents.count }),
+  });
 }
 
 /** Initialize untouched legacy siblings when a write can repair them without waiting for their locks. */

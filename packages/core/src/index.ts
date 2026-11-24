@@ -80,9 +80,12 @@ export { decideInvitation, previewInvite } from "./orgs/invite.ts";
 export {
   type CountQuota,
   type CountQuotas,
+  checkDailyEvents,
   checkStoredBytes,
   countQuotaError,
   countQuotas,
+  dailyEventsLimit,
+  dailyEventWindow,
   type OrgQuotaOverrides,
   type QuotaOutcome,
   storedBytesLimit,

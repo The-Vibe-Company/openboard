@@ -118,7 +118,7 @@ answers. OpenBoard adds:
 | 410 | `secret_spent`, `invitation_used` | single-use secret claimed; invitation accepted, revoked, or expired |
 | 400 | `invalid_url`, `invalid_signing`, `invalid_rule`, `reserved_slug` | webhook URL refused; bad scheme; bad inbound rule; reserved slug |
 | 401 | `bad_signature` | inbound endpoint signature |
-| 429 | `rate_limited`, `quota_exceeded` | with `retry-after` for rate limits |
+| 429 | `rate_limited`, `quota_exceeded` | with `retry-after` for rate limits and the daily event quota |
 
 Board creation, invitation acceptance, and connection creation can return 429
 `quota_exceeded` with reason `boards`, `members`, or `connections`. The defaults
@@ -130,6 +130,12 @@ Posting or growing a message, including creating a task from a new thread, can r
 `stored_bytes` (OpenBoard). The default is 1 GB per organization, counting the
 UTF-8 text and serialized blocks of live messages across its boards. Edits
 count the change in size, and deleting a message frees its bytes.
+
+A board write that would exceed 100,000 events on that board in a UTC day
+returns 429 `quota_exceeded` with reason `daily_events` and `retry-after` in
+seconds until UTC midnight. An organization override can change the limit for
+each of its boards. All events in the write count, including bookkeeping, and
+a refused write appends nothing.
 
 ## Route inventory: the board (relative to `BOARD_URL`)
 
