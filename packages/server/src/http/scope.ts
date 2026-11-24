@@ -77,6 +77,16 @@ function mintBoardScope(keys: BoardKeys): BoardScope {
   return { orgId: keys.orgId, boardId: keys.boardId } as BoardScope;
 }
 
+/**
+ * Step 3 for a person (docs/codebase.md 4.4): their membership of the organization of the board the path names. Anyone
+ * else is answered 404 `not_found` as for an unknown board, never 401 or 403, so it reveals no other organization.
+ */
+export async function boardMember(board: BoardView, personId: string) {
+  const member = await board.member(personId);
+  if (!member) throw notFound();
+  return member;
+}
+
 /** The person's membership of the organization `slug` names; 404 when either is unknown, as for a stranger. */
 async function membership(store: Store, slug: string, personId: string) {
   if (!SLUG.test(slug)) throw notFound();

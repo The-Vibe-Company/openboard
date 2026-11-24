@@ -1,8 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
 import { BoardError } from "@openboard/contract";
-import type { PersonRecord, PlatformView } from "@openboard/ports";
+import type { PersonRecord, PlatformView, SessionRecord } from "@openboard/ports";
 import { grants } from "@openboard/core";
 import { callerCan, credentialKind, memberOf, type Principal } from "../deps.ts";
+import { boardMember } from "../http/scope.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { hashToken } from "./secrets.ts";
 
@@ -64,26 +65,49 @@ function checkCsrf(request: Request, csrf: string, publicUrl: string): void {
   });
 }
 
+/** A live session before its CSRF proof: the stored record and the hash of the cookie value that names it. */
+export interface LiveSession {
+  readonly idHash: string;
+  readonly record: SessionRecord;
+}
+
 /**
  * The session a request's cookie names, when it is live: not revoked, used within 7 days, younger than 30. Only a
- * request without an `authorization` header is read by its cookie (docs/auth.md "The verifier chain", step 6). A write
- * without the CSRF proof is refused before the session is touched, so a refused write never renews it.
+ * request without an `authorization` header is read by its cookie (docs/auth.md "The verifier chain", step 6). It is
+ * not yet proven for a write nor renewed: `proveSession` does both, after the caller has checked the tenant.
  */
-export async function sessionOf(
-  request: Request,
-  platform: PlatformView,
-  now: number,
-  publicUrl: string,
-): Promise<Session | null> {
+export async function liveSession(request: Request, platform: PlatformView, now: number): Promise<LiveSession | null> {
   if (request.headers.has("authorization")) return null;
   const value = cookieOf(request, SESSION_COOKIE);
   if (value === null || !VALUE.test(value)) return null;
   const idHash = hashToken(value);
   const record = await platform.session(idHash);
   if (!record || now >= record.expiresAt || now - record.seenAt >= IDLE) return null;
+  return { idHash, record };
+}
+
+/** A write without the CSRF proof is refused before the session is touched, so a refused write never renews it. */
+export async function proveSession(
+  request: Request,
+  { idHash, record }: LiveSession,
+  platform: PlatformView,
+  now: number,
+  publicUrl: string,
+): Promise<Session> {
   checkCsrf(request, record.csrf, publicUrl);
   if (now - record.seenAt >= TOUCH_AFTER) await platform.touchSession(idHash, now);
   return { person: record.person, csrf: record.csrf };
+}
+
+/** The live session a request's cookie names, proven for a write and renewed; for routes that name no tenant. */
+export async function sessionOf(
+  request: Request,
+  platform: PlatformView,
+  now: number,
+  publicUrl: string,
+): Promise<Session | null> {
+  const live = await liveSession(request, platform, now);
+  return live && proveSession(request, live, platform, now, publicUrl);
 }
 
 /**
@@ -102,18 +126,18 @@ export async function signOut(request: Request, platform: PlatformView, now: num
 /**
  * Step 6 of the verifier chain: a session cookie, on a request without an `authorization` header, is its person when
  * they are a member of the organization of the board the path names. Anyone else is told the board does not exist,
- * so a session reveals no other organization (docs/codebase.md 5.3).
+ * before any CSRF proof is asked, so a session reveals no other organization (docs/codebase.md 4.4 step 3, 5.3).
  */
 export function sessionVerifier(platform: PlatformView, now: () => number, publicUrl: string): CredentialVerifier {
   return {
     name: "session",
     match: (request) => !request.headers.has("authorization") && cookieOf(request, SESSION_COOKIE) !== null,
     async verify(request, board) {
-      const session = await sessionOf(request, platform, now(), publicUrl);
-      if (!session) return null;
-      const { id, handle, name, avatar } = session.person;
-      const member = await board.member(id);
-      if (!member) throw new BoardError("not_found", "no such board or route");
+      const at = now();
+      const live = await liveSession(request, platform, at);
+      if (!live) return null;
+      const member = await boardMember(board, live.record.person.id);
+      const { id, handle, name, avatar } = (await proveSession(request, live, platform, at, publicUrl)).person;
       const principal = `ob:user:${id}`;
       const person: Principal = { actor: principal, principal, profile: null, [credentialKind]: "session" };
       return {
