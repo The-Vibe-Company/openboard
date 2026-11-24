@@ -32,7 +32,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [127, 129]
-status: claimed
+status: done
 claimed_by: claude-t130
 issue: 131
 ---
@@ -41,7 +41,7 @@ issue: 131
 As an owner, I replace a secret without breaking the agents that still use the old one for a while.
 
 ## Done when
-- [ ] `ob connections rotate <id> --overlap 10m --secret-file new.secret` writes a new secret; both secrets work for ten minutes, then only the new one
+- [x] `ob connections rotate <id> --overlap 10m --secret-file new.secret` writes a new secret; both secrets work for ten minutes, then only the new one
 
 ## Out of scope
 - Claimed tokens, which are unaffected.
