@@ -4,6 +4,7 @@ import { Author, ChannelPath, Labels, Message, MessageAuthor } from "./messages.
 import {
   TaskCanceledEvent,
   TaskReopenedEvent,
+  TaskNeedsChangedEvent,
   TaskReadyEvent,
   TaskClaimedEvent,
   TaskCompletedEvent,
@@ -116,6 +117,7 @@ export const Event = Type.Union([
   TaskCreatedEvent,
   TaskCanceledEvent,
   TaskReopenedEvent,
+  TaskNeedsChangedEvent,
   TaskReadyEvent,
   TaskClaimedEvent,
   TaskCompletedEvent,

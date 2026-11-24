@@ -1334,6 +1334,33 @@ Example:
 ob tasks reopen 42
 ```
 
+## `ob tasks needs`
+
+Replace a task's prerequisites.
+
+```sh
+ob tasks needs <id> (<needs>... | --none)
+```
+
+Arguments:
+
+- `id`: A task ID.
+- `needs`: Prerequisite task IDs; an empty list clears them.
+
+Options:
+
+- `--none`: Clear every prerequisite.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_needs`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: task_not_owned`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_needs`.
+
+Example:
+
+```sh
+ob tasks needs 42 40 41
+```
+
 ## `ob connections revoke-agent`
 
 Revoke one claimed agent of a connection; the connection and its other agents keep working.

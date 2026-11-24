@@ -4,26 +4,41 @@ title: Change what a task needs
 milestone: M9-tasks
 package: core
 writes:
-  - packages/contract/src/operations/task-changes.ts
-  - packages/core/src/tasks/needs.ts
-  - packages/core/test/tasks/needs.test.ts
-  - packages/core/src/tasks/readiness.ts
-  - packages/core/test/tasks/readiness.test.ts
-  - packages/contract/src/entities/task-events.ts
-  - packages/core/src/tasks/events.ts
-  - packages/driver-sql/src/views/task-folds.ts
-  - packages/driver-sql/src/statements.ts
-  - packages/ports/src/tasks.ts
-  - packages/driver-sql/src/views/tasks.ts
-  - packages/server/src/operations/task-changes.ts
-  - packages/server/test/tasks/needs-change.test.ts
-  - packages/cli/src/commands/tasks.ts
+  - docs/protocol.md
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/src/commands/tasks/needs.ts
+  - packages/cli/src/commands/usage.ts
   - packages/cli/test/tasks.test.ts
+  - packages/contract/src/entities/events.ts
+  - packages/contract/src/entities/task-events.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/operations/tasks/needs.ts
+  - packages/core/src/events/tail.ts
+  - packages/core/src/index.ts
+  - packages/core/src/tasks/needs.ts
+  - packages/core/src/tasks/events.ts
+  - packages/core/src/tasks/readiness.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/driver-sql/src/views/watchers/index.ts
+  - packages/driver-sql/src/views/webhooks/deliveries.ts
+  - packages/driver-sqlite/test/explain.test.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/tasks.ts
+  - packages/server/src/operations/tasks/feed.ts
+  - packages/server/src/operations/tasks/needs.ts
+  - packages/server/test/isolation/cases.ts
+  - packages/server/test/tasks/needs-change.test.ts
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [256]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 431
 ---
 
@@ -31,8 +46,8 @@ issue: 431
 As a planner, I change what a task waits for after creating it, `ob tasks needs 4 2 3` or `ob tasks needs 4 --none`.
 
 ## Done when
-- [ ] with 2 not completed, `ob tasks needs 4 2` prints `4 needs #2` and 4 reads `waiting`; naming only completed tasks makes it `ready` in the same write (`task.needs_changed` with state `waiting`, then `task.ready`); `ob tasks needs 4 --none` prints `4 needs nothing` and 4 reads `ready` (`task.needs_changed` with state `ready`, no `task.ready`); the same set again appends nothing
-- [ ] a change naming a thread that is no task or a canceled task prints `error: invalid_needs: …`; another profile of a connection without `manage` gets `error: task_not_owned: …`
+- [x] with 2 not completed, `ob tasks needs 4 2` prints `4 needs #2` and 4 reads `waiting`; naming only completed tasks makes it `ready` in the same write (`task.needs_changed` with state `waiting`, then `task.ready`); `ob tasks needs 4 --none` prints `4 needs nothing` and 4 reads `ready` (`task.needs_changed` with state `ready`, no `task.ready`); the same set again appends nothing
+- [x] a change naming a thread that is no task or a canceled task prints `error: invalid_needs: …`; another profile of a connection without `manage` gets `error: task_not_owned: …`
 
 ## Out of scope
 - Changes that would make a task wait for itself (258); changes on a claimed or finished task (259).

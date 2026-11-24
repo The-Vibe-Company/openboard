@@ -95,6 +95,7 @@ import {
   showTypingHandler,
 } from "./sync/stubs.ts";
 import { cancelTaskHandler } from "./tasks/cancel.ts";
+import { setTaskNeedsHandler } from "./tasks/needs.ts";
 import { claimTaskHandler } from "./tasks/claim.ts";
 import { completeTaskHandler, failTaskHandler } from "./tasks/complete.ts";
 import { releaseTaskHandler } from "./tasks/release.ts";
@@ -221,6 +222,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   approveDeviceSignIn: approveDeviceSignInHandler,
   attachSync: attachSyncHandler,
   cancelTask: cancelTaskHandler,
+  setTaskNeeds: setTaskNeedsHandler,
   changeMemberRole: changeMemberRoleHandler,
   claimConnection: claimConnectionHandler,
   claimTask: claimTaskHandler,

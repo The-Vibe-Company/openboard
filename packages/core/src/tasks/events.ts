@@ -8,6 +8,7 @@ import type {
   TaskFailedPayload,
   TaskReleasedPayload,
   TaskReopenedPayload,
+  TaskNeedsChangedPayload,
   TaskRenewedPayload,
 } from "@openboard/contract";
 import type { MessagePosted } from "../messages/post.ts";
@@ -97,8 +98,19 @@ export interface TaskReopened extends Omit<MessagePosted, "type" | "payload"> {
   };
 }
 
+export interface TaskNeedsChanged extends Omit<MessagePosted, "type" | "payload"> {
+  readonly type: "task.needs_changed";
+  readonly payload: Omit<TaskNeedsChangedPayload, "id" | "needs"> & {
+    readonly id: number;
+    readonly needs: readonly number[];
+    readonly waitingOn: number;
+    readonly view: Message & { task: NonNullable<Message["task"]> };
+  };
+}
+
 export type TaskEvent =
   | TaskReopened
+  | TaskNeedsChanged
   | TaskCanceled
   | TaskExpired
   | TaskCreated

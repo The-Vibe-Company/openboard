@@ -26,6 +26,7 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
   createGrant: (tenant) => ({ body: grantDraft(tenant) }),
   createGrants: (tenant) => ({ body: { grants: [grantDraft(tenant)] } }),
   cancelTask: () => ({ body: { reason: "test" } }),
+  setTaskNeeds: () => ({ body: { needs: [] } }),
   claimTask: () => ({ body: {} }),
   updateGrant: (tenant) => ({
     body: {

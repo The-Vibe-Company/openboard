@@ -4,6 +4,7 @@ import { type Command, type CommandContext, Misuse } from "./index.ts";
 import { runCancelTask } from "./tasks/cancel.ts";
 import { runTaskCommand } from "./tasks/claim.ts";
 import { runSettleTask } from "./tasks/complete.ts";
+import { taskNeedsCommand } from "./tasks/needs.ts";
 import { runRenewTask } from "./tasks/renew.ts";
 
 type Contracted = (typeof operations)[number];
@@ -201,5 +202,11 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
 }
 
 export const derivedCommands: readonly Command[] = operations.flatMap((operation) =>
-  operation.cli === false ? [] : [derive({ ...operation, cli: operation.cli })],
+  operation.cli === false
+    ? []
+    : [
+        operation.name === "setTaskNeeds"
+          ? taskNeedsCommand(operation.cli.command)
+          : derive({ ...operation, cli: operation.cli }),
+      ],
 );

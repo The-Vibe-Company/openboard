@@ -1,0 +1,32 @@
+import type { setTaskNeeds } from "@openboard/contract";
+import { agents, decideTaskNeedsChange, grants, parseId, taskForNeedsChange } from "@openboard/core";
+import { canListMentionActors, unrestrictedLocalOwner, withoutMentionDetails } from "../../auth/access.ts";
+import { authorOf } from "../../auth/author.ts";
+import { callerCan } from "../../deps.ts";
+import type { Handler } from "../index.ts";
+import { readNeeds } from "../tasks.ts";
+
+export const setTaskNeedsHandler: Handler<typeof setTaskNeeds> = (ctx, input) => {
+  const position = parseId(input.id);
+  return ctx.board.write(
+    async (writer) => {
+      const target = position === null ? null : await writer.message(position);
+      const channelPermissions = target ? agents.allowedAt(ctx.by[callerCan] ?? {}, target.channel) : [];
+      const permissions = unrestrictedLocalOwner(ctx.by) ? grants.PERMISSIONS : channelPermissions;
+      const root = taskForNeedsChange(target, input.id, ctx.by, permissions);
+      const needs = await readNeeds(ctx, writer, input.needs);
+      const { events, task } = decideTaskNeedsChange(writer, root, needs, {
+        by: ctx.by,
+        author: authorOf(ctx.by),
+        now: ctx.now(),
+      });
+      if (events.length) {
+        ctx.debitWrite();
+        await writer.append(events);
+      }
+      return { task: canListMentionActors(ctx.by) ? task : { ...withoutMentionDetails(task), task: task.task } };
+    },
+    ctx.by.actor,
+    position,
+  );
+};

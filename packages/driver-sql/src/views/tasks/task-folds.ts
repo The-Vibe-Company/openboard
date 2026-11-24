@@ -14,6 +14,11 @@ export const taskFoldStatements = {
     FROM input CROSS JOIN ${needIds} AS need
     JOIN tasks t ON t.id = CAST(need.value AS BIGINT)
     WHERE t.org_id = ${"orgId"} AND t.board_id = ${"boardId"}`,
+  // Legacy edges awaiting backfill belong to the globally unique board ID.
+  deleteTaskNeeds: sql`DELETE FROM task_needs
+    WHERE (org_id = ${"orgId"} OR org_id IS NULL) AND board_id = ${"boardId"} AND task = ${"id"}`,
+  updateTaskNeeds: sql`UPDATE tasks SET state = ${"state"}, waiting_on = ${"waitingOn"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   decrementTaskNeeds: sql`UPDATE tasks SET waiting_on = waiting_on - 1
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND waiting_on > 0 AND id IN (
       SELECT task FROM task_needs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND needs = ${"id"}
@@ -38,6 +43,21 @@ export const taskFoldStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND re IS NULL`,
 };
 
+async function replaceTaskNeeds(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  event: Extract<TaskEvent, { type: "task.needs_changed" }>,
+) {
+  const scoped = { ...keys, id: event.message };
+  const { needs, waitingOn, view } = event.payload;
+  await query(tx, dialect, taskFoldStatements.deleteTaskNeeds, scoped);
+  if (needs.length > 0) {
+    await query(tx, dialect, taskFoldStatements.insertTaskNeeds, { ...scoped, ids: JSON.stringify(needs) });
+  }
+  await query(tx, dialect, taskFoldStatements.updateTaskNeeds, { ...scoped, state: view.task.state, waitingOn });
+}
+
 async function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: TaskEvent) {
   if (
     event.type === "task.expired" ||
@@ -47,6 +67,7 @@ async function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: Tas
   ) {
     return query(tx, dialect, taskFoldStatements.readyTask, { ...keys, id: event.message });
   }
+  if (event.type === "task.needs_changed") return replaceTaskNeeds(tx, dialect, keys, event);
   const { by } = event.payload;
   if (event.type === "task.created") {
     await query(tx, dialect, taskFoldStatements.insertTask, {

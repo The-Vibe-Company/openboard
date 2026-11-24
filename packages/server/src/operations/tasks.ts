@@ -83,7 +83,12 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
   return { task: { ...visible, task: visible.task } };
 };
 
-async function readNeeds(ctx: BoardContext, writer: BoardWriter, needs: readonly string[] = [], self?: number | null) {
+export async function readNeeds(
+  ctx: BoardContext,
+  writer: BoardWriter,
+  needs: readonly string[] = [],
+  self?: number | null,
+) {
   const ids = needPositions(needs, self);
   return checkNeeds(ids, await writer.taskNeeds(ids), (root) => canReadChannel(ctx.by, root.channel));
 }

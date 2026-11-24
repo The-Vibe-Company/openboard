@@ -26,7 +26,7 @@ const FORWARD_LIMIT = 200;
 
 const feedTypes: Fragment = {
   fragment: () =>
-    "('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.ready', 'task.expired', 'task.released', 'watch.failed')",
+    "('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.ready', 'task.expired', 'task.released', 'watch.failed')",
 };
 
 /** Bookkeeping: events that concern no message, served only with `all` (docs/data-model.md, `visibility` 1). */
@@ -43,19 +43,19 @@ function eventPage(newest: boolean) {
   const start: Fragment = { fragment: () => (newest ? `b.head - ${NEWEST_LOOKBACK}` : "b.head") };
   return sql`SELECT b.head, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal,
     e.visibility, e.payload,
-    CASE WHEN ${"history"} = 1 AND e.visibility = 0 AND e.type IN ('message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.ready', 'task.expired', 'task.released') THEN (
+    CASE WHEN ${"history"} = 1 AND e.visibility = 0 AND e.type IN ('message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.ready', 'task.expired', 'task.released') THEN (
       SELECT p.payload FROM events p
       WHERE p.org_id = ${"orgId"} AND p.board_id = ${"boardId"} AND p.thread = e.thread
         AND p.message = e.message AND p.id < e.id AND p.visibility = 0
-        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.ready', 'task.expired', 'task.released')
+        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.ready', 'task.expired', 'task.released')
       ORDER BY p.id DESC LIMIT 1
     ) END AS previous,
     CASE WHEN ${"rootLabels"} = 1 AND e.message <> e.thread AND e.visibility = 0
-      AND e.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.ready', 'task.expired', 'task.released') THEN (
+      AND e.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.ready', 'task.expired', 'task.released') THEN (
       SELECT p.payload FROM events p
       WHERE p.org_id = ${"orgId"} AND p.board_id = ${"boardId"} AND p.thread = e.thread
         AND p.message = e.thread AND p.id < e.id AND p.visibility = 0
-        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.ready', 'task.expired', 'task.released')
+        AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed', 'task.created', 'task.claimed', 'task.completed', 'task.failed', 'task.canceled', 'task.reopened', 'task.needs_changed', 'task.ready', 'task.expired', 'task.released')
       ORDER BY p.id DESC LIMIT 1
     ) END AS root${projectedView}
     FROM boards b LEFT JOIN events e ON e.org_id = b.org_id AND e.board_id = b.id
@@ -92,66 +92,20 @@ export function messageEvent(row: Row): FeedEvent {
     visibility: 0 as const,
   };
   const payload = JSON.parse(String(row.payload)) as unknown;
-  if (row.type === "task.created")
-    return {
-      ...common,
-      type: "task.created",
-      payload: payload as Extract<TaskEvent, { type: "task.created" }>["payload"],
-    };
-  if (row.type === "task.expired")
-    return {
-      ...common,
-      type: "task.expired",
-      payload: payload as Extract<TaskEvent, { type: "task.expired" }>["payload"],
-    };
-  if (row.type === "task.released")
-    return {
-      ...common,
-      type: "task.released",
-      payload: payload as Extract<TaskEvent, { type: "task.released" }>["payload"],
-    };
-  if (row.type === "task.canceled")
-    return {
-      ...common,
-      type: "task.canceled",
-      payload: payload as Extract<TaskEvent, { type: "task.canceled" }>["payload"],
-    };
-  if (row.type === "task.ready")
-    return {
-      ...common,
-      type: "task.ready",
-      payload: payload as Extract<TaskEvent, { type: "task.ready" }>["payload"],
-    };
-  if (row.type === "task.reopened")
-    return {
-      ...common,
-      type: "task.reopened",
-      payload: payload as Extract<TaskEvent, { type: "task.reopened" }>["payload"],
-    };
-  if (row.type === "task.failed")
-    return {
-      ...common,
-      type: "task.failed",
-      payload: payload as Extract<TaskEvent, { type: "task.failed" }>["payload"],
-    };
-  if (row.type === "task.completed")
-    return {
-      ...common,
-      type: "task.completed",
-      payload: payload as Extract<TaskEvent, { type: "task.completed" }>["payload"],
-    };
-  if (row.type === "task.renewed")
-    return {
-      ...common,
-      type: "task.renewed",
-      payload: payload as Extract<TaskEvent, { type: "task.renewed" }>["payload"],
-    };
-  if (row.type === "task.claimed")
-    return {
-      ...common,
-      type: "task.claimed",
-      payload: payload as Extract<TaskEvent, { type: "task.claimed" }>["payload"],
-    };
+  switch (row.type) {
+    case "task.created":
+    case "task.expired":
+    case "task.released":
+    case "task.canceled":
+    case "task.ready":
+    case "task.needs_changed":
+    case "task.reopened":
+    case "task.failed":
+    case "task.completed":
+    case "task.renewed":
+    case "task.claimed":
+      return { ...common, type: row.type, payload } as TaskEvent;
+  }
   if (row.type === "labels.changed")
     return { ...common, type: "labels.changed", payload: payload as LabelsChanged["payload"] };
   if (row.type === "message.deleted")
