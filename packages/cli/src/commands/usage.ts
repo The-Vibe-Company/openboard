@@ -348,7 +348,6 @@ function errorsOf(used: readonly Contracted[], own: readonly string[]): string[]
   const authenticated = used.some((operation) => operation.scope !== "public") ? AUTHENTICATED : [];
   return [...new Set([...ALWAYS, ...authenticated, ...used.flatMap((operation) => operation.errors), ...own])].sort();
 }
-
 function referenceOf(command: AnyCommand): CommandReference {
   const words = command.words.join(" ");
   const derived = operations.find((operation) => operation.cli && operation.cli.command.join(" ") === words);
@@ -365,6 +364,7 @@ function referenceOf(command: AnyCommand): CommandReference {
   const needed = `${shown} [`.split(" ").findIndex((word) => !word.startsWith("<"));
   const meanings = {
     ...handwritten?.options,
+    ...(derived?.name === "claimTask" && { next: "Claim the next ready task in --channel." }),
     ...(derived?.name === "assignTask" && { pool: "Return the task to the pool." }),
     ...(derived?.name === "setTaskNeeds" && { none: "Clear every prerequisite." }),
     ...(derived?.name === "createTask" && { file: "Path to a JSON task array, or - for stdin." }),

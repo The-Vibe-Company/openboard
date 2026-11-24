@@ -58,7 +58,7 @@ function root(id: string, text: string, labels: Record<string, string>) {
   return { id, text, labels: { ...labels, "board.task": "ready" }, task: { state: "ready" } };
 }
 
-async function tasks(args: readonly string[], answer: unknown) {
+async function tasks(args: readonly string[], answer: unknown, env: typeof ENV & { HOME?: string } = ENV) {
   const lines: string[] = [];
   const urls: string[] = [];
   const fetch = async (request: Request) => {
@@ -66,7 +66,7 @@ async function tasks(args: readonly string[], answer: unknown) {
     return Response.json(answer);
   };
   const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
-  expect(await runCli(["tasks", ...args], ENV, { fetch, output })).toBe(0);
+  expect(await runCli(["tasks", ...args], env, { fetch, output })).toBe(0);
   return { lines, urls };
 }
 
@@ -319,4 +319,18 @@ test("ob tasks unblock sends no body and prints its outcome", async () => {
   expect(JSON.parse(lines[1] ?? "")).toEqual({ task: { id: "2" }, outcome: "unchanged" });
   expect(await runCli(["tasks", "unblock", "2"], ENV, { fetch, output })).toBe(0);
   expect(lines[2]).toBe("2");
+});
+
+test.each([
+  [["--next", "--channel", "dev"], "no ready task in dev"],
+  [["--channel", "dev", "--json"], '{"task":null}'],
+] as const)("ob tasks claim %j exits zero when the queue is empty", async (args, line) => {
+  const home = mkdtempSync(join(tmpdir(), "ob-claim-next-"));
+  try {
+    const { lines, urls } = await tasks(["claim", ...args], { task: null }, { ...ENV, HOME: home });
+    expect(urls).toEqual([`${ENV.BOARD_URL}/tasks/claim`]);
+    expect(lines).toEqual([line]);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });

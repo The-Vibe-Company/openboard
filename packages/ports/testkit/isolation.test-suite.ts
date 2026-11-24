@@ -250,6 +250,13 @@ const writerCases: Cases<BoardWriter> = {
     inWrite(a, async (writer) => {
       expect(await writer.taskDependants(b.task)).toEqual({ any: false, ready: [] });
     }),
+  nextReadyTask: async (a, b) => {
+    const root = await b.board.taskRoot(b.task);
+    if (!root?.task) throw new Error("missing foreign task");
+    const input = { channel: root.channel, actor: root.by.actor, principal: root.task.owner, now: at + 900_000 };
+    expect(await inWrite(b, (writer) => writer.nextReadyTask(input))).toMatchObject({ id: root.id });
+    return inWrite(a, async (writer) => expectNull(await writer.nextReadyTask(input)));
+  },
   taskClaimProof: async (a, b) => {
     expect(await inWrite(b, (writer) => writer.taskClaimProof(b.task))).toMatchObject({ until: at + 900_000 });
     return inWrite(a, async (writer) => expectNull(await writer.taskClaimProof(b.task)));

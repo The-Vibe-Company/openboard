@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
-import { BoardError, type CliSpec, createTaskBatch, operations } from "@openboard/contract";
+import { BoardError, type CliSpec, claimNextTask, createTaskBatch, operations } from "@openboard/contract";
 import { formats } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 import { profileActor, taskAssignCommand } from "./tasks/assign.ts";
 import { runCancelTask } from "./tasks/cancel.ts";
-import { runTaskCommand } from "./tasks/claim.ts";
+import { runClaimNext, runTaskCommand } from "./tasks/claim.ts";
 import { runSettleTask } from "./tasks/complete.ts";
 import { runBlockTask } from "./tasks/hold.ts";
 import { taskNeedsCommand } from "./tasks/needs.ts";
@@ -179,7 +179,14 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     flags.set(flag, name);
     options.push(`[--${flag} <key>]...`);
   }
-  const usage = commandUsage(command, args, fields, options, alternative);
+  const usage =
+    operation.name === "claimNextTask"
+      ? "ob tasks claim [--next] --channel <channel> [--lease <lease>]"
+      : commandUsage(command, args, fields, options, alternative);
+  if (operation.name === "claimNextTask") {
+    fields.set("next", { schema: { type: "boolean" }, required: false });
+    flags.set("next", "next");
+  }
   const post = operation.name === "postMessage";
   const derived: Command = {
     words: command,
@@ -187,14 +194,14 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     usage: post ? `${usage}\nob ${[...command, "<channel>", "--file <path>", ...options].join(" ")}` : usage,
     async run(ctx) {
       const input =
-        post && hasFileOption(ctx, flags, fields)
+        post && hasOption("--file", ctx, flags, fields)
           ? postFileInput(ctx, fields, flags, nullEntries)
           : inputOf(ctx, args, fields, flags, nullEntries, alternative);
       return runDerived(ctx, operation.name, input);
     },
   };
   if (operation.name !== "createTask") return derived;
-  return taskCreateWithBatch(derived, (ctx) => hasFileOption(ctx, flags, fields));
+  return taskCreateWithBatch(derived, (ctx) => hasOption("--file", ctx, flags, fields));
 }
 
 function postFileInput(
@@ -233,6 +240,10 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
   if (name === "createTask" && typeof input.for === "string") {
     input.for = profileActor((await ctx.client.getMe({})).principal, input.for);
   }
+  if (name === "claimNextTask") {
+    if (!input.channel) throw new Misuse("--channel is required to claim the next task");
+    return runClaimNext(ctx, { channel: String(input.channel), lease: input.lease as number | undefined });
+  }
   if (name === "claimTask" || name === "createTask") {
     const invoke = ctx.client[name] as (
       ...args: Parameters<Invoke>
@@ -245,10 +256,15 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
   return 0;
 }
 
-function hasFileOption(ctx: CommandContext, flags: ReadonlyMap<string, string>, fields: ReturnType<typeof fieldsOf>) {
+function hasOption(
+  option: string,
+  ctx: CommandContext,
+  flags: ReadonlyMap<string, string>,
+  fields: ReturnType<typeof fieldsOf>,
+) {
   for (let index = 0; index < ctx.optionsEnd; index++) {
     const word = ctx.args[index];
-    if (word === "--file") return true;
+    if (word === option) return true;
     if (!word?.startsWith("--")) continue;
     const name = flags.get(word.slice(2));
     if (name && fields.get(name)?.schema.type !== "boolean") index++;
@@ -306,7 +322,26 @@ async function batchAssignees(ctx: CommandContext, tasks: unknown[]) {
 }
 
 export const derivedCommands: readonly Command[] = operations.flatMap((operation) => {
-  if (operation.cli === false || operation.name === "createTaskBatch") return [];
+  if (operation.cli === false || operation.name === "createTaskBatch" || operation.name === "claimNextTask") return [];
+  if (operation.name === "claimTask") {
+    const byId = derive({ ...operation, cli: operation.cli });
+    const next = derive({ ...claimNextTask, cli: claimNextTask.cli || operation.cli });
+    const fields = fieldsOf(claimNextTask);
+    const flags = new Map([
+      ["lease", "lease"],
+      ["channel", "channel"],
+    ]);
+    return [
+      {
+        ...byId,
+        usage: `${byId.usage}\n${next.usage}`,
+        run: (ctx) =>
+          hasOption("--channel", ctx, flags, fields) || hasOption("--next", ctx, flags, fields)
+            ? next.run(ctx)
+            : byId.run(ctx),
+      },
+    ];
+  }
   if (operation.name === "assignTask") return [taskAssignCommand(operation.cli.command)];
   if (operation.name === "setTaskNeeds") return [taskNeedsCommand(operation.cli.command)];
   return [derive({ ...operation, cli: operation.cli })];
