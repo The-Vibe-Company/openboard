@@ -721,6 +721,8 @@ Create omits `secret` when the caller supplies it. The `github` preset
 requires a nonempty secret and uses its UTF-8 bytes as the HMAC key. The CLI
 reads that preset's secret file verbatim, including trailing newlines. A missing
 GitHub secret or an unsupported signing preset returns 400 `invalid_signing`.
+The `stripe` preset uses the UTF-8 bytes of the supplied or generated secret
+as its HMAC key. The CLI reads and writes Stripe secret files verbatim.
 Targets follow the [webhook URL policy](auth.md#ssrf-on-webhook-urls).
 A refused target returns 400 `invalid_url` with one of these reasons:
 `syntax`, `credentials`, `fragment`, `scheme`, `port`, `service_host`,

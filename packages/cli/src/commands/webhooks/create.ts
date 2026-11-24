@@ -47,7 +47,8 @@ export const createWebhookCommand: Command = {
     const paths = options(ctx.args, ctx.optionsEnd);
     const spec = readSpec(paths.spec);
     if (spec.signing?.secret !== undefined) throw new Misuse("put the signing secret in --secret-file");
-    const file = reserveSecret(paths.secret, spec.signing?.preset === "github");
+    const preset = spec.signing?.preset;
+    const file = reserveSecret(paths.secret, preset === "github" || preset === "stripe");
     if ("secret" in file) {
       const { webhook } = await ctx.client.createWebhook({
         ...spec,
@@ -66,7 +67,7 @@ export const createWebhookCommand: Command = {
       throw error;
     }
     try {
-      writeFileSync(file.fd, `${created.secret}\n`);
+      writeFileSync(file.fd, preset === "stripe" ? created.secret : `${created.secret}\n`);
     } finally {
       closeSync(file.fd);
     }

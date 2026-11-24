@@ -7,3 +7,16 @@ test.each(["github", "unknown"])("rejects invalid %s signing with 400 invalid_si
     validateWebhookSigning({ name: "receiver", url: "https://example.com/hook", filter: { tail: "dev" }, signing }),
   ).toThrow(expect.objectContaining({ code: "invalid_signing", status: 400 }));
 });
+
+test("allows a receiver-chosen or generated secret for the stripe preset", () => {
+  const spec = { name: "receiver", url: "https://example.com/hook", filter: { tail: "dev" } };
+  expect(validateWebhookSigning({ ...spec, signing: { preset: "stripe" } })).toEqual({
+    preset: "stripe",
+    secret: undefined,
+  });
+  const secret = "  receiver fixture  ";
+  expect(validateWebhookSigning({ ...spec, signing: { preset: "stripe", secret } })).toEqual({
+    preset: "stripe",
+    secret,
+  });
+});
