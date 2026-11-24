@@ -474,6 +474,11 @@ carrying its last emitted cursor as `id:`. Reconnect with that cursor in
 `Last-Event-ID` to resume on another instance. A draining instance returns
 503 `unavailable` for new board requests. An in-flight long-poll returns its latest page.
 
+An instance allows up to 20 open SSE streams per authenticated principal and
+500 per organization. When either cap is reached, a new stream request returns
+HTTP 429 `rate_limited` with `Retry-After` before sending SSE frames. A slot
+becomes available when a stream ends. JSON feeds and long-polls do not use slots.
+
 `GET /events?channel=dev&last=2` returns the channel's newest events, oldest first,
 with the current message views and the board head as `cursor`. Pass that cursor as
 `after` to continue from the same point. `last` accepts integers from 1 through

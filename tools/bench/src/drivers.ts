@@ -3,6 +3,7 @@ import { createTestDatabases, statementCounter as postgresCounter, postgresDrive
 import { sqliteDriver, statementCounter } from "@openboard/driver-sqlite";
 import { type App, createApp, type Deps, mintLocalOwnerToken, type ServerConfig } from "@openboard/server";
 import { fakeGitHub, hostedBoard, hostedConfig } from "./hosted";
+import { SSE_TAILS } from "./workloads/sse";
 
 /** One server instance and the database counters of its store. */
 export interface Instance {
@@ -56,6 +57,7 @@ function bootLocal() {
     publicUrl: ORIGIN,
     localOwner: "ob:user:local-tools",
     localOwnerTokenHash: owner.hash,
+    streamLimits: { perPrincipal: SSE_TAILS },
   };
   const counters = Object.assign(statementCounter(), { roundTrips: 0 });
   const { now, advanceWriteClock } = workloadClock();

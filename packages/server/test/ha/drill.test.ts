@@ -17,6 +17,18 @@ async function acknowledged(response: Response): Promise<string> {
   return ((await response.json()) as { message: { id: string } }).message.id;
 }
 
+/** A terminated pool can answer unavailable while it replaces its connections. Retry the same id. */
+async function recoveredPost(app: App, id: string, signal: AbortSignal): Promise<string> {
+  let response = await post(app, id);
+  while (response.status === 503) {
+    expect(await response.json()).toMatchObject({ error: { code: "unavailable" } });
+    if (signal.aborted) break;
+    response = await post(app, id);
+  }
+  if (!response.ok) throw new Error(`Postgres recovery write ${id} returned HTTP ${response.status}`);
+  return acknowledged(response);
+}
+
 async function openStream(app: App, signal: AbortSignal) {
   const response = await app.fetch(
     new Request(`${BOARD_URL}/events?channel=${channel}&after=0`, {
@@ -162,11 +174,11 @@ if (postgresTestUrl()) {
       ping?.();
       expect(await next).toBe(": ping\n\n");
 
-      const recoveredA = await acknowledged(await post(a, "retry-a"));
+      const recoveredA = await recoveredPost(a, "retry-a", signal);
       expect(await pollPosts(waiting)).toEqual([recoveredA]);
       expect(await readPosts(stream, 1)).toEqual([recoveredA]);
 
-      const recoveredB = await acknowledged(await post(b, "retry-b"));
+      const recoveredB = await recoveredPost(b, "retry-b", signal);
       expect(await readPosts(stream, 1)).toEqual([recoveredB]);
       expect(await acknowledged(await post(a, "retry-a"))).toBe(recoveredA);
       expect(await acknowledged(await post(b, "retry-b"))).toBe(recoveredB);

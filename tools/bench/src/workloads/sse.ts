@@ -2,7 +2,7 @@ import type { Server } from "../drivers";
 import { type Board, percentile, send } from "./request";
 
 const CHANNEL = "bench-sse";
-const TAILS = 50;
+export const SSE_TAILS = 50;
 const EVENTS = 1_000;
 
 export interface SseResult {
@@ -68,7 +68,7 @@ export async function runSseWorkload(server: Server): Promise<SseResult> {
   const decoder = new TextDecoder();
   const times: number[] = [];
   try {
-    for (let i = 0; i < TAILS; i++) tails.push(await openTail(instance, server.board, cursor, signal));
+    for (let i = 0; i < SSE_TAILS; i++) tails.push(await openTail(instance, server.board, cursor, signal));
 
     for (let i = 0; i < EVENTS; i++) {
       const started = performance.now();
@@ -81,7 +81,7 @@ export async function runSseWorkload(server: Server): Promise<SseResult> {
         throw new Error(`bench SSE tails did not all receive cursor ${expected} in order`);
       }
     }
-    return { tails: TAILS, events: EVENTS, p50: percentile(times, 50), p99: percentile(times, 99) };
+    return { tails: SSE_TAILS, events: EVENTS, p50: percentile(times, 50), p99: percentile(times, 99) };
   } finally {
     await Promise.all(tails.map((tail) => tail.cancel()));
   }
