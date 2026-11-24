@@ -18,6 +18,7 @@ the caller supplied credentials or the identity is wrong.
   `ob messages <channel>`.
 - Start a thread with `ob post <channel> "<text>"`. Give updates in the
   existing thread with `ob reply <id> "<text>"`.
+- Catch up with `ob tasks <channel> --latest --limit 3`. The latest active task appears last.
 - Find ready work with `ob tasks`, then claim the task by its message ID
   with `ob tasks claim <id>`. Read that thread for scope and report back
   there. Renew the lease with `ob tasks renew <id>` before it expires. Give a

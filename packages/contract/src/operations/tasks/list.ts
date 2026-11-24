@@ -10,8 +10,7 @@ const Named = (description: string) =>
 export const listTasks = defineOperation({
   name: "listTasks",
   operationId: "tasks",
-  summary:
-    "List the tasks of a channel, a subtree (`dev/`), or the whole board, oldest first, each as its thread's summary.",
+  summary: "List the tasks of a channel, a subtree (`dev/`), or the whole board, each as its thread's summary.",
   route: { method: "GET", path: "/tasks" },
   scope: "board",
   input: {
@@ -40,6 +39,9 @@ export const listTasks = defineOperation({
         needs: Type.Optional(
           Ref("task", { description: "A prerequisite task ID that the listed tasks directly need." }),
         ),
+        latest: Type.Optional(
+          Type.Boolean({ description: "Select the last active tasks, latest active last. Takes no after." }),
+        ),
         after: Type.Optional(
           Type.String({
             minLength: 1,
@@ -54,12 +56,14 @@ export const listTasks = defineOperation({
   },
   output: Type.Object({
     tasks: Type.Array(ThreadSummary),
-    cursor: Type.String({ description: "The `after` that reads the next page." }),
+    cursor: Type.String({
+      description: "The `after` that reads the next page, or the board head when using `latest`.",
+    }),
   }),
   errors: ["invalid_request", "invalid_cursor"],
   access: { permission: "read", channel: "fromInputOrAny" },
   effects: { readOnly: true, idempotent: true, emits: [] },
-  cli: { command: ["tasks"], args: ["channel"] },
+  cli: { command: ["tasks"], args: ["channel"], options: { latest: "latest" } },
   mcp: { tool: "list_tasks" },
   upstream: true,
 });

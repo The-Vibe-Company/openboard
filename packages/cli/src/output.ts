@@ -114,6 +114,7 @@ type TasksInput = {
   readonly owner?: string;
   readonly for?: string;
   readonly needs?: string;
+  readonly latest?: boolean;
   readonly limit?: number;
 };
 
@@ -132,13 +133,13 @@ function taskLine({ message }: OutputOf<typeof listTasks>["tasks"][number]): str
 /** One line per task, oldest first, then on a full page the command that reads the next one (upstream `vb tasks`). */
 function tasksText(output: unknown, input: Readonly<Record<string, unknown>>): string {
   const { tasks, cursor } = output as OutputOf<typeof listTasks>;
-  const { channel, state, label = [], by, owner, for: assignee, needs, limit } = input as TasksInput;
+  const { channel, state, label = [], by, owner, for: assignee, needs, latest, limit } = input as TasksInput;
   if (tasks.length === 0) {
     const which = state === undefined || state === "open" ? "open " : state === "all" ? "" : `${state} `;
     return `no ${which}tasks${channel === undefined ? "" : ` in ${channel}`}`;
   }
   const lines = tasks.map(taskLine);
-  if (tasks.length < (limit ?? 50)) return lines.join("\n");
+  if (latest || tasks.length < (limit ?? 50)) return lines.join("\n");
   const named = (flag: string, value: string | undefined) => (value === undefined ? [] : [flag, value]);
   const options = [
     ...named("--state", state),
