@@ -15,7 +15,12 @@ async function fakeProvider(request: Request): Promise<Response> {
   }
   if (pathname === "/user") {
     const id = Number.parseInt(new Bun.CryptoHasher("sha256").update(login).digest("hex").slice(0, 12), 16) + 1;
-    return Response.json({ id, login, name: login });
+    return Response.json({
+      id,
+      login,
+      name: login,
+      avatar_url: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+    });
   }
   if (pathname === "/user/emails") {
     return Response.json([{ email: `${login}@example.com`, primary: true, verified: true }]);
@@ -27,9 +32,10 @@ interface ServeOptions {
   signup?: NonNullable<ServerConfig["signup"]>;
   dataDir?: string;
   port?: number;
+  withProvider?: boolean;
 }
 
-export async function serve({ signup = "open", dataDir, port = 0 }: ServeOptions = {}) {
+export async function serve({ signup = "open", dataDir, port = 0, withProvider = true }: ServeOptions = {}) {
   const temporary = dataDir === undefined;
   const directory = dataDir ?? (await mkdtemp(join(tmpdir(), "openboard-browser-")));
   const clean = () => (temporary ? rm(directory, { recursive: true, force: true }) : Promise.resolve());
@@ -56,7 +62,9 @@ export async function serve({ signup = "open", dataDir, port = 0 }: ServeOptions
           localOwner: "ob:user:local-browser-test",
           signup,
           webDir: join(import.meta.dir, "../../dist"),
-          signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } },
+          ...(withProvider && {
+            signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } },
+          }),
         },
         { store, jobs: store.jobs },
         {

@@ -93,6 +93,10 @@ Session ─> /<org>/main if a member, or /new to create an organization
   reserved list ([protocol.md](./protocol.md#urls)). Rate-limited per person
   and per IP.
 
+The browser lists the configured providers on `/signin`. After sign-in, the
+shared header shows your handle and avatar. Use **Sign out** in the header to
+end the current session.
+
 ### Sign-in providers (a seam)
 
 ```ts
