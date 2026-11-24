@@ -24,7 +24,13 @@
     },
     "apps/web": {
       "may": ["sdk", "contract"],
-      "external": ["vite", "@vitejs/plugin-react", "@tanstack/router-plugin", "@playwright/test"]
+      "external": [
+        "vite",
+        "@vitejs/plugin-react",
+        "@tanstack/router-plugin",
+        "@tanstack/router-generator",
+        "@playwright/test"
+      ]
     },
     "apps/web/src": {
       "may": ["sdk", "contract"],

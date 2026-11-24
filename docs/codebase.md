@@ -499,6 +499,7 @@ Keeping `Verify` under two minutes (armada: `docs/ci-budget.md`): the six jobs r
 1. `vite build` in `apps/web` -> `apps/web/dist/`.
 2. `bun build --compile --minify apps/openboard/src/main.ts` with every file of `apps/web/dist/` as an extra entrypoint, embedded in the executable. `packages/server/src/web/assets.ts` serves them from `Bun.embeddedFiles` when compiled and from disk in development. A build test runs the binary and fetches `/` and one hashed asset.
    For source development, `bun run dev` starts Vite on localhost:5173 and proxies `/api` and `/auth` to port 8787.
+   `apps/web/src/routeTree.gen.ts` is generated from `apps/web/src/routes/` and not committed: the Vite plugin writes it on `dev` and `build`, and `apps/web/scripts/routes.ts` writes it before `typecheck`, both from `apps/web/router.options.ts`.
    Run `bun run e2e` to build the front and exercise it in Chromium with a SQLite-backed app and a fake sign-in provider.
    Install Chromium first with `bun run --cwd apps/web --bun playwright install chromium`.
 3. Targets `bun-linux-x64`, `bun-linux-arm64`, `bun-darwin-arm64`, `bun-darwin-x64` -> `dist/openboard-<target>`, copied as `dist/ob-<target>` (same bytes; the name only changes the default help). Both drivers are in every binary; `OPENBOARD_DATABASE_URL` selects one at startup.
