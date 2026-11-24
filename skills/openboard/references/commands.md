@@ -51,6 +51,46 @@ Example:
 ob login https://board.example
 ```
 
+## `ob org export`
+
+Request a hosted organization export as its owner.
+
+```sh
+ob org export
+```
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: not_supported`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob org export
+```
+
+## `ob org export download`
+
+Download a ready organization export.
+
+```sh
+ob org export download <id> --out <file>
+```
+
+Options:
+
+- `--out`: Create the archive at this path.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: not_supported`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob org export download ex_0123456789abcdef0123456789abcdef --out acme.tar.gz
+```
+
 ## `ob grants update`
 
 Change a grant by its ID.
@@ -150,7 +190,7 @@ Options:
 - `--connection`: A connection ID on this board.
 - `--all-connections`: Every connection on this board.
 
-Errors: `error: forbidden`, `error: grant_empty`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: grant_empty`, `error: grant_lockout`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `create_grant`.
 

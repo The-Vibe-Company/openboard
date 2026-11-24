@@ -1,7 +1,7 @@
 import { BoardError, CAN_HEADER, type Can, type Message, type Operation, type Role } from "@openboard/contract";
 import { agents, grants, narrowCan, parseCanHeader, parseId, resolveRankedCan } from "@openboard/core";
 import type { BoardView, PersonGrant } from "@openboard/ports";
-import { callerCan, credentialKind, memberOf, type Principal } from "../deps.ts";
+import { callerCan, credentialKind, memberOf, type Principal, requestNarrowed } from "../deps.ts";
 
 /** Only the local owner has implicit unrestricted access. */
 export function unrestrictedLocalOwner(by: Principal): boolean {
@@ -9,10 +9,21 @@ export function unrestrictedLocalOwner(by: Principal): boolean {
 }
 
 export function narrowCaller(request: Request, by: Principal): Principal {
+  if (request.headers.has("x-board-scope")) {
+    throw new BoardError(
+      "invalid_scope",
+      "Replace x-board-scope with x-board-can. Write pattern=permissions;pattern=permissions, for example dev/=read,post;ci/=read.",
+    );
+  }
   const header = request.headers.get(CAN_HEADER);
   if (header === null) return by;
   const base = unrestrictedLocalOwner(by) ? { "*": [...grants.PERMISSIONS] } : (by[callerCan] ?? {});
-  return { ...by, [callerCan]: narrowCan(base, parseCanHeader(header)) };
+  return { ...by, [callerCan]: narrowCan(base, parseCanHeader(header)), [requestNarrowed]: true };
+}
+
+/** A claimed token has a narrowing pin even without a request header. */
+export function isNarrowedCaller(by: Principal): boolean {
+  return by[requestNarrowed] === true || by[credentialKind] === "agent";
 }
 
 type Permission = NonNullable<Operation["access"]>["permission"] | "label";

@@ -20,7 +20,7 @@ export const createGrant = defineOperation({
     ),
   },
   output: Type.Object({ grant: GrantView }),
-  errors: ["invalid_grant", "grant_empty", "forbidden", "not_found"],
+  errors: ["invalid_grant", "grant_empty", "forbidden", "not_found", "grant_lockout"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: ["ob.grant.created"] },
   cli: false,

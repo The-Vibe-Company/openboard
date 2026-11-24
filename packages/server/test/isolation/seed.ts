@@ -1,3 +1,4 @@
+import { testOrgScope } from "@openboard/ports/testkit";
 import { createHash } from "node:crypto";
 import type { RefKind } from "@openboard/contract";
 import type { BoardKeys, Store } from "@openboard/ports";
@@ -195,7 +196,13 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
   if (org === "bravo") {
     await ok(send("POST", `/api/x/orgs/${org}/boards`, session, { slug: boardRef, name: marker }), "board ref");
   }
-  const ids = { ...made, member: `ob:user:${personId}`, org, board: boardRef };
+  const id = `ex_${digit.repeat(32)}`;
+  if (org !== "archived") {
+    const membership = await store.platform().orgMembership(org, personId);
+    if (!membership) throw new Error("seed: missing organization membership");
+    await store.org(testOrgScope(membership.orgId)).requestExport(id, personId, NOW, () => {});
+  }
+  const ids = { ...made, export: id, member: `ob:user:${personId}`, org, board: boardRef };
   const credentials = { session, personal, connection, agent };
   return { org, board: "main", ...credentials, ids, firstThread, invitationToken, userCode: pending.userCode, marker };
 }

@@ -10,6 +10,7 @@ import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
 import { staticFiles } from "./http/static.ts";
 import { startBoardOrgBackfill } from "./jobs/board-org-startup.ts";
+import { startExportJobs } from "./jobs/export-org.ts";
 import { startDumpJob } from "./jobs/dump.ts";
 import { type JobHandlers, startBoardJobs, startJobs } from "./jobs/registry.ts";
 import { logShippingJobs } from "./jobs/ship-log.ts";
@@ -32,7 +33,9 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     return work.finally(() => active.delete(work));
   };
   const platform = ports.store.platform();
+  const bucket = config.mode === "hosted" ? ports.bucket : undefined;
   const pipeline: Pipeline = {
+    bucket,
     shutdown: shutdown.signal,
     staticFiles: staticFiles(config.publicUrl, config.webDir),
     schemaReady: readinessCheck(() => ports.store.schemaReady()),
@@ -51,9 +54,9 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     chain: verifiers(config, platform, deps),
     providers: loginProviders(config, deps),
   };
-  const bucket = config.mode === "hosted" ? ports.bucket : undefined;
   if (config.mode === "hosted" && !bucket) deps.log.info("log shipping is off", {});
   const stopJobs = startBoardJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, handlers, bucket);
+  const stopExports = bucket && startExportJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, bucket);
   const stopDump = startDumpJob(ports.store.dumpIfMissing, bucket, deps);
   // Large bucket purges can outlive a lease. Give shipping its own runner so purges cannot occupy every poller.
   const stopShipping =
@@ -69,7 +72,7 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     ? startBoardOrgBackfill(platform, deps)
     : undefined;
   const stopBackground = async (release = false) => {
-    await Promise.all([stopJobs(release), stopShipping?.(release), stopBackfill?.(), stopDump()]);
+    await Promise.all([stopJobs, stopExports, stopShipping, stopBackfill, stopDump].map((stop) => stop?.(release)));
   };
   let draining: Promise<void> | undefined;
   let closing: Promise<void> | undefined;

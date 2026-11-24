@@ -408,8 +408,8 @@ Use a private, unversioned backup bucket dedicated to one database. Enable the c
 - Biome 2.5: two spaces, line width 120, double quotes (armada: `biome.json`).
 - Inline lint suppressions give their reason on the same line (armada: `docs/lint-policy.md`).
 - English everywhere.
-- No compatibility layers for OpenBoard-only surfaces: replace, delete the old, update every caller in the same PR (armada: non-negotiable 1). Two things keep an N/N-1 overlap because instances of two versions run side by side during a rolling deploy: the database schema (expand/contract, 7.6) and job payloads (a new job kind is handled by the release before the one that enqueues it). The upstream wire protocol is not ours to change.
-  A job first due later than one full deploy cycle after it is enqueued may ship with its handler. Task expiry has the explicit rollout exception recorded in [docs/decisions.md](decisions.md).
+- No compatibility layers for OpenBoard-only surfaces: replace, delete the old, update every caller in the same PR (armada: non-negotiable 1). Two things keep an N/N-1 overlap because instances of two versions run side by side during a rolling deploy: the database schema (expand/contract, 7.6) and changes to existing job payloads. The upstream wire protocol is not ours to change.
+  A new job kind may ship with the code that enqueues it, since runners only claim kinds they register; changing an existing kind's payload still follows N/N-1. See [the task expiry rollout notes](decisions.md).
 
 ## 6. Testing
 

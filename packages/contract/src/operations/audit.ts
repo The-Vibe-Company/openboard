@@ -111,6 +111,12 @@ export const OrgAuditEvent = Type.Union([
 ]);
 export type OrgAuditEvent = Static<typeof OrgAuditEvent>;
 
+export const OrgExportAuditEvent = Type.Union([
+  orgEntry("ob.export.requested", { id: Type.String() }),
+  orgEntry("ob.export.downloaded", { id: Type.String() }),
+]);
+export type OrgExportAuditEvent = Static<typeof OrgExportAuditEvent>;
+
 export const readOrgAudit = defineOperation({
   name: "readOrgAudit",
   summary: "Read the organization's audit events (members, roles, invitations, boards) after a cursor, oldest first.",
@@ -121,6 +127,7 @@ export const readOrgAudit = defineOperation({
     query: Type.Object(
       {
         after: Type.Optional(Type.String({ description: "A cursor this route answered; absent, from the start." })),
+        exportAfter: Type.Optional(Type.String({ description: "A cursor from exportAudit; absent, from the start." })),
         limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 200, default: 100 })),
       },
       { additionalProperties: false },
@@ -130,6 +137,7 @@ export const readOrgAudit = defineOperation({
     events: Type.Array(OrgAuditEvent),
     /** Where the next page starts: pass it back as `after`. */
     cursor: Type.String(),
+    exportAudit: Type.Optional(Type.Object({ events: Type.Array(OrgExportAuditEvent), cursor: Type.String() })),
   }),
   errors: ["invalid_cursor", "not_found", "unauthorized", "forbidden"],
   access: null,

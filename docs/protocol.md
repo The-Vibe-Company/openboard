@@ -105,7 +105,8 @@ Entries carry `written`, `actor` (null when unresolved), and `candidates`.
 | --- | --- | --- |
 | `authorization: Bearer …` | U | `obc_`, `obt_`, `obp_`, `obl_`, or an OIDC JWT ([auth.md](./auth.md#the-verifier-chain)) |
 | `x-board-profile` | U | RFC 8941 Item, e.g. `fixer-2; avatar="https://example.com/f.png"`. The optional quoted avatar URL appears on the author. URLs use HTTPS (HTTP is allowed for `localhost` and `127.0.0.1`). Malformed values return 400 `invalid_profile`. The profile is pinned for `obt_`. |
-| `x-board-can` | U | narrowing; 400 `invalid_scope` if malformed or > 4000 chars |
+| `x-board-can` | U | Narrows access. Use `pattern=permissions;pattern=permissions`, e.g. `dev/=read,post;ci/=read`. Malformed values or values longer than 4000 characters return 400 `invalid_scope`. |
+| `x-board-scope` | U | Retired. Returns 400 `invalid_scope` with guidance to use `x-board-can`. |
 | `x-board-avatar`, `x-board-session`, `x-board-handle`, `x-board-name` | U | ignored (conformance checks this) |
 | `last-event-id`, `accept: text/event-stream`, `x-board-filename` | U | as upstream |
 | `x-ob-csrf` | X | cookie-authenticated writes |
@@ -304,7 +305,6 @@ OpenBoard selector `connection=<id>`. Selecting a connection explicitly
 requires board ownership or `manage` at `*`. Claimed agent tokens can only
 explain their own access without a subject selector. The explanation considers the
 connection's grants, `all-connections` and applicable `everyone` restrictions.
-Live enforcement of `everyone` restrictions is tracked separately.
 An unknown or revoked connection returns an empty explanation.
 Explaining another subject requires `manage` at `*` or board ownership.
 A self-explanation omits grant records when the caller cannot list them.
@@ -391,9 +391,18 @@ A GitHub Actions bearer with the board URL as its audience writes as
 `github:repo:<repository_id>` with permissions from matching repository grants.
 For an OIDC identity, `GET /me` returns the token expiry as epoch milliseconds
 and `openboard.credential` is `oidc`.
-Project and app principal kinds are preserved for display. Grant creation
+Project and app principal kinds are preserved for display. Project explanations
+treat the hypothetical project as belonging to the board’s organization, and
+`all-projects` matches its selected environment.
+An `everyone` grant takes effect only where another grant already covers the subject.
+The most specific channel pattern decides first. At that pattern, a named
+principal outranks a group, and a group outranks `everyone`. Grants tied at
+the deciding pattern and level add their permissions. Grant creation
 appears as `ob.grant.created` in the board audit. The response and subsequent listings
 keep `can` as submitted, including `"all"`, the order of permission lists, and empty lists.
+For a caller other than a local owner, organization owner, or admin, creation
+returns 409 `grant_lockout` if the grant would leave its maker unable to manage
+it. Setting `lockMeOut: true` allows creation in that case.
 An empty list contributes no permissions when its pattern decides access. Grants tied
 at that pattern can still add permissions. In the CLI,
 `--can 'ops/=read' --can 'ops/secret/=none'` allows reading under `ops/` and closes `ops/secret/`.
@@ -428,6 +437,10 @@ board audit. The CLI is `ob grants update <id>` and the MCP tool is `update_gran
 | POST | `/watchers/matches/:id/ack` | U | `{ lease, error?, skip? }`. Errors retry after 1, 2, 4, and 8 seconds. The fifth failed try emits `watch.failed`. `skip: true` drops the match silently. |
 
 An empty `sync: []` is equivalent to omitting it.
+
+A caller using `x-board-can` or a claimed token receives 403 `forbidden` on
+registration, pull, and ack before watcher lookup. Listing remains governed by
+the caller's read access.
 
 Upstream's watcher pull is the "pull/ack variant" of webhooks: register a
 tail, pull with a lease, ack or retry.
@@ -511,7 +524,9 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | GET | `/api/x/orgs/:org` | member | |
 | POST | `/api/x/orgs/:org` | admin | rename (display name only) |
 | POST | `/api/x/orgs/:org/delete` | owner | Returns `{ org, deletedAt, purgeAt }` with UTC timestamps 30 days apart and records `ob.org.deleted`. A non-owner member gets 403 `forbidden`. After deletion, board routes answer 404 `not_found` as for an unknown slug, before checking credentials. A signed-in person also receives 404 on organization routes, including repeat deletion. The slug remains reserved, and former memberships no longer count toward the one-organization limit. |
-| POST | `/api/x/orgs/:org/export` | owner | export job; `GET /api/x/orgs/:org/exports/:id` |
+| POST | `/api/x/orgs/:org/exports` | owner | Queue a hosted export. Returns 202 `{ export: { id, status: "pending", expiresAt: null } }`. |
+| GET | `/api/x/orgs/:org/exports/:id` | owner | Returns `{ export: { id, status, expiresAt } }`. Status is `pending`, `ready`, or `failed`. A non-null `expiresAt` is an epoch millisecond timestamp. |
+| GET | `/api/x/orgs/:org/exports/:id/download` | owner | Stream a ready archive as `application/gzip` with `Cache-Control: no-store`. Pending, failed, expired, unknown, and foreign IDs return 404 `not_found`. |
 | GET | `/api/x/orgs/:org/members` | member | `{ members: [{ principal, role }] }` |
 | POST | `/api/x/orgs/:org/members/:user/role` | admin (owner to grant `owner`) | `{ role }` → `{ principal, role }`; only an owner can demote another owner or themself; 409 `last_owner` if no other owner remains |
 | POST | `/api/x/orgs/:org/members/:user/remove` | admin, or the person themself | `{ principal }` on success (200); only an owner can remove an owner; 409 `last_owner` if no other owner remains; subsequent authenticated board requests from the removed person return 404 |
@@ -535,6 +550,41 @@ before and after the command. The quota is `boards`, `members` or
 `connections`. The audit also returns `ob.operator.deleted` and
 `ob.operator.undeleted` with the same actor format and payload `{ reason }`.
 
+
+The export routes accept an organization owner's browser session or personal
+token. Cookie-authenticated requests to queue an export require Origin and
+CSRF proof. Requests and downloads record `ob.export.requested` and
+`ob.export.downloaded` in the organization audit. The audit response includes an optional
+`exportAudit: { events, cursor }` page. Pass that cursor as `exportAfter`
+to continue it, independently of the organization event cursor. The download
+expires 24 hours after the archive is ready. Each organization can have one
+pending or unexpired export at a time. A second request returns 429
+`rate_limited`. A failed export cannot be downloaded. The owner can request a
+new export with a new ID. Archive generation fails if it stalls for ten minutes.
+
+The tar.gz starts with `manifest.json`. Format `version: 1` records
+`organization`, `members`, `boards`, and `connections`. The organization and
+each board record their last log position in `head`. Connection entries have
+`recreate: true`. Credential-named fields are removed recursively from all
+event payloads, including from nested user metadata. If that removes an
+authorization rule from a grant, the archive marks the grant
+`recreate: true` and records it with no permissions. The manifest carries
+`accessPolicy: "recreate"`. The archived policy is for reference. A consumer
+restoring an archive must keep each board inaccessible until an owner has
+reconstructed its access policy, since a redacted denial can expose a
+lower-priority rule.
+Organization events are under `log/` and board events under `board/<id>/`,
+each as `<first>-<last>.ndjson.gz` segments. Board events carry channel,
+message, grant, schema, and task history. The manifest reports
+`attachments: "not yet supported"`.
+
+### OPENBOARD_BACKUP_S3_ configuration
+
+A hosted server without a backup bucket answers an export request with 501
+`not_supported`. Set `OPENBOARD_BACKUP_S3_ENDPOINT`,
+`OPENBOARD_BACKUP_S3_BUCKET`, `OPENBOARD_BACKUP_S3_REGION`,
+`OPENBOARD_BACKUP_S3_ACCESS_KEY_ID`, and `OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY`
+to enable exports.
 
 ## Events
 

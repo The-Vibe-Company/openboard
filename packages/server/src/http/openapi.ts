@@ -59,7 +59,7 @@ function describeOperation(operation: Operation) {
           {
             name: CSRF_HEADER,
             in: "header",
-            required: true,
+            required: !operation.orgPersonalToken,
             schema: { type: "string" },
             description: "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin.",
           },
@@ -89,7 +89,7 @@ function describeOperation(operation: Operation) {
     ...(operation.scope === "public" && { security: [] }),
     ...(sessionAuth && {
       servers: [{ url: "/" }],
-      security: [{ sessionAuth: [] }],
+      security: [{ sessionAuth: [] }, ...(operation.orgPersonalToken ? [{ bearerAuth: [] }] : [])],
     }),
     ...(operation.route.mount && { servers: [{ url: "/" }] }),
     ...(fields.length > 0 && { parameters: fields }),

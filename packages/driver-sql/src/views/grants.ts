@@ -17,8 +17,12 @@ export function connectionGrantCans(value: unknown): AgentRecord["grantCans"] {
   return documents.map(([document, rank]) => ({
     can: JSON.parse(document) as CanInput,
     capped: false,
-    level: rank === 0 ? "principal" : "group",
+    level: grantLevel(rank),
   }));
+}
+
+function grantLevel(rank: number) {
+  return rank === 0 ? "principal" : rank === 1 ? "group" : "everyone";
 }
 
 const lockIssuerQuota: Fragment = Object.freeze({
@@ -59,7 +63,7 @@ export const grantStatements = {
   deleteGrantPrincipals: sql`DELETE FROM grant_principals WHERE board_id = ${"boardId"} AND grant_id = ${"grantId"}`,
   insertGrantPrincipal: sql`INSERT INTO grant_principals (org_id, board_id, grant_id, kind, key, detail)
     VALUES (${"orgId"}, ${"boardId"}, ${"grantId"}, ${"kind"}, ${"key"}, ${"detail"})`,
-  personGrants: sql`SELECT g.id, g.can, g.capped, MIN(CASE WHEN p.kind = 'all-users' THEN 1 ELSE 0 END) AS rank
+  personGrants: sql`SELECT g.id, g.can, g.capped, MIN(CASE p.kind WHEN 'everyone' THEN 2 WHEN 'all-users' THEN 1 ELSE 0 END) AS rank
     FROM grant_principals p JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
     JOIN boards b ON b.id = g.board_id AND b.org_id = g.org_id
     JOIN memberships m ON m.org_id = b.org_id JOIN users u ON u.id = m.user_id
@@ -67,7 +71,7 @@ export const grantStatements = {
     WHERE p.board_id = ${"boardId"} AND g.org_id = ${"orgId"} AND g.revoked = 0
       AND u.public_id = ${"personId"} AND u.disabled_at IS NULL
       AND ((p.kind = 'user' AND p.key = u.public_id)
-        OR (p.kind = 'all-users' AND p.key = '')
+        OR (p.kind IN ('all-users', 'everyone') AND p.key = '')
         OR (p.kind = 'github' AND p.key = i.subject))
     GROUP BY g.id, g.can, g.capped
     UNION ALL
@@ -129,7 +133,7 @@ export function grantReads(db: Db, dialect: Dialect, keys: BoardKeys): BoardGran
       const rows = await query(db, dialect, grantStatements.personGrants, { ...keys, personId });
       return rows.map(({ id, can, capped, rank }) => ({
         id: grants.formatGrantId(Number(id)),
-        level: Number(rank) === 0 ? "principal" : "group",
+        level: grantLevel(Number(rank)),
         can: JSON.parse(String(can)) as CanInput,
         capped: Number(capped) === 1,
       }));

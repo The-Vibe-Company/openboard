@@ -59,7 +59,8 @@ export function requestOf(
     } else url.searchParams.set(name, String(value));
   }
   const headers: Record<string, string> = { accept: operation.responseType ?? "application/json" };
-  if (!platformMount && options.token) headers.authorization = `Bearer ${options.token}`;
+  if ((!platformMount || operation.orgPersonalToken) && options.token)
+    headers.authorization = `Bearer ${options.token}`;
   if (!platformMount && options.profile) headers[PROFILE_HEADER] = options.profile;
   if (operation.route.method !== "GET" && options.csrf) {
     headers["x-ob-csrf"] = options.csrf;
@@ -92,13 +93,17 @@ function isNextStep(value: unknown): value is NextStep {
 
 /** The board's answer, or its error envelope thrown as a `BoardError`. */
 export async function answerOf(response: Response, responseType?: Operation["responseType"]): Promise<unknown> {
-  const text = await response.text();
   if (response.ok && responseType !== undefined) {
     const mediaType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
     if (mediaType !== responseType)
       throw new BoardError("remote_error", `the board did not answer with ${responseType}`);
-    return text;
+    if (responseType === "application/gzip") {
+      if (!response.body) throw new BoardError("remote_error", "the board did not send an archive");
+      return response.body;
+    }
+    return response.text();
   }
+  const text = await response.text();
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);

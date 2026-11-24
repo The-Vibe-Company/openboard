@@ -5,6 +5,7 @@ export * from "./entities/channels.ts";
 export * from "./entities/connections.ts";
 export * from "./entities/discovery.ts";
 export * from "./entities/events.ts";
+export * from "./entities/org/exports.ts";
 export { GrantPrincipal, GrantPrincipalInput, GrantRemovalPrincipal, GrantView } from "./entities/grants.ts";
 export * from "./entities/invitations.ts";
 export * from "./entities/messages.ts";
@@ -42,7 +43,7 @@ export {
   refKind,
   type Scope,
 } from "./operation.ts";
-export { AuditEvent, OrgAuditEvent } from "./operations/audit.ts";
+export { AuditEvent, OrgAuditEvent, OrgExportAuditEvent } from "./operations/audit.ts";
 export type { Explanation, GrantLevel } from "./operations/grants/explain.ts";
 export {
   acceptInvitation,
@@ -66,6 +67,7 @@ export {
   deleteMessage,
   deleteOrg,
   discoverBoard,
+  downloadOrgExport,
   editMessage,
   explainGrants,
   findLinkedThread,
@@ -76,6 +78,7 @@ export {
   getConnectionPolicy,
   getMe,
   getOpenApi,
+  getOrgExport,
   getSession,
   getSyncThread,
   importSync,
@@ -119,6 +122,7 @@ export {
   releaseTask,
   removeMember,
   renewTask,
+  requestOrgExport,
   revokeAgent,
   revokeAllSessions,
   revokeConnection,

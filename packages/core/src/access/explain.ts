@@ -10,7 +10,7 @@ export type GrantSubject =
   | RepositoryPrincipal
   | OidcPrincipal;
 
-/** OpenBoard has no project or app directory, so only explicit grants can name those subjects. */
+/** Whether a grant names a specific subject. */
 function namesSubject(principal: GrantPrincipal, subject: GrantSubject): boolean {
   switch (subject.kind) {
     case "project":
@@ -30,10 +30,17 @@ function namesSubject(principal: GrantPrincipal, subject: GrantSubject): boolean
   }
 }
 
-function matchGrantLevel(grant: GrantView, subject: GrantSubject, everyone = false): GrantLevel | null {
+function matchGrantLevel(grant: GrantView, subject: GrantSubject): GrantLevel | null {
   if (grant.principals.some((principal) => namesSubject(principal, subject))) return "principal";
   if (subject.kind === "connection" && grant.principals.some(({ kind }) => kind === "all-connections")) return "group";
-  if (everyone && grant.principals.some(({ kind }) => kind === "everyone")) return "everyone";
+  if (
+    subject.kind === "project" &&
+    grant.principals.some(
+      (principal) => principal.kind === "all-projects" && principal.environments.includes(subject.environment),
+    )
+  )
+    return "group";
+  if (grant.principals.some(({ kind }) => kind === "everyone")) return "everyone";
   return null;
 }
 
@@ -60,25 +67,14 @@ export function explainAccess(
   };
 }
 
-/** An everyone pattern can restrict a subject only when a principal or group grant covers the channel. */
-export function explainSubject(
-  channel: string,
-  views: readonly GrantView[],
-  subject: GrantSubject,
-  includeEveryone = subject.kind === "project" || subject.kind === "app",
-) {
-  const matching = views.flatMap((view) => {
-    const level = matchGrantLevel(view, subject, includeEveryone);
+/** Candidate grants for a real or hypothetical subject on this board. */
+export function subjectGrants(views: readonly GrantView[], subject: GrantSubject) {
+  return views.flatMap((view) => {
+    const level = matchGrantLevel(view, subject);
     return level ? [{ ...view, level, view }] : [];
   });
-  if (
-    includeEveryone &&
-    !matchingPatterns(
-      matching.flatMap(({ level, can }) => (level === "everyone" ? [] : Object.keys(can))),
-      channel,
-    ).length
-  ) {
-    return explainAccess(channel, []);
-  }
-  return explainAccess(channel, matching);
+}
+
+export function explainSubject(channel: string, views: readonly GrantView[], subject: GrantSubject) {
+  return explainAccess(channel, subjectGrants(views, subject));
 }

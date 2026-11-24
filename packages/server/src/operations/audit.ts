@@ -2,6 +2,7 @@ import {
   type AuditEvent,
   BoardError,
   type OrgAuditEvent,
+  type OrgExportAuditEvent,
   type readBoardAudit,
   type readOrgAudit,
 } from "@openboard/contract";
@@ -93,14 +94,29 @@ const ORG_PAYLOAD: { readonly [Type in OrgAuditEvent["type"]]: readonly string[]
  * The organization's events, oldest first, for its owners and admins (docs/auth.md "Audit"): who joined, who invited
  * whom, who changed roles. The pipeline answers 403 `forbidden` to a member and 404 to anyone outside it.
  */
-export const readOrgAuditHandler: Handler<typeof readOrgAudit> = async (ctx, { after, limit = 100 }) => {
+export const readOrgAuditHandler: Handler<typeof readOrgAudit> = async (ctx, { after, exportAfter, limit = 100 }) => {
   const position = after === undefined ? 0 : parseId(after);
-  if (position === null) throw new BoardError("invalid_cursor", "after: expected a decimal organization cursor");
+  const exportPosition = exportAfter === undefined ? 0 : parseId(exportAfter);
+  if (position === null || exportPosition === null)
+    throw new BoardError("invalid_cursor", "expected a decimal audit cursor");
   const { events, head } = await ctx.org.auditEvents(position, limit);
   if (position > head) throw new BoardError("invalid_cursor", "after: cursor is ahead of the organization");
   const last = events.at(-1);
   const cursor = events.length === limit && last ? last.id : head;
-  return { events: events.map(orgAuditEntry), cursor: formatId(cursor) };
+  const exports = await ctx.org.exportAudit(exportPosition, limit);
+  if (exportPosition > exports.head)
+    throw new BoardError("invalid_cursor", "exportAfter: cursor is ahead of the export audit");
+  const exportAudit =
+    exports.head === 0
+      ? undefined
+      : {
+          cursor: formatId(exports.events.at(-1)?.id ?? exports.head),
+          events: exports.events.map(
+            ({ id, type, at, actor, payload }) =>
+              ({ cursor: formatId(id), type, createdAt: isoTime(at), actor, payload }) as OrgExportAuditEvent,
+          ),
+        };
+  return { events: events.map(orgAuditEntry), cursor: formatId(cursor), ...(exportAudit && { exportAudit }) };
 };
 
 function orgAuditEntry({ id, type, at, actor, payload }: OrgAuditRecord): OrgAuditEvent {

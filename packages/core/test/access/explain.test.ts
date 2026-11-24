@@ -27,7 +27,7 @@ test("keeps an empty exact grant over prefixes and selects the closest level bef
   expect(resolveRankedCan(grants, "member")["dev/"]).toEqual(can);
 });
 
-test("a repository explanation follows live workload access while everyone rules are pending", () => {
+test("a more specific everyone grant can close a named repository out", () => {
   const views: GrantView[] = [
     {
       id: "g4",
@@ -48,9 +48,9 @@ test("a repository explanation follows live workload access while everyone rules
   ];
   const repository = { kind: "github", repository: "acme/web", repositoryId: null } as const;
   expect(explainSubject("dev/web", views, repository)).toMatchObject({
-    pattern: "*",
-    level: "principal",
-    can: ["post"],
+    pattern: "dev/",
+    level: "everyone",
+    can: [],
   });
 });
 
@@ -74,7 +74,7 @@ test("everyone alone cannot give a named connection access", () => {
     },
   ];
   const connection = { kind: "connection", id: "cn_aaaaaaaaaaaaaaaa" } as const;
-  expect(explainSubject("dev/web", views, connection, true)).toEqual({
+  expect(explainSubject("dev/web", views, connection)).toEqual({
     channel: "dev/web",
     pattern: null,
     over: [],

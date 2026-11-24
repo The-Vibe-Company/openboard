@@ -29,7 +29,7 @@ export type {
   MintedSecret,
 } from "./access/connections.ts";
 export * as connections from "./access/connections.ts";
-export { explainAccess, explainSubject, type GrantSubject } from "./access/explain.ts";
+export { explainAccess, explainSubject, type GrantSubject, subjectGrants } from "./access/explain.ts";
 export type { Grant, GrantPrincipal } from "./access/grants.ts";
 export * as grants from "./access/grants.ts";
 export { narrowCan, parseCanHeader } from "./access/narrow.ts";
@@ -140,3 +140,4 @@ export {
   type WatchFailed,
 } from "./watchers/ack.ts";
 export { validateWatchers, type WatchersRegistered } from "./watchers/register.ts";
+export { exportEvent } from "./orgs/export.ts";

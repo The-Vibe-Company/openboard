@@ -1,5 +1,5 @@
 import type { Can, CanInput, GrantLevel, Permission, Role } from "@openboard/contract";
-import { allowedAt } from "./agents.ts";
+import { allowedAt, matchingPatterns } from "./agents.ts";
 import { capByRole, PERMISSIONS, withImplied } from "./grants.ts";
 
 /** Permissions add up at identical patterns; allowedAt applies channel specificity. */
@@ -38,8 +38,10 @@ const ranks: Readonly<Record<GrantLevel, number>> = Object.freeze({ principal: 0
 /** Keep only the closest grants separately at each pattern, including explicit empty entries. */
 export function rankedPatterns<T extends RankedGrant>(grants: readonly T[]): Map<string, T[]> {
   const patterns = new Map<string, T[]>();
+  const namedPatterns = grants.flatMap(({ level, can }) => (level === "everyone" ? [] : Object.keys(can)));
   for (const grant of grants) {
     for (const pattern of Object.keys(grant.can)) {
+      if (grant.level === "everyone" && matchingPatterns(namedPatterns, pattern).length === 0) continue;
       const closest = patterns.get(pattern);
       const first = closest?.[0];
       if (!first || ranks[grant.level] < ranks[first.level]) patterns.set(pattern, [grant]);

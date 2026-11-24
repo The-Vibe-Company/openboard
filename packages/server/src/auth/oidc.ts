@@ -1,12 +1,5 @@
 import { BoardError, type GrantView } from "@openboard/contract";
-import {
-  grants,
-  matchesOidcClaims,
-  matchesWorkload,
-  type OidcPrincipal,
-  type RepositoryPrincipal,
-  resolveCan,
-} from "@openboard/core";
+import { type OidcPrincipal, type RepositoryPrincipal, resolveRankedCan, subjectGrants } from "@openboard/core";
 import type { BoardGrantReads, PlatformView } from "@openboard/ports";
 import { callerCan, credentialExpiry, credentialKind, type Deps, type Principal, workloadOf } from "../deps.ts";
 import { publicHttps, resolvesPublicly } from "../public-host.ts";
@@ -202,14 +195,8 @@ function issuerVerifier(now: Deps["now"]) {
 }
 
 function workloadCan(grantViews: readonly GrantView[], principal: Workload) {
-  const matching = grantViews.filter(({ principals }) =>
-    principals.some((grant) =>
-      principal.kind === "github"
-        ? matchesWorkload(grant, principal)
-        : grant.kind === "oidc" && matchesOidcClaims(grant, principal),
-    ),
-  );
-  return matching.length ? resolveCan(matching.map(({ can }) => grants.compileCan(can))) : null;
+  const matching = subjectGrants(grantViews, principal);
+  return matching.some(({ level }) => level === "principal") ? resolveRankedCan(matching) : null;
 }
 
 /** Resolve grant management authority again under the board's write lock. */

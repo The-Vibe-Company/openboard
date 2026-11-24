@@ -98,6 +98,7 @@ export interface Tenants {
   /** The view of an organization the person administers; 404 for a non-member, 403 `forbidden` for a member. */
   adminOrg(slug: string, personId: string): Promise<OrgView>;
   /** The view of an organization the person belongs to, with any role; 404 for anyone else. */
+  ownerOrg(slug: string, personId: string): Promise<OrgView>;
   memberOrg(slug: string, personId: string): Promise<OrgView>;
 }
 
@@ -108,6 +109,11 @@ export function tenants(store: Store): Tenants {
     async adminOrg(slug, personId) {
       const member = await membership(store, slug, personId);
       if (member.role === "member") throw new BoardError("forbidden", "this organization needs an administrator");
+      return store.org({ orgId: member.orgId } as OrgScope);
+    },
+    async ownerOrg(slug, personId) {
+      const member = await membership(store, slug, personId);
+      if (member.role !== "owner") throw new BoardError("forbidden", "this organization needs an owner");
       return store.org({ orgId: member.orgId } as OrgScope);
     },
     async memberOrg(slug, personId) {

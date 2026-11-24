@@ -7,6 +7,8 @@ import {
   createSchemaCommand,
   derivedCommands,
   explainGrantsCommand,
+  exportOrgCommand,
+  downloadOrgExportCommand,
   loginCommand,
   messagesCommand,
   readCommand,
@@ -25,6 +27,8 @@ export type AnyCommand = Command | typeof connectCommand | typeof loginCommand |
 export const commands: readonly AnyCommand[] = [
   connectCommand,
   loginCommand,
+  exportOrgCommand,
+  downloadOrgExportCommand,
   updateGrantCommand,
   useCommand,
   createConnectionCommand,
@@ -67,6 +71,17 @@ interface Handwritten {
 const SECRET_FILE = "Where the new secret is written, created with mode 0600; the secret is never printed.";
 
 const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
+  "org export": {
+    summary: "Request a hosted organization export as its owner.",
+    operations: ["requestOrgExport"],
+    example: "ob org export",
+  },
+  "org export download": {
+    summary: "Download a ready organization export.",
+    operations: ["downloadOrgExport"],
+    example: "ob org export download ex_0123456789abcdef0123456789abcdef --out acme.tar.gz",
+    options: { out: "Create the archive at this path." },
+  },
   connect: {
     summary: "Claim an agent token from a connection secret and store it under a profile.",
     operations: ["claimConnection"],

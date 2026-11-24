@@ -6,13 +6,14 @@ package: server
 writes:
   - packages/core/src/access/narrow.ts
   - packages/core/test/access/narrow.test.ts
-  - packages/server/src/http/pipeline.ts
+  - packages/server/src/auth/access.ts
+  - docs/protocol.md
   - packages/server/test/auth/narrowing-invalid.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [286]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 462
 ---
 
@@ -20,7 +21,7 @@ issue: 462
 As an agent author, a typo in my `x-board-can` is refused with what to write, never read as something else.
 
 ## Done when
-- [ ] `curl -s -H @agent.headers -H 'x-board-can: dev' "$BOARD_URL/me"` answers 400 `invalid_scope` whose message says what to write (`pattern=permissions;…`), and so do a header over 4000 characters, an unknown permission and upstream's old `x-board-scope` header; `bun test packages/server/test/auth/narrowing-invalid.test.ts` covers each
+- [x] `curl -s -H @agent.headers -H 'x-board-can: dev' "$BOARD_URL/me"` answers 400 `invalid_scope` whose message says what to write (`pattern=permissions;…`), and so do a header over 4000 characters, an unknown permission and upstream's old `x-board-scope` header; `bun test packages/server/test/auth/narrowing-invalid.test.ts` covers each
 
 ## Out of scope
 - Narrowing itself (286).
