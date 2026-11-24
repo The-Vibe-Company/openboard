@@ -5,11 +5,19 @@ milestone: M14-external-sync
 package: server
 writes:
   - packages/contract/src/entities/sync.ts
-  - packages/contract/src/operations/sync.ts
+  - packages/contract/src/operations/sync/board.ts
+  - packages/contract/src/operations/sync/records.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/index.ts
   - packages/contract/src/operations/index.ts
   - packages/server/src/operations/sync.ts
   - packages/server/src/operations/index.ts
   - packages/server/test/sync/stubs.test.ts
+  - packages/server/test/isolation/cases.ts
+  - packages/server/test/isolation/isolation.test.ts
+  - packages/server/openapi.json
+  - docs/decisions.md
+  - docs/codebase.md
 conformance: []
 modes: [local, hosted]
 depends_on: []

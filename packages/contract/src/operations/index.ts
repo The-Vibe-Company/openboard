@@ -37,23 +37,25 @@ import {
 } from "./messages.ts";
 import { createOrg } from "./orgs.ts";
 import {
-  ackInbox,
   attachSync,
   findLinkedThread,
-  findSync,
-  getSyncThread,
-  importSync,
   joinSource,
-  leaseInbox,
-  listSyncCopies,
   listSyncTargets,
-  pushInbox,
   readInbox,
   readSource,
   receiveWebhook,
-  recordSyncReceipt,
   showTyping,
-} from "./sync.ts";
+} from "./sync/board.ts";
+import {
+  ackInbox,
+  findSync,
+  getSyncThread,
+  importSync,
+  leaseInbox,
+  listSyncCopies,
+  pushInbox,
+  recordSyncReceipt,
+} from "./sync/records.ts";
 import { listThreads, readThread } from "./threads.ts";
 
 /** Every operation, sorted by name: the one registry REST, SDK, CLI, MCP and the isolation suite read. */

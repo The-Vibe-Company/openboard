@@ -91,6 +91,11 @@ export type Operation<
     readonly meter?: string;
   };
   readonly upstream: boolean;
+  /**
+   * An upstream route this board answers as one without the feature does (docs/protocol.md "U-stub" rows): the
+   * isolation suite then asks that A on A's board answer exactly as B on B's board, since no answer holds data.
+   */
+  readonly stub?: true;
 };
 
 export function defineOperation<

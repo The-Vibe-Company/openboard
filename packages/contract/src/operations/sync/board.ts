@@ -1,40 +1,32 @@
 import { Type } from "@sinclair/typebox";
 import {
-  InboxAckBody,
   InboxEntries,
-  InboxItems,
-  InboxPushBody,
   SourceJoined,
   SourceRead,
-  SyncAck,
   SyncAttached,
-  SyncCopies,
-  SyncFound,
-  SyncImportBody,
   SyncKey,
-  SyncReceiptBody,
   SyncTargets,
-  SyncThread,
   TypingResult,
   WebhookAnswer,
-} from "../entities/sync.ts";
-import { Thread } from "../entities/threads.ts";
-import { defineOperation, Ref } from "../operation.ts";
+} from "../../entities/sync.ts";
+import { Thread } from "../../entities/threads.ts";
+import { defineOperation, Ref } from "../../operation.ts";
 
 /**
  * Sync's routes (upstream `03-http.md` "Sync's routes"), kept so upstream's clients take their "no sync here" path:
  * this board syncs nowhere (D19, docs/protocol.md "Sync (deferred)"), so each answers as an empty board does.
  */
-const deferred = {
+export const deferred = {
+  stub: true,
   cli: false,
   mcp: false,
   why: "sync is deferred (D19): every sync route answers as no sync",
 } as const;
-const reads = { readOnly: true, idempotent: true, emits: [] } as const;
-const writes = { readOnly: false, idempotent: false, emits: [] } as const;
+export const reads = { readOnly: true, idempotent: true, emits: [] } as const;
+export const writes = { readOnly: false, idempotent: false, emits: [] } as const;
 const MessageParams = Type.Object({ id: Ref("message") }, { additionalProperties: false });
-const KeyParams = Type.Object({ key: SyncKey }, { additionalProperties: false });
-const Limit = (maximum: number) => Type.Optional(Type.Integer({ minimum: 1, maximum }));
+export const KeyParams = Type.Object({ key: SyncKey }, { additionalProperties: false });
+export const Limit = (maximum: number) => Type.Optional(Type.Integer({ minimum: 1, maximum }));
 const Target = Type.Object({ target: Type.String({ minLength: 1, maxLength: 2048 }) });
 
 export const attachSync = defineOperation({
@@ -162,113 +154,4 @@ export const readInbox = defineOperation({
   effects: reads,
   ...deferred,
   upstream: true,
-});
-
-/** The routes that keep sync's records: a board that keeps no sync refuses them all (D19). */
-const recordRoute = {
-  scope: "board",
-  errors: ["invalid_request", "forbidden"],
-  access: null,
-  ...deferred,
-  upstream: true,
-} as const;
-
-export const pushInbox = defineOperation({
-  name: "pushInbox",
-  operationId: "inboxPush",
-  summary: "Push platform events to a sync entry's inbox; this board keeps no sync, so it answers 403.",
-  route: { method: "POST", path: "/inbox/:key" },
-  input: { params: KeyParams, body: InboxPushBody },
-  output: SyncAck,
-  effects: writes,
-  ...recordRoute,
-});
-
-export const leaseInbox = defineOperation({
-  name: "leaseInbox",
-  operationId: "inboxNext",
-  summary: "Lease the caller's next inbox events; this board keeps no sync, so it answers 403.",
-  route: { method: "GET", path: "/inbox/:key/next" },
-  input: { params: KeyParams, query: Type.Object({ limit: Limit(100) }) },
-  output: InboxItems,
-  effects: writes,
-  ...recordRoute,
-});
-
-export const ackInbox = defineOperation({
-  name: "ackInbox",
-  operationId: "inboxAck",
-  summary: "Finish or retry a leased inbox event; this board keeps no sync, so it answers 403.",
-  route: { method: "POST", path: "/inbox/:key/:id/ack" },
-  input: {
-    params: Type.Object(
-      { key: SyncKey, id: Type.String({ minLength: 1, maxLength: 300 }) },
-      { additionalProperties: false },
-    ),
-    body: InboxAckBody,
-  },
-  output: SyncAck,
-  effects: writes,
-  ...recordRoute,
-});
-
-export const importSync = defineOperation({
-  name: "importSync",
-  operationId: "syncImport",
-  summary: "A platform's write through a sync entry; this board keeps no sync, so it answers 403.",
-  route: { method: "POST", path: "/sync/imports" },
-  input: { body: SyncImportBody },
-  output: Type.Object({ message: Type.Union([Type.String(), Type.Null()]) }),
-  effects: writes,
-  ...recordRoute,
-});
-
-export const recordSyncReceipt = defineOperation({
-  name: "recordSyncReceipt",
-  operationId: "syncReceipt",
-  summary: "What sync did about a board message; this board keeps no sync, so it answers 403.",
-  route: { method: "POST", path: "/sync/receipts" },
-  input: { body: SyncReceiptBody },
-  output: SyncAck,
-  effects: writes,
-  ...recordRoute,
-});
-
-export const getSyncThread = defineOperation({
-  name: "getSyncThread",
-  operationId: "syncThread",
-  summary: "A board thread's sync, by its key; this board keeps no sync, so it answers 403.",
-  route: { method: "GET", path: "/sync/threads/:thread" },
-  input: { params: Type.Object({ thread: Ref("thread") }, { additionalProperties: false }) },
-  output: SyncThread,
-  effects: reads,
-  ...recordRoute,
-});
-
-export const findSync = defineOperation({
-  name: "findSync",
-  operationId: "syncFind",
-  summary: "The board thread and message platform IDs name; this board keeps no sync, so it answers 403.",
-  route: { method: "GET", path: "/sync/find" },
-  input: {
-    query: Type.Object({
-      post: Type.Optional(Type.String()),
-      thread: Type.Optional(Type.String()),
-      message: Type.Optional(Type.String()),
-    }),
-  },
-  output: SyncFound,
-  effects: reads,
-  ...recordRoute,
-});
-
-export const listSyncCopies = defineOperation({
-  name: "listSyncCopies",
-  operationId: "syncCopies",
-  summary: "Messages' copies on platforms the caller's sync made; this board keeps no sync, so it answers 403.",
-  route: { method: "GET", path: "/sync/copies" },
-  input: { query: Type.Object({ message: Type.Optional(Type.Array(Ref("message"), { maxItems: 100 })) }) },
-  output: SyncCopies,
-  effects: reads,
-  ...recordRoute,
 });

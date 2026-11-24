@@ -153,6 +153,8 @@ export interface IdCase {
   readonly nowhere?: Call;
   readonly startsAtHead?: true;
   readonly eventThread?: string;
+  /** For a stub (no answer holds data): B's own call on B's board, which A's call on A's board must answer exactly as. */
+  readonly twin?: Call;
 }
 
 /** An ID of the same shape as `id` that no board holds. */
@@ -185,7 +187,8 @@ export function idCases(seeded: Seeded): IdCase[] {
         cases.push({ name: `${name} at the head`, call: callWith(eventThread), startsAtHead: true });
         cases.push({ name, call: callWith(eventThread, history), eventThread });
       } else if (kind === "message" && operation.effects.readOnly) {
-        cases.push({ name: `${label}, an ID both boards hold`, call: callWith(seeded.sharedMessage) });
+        const twin = operation.stub ? { twin: callOf(operation, seeded.b) } : {};
+        cases.push({ name: `${label}, an ID both boards hold`, call: callWith(seeded.sharedMessage), ...twin });
       }
     }
   }

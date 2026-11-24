@@ -71,8 +71,18 @@ describe("path cases: A's credentials off A's board or organization", () => {
   }
 });
 
+/**
+ * A stub answers as a board without the feature does, so its answer holds no data to tell A's from B's: A on A's board
+ * must answer exactly as B on B's board (same status, same body), and B's IDs on A's URL as IDs no board holds.
+ */
+async function expectTwin(name: string, response: Response, twin: Call) {
+  const theirs = await send(twin, b.session);
+  const answered = `${name}: ${twin.method} ${twin.path}`;
+  expect(`${response.status} ${await response.text()}`, answered).toBe(`${theirs.status} ${await theirs.text()}`);
+}
+
 describe("ID cases: B's IDs on A's own URL", () => {
-  for (const { name, call, nowhere, startsAtHead, eventThread } of ids) {
+  for (const { name, call, nowhere, startsAtHead, eventThread, twin } of ids) {
     test(name, async () => {
       const response = await send(call, a.session);
       const text = await response.clone().text();
@@ -83,6 +93,8 @@ describe("ID cases: B's IDs on A's own URL", () => {
         const absent = await send(nowhere, a.session);
         expect(await outcome(response), answered).toBe(await outcome(absent));
         if (call.path.includes("/events?")) expect(JSON.parse(text), answered).toMatchObject({ events: [] });
+      } else if (twin) {
+        await expectTwin(name, response, twin);
       } else {
         // An ID both boards hold names A's message.
         expect(response.status, answered).toBe(200);
@@ -113,9 +125,10 @@ describe("list cases: what A reads holds nothing of B", () => {
     test(operation.name, async () => {
       const call = callOf(operation, a);
       const response = await send(call, a.session);
-      const text = await response.text();
-      expect(response.status, `${operation.name}: ${call.path} -> ${text}`).toBeLessThan(300);
+      const text = await response.clone().text();
       expect(holdsB(text), `${operation.name} answered ${text}`).toBe(false);
+      if (operation.stub) await expectTwin(operation.name, response, callOf(operation, b));
+      else expect(response.status, `${operation.name}: ${call.path} -> ${text}`).toBeLessThan(300);
       counted.list++;
     });
   }

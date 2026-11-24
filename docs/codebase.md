@@ -454,7 +454,7 @@ The isolation suite uses `operations` to check that every operation declares a s
 1. `seed.ts` creates two organizations, A and B, each with a board and one resource of every `Ref` kind (message, thread, task, grant, schema, file, schedule, webhook, connection, member, invitation, board), and records B's slugs and resource IDs.
 2. **Path cases**: on authenticated board routes, present A's connection secret and agent token on A's other board and on B's board. Expect 401 `unauthorized`. Present A's session and personal token on B's board, and A's session on B's organization routes. Expect 404 `not_found`. Neither case may return 2xx or 403.
 3. **ID cases**: for every `Ref` field in its input, it calls the operation on A's own URL with B's ID in that field. Since positions are per board, it also uses IDs that exist in both boards and checks the answer is A's resource, never B's. It expects A's data or a 404, never B's data.
-4. For every list, search, feed or tail operation called as A, no B resource appears in the output.
+4. For every list, search, feed or tail operation called as A, no B resource appears in the output. An upstream stub (`stub: true`, D57) answers A on A's board exactly as B on B's board instead of answering with A's data.
 5. Before and after the whole run it takes B's digest (a digest of B's events and rows taken through the platform view: hash of B's events and derived rows); they must be equal.
 6. The suite fails if an operation has a `Ref` kind `seed.ts` cannot create, or if `scope` is missing; adding an operation therefore adds its isolation cases automatically.
 
