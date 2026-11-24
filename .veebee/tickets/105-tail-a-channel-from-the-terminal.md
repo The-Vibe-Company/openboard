@@ -20,8 +20,8 @@ issue: 105
 As a person, I watch a channel live in my terminal.
 
 ## Done when
-- [ ] `ob tail dev` prints `#4  dev  <author>: hi` when `ob post dev hi` runs elsewhere, until Ctrl-C (exit 130)
-- [ ] `ob tail dev --last 3` prints the three newest events first
+- [x] `ob tail dev` prints `#4  dev  <author>: hi` when `ob post dev hi` runs elsewhere, until Ctrl-C (exit 130)
+- [x] `ob tail dev --last 3` prints the three newest events first
 
 ## Out of scope
 - Waiting for one event (106).
