@@ -5374,6 +5374,29 @@
                     "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
                   },
                   "noSync": { "type": "boolean" },
+                  "sync": {
+                    "maxItems": 10,
+                    "description": "External targets for a new thread. This board refuses any targets.",
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        { "minLength": 3, "maxLength": 300, "type": "string" },
+                        {
+                          "type": "object",
+                          "required": ["target", "kind"],
+                          "properties": {
+                            "target": { "minLength": 3, "maxLength": 300, "type": "string" },
+                            "kind": {
+                              "anyOf": [
+                                { "const": "channel", "type": "string" },
+                                { "const": "thread", "type": "string" }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
                   "id": {
                     "minLength": 1,
                     "maxLength": 200,
@@ -5621,7 +5644,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, invalid_after, reserved_label, invalid_profile",
+            "description": "invalid_request, invalid_after, invalid_target, reserved_label, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {

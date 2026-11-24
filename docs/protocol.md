@@ -168,7 +168,7 @@ a refused write appends nothing.
 | GET | `/threads` | U | all filters, `before`/`older`, `after`; not `before` with `after` (400 `invalid_request`) |
 | GET | `/messages/:id` | U | Root and replies, oldest first. `after` must name a message in the same thread (400 `invalid_request` otherwise). `limit` (1–500) selects the first replies after it, or the newest replies when no `after` is given. |
 | GET | `/posts/:id` | U | `{ message }` as it landed, by the caller's client ID; 404 `post_not_found` for missing or foreign IDs |
-| POST | `/messages` | U | `sync` targets: 400 `invalid_request` "this board syncs nowhere" |
+| POST | `/messages` | U | A new thread with sync targets answers 400 `invalid_target`. See [Sync (deferred)](#sync-deferred). |
 | POST | `/messages/:id/edit` | U | `ob edit <id> <text>` replaces the text and advances the message revision. Pass `--if-revision <n>` to edit only at the observed revision. |
 | POST | `/messages/:id/delete` | U | `ob delete <id> --if-revision <n>` deletes only at the observed revision. Profiles can edit or delete their own messages, and an unprofiled principal can change any message it or its profiles wrote. Other callers receive 403 `forbidden`. Edits and tombstones retain the original author. Both edit and delete send the optional `revision` in the body and return 409 `revision_conflict` if it differs. |
 | POST | `/messages/:id/reactions` | U | |
@@ -353,6 +353,13 @@ Upstream's watcher pull is the "pull/ack variant" of webhooks: register a
 tail, pull with a lease, ack or retry.
 
 ### Sync (deferred)
+
+`POST /messages` accepts up to ten sync targets as strings or `{ target, kind }`
+objects. A nonempty `sync` on a reply or with `noSync: true` answers 400
+`invalid_request`. A new thread with targets answers 400 `invalid_target`
+because this board syncs nowhere. The response's `next` shows how to retry
+with `noSync: true` and without the targets. Refusals write nothing.
+An empty `sync: []` is equivalent to omitting it.
 
 | Method | Path | | Answer |
 | --- | --- | --- | --- |
