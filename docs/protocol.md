@@ -628,7 +628,7 @@ unknown details are marked.
    Claim-next needs `from` because upstream's claim-next only takes tasks
    owned by the caller's principal unless `from` names others (`03-http.md`,
    "Tasks").
-4. The agent works, renews, and completes: `ob tasks complete 812 --result "fixed in a1b2c3"`.
+4. The agent works, renews, and completes: `ob tasks complete 812 "fixed in a1b2c3"`.
 5. Armada's `turn.finished` reaches the inbound endpoint, which replies in
    thread 812. On `sandbox.expired`, the claim ends, the agent's token is
    revoked, a note is posted, and the task is ready again, which fires step 2

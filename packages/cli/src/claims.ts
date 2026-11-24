@@ -17,7 +17,7 @@ import { BoardError } from "@the-vibe-company/openboard";
 type Claim = { readonly epoch: number; readonly until: string; readonly token: string };
 type ClaimKey = { readonly boardUrl: string; readonly actor: string; readonly id: string };
 type SavedClaims = Record<string, Claim>;
-type ClaimEntry = { readonly key: ClaimKey; readonly claim: Claim };
+type ClaimChange = { readonly key: ClaimKey; readonly claim: Claim | null };
 
 const errorCode = (error: unknown) => (error as NodeJS.ErrnoException).code;
 const keyOf = ({ boardUrl, actor, id }: ClaimKey) => JSON.stringify([boardUrl.replace(/\/+$/, ""), actor, id]);
@@ -84,7 +84,7 @@ async function lockClaims(lock: string): Promise<() => void> {
 /** Validate and lock the destination before the remote write, then atomically save any returned credential. */
 export async function withClaimStorage<T>(
   home: string | undefined,
-  obtain: () => Promise<{ result: T; entry?: ClaimEntry }>,
+  obtain: (read: (key: ClaimKey) => Claim | undefined) => Promise<{ result: T; entry?: ClaimChange }>,
 ): Promise<T> {
   if (!home) throw new BoardError("invalid_request", "HOME is required to store a task claim");
   const path = join(home, ".config", "openboard", "claims.json");
@@ -104,17 +104,22 @@ export async function withClaimStorage<T>(
       throw new BoardError("invalid_request", "could not prepare task claim storage");
     }
 
-    const { result, entry } = await obtain();
+    const { result, entry } = await obtain((key) => claims[keyOf(key)]);
     if (!entry) return result;
     try {
       const key = keyOf(entry.key);
-      if ((claims[key]?.epoch ?? 0) <= entry.claim.epoch) {
-        claims[key] = entry.claim;
-        writeFileSync(file, JSON.stringify(claims));
-        renameSync(file, path);
-      }
+      if (entry.claim === null) delete claims[key];
+      else if ((claims[key]?.epoch ?? 0) <= entry.claim.epoch) claims[key] = entry.claim;
+      else return result;
+      writeFileSync(file, JSON.stringify(claims));
+      renameSync(file, path);
     } catch {
-      throw new BoardError("invalid_request", "the task was claimed but its credential could not be stored");
+      throw new BoardError(
+        "invalid_request",
+        entry.claim === null
+          ? "could not remove the saved task claim credential"
+          : "the task was claimed but its credential could not be stored",
+      );
     }
     return result;
   } finally {

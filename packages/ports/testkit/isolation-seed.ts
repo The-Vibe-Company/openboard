@@ -2,6 +2,7 @@ import {
   agents,
   boards,
   connections,
+  decideClaimTask,
   decideCreateTask,
   decideInvitation,
   grants,
@@ -120,6 +121,14 @@ export async function storeTenant(store: Store, slug: string, digit: string, pos
     const by = { actor, principal: actor, profile: null };
     const decided = decideCreateTask({ head: writer.head }, { channel, text: `${marker} task` }, { by, now: at });
     await writer.append(decided.events);
+    if (slug === "bravo") {
+      const claim = decideClaimTask(
+        { head: writer.head, actor: writer.actor, target: decided.task },
+        { id: decided.task.id, tokenHash: hex("3") },
+        { by, now: at },
+      );
+      await writer.append(claim.events);
+    }
     return Number(decided.task.id);
   });
   const claimed = await connectAndClaim(board, actor, marker, digit);

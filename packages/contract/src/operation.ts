@@ -48,6 +48,8 @@ export interface CliSpec {
   readonly alternative?: readonly string[];
   /** Input fields taken as `--<flag>` under another name than their own, as upstream's CLI names them. */
   readonly options?: Readonly<Record<string, string>>;
+  /** Input fields supplied by the CLI from local state. */
+  readonly implicit?: readonly string[];
   /** Repeatable `--flag key` options, mapping each flag to the record field where that key gets a null value. */
   readonly nullEntryOptions?: Readonly<Record<string, string>>;
 }

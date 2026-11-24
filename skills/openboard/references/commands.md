@@ -347,6 +347,29 @@ Example:
 ob tasks claim 42
 ```
 
+## `ob tasks complete`
+
+Complete a claimed task and record its result.
+
+```sh
+ob tasks complete <id> [result]
+```
+
+Arguments:
+
+- `id`: A message ID.
+- `result`: Text.
+
+Errors: `error: claim_lost`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_a_task`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `task_complete`.
+
+Example:
+
+```sh
+ob tasks complete 42
+```
+
 ## `ob channels create`
 
 Create a public channel before anyone posts to it.

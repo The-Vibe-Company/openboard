@@ -1,4 +1,4 @@
-import type { Message, TaskClaimedPayload, TaskCreatedPayload } from "@openboard/contract";
+import type { Message, TaskClaimedPayload, TaskCompletedPayload, TaskCreatedPayload } from "@openboard/contract";
 import type { MessagePosted } from "../messages/post.ts";
 
 export interface TaskCreated extends Omit<MessagePosted, "type" | "payload"> {
@@ -22,4 +22,12 @@ export interface TaskClaimed extends Omit<MessagePosted, "type" | "payload"> {
   };
 }
 
-export type TaskEvent = TaskCreated | TaskClaimed;
+export interface TaskCompleted extends Omit<MessagePosted, "type" | "payload"> {
+  readonly type: "task.completed";
+  readonly payload: Omit<TaskCompletedPayload, "id"> & {
+    readonly id: number;
+    readonly view: Message;
+  };
+}
+
+export type TaskEvent = TaskCreated | TaskClaimed | TaskCompleted;
