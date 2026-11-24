@@ -1,4 +1,4 @@
-import type { Client } from "@the-vibe-company/openboard";
+import type { BoardEvent, Client, TailOptions } from "@the-vibe-company/openboard";
 import type { CliEnvironment } from "../config.ts";
 import type { CliOptions } from "../main.ts";
 import type { Output } from "../output.ts";
@@ -9,6 +9,12 @@ export interface CommandContext {
   readonly boardUrl: string;
   readonly now: () => number;
   readonly timeoutSignal: (ms: number) => AbortSignal;
+  /** The SDK's live tail of the board at `BOARD_URL`, with the client's credentials. */
+  readonly tail: (
+    input: Omit<TailOptions, "url" | "token" | "csrf" | "profile" | "fetch">,
+  ) => AsyncIterable<BoardEvent>;
+  /** A signal aborted when the person presses Ctrl-C; only a command that runs until interrupted asks for it. */
+  readonly interrupt: () => AbortSignal;
   readonly args: readonly string[];
   /** The explicit `--as` override. */
   readonly profile: string | undefined;
@@ -18,7 +24,8 @@ export interface CommandContext {
   readonly output: Output;
 }
 
-export interface StandaloneContext extends Omit<CommandContext, "client" | "boardUrl" | "now" | "timeoutSignal"> {
+export interface StandaloneContext
+  extends Omit<CommandContext, "client" | "boardUrl" | "now" | "timeoutSignal" | "tail" | "interrupt"> {
   readonly env: CliEnvironment;
   readonly options: CliOptions;
 }
@@ -40,6 +47,7 @@ export { messagesCommand } from "./messages.ts";
 export { readCommand } from "./read.ts";
 export { replyCommand } from "./reply.ts";
 export { rotateConnectionCommand } from "./rotate.ts";
+export { tailCommand } from "./tail.ts";
 export { useCommand } from "./use.ts";
 export { waitCommand } from "./wait.ts";
 export { whoamiCommand } from "./whoami.ts";
