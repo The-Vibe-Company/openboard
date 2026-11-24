@@ -10,7 +10,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [193, 195, 196, 199, 208]
-status: blocked
+status: draft
 claimed_by: null
 issue: 376
 ---
@@ -33,4 +33,4 @@ As the owner, production runs on Railway with invite-only sign-up, and our own o
 - Measure on production and record in docs/architecture.md "Hosted on Railway": the app-to-database round trip and the restart time of the database service (listed there as "to measure before launch").
 - The script reuses the SDK (`@the-vibe-company/openboard`) with the secret, as an agent would; 193's workflow may call it after each production deploy once this lands.
 
-Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.
+Re-enabled (owner, 2026-11-24: "Ok pour railway pour moi"). Railway is set up: project `openboard` (d2f79d2f-64b8-4c30-b922-3b9502e6ea4e), environment `staging` with a `Postgres` service and an empty `openboard` service at https://openboard-staging.up.railway.app, variables OPENBOARD_DATABASE_URL (reference to Postgres), OPENBOARD_SECRET_KEY, OPENBOARD_PUBLIC_URL, OPENBOARD_SIGNUP=closed already set. GitHub OAuth credentials and any deploy token are set by the owner; never print or commit them.
