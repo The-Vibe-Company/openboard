@@ -4,6 +4,7 @@
       "statements": { "post": 9, "reply": 11, "channelRead": 3 },
       "idleTimers": 0
     },
+    "sseFanOut": { "p50Ms": 10.721, "p99Ms": 16.079 },
     "measured": {
       "post": { "p50Ms": 0.13, "p99Ms": 0.28 },
       "reply": { "p50Ms": 0.13, "p99Ms": 0.24 },

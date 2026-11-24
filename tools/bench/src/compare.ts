@@ -39,19 +39,30 @@ export function compareBudgets(report: ModeReport, { latency }: { readonly laten
     }
 
     if (!latency) continue;
-    const { p50Ms, p99Ms } = budget.measured[workload];
-    for (const [metric, value, limit] of [
-      ["p50", p50, p50Ms],
-      ["p99", p99, p99Ms],
-    ] as const) {
-      const floor = measuredNoiseFloorMs[metric];
-      if (value > Math.max(limit * measuredBudgetMultiplier, limit + floor)) {
-        failures.push(`${name} ${metric}: ${value} ms exceeds budget ${limit} ms by more than 20% and ${floor} ms`);
-      }
-    }
+    compareLatency(name, { p50, p99 }, budget.measured[workload], failures);
+  }
+  if (latency && report.mode === "local" && report.sse) {
+    compareLatency("local SSE fan-out", report.sse, budgets.local.sseFanOut, failures);
   }
   if (report.idleTimers > budget.counters.idleTimers) {
     failures.push(`${report.mode} timers armed when idle: ${budget.counters.idleTimers} -> ${report.idleTimers}`);
   }
   return failures;
+}
+
+function compareLatency(
+  name: string,
+  { p50, p99 }: { readonly p50: number; readonly p99: number },
+  { p50Ms, p99Ms }: LatencyBudget,
+  failures: string[],
+): void {
+  for (const [metric, value, limit] of [
+    ["p50", p50, p50Ms],
+    ["p99", p99, p99Ms],
+  ] as const) {
+    const floor = measuredNoiseFloorMs[metric];
+    if (value > Math.max(limit * measuredBudgetMultiplier, limit + floor)) {
+      failures.push(`${name} ${metric}: ${value} ms exceeds budget ${limit} ms by more than 20% and ${floor} ms`);
+    }
+  }
 }

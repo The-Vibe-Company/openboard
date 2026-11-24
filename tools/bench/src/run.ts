@@ -21,7 +21,7 @@ const sizes = values.quick ? quickSizes : fullSizes;
 const tables: string[] = [];
 const failures: string[] = [];
 for (const mode of selected) {
-  const report = await measure(mode, sizes);
+  const report = await measure(mode, sizes, { includeSse: true });
   tables.push(formatTable(report));
   // The required check holds both modes' counters and local latencies only (docs/codebase.md 6.7): hosted latencies
   // are held by the full bench, since a quick run's round trips to a shared runner's Postgres jitter too much.
