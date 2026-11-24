@@ -28,8 +28,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [181, 304, 314]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: codex
 issue: 511
 ---
 
