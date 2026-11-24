@@ -52,7 +52,7 @@ test("a board owner creates fixer, copies its secret, and posts through ob conne
 
     await page.keyboard.press("Escape");
     await expect(modal).toHaveCount(0);
-    const row = page.getByRole("list", { name: "Active connections" }).getByRole("listitem");
+    const row = page.getByRole("table", { name: "Active connections" }).locator("tbody").getByRole("row");
     const hint = `…${secret.slice(-4)}`;
     await expect(row.getByText("fixer", { exact: true })).toBeVisible();
     await expect(row.locator("code")).toHaveText(hint);
@@ -127,7 +127,7 @@ test("the 101st connection shows the board quota message", async ({ page }) => {
     await expect(page.getByRole("alert")).toContainText("the connections quota has been reached");
     await expect(page.getByRole("alert")).toContainText("The limit is 100 connections per board.");
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.getByRole("listitem")).toHaveCount(100);
+    await expect(page.locator("tbody").getByRole("row")).toHaveCount(100);
   } finally {
     await app.stop();
   }

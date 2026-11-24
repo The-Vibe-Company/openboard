@@ -94,7 +94,7 @@ test("an admin corrects an invalid tail, copies a webhook secret, receives a lab
     await dialog.getByRole("button", { name: "Done", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByLabel("Secret")).toHaveCount(0);
-    const row = page.getByRole("list", { name: "Webhooks" }).getByRole("listitem");
+    const row = page.getByRole("table", { name: "Webhooks" }).locator("tbody").getByRole("row");
     await expect(row).toContainText("dev-ready");
     await expect(row).toContainText("Enabled");
     expect(await row.evaluate(async (item) => item.textContent?.includes(await navigator.clipboard.readText()))).toBe(
