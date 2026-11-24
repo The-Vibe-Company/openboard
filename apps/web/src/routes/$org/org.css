@@ -1,0 +1,30 @@
+.organization-overview {
+  display: block;
+  place-items: normal;
+  min-height: auto;
+  max-width: 68rem;
+  margin-inline: auto;
+  padding: calc(8 * var(--space)) calc(4 * var(--space));
+}
+
+.organization-overview h3 {
+  margin: 0 0 var(--space);
+}
+
+.organization-overview ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: calc(4 * var(--space));
+  padding: 0;
+  list-style: none;
+}
+
+.organization-overview li a {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-card);
+}
+
+.organization-overview li .ui-card {
+  height: 100%;
+}

@@ -1,66 +1,95 @@
 .organization-settings {
   display: block;
+  place-items: normal;
   min-height: auto;
-  max-width: 48rem;
-  margin: 0 auto;
-  padding: 2rem 1rem;
+  max-width: 68rem;
+  margin-inline: auto;
+  padding: calc(8 * var(--space)) calc(4 * var(--space));
 }
 
 .organization-settings h1 {
-  margin: 0 0 1rem;
-  font-size: 2rem;
+  margin: 0 0 calc(6 * var(--space));
 }
 
-.organization-settings nav {
+.organization-settings .settings-layout {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  align-items: start;
+  gap: calc(6 * var(--space));
+}
+
+.organization-settings .settings-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #ddd;
+  flex-direction: column;
+  gap: var(--space);
 }
 
-.organization-settings nav [aria-current="page"] {
+.organization-settings .settings-tabs a {
+  padding: calc(2 * var(--space)) calc(3 * var(--space));
+  border-radius: var(--radius-control);
+  color: var(--muted);
+}
+
+.organization-settings .settings-tabs [aria-current="page"] {
+  background: var(--surface);
+  color: var(--text);
   font-weight: 650;
 }
 
-.organization-settings a {
-  color: inherit;
+.organization-settings :is(h2, h3):first-child {
+  margin-block-start: 0;
 }
 
-.organization-boards {
-  list-style: none;
-  padding: 0;
+.organization-settings dd {
+  margin-inline-start: 0;
 }
 
-.organization-boards li {
-  display: grid;
-  gap: 0.25rem;
-  border-bottom: 1px solid #ddd;
-  padding: 0.75rem 0;
+.organization-settings .settings-boards-table {
+  table-layout: fixed;
 }
 
-.organization-settings h1,
-.organization-boards a,
-.organization-boards code {
-  overflow-wrap: anywhere;
+.organization-settings .settings-boards-table th:first-child {
+  width: 34%;
+}
+
+.organization-settings th {
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 600;
+  text-align: start;
+}
+
+.organization-settings form[aria-labelledby="create-board"] {
+  margin-block-start: calc(6 * var(--space));
 }
 
 .organization-settings fieldset {
   display: grid;
-  gap: 0.75rem;
-  max-width: 22rem;
+  gap: calc(3 * var(--space));
+  min-inline-size: 0;
+  max-inline-size: 28rem;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
-.organization-settings label {
-  display: grid;
-  gap: 0.25rem;
+.organization-settings .settings-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: calc(2 * var(--space));
+  margin-block-start: calc(4 * var(--space));
+  padding-block-start: calc(4 * var(--space));
+  border-block-start: var(--stroke) solid var(--border);
 }
 
-.organization-settings input,
-.organization-settings button {
-  font: inherit;
-  padding: 0.5rem;
+@media (max-width: 40rem) {
+  .organization-settings .settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .organization-settings .settings-tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
 }

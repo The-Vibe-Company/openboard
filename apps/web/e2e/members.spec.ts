@@ -34,7 +34,7 @@ async function principal(page: Page, origin: string): Promise<string> {
 }
 
 async function expectMember(page: Page, id: string, role: string) {
-  const row = page.getByRole("listitem").filter({ has: page.getByText(id, { exact: true }) });
+  const row = page.getByRole("row").filter({ has: page.getByText(id, { exact: true }) });
   await expect(row.getByText(role, { exact: true })).toBeVisible();
 }
 
@@ -53,7 +53,7 @@ test("an admin sees each role, copies a one-time link, and sees the recipient jo
     await admin.goto(`${origin}${members}`);
     await expectMember(admin, await principal(page, origin), "owner");
     await expectMember(admin, await principal(admin, origin), "admin");
-    await expect(admin.getByRole("listitem")).toHaveCount(2);
+    await expect(admin.locator("tbody").getByRole("row")).toHaveCount(2);
 
     await admin.getByRole("button", { name: "Invite", exact: true }).click();
     const dialog = admin.getByRole("dialog");
@@ -83,11 +83,11 @@ test("an admin sees each role, copies a one-time link, and sees the recipient jo
     await admin.reload();
     const recipientId = await principal(recipient, origin);
     await expectMember(admin, recipientId, "member");
-    await expect(admin.getByRole("listitem")).toHaveCount(3);
+    await expect(admin.locator("tbody").getByRole("row")).toHaveCount(3);
 
     await recipient.goto(`${origin}${members}`);
     await expectMember(recipient, recipientId, "member");
-    await expect(recipient.getByRole("listitem")).toHaveCount(3);
+    await expect(recipient.locator("tbody").getByRole("row")).toHaveCount(3);
     await expect(recipient.getByRole("button", { name: "Invite", exact: true })).toHaveCount(0);
   } finally {
     await Promise.all([admin.close(), recipient.close()]);

@@ -73,7 +73,7 @@ test("a member sees the latest threads and keeps the selected channel on reload"
   }
 });
 
-test("the organization opens its default board and outsiders see Not found", async ({ page, browser }) => {
+test("the organization links to its default board and outsiders see Not found", async ({ page, browser }) => {
   const server = await serve();
   try {
     await signIn(page, server.url, "ada");
@@ -82,6 +82,8 @@ test("the organization opens its default board and outsiders see Not found", asy
     await owner.postMessage({ channel: "internal", text: "Internal thread" });
 
     await page.goto(`${server.url}/acme`);
+    const boards = page.getByRole("region", { name: "Boards" });
+    await boards.getByRole("link", { name: /main/i }).click();
     await expect(page).toHaveURL(`${server.url}/acme/main`);
     const channels = page.getByRole("navigation", { name: "Channels" });
     await expect(channels.getByRole("link", { name: "internal", exact: true })).toBeVisible();

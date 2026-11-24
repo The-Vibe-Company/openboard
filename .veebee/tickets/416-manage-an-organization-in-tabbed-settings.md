@@ -4,6 +4,10 @@ title: Manage an organization in tabbed settings with tables
 milestone: M16-front-design
 package: web
 writes:
+  - apps/web/e2e/board.spec.ts
+  - docs/design.md
+  - apps/web/e2e/boards.spec.ts
+  - apps/web/e2e/members.spec.ts
   - apps/web/src/routes/$org/index.tsx
   - apps/web/src/routes/$org/settings/route.tsx
   - apps/web/src/routes/$org/settings/index.tsx
@@ -15,7 +19,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [411]
-status: draft
+status: done
+claimed_by: codex
 issue: 794
 ---
 
@@ -23,8 +28,8 @@ issue: 794
 As an owner, organization settings look like Vercel's team settings: a title, a left column of tabs (General, Members, Boards), and each section in a `Card` with its table and form.
 
 ## Done when
-- [ ] Organization settings show the tabs with the current one highlighted; Members and Boards are `Table`s with muted column headers, and the invite and create-board forms are `Field`s with a primary button in the card footer
-- [ ] The organization page `/<org>` lists its boards as cards linking to each board; at 375 px the tabs become a horizontal row and nothing overflows
+- [x] Organization settings show the tabs with the current one highlighted; Members and Boards are `Table`s with muted column headers, and the invite and create-board forms are `Field`s with a primary button in the card footer
+- [x] The organization page `/<org>` lists its boards as cards linking to each board; at 375 px the tabs become a horizontal row and nothing overflows
 
 ## Rules
 - Use only the tokens and primitives of `docs/design.md` (ticket 411): no colour, radius, shadow or font size written as a raw value outside `apps/web/src/styles.css`.
