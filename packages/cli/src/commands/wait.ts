@@ -45,7 +45,7 @@ export const waitCommand: Command = {
       ctx.output.out(
         ctx.json
           ? JSON.stringify({ event, cursor: event.cursor, next }, null, 2)
-          : `${event.type}  ${messageLine(event.message)}\nnext: ${next}`,
+          : `${event.type}  ${"message" in event ? messageLine(event.message) : ""}\nnext: ${next}`,
       );
       return 0;
     }
