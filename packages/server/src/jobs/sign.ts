@@ -8,7 +8,7 @@ interface SigningScheme {
   readonly signatureFormat: string;
   readonly signedPayload: string;
   readonly timestampHeader?: string;
-  readonly idHeader: string;
+  readonly idHeader?: string;
   readonly key: (secret: string) => string | Uint8Array;
 }
 
@@ -22,6 +22,15 @@ export function webhookSigningScheme(preset: Webhook["signing"]["preset"]): Sign
         signatureFormat: "sha256={sig}",
         signedPayload: "{body}",
         idHeader: "x-github-delivery",
+        key: (secret) => secret,
+      };
+    case "stripe":
+      return {
+        algorithm: "hmac-sha256",
+        encoding: "hex",
+        signatureHeader: "stripe-signature",
+        signatureFormat: "t={ts},v1={sig}",
+        signedPayload: "{ts}.{body}",
         key: (secret) => secret,
       };
     case undefined:
@@ -50,9 +59,9 @@ export function signWebhook(scheme: SigningScheme, id: string, now: number, body
     .digest(scheme.encoding);
   const headers = new Headers({
     "content-type": "application/json",
-    [scheme.idHeader]: id,
-    [scheme.signatureHeader]: scheme.signatureFormat.replace("{sig}", signature),
+    [scheme.signatureHeader]: scheme.signatureFormat.replace("{ts}", ts).replace("{sig}", signature),
   });
+  if (scheme.idHeader) headers.set(scheme.idHeader, id);
   if (scheme.timestampHeader) headers.set(scheme.timestampHeader, ts);
   return headers;
 }

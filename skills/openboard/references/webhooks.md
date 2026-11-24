@@ -39,6 +39,12 @@ For a receiver that verifies GitHub-style signatures, set
 receiver verifies `x-hub-signature-256` over the raw body and can deduplicate by
 `x-github-delivery`. The create response omits the supplied secret.
 
+For a receiver that verifies Stripe-style signatures, set
+`"signing": { "preset": "stripe" }`. The receiver checks
+`stripe-signature: t=<unix seconds>,v1=<hex digest>` using HMAC-SHA256 over the
+timestamp, a period, and the raw request body. Each attempt uses its own
+timestamp. If you supply a secret with `--secret-file`, its bytes are read verbatim.
+
 The agent can reply and complete the task using the
 [command reference](commands.md). To report runner lifecycle events, an
 administrator creates a signed endpoint at `POST {BOARD_URL}/x/inbound`.

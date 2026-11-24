@@ -52,19 +52,29 @@ for (const existing of [false, true]) {
   });
 }
 
-test("ob webhooks create sends the GitHub secret file verbatim", async () => {
+test("ob webhooks create saves a generated stripe secret verbatim", async () => {
   const config = join(directory, "spec.json");
   const path = join(directory, "hook.secret");
-  const gitHubSpec = { ...spec, signing: { preset: "github" } };
+  writeFileSync(config, JSON.stringify({ ...spec, signing: { preset: "stripe" } }));
+  const capture = fixture({ webhook, secret }, 201);
+
+  expect(await capture.run(["create", "--file", config, "--secret-file", path])).toBe(0);
+  expect(readFileSync(path, "utf8")).toBe(secret);
+});
+
+test.each(["github", "stripe"])("ob webhooks create sends the %s secret file verbatim", async (preset) => {
+  const config = join(directory, "spec.json");
+  const path = join(directory, "hook.secret");
+  const receiverSpec = { ...spec, signing: { preset } };
   const contents = "  receiver's café fixture\n";
-  writeFileSync(config, JSON.stringify(gitHubSpec));
+  writeFileSync(config, JSON.stringify(receiverSpec));
   writeFileSync(path, contents, { mode: 0o600 });
   const capture = fixture({ webhook }, 201);
 
   expect(await capture.run(["create", "--file", config, "--secret-file", path])).toBe(0);
   const [request] = capture.requests;
   if (!request) throw new Error("missing create request");
-  expect(await request.json()).toEqual({ ...gitHubSpec, signing: { ...gitHubSpec.signing, secret: contents } });
+  expect(await request.json()).toEqual({ ...receiverSpec, signing: { ...receiverSpec.signing, secret: contents } });
   expect(readFileSync(path, "utf8")).toBe(contents);
   expect(capture.out).toEqual([webhook.id]);
   expect(capture.errors).toEqual([]);
