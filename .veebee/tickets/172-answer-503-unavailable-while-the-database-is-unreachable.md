@@ -6,11 +6,15 @@ package: driver-postgres
 writes:
   - packages/driver-postgres/src/pool.ts
   - packages/driver-postgres/test/unavailable.test.ts
+  - packages/driver-postgres/src/index.ts
+  - packages/driver-postgres/package.json
+  - packages/driver-postgres/tsconfig.json
+  - bun.lock
 conformance: []
 modes: [hosted]
 depends_on: [164]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-t172
 issue: 252
 ---
 
