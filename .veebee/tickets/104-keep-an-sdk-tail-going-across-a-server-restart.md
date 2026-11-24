@@ -9,8 +9,8 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [103]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-104
 issue: 104
 ---
 
@@ -18,10 +18,12 @@ issue: 104
 As a developer, my script keeps following the board when the server restarts.
 
 ## Done when
-- [ ] restarting `ob serve` while the script runs loses no post made after the restart and repeats none
+- [x] restarting `ob serve` while the script runs loses no post made after the restart and repeats none
 
 ## Out of scope
 - Cross-instance resume (M6, 183).
 
 ## Notes
 Resume by cursor (`Last-Event-ID`).
+Verify with a persisted connection credential and a forced stop. Local owner
+credential reissue and graceful SIGTERM shutdown (#183) are outside this ticket.

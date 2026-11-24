@@ -9,6 +9,8 @@ export type TailOptions = ClientOptions &
   Omit<InputOf<typeof readEvents>, "wait"> & {
     /** Aborting it ends the iteration quietly. */
     readonly signal?: AbortSignal;
+    /** Override the pause between reconnect attempts. */
+    readonly retryDelay?: (signal?: AbortSignal) => Promise<void>;
   };
 
 const EVENT_STREAM = "text/event-stream";
@@ -19,6 +21,7 @@ type Frame = { readonly id?: string; readonly event?: string; readonly data?: st
 
 /** A stream that breaks after it opened is as `unreachable` as a board that never answered. */
 function broken(error: unknown): never {
+  if (error instanceof BoardError) throw error;
   if (!(error instanceof TypeError || (error instanceof Error && "code" in error))) throw error;
   throw new BoardError("unreachable", `the board's event stream broke: ${error.message}`);
 }
@@ -68,31 +71,22 @@ async function* framesOf(body: ReadableStream<Uint8Array>): AsyncGenerator<Frame
     }
   } finally {
     await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
 }
 
-/** Events of an open SSE response, in order. */
-async function* streamed(response: Response): AsyncGenerator<BoardEvent> {
-  if (!response.body) return;
-  for await (const frame of framesOf(response.body)) {
-    if (frame.event === "board" && frame.data !== undefined) yield eventOf(frame.data);
-  }
-}
-
-/** Long-polls `GET /events` from a first JSON page, carrying the cursor from page to page. */
-async function* polled(
-  first: OutputOf<typeof readEvents>,
-  input: Omit<InputOf<typeof readEvents>, "wait">,
-  options: TailOptions,
-  send: (request: Request) => Promise<Response>,
-): AsyncGenerator<BoardEvent> {
-  let page = first;
-  while (true) {
-    yield* page.events;
-    if (options.signal?.aborted) return;
-    const next = { ...input, last: undefined, after: page.cursor, wait: LONG_POLL_SECONDS };
-    page = (await answerOf(await reach(send, requestOf(readEvents, next, options)))) as OutputOf<typeof readEvents>;
-  }
+/** Wait briefly while the board restarts, and wake immediately on cancellation. */
+function retryDelay(signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.resolve();
+  return new Promise((resolve) => {
+    const finish = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, 250);
+    signal?.addEventListener("abort", finish, { once: true });
+  });
 }
 
 /** The caller's filters only: the connection options are not query fields. */
@@ -104,6 +98,7 @@ function feedInput(options: TailOptions): Omit<InputOf<typeof readEvents>, "wait
     profile: _profile,
     fetch: _fetch,
     signal: _signal,
+    retryDelay: _retryDelay,
     ...input
   } = options;
   return input;
@@ -112,25 +107,63 @@ function feedInput(options: TailOptions): Omit<InputOf<typeof readEvents>, "wait
 /**
  * Follows the board's feed from `after` (default: now), yielding each event as it lands.
  * Uses SSE, and long-polls when the board answers with JSON instead of a stream.
- * It ends when the stream ends or `signal` aborts; reconnecting is not done here.
+ * Reconnects by cursor after a disconnect. Aborting `signal` ends the iteration.
  */
 export async function* tail(options: TailOptions): AsyncGenerator<BoardEvent, void, undefined> {
   if (!URL.canParse(options.url)) throw new TypeError(`not a board URL: ${options.url}`);
   const { signal } = options;
+  const pause = options.retryDelay ?? retryDelay;
   const base = options.fetch ?? ((request: Request) => fetch(request));
   const send = (request: Request) => base(signal ? new Request(request, { signal }) : request);
-  const input = feedInput(options);
-  const request = requestOf(readEvents, input, options);
-  request.headers.set("accept", `${EVENT_STREAM}, application/json`);
-  try {
-    const response = await reach(send, request);
-    if (response.ok && response.headers.get("content-type")?.startsWith(EVENT_STREAM)) {
-      yield* streamed(response);
-    } else {
-      yield* polled((await answerOf(response)) as OutputOf<typeof readEvents>, input, options, send);
+  const { after, last, ...filters } = feedInput(options);
+  let cursor: string | undefined;
+  let connected = false;
+  let polling = false;
+
+  while (!signal?.aborted) {
+    // Capture the initial position before opening a stream that could break before its first frame.
+    const bootstrapping = after === undefined && cursor === undefined;
+    const input =
+      cursor === undefined ? { ...filters, after, last } : { ...filters, after: polling ? cursor : undefined };
+    const request = requestOf(readEvents, { ...input, wait: polling ? LONG_POLL_SECONDS : undefined }, options);
+    if (!polling && !bootstrapping) {
+      request.headers.set("accept", `${EVENT_STREAM}, application/json`);
+      if (cursor !== undefined) request.headers.set("last-event-id", cursor);
     }
-  } catch (error) {
-    if (signal?.aborted) return;
-    throw error;
+    try {
+      const response = await reach(send, request);
+      if (response.ok && response.headers.get("content-type")?.startsWith(EVENT_STREAM)) {
+        connected = true;
+        if (response.body) {
+          for await (const frame of framesOf(response.body)) {
+            if (signal?.aborted) return;
+            if (frame.event === "board" && frame.data !== undefined) {
+              const event = eventOf(frame.data);
+              cursor = frame.id || event.cursor;
+              yield event;
+            } else if (frame.id) cursor = frame.id;
+          }
+        }
+      } else {
+        const page = (await answerOf(response).catch(broken)) as OutputOf<typeof readEvents>;
+        const resumingSse = !polling && cursor !== undefined;
+        connected = true;
+        polling = !bootstrapping;
+        // The JSON route ignores Last-Event-ID. Request the page again with `after`.
+        if (resumingSse) continue;
+        for (const event of page.events) {
+          if (signal?.aborted) return;
+          yield event;
+        }
+        cursor = page.cursor;
+        continue;
+      }
+    } catch (error) {
+      if (signal?.aborted) return;
+      if (!connected || !(error instanceof BoardError) || !["unreachable", "unavailable"].includes(error.code)) {
+        throw error;
+      }
+    }
+    if (!signal?.aborted) await pause(signal);
   }
 }
