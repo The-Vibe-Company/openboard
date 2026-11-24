@@ -3,13 +3,11 @@ import { serve, temporaryDataDir } from "./support/serve.ts";
 import { signIn } from "./support/sign-in.ts";
 
 async function post(page: Page, url: string, path: string, data: object, status: number) {
-  // The fixture stops and rebinds this origin between sign-up modes.
-  const connection = "close";
-  const session = await page.request.get(`${url}/api/x/session`, { headers: { connection } });
+  const session = await page.request.get(`${url}/api/x/session`);
   expect(session.ok()).toBe(true);
   const { csrf } = await session.json();
   const response = await page.request.post(`${url}/api/x${path}`, {
-    headers: { origin: url, "x-ob-csrf": csrf, connection },
+    headers: { origin: url, "x-ob-csrf": csrf },
     data,
   });
   expect(response.status()).toBe(status);
@@ -36,7 +34,15 @@ const test = base.extend<{
       owner = await browser.newPage();
       existing = await browser.newPage();
       // Create the owner and an existing account before switching to invite-only sign-up.
-      const bootstrap = await serve(options);
+      const bootstrap = await serve({
+        ...options,
+        onResponse(_request, response) {
+          // Both browser contexts reuse this origin after its listener has been replaced.
+          const headers = new Headers(response.headers);
+          headers.set("connection", "close");
+          return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+        },
+      });
       try {
         await signIn(owner, bootstrap.url, "maple-owner");
         await signIn(existing, bootstrap.url, "returning-person");
