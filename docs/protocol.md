@@ -299,7 +299,11 @@ A `user` takes a board member's OpenBoard person ID. For a `github` principal
 without workflow, branch or event filters, the `repository` field can also
 carry the exact subject of a person's locally linked GitHub identity.
 Project and app principal kinds are preserved for display. Grant creation
-appears as `ob.grant.created` in the board audit.
+appears as `ob.grant.created` in the board audit. The response and subsequent listings
+keep `can` as submitted, including `"all"`, the order of permission lists, and empty lists.
+An empty list contributes no permissions when its pattern decides access. Grants tied
+at that pattern can still add permissions. In the CLI,
+`--can 'ops/=read' --can 'ops/secret/=none'` allows reading under `ops/` and closes `ops/secret/`.
 
 `GET /grants` returns `{ grants }`, every unrevoked grant oldest first in the same view, as upstream's
 does. It needs `manage` at `*` or board ownership,

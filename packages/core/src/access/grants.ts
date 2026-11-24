@@ -28,14 +28,14 @@ const ROLE_CAP: Readonly<Record<Role, readonly Permission[]>> = Object.freeze({
 /**
  * `can` as a person with `role` holds it, as upstream caps g1 by team role (`09-access.md` "How grants combine"):
  * each pattern keeps only what the role allows of its permissions and what they imply, and a pattern left with
- * nothing is dropped.
+ * nothing after capping is dropped. An explicit empty list still closes its pattern.
  */
 export function capByRole(can: Can, role: Role): Can {
   const cap = ROLE_CAP[role];
   const capped: Record<string, Permission[]> = {};
   for (const [pattern, permissions] of Object.entries(can)) {
     const kept = withImplied(permissions).filter((permission) => cap.includes(permission));
-    if (kept.length > 0) capped[pattern] = kept;
+    if (permissions.length === 0 || kept.length > 0) capped[pattern] = kept;
   }
   return capped;
 }
@@ -73,11 +73,20 @@ function invalidGrant(message: string): BoardError {
 }
 
 /**
- * A grant's `can` as written (`{ "*": "all" }`, `{ "dev/": ["post", "read"] }`) compiled to what it stores: each
- * pattern checked, `all` expanded, permissions in upstream's order without repeats. A grant that lets nothing in is
- * 400 `grant_empty`; a bad pattern or permission is 400 `invalid_grant`.
+ * A grant's `can` as written (`{ "*": "all" }`, `{ "dev/": ["post", "read"] }`) compiled for access checks: each
+ * pattern checked, `all` expanded, permissions in upstream's order without repeats. Empty lists close their patterns.
+ * A map with no patterns is 400 `grant_empty`; a bad pattern or permission is 400 `invalid_grant`.
  */
 export function compileCan(written: CanInput): Can {
+  return compile(written, false);
+}
+
+/** Connection creation and explicit claim inputs require permissions at every pattern. */
+export function compileRequiredCan(written: CanInput): Can {
+  return compile(written, true);
+}
+
+function compile(written: CanInput, requirePermissions: boolean): Can {
   const entries = Object.entries(written);
   if (entries.length === 0) throw new BoardError("grant_empty", "the grant names no pattern");
   const compiled: Record<string, Permission[]> = {};
@@ -86,7 +95,9 @@ export function compileCan(written: CanInput): Can {
     const given: readonly string[] = permissions === "all" ? PERMISSIONS : permissions;
     const unknown = given.find((permission) => !(PERMISSIONS as readonly string[]).includes(permission));
     if (unknown !== undefined) throw invalidGrant(`${JSON.stringify(unknown)} is not a permission`);
-    if (given.length === 0) throw new BoardError("grant_empty", `the grant lets nothing in at ${pattern}`);
+    if (requirePermissions && given.length === 0) {
+      throw new BoardError("grant_empty", `the grant lets nothing in at ${pattern}`);
+    }
     compiled[pattern] = PERMISSIONS.filter((permission) => given.includes(permission));
   }
   return compiled;

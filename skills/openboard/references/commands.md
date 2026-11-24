@@ -65,7 +65,7 @@ Options:
 - `--remove-connection`: Remove a board connection. Prefix other principal flags with remove- to remove those kinds.
 - `--add-project`: Add a project by ID, optionally with environments.
 - `--environment`: Comma-separated environments for a project. Adding a named project joins its environments.
-- `--can`: Replace the grant’s channel patterns and permissions. Repeat for multiple patterns.
+- `--can`: Replace the grant’s channel patterns and permissions. Use none to close a pattern. Repeatable.
 - `--lock-me-out`: A switch: present means yes.
 
 Errors: `error: forbidden`, `error: grant_empty`, `error: grant_not_found`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: not_in_grant`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
@@ -132,7 +132,7 @@ ob grants create --can <pattern=permissions>… [--user <id>] [--project <id> | 
 
 Options:
 
-- `--can`: A channel pattern and its permissions, all or a comma-separated list. Repeatable.
+- `--can`: A channel pattern and its permissions, all, none or a comma-separated list. Repeatable.
 - `--user`: An OpenBoard person ID.
 - `--project`: A project ID.
 - `--all-projects`: All projects.

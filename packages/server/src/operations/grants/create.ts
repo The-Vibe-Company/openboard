@@ -25,10 +25,10 @@ type GrantContext = Parameters<Handler<typeof createGrant>>[0];
 type GrantCan = Parameters<Handler<typeof createGrant>>[1]["can"];
 
 export function writtenCan(written: GrantCan): GrantCan {
-  const entries = Object.entries(grants.compileCan(written));
-  if (entries.length > 64) throw new BoardError("invalid_grant", "a grant can name up to 64 channel patterns");
-  entries.sort(([a], [b]) => (a === "*" ? -1 : b === "*" ? 1 : a.localeCompare(b)));
-  return Object.fromEntries(entries.map(([pattern, can]) => [pattern, written[pattern] === "all" ? "all" : can]));
+  grants.compileCan(written);
+  if (Object.keys(written).length > 64)
+    throw new BoardError("invalid_grant", "a grant can name up to 64 channel patterns");
+  return written;
 }
 
 export async function requireGrantManage(ctx: GrantContext, channels: string[], oidc: boolean) {
