@@ -22,9 +22,11 @@ export function matchingInboundRules(
   );
 }
 
-export function inboundThreadPosition(thread: ReturnType<typeof parseInboundThread>, body: unknown): number | null {
+export function inboundThreadPosition(thread: ReturnType<typeof parseInboundThread>, body: unknown) {
   const reference = renderTemplateText(thread.from, { body }, PATTERN_LIMIT);
-  if (reference === null) return null;
+  if (!reference?.text) return { kind: "empty" as const };
   const capture = matchInboundPattern(thread.pattern, reference.text)?.captures[1];
-  return capture === undefined ? null : parseId(capture);
+  if (capture === undefined) return { kind: "pattern" as const };
+  const position = parseId(capture);
+  return position === null ? { kind: "root" as const } : { kind: "position" as const, position };
 }

@@ -1,6 +1,7 @@
-import { Database, type SQLQueryBindings } from "bun:sqlite";
+import { Database, SQLiteError, type SQLQueryBindings } from "bun:sqlite";
 import { closeSync, mkdirSync, openSync } from "node:fs";
 import { join } from "node:path";
+import { BoardError } from "@openboard/contract";
 import { createViews, type Db, migrations, type Row, type SqlValue } from "@openboard/driver-sql";
 import type { Store } from "@openboard/ports";
 import { sqliteBroadcaster } from "./broadcaster.ts";
@@ -53,6 +54,15 @@ function openDatabase(options: SqliteOptions, now: () => number): Database {
   }
 }
 
+function unavailable(error: unknown): never {
+  // The low byte of an extended SQLite result code identifies its primary failure.
+  const retryable = [5, 6, 10, 13, 14]; // BUSY, LOCKED, IOERR, FULL, CANTOPEN
+  if (error instanceof SQLiteError && retryable.includes(error.errno & 0xff)) {
+    throw new BoardError("unavailable", "The board's storage is unavailable; try again.");
+  }
+  throw error;
+}
+
 /**
  * One connection, and one queue in front of it: a write transaction holds the queue from `BEGIN IMMEDIATE` to
  * `COMMIT`, so no other statement interleaves with it between awaits (the process write mutex of D33).
@@ -60,7 +70,7 @@ function openDatabase(options: SqliteOptions, now: () => number): Database {
 function connection(database: Database, counter?: StatementCounter): Db {
   let tail: Promise<unknown> = Promise.resolve();
   const exclusive = <T>(task: () => Promise<T>): Promise<T> => {
-    const run = tail.then(task);
+    const run = tail.then(task).catch(unavailable);
     tail = run.catch(() => undefined);
     return run;
   };
@@ -86,7 +96,7 @@ function connection(database: Database, counter?: StatementCounter): Db {
           control("COMMIT");
           return result;
         } catch (error) {
-          control("ROLLBACK");
+          if (database.inTransaction) control("ROLLBACK");
           throw error;
         }
       }),

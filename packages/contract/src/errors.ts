@@ -94,6 +94,7 @@ const CODES = {
   ],
   410: ["secret_spent", "invitation_used"],
   413: ["too_large"],
+  422: ["thread_not_found"],
   429: ["ratelimited", "rate_limited", "quota_exceeded"],
   500: ["no_store", "internal"],
   501: [
