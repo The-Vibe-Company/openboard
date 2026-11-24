@@ -325,8 +325,8 @@ available, per-organization log shipping, daily `pg_dump`).
 
 ### D26. Attachments on the volume, ≤ 4 MB, content-addressed
 
-**Status: superseded by D39** (blob port: filesystem locally, S3-compatible
-storage hosted, per-organization keys).
+**Status: superseded by D39** (blob port: filesystem locally, Postgres
+`bytea` hosted until the object storage threshold, per-organization keys).
 
 - **Decision.** Files under `blobs/sha256/`, rows in `attachments`; direct
   uploads answer 501 `no_direct_uploads`, as upstream's `local()`.
@@ -567,6 +567,12 @@ reconcile the timer with the queue, including any outstanding lease expiries.
   OpenBoard generates upstream-compatible `att_` UUIDv4 IDs and accepts the
   legacy 22-character base64url form. A download requires a readable live
   message carrying the attachment, including for the uploader. See issue #562.
+
+  The hosted backup bucket stores raw content at `org/<org_id>/blobs/sha256/<hash>`.
+  The JSON object at `org/<org_id>/attachments/<board_id>/<attachment_id>.json`
+  records its `sha256`, which connects a shipped message's attachment ID to its
+  bytes. The job writes both objects before publishing a log segment that
+  references the attachment.
 
 ### D40. SaaS seams with v1 minimums; billing out of scope (N8)
 

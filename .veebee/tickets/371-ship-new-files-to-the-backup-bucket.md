@@ -6,15 +6,26 @@ package: server
 writes:
   - packages/server/src/jobs/ship-log.ts
   - packages/server/test/ha/ship-blobs.test.ts
-  - packages/driver-sql/src/views/shipping.ts
+  - packages/server/test/ha/ship-log.test.ts
+  - packages/server/test/ha/ship-fixture.ts
+  - packages/driver-sql/src/views/jobs/shipping.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/migrations/0053-attachment-shipping.sql
+  - packages/driver-sql/migrations/0054-attachment-shipping-index.sql
+  - packages/ports/src/index.ts
+  - packages/ports/testkit/backup-bucket.ts
+  - packages/server/test/ha/dump.test.ts
+  - packages/driver-postgres/test/dump.test.ts
+  - packages/server/src/app.ts
+  - apps/openboard/src/bucket.ts
   - packages/driver-sql/src/statements.ts
-  - packages/ports/src/store.ts
+  - packages/ports/src/bucket.ts
   - docs/decisions.md
 conformance: []
 modes: [hosted]
 depends_on: [210, 367]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-371
 issue: 566
 ---
 
@@ -22,7 +33,7 @@ issue: 566
 As the owner, a file someone attaches on the hosted service is in the backup bucket within seconds, next to its organization's log, so losing the database volume loses no file the log mentions.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/ship-blobs.test.ts` passes with a fake bucket and both instances' runners polling: two files uploaded in organization A are, once the fake clock has moved 10 s, under `org/<A's id>/blobs/sha256/<hash>` with the same bytes, each written once though both runners ran; the same bytes uploaded by organization B land under B's prefix only; a second run writes nothing; A's purge (208) removes A's blob objects with its prefix
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/ship-blobs.test.ts` passes with a fake bucket and both instances' runners polling: two files uploaded in organization A are, once the fake clock has moved 10 s, under `org/<A's id>/blobs/sha256/<hash>` with the same bytes, each written once though both runners ran; the same bytes uploaded by organization B land under B's prefix only; a second run writes nothing; A's purge (208) removes A's blob objects with its prefix
 - [ ] with the owner's bucket configured on staging (210's `OPENBOARD_BACKUP_S3_*`), `ob post dev "shot" --attach shot.png` on staging puts `org/<id>/blobs/sha256/<hash>` in the bucket within 20 s, listed with the provider's own tool
 
 ## Out of scope

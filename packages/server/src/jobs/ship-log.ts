@@ -1,4 +1,4 @@
-import type { Bucket, LogSegment, PlatformView } from "@openboard/ports";
+import type { BackupAttachment, Blobs, Bucket, LogSegment, PlatformView } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
 import type { Tenants } from "../http/scope.ts";
 import type { OrgJobHandler } from "./registry.ts";
@@ -17,8 +17,26 @@ function upload(bucket: Bucket, orgId: number, { boardId, first, last, events, d
   return bucket.put(key, Bun.gzipSync(new TextEncoder().encode(ndjson)), deadline);
 }
 
+async function uploadAttachment(bucket: Bucket, blobs: Blobs, attachment: BackupAttachment, deadline: number) {
+  const { orgId, boardId, id, sha256 } = attachment;
+  const prefix = orgPrefix(orgId);
+  const path = `${prefix}blobs/sha256/${sha256}`;
+  if (!(await bucket.exists(path, deadline))) {
+    const stream = await blobs.get({ orgId, sha256 });
+    if (!stream) throw new Error("Attachment blob missing during backup");
+    await bucket.put(path, await new Response(stream).bytes(), deadline, "application/octet-stream");
+  }
+
+  const mapping = `${prefix}attachments/${boardId}/${id}.json`;
+  if (!(await bucket.exists(mapping, deadline))) {
+    const metadata = new TextEncoder().encode(JSON.stringify({ sha256 }));
+    await bucket.put(mapping, metadata, deadline, "application/json");
+  }
+}
+
 export function logShippingJobs(
   bucket: Bucket,
+  blobs: Blobs,
   platform: PlatformView,
   tenants: Tenants,
   deps: Deps,
@@ -27,7 +45,12 @@ export function logShippingJobs(
   async function shipOrg(orgId: number, stopped: () => boolean) {
     if (stopped()) return;
     try {
-      await tenants.jobOrg({ orgId }).shipLogs((segment) => upload(bucket, orgId, segment), stopped, deps.now);
+      await tenants.jobOrg({ orgId }).shipLogs(
+        (segment) => upload(bucket, orgId, segment),
+        stopped,
+        deps.now,
+        (attachment, deadline) => uploadAttachment(bucket, blobs, attachment, deadline),
+      );
     } catch {
       deps.log.error("log shipping failed", { orgId });
     }

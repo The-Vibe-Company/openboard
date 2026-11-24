@@ -16,6 +16,23 @@ export function backupBucket(config: BackupConfig, now: () => number): NonNullab
     } while (continuationToken);
   }
 
+  async function request(key: string, method: "PUT" | "HEAD", deadline: number, body?: Uint8Array, type?: string) {
+    const remaining = Math.min(5_000, deadline - now());
+    const expiresIn = Math.floor(remaining / 1_000);
+    if (expiresIn < 1) throw new Error("Backup request lease expired");
+    const url = client.presign(key, { method, expiresIn });
+    const timeout = Math.min(remaining, deadline - now());
+    if (timeout <= 0) throw new Error("Backup request lease expired");
+    const response = await fetch(url, {
+      method,
+      redirect: "error",
+      ...(body && { headers: { "content-type": type ?? "application/gzip" }, body: body.slice() }),
+      signal: AbortSignal.timeout(timeout),
+    });
+    await response.body?.cancel();
+    return response;
+  }
+
   return {
     async read(key) {
       const file = client.file(key);
@@ -24,21 +41,14 @@ export function backupBucket(config: BackupConfig, now: () => number): NonNullab
     async delete(key) {
       await client.delete(key);
     },
-    async put(key, bytes, deadline) {
-      const remaining = Math.min(5_000, deadline - now());
-      const expiresIn = Math.floor(remaining / 1_000);
-      if (expiresIn < 1) throw new Error("Backup upload lease expired");
-      const url = client.presign(key, { method: "PUT", expiresIn });
-      const timeout = Math.min(remaining, deadline - now());
-      if (timeout <= 0) throw new Error("Backup upload lease expired");
-      const response = await fetch(url, {
-        method: "PUT",
-        redirect: "error",
-        headers: { "content-type": "application/gzip" },
-        body: bytes.slice(),
-        signal: AbortSignal.timeout(timeout),
-      });
-      await response.body?.cancel();
+    async exists(key, deadline) {
+      const response = await request(key, "HEAD", deadline);
+      if (response.status === 404) return false;
+      if (!response.ok) throw new Error("Backup existence check failed");
+      return true;
+    },
+    async put(key, bytes, deadline, contentType) {
+      const response = await request(key, "PUT", deadline, bytes, contentType);
       if (!response.ok) throw new Error("Backup upload failed");
     },
     async putStream(key, stream) {

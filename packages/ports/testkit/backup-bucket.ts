@@ -4,6 +4,9 @@ export function fakeBucket() {
   const objects = new Map<string, Uint8Array>();
   const writes: string[] = [];
   const bucket: Bucket = {
+    async exists(key) {
+      return objects.has(key);
+    },
     async read(key) {
       const bytes = objects.get(key);
       return bytes ? new Blob([bytes.slice()]).stream() : null;

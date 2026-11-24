@@ -81,6 +81,9 @@ if (url) {
           {
             async put() {},
             async *list() {},
+            async exists() {
+              return false;
+            },
             async read() {
               return null;
             },
