@@ -5,14 +5,15 @@ milestone: M12-mcp-sdk-skill
 package: sdk
 writes:
   - packages/sdk/src/connect.ts
+  - packages/sdk/src/client.ts
   - packages/sdk/src/index.ts
   - packages/sdk/test/connect.test.ts
   - packages/sdk/README.md
 conformance: []
 modes: [local, hosted]
 depends_on: [103]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 532
 ---
 
