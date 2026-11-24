@@ -5,7 +5,7 @@ import { describeAllowed } from "./describe.ts";
 import { checkDriverImport } from "./driver.ts";
 import { checkDriverSqlImport } from "./driver-sql.ts";
 import { isBare, matchesExternal, packageOf, resolveImport, scanImports } from "./imports.ts";
-import type { Config, Rule, Violation } from "./types.ts";
+import { type Config, isExampleTest, type Rule, type Violation } from "./types.ts";
 import { findWorkspaces, sourceFiles, type Workspace } from "./workspaces.ts";
 
 const TEST_FILE = /\.test\.[cm]?[jt]sx?$/;
@@ -152,8 +152,11 @@ export async function checkBoundaries(root: string, config: Config): Promise<Vio
       continue;
     }
     for (const file of await sourceFiles(root, workspace.dir)) {
-      const rule = ruleFor(config, file);
-      if (!rule) continue;
+      const base = ruleFor(config, file);
+      if (!base) continue;
+      const rule = isExampleTest(workspace.dir, file)
+        ? { ...base, may: [...base.may, ...config.tests.examples] }
+        : base;
       const ctx = {
         file,
         workspace,
@@ -213,7 +216,7 @@ export function checkConfig(config: Config, workspaces: Workspace[]): Violation[
     if (dirs.length > 1)
       violations.push({ file: "package.json", message: `workspaces ${dirs.join(", ")} share the name ${short}` });
   }
-  for (const name of config.drivers.workspaces) {
+  for (const name of new Set([...config.drivers.workspaces, config.drivers.exampleTestDriver])) {
     if (!shorts.has(name))
       violations.push({ file: "scripts/ci/boundaries.json", message: `drivers names unknown workspace ${name}` });
   }
@@ -224,7 +227,7 @@ export function checkConfig(config: Config, workspaces: Workspace[]): Violation[
         message: `dbClients ${module} names unknown workspace ${workspace}`,
       });
   }
-  for (const [key, rule] of Object.entries(config.graph)) {
+  for (const [key, rule] of Object.entries({ ...config.graph, "examples/*/test": { may: config.tests.examples } })) {
     for (const name of [...rule.may, ...(rule.types ?? [])]) {
       if (!shorts.has(name))
         violations.push({ file: "scripts/ci/boundaries.json", message: `${key} names unknown workspace ${name}` });

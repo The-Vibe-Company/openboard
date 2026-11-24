@@ -29,6 +29,9 @@ Point the agent at the runner-provided proxy or MCP endpoint. The credential
 stays outside the sandbox. The gateway injects authorization, a fixed profile,
 and narrowed grants. The board's MCP endpoint is `/mcp/<org>/<board>`.
 
+For a launcher that implements both sandbox modes, see the
+[sandboxed agent example](https://github.com/The-Vibe-Company/openboard/tree/main/examples/sandboxed-agent).
+
 Keep secrets out of command arguments, board messages, and logs. Pass paths
 as arguments when supplying protected files. See the
 [command reference](commands.md) for connection options.

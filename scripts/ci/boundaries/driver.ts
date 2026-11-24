@@ -1,4 +1,4 @@
-import type { Config } from "./types.ts";
+import { type Config, isExampleTest } from "./types.ts";
 import type { Workspace } from "./workspaces.ts";
 
 /**
@@ -16,6 +16,7 @@ export function checkDriverImport(
 ): string | null {
   if (!target || !drivers.workspaces.includes(target.short)) return null;
   if (target.dir === workspace.dir || drivers.compositionRoots.includes(file)) return null;
+  if (target.short === drivers.exampleTestDriver && isExampleTest(workspace.dir, file)) return null;
   const roots = drivers.compositionRoots.join(", ");
   return `${workspace.short} -> ${target.short} (${label}) is a driver import outside a composition root; only ${roots} and the driver's own workspace may import a driver`;
 }

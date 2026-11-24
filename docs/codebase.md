@@ -185,11 +185,11 @@ The web build configuration may import Vite and its React and TanStack Router pl
 The web Playwright configuration and browser tests may import Playwright. Browser tests may also use the SDK to exercise agent journeys.
 Only the web E2E support directory may import the server for browser tests. Only `apps/web/e2e/support/serve.ts` may import the SQLite and Postgres drivers to compose the local and hosted browser projects.
 
-Within `examples/`, only `examples/webhook-receiver/test/**` may import `@openboard/server` and `@openboard/driver-sqlite` to test a real in-process board. Driver imports remain limited to the composition root listed below.
+Within `examples/`, only `examples/*/test/**` may import `@openboard/server` and `@openboard/driver-sqlite` to test a real in-process board. An example test that opens SQLite acts as a test composition root.
 
 Universal rules:
 - **`driver-sql` is imported only by `driver-sqlite` and `driver-postgres`.**
-- **Drivers are imported only by composition roots**: `apps/openboard/src/compose.ts`, `apps/web/e2e/support/serve.ts`, `packages/server/test/support/drivers.ts`, `tools/conformance/src/drivers.ts`, `tools/bench/src/drivers.ts`, `examples/webhook-receiver/test/receiver.test.ts`, and each driver's own tests. Any other file importing `@openboard/driver-*` fails CI.
+- **Drivers are imported only by composition roots**: `apps/openboard/src/compose.ts`, `apps/web/e2e/support/serve.ts`, `packages/server/test/support/drivers.ts`, `tools/conformance/src/drivers.ts`, `tools/bench/src/drivers.ts`, `examples/*/test/**` (SQLite only), and each driver's own tests. Any other file importing `@openboard/driver-*` fails CI.
 - **CI renderer exception:** `scripts/ci/migrations.ts` can import the pure `@openboard/driver-sqlite/ddl` subpath.
 - **No SQL outside a driver** (section 3.2).
 - Nothing imports `examples/*`. Only `tools/conformance` imports `@vercel/board`, never at runtime.
@@ -431,6 +431,8 @@ Use a private, unversioned backup bucket dedicated to one database. Enable the c
 | Benchmark | workloads and budgets (6.6) | `tools/bench` | both | quick < 60 s per mode |
 
 `packages/server/test/support/app.ts` exposes `makeApp()`. With `OPENBOARD_TEST_DRIVER` unset it returns one app on in-memory SQLite. With `OPENBOARD_TEST_DRIVER=postgres` it returns a two-instance cluster on a fresh Postgres database whose `fetch` alternates requests between the instances. Every HTTP and isolation test runs unchanged in both.
+
+Recipe integration tests may use loopback HTTP to exercise the npm CLI in a child process against an in-process board.
 
 Rules (armada: `AGENTS.md` "Tests"): one test per behaviour at the cheapest layer; no network beyond the test database, no wall-clock waits, no sleeps (fake clock; jobs run by calling the runner); no child process when a function call proves the same thing; a test over one second is rewritten; a flaky test is deleted the day it is seen; a bug fix carries a test that fails without it; fixtures hold no token-shaped strings. From upstream (`AGENTS.md` "run it"): no auth bypass, real verification against test keys.
 
