@@ -3,9 +3,13 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const { OPENBOARD_TASK: thread, BOARD_PROFILE: profile, BOARD_TOKEN: token } = process.env;
-assert.equal(Object.keys(process.env).sort().join(","), "BOARD_PROFILE,BOARD_TOKEN,BOARD_URL,OPENBOARD_TASK");
+const { OPENBOARD_RUN: run, OPENBOARD_TASK: thread, BOARD_PROFILE: profile, BOARD_TOKEN: token } = process.env;
+assert.equal(
+  Object.keys(process.env).sort().join(","),
+  "BOARD_PROFILE,BOARD_TOKEN,BOARD_URL,OPENBOARD_RUN,OPENBOARD_TASK",
+);
 assert.ok(thread);
+assert.ok(run);
 assert.ok(profile === `run-${thread}`);
 assert.ok(token?.startsWith("obt_"));
 

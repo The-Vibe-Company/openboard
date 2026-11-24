@@ -19,7 +19,7 @@ export function createLauncher(boardUrl: string, secret: string, command: [strin
   return async (thread: string, deliveryId: string) => {
     const { env } = await board.claimConnection({ profile: `run-${thread}`, idempotencyKey: deliveryId });
     const child = Bun.spawn(command, {
-      env: { ...env, OPENBOARD_TASK: thread },
+      env: { ...env, OPENBOARD_TASK: thread, OPENBOARD_RUN: deliveryId },
       stdin: "ignore",
       stdout: "inherit",
       stderr: "inherit",

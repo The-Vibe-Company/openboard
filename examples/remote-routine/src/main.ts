@@ -1,5 +1,7 @@
 import { parseArgs } from "node:util";
+import { createClient } from "@the-vibe-company/openboard";
 import { createLauncher, runnerCommand } from "./launch.ts";
+import { createLinkedLauncher } from "./link.ts";
 import { type DeliveryRequest, signingKey, verifyDelivery } from "./verify.ts";
 
 function readyThread(body: ArrayBuffer): string | undefined {
@@ -71,14 +73,15 @@ async function serve() {
   const boardUrl = process.env.BOARD_URL;
   if (!boardUrl) throw new Error("BOARD_URL is required");
   const command = runnerCommand(process.env.RUNNER_COMMAND);
-  const [webhookSecret, connectionSecret] = await Promise.all([
+  const [webhookSecret, connectionSecret, routineSecret] = await Promise.all([
     readSecret(process.env.WEBHOOK_SECRET_FILE),
     readSecret(process.env.OPENBOARD_SECRET_FILE),
+    readSecret(process.env.ROUTINE_SECRET_FILE),
   ]);
   const launch = createLauncher(boardUrl, connectionSecret, command);
-  const fetch = createRoutine(webhookSecret, Date.now, async (thread, id) => {
-    await launch(thread, id);
-  });
+  const routine = createClient({ url: boardUrl, token: routineSecret, profile: "routine" });
+  const start = createLinkedLauncher(routine, launch, process.env.RUN_URL_TEMPLATE);
+  const fetch = createRoutine(webhookSecret, Date.now, start);
   const server = Bun.serve({ hostname: "127.0.0.1", port, maxRequestBodySize: 256 * 1024, fetch });
   process.stdout.write(`Remote routine listening at ${server.url.origin}/hook\n`);
 }
