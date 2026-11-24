@@ -1,5 +1,9 @@
 import { formatId } from "@openboard/core";
 import type { OutputOf, readEvents } from "@openboard/contract";
+import type { Deps } from "../deps.ts";
+
+/** Upstream pings a quiet stream every 15 s so proxies do not cut it for idleness (`03-http.md`, "SSE"). */
+export const PING_INTERVAL_MS = 15_000;
 
 type Page = { readonly cursor: number; readonly events: OutputOf<typeof readEvents>["events"] };
 
@@ -10,28 +14,44 @@ function pageFrames(page: Page): string {
   return events.join("");
 }
 
-/** Keep at most one page queued. A disconnect wakes and unsubscribes any pending read. */
+/**
+ * Keep at most one page queued. A disconnect wakes and unsubscribes any pending read and stops the pings. A ping is
+ * skipped while a frame is still queued: the client has unread bytes, so the connection is not idle.
+ */
 export function eventStream(
   first: Page,
   requestSignal: AbortSignal,
+  schedule: Deps["schedule"],
   read: (after: number, signal: AbortSignal) => Promise<Page>,
 ): Response {
   const abort = new AbortController();
   const signal = AbortSignal.any([requestSignal, abort.signal]);
   const encoder = new TextEncoder();
   let cursor = first.cursor;
+  let cancelPing = () => {};
+  signal.addEventListener("abort", () => cancelPing(), { once: true });
 
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       controller.enqueue(encoder.encode(": connected\n\n"));
       controller.enqueue(encoder.encode(pageFrames(first)));
+      const ping = () => {
+        if (signal.aborted) return;
+        if ((controller.desiredSize ?? 0) > 0) controller.enqueue(encoder.encode(": ping\n\n"));
+        cancelPing = schedule(PING_INTERVAL_MS, ping);
+      };
+      if (!signal.aborted) cancelPing = schedule(PING_INTERVAL_MS, ping);
     },
     async pull(controller) {
       if (signal.aborted) {
         controller.close();
         return;
       }
-      const page = await read(cursor, signal);
+      // A failed read errors the stream without calling `cancel`: abort so the pings stop with it.
+      const page = await read(cursor, signal).catch((error: unknown) => {
+        abort.abort();
+        throw error;
+      });
       if (signal.aborted) {
         if (!abort.signal.aborted) controller.close();
         return;
