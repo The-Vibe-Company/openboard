@@ -101,6 +101,13 @@ test("ob tasks on a full page prints the command that reads the next one", async
   expect(everywhere.lines.at(-1)).toEndWith("(more not shown: ob tasks --state all --limit 1 --after 2)");
 });
 
+test("ob tasks preserves the prerequisite filter on the next page", async () => {
+  const page = { tasks: [{ message: root("5", "a", {}), replies: 0, last: null }], cursor: "5" };
+  const { lines, urls } = await tasks(["dev/", "--needs", "2", "--limit", "1"], page);
+  expect(urls).toEqual([`${ENV.BOARD_URL}/tasks?needs=2&limit=1&channel=dev%2F`]);
+  expect(lines).toEqual(["#5  ready  a\n(more not shown: ob tasks dev/ --needs 2 --limit 1 --after 5)"]);
+});
+
 test("ob tasks says when no task matches", async () => {
   expect((await tasks(["dev"], { tasks: [], cursor: "9" })).lines).toEqual(["no open tasks in dev"]);
   expect((await tasks(["--state", "all"], { tasks: [], cursor: "9" })).lines).toEqual(["no tasks"]);

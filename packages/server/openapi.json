@@ -4145,6 +4145,18 @@
             }
           },
           {
+            "name": "needs",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "A prerequisite task ID that the listed tasks directly need.",
+              "x-ref": "task",
+              "type": "string"
+            }
+          },
+          {
             "name": "after",
             "in": "query",
             "required": false,
@@ -4204,6 +4216,13 @@
               "maxLength": 128,
               "pattern": "^[^\\u0000]+$",
               "description": "A task assigned to this actor: its handle or actor ID.",
+              "type": "string"
+            },
+            "needs": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "A prerequisite task ID that the listed tasks directly need.",
+              "x-ref": "task",
               "type": "string"
             },
             "after": {

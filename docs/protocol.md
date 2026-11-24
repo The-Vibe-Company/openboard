@@ -373,12 +373,12 @@ after each event in its `message` field. Failure and cancellation leave dependan
 in `{ tasks, cursor }`. Its query is upstream's: `channel` (a channel, `dev/` for a subtree, absent
 for every channel), `state` (`open` by default: `waiting`, `ready`, `claimed`, `blocked`; `all`;
 or one state), `label` on the root, `by` (who wrote the root: handle, actor ID or `me`), `owner`
-(handle or principal ID), `for` (handle or actor ID), `after` and `limit` (50 by default, at most
-500). Tasks list in their roots' order, as upstream's do, so a thread made a task lists where its
+(handle or principal ID), `for` (handle or actor ID), `needs` (the ID of a direct prerequisite),
+`after` and `limit` (50 by default, at most 500). Tasks list in their roots' order, as upstream's do, so a thread made a task lists where its
 root stands; follow `task.created` on the feed to see every new task. A full page's `cursor` is its
 last task's ID; a shorter one's is the board head. As `GET /events`
 does, a list without `channel` needs `read` on every channel, and a subtree needs it throughout.
-`needs` and `latest` are not served yet. The CLI is `ob tasks [channel]`, the SDK method `listTasks`,
+`latest` is not served yet. The CLI is `ob tasks [channel] [--needs <id>]`, the SDK method `listTasks`,
 the MCP tool `list_tasks`.
 
 `POST /tasks/:id/claim` takes an optional `lease` in seconds (30–3600, default 900).

@@ -20,20 +20,31 @@ const position: Fragment = { fragment: ({ name }) => (name === "sqlite" ? "instr
 
 /** Where a task list names its channels; `splice` puts one of the predicates below in its place. */
 const CHANNELS: Fragment = { fragment: () => "" };
+const PREREQUISITE: Fragment = { fragment: () => "" };
 const everyChannel = sql`t.board_id = ${"boardId"}`;
 const oneChannel = sql`t.channel = ${"channel"}`;
 const subtreeChannels = sql`(t.channel = ${"channel"} OR t.channel LIKE ${"under"} ESCAPE '\\')`;
+
+// Keep the prerequisite predicate optional at statement construction so the reverse index can drive filtered lists.
+const needsTask = sql`AND t.id IN (
+  SELECT task FROM task_needs
+  WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND needs = CAST(${"needs"} AS BIGINT)
+)`;
 
 /**
  * A board's visible tasks, in their roots' order, after a position, through `tasks_ready` for a channel: states as
  * `,ready,claimed,`, labels on the root, and who wrote the root, owns the task or is assigned it, by ID or handle.
  */
-function taskList(channels: Statement<"boardId" | "channel" | "under">) {
+function taskList(
+  channels: Statement<"boardId" | "channel" | "under">,
+  prerequisite: Statement<"orgId" | "boardId" | "needs"> = sql``,
+) {
   const list = sql`WITH filters AS (SELECT CAST(${"labels"} AS TEXT) AS data),
     page AS (
       SELECT t.board_id, t.id, root.view, root.replies, root.last_reply
       FROM tasks AS t JOIN messages AS root ON root.board_id = t.board_id AND root.id = t.id
       WHERE t.board_id = ${"boardId"} AND ${CHANNELS} AND t.id > CAST(${"after"} AS BIGINT)
+        ${PREREQUISITE}
         AND (root.deleted = 0 OR t.state IN ('canceled', 'completed'))
         AND ${position}(CAST(${"states"} AS TEXT), ',' || (CASE
           WHEN t.state = 'claimed' AND t.claim_until <= CAST(${"now"} AS BIGINT) THEN 'ready'
@@ -64,14 +75,23 @@ function taskList(channels: Statement<"boardId" | "channel" | "under">) {
     LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = page.last_reply
     WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"}
     ORDER BY page.id`;
-  return splice(list, CHANNELS, channels);
+  return splice(splice(list, CHANNELS, channels), PREREQUISITE, prerequisite);
 }
 
 export const taskListStatements = {
   listTasks: taskList(oneChannel),
   listSubtreeTasks: taskList(subtreeChannels),
   listBoardTasks: taskList(everyChannel),
+  listTasksNeeding: taskList(oneChannel, needsTask),
+  listSubtreeTasksNeeding: taskList(subtreeChannels, needsTask),
+  listBoardTasksNeeding: taskList(everyChannel, needsTask),
 };
+
+const taskListsByScope = {
+  board: [taskListStatements.listBoardTasks, taskListStatements.listBoardTasksNeeding],
+  channel: [taskListStatements.listTasks, taskListStatements.listTasksNeeding],
+  subtree: [taskListStatements.listSubtreeTasks, taskListStatements.listSubtreeTasksNeeding],
+} as const;
 
 /** A board's task list: one statement reads the page, each root's latest reply and the board's head together. */
 export function taskListReads(
@@ -81,14 +101,10 @@ export function taskListReads(
   clock: () => number,
 ): Pick<BoardTaskReads, "listTasks"> {
   return {
-    async listTasks({ channel, under, states, labels = [], by, owner, for: assignee, after = 0, limit }) {
+    async listTasks({ channel, under, states, labels = [], by, owner, for: assignee, needs, after = 0, limit }) {
       const now = clock();
-      const statement =
-        channel === undefined
-          ? taskListStatements.listBoardTasks
-          : under === undefined
-            ? taskListStatements.listTasks
-            : taskListStatements.listSubtreeTasks;
+      const scopeName = channel === undefined ? "board" : under === undefined ? "channel" : "subtree";
+      const statement = taskListsByScope[scopeName][needs === undefined ? 0 : 1];
       const rows = await query(db, dialect, statement, {
         boardId: scope.boardId,
         orgId: scope.orgId,
@@ -102,6 +118,7 @@ export function taskListReads(
         assigneeHandle: assignee?.toLowerCase() ?? null,
         author: by ?? null,
         authorHandle: by?.toLowerCase() ?? null,
+        needs: needs ?? null,
         after,
         limit,
         now,
