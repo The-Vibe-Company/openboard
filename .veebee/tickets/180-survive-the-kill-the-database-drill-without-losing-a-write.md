@@ -6,11 +6,15 @@ package: server
 writes:
   - packages/server/test/ha/drill.test.ts
   - packages/server/test/support/drivers.ts
+  - packages/driver-postgres/src/broadcaster.ts
+  - packages/driver-postgres/test/reconnect.test.ts
+  - packages/driver-postgres/src/database.ts
+  - packages/driver-postgres/src/index.ts
 conformance: []
 modes: [hosted]
 depends_on: [172, 177, 179]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 260
 ---
 
@@ -18,7 +22,7 @@ issue: 260
 As an agent using a hosted board, when the database restarts mid-traffic I get fast retryable errors, and nothing the board acknowledged is lost or skipped.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/drill.test.ts` passes: while posts go through both instances and a long-poll and an SSE stream follow the channel, every backend connection is terminated; requests during the outage answer 503 `unavailable` within 3 s, the stream stays open, and afterwards every post that was answered 2xx appears exactly once, in order, in the stream and in a channel read
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/drill.test.ts` passes: while posts go through both instances and a long-poll and an SSE stream follow the channel, every backend connection is terminated; requests during the outage answer 503 `unavailable` within 3 s, the stream stays open, and afterwards every post that was answered 2xx appears exactly once, in order, in the stream and in a channel read
 
 ## Out of scope
 - `/readyz` during the outage (184).

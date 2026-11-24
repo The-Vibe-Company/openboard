@@ -69,12 +69,45 @@ export async function terminateTestConnection(url: string, name: string): Promis
 /** Simulates a restart by ending every connection to the isolated test database. */
 export async function terminateTestConnections(url: string): Promise<number> {
   await using sql = new SQL(url, { max: 1 });
+  return await terminatePeers(sql);
+}
+
+/** Holds writes until each request has reached Postgres, then ends all application backends. */
+export async function interruptTestWrites(url: string, count: number, startWrites: () => void): Promise<number> {
+  await using sql = new SQL(url, { max: 1 });
+  return sql.begin(async (session) => {
+    // Ordinary reads can still park a tail. Writes cannot reach commit while this lock is held.
+    await session`LOCK TABLE boards IN EXCLUSIVE MODE`;
+    startWrites();
+    const deadline = performance.now() + 400;
+    while (performance.now() < deadline) {
+      const [blocked] = await session<{ count: number }[]>`
+        SELECT count(*)::int AS count FROM pg_locks
+        WHERE relation = 'boards'::regclass AND database = (
+          SELECT oid FROM pg_database WHERE datname = current_database()
+        ) AND NOT granted
+      `;
+      if (blocked?.count === count) return await terminatePeers(session);
+    }
+    throw new Error(`Expected ${count} writes to be blocked before terminating backends`);
+  });
+}
+
+async function terminatePeers(sql: SQL): Promise<number> {
   const connections = await sql<{ pid: number }[]>`
-    SELECT pid FROM pg_stat_activity
-    WHERE datname = current_database() AND pid <> pg_backend_pid()
+    SELECT pid, pg_terminate_backend(pid) FROM pg_stat_activity
+    WHERE datname = current_database() AND pid <> pg_backend_pid() AND backend_type = 'client backend'
   `;
-  for (const { pid } of connections) await terminate(sql, pid);
-  return connections.length;
+  const deadline = performance.now() + 500;
+  const pids = `{${connections.map(({ pid }) => pid).join(",")}}`;
+  while (performance.now() < deadline) {
+    await sql`SELECT pg_stat_clear_snapshot()`;
+    const [remaining] = await sql<{ count: number }[]>`
+      SELECT count(*)::int AS count FROM pg_stat_activity WHERE pid = ANY(${pids}::int[])
+    `;
+    if (remaining?.count === 0) return connections.length;
+  }
+  throw new Error("Test backends did not terminate");
 }
 
 async function terminate(sql: SQL, pid: number): Promise<void> {

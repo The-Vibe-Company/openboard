@@ -1,5 +1,5 @@
 import { afterAll } from "bun:test";
-import { createTestDatabases, postgresDriver } from "@openboard/driver-postgres";
+import { createTestDatabases, interruptTestWrites, postgresDriver } from "@openboard/driver-postgres";
 import { type Catalog, postgresCatalog } from "@openboard/driver-postgres/catalog";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { sqliteCatalog } from "@openboard/driver-sqlite/catalog";
@@ -31,7 +31,10 @@ export function shareTemplate(): () => Promise<void> {
  * own (own pool and listener) on the same database, as a second process would open; on SQLite, one process holds the
  * database, so there is none.
  */
-export type TestStore = Store & { readonly sibling?: () => Store };
+export type TestStore = Store & {
+  readonly sibling?: () => Store;
+  readonly interruptWrites?: (count: number, startWrites: () => void) => Promise<number>;
+};
 
 /**
  * The store HTTP tests run on: in-memory SQLite, or with `OPENBOARD_TEST_DRIVER=postgres` a fresh database cloned from
@@ -80,7 +83,11 @@ function postgresStore(url: string, now: () => number): TestStore {
     const failed = closed.find((result) => result.status === "rejected");
     if (failed) throw failed.reason;
   });
-  return { ...instance(), sibling: instance };
+  return {
+    ...instance(),
+    sibling: instance,
+    interruptWrites: async (count, startWrites) => interruptTestWrites((await created()).url, count, startWrites),
+  };
 }
 
 /** A store that opens its driver on first use, so it can be handed out synchronously. */
