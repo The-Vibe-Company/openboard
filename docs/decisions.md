@@ -301,7 +301,11 @@ jobs on any instance). Lazy expiry stands in both modes.
 **Status: local mode only; hosted backups in D38** (provider PITR where
 available, per-organization log shipping, daily `pg_dump`).
 
-- **Decision.** 6-hourly local snapshots; when S3-compatible storage is
+- **Decision.** Local SQLite takes a snapshot at open and every six hours in
+  the data directory's `backups/` folder. Keep the eight most recent
+  UTC-named snapshots. Preserve a separate `pre-migrate-<version>.sqlite`
+  before upgrading an existing database, using the first pending version.
+  When S3-compatible storage is
   configured, upload snapshots, ship new log events every 10 s as compressed
   segments, upload attachments content-addressed, all with Bun's built-in S3
   client. Restore = snapshot + replay.

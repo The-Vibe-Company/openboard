@@ -8,8 +8,11 @@ import type { StatementCounter } from "./counters.ts";
 import { sqliteDialect } from "./dialect.ts";
 import { sqliteJobs } from "./jobs.ts";
 import { migrate } from "./migrate.ts";
+import { type SnapshotOptions, snapshotBeforeMigration, startSnapshots } from "./snapshot.ts";
 
-export type SqliteOptions = { readonly memory: true } | { readonly dir: string; readonly sync?: "NORMAL" | "FULL" };
+export type SqliteOptions =
+  | { readonly memory: true }
+  | ({ readonly dir: string; readonly sync?: "NORMAL" | "FULL" } & SnapshotOptions);
 
 const PRAGMAS = [
   "foreign_keys = OFF",
@@ -22,6 +25,7 @@ const PRAGMAS = [
 
 function openDatabase(options: SqliteOptions, now: () => number): Database {
   const file = "dir" in options ? join(options.dir, "board.db") : ":memory:";
+  let beforeMigration: ((version: number) => void) | undefined;
   if ("dir" in options) {
     mkdirSync(options.dir, { recursive: true, mode: 0o700 });
     // Create privately without opening an existing file outside SQLite's locking protocol.
@@ -29,6 +33,7 @@ function openDatabase(options: SqliteOptions, now: () => number): Database {
       closeSync(openSync(file, "wx", 0o600));
     } catch (error) {
       if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) throw error;
+      beforeMigration = (version) => snapshotBeforeMigration(file, join(options.dir, "backups"), version);
     }
   }
 
@@ -40,7 +45,7 @@ function openDatabase(options: SqliteOptions, now: () => number): Database {
       "dir" in options && options.sync === "FULL" ? "PRAGMA synchronous = FULL" : "PRAGMA synchronous = NORMAL",
     );
     for (const pragma of PRAGMAS) database.run(`PRAGMA ${pragma}`);
-    migrate(database, migrations, now());
+    migrate(database, migrations, now(), beforeMigration);
     return database;
   } catch (error) {
     database.close();
@@ -94,6 +99,8 @@ function connection(database: Database, counter?: StatementCounter): Db {
  */
 export function sqliteDriver(options: SqliteOptions, now: () => number = Date.now, counter?: StatementCounter): Store {
   const database = openDatabase(options, now);
+  const stopSnapshots =
+    "dir" in options ? startSnapshots(database.filename, join(options.dir, "backups"), now, options) : undefined;
   const db = connection(database, counter);
   const jobs = sqliteJobs(db, now);
   return {
@@ -101,6 +108,7 @@ export function sqliteDriver(options: SqliteOptions, now: () => number = Date.no
     ...createViews(db, sqliteDialect, sqliteBroadcaster(), { now, committed: jobs.committed }),
     async close() {
       jobs.close();
+      await stopSnapshots?.();
       database.close();
     },
   };
