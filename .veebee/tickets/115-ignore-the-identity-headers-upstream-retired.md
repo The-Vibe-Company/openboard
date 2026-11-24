@@ -7,11 +7,12 @@ writes:
   - packages/contract/src/headers.ts
   - packages/contract/test/headers.test.ts
   - packages/server/test/auth/retired-headers.test.ts
+  - packages/contract/src/index.ts
 conformance: ["core/ignores x-board-avatar, which x-board-profile's avatar parameter replaced", "core/ignores x-board-session: who writes is the principal and its profile", "core/shows no session on a message, its event, or you"]
 modes: [local]
 depends_on: [97, 114]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-115
 issue: 115
 ---
 

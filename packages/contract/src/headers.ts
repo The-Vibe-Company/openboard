@@ -3,6 +3,13 @@ import { BoardError } from "./errors.ts";
 /** The header that picks a profile of the caller's principal (docs/auth.md "Upstream's model", point 2). */
 export const PROFILE_HEADER = "x-board-profile";
 
+/**
+ * Identity headers upstream retired (docs/protocol.md "Request headers"). Old clients still send them; they change
+ * nothing about who writes, so the server reads none of them: `x-board-profile` picks the profile and carries its
+ * avatar, and the principal comes from the credential. Listed so tests can send each one and check it is ignored.
+ */
+export const RETIRED_HEADERS = ["x-board-avatar", "x-board-session", "x-board-handle", "x-board-name"] as const;
+
 /** A profile name: a letter, then up to 31 letters, digits and hyphens; names match case-insensitively. */
 const NAME = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
 /** RFC 8941 tokens, parameter keys, and the numbers, byte sequences and booleans a parameter may hold. */

@@ -18,7 +18,7 @@ export {
   isErrorCode,
   type NextStep,
 } from "./errors.ts";
-export { PROFILE_HEADER, type ProfileHeader, parseProfileHeader } from "./headers.ts";
+export { PROFILE_HEADER, type ProfileHeader, parseProfileHeader, RETIRED_HEADERS } from "./headers.ts";
 export {
   type CliSpec,
   decodeInput,
