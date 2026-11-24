@@ -9,11 +9,15 @@ writes:
   - apps/web/src/components/ThreadRow.tsx
   - apps/web/src/api/thread.ts
   - apps/web/e2e/thread.spec.ts
+  - apps/web/src/main.tsx
+  - apps/web/src/routes/$org/$board/index.tsx
+  - apps/web/src/styles.css
+  - docs/architecture.md
 conformance: []
 modes: [local, hosted]
 depends_on: [222]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 385
 ---
 
