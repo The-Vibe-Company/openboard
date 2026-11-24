@@ -273,9 +273,9 @@ function deleteMessageSuite(open: OpenStore) {
       for (const id of [3, 2]) {
         await board.write(async (writer) => {
           const target = await writer.message(id);
-          const event = decideDelete({ head: writer.head, target }, { id: String(id) }, { by, now: at });
-          if (!event) throw new Error("expected a deletion");
-          await writer.append([event]);
+          const events = decideDelete({ head: writer.head, target }, { id: String(id) }, { by, now: at });
+          if (events.length === 0) throw new Error("expected a deletion");
+          await writer.append(events);
         });
         const { threads } = await board.listThreads("dev");
         expect(threads).toEqual([{ message: root, replies: id - 2, last: id === 3 ? first : null }]);

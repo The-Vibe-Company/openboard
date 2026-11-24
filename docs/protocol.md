@@ -403,6 +403,10 @@ on success and adds `outcome: "canceled"` to its `--json` output. The event
 is available in the feed. Persisted pull-watcher matches will be added with
 task expiry matches (see [the rollout decision](decisions.md#task-cancellation-during-a-rolling-deploy)).
 
+Deleting a task root appends `message.deleted` followed by `task.canceled` with reason
+`deleted` in the same write for any unfinished task. Completed and already canceled
+tasks keep their state. Task lists include canceled and completed tasks with deleted roots.
+
 At the lease deadline, the thread's task state reads `ready` and
 `GET /tasks?state=ready` includes it. A background job or the next successful
 claim appends `task.expired` with `{ id, epoch }` and updates the reserved

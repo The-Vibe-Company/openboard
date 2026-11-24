@@ -75,7 +75,7 @@ export function tasksSuite(driver: string, open: OpenStore): void {
       expect(await ids(board, { channel: "dev", states: ["completed"] })).toEqual([]);
     });
 
-    test("leaves out a task whose root was deleted", async () => {
+    test("leaves a deleted task out of the open list", async () => {
       const board = await localBoard();
       const ada = person("ada");
       const gone = await createTask(board, ada, "dev", "gone");
@@ -83,8 +83,8 @@ export function tasksSuite(driver: string, open: OpenStore): void {
       await board.write(async (writer) => {
         const target = await writer.message(gone);
         const by = { actor: ada.id, principal: ada.id, profile: null };
-        const event = decideDelete({ head: writer.head, target }, { id: String(gone) }, { by, now: at });
-        if (event) await writer.append([event]);
+        const events = decideDelete({ head: writer.head, target }, { id: String(gone) }, { by, now: at });
+        await writer.append(events);
       }, ada.id);
       expect(await ids(board, { channel: "dev" })).toEqual([String(kept)]);
     });

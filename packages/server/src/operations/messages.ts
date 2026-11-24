@@ -180,9 +180,9 @@ export const deleteMessageHandler: Handler<typeof deleteMessage> = async (ctx, i
   const position = parseId(input.id);
   await ctx.board.write(async (writer) => {
     const target = position === null ? null : await writer.message(position);
-    const event = decideDelete({ head: writer.head, target }, input, { by: ctx.by, now: ctx.now() });
+    const events = decideDelete({ head: writer.head, target }, input, { by: ctx.by, now: ctx.now() });
     ctx.debitWrite();
-    if (event) await writer.append([event]);
+    if (events.length > 0) await writer.append(events);
   });
   return { ok: true };
 };

@@ -25,7 +25,7 @@ const oneChannel = sql`t.channel = ${"channel"}`;
 const subtreeChannels = sql`(t.channel = ${"channel"} OR t.channel LIKE ${"under"} ESCAPE '\\')`;
 
 /**
- * A board's tasks whose root stands, in their roots' order, after a position, through `tasks_ready` for a channel: states as
+ * A board's visible tasks, in their roots' order, after a position, through `tasks_ready` for a channel: states as
  * `,ready,claimed,`, labels on the root, and who wrote the root, owns the task or is assigned it, by ID or handle.
  */
 function taskList(channels: Statement<"boardId" | "channel" | "under">) {
@@ -33,7 +33,8 @@ function taskList(channels: Statement<"boardId" | "channel" | "under">) {
     page AS (
       SELECT t.board_id, t.id, root.view, root.replies, root.last_reply
       FROM tasks AS t JOIN messages AS root ON root.board_id = t.board_id AND root.id = t.id
-      WHERE t.board_id = ${"boardId"} AND ${CHANNELS} AND t.id > CAST(${"after"} AS BIGINT) AND root.deleted = 0
+      WHERE t.board_id = ${"boardId"} AND ${CHANNELS} AND t.id > CAST(${"after"} AS BIGINT)
+        AND (root.deleted = 0 OR t.state IN ('canceled', 'completed'))
         AND ${position}(CAST(${"states"} AS TEXT), ',' || (CASE
           WHEN t.state = 'claimed' AND t.claim_until <= CAST(${"now"} AS BIGINT) THEN 'ready'
           ELSE t.state END) || ',') > 0
