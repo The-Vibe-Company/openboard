@@ -7,6 +7,7 @@ import type {
   Invitation,
   InvitationRole,
   ManagedConnection,
+  MentionActor,
   Message,
   Named,
   PersonalToken,
@@ -219,6 +220,12 @@ export interface PlatformView {
 /** One board-locked transaction: the head is read under the lock, events go at `head + 1…` and are folded. */
 export interface BoardWriter {
   readonly head: number;
+  /** The actors available to resolve handles under the write lock. */
+  mentionActors(handles: ReadonlySet<string>): Promise<MentionActor[]>;
+  /** Check the selected message versions that established candidate visibility before the lock. */
+  unchangedMentionEvidence(proofs: readonly MentionEvidence[]): Promise<ReadonlySet<string>>;
+  /** The actors who wrote in a thread, including writers of deleted messages. */
+  threadWriters(thread: number): Promise<ReadonlySet<string>>;
   /** The exact channel path and counts as seen under this write lock. */
   channel(path: string): Promise<Channel | null>;
   /** The message at log position `id`, read under the lock, or null when no message has that ID. */
@@ -304,6 +311,14 @@ export interface AgentRecord {
   readonly previous: { readonly tokenHash: string; readonly until: number } | null;
 }
 
+export interface MentionEvidence {
+  readonly actor: string;
+  readonly channel: string;
+  readonly id: number;
+  readonly version: number;
+  readonly reference: string | null;
+}
+
 /** One board's storage; every statement it runs is bound to its scope. */
 export interface BoardView {
   /** Look up a personal credential in scope. A known but unusable token returns "inactive"; a scope miss returns null. */
@@ -320,6 +335,8 @@ export interface BoardView {
    * the board's record of that actor is read at the start of the write, after the lock.
    */
   write<T>(fn: (writer: BoardWriter) => Promise<T>, actor?: string): Promise<T>;
+  /** Candidate authors, reactors and possible prose references, from one snapshot outside the write lock. */
+  mentionEvidence(handles: ReadonlySet<string>): Promise<MentionEvidence[]>;
   /** Every actor the board has seen write, by handle then ID, and the board head at the time of the read. */
   listActors(): Promise<{ actors: Actor[]; head: number }>;
   /** The channel's first `limit` messages after `after`, or its latest `limit`, oldest first. Null if `after` exceeds the board head. */

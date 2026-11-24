@@ -33,8 +33,8 @@ export const readEventsHandler: Handler<typeof readEvents> = async ({ board }, {
           message: view,
         };
       }
-      // `author` (shown on `message`) and `clientId` are OpenBoard's records; upstream's payload has neither.
-      const { author: _author, clientId: _clientId, ...payload } = event.payload;
+      // `author` (shown on `message`) and mention details belong to the message view. The client key is internal.
+      const { author: _author, clientId: _clientId, mentions: _mentions, ...payload } = event.payload;
       return {
         cursor: formatId(event.id),
         type: event.type,

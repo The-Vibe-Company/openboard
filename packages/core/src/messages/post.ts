@@ -1,6 +1,16 @@
-import { type Actor, type Author, BoardError, type Message, type MessageAuthor } from "@openboard/contract";
+import {
+  type Actor,
+  type Author,
+  BoardError,
+  type Mention,
+  type Message,
+  type MessageAuthor,
+} from "@openboard/contract";
 import { formatId, isoTime } from "../ids.ts";
 import { checkLabels } from "./labels.ts";
+import type { SettledMentions } from "./mentions.ts";
+
+export { mentionedHandles, referencesActor, safeMentionHandles, settleMentions } from "./mentions.ts";
 
 /** A new thread (`channel`) or a reply (`re`), as `POST /messages` asks for it once the contract has validated it. */
 export interface PostCommand {
@@ -25,6 +35,8 @@ export interface MessagePostedPayload {
   readonly re: string | null;
   readonly replyTo: string | null;
   readonly thread: string;
+  /** The original handle spellings and their resolution, kept with the message view. */
+  readonly mentions?: Mention[];
   readonly labels: Readonly<Record<string, string>>;
   readonly noSync: boolean;
   readonly by: Author;
@@ -153,6 +165,7 @@ export function messageView(event: MessagePosted): Message {
     id: formatId(event.id),
     channel: payload.channel,
     text: payload.text,
+    ...(payload.mentions === undefined ? {} : { mentions: payload.mentions }),
     re: payload.re,
     replyTo: payload.replyTo,
     thread: payload.thread,
@@ -209,7 +222,7 @@ function checkAfter(state: PostState, command: PostCommand, root: number) {
  * Decides a post: the next log position names the message, after the writer's `actor.seen` when it has one. A new
  * thread is named by it too; a reply joins the thread of its root, in the root's channel.
  */
-export function decidePost(state: PostState, command: PostCommand, context: PostContext) {
+export function decidePost(state: PostState, command: PostCommand, context: PostContext, settled?: SettledMentions) {
   checkPost(command, context.by);
   const seen = actorSeen(state.actor, context, state.head + 1);
   const id = state.head + (seen ? 2 : 1);
@@ -227,7 +240,8 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
     visibility: 0,
     payload: {
       channel,
-      text: command.text,
+      text: settled?.text ?? command.text,
+      ...(settled?.mentions.length ? { mentions: settled.mentions } : {}),
       re,
       replyTo,
       thread: formatId(root),

@@ -19,6 +19,7 @@
     "core/reads one channel's messages after a cursor of its own, oldest first, and on from where it stopped",
     "core/reads one channel's newest messages, as many as it's asked for",
     "core/says in its discovery where it is",
+    "core/stores a handle one actor has as a mention of them, and keeps one no one has as typed",
     "core/takes a profile and its avatar as one x-board-profile header, and shows both on what it writes",
     "paging/pages back through a channel's threads by their `older`, each thread once",
     "paging/refuses to page threads back and forward at once",

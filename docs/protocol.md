@@ -81,6 +81,14 @@ Protection and fails (`src/client/node.ts`, `through()`). So every path under
 `/api` answers JSON (unknown paths: 404 `not_found`), never redirects, never
 sends `x-vercel-*` headers; the SPA fallback never applies under `/api`.
 
+## Mentions
+
+A post, reply, or edit with a prose `@handle` stores `@[actor-id]` when the handle
+resolves to a visible actor. Unknown handles stay as typed. Post and edit
+responses include `mentions` for the handles in the submitted text. Callers
+with board-wide read access also receive the stored metadata in message views.
+Entries carry `written`, `actor` (null when unresolved), and `candidates`.
+
 ## Request headers
 
 | Header | | Meaning |

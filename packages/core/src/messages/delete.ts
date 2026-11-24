@@ -37,6 +37,7 @@ export function decideDelete(
   const thread = parseId(target.thread);
   if (message === null || thread === null) throw new Error("invalid stored message or thread position");
   const version = head + 1;
+  const { mentions: _mentions, ...previous } = target;
   return {
     id: version,
     type: "message.deleted",
@@ -53,7 +54,7 @@ export function decideDelete(
       by,
       from: null,
       view: {
-        ...target,
+        ...previous,
         text: "",
         deleted: true,
         reactions: {},

@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { ChannelPath, LabelKey, Labels, MESSAGE_TEXT_MAX, Message } from "../entities/messages.ts";
+import { ChannelPath, LabelKey, Labels, MESSAGE_TEXT_MAX, Mention, Message } from "../entities/messages.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
 export const postMessage = defineOperation({
@@ -33,7 +33,7 @@ export const postMessage = defineOperation({
       { additionalProperties: false },
     ),
   },
-  output: Type.Object({ message: Message }),
+  output: Type.Object({ message: Message, mentions: Type.Optional(Type.Array(Mention)) }),
   status: 201,
   errors: ["invalid_request", "invalid_after", "reserved_label", "message_not_found", "duplicate_id", "newer_message"],
   access: { permission: "post", channel: "fromInput" },
@@ -62,7 +62,7 @@ export const editMessage = defineOperation({
       { additionalProperties: false },
     ),
   },
-  output: Type.Object({ ok: Type.Literal(true) }),
+  output: Type.Object({ ok: Type.Literal(true), mentions: Type.Optional(Type.Array(Mention)) }),
   errors: ["invalid_request", "message_not_found", "message_deleted", "revision_conflict"],
   access: { permission: "post", channel: "fromMessage" },
   effects: { readOnly: false, idempotent: false, emits: ["message.edited"] },
