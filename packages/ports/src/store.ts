@@ -372,11 +372,13 @@ export interface BoardView {
    * after it instead, and `older` is null. Pass `before` or `after`, not both. With `text`, a `LIKE` operand from
    * core's `textPattern`, only threads whose root or a reply currently has a lowercased text it matches. With
    * `under`, a `LIKE` operand from core's `channelFilter`, the threads of every channel it matches as well.
+   * With `author`, the matching message must also be by the exact actor, or match the actor ID or handle in `query`.
    */
   listThreads(
     channel: string,
     labels?: readonly (readonly [key: string, values?: readonly string[]])[],
     page?: {
+      readonly author?: { readonly actor: string } | { readonly query: string };
       readonly before?: ThreadPosition;
       readonly after?: number;
       readonly limit?: number;

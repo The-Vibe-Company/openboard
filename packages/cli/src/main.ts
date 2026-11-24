@@ -84,9 +84,9 @@ export async function runCli(
   try {
     const optionsEnd = Math.max(0, commandWords.length - command.words.length);
     const args = words.slice(command.words.length);
-    const context = { args, optionsEnd, json, output };
+    const context = { args, optionsEnd, json, output, profile: picked.profile };
     if ("standalone" in command) {
-      const standalone: StandaloneContext = { ...context, env, profile: picked.profile, options };
+      const standalone: StandaloneContext = { ...context, env, options };
       return await command.run(standalone);
     }
     const config = clientConfig(env);

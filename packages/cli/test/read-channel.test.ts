@@ -66,3 +66,14 @@ test("ob read <id> --text exits 2 without calling the board, since only a channe
   expect(await code).toBe(2);
   expect(urls).toEqual([]);
 });
+
+test("ob read --by me keeps the explicit actor profile when paging older threads", async () => {
+  const { code, lines, urls } = run(["--as", "bot", "read", "dev", "--by", "me", "--limit", "1"], {
+    threads: [{ message: message("2", "written by bot"), replies: 0, last: null }],
+    cursor: "3",
+    older: "2.2",
+  });
+  expect(await code).toBe(0);
+  expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&by=me&limit=1`]);
+  expect(lines.out.at(-1)).toBe("older: ob --as bot read dev --by me --before 2.2 --limit 1");
+});

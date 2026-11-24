@@ -3,7 +3,7 @@ import { type Command, type CommandContext, Misuse } from "./index.ts";
 
 /** A decimal argument names a message, as upstream's `read` takes it; anything else names a channel. */
 const MESSAGE_ID = /^\d+$/;
-const OPTIONS = new Set(["--label", "--text", "--after", "--before", "--limit"]);
+const OPTIONS = new Set(["--label", "--by", "--text", "--after", "--before", "--limit"]);
 
 /** The thread of message `id`: the message, then each reply indented under it. */
 async function readThread(
@@ -19,11 +19,19 @@ async function readThread(
 type ChannelInput = Parameters<CommandContext["client"]["listThreads"]>[0];
 
 /** The command that reads the next older page: the same channel, filters and limit, before `older`. */
-function readOlder({ channel, label = [], text, limit }: ChannelInput, older: string): string {
+function readOlder(
+  { channel, label = [], by, text, limit }: ChannelInput,
+  older: string,
+  profile: string | undefined,
+): string {
   const labels = label.flatMap((value) => ["--label", value]);
+  const author = by === undefined ? [] : ["--by", by];
+  const as = by === "me" && profile !== undefined ? ["--as", profile] : [];
   const search = text === undefined ? [] : ["--text", text];
   const pageSize = limit === undefined ? [] : ["--limit", String(limit)];
-  return ["ob", "read", channel, ...labels, ...search, "--before", older, ...pageSize].map(shellWord).join(" ");
+  return ["ob", ...as, "read", channel, ...labels, ...author, ...search, "--before", older, ...pageSize]
+    .map(shellWord)
+    .join(" ");
 }
 
 /** A channel's thread roots and latest reply previews, ordered by activity, then the command for older ones. */
@@ -35,16 +43,17 @@ async function readChannel(ctx: CommandContext, input: ChannelInput): Promise<vo
     ctx.output.out(`${messageLine(message)}  (${count})`);
     if (last) ctx.output.out(`  Latest reply: ${messageLine(last)}`);
   }
-  if (typeof page.older === "string") ctx.output.out(`older: ${readOlder(input, page.older)}`);
+  if (typeof page.older === "string") ctx.output.out(`older: ${readOlder(input, page.older, ctx.profile)}`);
 }
 
 export const readCommand: Command = {
   words: ["read"],
   usage:
-    "ob read <channel> [--label <key[=value]>]... [--text <text>] [--before <older> | --after <cursor>] [--limit <limit>] | ob read <id> [--after <id>] [--limit <limit>]",
+    "ob read <channel> [--label <key[=value]>]... [--by <handle>] [--text <text>] [--before <older> | --after <cursor>] [--limit <limit>] | ob read <id> [--after <id>] [--limit <limit>]",
   async run(ctx) {
     const positional: string[] = [];
     const labels: string[] = [];
+    let by: string | undefined;
     let text: string | undefined;
     let after: string | undefined;
     let before: string | undefined;
@@ -58,6 +67,7 @@ export const readCommand: Command = {
           throw new Misuse(`${word} takes a value`);
         }
         if (word === "--label") labels.push(value);
+        else if (word === "--by") by = value;
         else if (word === "--text") text = value;
         else if (word === "--after") after = value;
         else if (word === "--before") before = value;
@@ -71,12 +81,12 @@ export const readCommand: Command = {
     const [target] = positional;
     if (target === undefined || positional.length !== 1) throw new Misuse("expected one channel or message ID");
     if (MESSAGE_ID.test(target)) {
-      if (labels.length > 0 || text !== undefined || before !== undefined) {
-        throw new Misuse("--label, --text and --before require a channel");
+      if (labels.length > 0 || by !== undefined || text !== undefined || before !== undefined) {
+        throw new Misuse("--label, --by, --text and --before require a channel");
       }
       await readThread(ctx, { id: target, after, limit });
     } else {
-      await readChannel(ctx, { channel: target, label: labels, text, before, after, limit });
+      await readChannel(ctx, { channel: target, label: labels, by, text, before, after, limit });
     }
     return 0;
   },
