@@ -337,9 +337,13 @@ test("misses nothing when a post races the deadline", async () => {
   const ids = (text: string) => Array.from(text.matchAll(/^id: (.+)$/gm), ([, id]) => id!);
   try {
     const reader = (await subscribe(app)).body!.getReader();
+    let before = decoder.decode((await reader.read()).value) + decoder.decode((await reader.read()).value);
+    // A read is in flight when the post wakes it and the deadline fires: its page is either sent or dropped unsent.
+    const inFlight = reader.read();
     expect((await call(app, "POST", "/messages", { channel: "dev", text: "racing the deadline" })).status).toBe(201);
     timers.fire(STREAM_MAX_MS);
-    let before = "";
+    const raced = await inFlight;
+    if (!raced.done) before += decoder.decode(raced.value);
     for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read())
       before += decoder.decode(chunk.value);
     const last = ids(before).at(-1)!;
