@@ -5,6 +5,9 @@ import type { Deps } from "../deps.ts";
 /** Upstream pings a quiet stream every 15 s so proxies do not cut it for idleness (`03-http.md`, "SSE"). */
 export const PING_INTERVAL_MS = 15_000;
 
+/** Upstream closes a stream after about 280 s, before the platform's time limit; the client resumes from its last `id:`. */
+export const STREAM_MAX_MS = 280_000;
+
 type Page = { readonly cursor: number; readonly events: OutputOf<typeof readEvents>["events"] };
 
 function pageFrames(page: Page): string {
@@ -15,8 +18,9 @@ function pageFrames(page: Page): string {
 }
 
 /**
- * Keep at most one page queued. A disconnect wakes and unsubscribes any pending read and stops the pings. A ping is
- * skipped while a frame is still queued: the client has unread bytes, so the connection is not idle.
+ * Keep at most one page queued. A disconnect wakes and unsubscribes any pending read and stops the timers. A ping is
+ * skipped while a frame is still queued: the client has unread bytes, so the connection is not idle. At the deadline
+ * the stream ends cleanly: a page read after it is dropped unsent, so the client's last `id:` misses nothing.
  */
 export function eventStream(
   first: Page,
@@ -25,11 +29,20 @@ export function eventStream(
   read: (after: number, signal: AbortSignal) => Promise<Page>,
 ): Response {
   const abort = new AbortController();
-  const signal = AbortSignal.any([requestSignal, abort.signal]);
+  const deadline = new AbortController();
+  const signal = AbortSignal.any([requestSignal, abort.signal, deadline.signal]);
   const encoder = new TextEncoder();
   let cursor = first.cursor;
   let cancelPing = () => {};
-  signal.addEventListener("abort", () => cancelPing(), { once: true });
+  let cancelDeadline = () => {};
+  signal.addEventListener(
+    "abort",
+    () => {
+      cancelPing();
+      cancelDeadline();
+    },
+    { once: true },
+  );
 
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -40,7 +53,9 @@ export function eventStream(
         if ((controller.desiredSize ?? 0) > 0) controller.enqueue(encoder.encode(": ping\n\n"));
         cancelPing = schedule(PING_INTERVAL_MS, ping);
       };
-      if (!signal.aborted) cancelPing = schedule(PING_INTERVAL_MS, ping);
+      if (signal.aborted) return;
+      cancelPing = schedule(PING_INTERVAL_MS, ping);
+      cancelDeadline = schedule(STREAM_MAX_MS, () => deadline.abort());
     },
     async pull(controller) {
       if (signal.aborted) {
