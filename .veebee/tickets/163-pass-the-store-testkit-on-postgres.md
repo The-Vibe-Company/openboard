@@ -8,11 +8,9 @@ writes:
   - packages/driver-postgres/src/pool.ts
   - packages/driver-postgres/src/dialect.ts
   - packages/driver-postgres/src/broadcaster.ts
-  - packages/driver-sql/src/views/**
   - packages/driver-sql/src/sql.ts
   - packages/driver-sql/src/db.ts
   - packages/driver-sqlite/src/dialect.ts
-  - packages/ports/testkit/store/**
   - packages/ports/testkit/broadcaster.test-suite.ts
 conformance: []
 modes: [local, hosted]
@@ -39,3 +37,5 @@ As a contributor, I know every store and broadcaster behaviour the SQLite driver
 - Point `testkit.test.ts` at `runStoreSuite("postgres", open)` and `runBroadcasterSuite` from `@openboard/ports/testkit` (`packages/ports/testkit/index.ts`), `open` creating a fresh database from 162's template harness (`packages/driver-postgres/src/database.ts`).
 - Expected engine differences to fix in the shared SQL, not around it (D32, data-model "The store port"): text ordering (Postgres sorts by the database collation, SQLite by bytes: channel paging and `after` comparisons on `path` need byte order on both, for example a `COLLATE "C"` fragment that renders to nothing on SQLite, like `forUpdate` in `packages/driver-sql/src/sql.ts`); `NULL` ordering (`NULLS FIRST` on SQLite, last on Postgres) in `channelMessagesAfter` (`packages/driver-sql/src/views/messages.ts`); parameter typing of `LIMIT $n` and of values bound as strings.
 - A testkit case that encodes SQLite-only behaviour is fixed in `packages/ports/testkit/store/**` with the reason in the PR; a case is never removed or skipped for Postgres.
+
+Orchestrator note: `packages/driver-sql/src/views/**` and `packages/ports/testkit/store/**` were dropped from `writes` so M3 tickets can run alongside. If a store case fails on Postgres because of a view, fix the dialect difference in that view minimally, add the file to `writes` in your branch and name it in the PR; the orchestrator resolves overlaps at merge.
