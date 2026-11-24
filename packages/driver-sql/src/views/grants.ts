@@ -1,5 +1,5 @@
-import type { CanInput, GrantPrincipal } from "@openboard/contract";
-import type { GrantCreated } from "@openboard/core";
+import type { CanInput, GrantPrincipal, GrantView } from "@openboard/contract";
+import { type GrantCreated, grants, isoTime } from "@openboard/core";
 import type { BoardGrantReads, BoardKeys } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
@@ -32,13 +32,55 @@ export const grantStatements = {
       AND ((p.kind = 'user' AND p.key = u.public_id)
         OR (p.kind = 'all-users' AND p.key = '')
         OR (p.kind = 'github' AND p.key = i.subject))`,
+  listGrants: sql`SELECT id, principals, can, capped, by, at FROM grants
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND revoked = 0 ORDER BY id`,
 };
+
+/**
+ * The grants every board starts with, as upstream's `STARTING_GRANTS`: no row holds them, so the view answers them.
+ * g1 names every member of the organization, capped by role (docs/auth.md); g2 and g3 are kept for upstream parity
+ * and let no one in, since OpenBoard has no projects or apps.
+ */
+const STARTING_GRANTS: readonly GrantView[] = Object.freeze([
+  { id: "g1", principals: [{ kind: "all-users" }], can: { "*": "all" }, capped: true, by: null, at: null },
+  {
+    id: "g2",
+    principals: [{ kind: "all-projects", environments: ["production", "preview", "development"] }],
+    can: { "*": ["read", "post", "react", "label", "sync"] },
+    capped: false,
+    by: null,
+    at: null,
+  },
+  {
+    id: "g3",
+    principals: [{ kind: "all-apps" }],
+    can: { "*": ["read", "post", "react", "label"] },
+    capped: false,
+    by: null,
+    at: null,
+  },
+]);
+
+function grantView(row: Record<string, unknown>): GrantView {
+  return {
+    id: grants.formatGrantId(Number(row.id)),
+    principals: JSON.parse(String(row.principals)) as GrantPrincipal[],
+    can: JSON.parse(String(row.can)) as CanInput,
+    capped: Number(row.capped) === 1,
+    by: row.by == null ? null : String(row.by),
+    at: row.at == null ? null : isoTime(Number(row.at)),
+  };
+}
 
 export function grantReads(db: Db, dialect: Dialect, keys: BoardKeys): BoardGrantReads {
   return {
     async personGrants(personId) {
       const rows = await query(db, dialect, grantStatements.personGrants, { ...keys, personId });
       return rows.map(({ can }) => JSON.parse(String(can)) as CanInput);
+    },
+    async listGrants() {
+      const rows = await query(db, dialect, grantStatements.listGrants, keys);
+      return [...structuredClone(STARTING_GRANTS), ...rows.map(grantView)];
     },
   };
 }

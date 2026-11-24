@@ -24,6 +24,12 @@ const boardCases: Cases<BoardView> = {
     expect(own).toEqual([{ [a.channel]: ["read"] }]);
     return own;
   },
+  listGrants: async (a) => {
+    const listed = await a.board.listGrants();
+    expect(listed.map(({ id }) => id)).toEqual(["g1", "g2", "g3", "g4", "g5"]);
+    expect(JSON.stringify(listed)).toContain(a.personId);
+    return listed;
+  },
   personalToken: async (a, b) => expectNull(await a.board.personalToken(b.tokenHash, at)),
   write: (a, b) => a.board.write(async (writer) => writer.actor, b.actor).then(expectNull),
   mentionEvidence: (a, b) => a.board.mentionEvidence(new Set([`${b.marker.split("-")[0]}-owner`])),

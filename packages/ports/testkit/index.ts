@@ -9,6 +9,7 @@ import { boardsSuite } from "./store/boards.test-suite.ts";
 import { channelsSuite } from "./store/channels.test-suite.ts";
 import { connectionsSuite } from "./store/connections.test-suite.ts";
 import { eventsSuite } from "./store/events.test-suite.ts";
+import { grantsSuite } from "./store/grants.test-suite.ts";
 import { invitationsSuite } from "./store/invitations.test-suite.ts";
 import { membershipsSuite } from "./store/memberships.test-suite.ts";
 import { messagesSuite } from "./store/messages.test-suite.ts";
@@ -24,6 +25,7 @@ export {
   channelsSuite,
   connectionsSuite,
   eventsSuite,
+  grantsSuite,
   invitationsSuite,
   membershipsSuite,
   messagesSuite,
@@ -54,6 +56,7 @@ export function runStoreSuite(driver: string, open: OpenStore): void {
   channelsSuite(driver, open);
   connectionsSuite(driver, open);
   eventsSuite(driver, open);
+  grantsSuite(driver, open);
   invitationsSuite(driver, open);
   membershipsSuite(driver, open);
   messagesSuite(driver, open);
