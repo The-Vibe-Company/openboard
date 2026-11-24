@@ -108,7 +108,7 @@ Options:
 - `--can`: Replace the grant’s channel patterns and permissions. Use none to close a pattern. Repeatable.
 - `--lock-me-out`: A switch: present means yes.
 
-Errors: `error: forbidden`, `error: grant_empty`, `error: grant_not_found`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: not_in_grant`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: grant_empty`, `error: grant_lockout`, `error: grant_not_found`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: not_in_grant`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `update_grant`.
 
@@ -167,7 +167,7 @@ ob connections create ci --can 'dev/=read,post' --claims 1 --secret-file ./secre
 Grant channel permissions to one or more principals.
 
 ```sh
-ob grants create --can <pattern=permissions>… [--user <id>] [--project <id> | --all-projects] [--environment <names>] [--github <repository-or-subject>] [--workflow <file>] [--git-branch <branch>] [--event <event>] [--oidc <issuer>] [--claim <name=value>] [--app <id>] [--all-apps] [--all-users] [--everyone] [--connection <id>] [--all-connections]
+ob grants create --can <pattern=permissions>… [--user <id>] [--project <id> | --all-projects] [--environment <names>] [--github <repository-or-subject>] [--workflow <file>] [--git-branch <branch>] [--event <event>] [--oidc <issuer>] [--claim <name=value>] [--app <id>] [--all-apps] [--all-users] [--everyone] [--connection <id>] [--all-connections] [--lock-me-out]
 ```
 
 Options:
@@ -189,6 +189,7 @@ Options:
 - `--everyone`: The upstream everyone principal.
 - `--connection`: A connection ID on this board.
 - `--all-connections`: Every connection on this board.
+- `--lock-me-out`: A switch: present means yes.
 
 Errors: `error: forbidden`, `error: grant_empty`, `error: grant_lockout`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
@@ -1039,7 +1040,7 @@ Options:
 
 - `--lock-me-out`: A switch: present means yes.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: grant_lockout`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `revoke_grant`.
 

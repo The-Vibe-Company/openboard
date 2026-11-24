@@ -3,6 +3,7 @@ import { changeGrantPrincipals, type GrantUpdated, grantPrincipals, isoTime } fr
 import type { Handler } from "../index.ts";
 import { currentAuthority, requireExistingGrantManage, requireNewGrantManage } from "./authority.ts";
 import { writtenCan } from "./create.ts";
+import { refuseGrantLockout } from "./lockout.ts";
 import { checkIssuerLimit, validateGrantIssuers } from "./oidc.ts";
 
 export const updateGrantHandler: Handler<typeof updateGrant> = (ctx, input) =>
@@ -49,5 +50,6 @@ export const updateGrantHandler: Handler<typeof updateGrant> = (ctx, input) =>
       payload: { grant },
     };
     await writer.append([event]);
+    await refuseGrantLockout(by, writer, "updating", { ...previous.can, ...can }, input.lockMeOut, ctx.now);
     return { grant };
   });

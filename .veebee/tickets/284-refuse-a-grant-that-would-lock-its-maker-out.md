@@ -10,11 +10,28 @@ writes:
   - packages/server/test/grants/lockout.test.ts
   - packages/cli/src/commands/grants.ts
   - packages/cli/test/grants.test.ts
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/cli/src/output.ts
+  - packages/contract/src/entities/discovery.ts
+  - packages/contract/src/operations/grants/revoke.ts
+  - packages/contract/src/operations/grants/update.ts
+  - packages/server/openapi.json
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/operations/discovery.ts
+  - packages/server/src/operations/grants/create.ts
+  - packages/server/src/operations/grants/lockout.ts
+  - packages/server/src/operations/grants/revoke.ts
+  - packages/server/src/operations/grants/update.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/test/discovery.test.ts
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
 conformance: ["grants/refuses a grant its maker couldn't take back, unless it says lockMeOut"]
 modes: [local, hosted]
 depends_on: [283]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 459
 ---
 

@@ -1,9 +1,10 @@
 import { BoardError, type createGrant } from "@openboard/contract";
-import { type GrantCreated, grantPrincipals, grants, isoTime, unmanagedGrantPattern } from "@openboard/core";
+import { type GrantCreated, grantPrincipals, grants, isoTime } from "@openboard/core";
 import { keepInsideCan, unrestrictedLocalOwner } from "../../auth/access.ts";
-import { callerCan, credentialKind, memberOf, requestNarrowed } from "../../deps.ts";
+import { callerCan, memberOf, requestNarrowed } from "../../deps.ts";
 import type { Handler } from "../index.ts";
 import { currentAuthority, requireNewGrantManage } from "./authority.ts";
+import { refuseGrantLockout } from "./lockout.ts";
 import { checkIssuerLimit, validateGrantIssuers } from "./oidc.ts";
 
 export const createGrantHandler: Handler<typeof createGrant> = async (ctx, input) => {
@@ -51,7 +52,6 @@ function appendGrant(
 ) {
   return ctx.board.write(async (writer) => {
     const { by, authority } = await currentAuthority(ctx.by, writer, "creating", ctx.now);
-    const role = by[memberOf]?.role;
     await requireNewGrantManage(writer, authority, { can, principals }, namesIssuer);
     validateGrantIssuers(principals);
     ctx.debitWrite();
@@ -87,13 +87,7 @@ function appendGrant(
       payload: { grant },
     };
     await writer.append([event]);
-    if (!lockMeOut && by[credentialKind] !== "local" && role !== "owner" && role !== "admin") {
-      // A failed check rolls back the grant and event together. Read the folded grant in the same board transaction.
-      const { authority: after } = await currentAuthority(by, writer, "creating", ctx.now);
-      if (after && unmanagedGrantPattern(after, can) !== undefined) {
-        throw new BoardError("grant_lockout", "this grant would take away your ability to manage it");
-      }
-    }
+    await refuseGrantLockout(by, writer, "creating", can, lockMeOut, ctx.now);
     return { grant };
   });
 }

@@ -66,7 +66,7 @@ organization and board, and the secret is bound to that board.
 { "version": "openboard/0.1.0 (board-protocol 0.54.0)",
   "url": "https://openboard.example/api/acme/main",
   "audience": "https://openboard.example/api/acme/main",
-  "team_id": null, "project_id": null, "sync": [] }
+  "team_id": "acme", "project_id": null, "sync": [] }
 ```
 
 - `url` and `audience` are `OPENBOARD_PUBLIC_URL` + the mount path the request
@@ -74,6 +74,8 @@ organization and board, and the secret is bound to that board.
   and `sync` is an array (`src/conformance/index.ts`, `conformance()`); the
   Node transport refuses a board whose `audience` differs from the URL it was
   given (`src/client/node.ts`, `connect()`).
+- `team_id` is the organization slug from the mount (including `local` for the
+  local alias). `project_id` is null.
 - Discovery answers for **any** well-formed `<org>/<board>` without looking
   it up, so it is not an existence oracle; routes that need a credential
   answer 401 or 404 for boards the caller cannot reach.
@@ -414,9 +416,11 @@ applies at any pattern explicitly named in the grant. The caller must also
 hold all permissions that `everyone` would give anywhere on the resulting
 board. Naming an `oidc` principal needs `manage` throughout the board.
 Board owners may change grants regardless of their board grants.
-For a caller other than a local owner, organization owner, or admin, creation
-returns 409 `grant_lockout` if the grant would leave its maker unable to manage
-it. Setting `lockMeOut: true` allows creation in that case.
+Creating, updating, or revoking a grant returns 409 `grant_lockout` if the
+change would leave its maker unable to manage the affected grant patterns.
+The error may include an OpenBoard `next` command to keep the caller in.
+Set `lockMeOut: true` (CLI `--lock-me-out`) to make the change anyway. Local
+owners and organization owners and admins are exempt from the lockout check.
 An empty list contributes no permissions when its pattern decides access. Grants tied
 at that pattern can still add permissions. In the CLI,
 `--can 'ops/=read' --can 'ops/secret/=none'` allows reading under `ops/` and closes `ops/secret/`.

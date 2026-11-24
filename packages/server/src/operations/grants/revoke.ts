@@ -2,8 +2,9 @@ import type { revokeGrant } from "@openboard/contract";
 import type { GrantRevoked } from "@openboard/core";
 import type { Handler } from "../index.ts";
 import { currentAuthority, requireExistingGrantManage } from "./authority.ts";
+import { refuseGrantLockout } from "./lockout.ts";
 
-export const revokeGrantHandler: Handler<typeof revokeGrant> = (ctx, { id }) =>
+export const revokeGrantHandler: Handler<typeof revokeGrant> = (ctx, { id, lockMeOut }) =>
   ctx.board.write(async (writer) => {
     const { by, authority } = await currentAuthority(ctx.by, writer, "revoking", ctx.now);
     const position = /^g[1-9]\d*$/.test(id) ? Number(id.slice(1)) : NaN;
@@ -25,5 +26,6 @@ export const revokeGrantHandler: Handler<typeof revokeGrant> = (ctx, { id }) =>
       payload: { grant: grant.id },
     };
     await writer.append([event]);
+    await refuseGrantLockout(by, writer, "revoking", grant.can, lockMeOut, ctx.now);
     return { revoked: true };
   });

@@ -19,10 +19,11 @@ export const createGrantCommand: Command = {
     "ob grants create --can <pattern=permissions>… [--user <id>] [--project <id> | --all-projects] [--environment <names>] " +
     "[--github <repository-or-subject>] [--workflow <file>] [--git-branch <branch>] [--event <event>] " +
     "[--oidc <issuer>] [--claim <name=value>] [--app <id>] [--all-apps] [--all-users] [--everyone] " +
-    "[--connection <id>] [--all-connections]",
+    "[--connection <id>] [--all-connections] [--lock-me-out]",
   async run(ctx) {
     const principals: GrantPrincipalInput[] = [];
     const patterns: [string, CanInput[string]][] = [];
+    let lockMeOut: true | undefined;
     let at = 0;
     while (at < ctx.optionsEnd) {
       if (ctx.args[at] === "--can") {
@@ -30,6 +31,9 @@ export const createGrantCommand: Command = {
         if (at + 1 >= ctx.optionsEnd || !text || text.startsWith("--")) throw new Misuse("--can takes a value");
         patterns.push(...canEntries(text));
         at += 2;
+      } else if (ctx.args[at] === "--lock-me-out") {
+        lockMeOut = true;
+        at++;
       } else {
         const parsed = readGrantPrincipal(ctx.args, at, ctx.optionsEnd);
         principals.push(parsed.principal);
@@ -38,7 +42,11 @@ export const createGrantCommand: Command = {
     }
     if (at !== ctx.args.length) throw new Misuse("unexpected positional argument");
     if (!principals.length || !patterns.length) throw new Misuse("a principal flag and --can are required");
-    const result = await ctx.client.createGrant({ principals, can: buildCan(patterns) });
+    const result = await ctx.client.createGrant({
+      principals,
+      can: buildCan(patterns),
+      ...(lockMeOut ? { lockMeOut } : {}),
+    });
     if (ctx.json) ctx.output.out(JSON.stringify(result, null, 2));
     else ctx.output.out(grantLine("created", { ...result.grant, principals }));
     return 0;

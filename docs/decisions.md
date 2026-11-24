@@ -459,7 +459,9 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   `http://127.0.0.1:<port>/api/local/main` (alias `/api`). Account and
   organization API at `/api/x/…`, board extensions at `{BOARD_URL}/x/…`, MCP at
   `/mcp/<org>/<board>`. Slugs immutable in v1, reserved list. Discovery
-  answers from the URL alone (no existence oracle). Subdomains per
+  answers from the URL alone (no existence oracle). The organization slug
+  supplies discovery's `team_id` (`local` for the local alias), and
+  `project_id` is null. Subdomains per
   organization rejected for v1: wildcard certificates and DNS on Railway
   (unverified support), split sessions, for an origin-isolation benefit that
   one-organization-per-person and CSP mostly cover.
