@@ -16,6 +16,7 @@ export type RefKind =
   | "file"
   | "schedule"
   | "webhook"
+  | "watcherMatch"
   | "connection"
   | "agent"
   | "member"
@@ -91,7 +92,7 @@ export type Operation<
   readonly errors: readonly ErrorCode[];
   readonly access: {
     readonly permission: "read" | "post" | "react" | "label" | "sync" | "manage";
-    readonly channel: "fromInput" | "fromInputOrAny" | "fromMessage" | "any";
+    readonly channel: "fromInput" | "fromInputOrAny" | "fromMessage" | "any" | "some";
     /** The permission a call that names `re` needs in that message's channel instead of `permission`. */
     readonly re?: "read" | "post" | "react" | "label" | "sync" | "manage";
   } | null;

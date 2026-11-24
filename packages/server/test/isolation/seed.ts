@@ -98,6 +98,7 @@ async function messages(send: Send, base: string, session: Headers, marker: stri
 async function resources(send: Send, org: string, session: Headers, marker: string, replies: number) {
   const base = `/api/${org}/main`;
   const { last: message, firstThread } = await messages(send, base, session, marker, replies);
+  await ok(send("POST", `${base}/watchers`, session, { watch: { seed: { tail: "dev" } } }), "watcher");
   const thread = await ok<{ message: { id: string } }>(
     send("POST", `${base}/messages`, session, { channel: "dev", text: `${marker} second root` }),
     "second thread",
@@ -136,6 +137,9 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
     }),
     "grant",
   );
+  const {
+    matches: [match],
+  } = await ok<{ matches: [{ id: string }] }>(send("GET", `${base}/watchers/matches`, session), "watcher matches");
   const invited = await ok<{ invitation: { id: string }; url: string }>(
     send("POST", `/api/x/orgs/${org}/invitations`, session, { role: "member" }),
     "invitation",
@@ -147,6 +151,7 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
     firstThread,
     ids: {
       message,
+      watcherMatch: match.id,
       thread: thread.message.id,
       task: task.task.id,
       grant: granted.grant.id,

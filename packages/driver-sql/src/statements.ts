@@ -21,6 +21,8 @@ import { taskFoldStatements } from "./views/tasks/task-folds.ts";
 import { taskReadStatements } from "./views/tasks/tasks.ts";
 import { threadStatements } from "./views/threads.ts";
 
+import { watcherStatements } from "./views/watchers/index.ts";
+
 /** Every statement the shared views run, by name, as written once (docs/codebase.md 3.2 and 4.4). */
 const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...accountStatements,
@@ -45,6 +47,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...taskListStatements,
   ...taskReadStatements,
   ...threadStatements,
+  ...watcherStatements,
 });
 
 /** One registered statement rendered for an engine: its text and how many positional values it binds. */

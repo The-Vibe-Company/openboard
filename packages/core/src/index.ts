@@ -7,6 +7,7 @@ import type { MessageEdited } from "./messages/edit.ts";
 import type { LabelsChanged } from "./messages/labels.ts";
 import type { ActorSeen, MessagePosted } from "./messages/post.ts";
 import type { ReactionAdded, ReactionRemoved } from "./messages/reactions.ts";
+import type { WatchersRegistered } from "./watchers/register.ts";
 
 export type {
   AgentClaimed,
@@ -38,9 +39,9 @@ import type { TaskEvent } from "./tasks/events.ts";
 export { decideClaimTask } from "./tasks/claim.ts";
 export { decideRenewTask } from "./tasks/renew.ts";
 export { decideCreateTask, decideMakeTask, type MakeTaskState, replayTask } from "./tasks/create.ts";
-export { decideCompleteTask } from "./tasks/settle.ts";
 export type { TaskClaimed, TaskCreated, TaskEvent } from "./tasks/events.ts";
 export { OPEN_TASK_STATES, taskCursor, taskStates } from "./tasks/filters.ts";
+export { decideCompleteTask } from "./tasks/settle.ts";
 export type { ChannelCreated };
 export type BoardEvent =
   | ActorSeen
@@ -60,7 +61,10 @@ export type BoardEvent =
   | LabelsChanged
   | ReactionAdded
   | ReactionRemoved
-  | TaskEvent;
+  | TaskEvent
+  | WatchersRegistered;
+
+export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail } from "./events/tail.ts";
 export { formatId, isoTime, parseId } from "./ids.ts";
 export { decideDelete, type MessageDeleted } from "./messages/delete.ts";
 export { decideEdit, type MessageEdited } from "./messages/edit.ts";
@@ -106,3 +110,5 @@ export {
   mentionFilter,
   textPattern,
 } from "./threads/filters.ts";
+export { checkWatcherLease, WATCHER_LEASE_MS } from "./watchers/ack.ts";
+export { validateWatchers, type WatchersRegistered } from "./watchers/register.ts";

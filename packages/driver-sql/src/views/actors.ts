@@ -1,6 +1,6 @@
 import type { Actor } from "@openboard/contract";
 import type { ActorSeen } from "@openboard/core";
-import type { BoardKeys, BoardScope, BoardView } from "@openboard/ports";
+import type { BoardKeys, BoardView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
 import { query, sql } from "../sql.ts";
 import { lockBoard } from "./boards.ts";
@@ -48,10 +48,16 @@ export async function lockBoardAs(
   actor: string | null,
   window: Parameters<typeof lockBoard>[4],
 ) {
-  const { head, row, storage, dailyEvents, actorLoaded } = await lockBoard(tx, dialect, keys, actor, window);
+  const { head, row, storage, dailyEvents, actorLoaded, hasWatchers } = await lockBoard(
+    tx,
+    dialect,
+    keys,
+    actor,
+    window,
+  );
   const [found] =
     actor !== null && !actorLoaded ? await query(tx, dialect, actorStatements.findActor, { ...keys, actor }) : [row];
-  return { head, storage, dailyEvents, actor: found ? actorView(found) : null };
+  return { head, storage, dailyEvents, hasWatchers, actor: found ? actorView(found) : null };
 }
 
 /** The fold of `actor.seen`: the actor's row, its first sighting kept and its details and last sighting replaced. */
@@ -75,7 +81,7 @@ export async function foldActorSeen(tx: Db, dialect: Dialect, keys: BoardKeys, e
 export function actorReads(
   db: Db,
   dialect: Dialect,
-  scope: BoardScope,
+  scope: BoardKeys,
 ): Pick<BoardView, "listActors" | "findFilterActors"> {
   return {
     async findFilterActors(author, mention) {

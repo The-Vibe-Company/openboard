@@ -366,6 +366,8 @@ board audit. The CLI is `ob grants update <id>` and the MCP tool is `update_gran
 | GET | `/watchers/matches` | U | 5-min leases, per thread in order, `wait` ≤ 25 s |
 | POST | `/watchers/matches/:id/ack` | U | |
 
+Until ticket 384, a non-empty `sync` registration answers 400 `invalid_request`.
+
 Upstream's watcher pull is the "pull/ack variant" of webhooks: register a
 tail, pull with a lease, ack or retry.
 

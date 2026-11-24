@@ -556,9 +556,10 @@ CREATE TABLE watcher_matches (
   board_id BIGINT NOT NULL, id TEXT NOT NULL, owner TEXT NOT NULL, watcher TEXT NOT NULL,
   thread BIGINT NOT NULL, event BIGINT NOT NULL, state TEXT NOT NULL,
   lease TEXT, lease_until BIGINT, attempt BIGINT NOT NULL DEFAULT 0, next_at BIGINT NOT NULL,
+  needs_actor_directory SMALLINT NOT NULL,     -- 1 when the match relies on resolving a mention by handle
   PRIMARY KEY (board_id, id)
 );
-CREATE INDEX matches_next ON watcher_matches (board_id, owner, state, thread, event);
+CREATE INDEX matches_next ON watcher_matches (board_id, owner, state, thread, event, id);
 
 CREATE TABLE webhook_deliveries (                 -- transactional outbox
   id TEXT PRIMARY KEY,                            -- dl_..., the delivery ID receivers see

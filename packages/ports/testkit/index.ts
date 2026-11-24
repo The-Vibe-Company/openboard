@@ -16,6 +16,7 @@ import { messagesSuite } from "./store/messages.test-suite.ts";
 import { orgsSuite } from "./store/orgs.test-suite.ts";
 import { tasksSuite } from "./store/tasks.test-suite.ts";
 import { threadsSuite } from "./store/threads.test-suite.ts";
+import { watchersSuite } from "./store/watchers.test-suite.ts";
 
 export {
   accountsSuite,
@@ -63,6 +64,7 @@ export function runStoreSuite(driver: string, open: OpenStore): void {
   orgsSuite(driver, open);
   tasksSuite(driver, open);
   threadsSuite(driver, open);
+  watchersSuite(driver, open);
 }
 
 /** Every scoped store method across two organizations: nothing of B reaches A (docs/codebase.md 6.5). */

@@ -4,13 +4,14 @@ import {
   type ChannelCreated,
   channelFilter,
   type EventFilters,
+  isTailMessage,
   type LabelsChanged,
   type MessageDeleted,
   type MessageEdited,
   type MessagePosted,
   matchesEventChannel,
-  matchesEventMessage,
-  messages,
+  type matchesEventMessage,
+  matchesTailEvent,
   type TaskEvent,
 } from "@openboard/core";
 import type { BoardScope, BoardView, CommittedEvents, CommittedPage } from "@openboard/ports";
@@ -76,7 +77,7 @@ export const eventStatements = {
 
 type FeedEvent = MessagePosted | MessageEdited | MessageDeleted | LabelsChanged | TaskEvent;
 
-function messageEvent(row: Row): FeedEvent {
+export function messageEvent(row: Row): FeedEvent {
   const common = {
     id: Number(row.id),
     at: Number(row.at),
@@ -174,27 +175,9 @@ function feedEvent(
 ): (FeedEvent | ActorSeen | ChannelCreated)[] {
   if (all && entry.visibility === 1 && (entry.type === "actor.seen" || entry.type === "channel.created"))
     return [event()];
-  if (
-    entry.visibility !== 0 ||
-    (entry.type !== "message.posted" &&
-      entry.type !== "message.edited" &&
-      entry.type !== "message.deleted" &&
-      entry.type !== "labels.changed" &&
-      entry.type !== "task.created" &&
-      entry.type !== "task.claimed" &&
-      entry.type !== "task.completed" &&
-      !(renewals && entry.type === "task.renewed")) ||
-    !matchesEventChannel(String(entry.channel), filters.channel)
-  )
-    return [];
+  if (!isTailMessage(entry, renewals) || !matchesEventChannel(String(entry.channel), filters.channel)) return [];
   const message = event() as FeedEvent;
-  const current = message.type === "message.posted" ? messages.messageView(message) : message.payload.view;
-  if (
-    !matchesEventMessage(current, root, filters) &&
-    !(previous !== undefined && matchesEventMessage(previous, root, filters))
-  )
-    return [];
-  return [message];
+  return matchesTailEvent(message, filters, previous, root) ? [message] : [];
 }
 
 function filteredEvent(row: Row, filters: EventFilters, all: boolean, renewals: boolean): Page["events"] {
