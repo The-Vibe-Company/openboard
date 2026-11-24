@@ -16,6 +16,7 @@
     "test": "bun test --pass-with-no-tests"
   },
   "devDependencies": {
+    "@openboard/core": "workspace:*",
     "@types/bun": "1.4.5"
   }
 }
