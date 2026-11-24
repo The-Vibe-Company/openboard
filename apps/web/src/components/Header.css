@@ -1,0 +1,48 @@
+.shell-header {
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--space));
+  min-block-size: calc(14 * var(--space));
+  padding: calc(2 * var(--space)) calc(4 * var(--space));
+  background: var(--background);
+  border-bottom: var(--stroke) solid var(--border);
+}
+
+.shell-header .shell-brand {
+  flex: none;
+  font-weight: 700;
+}
+
+.shell-header .shell-location,
+.shell-header .shell-crumb {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+  gap: var(--space);
+}
+
+.shell-header .shell-crumb > [aria-hidden] {
+  color: var(--muted);
+}
+
+.shell-header .shell-slug {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.shell-header .shell-chevron {
+  flex: none;
+  inline-size: calc(1.5 * var(--space));
+  block-size: calc(1.5 * var(--space));
+  margin-inline: var(--space);
+  border-inline-end: var(--stroke) solid currentColor;
+  border-block-end: var(--stroke) solid currentColor;
+  transform: translateY(calc(-0.5 * var(--space))) rotate(45deg);
+}
+
+.shell-header .shell-sign-in {
+  flex: none;
+  margin-inline-start: auto;
+}

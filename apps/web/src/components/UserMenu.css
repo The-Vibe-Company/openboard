@@ -1,0 +1,21 @@
+.shell-user {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  margin-inline-start: auto;
+}
+
+.shell-user .ui-avatar {
+  flex: none;
+}
+
+.shell-user .shell-user-handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .shell-user .shell-user-handle {
+    display: none;
+  }
+}

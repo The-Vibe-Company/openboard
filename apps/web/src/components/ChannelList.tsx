@@ -1,16 +1,19 @@
 import { Link } from "@tanstack/react-router";
+import "./ChannelList.css";
 
 export function ChannelList({
   params,
   channels,
   selected,
+  onNavigate,
 }: {
   params: { org: string; board: string };
   channels: readonly { path: string }[];
   selected: string;
+  onNavigate: () => void;
 }) {
   return (
-    <nav aria-label="Channels" className="board-channels">
+    <nav aria-label="Channels" className="shell-channels">
       <h2>Channels</h2>
       <ul>
         {channels.map(({ path }) => (
@@ -20,6 +23,7 @@ export function ChannelList({
               params={params}
               search={{ channel: path }}
               aria-current={path === selected ? "page" : undefined}
+              onClick={onNavigate}
               activeOptions={{ exact: true, includeSearch: true }}
             >
               {path}

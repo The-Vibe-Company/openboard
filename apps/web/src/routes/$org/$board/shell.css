@@ -1,0 +1,57 @@
+.board-shell {
+  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
+  place-items: stretch;
+}
+
+.board-shell .shell-sidebar {
+  padding: calc(4 * var(--space));
+  border-inline-end: var(--stroke) solid var(--border);
+  background: var(--surface);
+}
+
+.board-shell .shell-sidebar-controls {
+  display: none;
+}
+
+.board-shell .shell-settings {
+  display: block;
+  margin-block-start: calc(4 * var(--space));
+  padding: calc(2 * var(--space));
+  border-top: var(--stroke) solid var(--border);
+}
+
+.board-shell .shell-content {
+  min-inline-size: 0;
+  padding: calc(6 * var(--space)) clamp(calc(4 * var(--space)), 4vw, calc(12 * var(--space)));
+}
+
+.board-shell .shell-content h1 {
+  margin: 0 0 calc(4 * var(--space));
+}
+
+@media (max-width: 40rem) {
+  .board-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .board-shell .shell-sidebar-controls {
+    display: block;
+    padding: calc(2 * var(--space)) calc(4 * var(--space));
+    border-bottom: var(--stroke) solid var(--border);
+  }
+
+  .board-shell .shell-sidebar {
+    grid-row: 2;
+    border-inline-end: 0;
+    border-bottom: var(--stroke) solid var(--border);
+  }
+
+  .board-shell .shell-sidebar[data-expanded="false"] {
+    display: none;
+  }
+
+  .board-shell .shell-content {
+    grid-row: 3;
+  }
+}
