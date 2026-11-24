@@ -22,14 +22,17 @@ replay. Accounts, organizations, and operational queues are plain tables.
   tenants would make per-tenant schemas a migration and connection-pool
   problem; shared tables keep one migration, one pool, cheap empty tenants.
 - **Postgres row-level security: not in v1, kept as a seam.** RLS needs the
-  tenant set per transaction (`SET LOCAL`/`set_config`), which costs one more
-  round trip on every read (reads are single statements today) and must be
+  tenant set per transaction (`SET LOCAL`/`set_config`), which turns every
+  read (a single statement today) into `BEGIN`, `set_config`, the read and
+  `COMMIT`, three more round trips, and must be
   correct across the pool. Isolation is enforced instead by: the only code
   that can mint a `BoardScope` is the tenant resolver; store functions take a
   `BoardScope`, never a bare ID; the statement check above; the tenant
   isolation test suite ([architecture.md](./architecture.md#saas-seams)). RLS
   policies (`org_id = current_setting('app.org_id')::bigint`) can be added
-  later without schema changes because `org_id` is on every row.
+  later without schema changes because `org_id` is on every row. What they
+  would cost per read and per write is measured in
+  [decisions.md D56](./decisions.md#d56-what-postgres-row-level-security-costs-measured).
 - **Local mode** has one implicit organization (`id = 1`, slug `local`) and
   board (`id = 1`, slug `main`), created at first start; more boards can be
   created locally.

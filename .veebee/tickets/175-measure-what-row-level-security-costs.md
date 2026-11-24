@@ -7,11 +7,13 @@ writes:
   - packages/driver-postgres/bench/rls.ts
   - docs/decisions.md
   - docs/data-model.md
+  - packages/driver-postgres/test/support/env.ts
+  - packages/driver-postgres/tsconfig.json
 conformance: []
 modes: [hosted]
 depends_on: [173]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-t175
 issue: 255
 ---
 

@@ -781,6 +781,62 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   in one transaction. SQLite renders away `CONCURRENTLY` and applies all
   migrations inside transactions.
 
+### D56. What Postgres row-level security costs, measured
+
+- **Status:** proposed; the owner decides ([issue #255](https://github.com/The-Vibe-Company/openboard/issues/255)).
+  Until then D33 stands: no RLS in v1.
+- **Context.** D33 kept RLS out of v1 because the tenant must be set per
+  transaction, which turns every single-statement read into a transaction.
+  M5 measures what that costs before the choice is final.
+- **Measurement.** `packages/driver-postgres/bench/rls.ts` (run with
+  `OPENBOARD_TEST_DATABASE_URL`) seeds a scratch database cloned from the
+  migrated template with the bench workload: 2,000 posts and 2,000 replies on
+  the measured board, 400 posts on each of nine other organizations' boards.
+  It then adds `org_id = current_setting('app.org_id')::bigint` policies to
+  the 13 tables that carry `org_id`, on that database only, and checks that
+  they apply: the RLS store, set to organization 1, reads 0 of 50 messages on
+  organization 2's board. It times the store's channel read (the latest 50)
+  and its post, 1,000 of each per variant after 100 warm-up runs, with the
+  two variants alternating operation by operation. `plain` is the driver as
+  it ships. `rls` runs the same views as a role the policies apply to, with
+  every statement in a transaction that first calls
+  `set_config('app.org_id', $1, true)`. Round trips are the statements the
+  driver's counter saw, `BEGIN` and `COMMIT` included.
+
+  | Operation | Variant | p50 ms | p99 ms | Round trips |
+  |---|---|---|---|---|
+  | channel read | plain | 0.13 | 0.22 | 1 |
+  | channel read | rls | 0.30 | 0.79 | 4 |
+  | post | plain | 0.48 | 0.82 | 7 |
+  | post | rls | 0.58 | 0.95 | 8 |
+
+  Taken on 2026-11-24 on PostgreSQL 17.12 (PGDG build for Debian 12, UTF8,
+  default settings, no Docker) over loopback TCP, on a VM with an AMD EPYC
+  9654, 17 threads and 2.2 GiB. The client was Bun 1.4.2, with one operation
+  in flight. Across three runs the round trips were identical. The p50s
+  stayed within 0.06 ms (read 0.13 to 0.15 plain, 0.30 to 0.31 rls; post
+  0.47 to 0.50 plain, 0.52 to 0.58 rls). The p99s varied more (read 0.22 to
+  0.73 plain, 0.48 to 0.79 rls). The extra round trips account for most of
+  the cost. The read's extra 0.16 ms is three extra round trips of about
+  0.05 ms each on loopback, so the policy itself adds little. On a network
+  round trip of 0.5 ms (D33's figure), three extra round trips would add about
+  1.5 ms to every read statement, and one extra round trip about 0.5 ms to
+  every write. That is an estimate, not a measurement.
+- **What turning it on would also take.** The tenant has to reach the
+  driver's `Db` with each transaction; today the views pass only SQL and
+  values. The platform statements (a board by its slugs, a person's
+  memberships, an invitation by its hash, device codes) run before a tenant is
+  known, on tables the policies cover, so they would need a second role or a
+  policy exception. Each would be one more place where isolation can break.
+- **Recommendation.** Keep RLS off in v1, as D33 decided. Isolation is
+  already enforced by construction (only the resolver mints a scope), by the
+  statement scope check, and by both isolation suites on both engines. RLS
+  would double the cost of the most frequent operation, a read. If the owner
+  wants defense in depth later, set the tenant once per request instead of
+  once per statement: one transaction around the request's reads costs 3
+  round trips per request, not per statement. That variant is not measured
+  here. The bench would measure it before any ticket turns RLS on.
+
 ## Hard blockers found
 
 None. Limits worth knowing:
