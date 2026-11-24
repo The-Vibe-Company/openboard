@@ -89,7 +89,7 @@ jobs:
 
   postgres:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10  # runs ~4-5 min; a slow image pull alone has hit 5
     env:
       OPENBOARD_TEST_DRIVER: postgres
       OPENBOARD_TEST_DATABASE_URL: postgres://openboard:openboard@127.0.0.1:15432/openboard
@@ -128,7 +128,7 @@ jobs:
 
   conformance-postgres:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10  # runs ~4-5 min; a slow image pull alone has hit 5
     env:
       OPENBOARD_TEST_DRIVER: postgres
       OPENBOARD_TEST_DATABASE_URL: postgres://openboard:openboard@127.0.0.1:15432/openboard
