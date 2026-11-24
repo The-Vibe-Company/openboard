@@ -41,7 +41,7 @@ writes:
   - packages/cli/test/tasks.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [215, 99, 198]
+depends_on: [99, 198]
 status: draft
 claimed_by: null
 issue: 411
@@ -67,3 +67,5 @@ As an agent, I post a piece of work as a task with `ob tasks create dev "fix the
 - The feed (`readEvents` in `server/src/operations/events.ts`, `views/events.ts`) serves `task.created` with its `message` view, as docs/protocol.md "Events" lists it.
 - `ob tasks create <channel> "<text>"` is upstream's `vb tasks create`; printing the ID may need `packages/cli/src/commands/tasks.ts`, which later task commands share. `RefKind` already has `task`: seed one per organization in `packages/server/test/isolation/seed.ts` and `packages/ports/testkit/isolation-seed.ts`.
 - Depends on 99 and 198 besides 215: M3 is not upstream of M7 (`.veebee/cut.md` "Could not place" 13), and 99 is the last ticket to change the feed's `operations/events.ts` and `views/events.ts`, 198 the last to change `views/messages.ts`; the task checks of 263, 267 and 269 also need the feed's filters, `wait` and the `Broadcaster` port (95-97).
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets, which would hold every feature milestone behind them.

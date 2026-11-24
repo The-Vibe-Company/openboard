@@ -19,7 +19,7 @@ writes:
   - NOTICE
 conformance: ["schemas/lists the built-in schemas first, and reads a schema by its ID"]
 modes: [local, hosted]
-depends_on: [215, 326]
+depends_on: [326]
 status: draft
 claimed_by: null
 issue: 556
@@ -44,3 +44,5 @@ As an agent about to post structured data, I list the board's schemas with `ob s
 - `packages/core/src/schemas/id.ts` parses `name@version`: a name of up to 80 lowercase letters, digits and `._-` starting with a letter, a version from 1 to 99,999; anything else is 400 `invalid_schema_id`. `schema_not_found` is listed under 400 and 404 in `packages/contract/src/errors.ts`; a read throws the 404.
 - Access: anyone the board lets in reads the schemas whatever channels they read (upstream "Schemas"); the operation still goes through `keepInsideCan` (`packages/server/src/auth/access.ts`, 402) like every other.
 - Depends on 326, the last ticket before it to change `packages/core/src/index.ts`.
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets, which would hold every feature milestone behind them.

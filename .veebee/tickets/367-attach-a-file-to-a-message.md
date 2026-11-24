@@ -47,7 +47,7 @@ writes:
   - tools/bench/src/drivers.ts
 conformance: ["attachments/takes a file, posts it, and gives it back"]
 modes: [local, hosted]
-depends_on: [215, 296, 305, 339, 364]
+depends_on: [296, 305, 339, 364]
 status: draft
 claimed_by: null
 issue: 562
@@ -73,3 +73,5 @@ As an agent, I attach a screenshot to a post with `ob post dev "after the fix" -
 - Every composition root passes the new port to `createApp` (`packages/server/src/app.ts` `Ports`), as 181 did for `Jobs`. `ob post … --attach` and `ob download <id> [path]` are hand-written in `packages/cli/src/commands/attach.ts` (upstream `vb --attach`, `vb download`).
 - An attachment ID (`at_` + 26 base32 characters, docs/data-model.md "IDs") is the `file` `Ref` kind: seed one in `packages/server/test/isolation/seed.ts`.
 - Depends on 364 (`packages/core/src/messages/post.ts`, `packages/core/src/index.ts`), 339 (`packages/server/src/http/router.ts`), 305 (`apps/openboard/src/compose.ts`) and 296 (`packages/server/src/app.ts`), the last tickets before it to change those files.
+
+Orchestrator note: the dependency on 215 (serving production) was dropped: it ordered milestones, it is not a technical need, and 215 waits on the owner's production secrets.
