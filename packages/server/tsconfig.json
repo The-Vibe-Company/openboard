@@ -18,6 +18,9 @@
     },
     {
       "path": "../driver-sqlite"
+    },
+    {
+      "path": "../driver-postgres"
     }
   ],
   "include": ["package.json", "src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
