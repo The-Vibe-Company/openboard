@@ -9,25 +9,36 @@ const KEY = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 const OBJECT_KEYS = new Set(["constructor", "prototype"]);
 const LABEL_VALUE_MAX = 256;
 
-/** Refuses a label key a write cannot set: a malformed one, `constructor` or `prototype`, or one under `board.`. */
-export function checkLabelKey(key: string) {
+function checkLabelKeyFormat(key: string) {
   if (!KEY.test(key) || OBJECT_KEYS.has(key)) {
     throw new BoardError(
       "invalid_request",
       `labels.${key}: a label key is 1 to 64 of a-z, 0-9, ".", "_" and "-", starts with a letter or digit, and is not constructor or prototype`,
     );
   }
+}
+
+/** Refuses a malformed or reserved key in a label mutation. */
+export function checkLabelKey(key: string) {
+  checkLabelKeyFormat(key);
   if (key.startsWith(RESERVED_LABEL_PREFIX)) {
     throw new BoardError("reserved_label", `labels.${key}: the board writes labels under ${RESERVED_LABEL_PREFIX}`);
   }
 }
 
-/** Refuses a label value the board cannot keep: over 256 characters, a control character, or a lone surrogate. */
-export function checkLabelValue(key: string, value: string) {
+function checkStoredLabelValue(key: string, value: string) {
   if (value.length > LABEL_VALUE_MAX) {
     throw new BoardError("invalid_request", `labels.${key}: a label value is up to ${LABEL_VALUE_MAX} characters`);
   }
-  if (/\p{Cc}/u.test(value) || !value.isWellFormed()) {
+  if (value.includes("\0") || !value.isWellFormed()) {
+    throw new BoardError("invalid_request", `labels.${key}: label value has a control character or a lone surrogate`);
+  }
+}
+
+/** New label values also exclude control characters that can appear in existing labels. */
+export function checkLabelValue(key: string, value: string) {
+  checkStoredLabelValue(key, value);
+  if (/\p{Cc}/u.test(value)) {
     throw new BoardError("invalid_request", `labels.${key}: label value has a control character or a lone surrogate`);
   }
 }
@@ -74,6 +85,25 @@ export interface LabelChange {
   readonly id: string;
   readonly set?: Readonly<Record<string, string>>;
   readonly unset?: readonly string[];
+  readonly if?: Readonly<Record<string, string | null>>;
+}
+
+function checkConditions(labels: Message["labels"], conditions: NonNullable<LabelChange["if"]>) {
+  const keys = Object.keys(conditions).sort();
+  if (keys.length > 16) throw new BoardError("invalid_request", "if: at most 16 labels");
+  for (const key of keys) {
+    checkLabelKeyFormat(key);
+    const wanted = conditions[key];
+    if (typeof wanted === "string") checkStoredLabelValue(key, wanted);
+  }
+  for (const key of keys) {
+    const wanted = conditions[key];
+    const current = Object.hasOwn(labels, key) ? labels[key] : undefined;
+    if ((current ?? null) === wanted) continue;
+    const message =
+      wanted === null ? `${key} is set` : current === undefined ? `${key} isn't set` : `${key} isn't ${wanted}`;
+    throw new BoardError("label_conflict", message);
+  }
 }
 
 /** The message's labels after a write: `set` merged in, then `unset` removed, so a key in both ends up removed. */
@@ -89,7 +119,7 @@ function applyLabels(labels: Readonly<Record<string, string>>, set: LabelChange[
  */
 export function decideLabels(
   { head, target, actor }: LabelState,
-  { id, set = {}, unset: keys = [] }: LabelChange,
+  { id, set = {}, unset: keys = [], if: conditions = {} }: LabelChange,
   context: PostContext,
 ): readonly (ActorSeen | LabelsChanged)[] {
   if (Object.keys(set).length === 0 && keys.length === 0) {
@@ -100,6 +130,7 @@ export function decideLabels(
   const unset = [...new Set(keys)];
   if (!target) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
   if (target.deleted) throw new BoardError("message_deleted", `Message #${id} is deleted.`);
+  checkConditions(target.labels, conditions);
   const message = parseId(target.id);
   const thread = parseId(target.thread);
   if (message === null || thread === null) throw new Error("invalid stored message or thread position");

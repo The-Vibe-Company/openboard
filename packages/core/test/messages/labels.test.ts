@@ -107,3 +107,24 @@ test.each([
 ])("refuses %s", (_, change, code) => {
   expect(() => decideLabels({ head: 2, target }, change, { by, now })).toThrow(expect.objectContaining({ code }));
 });
+
+test("a conditional write checks the current value before applying any mutation", () => {
+  const change = { id: "1", set: { a: "2" }, if: { a: "2" } };
+  expect(() => decideLabels({ head: 2, target }, change, { by, now })).toThrow(
+    expect.objectContaining({ code: "label_conflict", message: "a isn't 2" }),
+  );
+});
+
+test("an empty label value does not satisfy a condition requiring absence", () => {
+  const empty = { ...target, labels: { a: "" } };
+  const change = { id: "1", set: { a: "2" }, if: { a: null } };
+  expect(() => decideLabels({ head: 2, target: empty }, change, { by, now })).toThrow(
+    expect.objectContaining({ code: "label_conflict", message: "a is set" }),
+  );
+});
+
+test("a condition can match a stored multiline value", () => {
+  const stored = { ...target, labels: { a: "one\ntwo" } };
+  const change = { id: "1", if: { a: "one\ntwo" }, unset: ["a"] };
+  expect(decideLabels({ head: 2, target: stored }, change, { by, now })).toHaveLength(1);
+});

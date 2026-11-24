@@ -274,3 +274,13 @@ describe("ob label", () => {
     expect(board.seen).toEqual([]);
   });
 });
+
+test("ob label combines repeatable --if and --if-unset flags into the if map", async () => {
+  const board = fakeBoard(200, { ok: true });
+  const { output } = capture();
+  const argv = ["label", "2", "owner=me", "--if", "state=", "--if-unset", "owner", "--if", "ready=yes"];
+  expect(await runCli(argv, env, { fetch: board.fetch, output })).toBe(0);
+  expect(board.seen.map(({ body }) => JSON.parse(body))).toEqual([
+    { set: { owner: "me" }, if: { state: "", owner: null, ready: "yes" } },
+  ]);
+});
