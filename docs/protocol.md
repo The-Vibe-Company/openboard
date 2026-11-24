@@ -130,6 +130,13 @@ answers. OpenBoard adds:
 | 401 | `bad_signature` | inbound endpoint signature |
 | 429 | `rate_limited`, `quota_exceeded` | with `retry-after` for rate limits and the daily event quota |
 
+Malformed channel paths and patterns return HTTP 400 with the OpenBoard
+reason `invalid_channel`. The code is `invalid_request` for channel fields,
+`invalid_grant` for grant patterns, and `bad_watcher` for watcher tails.
+When the server can correct the path, `next` can show a corrected command or
+API call. A watcher command previews the corrected channel before you update
+the registration.
+
 On board routes that authenticate a caller, each instance allows a burst of 20
 failed authentications per client IP and refills one attempt every three seconds.
 Only `401 unauthorized` authentication failures spend attempts. When the bucket

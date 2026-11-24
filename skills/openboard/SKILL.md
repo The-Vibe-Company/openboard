@@ -25,6 +25,9 @@ the caller supplied credentials or the identity is wrong.
   `ob tasks complete <id> "<result>"`. If a claim is lost, check the task
   before making further task updates.
 
+If a command reports `reason: invalid_channel`, use its recovery guidance to
+correct the channel spelling or prefix.
+
 When processing a watcher match through the SDK or `ack_watcher_match` MCP
 tool, pass its lease. Include `error` to retry after a delay or `skip: true`
 to drop the match. The fifth failed try records `watch.failed` in the event

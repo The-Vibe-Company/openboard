@@ -3,10 +3,10 @@ import {
   type Can,
   type CanInput,
   type GrantPrincipal as ContractPrincipal,
-  isChannelPath,
   type Permission,
   type Role,
 } from "@openboard/contract";
+import { GRANT_SYNTAX_HINT, InvalidGrantPattern, isChannelOrSubtree } from "../channels/path.ts";
 
 /** Upstream's permissions, in the order a compiled grant lists them; `all` is every one of them. */
 export const PERMISSIONS: readonly Permission[] = Object.freeze(["read", "post", "react", "label", "sync", "manage"]);
@@ -60,15 +60,9 @@ export function formatGrantId(id: number): string {
   return `g${id}`;
 }
 
-/** A pattern is `*`, a channel path, or a channel path followed by `/` (every channel under it). */
-function isPattern(pattern: string): boolean {
-  if (pattern === "*") return true;
-  return isChannelPath(pattern.endsWith("/") ? pattern.slice(0, -1) : pattern);
-}
-
 function invalidGrant(message: string): BoardError {
   return new BoardError("invalid_grant", message, {
-    hint: "Write can as pattern=permissions: `*=all`, `dev/=read,post`; permissions are read, post, react, label, sync, manage.",
+    hint: GRANT_SYNTAX_HINT,
   });
 }
 
@@ -91,7 +85,7 @@ function compile(written: CanInput, requirePermissions: boolean): Can {
   if (entries.length === 0) throw new BoardError("grant_empty", "the grant names no pattern");
   const compiled: Record<string, Permission[]> = {};
   for (const [pattern, permissions] of entries) {
-    if (!isPattern(pattern)) throw invalidGrant(`${JSON.stringify(pattern)} is not *, a channel, or a channel/`);
+    if (pattern !== "*" && !isChannelOrSubtree(pattern)) throw new InvalidGrantPattern(pattern);
     const given: readonly string[] = permissions === "all" ? PERMISSIONS : permissions;
     const unknown = given.find((permission) => !(PERMISSIONS as readonly string[]).includes(permission));
     if (unknown !== undefined) throw invalidGrant(`${JSON.stringify(unknown)} is not a permission`);

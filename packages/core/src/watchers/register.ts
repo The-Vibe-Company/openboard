@@ -15,7 +15,11 @@ export function validateWatchers({ watch, sync = [], path, url }: InputOf<typeof
       parseTail(tail);
     } catch (error) {
       if (!(error instanceof BoardError)) throw error;
-      throw new BoardError("bad_watcher", `watch ${id}: ${error.message}`);
+      throw new BoardError("bad_watcher", `watch ${id}: ${error.message}`, {
+        reason: error.reason,
+        hint: error.hint,
+        next: error.next?.[0] ? [error.next[0]] : undefined,
+      });
     }
   }
 }

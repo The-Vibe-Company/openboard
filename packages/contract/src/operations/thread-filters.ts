@@ -1,8 +1,9 @@
 import { Type } from "@sinclair/typebox";
+import { channelString } from "../channel-input.ts";
 import { CHANNEL_PATH_MAX, ChannelPath } from "../entities/messages.ts";
 
 /** A channel by its whole name, or with a trailing slash (`dev/`) the channel and every channel under it (upstream "Filters"). */
-export const ChannelFilter = Type.String({
+export const ChannelFilter = channelString({
   maxLength: CHANNEL_PATH_MAX + 1,
   pattern: String(ChannelPath.pattern).replace(/\$$/, "/?$"),
   description: "A channel by its whole name, or `dev/` for `dev` and every channel under it.",

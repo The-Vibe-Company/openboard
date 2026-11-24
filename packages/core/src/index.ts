@@ -69,6 +69,7 @@ export type BoardEvent =
   | WatchersRegistered
   | WatchFailed;
 
+export { channelInputError, correctedChannel, InvalidGrantPattern } from "./channels/path.ts";
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail } from "./events/tail.ts";
 export { formatId, isoTime, parseId } from "./ids.ts";
 export { decideDelete, type MessageDeleted } from "./messages/delete.ts";

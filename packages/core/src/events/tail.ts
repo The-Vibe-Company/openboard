@@ -1,4 +1,5 @@
-import { BoardError, isChannelPath } from "@openboard/contract";
+import { BoardError } from "@openboard/contract";
+import { channelInputError, correctedChannel, isChannelOrSubtree } from "../channels/path.ts";
 import { parseId } from "../ids.ts";
 import type { BoardEvent } from "../index.ts";
 import { messageView } from "../messages/post.ts";
@@ -50,7 +51,17 @@ export function parseTail(expression: string): TailFilters {
   for (let index = 0; index < args.length; index++) {
     const arg = args[index] ?? "";
     if (!arg.startsWith("-")) {
-      if (channel !== undefined || !isChannelPath(arg.replace(/\/$/, ""))) invalid("expected one valid channel");
+      if (channel !== undefined) invalid("expected one valid channel");
+      if (!isChannelOrSubtree(arg)) {
+        const corrected = correctedChannel(arg, isChannelOrSubtree);
+        throw channelInputError(
+          "bad_watcher",
+          corrected
+            ? "Use the corrected channel in the watcher tail. Preview it with ob tail."
+            : "Run ob tail --help for the channel syntax.",
+          { kind: "run", argv: ["ob", "tail", corrected ?? "--help"] },
+        );
+      }
       channel = arg;
       continue;
     }

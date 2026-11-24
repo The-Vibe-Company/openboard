@@ -1,3 +1,4 @@
+export { invalidChannelInput } from "./channel-input.ts";
 export * from "./entities/accounts.ts";
 export * from "./entities/actors.ts";
 export * from "./entities/channels.ts";
