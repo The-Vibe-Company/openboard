@@ -41,6 +41,7 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
       expect(laptop.grant).toBe("g4");
       expect(await board.connection(laptop.id)).toEqual({
         connection: laptop,
+        effectiveCan: laptop.can,
         grant: { id: 4, principals: [{ kind: "connection", connection: laptop.id }], can: laptop.can },
         secretHash: "cd".repeat(32),
         previous: null,
@@ -95,6 +96,7 @@ function agentRevocationSuite(driver: string, open: OpenStore): void {
       });
       expect(await board.agent(token.id)).toEqual({
         agent,
+        grantCans: [fixers.can],
         connection: { id: fixers.id, name: "fixers", profiles: ["*"], tokenTtl: 3600 },
         profile: "Fixer-2",
         tokenHash: "ef".repeat(32),

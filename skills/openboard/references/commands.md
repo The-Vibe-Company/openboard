@@ -95,6 +95,44 @@ Example:
 ob connections create ci --can 'dev/=read,post' --claims 1 --secret-file ./secret
 ```
 
+## `ob grants create`
+
+Grant channel permissions to one or more principals.
+
+```sh
+ob grants create --can <pattern=permissions>… [--user <id>] [--project <id> | --all-projects] [--environment <names>] [--github <repository-or-subject>] [--workflow <file>] [--git-branch <branch>] [--event <event>] [--oidc <issuer>] [--claim <name=value>] [--app <id>] [--all-apps] [--all-users] [--everyone] [--connection <id>] [--all-connections]
+```
+
+Options:
+
+- `--can`: A channel pattern and its permissions, all or a comma-separated list. Repeatable.
+- `--user`: An OpenBoard person ID.
+- `--project`: A project ID.
+- `--all-projects`: All projects.
+- `--environment`: Comma-separated project environments. Defaults to production.
+- `--github`: A GitHub repository or linked identity subject.
+- `--workflow`: Filter GitHub Actions by workflow file.
+- `--git-branch`: Filter GitHub Actions by branch.
+- `--event`: Filter GitHub Actions by event.
+- `--oidc`: An OIDC issuer. Include a sub claim.
+- `--claim`: An OIDC claim as name=value. Repeat to add alternatives.
+- `--app`: An app client ID.
+- `--all-apps`: All apps.
+- `--all-users`: All members of the board's organization.
+- `--everyone`: The upstream everyone principal.
+- `--connection`: A connection ID on this board.
+- `--all-connections`: Every connection on this board.
+
+Errors: `error: forbidden`, `error: grant_empty`, `error: internal`, `error: invalid_grant`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `create_grant`.
+
+Example:
+
+```sh
+ob grants create --connection cn_7k2m4q3t5v2w6x7y --can 'deploys/=read,post'
+```
+
 ## `ob connections rotate`
 
 Replace a connection's secret, optionally keeping the old one working for a while.
@@ -279,23 +317,24 @@ ob channels create dev/ci
 
 ## `ob tasks create`
 
-Start a thread as a ready task.
+Start a thread as a ready task, or make a ready task of the thread `re` roots.
 
 ```sh
-ob tasks create <channel> <text> [--label <k=v>]... [--no-sync]
+ob tasks create (<channel> <text> | <re>) [--label <k=v>]... [--no-sync]
 ```
 
 Arguments:
 
 - `channel`: Text.
 - `text`: Text.
+- `re`: The root of a thread to make a task of as it is, instead of a new thread.
 
 Options:
 
 - `--label`: A `key=value` entry; repeatable.
 - `--no-sync`: A switch: present means yes.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: already_a_task`, `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: reserved_label`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `task_create`.
 
@@ -491,7 +530,7 @@ Options:
 - `--by`: A task whose root this handle, actor ID, or `me` (the caller's actor) wrote.
 - `--owner`: A task this principal owns: its handle or principal ID.
 - `--for`: A task assigned to this actor: its handle or actor ID.
-- `--after`: A page's `cursor`, or a task ID: the tasks made after it.
+- `--after`: A page's `cursor`, or a task ID: the tasks whose root comes after it.
 - `--limit`: Maximum tasks, 50 by default.
 
 Errors: `error: forbidden`, `error: internal`, `error: invalid_cursor`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.

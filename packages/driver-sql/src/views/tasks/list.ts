@@ -24,7 +24,7 @@ const oneChannel = sql`t.channel = ${"channel"}`;
 const subtreeChannels = sql`(t.channel = ${"channel"} OR t.channel LIKE ${"under"} ESCAPE '\\')`;
 
 /**
- * A board's tasks whose root stands, in the order they were made, after a position, through `tasks_ready` for a channel: states as
+ * A board's tasks whose root stands, in their roots' order, after a position, through `tasks_ready` for a channel: states as
  * `,ready,claimed,`, labels on the root, and who wrote the root, owns the task or is assigned it, by ID or handle.
  */
 function taskList(channels: Statement<"boardId" | "channel" | "under">) {

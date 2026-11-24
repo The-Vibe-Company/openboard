@@ -8,11 +8,13 @@ import {
   type GrantPrincipal,
   grants,
   isoTime,
+  resolveCan,
 } from "@openboard/core";
 import type { BoardKeys, BoardScope, BoardView, ConnectionRecord } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
 import { codePointOrder } from "./channels.ts";
+import { connectionGrantCans, grantCanArray, grantStatements } from "./grants.ts";
 
 /** A claimed token's lifetime and hard cap until the connection names its own (docs/auth.md "Connections"). */
 const TOKEN_TTL_S = 3600;
@@ -27,13 +29,7 @@ const byConnectionIndex: Fragment = Object.freeze({
 });
 
 export const connectionStatements = {
-  nextGrant: sql`SELECT next_grant FROM boards WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
-  setNextGrant: sql`UPDATE boards SET next_grant = ${"nextGrant"} WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
   connectionNamed: sql`SELECT id FROM connections WHERE board_id = ${"boardId"} AND name = ${"name"}`,
-  insertGrant: sql`INSERT INTO grants (org_id, board_id, id, principals, can, capped, by, at)
-    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"principals"}, ${"can"}, 0, ${"by"}, ${"at"})`,
-  insertGrantPrincipal: sql`INSERT INTO grant_principals (board_id, grant_id, kind, key, detail)
-    VALUES (${"boardId"}, ${"grantId"}, ${"kind"}, ${"key"}, ${"detail"})`,
   insertConnection: sql`INSERT INTO connections (id, org_id, board_id, name, secret_hash, secret_hint, direct,
     claims_max, profiles, token_ttl_s, token_max_s, created_by, created_at) VALUES (${"id"}, ${"orgId"},
     ${"boardId"}, ${"name"}, ${"secretHash"}, ${"secretHint"}, ${"direct"}, ${"claimsMax"}, ${"profiles"},
@@ -61,7 +57,11 @@ export const connectionStatements = {
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND revoked_at IS NULL`,
   /** The active connection with the first grant naming it: the one created with it. */
   connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.prev_secret_hash, c.prev_secret_until, c.direct, c.claims_max, c.claims_used,
-    c.profiles, c.token_ttl_s, c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can
+    c.profiles, c.token_ttl_s, c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can,
+    (SELECT ${grantCanArray} FROM grants g
+      WHERE g.org_id = ${"orgId"} AND g.board_id = ${"boardId"} AND g.revoked = 0
+        AND g.id IN (SELECT p.grant_id FROM grant_principals p WHERE p.board_id = ${"boardId"}
+          AND ((p.kind = 'connection' AND p.key = c.id) OR (p.kind = 'all-connections' AND p.key = '')))) AS grant_cans
     FROM connections c JOIN grant_principals p ON p.board_id = c.board_id AND p.kind = 'connection' AND p.key = c.id
       JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
     WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.id = ${"id"} AND c.revoked_at IS NULL ORDER BY g.id LIMIT 1`,
@@ -88,7 +88,7 @@ export const connectionStatements = {
 
 /** Reads the next grant ID under the caller's board lock. */
 export async function nextGrant(tx: Db, dialect: Dialect, keys: BoardKeys): Promise<number> {
-  const [row] = await query(tx, dialect, connectionStatements.nextGrant, keys);
+  const [row] = await query(tx, dialect, grantStatements.nextGrant, keys);
   if (!row) throw new Error(`board ${keys.boardId} of organization ${keys.orgId} is missing`);
   return Number(row.next_grant);
 }
@@ -101,7 +101,7 @@ export async function connectionNamed(tx: Db, dialect: Dialect, keys: BoardKeys,
 /** The fold of `ob.connection.created`: the connection's row, its grant and the grant's principals. */
 export async function foldConnectionCreated(tx: Db, dialect: Dialect, keys: BoardKeys, event: ConnectionCreated) {
   const { connection, grant, secretHash, claims } = event.payload;
-  await query(tx, dialect, connectionStatements.insertGrant, {
+  await query(tx, dialect, grantStatements.insertGrant, {
     ...keys,
     id: grant.id,
     principals: JSON.stringify(grant.principals),
@@ -110,7 +110,7 @@ export async function foldConnectionCreated(tx: Db, dialect: Dialect, keys: Boar
     at: event.at,
   });
   for (const principal of grant.principals) {
-    await query(tx, dialect, connectionStatements.insertGrantPrincipal, {
+    await query(tx, dialect, grantStatements.insertGrantPrincipal, {
       boardId: keys.boardId,
       grantId: grant.id,
       kind: principal.kind,
@@ -118,7 +118,7 @@ export async function foldConnectionCreated(tx: Db, dialect: Dialect, keys: Boar
       detail: JSON.stringify(principal),
     });
   }
-  await query(tx, dialect, connectionStatements.setNextGrant, { ...keys, nextGrant: grant.id + 1 });
+  await query(tx, dialect, grantStatements.setNextGrant, { ...keys, nextGrant: grant.id + 1 });
   await query(tx, dialect, connectionStatements.insertConnection, {
     ...keys,
     id: connection.id,
@@ -168,7 +168,16 @@ function recordOf(row: Row): ConnectionRecord {
           secretHash: Buffer.from(row.prev_secret_hash as Uint8Array).toString("hex"),
           until: Number(row.prev_secret_until),
         };
-  return { connection, grant: { id: grantId, principals, can }, secretHash, previous, tokenTtl, tokenMax, claims };
+  return {
+    connection,
+    effectiveCan: resolveCan(connectionGrantCans(row.grant_cans).map(grants.compileCan)),
+    grant: { id: grantId, principals, can },
+    secretHash,
+    previous,
+    tokenTtl,
+    tokenMax,
+    claims,
+  };
 }
 
 /** The connection with the ID on the board `keys` names, read with the caller's connection or transaction. */

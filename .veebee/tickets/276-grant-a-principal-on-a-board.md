@@ -5,7 +5,6 @@ milestone: M10-access
 package: server
 writes:
   - packages/contract/src/entities/grants.ts
-  - packages/contract/src/operations/grants.ts
   - packages/contract/src/operations/index.ts
   - packages/contract/src/index.ts
   - packages/core/src/access/principals.ts
@@ -24,7 +23,6 @@ writes:
   - packages/driver-sql/src/views/grants.ts
   - packages/driver-sql/src/views/messages.ts
   - packages/driver-sql/src/statements.ts
-  - packages/server/src/operations/grants.ts
   - packages/server/src/operations/index.ts
   - packages/server/src/auth/connections.ts
   - packages/server/src/auth/tokens.ts
@@ -37,11 +35,28 @@ writes:
   - packages/cli/src/grant-principals.ts
   - packages/cli/src/commands/index.ts
   - packages/cli/test/grants.test.ts
+  - docs/codebase.md
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/cli/src/commands/usage.ts
+  - packages/contract/src/operation.ts
+  - packages/contract/src/operations/audit.ts
+  - packages/contract/src/operations/grants/create.ts
+  - packages/core/src/access/grants.ts
+  - packages/driver-sql/src/views/agents.ts
+  - packages/driver-sql/src/views/connections.ts
+  - packages/ports/testkit/store/connections.test-suite.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/actors.ts
+  - packages/server/src/operations/audit.ts
+  - packages/server/src/operations/connections.ts
+  - packages/server/src/operations/grants/create.ts
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [238]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 451
 ---
 
@@ -49,8 +64,8 @@ issue: 451
 As a board owner, I let a connection or a person do more on part of the board with `ob grants create --connection <id> --can 'deploys/=read,post'`, and it holds from their next request.
 
 ## Done when
-- [ ] as the local owner, with a direct connection made `--can 'dev=read'`, `ob grants create --connection <its id> --can 'deploys/=read,post'` prints `created g5  --connection <its id>  deploys/=read,post`; with that connection's secret as `BOARD_TOKEN`, `ob post deploys/web hi` then lands while `ob post ops hi` prints `error: forbidden: …`
-- [ ] `bun test packages/server/test/grants/create.test.ts` passes: principals of upstream's kinds (`user` by ID, `project` with environments, `github`, `oidc` with a `sub` claim, `all-users`, `all-projects`, `everyone`, `app`, `all-apps`) and OpenBoard's `connection` and `all-connections` are kept and shown as upstream's views show them; an unknown key, a malformed pattern, a `user` by email or an `oidc` principal without a well-formed `sub` is 400 `invalid_grant`; the caller needs `manage` at every pattern (403 otherwise); a grant appends `ob.grant.created`, which `/x/audit` shows and `/events` never does
+- [x] as the local owner, with a direct connection made `--can 'dev=read'`, `ob grants create --connection <its id> --can 'deploys/=read,post'` prints `created g5  --connection <its id>  deploys/=read,post`; with that connection's secret as `BOARD_TOKEN`, `ob post deploys/web hi` then lands while `ob post ops hi` prints `error: forbidden: …`
+- [x] `bun test packages/server/test/grants/create.test.ts` passes: principals of upstream's kinds (`user` by ID, `project` with environments, `github`, `oidc` with a `sub` claim, `all-users`, `all-projects`, `everyone`, `app`, `all-apps`) and OpenBoard's `connection` and `all-connections` are kept and shown as upstream's views show them; an unknown key, a malformed pattern, a `user` by email or an `oidc` principal without a well-formed `sub` is 400 `invalid_grant`; the caller needs `manage` at every pattern (403 otherwise); a grant appends `ob.grant.created`, which `/x/audit` shows and `/events` never does
 
 ## Out of scope
 - Listing (277), revoking (278), changing (279), `[]` patterns (280).

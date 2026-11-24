@@ -1,4 +1,12 @@
-import { BoardError, type Can, type CanInput, isChannelPath, type Permission, type Role } from "@openboard/contract";
+import {
+  BoardError,
+  type Can,
+  type CanInput,
+  type GrantPrincipal as ContractPrincipal,
+  isChannelPath,
+  type Permission,
+  type Role,
+} from "@openboard/contract";
 
 /** Upstream's permissions, in the order a compiled grant lists them; `all` is every one of them. */
 export const PERMISSIONS: readonly Permission[] = Object.freeze(["read", "post", "react", "label", "sync", "manage"]);
@@ -38,7 +46,7 @@ export function allUsersCan(role: Role): Can {
 }
 
 /** Who a grant names. Only the OpenBoard kind `connection` is compiled so far (docs/auth.md "Connections"). */
-export type GrantPrincipal = { readonly kind: "connection"; readonly connection: string };
+export type GrantPrincipal = Extract<ContractPrincipal, { kind: "connection" }>;
 
 /** A grant as it is stored: its board-scoped ID, whom it names, and what it lets in. */
 export interface Grant {

@@ -1,4 +1,14 @@
-import { agents, boards, connections, decideCreateTask, decideInvitation, messages, orgs } from "@openboard/core";
+import {
+  agents,
+  boards,
+  connections,
+  decideCreateTask,
+  decideInvitation,
+  grants,
+  isoTime,
+  messages,
+  orgs,
+} from "@openboard/core";
 import type { BoardView, OrgView, Store } from "../src/index.ts";
 import { testOrgScope, testScope } from "./index.ts";
 
@@ -113,6 +123,32 @@ export async function storeTenant(store: Store, slug: string, digit: string, pos
     return Number(decided.task.id);
   });
   const claimed = await connectAndClaim(board, actor, marker, digit);
+  await board.write(async (writer) => {
+    const id = grants.formatGrantId(await writer.nextGrant());
+    await writer.append([
+      {
+        id: writer.head + 1,
+        type: "ob.grant.created",
+        at,
+        thread: null,
+        message: null,
+        channel: null,
+        actor,
+        principal: actor,
+        visibility: 2,
+        payload: {
+          grant: {
+            id,
+            principals: [{ kind: "user", userId: personId, email: null }],
+            can: { [channel]: ["read"] },
+            capped: false,
+            by: actor,
+            at: isoTime(at),
+          },
+        },
+      },
+    ]);
+  });
   const invitation = `inv_${digit.repeat(16)}`;
   const record = decideInvitation({ role: "member" }, { by: actor, id: invitation, now: at });
   const tokenHash = new Uint8Array(32).fill(digit.charCodeAt(0));

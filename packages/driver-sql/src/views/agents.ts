@@ -4,21 +4,23 @@ import type { AgentRecord, BoardKeys, BoardScope, BoardView } from "@openboard/p
 import type { Db, Dialect, Row } from "../db.ts";
 import { query, sql } from "../sql.ts";
 import { spendClaim } from "./connections.ts";
+import { connectionGrantCans, grantCanArray } from "./grants.ts";
 
 export const agentStatements = {
   insertAgent: sql`INSERT INTO connection_agents (id, org_id, board_id, connection, profile, profile_key, can,
     token_hash, token_expires, hard_expires, created_at, claim_key) VALUES (${"id"}, ${"orgId"}, ${"boardId"}, ${"connection"},
     ${"profile"}, ${"profileKey"}, ${"can"}, ${"tokenHash"}, ${"tokenExpires"}, ${"hardExpires"}, ${"at"}, ${"claimKey"})`,
   /** The agent with the connection it was claimed from, which lives on the same board. */
-  agentById: sql`SELECT a.id, a.connection, a.profile, a.profile_key, a.can, a.token_hash, a.prev_hash,
-    a.prev_until, a.token_expires, a.hard_expires, c.name, c.profiles, c.token_ttl_s
+  agentCredential: sql`SELECT a.id, a.connection, a.profile, a.profile_key, a.can, a.token_hash, a.prev_hash,
+    a.prev_until, a.token_expires, a.hard_expires, a.revoked_at, c.name, c.profiles, c.token_ttl_s,
+    (SELECT ${grantCanArray} FROM grants g
+      WHERE g.org_id = ${"orgId"} AND g.board_id = ${"boardId"} AND g.revoked = 0
+        AND g.id IN (SELECT p.grant_id FROM grant_principals p WHERE p.board_id = ${"boardId"}
+          AND ((p.kind = 'connection' AND p.key = c.id) OR (p.kind = 'all-connections' AND p.key = '')))) AS grant_cans
     FROM connection_agents a JOIN connections c ON c.board_id = a.board_id AND c.id = a.connection
-    WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"} AND a.id = ${"id"} AND a.revoked_at IS NULL`,
-  agentByClaimKey: sql`SELECT a.id, a.connection, a.profile, a.profile_key, a.can, a.token_hash, a.prev_hash,
-    a.prev_until, a.token_expires, a.hard_expires, a.revoked_at, c.name, c.profiles, c.token_ttl_s
-    FROM connection_agents a JOIN connections c ON c.board_id = a.board_id AND c.id = a.connection
-    WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"} AND a.connection = ${"connection"}
-      AND a.claim_key = ${"claimKey"}`,
+    WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"}
+      AND ((a.id = ${"id"} AND a.revoked_at IS NULL)
+        OR (a.connection = ${"connection"} AND a.claim_key = ${"claimKey"}))`,
   refreshAgent: sql`UPDATE connection_agents SET token_hash = ${"tokenHash"}, prev_hash = ${"previousHash"},
     prev_until = ${"previousUntil"}, token_expires = ${"tokenExpires"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
@@ -63,6 +65,7 @@ function recordOf(row: Row): AgentRecord {
   const connection = String(row.connection);
   const previous = row.prev_hash == null ? null : { tokenHash: hexOf(row.prev_hash), until: Number(row.prev_until) };
   return {
+    grantCans: connectionGrantCans(row.grant_cans),
     agent: {
       id: String(row.id),
       actor: `ob:conn:${connection}+${String(row.profile_key)}`,
@@ -86,7 +89,12 @@ function recordOf(row: Row): AgentRecord {
 
 /** The agent with the ID on the board `keys` names, read with the caller's connection or transaction. */
 export async function findAgent(db: Db, dialect: Dialect, keys: BoardKeys, id: string): Promise<AgentRecord | null> {
-  const [row] = await query(db, dialect, agentStatements.agentById, { orgId: keys.orgId, boardId: keys.boardId, id });
+  const [row] = await query(db, dialect, agentStatements.agentCredential, {
+    ...keys,
+    id,
+    connection: null,
+    claimKey: null,
+  });
   return row ? recordOf(row) : null;
 }
 
@@ -98,7 +106,7 @@ export async function findAgentByClaimKey(
   connection: string,
   claimKey: string,
 ) {
-  const [row] = await query(db, dialect, agentStatements.agentByClaimKey, { ...keys, connection, claimKey });
+  const [row] = await query(db, dialect, agentStatements.agentCredential, { ...keys, id: null, connection, claimKey });
   return row ? { record: recordOf(row), revoked: row.revoked_at != null } : null;
 }
 

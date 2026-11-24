@@ -3,6 +3,7 @@ import {
   type Command,
   connectCommand,
   createConnectionCommand,
+  createGrantCommand,
   derivedCommands,
   loginCommand,
   messagesCommand,
@@ -23,6 +24,7 @@ export const commands: readonly AnyCommand[] = [
   loginCommand,
   useCommand,
   createConnectionCommand,
+  createGrantCommand,
   rotateConnectionCommand,
   readCommand,
   messagesCommand,
@@ -82,6 +84,30 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     tools: [],
     example: "ob use main",
     errors: ["not_found", "unauthorized"],
+  },
+  "grants create": {
+    summary: "Grant channel permissions to one or more principals.",
+    operations: ["createGrant"],
+    example: "ob grants create --connection cn_7k2m4q3t5v2w6x7y --can 'deploys/=read,post'",
+    options: {
+      can: "A channel pattern and its permissions, all or a comma-separated list. Repeatable.",
+      connection: "A connection ID on this board.",
+      "all-connections": "Every connection on this board.",
+      user: "An OpenBoard person ID.",
+      github: "A GitHub repository or linked identity subject.",
+      oidc: "An OIDC issuer. Include a sub claim.",
+      claim: "An OIDC claim as name=value. Repeat to add alternatives.",
+      project: "A project ID.",
+      "all-projects": "All projects.",
+      environment: "Comma-separated project environments. Defaults to production.",
+      workflow: "Filter GitHub Actions by workflow file.",
+      "git-branch": "Filter GitHub Actions by branch.",
+      event: "Filter GitHub Actions by event.",
+      app: "An app client ID.",
+      "all-apps": "All apps.",
+      "all-users": "All members of the board's organization.",
+      everyone: "The upstream everyone principal.",
+    },
   },
   "connections create": {
     summary: "Create a connection: a secret agents claim tokens from, with the permissions they get.",
@@ -245,6 +271,7 @@ function referenceOf(command: AnyCommand): CommandReference {
   if (!derived && !handwritten) throw new Error(`ob ${words}: no summary or example; describe it in usage.ts`);
   const used = derived ? [derived] : operations.filter((operation) => handwritten?.operations.includes(operation.name));
   const args = derived && derived.cli ? derived.cli.args : [];
+  const alternative = (derived && derived.cli && derived.cli.alternative) || [];
   const fields = derived ? fieldsOf(derived) : new Map<string, Schema>();
   const shown = command.usage.slice(`ob ${words}`.length).trim();
   // The leading `<arg>` words of the usage line are the required arguments.
@@ -253,7 +280,7 @@ function referenceOf(command: AnyCommand): CommandReference {
     command: `ob ${words}`,
     usage: command.usage,
     summary: derived?.summary ?? handwritten?.summary ?? "",
-    arguments: args.map((name) => ({ name, meaning: meaningOf(fields.get(name) ?? {}) })),
+    arguments: [...args, ...alternative].map((name) => ({ name, meaning: meaningOf(fields.get(name) ?? {}) })),
     options: optionsOf(command, used, handwritten?.options ?? {}),
     errors: errorsOf(used, handwritten?.errors ?? []),
     mcpTools: used

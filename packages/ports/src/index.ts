@@ -1,4 +1,5 @@
 export type { Broadcaster, CommittedEvents, CommittedPage } from "./broadcaster.ts";
+export type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
 export type {
   AgentRecord,
   AuditRecord,

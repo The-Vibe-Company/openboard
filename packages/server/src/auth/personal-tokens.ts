@@ -1,5 +1,5 @@
 import { BoardError } from "@openboard/contract";
-import { grants } from "@openboard/core";
+import { grants, resolveCan } from "@openboard/core";
 import { callerCan, credentialExpiry, credentialKind, credentialName, memberOf } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { bearer, hashToken } from "./secrets.ts";
@@ -27,7 +27,10 @@ export function personalTokenVerifier(now: () => number): CredentialVerifier {
         [credentialExpiry]: expiresAt,
         [credentialName]: tokenName,
         [memberOf]: { handle, name, avatar, ...member },
-        [callerCan]: grants.allUsersCan(member.role),
+        [callerCan]: resolveCan([
+          grants.allUsersCan(member.role),
+          ...(await board.personGrants(id)).map(grants.compileCan),
+        ]),
       };
     },
   };

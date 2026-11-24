@@ -9,6 +9,7 @@ import { channelStatements } from "./views/channels.ts";
 import { connectionStatements } from "./views/connections.ts";
 import { devicePlatform, deviceScoped } from "./views/device.ts";
 import { eventStatements } from "./views/events.ts";
+import { grantStatements } from "./views/grants.ts";
 import { invitationStatements } from "./views/invitations.ts";
 import { membershipStatements } from "./views/memberships.ts";
 import { messageStatements } from "./views/messages.ts";
@@ -30,6 +31,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...devicePlatform,
   ...deviceScoped,
   ...eventStatements,
+  ...grantStatements,
   ...invitationStatements,
   ...membershipStatements,
   ...messageStatements,

@@ -1,4 +1,4 @@
-import { decodeInput, type Operation, operations, type RefKind, refKind } from "@openboard/contract";
+import { createGrant, decodeInput, type Operation, operations, type RefKind, refKind } from "@openboard/contract";
 import type { Headers, Seeded, Tenant } from "./seed.ts";
 
 type Part = "params" | "query" | "body";
@@ -14,6 +14,15 @@ export const authenticated = operations.filter((operation) => operation.scope !=
  * validation. An operation missing here sends no query and no body; `callOf` throws if validation refuses that.
  */
 const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; query?: Fields; body?: Fields }>> = {
+  createGrant: (tenant) => ({
+    body: {
+      principals: [
+        { kind: "connection", connection: tenant.ids.connection },
+        { kind: "user", userId: tenant.ids.member?.slice("ob:user:".length) },
+      ],
+      can: { dev: ["read"] },
+    },
+  }),
   createTask: (tenant) => ({ body: { channel: "dev", text: `${tenant.marker} task` } }),
   postMessage: (tenant) => ({ body: { re: tenant.ids.message, text: `${tenant.marker} reply` } }),
   editMessage: (tenant) => ({ body: { text: `${tenant.marker} edit` } }),
@@ -49,6 +58,15 @@ export function refFields(operation: Operation): { part: Part; field: string; ki
     for (const [field, property] of Object.entries(schema?.properties ?? {})) {
       const kind = refKind(property);
       if (kind) found.push({ part, field, kind });
+      if (operation.name === "createGrant" && part === "body" && field === "principals") {
+        const { items } = createGrant.input.body.properties.principals;
+        for (const variant of items.anyOf) {
+          for (const [key, nested] of Object.entries(variant.properties)) {
+            const nestedKind = refKind(nested);
+            if (nestedKind) found.push({ part, field: `principals.${key}`, kind: nestedKind });
+          }
+        }
+      }
     }
   }
   return found;
@@ -99,7 +117,12 @@ export function callOf(
   for (const { part, field, kind } of refFields(operation)) {
     if (part === "params") parts.params[field] = tenant.ids[kind];
   }
-  if (override) parts[override.part][override.field] = override.value;
+  if (override?.field.startsWith("principals.")) {
+    const key = override.field.slice("principals.".length);
+    parts.body.principals = (parts.body.principals as Fields[]).map((principal) =>
+      key in principal ? { ...principal, [key]: override.value.replace(/^ob:user:/, "") } : principal,
+    );
+  } else if (override) parts[override.part][override.field] = override.value;
   try {
     const org = operation.input.params?.properties.org ? { org: tenant.org } : {};
     decodeInput(operation, { params: texts({ ...org, ...parts.params }), query: texts(parts.query), body: parts.body });

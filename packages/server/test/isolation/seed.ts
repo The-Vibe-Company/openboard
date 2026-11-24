@@ -119,6 +119,13 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
     send("POST", `${base}/x/connections/claim`, { authorization: `Bearer ${fleet.secret}` }, { profile: marker }),
     "claim",
   );
+  const granted = await ok<{ grant: { id: string } }>(
+    send("POST", `${base}/grants`, session, {
+      principals: [{ kind: "connection", connection: direct.connection.id }],
+      can: { "*": "all" },
+    }),
+    "grant",
+  );
   const invited = await ok<{ invitation: { id: string }; url: string }>(
     send("POST", `/api/x/orgs/${org}/invitations`, session, { role: "member" }),
     "invitation",
@@ -132,6 +139,7 @@ async function resources(send: Send, org: string, session: Headers, marker: stri
       message,
       thread: thread.message.id,
       task: task.task.id,
+      grant: granted.grant.id,
       connection: fleet.connection.id,
       agent: claimed.agent.id,
       invitation: invited.invitation.id,

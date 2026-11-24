@@ -44,6 +44,8 @@ export interface CliSpec {
   readonly command: readonly string[];
   /** Input fields taken as positional arguments, in order. */
   readonly args: readonly string[];
+  /** Another positional form, `(<args…> | <alternative…>)`: exactly this many positionals fill these fields instead. */
+  readonly alternative?: readonly string[];
   /** Input fields taken as `--<flag>` under another name than their own, as upstream's CLI names them. */
   readonly options?: Readonly<Record<string, string>>;
   /** Repeatable `--flag key` options, mapping each flag to the record field where that key gets a null value. */
@@ -75,6 +77,7 @@ export type Operation<
   readonly scope: S;
   readonly input: I;
   readonly output: O;
+  readonly invalidInputCode?: ErrorCode;
   /** Optional alternate HTTP representation, negotiated through Accept. */
   readonly eventStream?: "text/event-stream";
   /** The success status, or the boolean output field that distinguishes 201 from 200. */
@@ -83,6 +86,8 @@ export type Operation<
   readonly access: {
     readonly permission: "read" | "post" | "react" | "label" | "sync" | "manage";
     readonly channel: "fromInput" | "fromInputOrAny" | "fromMessage" | "any";
+    /** The permission a call that names `re` needs in that message's channel instead of `permission`. */
+    readonly re?: "read" | "post" | "react" | "label" | "sync" | "manage";
   } | null;
   readonly effects: {
     readonly readOnly: boolean;
@@ -171,9 +176,16 @@ function decodePart(schema: TObject | undefined, value: unknown, where: string, 
 
 /** Validates a request's parts against an operation's input and returns the flat input, or throws `invalid_request`. */
 export function decodeInput<Op extends Operation>(operation: Op, raw: RawInput): InputOf<Op> {
-  return {
-    ...decodePart(operation.input.params, raw.params, "path", true),
-    ...decodePart(operation.input.query, raw.query, "query", true),
-    ...decodePart(operation.input.body, raw.body, "body", false),
-  } as InputOf<Op>;
+  try {
+    return {
+      ...decodePart(operation.input.params, raw.params, "path", true),
+      ...decodePart(operation.input.query, raw.query, "query", true),
+      ...decodePart(operation.input.body, raw.body, "body", false),
+    } as InputOf<Op>;
+  } catch (error) {
+    if (operation.invalidInputCode && error instanceof BoardError && error.code === "invalid_request") {
+      throw new BoardError(operation.invalidInputCode, error.message);
+    }
+    throw error;
+  }
 }

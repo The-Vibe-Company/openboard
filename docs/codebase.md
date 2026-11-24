@@ -205,7 +205,7 @@ Universal rules:
 | `console.*` only in `server/src/log.ts` and `cli/src/output.ts` | packages, apps |
 | Deny terms, whole word, case-insensitive: `armada`, `slack`, `linear`, `notion`, `discord`, `granite` | `packages/*`, `apps/*` |
 
-GitHub is allowed only as a people identity provider, under `server/src/auth/providers/github/` and `apps/web/src/auth/`. Adding a provider integration means adding its name to the deny list in the PR that adds its recipe.
+GitHub is the only people sign-in provider, under `server/src/auth/providers/github/` and `apps/web/src/auth/`. The upstream `github` grant principal is part of the board protocol. It can match a locally linked GitHub identity. Core makes no calls to GitHub. Adding a provider integration means adding its name to the deny list in the PR that adds its recipe.
 
 ### 3.3 How CI enforces it
 
