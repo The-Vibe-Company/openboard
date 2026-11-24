@@ -97,7 +97,7 @@ export { compileInboundPattern } from "./inbound/pattern.ts";
 export { matchInboundPattern } from "./inbound/pattern-match.ts";
 export { parseInboundRules, parseInboundThread } from "./inbound/rules.ts";
 export { decideDelete, type MessageDeleted } from "./messages/delete.ts";
-export { decideEdit, type MessageEdited } from "./messages/edit.ts";
+export { decideEdit, holdTaskAfterEdit, type MessageEdited } from "./messages/edit.ts";
 export { decideLabels, type LabelState, type LabelsChanged } from "./messages/labels.ts";
 export type { ActorSeen, MessagePosted, MessagePostedPayload, PostCommand } from "./messages/post.ts";
 export * as messages from "./messages/post.ts";

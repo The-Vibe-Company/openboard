@@ -1,5 +1,7 @@
 import { type Author, BoardError, type Message } from "@openboard/contract";
 import { isoTime, parseId } from "../ids.ts";
+import { taskBlocked } from "../tasks/holds/hold.ts";
+import { isTaskOwner } from "../tasks/ownership.ts";
 import type { SettledMentions } from "./mentions.ts";
 import { checkMessageOwnership } from "./ownership.ts";
 import { checkMessageText } from "./post.ts";
@@ -69,4 +71,19 @@ export function decideEdit(
       },
     },
   };
+}
+
+/** A non-owner's edit holds an active task using the edited message as its projection. */
+export function holdTaskAfterEdit(edit: MessageEdited) {
+  const root = edit.payload.view;
+  const { task } = root;
+  const by = edit.payload.by;
+  if (edit.message !== edit.thread || !task || isTaskOwner(task, by)) return null;
+  if (task.state !== "waiting" && task.state !== "ready" && task.state !== "claimed") return null;
+  return taskBlocked(
+    { ...root, task },
+    { kind: "edited", reason: "its text was edited by someone who does not own the task" },
+    edit.id + 1,
+    { by, now: edit.at },
+  );
 }

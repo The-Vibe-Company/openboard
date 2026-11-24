@@ -55,6 +55,9 @@ Read the JSON result in `structuredContent`. On `isError`, inspect its
   `invalid_needs`. A failed prerequisite leaves the new task waiting until it completes.
   The event feed emits `task.ready` when the last prerequisite completes, or during
   creation if every prerequisite is already completed.
+- A non-owner's edit to an active task's root holds the task with kind `edited`
+  and ends its claim. The task maker or its principal acting as itself can review
+  the edit and run `ob tasks unblock <id>`.
 - Deleting a task's root with `ob delete <id>` cancels unfinished work.
   Find it with `ob tasks <channel> --state canceled`. Completed tasks stay completed.
 
