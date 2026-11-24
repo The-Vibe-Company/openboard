@@ -7,6 +7,7 @@
     "core/drops a deleted message from what its labels find",
     "core/ignores x-board-avatar, which x-board-profile's avatar parameter replaced",
     "core/ignores x-board-session: who writes is the principal and its profile",
+    "core/labels a message only while its labels are as the write says, one of any that race",
     "core/lists channels a page at a time, and the ones under a prefix",
     "core/lists the channel and you in it",
     "core/lists threads, each with its reply count and latest reply",

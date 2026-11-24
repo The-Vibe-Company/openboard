@@ -46,6 +46,8 @@ export interface CliSpec {
   readonly args: readonly string[];
   /** Input fields taken as `--<flag>` under another name than their own, as upstream's CLI names them. */
   readonly options?: Readonly<Record<string, string>>;
+  /** Repeatable `--flag key` options, mapping each flag to the record field where that key gets a null value. */
+  readonly nullEntryOptions?: Readonly<Record<string, string>>;
 }
 
 export interface McpSpec {

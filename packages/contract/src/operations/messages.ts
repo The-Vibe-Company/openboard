@@ -118,22 +118,31 @@ export const reactToMessage = defineOperation({
 export const labelMessage = defineOperation({
   name: "labelMessage",
   operationId: "label",
-  summary: "Set and unset labels on a message, each key to one value, raising its version; unset applies last.",
+  summary: "Set and unset labels on a message if all label conditions hold; unset applies last.",
   route: { method: "POST", path: "/messages/:id/labels" },
   scope: "board",
   input: {
     params: Type.Object({ id: Ref("message") }, { additionalProperties: false }),
-    // Upstream's `{ set?, unset? }`, at least one of the two (`03-http.md` "Messages"): core refuses neither as 400.
     body: Type.Object(
-      { set: Type.Optional(Labels), unset: Type.Optional(Type.Array(LabelKey)) },
+      {
+        set: Type.Optional(Labels),
+        unset: Type.Optional(Type.Array(LabelKey)),
+        if: Type.Optional(
+          Type.Record(LabelKey, Type.Union([Type.String({ maxLength: 256 }), Type.Null()]), {
+            additionalProperties: false,
+            maxProperties: 16,
+            description: "Required current label values, or null for labels that must be absent.",
+          }),
+        ),
+      },
       { additionalProperties: false },
     ),
   },
   output: Type.Object({ ok: Type.Literal(true) }),
-  errors: ["invalid_request", "reserved_label", "message_not_found", "message_deleted"],
+  errors: ["invalid_request", "reserved_label", "message_not_found", "message_deleted", "label_conflict"],
   access: { permission: "label", channel: "fromMessage" },
   effects: { readOnly: false, idempotent: true, emits: ["labels.changed"] },
-  cli: { command: ["label"], args: ["id", "set"] },
+  cli: { command: ["label"], args: ["id", "set"], nullEntryOptions: { "if-unset": "if" } },
   mcp: { tool: "label_message" },
   upstream: true,
 });
