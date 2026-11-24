@@ -202,7 +202,7 @@ Legend.
 174  Count database round trips per write   ← 173
 175  Measure what row-level security costs   ← 173
 
-## M6 High availability (17)
+## M6 High availability (18)
 
 176  Wake a tail on one instance from a write on another   ← 166, 170, 174
 177  Run the HTTP suites on two instances   ← 176
@@ -221,6 +221,8 @@ Legend.
 190  Deploy every merge to staging   ← 189
 191  Prove a rolling deploy loses nothing with rolling-check   ← 183, 190
 192  Run the nightly checks against staging   ← 190
+
+404  Ignore an instance's own notifications for tails it already served   ← 177
 
 ## M7 Hosted deploy (23)
 
