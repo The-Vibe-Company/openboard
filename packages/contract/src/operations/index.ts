@@ -15,7 +15,7 @@ import { claimConnection, createConnection, refreshAgentToken, revokeAgent, revo
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
-import { changeMemberRole } from "./memberships.ts";
+import { changeMemberRole, removeMember } from "./memberships.ts";
 import {
   deleteMessage,
   editMessage,
@@ -62,6 +62,7 @@ export const operations = [
   readPost,
   readThread,
   refreshAgentToken,
+  removeMember,
   revokeAgent,
   revokeAllSessions,
   revokeConnection,
@@ -103,6 +104,7 @@ export {
   readPost,
   readThread,
   refreshAgentToken,
+  removeMember,
   revokeAgent,
   revokeAllSessions,
   revokeConnection,
