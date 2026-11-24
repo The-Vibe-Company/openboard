@@ -26,6 +26,8 @@ const RESERVED_ORG_SLUGS = Object.freeze([
   ...BOARD_ROUTE_SEGMENTS,
 ]);
 
+const DAY_MS = 86_400_000;
+
 /** The signed-in person of an account operation, or 401 `unauthorized`. */
 export function signedIn(ctx: AccountContext) {
   if (ctx.session) return ctx.session.person;
@@ -45,6 +47,15 @@ export const createOrgHandler: Handler<typeof createOrg> = async (ctx, input) =>
   const principal = `ob:user:${person.id}`;
   const now = ctx.now();
   const creation = orgs.decideCreate(input, { by: principal, now });
+  // Debit both limits for every validated attempt, even if one bucket is already full.
+  const personRetry = await ctx.platform.takeRate(`org-create:person:${person.id}`, 3, DAY_MS, now);
+  const ipRetry = await ctx.platform.takeRate(`org-create:ip:${ctx.ip ?? "unknown"}`, 10, DAY_MS, now);
+  const seconds = personRetry ?? ipRetry;
+  if (seconds !== undefined) {
+    throw new BoardError("rate_limited", "too many organization creation attempts", {
+      next: [{ kind: "wait", seconds }],
+    });
+  }
   await ctx.platform.createOrg({ ...creation, personId: person.id, now });
   return { org: creation.org, membership: { principal, role: creation.role }, board: creation.board };
 };

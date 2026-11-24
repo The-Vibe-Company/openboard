@@ -147,6 +147,13 @@ instances. Further requests to `POST /api/x/orgs/:org/invitations` return
 `429 rate_limited` with `retry-after` in seconds until the next UTC day and
 create no link. Revoked invitations still count toward the limit.
 
+On `POST /api/x/orgs`, each validated creation attempt counts toward both
+limits, including attempts that return `409 already_in_org` or `409 slug_taken`.
+All instances share the same limits of three attempts per person and ten per
+client IP per UTC day. Once either limit is reached, further attempts return
+`429 rate_limited` with `retry-after` in seconds until the next UTC day, before
+starting the organization creation transaction.
+
 Board creation, invitation acceptance, and connection creation can return 429
 `quota_exceeded` with reason `boards`, `members`, or `connections`. The defaults
 are 10 active boards and 50 members per organization, and 100 active connections
