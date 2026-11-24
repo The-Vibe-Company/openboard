@@ -43,7 +43,20 @@ export const createTaskBatch = defineOperation({
   },
   output: Type.Object({ ...BatchResult.properties, mentions: Type.Optional(Type.Array(Mention)) }),
   status: 201,
-  errors: ["invalid_request", "invalid_needs", "reserved_label", "forbidden", "quota_exceeded", "duplicate_id"],
+  bodyArrayLimitError: {
+    array: "tasks",
+    code: "batch_too_large",
+    message: "A batch can contain at most 100 tasks.",
+  },
+  errors: [
+    "invalid_request",
+    "batch_too_large",
+    "invalid_needs",
+    "reserved_label",
+    "forbidden",
+    "quota_exceeded",
+    "duplicate_id",
+  ],
   access: { permission: "post", channel: "fromInput" },
   effects: {
     readOnly: false,

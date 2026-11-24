@@ -96,6 +96,8 @@ export type Operation<
   readonly responseType?: "image/svg+xml" | "application/gzip";
   readonly orgPersonalToken?: true;
   readonly invalidInputCode?: ErrorCode;
+  /** Report a named body array's maxItems violation before validating individual items. */
+  readonly bodyArrayLimitError?: { readonly array: string; readonly code: ErrorCode; readonly message: string };
   /** Use a different code for malformed items in a named body array. */
   readonly invalidBodyItemCode?: {
     readonly array: string;
@@ -219,9 +221,20 @@ function decodePart(
   return decoded as object;
 }
 
+function checkBodyArrayLimit(operation: Operation, body: unknown) {
+  const limit = operation.bodyArrayLimitError;
+  if (!limit || typeof body !== "object" || body === null || !Object.hasOwn(body, limit.array)) return;
+  const value = (body as Record<string, unknown>)[limit.array];
+  const max = operation.input.body?.properties[limit.array]?.maxItems;
+  if (typeof max === "number" && Array.isArray(value) && value.length > max) {
+    throw new BoardError(limit.code, limit.message);
+  }
+}
+
 /** Validates a request's parts against an operation's input and returns the flat input, or throws `invalid_request`. */
 export function decodeInput<Op extends Operation>(operation: Op, raw: RawInput): InputOf<Op> {
   try {
+    checkBodyArrayLimit(operation, raw.body);
     return {
       ...decodePart(operation.input.params, raw.params, "path", true),
       ...decodePart(operation.input.query, raw.query, "query", true),

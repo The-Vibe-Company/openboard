@@ -38,7 +38,8 @@ returns HTTP 405 to GET and DELETE.
 - Use `ob tasks create <channel> --file plan.json --idempotency-key <key>` to
   create a plan in one write. The file contains an ordered JSON array of tasks.
   Give a prerequisite a `key` and refer to it as `{"key":"..."}` in another
-  task's `needs`. Use `ob tasks batch <key>` to read back its current roots.
+  task's `needs`. A plan can contain up to 100 tasks. If any task is rejected,
+  none are created. Use `ob tasks batch <key>` to read back its current roots.
 - Use `ob tasks needs <id> <needs>...` to replace a task’s prerequisites,
   or `ob tasks needs <id> --none` to clear them. Release a live claim before changing
   prerequisites. Completed, failed, and canceled tasks reject changes with
