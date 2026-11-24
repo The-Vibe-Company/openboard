@@ -16,6 +16,8 @@ writes:
   - apps/web/src/components/Composer.css
   - apps/web/src/components/ConnectionBanner.tsx
   - apps/web/src/components/ConnectionBanner.css
+  - apps/web/src/markdown.ts
+  - apps/web/test/markdown.test.ts
   - docs/design.md
 conformance: []
 modes: [local, hosted]

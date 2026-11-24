@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { renderMarkdown } from "../src/markdown.ts";
+import { markdownPreview, renderMarkdown } from "../src/markdown.ts";
 
 function element(type: string, children: unknown, props = {}) {
   return { type, props: { ...props, children } };
@@ -79,4 +79,15 @@ test("resolves stored mentions using the actor ID in message metadata", () => {
       element("a", "Ask @ada", { href: "https://example.com/help" }),
     ]),
   ]);
+});
+
+test.each([
+  ["## **Deploy** _plan_ for `v2`\r\nSecond line", "Deploy plan for v2"],
+  ["> > 1. * - Review **_today_**", "Review today"],
+  ["- Keep snake_case and #123", "Keep snake_case and #123"],
+  ["Run ``git status`` and **run `echo *`**", "Run git status and run echo *"],
+  ["Use ``a ` b`` and **run `echo **`**", "Use a ` b and run echo **"],
+  ["* `**literal**` <img src=x onerror=alert(1)>", "**literal** <img src=x onerror=alert(1)>"],
+])("converts the first line of %j to a plain thread preview", (text, expected) => {
+  expect(markdownPreview(text)).toBe(expected);
 });

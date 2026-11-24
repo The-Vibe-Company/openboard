@@ -1,6 +1,7 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { type ComponentPropsWithRef, type MouseEvent, useState } from "react";
 import type { ThreadSummary } from "../api/board.ts";
+import { markdownPreview } from "../markdown.ts";
 import { Avatar } from "../ui/index.ts";
 import "./ThreadRow.css";
 
@@ -33,6 +34,7 @@ export function ThreadRow({
   const [failedAvatar, setFailedAvatar] = useState<string>();
   const avatar = message.author?.avatar ?? undefined;
   const date = (last ?? message).createdAt;
+  const activity = relativeDate(date, now).replace(/\s+/g, " ");
   return (
     <li {...row} className="channel-thread-row">
       <Link
@@ -47,7 +49,7 @@ export function ThreadRow({
         </span>
         <div>
           <strong>
-            {message.deleted ? "Message deleted" : message.text.split(/\r?\n/, 1)[0] || `Thread #${message.id}`}
+            {message.deleted ? "Message deleted" : markdownPreview(message.text) || `Thread #${message.id}`}
           </strong>
           <div>{author}</div>
         </div>
@@ -55,7 +57,7 @@ export function ThreadRow({
           {replies} {replies === 1 ? "reply" : "replies"}
         </span>
         <time dateTime={date} title={date}>
-          {relativeDate(date, now)}
+          {activity}
         </time>
       </Link>
     </li>

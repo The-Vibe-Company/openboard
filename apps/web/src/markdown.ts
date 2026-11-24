@@ -20,6 +20,31 @@ const inlineTokens = new RegExp(
   "gu",
 );
 
+const previewLiterals = /<[^<>]*>|(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)|\uFFFC/g;
+const previewEmphasis = /\*\*((?:\*(?!\*)|[^*])+?)\*\*|(?<![\p{L}\p{N}_])_([^_]+)_(?![\p{L}\p{N}_])/gu;
+
+export function markdownPreview(text: string): string {
+  const [firstLine = ""] = text.split(/\r\n?|\n/, 1);
+  const line = firstLine.replace(/^(?:[ \t]*(?:#{1,6}(?:[ \t]+|$)|>[ \t]*|(?:[-*+]|\d{1,9}\.)[ \t]+))+/, "");
+  // Emphasis can surround code without interpreting the contents of the code span.
+  const literals: string[] = [];
+  const masked = line.replace(previewLiterals, (token, _fence: string | undefined, code: string | undefined) => {
+    literals.push(code ?? token);
+    return "\uFFFC";
+  });
+  let index = 0;
+  return stripPreviewEmphasis(masked)
+    .replace(/\uFFFC/g, () => literals[index++] ?? "")
+    .trim();
+}
+
+function stripPreviewEmphasis(line: string): string {
+  return line.replace(previewEmphasis, (token, bold: string | undefined, italic: string | undefined) => {
+    const content = bold ?? italic;
+    return content === undefined ? token : stripPreviewEmphasis(content);
+  });
+}
+
 function resolveMention(token: string, id: string, handles: ReadonlyMap<string, string>): string {
   const handle = handles.get(id);
   return handle === undefined ? token : `@${handle}`;
