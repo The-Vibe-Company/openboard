@@ -12,6 +12,7 @@ import {
   rotateConnectionCommand,
   type StandaloneContext,
   useCommand,
+  waitCommand,
   whoamiCommand,
 } from "./commands/index.ts";
 import { clientConfig } from "./config.ts";
@@ -36,6 +37,7 @@ const commands: readonly AnyCommand[] = [
   readCommand,
   messagesCommand,
   replyCommand,
+  waitCommand,
   whoamiCommand,
   ...derivedCommands,
 ];
