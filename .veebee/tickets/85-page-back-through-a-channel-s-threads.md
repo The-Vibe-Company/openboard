@@ -19,7 +19,7 @@ writes:
 conformance: ["paging/pages back through a channel's threads by their `older`, each thread once"]
 modes: [local]
 depends_on: [84]
-status: claimed
+status: done
 claimed_by: claude-t85
 issue: 85
 ---
@@ -28,7 +28,7 @@ issue: 85
 As a person, I scroll back through older threads without seeing one twice.
 
 ## Done when
-- [ ] `ob read dev --limit 2` ends with an `older:` command; following it until there is none lists every thread exactly once
+- [x] `ob read dev --limit 2` ends with an `older:` command; following it until there is none lists every thread exactly once
 
 ## Out of scope
 - Refusing both directions at once (86).

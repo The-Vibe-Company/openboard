@@ -45,8 +45,7 @@ export const threadStatements = {
       SELECT root.board_id, root.id, root.active, root.view, root.replies, root.last_reply
       FROM messages AS root
       WHERE root.board_id = ${"boardId"} AND root.channel = ${"channel"} AND root.re IS NULL
-        AND (CAST(${"beforeActive"} AS BIGINT) IS NULL
-          OR (root.active, root.id) < (CAST(${"beforeActive"} AS BIGINT), CAST(${"beforeRoot"} AS BIGINT)))
+        AND (root.active, root.id) < (CAST(${"beforeActive"} AS BIGINT), CAST(${"beforeRoot"} AS BIGINT))
         AND (CAST(${"labels"} AS TEXT) = '[]' OR EXISTS (
           SELECT 1 FROM (SELECT 1) AS thread
           LEFT JOIN messages AS reply ON reply.board_id = root.board_id AND reply.re = root.id AND reply.deleted = 0
@@ -84,8 +83,9 @@ export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<B
         orgId: scope.orgId,
         channel,
         labels: JSON.stringify(labels),
-        beforeActive: before?.active ?? null,
-        beforeRoot: before?.root ?? null,
+        // Past every log position, so the first page reads through the same index range as the older ones.
+        beforeActive: before?.active ?? Number.MAX_SAFE_INTEGER,
+        beforeRoot: before?.root ?? Number.MAX_SAFE_INTEGER,
         // One row past the page says whether an older thread exists without a second read.
         limit: limit + 1,
       });
