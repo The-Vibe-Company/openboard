@@ -48,7 +48,8 @@ if (url) {
   afterAll(() => databases?.close());
 
   async function stored(sql: SQL) {
-    const [row] = await sql`SELECT head, timeline, (pg_control_checkpoint()).timeline_id AS server FROM boards
+    const [row] = await sql`SELECT head, timeline,
+      ('x' || substr(pg_walfile_name(pg_current_wal_lsn()), 1, 8))::bit(32)::bigint AS server FROM boards
       WHERE slug = 'main'`;
     return { head: Number(row.head), timeline: Number(row.timeline), server: Number(row.server) };
   }

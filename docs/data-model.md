@@ -156,9 +156,11 @@ cluster; the guard ships before that:
   it without becoming self-managed is unverified.
 - **Timeline guard** (default if synchronous replication is unavailable):
   `boards.timeline` stores the server timeline seen at the last write. The
-  board's lock statement reads the current timeline in the same round trip
-  (`(pg_control_checkpoint()).timeline_id`, which Postgres 17 lets any role
-  call, without `pg_monitor`). A write that sees a timeline different from
+  board's lock statement reads the current timeline in the same round trip:
+  the timeline WAL is written on, the first 8 hex digits of
+  `pg_walfile_name(pg_current_wal_lsn())`, which any role may call. It
+  changes at promotion; `pg_control_checkpoint()`'s timeline lags until the
+  new primary's first checkpoint completes, seconds to minutes later. A write that sees a timeline different from
   `boards.timeline` first advances `head` by 1,000,000, and the head update
   records the new timeline, so new IDs are above any cursor handed out before
   the failover. A board that recorded none yet (`0`) records it without
