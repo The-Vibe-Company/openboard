@@ -1024,3 +1024,13 @@ Authenticated board routes refuse a deleted board's connections and agents
 with 401 `unauthorized` and answer 404 `not_found` to people. Public
 discovery and OpenAPI continue to answer from the URL alone (D35).
 Parked event reads wake on deletion and reauthorize against the tombstone.
+
+### D64. Expand the organization key on legacy board tables
+
+- **Decision.** Ticket 405 adds nullable `org_id` to `grant_principals` and
+  `task_needs`. New writers supply it and a startup job fills missing values
+  in board-locked batches. Reads keep their existing predicates during rollout.
+- **Consequence.** After old writers have drained, the contract phase must
+  account for any remaining NULLs before enforcing `NOT NULL` and using both
+  keys in grant principal predicates.
+  ([Issue #724](https://github.com/The-Vibe-Company/openboard/issues/724#issuecomment-7131785387))

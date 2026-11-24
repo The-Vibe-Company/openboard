@@ -3,6 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   checkAppliedMigrations,
+  checkBoardTableOrg,
   checkDestructiveMigration,
   checkMigrationNumbers,
   parseMigrationTree,
@@ -273,4 +274,26 @@ test("retains defaults across unrelated session settings", () => {
 SET LOCAL lock_timeout = '5s';
 ALTER TABLE public.boards ALTER title SET NOT NULL;`;
   expect(checkDestructiveMigration(destructiveFixture, sql)).toEqual([]);
+});
+
+test("requires org_id on newly declared board tables", () => {
+  const file = "9999-board-data.sql";
+  const sql = `create table if not exists public."work" (
+    "board_id" bigint, label text default 'org_id', constraint org_id primary key ("board_id")
+  );`;
+  expect(checkBoardTableOrg(file, sql)).toEqual([`${file}: board-scoped table public.work must declare org_id`]);
+  expect(checkBoardTableOrg(file, "CREATE TABLE work (board_id BIGINT, org_id BIGINT);")).toEqual([]);
+  expect(checkBoardTableOrg(file, "CREATE TABLE work (id BIGINT, CHECK (id > 0));")).toEqual([]);
+});
+
+test("grandfathers only the original tables repaired by the expand migration", () => {
+  const sql = "CREATE TABLE grant_principals (board_id BIGINT);";
+  expect(checkBoardTableOrg("0002-connections.sql", sql)).toEqual([]);
+  expect(checkBoardTableOrg("9999-reintroduced.sql", sql)).toHaveLength(1);
+});
+
+test("rejects implicit columns from CREATE TABLE AS in shared migrations", () => {
+  expect(checkBoardTableOrg("9999-copy.sql", "CREATE TABLE copied_work AS SELECT 1 AS board_id;")).toEqual([
+    "9999-copy.sql: table copied_work must declare columns explicitly for SQLite STRICT",
+  ]);
 });

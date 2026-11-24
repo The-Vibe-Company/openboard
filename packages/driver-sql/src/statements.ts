@@ -12,6 +12,7 @@ import { devicePlatform, deviceScoped } from "./views/device.ts";
 import { eventStatements } from "./views/events.ts";
 import { grantStatements } from "./views/grants.ts";
 import { invitationStatements } from "./views/invitations.ts";
+import { backfillPlatformStatements, backfillStatements } from "./views/jobs/backfill-board-org.ts";
 import { jobPlatformStatements, jobStatements } from "./views/jobs/index.ts";
 import { legacyPurgePlatform, legacyPurgeScoped } from "./views/jobs/legacy-purge.ts";
 import { purgeStatements } from "./views/jobs/purge.ts";
@@ -42,6 +43,8 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...eventStatements,
   ...grantStatements,
   ...invitationStatements,
+  ...backfillPlatformStatements,
+  ...backfillStatements,
   ...jobPlatformStatements,
   ...jobStatements,
   ...legacyPurgePlatform,
@@ -92,6 +95,7 @@ export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...accountPlatformStatements,
   ...Object.keys(devicePlatform),
   ...boardPlatformStatements,
+  ...Object.keys(backfillPlatformStatements),
   ...Object.keys(jobPlatformStatements),
   ...Object.keys(legacyPurgePlatform),
   ...orgPlatformStatements,
