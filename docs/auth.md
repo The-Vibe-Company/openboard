@@ -563,14 +563,34 @@ CSRF, XSS), the model covers cross-tenant access.
 | **Malware or content hosting through attachments** | Downloads need a credential (no public URLs); `attachment` disposition for unsafe types; per-organization storage quota |
 | **Noisy neighbours** | Per-organization rate limits and quotas; per-board locks isolate write contention; statement and lock timeouts |
 | **Sign-up abuse** | Sign-in through GitHub only in v1; org creation rate-limited per person and IP; `OPENBOARD_SIGNUP` switch |
-| **Operator access** | The support role acts from a trusted deployment shell through `openboard admin`. The tenant's audit records every change. |
+| **Operator access** | The support role acts from a trusted deployment shell only through `openboard admin orgs`, `show`, `delete`, `undelete` and `quota`. The tenant's audit records every change. |
 | **Stolen database or backup** | Bearer credentials hashed; recoverable secrets (webhook signing secrets, receiver headers, inbound verify secrets) AES-256-GCM under `OPENBOARD_SECRET_KEY`, held only in the service environment |
 | **Data after deletion** | Hard delete 30 days after an organization's deletion request; backups age out within their retention |
 | **CSRF** | Origin check plus CSRF header for cookie writes; no CORS |
 
-Run `openboard admin quota acme boards=20 --reason "customer asked"` where
-`OPENBOARD_DATABASE_URL` points to the hosted database. The command updates
-one of `boards`, `members` or `connections` and prints the effective quotas.
+Set `OPENBOARD_DATABASE_URL` to the hosted database before running these
+commands:
+
+- `openboard admin orgs` lists organizations with creation and deletion state,
+  board and member counts, and stored bytes.
+- `openboard admin show acme` shows effective quotas, overrides, owners, boards,
+  and deletion state, including the operator’s reason while the organization is deleted.
+- `openboard admin delete acme --reason "abuse report"` soft-deletes the
+  organization and schedules its purge after 30 days.
+- `openboard admin undelete acme --reason "appeal accepted"` restores the
+  organization within the retention window and cancels the purge. If a retained
+  member has joined another organization, restoration fails with `already_in_org`.
+- `openboard admin quota acme boards=20 --reason "customer asked"` updates
+  one of `boards`, `members` or `connections` and prints the effective quotas.
+
+Add `--json` to the first four commands for JSON output. The quota command
+always prints JSON. Reads leave the audit unchanged. The organization audit is
+available again after restoration, when it shows both changes. During a rolling
+deployment, wait until all instances run this version before using operator
+deletion or restoration so every instance can read the new audit events and
+fence restoration against backup removal. After either event is written, keep
+the audit reader on a version that recognizes it. Older versions return 500
+on audit pages containing these events.
 The operator's audit identity is `ob:operator:<name>`, where the name comes
 from `OPENBOARD_OPERATOR` or the OS user. The reason is visible to the
 organization's owners and admins in its audit.

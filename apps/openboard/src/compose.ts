@@ -1,7 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { migratePostgres, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
-import { createApp, type Deps, jsonLogger, maintenanceJobs, setOperatorQuota } from "@openboard/server";
+import { createApp, type Deps, jsonLogger, maintenanceJobs } from "@openboard/server";
 import { backupBucket } from "./bucket.ts";
 import type { Config } from "./config.ts";
 
@@ -31,13 +31,19 @@ export async function migrateSchema(config: Config, onApplied: (name: string) =>
   }
 }
 
-export async function changeQuota(config: Config, change: Parameters<typeof setOperatorQuota>[1]) {
+export async function withAdminStore<Result>(
+  config: Config,
+  run: (
+    platform: ReturnType<Awaited<ReturnType<typeof hostedStore>>["platform"]>,
+    now: () => number,
+  ) => Promise<Result>,
+) {
   const store =
     config.mode === "hosted"
       ? await hostedStore(config.databaseUrl, Date.now)
       : sqliteDriver({ dir: config.dataDir, sync: config.sync });
   try {
-    return await setOperatorQuota(store.platform(), change, Date.now);
+    return await run(store.platform(), Date.now);
   } finally {
     await store.close();
   }

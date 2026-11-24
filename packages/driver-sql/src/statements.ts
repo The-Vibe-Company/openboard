@@ -5,6 +5,7 @@ import { accountPlatformStatements, accountStatements } from "./views/accounts.t
 import { actorStatements } from "./views/actors.ts";
 import { agentStatements } from "./views/agents.ts";
 import { auditStatements } from "./views/audit.ts";
+import { oidcStatements } from "./views/auth/oidc.ts";
 import { boardPlatformStatements, boardStatements } from "./views/boards.ts";
 import { channelStatements } from "./views/channels.ts";
 import { connectionStatements } from "./views/connections.ts";
@@ -19,7 +20,8 @@ import { purgeStatements } from "./views/jobs/purge.ts";
 import { shippingStatements } from "./views/jobs/shipping.ts";
 import { membershipStatements } from "./views/memberships.ts";
 import { messageStatements } from "./views/messages/statements.ts";
-import { oidcStatements } from "./views/auth/oidc.ts";
+import { operatorPlatform, operatorScoped } from "./views/operator/index.ts";
+import { orgDeletionStatements } from "./views/operator/org-deletion.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
 import { rateStatements } from "./views/rates/index.ts";
 import { schemaStatements } from "./views/schemas/registry.ts";
@@ -54,6 +56,9 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...messageStatements,
   ...oidcStatements,
   ...orgStatements,
+  ...operatorPlatform,
+  ...operatorScoped,
+  ...orgDeletionStatements,
   ...rateStatements,
   ...readinessStatements,
   ...purgeStatements,
@@ -101,6 +106,7 @@ export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...Object.keys(jobPlatformStatements),
   ...Object.keys(legacyPurgePlatform),
   ...orgPlatformStatements,
+  ...Object.keys(operatorPlatform),
   ...Object.keys(oidcStatements),
   ...Object.keys(rateStatements),
   ...Object.keys(readinessStatements),

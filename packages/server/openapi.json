@@ -12766,6 +12766,36 @@
                             "required": ["cursor", "type", "createdAt", "actor", "payload"],
                             "properties": {
                               "cursor": { "type": "string" },
+                              "type": { "const": "ob.operator.deleted", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["reason"],
+                                "properties": { "reason": { "minLength": 1, "type": "string" } }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.operator.undeleted", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["reason"],
+                                "properties": { "reason": { "minLength": 1, "type": "string" } }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
                               "type": { "const": "ob.org.created", "type": "string" },
                               "createdAt": { "type": "string" },
                               "actor": { "type": "string" },

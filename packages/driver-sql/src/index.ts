@@ -44,6 +44,7 @@ import { purgeOrgView } from "./views/jobs/purge.ts";
 import { shippingPlatform, shippingView } from "./views/jobs/shipping.ts";
 import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
+import { operatorView } from "./views/operator/index.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
 import { rateView } from "./views/rates/index.ts";
 import { schemaReads } from "./views/schemas/registry.ts";
@@ -117,6 +118,7 @@ export function createViews(
       ...accountView(db, dialect),
       ...deviceView(db, dialect),
       ...orgView(db, dialect),
+      ...operatorView(db, dialect, jobs),
       ...invitationPlatform(db, dialect),
     }),
     org: (scope) => ({

@@ -76,6 +76,8 @@ function auditEntry(event: AuditRecord): AuditEvent {
 /** The payload fields each organization event shows; anything else its record holds stays in the log. */
 const ORG_PAYLOAD: { readonly [Type in OrgAuditEvent["type"]]: readonly string[] } = {
   "ob.operator.quota_changed": ["quota", "previousLimit", "limit", "reason"],
+  "ob.operator.deleted": ["reason"],
+  "ob.operator.undeleted": ["reason"],
   "ob.org.created": ["org", "owner"],
   "ob.org.deleted": ["org", "deletedAt", "purgeAt"],
   "ob.board.created": ["board"],
