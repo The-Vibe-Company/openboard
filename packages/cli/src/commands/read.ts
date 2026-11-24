@@ -5,8 +5,11 @@ import { type Command, type CommandContext, Misuse } from "./index.ts";
 const MESSAGE_ID = /^\d+$/;
 
 /** The thread of message `id`: the message, then each reply indented under it. */
-async function readThread(ctx: CommandContext, id: string): Promise<void> {
-  const thread = await ctx.client.readThread({ id });
+async function readThread(
+  ctx: CommandContext,
+  input: Parameters<CommandContext["client"]["readThread"]>[0],
+): Promise<void> {
+  const thread = await ctx.client.readThread(input);
   if (ctx.json) return ctx.output.out(JSON.stringify(thread, null, 2));
   ctx.output.out(messageLine(thread.message));
   for (const reply of thread.replies) ctx.output.out(`  ${messageLine(reply)}`);
@@ -25,19 +28,24 @@ async function readChannel(ctx: CommandContext, channel: string, label: string[]
 
 export const readCommand: Command = {
   words: ["read"],
-  usage: "ob read <channel|id> [--label <key[=value]>]...",
+  usage: "ob read <channel> [--label <key[=value]>]... | ob read <id> [--after <id>] [--limit <limit>]",
   async run(ctx) {
     const positional: string[] = [];
     const labels: string[] = [];
+    let after: string | undefined;
+    let limit: number | undefined;
     for (let index = 0; index < ctx.args.length; index++) {
       const word = ctx.args[index] ?? "";
       if (index < ctx.optionsEnd && word.startsWith("--")) {
-        if (word !== "--label") throw new Misuse(`unknown option ${word}`);
-        const label = ctx.args[index + 1];
-        if (index + 1 >= ctx.optionsEnd || label === undefined || label.startsWith("--")) {
-          throw new Misuse("--label takes a value");
+        if (word !== "--label" && word !== "--after" && word !== "--limit") throw new Misuse(`unknown option ${word}`);
+        const value = ctx.args[index + 1];
+        if (index + 1 >= ctx.optionsEnd || value === undefined || value.startsWith("--")) {
+          throw new Misuse(`${word} takes a value`);
         }
-        labels.push(label);
+        if (word === "--label") labels.push(value);
+        else if (word === "--after") after = value;
+        else if (/^[1-9]\d{0,2}$/.test(value) && Number(value) <= 500) limit = Number(value);
+        else throw new Misuse("--limit takes a whole number from 1 to 500");
         index++;
       } else {
         positional.push(word);
@@ -47,8 +55,11 @@ export const readCommand: Command = {
     if (target === undefined || positional.length !== 1) throw new Misuse("expected one channel or message ID");
     if (MESSAGE_ID.test(target)) {
       if (labels.length > 0) throw new Misuse("--label requires a channel");
-      await readThread(ctx, target);
-    } else await readChannel(ctx, target, labels);
+      await readThread(ctx, { id: target, after, limit });
+    } else {
+      if (after !== undefined || limit !== undefined) throw new Misuse("--after and --limit require a message ID");
+      await readChannel(ctx, target, labels);
+    }
     return 0;
   },
 };

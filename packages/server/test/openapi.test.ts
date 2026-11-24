@@ -42,7 +42,14 @@ test("publishes the board's OpenAPI description without credentials or a tenant 
           },
         },
         "/messages/{id}": {
-          get: { operationId: "message", parameters: [{ name: "id", in: "path", required: true }] },
+          get: {
+            operationId: "message",
+            parameters: [
+              { name: "id", in: "path", required: true },
+              { name: "after", in: "query", required: false },
+              { name: "limit", in: "query", required: false },
+            ],
+          },
         },
         "/openapi.json": {
           get: { operationId: "openapi", security: [], responses: { "400": { description: "invalid_request" } } },

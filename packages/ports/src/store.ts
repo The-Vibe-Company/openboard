@@ -323,8 +323,11 @@ export interface BoardView {
   readEvents(
     after?: number,
   ): Promise<{ head: number; cursor: number; events: (MessagePosted | MessageEdited | MessageDeleted)[] }>;
-  /** The message at log position `id` with its replies, oldest first, or null when no message has that ID. */
-  thread(id: number): Promise<Thread | null>;
+  /**
+   * The root and selected replies in ascending order, or null when no message has the requested ID.
+   * A zero limit reads the root alone.
+   */
+  thread(id: number, options?: { readonly after?: number; readonly limit?: number }): Promise<Thread | null>;
   /** The channel's latest 50 threads in ascending activity order, with the same snapshot's board head. */
   listThreads(
     channel: string,

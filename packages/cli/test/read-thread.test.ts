@@ -65,8 +65,15 @@ test("ob read <channel> prints a summary per thread and previews its latest repl
   expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev`]);
 });
 
-test("ob read rejects flat-message cursor flags without calling the board", async () => {
-  const { code, urls } = run(["read", "1", "--after", "2"], {});
+test("ob read forwards the reply cursor and limit for a message ID", async () => {
+  const thread = { message: message("1", "hello"), replies: [] };
+  const { code, urls } = run(["read", "1", "--after", "2", "--limit", "3"], thread);
+  expect(await code).toBe(0);
+  expect(urls).toEqual([`${env.BOARD_URL}/messages/1?after=2&limit=3`]);
+});
+
+test("ob read rejects reply paging flags on a channel without calling the board", async () => {
+  const { code, urls } = run(["read", "dev", "--after", "2"], {});
   expect(await code).toBe(2);
   expect(urls).toEqual([]);
 });

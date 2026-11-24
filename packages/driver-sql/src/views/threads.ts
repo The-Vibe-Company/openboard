@@ -1,4 +1,4 @@
-import type { Message } from "@openboard/contract";
+import { BoardError, type Message } from "@openboard/contract";
 import type { BoardScope, BoardView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
@@ -16,6 +16,28 @@ const filterValues: Fragment = {
   fragment: ({ name }) =>
     name === "sqlite" ? "json_each(filter.value -> 1)" : "jsonb_array_elements_text(filter.value -> 1)",
 };
+
+function threadPage(order: "ASC" | "DESC") {
+  const direction: Fragment = { fragment: () => order };
+  return sql`WITH root AS (
+      SELECT root.board_id, root.id, root.view,
+        (CAST(${"after"} AS BIGINT) IS NULL OR EXISTS (
+          SELECT 1 FROM messages AS anchor WHERE anchor.board_id = ${"boardId"} AND anchor.id = ${"after"}
+            AND COALESCE(anchor.re, anchor.id) = root.id
+        )) AS valid_after
+      FROM messages AS target JOIN messages AS root ON root.board_id = target.board_id
+        AND root.id = COALESCE(target.re, target.id)
+      WHERE target.board_id = ${"boardId"} AND target.id = ${"id"}
+    ), page AS (
+      SELECT board_id, id, view FROM messages WHERE board_id = ${"boardId"}
+        AND re = (SELECT id FROM root WHERE board_id = ${"boardId"} AND valid_after)
+        AND id > COALESCE(CAST(${"after"} AS BIGINT), 0)
+      ORDER BY id ${direction} LIMIT COALESCE(CAST(${"limit"} AS BIGINT), 9223372036854775807)
+    )
+    SELECT id, view, valid_after FROM root WHERE board_id = ${"boardId"}
+    UNION ALL SELECT id, view, NULL FROM page WHERE board_id = ${"boardId"}
+    ORDER BY id`;
+}
 
 export const threadStatements = {
   listThreads: sql`WITH filters AS (SELECT CAST(${"labels"} AS TEXT) AS data),
@@ -47,8 +69,8 @@ export const threadStatements = {
     LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = recent.last_reply
     WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"}
     ORDER BY recent.active, recent.id`,
-  thread: sql`SELECT id, view FROM messages WHERE board_id = ${"boardId"} AND (id = ${"id"} OR re = ${"id"})
-    ORDER BY id`,
+  thread: threadPage("DESC"),
+  threadAfter: threadPage("ASC"),
 };
 
 /** The thread reads of one board's view: one statement reads the message and its replies together. */
@@ -74,14 +96,20 @@ export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<B
       );
       return { threads, head: Number(rows[0]?.head ?? 0) };
     },
-    async thread(id) {
-      const rows = await query(db, dialect, threadStatements.thread, { boardId: scope.boardId, id });
-      const [first, ...rest] = rows.map((row) => ({
-        id: Number(row.id),
-        view: JSON.parse(String(row.view)) as Message,
-      }));
-      if (first?.id !== id) return null;
-      return { message: first.view, replies: rest.map(({ view }) => view) };
+    async thread(id, { after, limit } = {}) {
+      const statement = after === undefined ? threadStatements.thread : threadStatements.threadAfter;
+      const [root, ...replies] = await query(db, dialect, statement, {
+        boardId: scope.boardId,
+        id,
+        after: after ?? null,
+        limit: limit ?? null,
+      });
+      if (!root) return null;
+      if (!root.valid_after) throw new BoardError("invalid_request", "after: that ID isn't a message of this thread");
+      return {
+        message: JSON.parse(String(root.view)) as Message,
+        replies: replies.map(({ view }) => JSON.parse(String(view)) as Message),
+      };
     },
   };
 }

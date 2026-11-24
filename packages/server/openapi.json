@@ -3069,15 +3069,57 @@
     "/messages/{id}": {
       "get": {
         "operationId": "message",
-        "summary": "Read one message as a thread: the message, then its replies, oldest first.",
+        "summary": "Read a thread from any of its messages: the root, then the selected replies, oldest first.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "schema": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "Return replies strictly after this message in the thread.",
+              "x-ref": "message",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "maximum": 500,
+              "description": "Maximum replies: the first after the cursor, or the newest.",
+              "type": "integer"
+            }
           }
         ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "after": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "Return replies strictly after this message in the thread.",
+              "x-ref": "message",
+              "type": "string"
+            },
+            "limit": {
+              "minimum": 1,
+              "maximum": 500,
+              "description": "Maximum replies: the first after the cursor, or the newest.",
+              "type": "integer"
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
