@@ -450,6 +450,12 @@ the task root. OpenBoard also accepts an array of thread-style filters, such as
 and every filter must match. Pass each filter with a separate `--label` option.
 The response is `{ task, claim }`, or `{ task: null }` when no task qualifies. Use
 `ob tasks claim --next --channel dev` or `ob tasks claim --channel dev`.
+The optional `wait` is 0–300 seconds, including fractions. When the queue is
+empty, the request waits for task availability events in the channel or subtree.
+Each HTTP request holds for at most 120 seconds, and a draining instance returns
+`{ task: null }` to parked claims. The CLI repeats empty responses within its
+remaining budget when invoked with `--wait <seconds>`. MCP calls hold for at
+most 25 seconds.
 
 `POST /tasks/:id/claim` takes an optional `lease` in seconds (30–3600, default 900).
 It requires `label` in the task's channel and answers

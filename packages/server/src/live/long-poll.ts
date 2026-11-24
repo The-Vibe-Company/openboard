@@ -2,7 +2,7 @@ import type { CommittedEvents } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
 import type { Tail } from "./fan-out.ts";
 
-const MAX_WAIT_SECONDS = 120;
+export const MAX_WAIT_SECONDS = 120;
 
 type Page = {
   readonly cursor: number;

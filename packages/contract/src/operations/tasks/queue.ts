@@ -22,6 +22,13 @@ export const claimNextTask = defineOperation({
       {
         channel: ChannelFilter,
         lease: TaskLease,
+        wait: Type.Optional(
+          Type.Number({
+            minimum: 0,
+            maximum: 300,
+            description: "Wait for a ready task in seconds. The server may return early and waits at most 120 seconds.",
+          }),
+        ),
         label: Type.Optional(
           Type.Union([exactLabels, labelFilter], {
             description:

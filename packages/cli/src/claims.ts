@@ -85,6 +85,7 @@ async function lockClaims(lock: string): Promise<() => void> {
 export async function withClaimStorage<T>(
   home: string | undefined,
   obtain: (read: (key: ClaimKey) => Claim | undefined) => Promise<{ result: T; entry?: ClaimChange }>,
+  unlockDuringWrite = false,
 ): Promise<T> {
   if (!home) throw new BoardError("invalid_request", "HOME is required to store a task claim");
   const path = join(home, ".config", "openboard", "claims.json");
@@ -104,9 +105,18 @@ export async function withClaimStorage<T>(
       throw new BoardError("invalid_request", "could not prepare task claim storage");
     }
 
+    if (unlockDuringWrite) {
+      release?.();
+      release = undefined;
+    }
+
     const { result, entry } = await obtain((key) => claims[keyOf(key)]);
     if (!entry) return result;
     try {
+      if (unlockDuringWrite) {
+        release = await lockClaims(`${path}.lock`);
+        claims = readClaims(path);
+      }
       const key = keyOf(entry.key);
       if (entry.claim === null) delete claims[key];
       else if ((claims[key]?.epoch ?? 0) <= entry.claim.epoch) claims[key] = entry.claim;

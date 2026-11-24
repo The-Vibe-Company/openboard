@@ -78,6 +78,13 @@ export async function boot(driver: "sqlite" | "postgres", instances: number) {
     }
   }
 
+  const allowLongPoll = (request: Request, server: Bun.Server<undefined>, path: string) => {
+    if (
+      (request.method === "GET" && /\/events\/*$/.test(path)) ||
+      (request.method === "POST" && /\/tasks\/claim\/*$/.test(path))
+    )
+      server.timeout(request, 0);
+  };
   try {
     if (driver === "postgres") {
       const url = process.env.OPENBOARD_TEST_DATABASE_URL;
@@ -88,7 +95,7 @@ export async function boot(driver: "sqlite" | "postgres", instances: number) {
     // Ports first: each app is told the public URL the kit will use, which exists only once something listens.
     for (let at = 0; at < instances; at++) {
       const fetch = (request: Request, server: Bun.Server<undefined>) => {
-        if (request.method === "GET" && /\/events\/*$/.test(new URL(request.url).pathname)) server.timeout(request, 0);
+        allowLongPoll(request, server, new URL(request.url).pathname);
         return apps[at]?.fetch(request) ?? new Response(null, { status: 503 });
       };
       servers.push(Bun.serve({ hostname, port: 0, fetch }));
@@ -103,7 +110,7 @@ export async function boot(driver: "sqlite" | "postgres", instances: number) {
         port: 0,
         fetch(request, proxyServer) {
           const incoming = new URL(request.url);
-          if (request.method === "GET" && /\/events\/*$/.test(incoming.pathname)) proxyServer.timeout(request, 0);
+          allowLongPoll(request, proxyServer, incoming.pathname);
           const target = new URL(next.url);
           target.pathname = incoming.pathname;
           target.search = incoming.search;

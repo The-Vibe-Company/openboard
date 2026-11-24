@@ -9,6 +9,7 @@ export interface CommandContext {
   readonly home?: string;
   readonly boardUrl: string;
   readonly now: () => number;
+  readonly wait: (ms: number) => Promise<void>;
   readonly timeoutSignal: (ms: number) => AbortSignal;
   /** The SDK's live tail of the board at `BOARD_URL`, with the client's credentials. */
   readonly tail: (
@@ -26,7 +27,7 @@ export interface CommandContext {
 }
 
 export interface StandaloneContext
-  extends Omit<CommandContext, "client" | "boardUrl" | "now" | "timeoutSignal" | "tail" | "interrupt"> {
+  extends Omit<CommandContext, "client" | "boardUrl" | "now" | "wait" | "timeoutSignal" | "tail" | "interrupt"> {
   readonly env: CliEnvironment;
   readonly options: CliOptions;
 }
@@ -58,6 +59,6 @@ export { tailCommand } from "./tail.ts";
 export { useCommand } from "./use.ts";
 export { waitCommand } from "./wait.ts";
 export { createWebhookCommand } from "./webhooks/create.ts";
-export { whoamiCommand } from "./whoami.ts";
 export { disableWebhookCommand, enableWebhookCommand } from "./webhooks/state.ts";
 export { downloadCommand } from "./attachments/attach.ts";
+export { whoamiCommand } from "./whoami.ts";

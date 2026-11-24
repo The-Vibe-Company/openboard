@@ -29,7 +29,7 @@ issue: 440
 As an agent with one skill, I take only the next task labelled for it, `ob tasks claim --next --channel dev --label step=review`.
 
 ## Done when
-- [ ] with ready tasks 2 (`step=fix`) and 3 (`step=review`) in `dev`, `ob tasks claim --next --channel dev --label step=review` claims 3, and `--label step=deploy` claims none; label filters combine as `GET /threads`'s do (`k` for presence, `k=a|b` for either, repeated for all)
+- [x] with ready tasks 2 (`step=fix`) and 3 (`step=review`) in `dev`, `ob tasks claim --next --channel dev --label step=review` claims 3, and `--label step=deploy` claims none; label filters combine as `GET /threads`'s do (`k` for presence, `k=a|b` for either, repeated for all)
 
 ## Out of scope
 - Waiting for one (267).

@@ -31,6 +31,7 @@ function fieldsOf(operation: Contracted): Map<string, { schema: Field; required:
 
 /** An option's text as its field takes it: a plain decimal for an integer field, the text otherwise. */
 function optionValue(field: Field, text: string): unknown {
+  if (field.type === "number" && /^(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)$/.test(text)) return Number(text);
   return field.type === "integer" && /^(?:0|[1-9]\d{0,15})$/.test(text) ? Number(text) : text;
 }
 
@@ -164,7 +165,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     if (schema.type === "boolean" && renamed[name] !== undefined) {
       flags.set(flag, name);
       options.push(`[--${flag}]`);
-    } else if (schema.type === "string" || schema.type === "integer") {
+    } else if (schema.type === "string" || schema.type === "integer" || schema.type === "number") {
       flags.set(flag, name);
       const option = `--${flag} <${flag}>`;
       options.push(policy ? option : `[${option}]`);
@@ -183,7 +184,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   }
   const usage =
     operation.name === "claimNextTask"
-      ? "ob tasks claim [--next] --channel <channel> [--lease <lease>] [--label <label>]..."
+      ? "ob tasks claim [--next] --channel <channel> [--lease <lease>] [--label <label>]... [--wait <seconds>]"
       : commandUsage(command, args, fields, options, alternative);
   if (operation.name === "claimNextTask") {
     fields.set("next", { schema: { type: "boolean" }, required: false });
@@ -260,6 +261,7 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
       channel: String(input.channel),
       lease: input.lease as number | undefined,
       label: input.label as string[] | undefined,
+      wait: input.wait as number | undefined,
     });
   }
   if (name === "claimTask" || name === "createTask") {
@@ -347,6 +349,7 @@ export const derivedCommands: readonly Command[] = operations.flatMap((operation
     const fields = fieldsOf(claimNextTask);
     const flags = new Map([
       ["label", "label"],
+      ["wait", "wait"],
       ["lease", "lease"],
       ["channel", "channel"],
     ]);

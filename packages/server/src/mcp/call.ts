@@ -34,10 +34,11 @@ function toolInput(operation: BoardOperation, args: unknown): RawInput {
   const params: Record<string, unknown> = {};
   const query: Record<string, unknown> = {};
   const body: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(args)) {
+  for (const [key, raw] of Object.entries(args)) {
+    const value = key === "wait" && typeof raw === "number" ? Math.min(raw, 25) : raw;
     if (input.params && Object.hasOwn(input.params.properties, key)) params[key] = value;
     else if (input.query && Object.hasOwn(input.query.properties, key)) {
-      query[key] = key === "wait" && typeof value === "number" ? Math.min(value, 25) : value;
+      query[key] = value;
     } else if (input.body && Object.hasOwn(input.body.properties, key)) body[key] = value;
     else throw new BoardError("invalid_request", `${key}: unexpected tool argument`);
   }
