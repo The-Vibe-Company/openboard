@@ -57,7 +57,10 @@ export async function temporaryDataDir() {
   return { path, remove: () => rm(path, { recursive: true, force: true }) };
 }
 
+const webhookReceiverPath = "/test/webhook-receiver";
+
 interface ServeOptions {
+  receiveWebhook?: (request: Request) => Promise<Response>;
   signup?: NonNullable<ServerConfig["signup"]>;
   dataDir?: string;
   port?: number;
@@ -67,7 +70,7 @@ interface ServeOptions {
 }
 
 async function bootApp(url: string, path: string, mode: ServerConfig["mode"], options: ServeOptions) {
-  const { signup = "open", withProvider = true, now = Date.now } = options;
+  const { signup = "open", withProvider = true, now = Date.now, receiveWebhook } = options;
   const store = mode === "hosted" ? await postgresDriver({ url: path }, now) : sqliteDriver({ dir: path }, now);
   try {
     return createApp(
@@ -76,6 +79,7 @@ async function bootApp(url: string, path: string, mode: ServerConfig["mode"], op
         publicUrl: url,
         localOwner: "ob:user:local-browser-test",
         signup,
+        ...(receiveWebhook && { secretKey: crypto.getRandomValues(new Uint8Array(32)) }),
         webDir: join(import.meta.dir, "../../dist"),
         ...(withProvider && {
           signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } },
@@ -91,7 +95,8 @@ async function bootApp(url: string, path: string, mode: ServerConfig["mode"], op
         },
         log: { info() {}, error() {} },
         randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
-        fetch: fakeProvider,
+        fetch: (request) =>
+          receiveWebhook && request.url === url + webhookReceiverPath ? fetch(request) : fakeProvider(request),
       },
     );
   } catch (error) {
@@ -101,7 +106,7 @@ async function bootApp(url: string, path: string, mode: ServerConfig["mode"], op
 }
 
 export async function serve(options: ServeOptions = {}) {
-  const { dataDir, port = 0, onResponse } = options;
+  const { dataDir, port = 0, onResponse, receiveWebhook } = options;
   const mode = test.info().project.name === "hosted" ? "hosted" : "local";
   const instances = mode === "hosted" ? 2 : 1;
   const storage = dataDir === undefined ? await temporaryDataDir() : { path: dataDir, remove: async () => {} };
@@ -129,6 +134,9 @@ export async function serve(options: ServeOptions = {}) {
         const instance = next;
         next = (next + 1) % instances;
         const pathname = new URL(request.url).pathname;
+        if (receiveWebhook && pathname === webhookReceiverPath && request.method === "POST") {
+          return receiveWebhook(request);
+        }
         if (request.method === "GET" && pathname.endsWith("/events")) listener.timeout(request, 0);
         const app = apps[instance];
         const response = app ? await app.fetch(request) : new Response(null, { status: 503 });
@@ -146,6 +154,7 @@ export async function serve(options: ServeOptions = {}) {
     for (let i = 0; i < instances; i++) apps.push(await bootApp(url, storage.path, mode, options));
     return {
       url,
+      webhookReceiverUrl: url + webhookReceiverPath,
       drain: async () => {
         await Promise.all(apps.map((app) => app.drain()));
       },

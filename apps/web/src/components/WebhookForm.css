@@ -1,0 +1,18 @@
+.webhook-form fieldset {
+  display: grid;
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+.webhook-form label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.webhook-form input {
+  min-inline-size: 0;
+}
+
+.webhook-form button {
+  justify-self: start;
+}

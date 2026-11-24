@@ -9,11 +9,15 @@ writes:
   - apps/web/src/api/webhooks.ts
   - apps/web/test/webhook-form.test.ts
   - apps/web/e2e/webhooks.spec.ts
+  - apps/web/e2e/support/serve.ts
+  - apps/web/src/components/WebhookForm.css
+  - docs/protocol.md
+  - skills/openboard/references/webhooks.md
 conformance: []
 modes: [local, hosted]
 depends_on: [216, 299, 304]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 522
 ---
 

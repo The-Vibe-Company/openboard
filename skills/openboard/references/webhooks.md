@@ -1,5 +1,9 @@
 # Runner subscriptions and status reports
 
+Board administrators can create, view, and delete subscriptions in the browser
+at `/:org/:board/settings/webhooks`. Copy the signing secret when it appears
+after creation.
+
 On a board with webhook support, an administrator can subscribe a runner at
 `POST {BOARD_URL}/x/webhooks`. For example, send this subscription body to
 launch work when a task under `work/` becomes ready.

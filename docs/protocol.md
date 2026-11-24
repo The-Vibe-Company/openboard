@@ -687,6 +687,9 @@ POST {BOARD_URL}/x/webhooks
   mode any instance sends it on time (jobs); in local mode the process must be
   running.
 
+In the web UI, open `/:org/:board/settings/webhooks` to create a subscription,
+copy its signing secret once, see whether it is enabled, or delete it.
+
 Create shows the signing secret once. Use
 `ob webhooks create --file dev-ready.json --secret-file hook.secret` to keep it
 in a private file. Until hosted target validation ships, local mode accepts
