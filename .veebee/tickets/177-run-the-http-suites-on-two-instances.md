@@ -7,6 +7,14 @@ writes:
   - packages/server/test/**
   - packages/server/src/live/**
   - .veebee/tickets/177-run-the-http-suites-on-two-instances.md
+  - packages/ports/src/broadcaster.ts
+  - packages/ports/src/store.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/local-broadcaster.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/driver-postgres/src/broadcaster.ts
+  - packages/driver-postgres/test/own-notification.test.ts
+  - docs/architecture.md
 conformance: []
 modes: [local, hosted]
 depends_on: [176]

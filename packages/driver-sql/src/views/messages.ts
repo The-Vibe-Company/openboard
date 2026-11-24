@@ -316,18 +316,26 @@ export function boardView(
     ...taskReads(db, dialect, keys),
     ...grantReads(db, dialect, keys),
     async write(fn, as) {
-      const { result, page } = await db.transaction(async (tx) => {
-        const { head, actor } =
-          as === undefined
-            ? { head: await lockBoard(tx, dialect, keys), actor: null }
-            : await lockBoardAs(tx, dialect, keys, as);
-        const events: BoardEvent[] = [];
-        const boardWriter = writer(tx, dialect, keys, head, actor, events);
-        const result = await fn(boardWriter);
-        return { result, page: boardWriter.head > head ? { after: head, head: boardWriter.head, events } : undefined };
-      });
-      if (page !== undefined) broadcaster.publish(scope, page);
-      return result;
+      let release: (() => void) | undefined;
+      try {
+        const { result, page } = await db.transaction(async (tx) => {
+          const { head, actor } =
+            as === undefined
+              ? { head: await lockBoard(tx, dialect, keys), actor: null }
+              : await lockBoardAs(tx, dialect, keys, as);
+          const events: BoardEvent[] = [];
+          const boardWriter = writer(tx, dialect, keys, head, actor, events);
+          const result = await fn(boardWriter);
+          if (boardWriter.head <= head) return { result, page: undefined };
+          release?.();
+          release = broadcaster.committing?.(scope, boardWriter.head);
+          return { result, page: { after: head, head: boardWriter.head, events } };
+        });
+        if (page !== undefined) broadcaster.publish(scope, page);
+        return result;
+      } finally {
+        release?.();
+      }
     },
     async mentionEvidence(handles) {
       const rows = await query(db, dialect, messageStatements.mentionEvidence, {

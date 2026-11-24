@@ -4,7 +4,7 @@ import type { SQL } from "bun";
 
 interface Subscription {
   position: number;
-  readonly wake: (page?: CommittedPage) => void;
+  readonly wake: (page: CommittedPage | undefined, head: number) => void;
 }
 
 interface Board {
@@ -75,6 +75,7 @@ function reconnectPoll(readHeads: () => Promise<void>) {
 function onNotification(
   boards: ReadonlyMap<number, Board>,
   publish: (scope: Pick<BoardScope, "boardId">, position: number) => void,
+  committing: ReadonlyMap<number, ReadonlyMap<number, number>>,
 ) {
   return (payload: string) => {
     const match = /^(\d+):(\d+)$/.exec(payload);
@@ -83,7 +84,8 @@ function onNotification(
     const position = Number(match[2]);
     if (!Number.isSafeInteger(boardId) || !Number.isSafeInteger(position)) return;
     const board = boards.get(boardId);
-    if (!board) return;
+    // This instance's own commit: its publish follows with the page, which the notification would make tails re-read.
+    if (!board || committing.get(boardId)?.has(position)) return;
     if (board.pending) {
       board.pending.position = Math.max(board.pending.position, position);
       return;
@@ -108,6 +110,8 @@ export async function postgresBroadcaster(
   schedule: Repeat = repeat,
 ): Promise<Broadcaster & { close(): Promise<void> }> {
   const boards = new Map<number, Board>();
+  // Heads this instance's writes are committing, by board, each with the number of writes committing it.
+  const committing = new Map<number, Map<number, number>>();
   let stopPoll: (() => void) | undefined;
   let closed = false;
 
@@ -133,17 +137,31 @@ export async function postgresBroadcaster(
       if (position <= subscription.position || !board.subscribers.has(subscription)) continue;
       subscription.position = position;
       try {
-        subscription.wake(page);
+        subscription.wake(page, position);
       } catch {
         remove(boardId, board, subscription);
       }
     }
   }
 
-  const listener = await sql.listen("ob_events", onNotification(boards, publish), onListen);
+  const listener = await sql.listen("ob_events", onNotification(boards, publish, committing), onListen);
 
   return {
     publish: (scope, page) => publish(scope, page.head, page),
+    committing({ boardId }, head) {
+      const heads = committing.get(boardId) ?? new Map<number, number>();
+      committing.set(boardId, heads);
+      heads.set(head, (heads.get(head) ?? 0) + 1);
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        const left = (heads.get(head) ?? 1) - 1;
+        if (left > 0) heads.set(head, left);
+        else heads.delete(head);
+        if (heads.size === 0 && committing.get(boardId) === heads) committing.delete(boardId);
+      };
+    },
     subscribe({ boardId }, fromPosition, wake) {
       if (closed) return () => {};
       const board = boards.get(boardId) ?? { subscribers: new Set<Subscription>() };

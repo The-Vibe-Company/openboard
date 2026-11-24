@@ -19,19 +19,24 @@ export interface Tail {
  * Subscribe before the first read, so no commit is lost between them. A commit's page is delivered once, in memory,
  * to every tail of the board; a tail that has not consumed its queued page when the next one arrives drops both and
  * catches up from the store, so a slow reader never holds pages for the others. A wake without a page (one the
- * broadcaster could not carry) also sends the tail to the store.
+ * broadcaster could not carry, such as another instance's commit) sends the tail to the store only when its head is past
+ * the tail's cursor: a late one, for a commit a read already covered, is not read again.
  */
 export function tailBoard(board: BoardView, after: number | undefined): Tail {
   let queued: CommittedEvents | undefined;
   let behind = true;
+  // The highest head a wake announced without its page: only the store holds what lies up to it.
+  let announced = 0;
   let waiter: (() => void) | undefined;
   const notify = () => {
     const resolve = waiter;
     waiter = undefined;
     resolve?.();
   };
-  const unsubscribe = board.subscribeEvents(after ?? 0, (committed) => {
-    if (committed === undefined || queued !== undefined) {
+  const unsubscribe = board.subscribeEvents(after ?? 0, (committed, head) => {
+    if (committed === undefined) {
+      announced = Math.max(announced, head);
+    } else if (queued !== undefined) {
       queued = undefined;
       behind = true;
     } else if (!behind) {
@@ -43,6 +48,7 @@ export function tailBoard(board: BoardView, after: number | undefined): Tail {
     take(cursor) {
       const page = queued;
       queued = undefined;
+      if (cursor !== undefined && announced > cursor) behind = true;
       if (!behind && page !== undefined && cursor !== undefined && page.head > cursor) {
         if (page.after === cursor) return { committed: page };
         behind = true;
