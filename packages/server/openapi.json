@@ -2739,7 +2739,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "409": {
-            "description": "schema_immutable",
+            "description": "reserved_schema, schema_immutable",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "429": {

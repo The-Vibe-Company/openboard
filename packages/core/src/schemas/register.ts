@@ -1,6 +1,8 @@
 import { BoardError, type createSchema, type InputOf, type SchemaView } from "@openboard/contract";
 import { isoTime } from "../ids.ts";
+import { builtInSchemas } from "./builtins.ts";
 import { canonicalSchema } from "./canonical.ts";
+import { checkDefinition } from "./definition.ts";
 
 export interface SchemaRegistered {
   readonly type: "ob.schema.registered";
@@ -27,7 +29,10 @@ export function schemaRegistration({
   description,
   schema,
 }: InputOf<typeof createSchema>): SchemaRegistered["payload"] {
-  if (schema.type !== "object") throw new BoardError("invalid_schema", "A schema definition must have type object.");
+  if (builtInSchemas().some((entry) => entry.name === name)) {
+    throw new BoardError("reserved_schema", `The schema name "${name}" is reserved for a built-in.`);
+  }
+  checkDefinition(schema);
   return {
     id: `${name}@${version}`,
     name,
@@ -35,6 +40,32 @@ export function schemaRegistration({
     description: description ?? null,
     definition: canonicalSchema(schema),
   };
+}
+
+/** Compare against a stored definition without recursing through an unvalidated retry. */
+export function isIdenticalSchema(
+  existing: SchemaView,
+  schema: SchemaView["schema"],
+  description: string | null,
+): boolean {
+  if (existing.description !== description) return false;
+  const pending: [unknown, unknown][] = [[existing.schema, schema]];
+  for (let pair = pending.pop(); pair; pair = pending.pop()) {
+    const [stored, raw] = pair;
+    // JSON serialization represents an overflowing number as null.
+    const incoming = typeof raw === "number" && !Number.isFinite(raw) ? null : raw;
+    if (stored === incoming) continue;
+    if (typeof stored !== "object" || stored === null || typeof incoming !== "object" || incoming === null)
+      return false;
+    if (Array.isArray(stored) !== Array.isArray(incoming)) return false;
+    const entries = Object.entries(stored);
+    if (entries.length !== Object.keys(incoming).length) return false;
+    for (const [key, value] of entries) {
+      if (!Object.hasOwn(incoming, key)) return false;
+      pending.push([value, (incoming as Record<string, unknown>)[key]]);
+    }
+  }
+  return true;
 }
 
 export function repeatSchema(existing: SchemaView, definition: string, description: string | null): SchemaView {

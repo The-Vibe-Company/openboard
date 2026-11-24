@@ -8,11 +8,20 @@ writes:
   - packages/core/test/schemas/definition.test.ts
   - packages/core/src/schemas/register.ts
   - packages/server/test/schemas/refuse.test.ts
+  - packages/core/src/index.ts
+  - packages/contract/src/operation.ts
+  - packages/server/src/operations/schemas/registry.ts
+  - packages/contract/src/operations/schemas/registry.ts
+  - packages/server/openapi.json
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
+  - docs/protocol.md
+  - tools/conformance/score.json
 conformance: ["schemas/refuses a built-in's name, and a definition it couldn't check a value against"]
 modes: [local, hosted]
 depends_on: [362]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 558
 ---
 

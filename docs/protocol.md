@@ -290,6 +290,13 @@ Use `ob posted <client-id>` to recover your post by the ID passed to `ob post --
 | GET | `/schemas`, `/schemas/:id` | U | every board caller can read built-ins `git-commit@1`, `vercel-deployment@1` (upstream data, Apache-2.0) |
 | POST | `/schemas` | U | register a version with board-wide manage access. An identical repeat returns `created: false`. Changes answer 409 `schema_immutable`, and a 501st custom version answers 400 `too_many_schemas` |
 
+Registration answers 409 `reserved_schema` for any version of a built-in name.
+Custom definitions must describe an object and use supported structural keywords.
+An unsupported keyword or invalid keyword value answers 400 `invalid_schema` with
+its JSON Pointer. An identical retry of a previously registered custom definition
+still returns `created: false`. Definitions are limited to 32,768 UTF-8 bytes, 512 JSON nodes
+(including literal values), 64 subschema objects, and depth 16 (root at depth 0).
+
 The list places built-ins before registered versions. Registration writes an
 `ob.schema.registered` entry to the board audit.
 
