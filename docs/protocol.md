@@ -131,13 +131,17 @@ answers. OpenBoard adds:
 | --- | --- | --- | --- |
 | GET | `/messages` | U | |
 | GET | `/threads` | U | all filters, `before`/`older` |
-| GET | `/messages/:id` | U | |
+| GET | `/messages/:id` | U | Root and replies, oldest first. `after` must name a message in the same thread (400 `invalid_request` otherwise). `limit` (1–500) selects the first replies after it, or the newest replies when no `after` is given. |
 | GET | `/posts/:id` | U | `{ message }` as it landed, by the caller's client ID; 404 `post_not_found` for missing or foreign IDs |
 | POST | `/messages` | U | `sync` targets: 400 `invalid_request` "this board syncs nowhere" |
 | POST | `/messages/:id/edit` | U | `ob edit <id> <text>` replaces the text and advances the message revision. Pass `--if-revision <n>` to edit only at the observed revision. |
 | POST | `/messages/:id/delete` | U | `ob delete <id> --if-revision <n>` deletes only at the observed revision. Both edit and delete send the optional `revision` in the body and return 409 `revision_conflict` if it differs. |
-| POST | `/messages/:id/reactions`, `/messages/:id/labels` | U | |
+| POST | `/messages/:id/reactions` | U | |
+| POST | `/messages/:id/labels` | U | `ob label <id> [k=v]... [--unset k]... [--if k=v]... [--if-unset k]...` sends `{ set?, unset?, if? }`, at least one of the two (400 `invalid_request` otherwise). Each key holds one value; `unset` applies after `set`, so a key in both is removed. Unsetting a key the message lacks still raises its `version`. The optional `if` maps up to 16 keys to their required current string value or `null` for absence. The server checks every condition under the board lock before applying the write. A mismatch returns 409 `label_conflict` without changing the labels, version, or event stream. Setting or unsetting a key under `board.` returns 400 `reserved_label`. |
 | GET | `/events` | U | JSON feed with `after`; SSE and long-poll planned |
+
+Use `ob read <id> --after <reply-id>` to read from a message in the thread, or
+`ob read <id> --limit 1` to see the root and the latest reply.
 
 Use `ob read <channel> --label status=open` to list threads with a matching root or reply.
 `GET /threads` accepts `label=key` for presence and `label=key=value` for an exact value.
@@ -241,7 +245,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | POST | `/api/x/orgs/:org/export` | owner | export job; `GET /api/x/orgs/:org/exports/:id` |
 | GET | `/api/x/orgs/:org/members` | member | `{ members: [{ principal, role }] }` |
 | POST | `/api/x/orgs/:org/members/:user/role` | admin (owner to grant `owner`) | `{ role }` → `{ principal, role }`; only an owner can demote another owner or themself; 409 `last_owner` if no other owner remains |
-| POST | `/api/x/orgs/:org/members/:user/remove` | admin, or the person themself | Planned in ticket 151 (issue #152); 409 `last_owner` if no other owner remains |
+| POST | `/api/x/orgs/:org/members/:user/remove` | admin, or the person themself | `{ principal }` on success (200); only an owner can remove an owner; 409 `last_owner` if no other owner remains; subsequent authenticated board requests from the removed person return 404 |
 | GET, POST | `/api/x/orgs/:org/invitations` | admin | `{ role, email?, send? }` → `{ invitation, url }` |
 | POST | `/api/x/orgs/:org/invitations/:id/revoke` | admin | → `{ id, revokedAt }` and `ob.invitation.revoked`; 410 `invitation_used` if already accepted or revoked. Accepting a revoked link answers 410 `invitation_used` |
 | GET | `/api/x/invitations/:token` | anyone | organization name, role, expiry (for the accept page) |
@@ -251,7 +255,8 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | GET | `/api/x/orgs/:org/audit` | admin | organization events |
 | GET | `/api/x/orgs/:org/usage` | admin | daily usage (metering seam) |
 | POST | `/api/x/auth/device`, `/api/x/auth/device/token`, `/api/x/auth/device/approve` | — / — / person | CLI device flow ([auth.md](./auth.md#cli-sign-in-device-flow-and-choosing-org-and-board)) |
-| GET | `/api/x/tokens`; POST `/api/x/tokens/:id/revoke` | person | personal tokens |
+| GET | `/api/x/tokens` | person | `{ tokens: [{ id, name, org, createdAt, expiresAt, revokedAt }] }` for the session holder. Timestamps are epoch milliseconds, and `revokedAt` is null until revoked. |
+| POST | `/api/x/tokens/:id/revoke` | person | Requires the session cookie, Origin and CSRF proof. Returns `{ id, revokedAt }` and preserves the first revocation time on retry. An unknown or unowned ID returns 404 `not_found`. The revoked credential returns 401 `unauthorized` on subsequent board requests. |
 | GET | `/api/x/metrics` | operator | Prometheus; not exposed to tenants |
 
 ## Events

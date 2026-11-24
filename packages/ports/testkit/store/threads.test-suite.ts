@@ -31,6 +31,26 @@ function reply(board: BoardView, id: number, text: string) {
   });
 }
 
+async function checkReplyPages(board: BoardView): Promise<void> {
+  const root = await post(board, "dev", "root");
+  const rootId = Number(root.id);
+  const first = await reply(board, rootId, "first reply");
+  const second = await reply(board, rootId, "second reply");
+  const third = await reply(board, rootId, "third reply");
+  const last = await reply(board, rootId, "last reply");
+
+  expect(await board.thread(Number(first.id), { after: rootId, limit: 1 })).toEqual({
+    message: root,
+    replies: [first],
+  });
+  expect(await board.thread(rootId, { after: Number(first.id), limit: 2 })).toEqual({
+    message: root,
+    replies: [second, third],
+  });
+  expect(await board.thread(rootId, { limit: 2 })).toEqual({ message: root, replies: [third, last] });
+  expect(await board.thread(rootId, { after: Number(last.id) })).toEqual({ message: root, replies: [] });
+}
+
 export function threadsSuite(driver: string, open: OpenStore): void {
   describe(`${driver}: threads`, () => {
     let store: Store | undefined;
@@ -49,6 +69,10 @@ export function threadsSuite(driver: string, open: OpenStore): void {
       const second = await post(board, "dev", "again");
       expect(await board.thread(1)).toEqual({ message: first, replies: [] });
       expect(await board.thread(2)).toEqual({ message: second, replies: [] });
+    });
+
+    test("selects replies in either direction while keeping the root and chronological order", async () => {
+      await checkReplyPages(await localBoard());
     });
 
     test("lists the channel's roots by activity with the total and latest nested reply", async () => {

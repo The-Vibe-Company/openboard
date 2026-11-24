@@ -15,8 +15,10 @@ import {
   approveDeviceSignInHandler,
   getAccountHandler,
   getSessionHandler,
+  listPersonalTokensHandler,
   pollDeviceSignInHandler,
   revokeAllSessionsHandler,
+  revokePersonalTokenHandler,
   startDeviceSignInHandler,
 } from "./accounts.ts";
 import { getMeHandler, listActorsHandler } from "./actors.ts";
@@ -39,7 +41,7 @@ import {
   previewInvitationHandler,
   revokeInvitationHandler,
 } from "./invitations.ts";
-import { changeMemberRoleHandler } from "./memberships.ts";
+import { changeMemberRoleHandler, removeMemberHandler } from "./memberships.ts";
 import {
   deleteMessageHandler,
   editMessageHandler,
@@ -153,6 +155,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listChannels: listChannelsHandler,
   listMembers: listMembersHandler,
   listMessages: listMessagesHandler,
+  listPersonalTokens: listPersonalTokensHandler,
   listThreads: listThreadsHandler,
   pollDeviceSignIn: pollDeviceSignInHandler,
   postMessage: postMessageHandler,
@@ -162,11 +165,13 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   readPost: readPostHandler,
   readThread: readThreadHandler,
   refreshAgentToken: refreshAgentTokenHandler,
+  removeMember: removeMemberHandler,
   revokeAgent: revokeAgentHandler,
-  revokeConnection: revokeConnectionHandler,
-  rotateConnection: rotateConnectionHandler,
   revokeAllSessions: revokeAllSessionsHandler,
+  revokeConnection: revokeConnectionHandler,
   revokeInvitation: revokeInvitationHandler,
+  revokePersonalToken: revokePersonalTokenHandler,
+  rotateConnection: rotateConnectionHandler,
   startDeviceSignIn: startDeviceSignInHandler,
 };
 

@@ -8,6 +8,7 @@ import type {
   InvitationRole,
   Message,
   Named,
+  PersonalToken,
   Role,
   Thread,
   ThreadSummary,
@@ -121,6 +122,12 @@ export interface OrgView {
     readonly role: Role;
     readonly at: number;
   }): Promise<{ principal: string; role: Role } | null>;
+  /** Removes a member and records its audit event together, preserving the last owner and the person's sessions. */
+  removeMember(record: {
+    readonly personId: string;
+    readonly targetId: string;
+    readonly at: number;
+  }): Promise<{ principal: string } | null>;
   /** Stores the invitation and audit event together. False if the creator no longer has admin rights here. */
   createInvitation(record: {
     readonly invitation: Invitation;
@@ -164,6 +171,10 @@ export interface PlatformView {
   approveDevice(userCode: string, org: string, personId: string, now: number): Promise<boolean>;
   /** Poll a device capability; consume approval and issue its token in one transaction. */
   pollDevice(deviceHash: string, minInterval: number, issue: DeviceTokenIssue): Promise<DevicePoll>;
+  /** List metadata for the person's tokens across organizations, including revocation timestamps. */
+  listPersonalTokens(personId: string): Promise<PersonalToken[]>;
+  /** Revoke an owned token, preserving its first revocation time. Null if the person does not own the ID. */
+  revokePersonalToken(personId: string, id: string, now: number): Promise<number | null>;
   /** The board `orgSlug/boardSlug` names, or null when either is unknown or deleted. */
   findBoard(orgSlug: string, boardSlug: string): Promise<BoardKeys | null>;
   /**
@@ -314,8 +325,11 @@ export interface BoardView {
   readEvents(
     after?: number,
   ): Promise<{ head: number; cursor: number; events: (MessagePosted | MessageEdited | MessageDeleted)[] }>;
-  /** The message at log position `id` with its replies, oldest first, or null when no message has that ID. */
-  thread(id: number): Promise<Thread | null>;
+  /**
+   * The root and selected replies in ascending order, or null when no message has the requested ID.
+   * A zero limit reads the root alone.
+   */
+  thread(id: number, options?: { readonly after?: number; readonly limit?: number }): Promise<Thread | null>;
   /** The channel's latest 50 threads in ascending activity order, with the same snapshot's board head. */
   listThreads(
     channel: string,

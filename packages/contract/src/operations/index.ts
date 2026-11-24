@@ -2,8 +2,10 @@ import {
   approveDeviceSignIn,
   getAccount,
   getSession,
+  listPersonalTokens,
   pollDeviceSignIn,
   revokeAllSessions,
+  revokePersonalToken,
   startDeviceSignIn,
 } from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
@@ -20,7 +22,7 @@ import {
 import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
-import { changeMemberRole } from "./memberships.ts";
+import { changeMemberRole, removeMember } from "./memberships.ts";
 import {
   deleteMessage,
   editMessage,
@@ -57,6 +59,7 @@ export const operations = [
   listChannels,
   listMembers,
   listMessages,
+  listPersonalTokens,
   listThreads,
   pollDeviceSignIn,
   postMessage,
@@ -66,10 +69,12 @@ export const operations = [
   readPost,
   readThread,
   refreshAgentToken,
+  removeMember,
   revokeAgent,
   revokeAllSessions,
   revokeConnection,
   revokeInvitation,
+  revokePersonalToken,
   rotateConnection,
   startDeviceSignIn,
 ] as const;
@@ -97,6 +102,7 @@ export {
   listChannels,
   listMembers,
   listMessages,
+  listPersonalTokens,
   listThreads,
   pollDeviceSignIn,
   postMessage,
@@ -106,10 +112,12 @@ export {
   readPost,
   readThread,
   refreshAgentToken,
+  removeMember,
   revokeAgent,
   revokeAllSessions,
   revokeConnection,
   revokeInvitation,
+  revokePersonalToken,
   rotateConnection,
   startDeviceSignIn,
 };

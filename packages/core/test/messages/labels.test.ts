@@ -60,6 +60,22 @@ test("a label write merges its labels into the message's and raises the version 
   expect(target.labels).toEqual({ a: "1" });
 });
 
+test("a label write removes each unset key after setting, so a key in both ends up removed", () => {
+  const labeled = { ...target, labels: { a: "1", status: "open" } };
+  const change = { id: "1", set: { status: "done", b: "2" }, unset: ["status", "a", "status"] };
+  const [event] = decideLabels({ head: 4, target: labeled }, change, { by, now });
+  expect(event?.type === "labels.changed" && event.payload).toMatchObject({
+    set: { status: "done", b: "2" },
+    unset: ["status", "a"],
+    view: { labels: { b: "2" }, version: 5 },
+  });
+});
+
+test("unsetting a key the message lacks still appends its event and keeps the other labels", () => {
+  const [event] = decideLabels({ head: 2, target }, { id: "1", unset: ["status"] }, { by, now });
+  expect(event?.type === "labels.changed" && event.payload.view).toMatchObject({ labels: { a: "1" }, version: 3 });
+});
+
 test("a label write that changes no value still appends its event", () => {
   expect(decideLabels({ head: 2, target }, { id: "1", set: { a: "1" } }, { by, now })).toHaveLength(1);
 });
@@ -82,4 +98,33 @@ test.each([
   expect(() => decideLabels({ head: 2, target: message }, { id: "1", set }, { by, now })).toThrow(
     expect.objectContaining({ code }),
   );
+});
+
+test.each([
+  ["nothing to set or unset", { id: "1", set: {}, unset: [] }, "invalid_request"],
+  ["unsetting a label under board.", { id: "1", unset: ["board.task"] }, "reserved_label"],
+  ["unsetting a malformed key", { id: "1", unset: ["Status"] }, "invalid_request"],
+])("refuses %s", (_, change, code) => {
+  expect(() => decideLabels({ head: 2, target }, change, { by, now })).toThrow(expect.objectContaining({ code }));
+});
+
+test("a conditional write checks the current value before applying any mutation", () => {
+  const change = { id: "1", set: { a: "2" }, if: { a: "2" } };
+  expect(() => decideLabels({ head: 2, target }, change, { by, now })).toThrow(
+    expect.objectContaining({ code: "label_conflict", message: "a isn't 2" }),
+  );
+});
+
+test("an empty label value does not satisfy a condition requiring absence", () => {
+  const empty = { ...target, labels: { a: "" } };
+  const change = { id: "1", set: { a: "2" }, if: { a: null } };
+  expect(() => decideLabels({ head: 2, target: empty }, change, { by, now })).toThrow(
+    expect.objectContaining({ code: "label_conflict", message: "a is set" }),
+  );
+});
+
+test("a condition can match a stored multiline value", () => {
+  const stored = { ...target, labels: { a: "one\ntwo" } };
+  const change = { id: "1", if: { a: "one\ntwo" }, unset: ["a"] };
+  expect(decideLabels({ head: 2, target: stored }, change, { by, now })).toHaveLength(1);
 });

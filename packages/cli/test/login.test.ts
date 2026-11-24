@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, statSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createClient } from "@the-vibe-company/openboard";
 import { clientConfig, personalConfigPath, storePersonalLogin } from "../src/config.ts";
 import { runCli } from "../src/main.ts";
 
@@ -91,4 +92,23 @@ test("connecting after login makes the agent active even when both credentials m
   } finally {
     rmSync(home, { force: true, recursive: true });
   }
+});
+
+test("a bodyless account write sends the configured CSRF proof", async () => {
+  const id = `pt_${"a".repeat(16)}`;
+  const result = { id, revokedAt: 1_700_000_000_000 };
+  const origin = "https://openboard.example";
+  const client = createClient({
+    url: `${origin}/api/acme/main`,
+    csrf: "example-csrf",
+    fetch: async (request) => {
+      expect(request.method).toBe("POST");
+      expect(request.url).toBe(`${origin}/api/x/tokens/${id}/revoke`);
+      expect(request.headers.get("x-ob-csrf")).toBe("example-csrf");
+      expect(request.body).toBeNull();
+      return Response.json(result);
+    },
+  });
+
+  expect(await client.revokePersonalToken({ id })).toEqual(result);
 });

@@ -328,5 +328,20 @@ function labelWriteSuite(open: OpenStore) {
       expect(stored).toMatchObject({ labels: { status: "done", owner: "a" }, version: 3, revision: 0 });
       expect((await board.thread(1))?.message).toEqual(stored);
     });
+
+    test("stores a message without the labels a write unsets, so a label filter no longer finds it", async () => {
+      const board = await fixture.board();
+      await post(board, "dev", "hello", { status: "open", repo: "web" });
+      await board.write(async (writer) => {
+        const target = await writer.message(1);
+        await writer.append(
+          decideLabels({ head: writer.head, target }, { id: "1", unset: ["status"] }, { by, now: at }),
+        );
+      });
+      const [stored] = (await board.channelMessages({ channel: "dev", limit: 50 })) ?? [];
+      expect(stored).toMatchObject({ labels: { repo: "web" }, version: 2 });
+      expect((await board.listThreads("dev", [["status"]])).threads).toEqual([]);
+      expect((await board.listThreads("dev", [["repo"]])).threads).toHaveLength(1);
+    });
   });
 }

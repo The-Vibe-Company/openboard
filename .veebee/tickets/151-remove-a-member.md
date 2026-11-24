@@ -10,11 +10,23 @@ writes:
   - packages/ports/testkit/store/memberships.test-suite.ts
   - packages/server/test/memberships.test.ts
   - packages/ports/src/store.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/core/src/index.ts
+  - packages/core/src/orgs/roles.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
+  - packages/sdk/src/client.ts
+  - packages/sdk/test/client.test.ts
+  - packages/sdk/package.json
+  - bun.lock
+  - packages/sdk/tsconfig.json
 conformance: []
 modes: [local]
 depends_on: [150]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 152
 ---
 
@@ -22,7 +34,7 @@ issue: 152
 As an admin, I remove someone; as a member, I leave.
 
 ## Done when
-- [ ] `POST http://127.0.0.1:8787/api/x/orgs/acme/members/<user>/remove` by an admin, or by the person themself, ends their access: their next request to `/api/acme/main` answers 404
+- [x] `POST http://127.0.0.1:8787/api/x/orgs/acme/members/<user>/remove` by an admin, or by the person themself, ends their access: their next authenticated `GET /api/acme/main/me` answers 404 (issue #152); `GET /api/acme/main` serves public discovery (D35)
 
 ## Out of scope
 - Their sessions elsewhere, which stay valid (`docs/auth.md`).

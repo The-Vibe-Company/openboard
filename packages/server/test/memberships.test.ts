@@ -89,3 +89,75 @@ test("a signed-in owner cannot demote the only owner", async () => {
     await app.close();
   }
 });
+
+test("admin removal and leaving immediately end board access while preserving the session", async () => {
+  const app = makeBrowserApp();
+  const send = (path: string, headers: Record<string, string>, method = "GET", body?: unknown) =>
+    app.fetch(new Request(`${PUBLIC_URL}${path}`, { method, headers, body: JSON.stringify(body) }));
+  try {
+    const owner = await browserSession(app.fetch, "ada");
+    const admin = await browserSession(app.fetch, "lin");
+    const member = await browserSession(app.fetch, "mei");
+    expect((await send("/api/x/orgs", owner.headers, "POST", { slug: "acme", name: "Acme" })).status).toBe(201);
+    for (const [person, role] of [
+      [admin, "admin"],
+      [member, "member"],
+    ] as const) {
+      const link = await send("/api/x/orgs/acme/invitations", owner.headers, "POST", { role });
+      expect(link.status).toBe(201);
+      const { url } = (await link.json()) as OutputOf<typeof createInvitation>;
+      const token = new URL(url).pathname.slice("/invite/".length);
+      expect((await send("/api/x/invitations/accept", person.headers, "POST", { token })).status).toBe(200);
+    }
+
+    const board = "/api/acme/main";
+    const remove = (principal: string) => `/api/x/orgs/acme/members/${principal}/remove`;
+    const blocked = await send(remove(owner.principal), owner.headers, "POST");
+    expect(blocked.status).toBe(409);
+    expect(await blocked.json()).toMatchObject({ error: { code: "last_owner" } });
+    expect((await send(remove(owner.principal), admin.headers, "POST")).status).toBe(403);
+    expect((await send(remove(admin.principal), member.headers, "POST")).status).toBe(403);
+    expect(
+      (await send(remove(member.principal), { ...admin.headers, origin: "https://example.org" }, "POST")).status,
+    ).toBe(403);
+    expect((await send(remove(member.principal), { ...admin.headers, "x-ob-csrf": "wrong" }, "POST")).status).toBe(403);
+
+    for (const [label, actor, target] of [
+      ["admin removes member", admin, member],
+      ["member leaves", member, member],
+    ] as const) {
+      if (actor === target) {
+        const link = await send("/api/x/orgs/acme/invitations", owner.headers, "POST", { role: "member" });
+        expect(link.status).toBe(201);
+        const { url } = (await link.json()) as OutputOf<typeof createInvitation>;
+        const token = new URL(url).pathname.slice("/invite/".length);
+        expect((await send("/api/x/invitations/accept", target.headers, "POST", { token })).status).toBe(200);
+      }
+
+      const before = await send(`${board}/me`, target.headers);
+      expect(before.status).toBe(200);
+      const removed = await send(remove(target.principal), actor.headers, "POST");
+      const result = await removed.json();
+      expect(removed.status).toBe(200);
+      expect(result).toEqual({ principal: target.principal });
+      const after = await send(`${board}/me`, target.headers);
+      const error = await after.json();
+      expect(after.status).toBe(404);
+      expect(error).toMatchObject({ error: { code: "not_found" } });
+      const discovery = await send(board, target.headers);
+      expect(discovery.status).toBe(200);
+      const session = await send("/api/x/session", target.headers);
+      expect(session.status).toBe(200);
+      expect(await session.json()).toMatchObject({ person: { principal: target.principal } });
+      process.stdout.write(
+        `[${label}] GET ${PUBLIC_URL}${board}/me -> ${before.status}\n` +
+          `[${label}] POST ${PUBLIC_URL}${remove(target.principal)} -> ${removed.status} ${JSON.stringify(result)}\n` +
+          `[${label}] GET ${PUBLIC_URL}${board}/me -> ${after.status} ${JSON.stringify(error)}\n` +
+          `[${label}] GET ${PUBLIC_URL}${board} -> ${discovery.status}\n` +
+          `[${label}] GET ${PUBLIC_URL}/api/x/session -> ${session.status} (same signed-in principal)\n`,
+      );
+    }
+  } finally {
+    await app.close();
+  }
+});

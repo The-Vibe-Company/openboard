@@ -4,6 +4,7 @@
     "composite": true,
     "rootDir": ".",
     "outDir": "../../.tsbuild/packages/sdk",
+    "types": ["bun"],
     "lib": ["ESNext", "DOM"]
   },
   "references": [

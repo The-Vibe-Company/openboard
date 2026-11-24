@@ -12,11 +12,18 @@ writes:
   - packages/ports/src/store.ts
   - packages/core/src/messages/labels.ts
   - packages/core/test/messages/labels.test.ts
+  - packages/contract/src/operation.ts
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/test/cli.test.ts
+  - packages/server/test/label-conditions.test.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
+  - tools/conformance/score.json
 conformance: ["core/labels a message only while its labels are as the write says, one of any that race"]
 modes: [local]
 depends_on: [78]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 79
 ---
 

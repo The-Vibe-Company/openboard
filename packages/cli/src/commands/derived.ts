@@ -26,14 +26,21 @@ function optionValue(field: Field, text: string): unknown {
 }
 
 /** Adds `k=v`, a value of a repeatable map option such as `--label` or of a trailing map argument, to `name`'s map. */
-function addEntry(input: Record<string, unknown>, name: string, what: string, text: string) {
+function addEntry(input: Record<string, unknown>, name: string, what: string, text: string, allowEmpty = false) {
   const split = text.indexOf("=");
-  if (split < 1 || split === text.length - 1) throw new Misuse(`${what} takes k=v, a key and a value`);
+  if (split < 1 || (!allowEmpty && split === text.length - 1)) throw new Misuse(`${what} takes k=v, a key and a value`);
   // No prototype, so `__proto__=x` stays a key the board refuses instead of vanishing here.
+  putEntry(input, name, text.slice(0, split), text.slice(split + 1));
+}
+
+function putEntry(input: Record<string, unknown>, name: string, key: string, value: string | null) {
   input[name] ??= Object.create(null);
-  const entries = input[name] as Record<string, string>;
+  const entries = input[name] as Record<string, string | null>;
   // A key holds one value: a later `--label k=…` replaces an earlier one, as upstream's CLI does.
-  entries[text.slice(0, split)] = text.slice(split + 1);
+  if (Object.hasOwn(entries, key) && (entries[key] === null) !== (value === null)) {
+    throw new Misuse(`conflicting conditions for label ${key}`);
+  }
+  entries[key] = value;
 }
 
 /** Positionals fill `args` in order, so every one up to the last required argument must be given. */
@@ -58,6 +65,7 @@ function inputOf(
   args: readonly string[],
   fields: ReturnType<typeof fieldsOf>,
   flags: ReadonlyMap<string, string>,
+  nullEntries: ReadonlyMap<string, string>,
 ) {
   const input: Record<string, unknown> = {};
   const positional: string[] = [];
@@ -67,7 +75,8 @@ function inputOf(
       positional.push(word);
       continue;
     }
-    const name = flags.get(word.slice(2));
+    const flag = word.slice(2);
+    const name = flags.get(flag);
     if (name === undefined) throw new Misuse(`unknown option ${word}`);
     const field = fields.get(name)?.schema ?? {};
     if (field.type === "boolean") {
@@ -78,7 +87,9 @@ function inputOf(
     if (value === undefined || at + 1 >= ctx.optionsEnd || isSwitch(value, flags, fields)) {
       throw new Misuse(`${word} takes a value`);
     }
-    if (field.type === "object") addEntry(input, name, word, value);
+    if (nullEntries.has(flag)) putEntry(input, name, value, null);
+    else if (field.type === "object") addEntry(input, name, word, value, [...nullEntries.values()].includes(name));
+    else if (field.type === "array") input[name] = [...((input[name] as string[] | undefined) ?? []), value];
     else input[name] = optionValue(field, value);
     at += 1;
   }
@@ -97,7 +108,8 @@ function inputOf(
 
 /** `ob <command…> <args…> [--option value]`, one per operation with a `cli` block. */
 function derive(operation: Contracted & { cli: CliSpec }): Command {
-  const { command, args, options: renamed = {} } = operation.cli;
+  const { command, args, options: renamed = {}, nullEntryOptions = {} } = operation.cli;
+  const nullEntries = new Map(Object.entries(nullEntryOptions));
   const fields = fieldsOf(operation);
   // A field's flag is its own name unless the contract gives it upstream's: `--idempotency-key` for `id`.
   const flags = new Map<string, string>();
@@ -114,7 +126,15 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     } else if (schema.type === "object") {
       flags.set(flag, name);
       options.push(`[--${flag} <k=v>]...`);
+    } else if (schema.type === "array") {
+      // A repeatable option, such as `--unset k` on `ob label`: each one adds a value.
+      flags.set(flag, name);
+      options.push(`[--${flag} <${flag}>]...`);
     }
+  }
+  for (const [flag, name] of nullEntries) {
+    flags.set(flag, name);
+    options.push(`[--${flag} <key>]...`);
   }
   const needed = requiredPositionals(args, fields);
   const shown = args.map((arg, at) => (at < needed ? `<${arg}>` : `[${arg}]`));
@@ -123,7 +143,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     words: command,
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
     async run(ctx) {
-      const input = inputOf(ctx, args, fields, flags);
+      const input = inputOf(ctx, args, fields, flags, nullEntries);
       const answer = await (ctx.client[operation.name] as Invoke)(input);
       const format = formats[operation.name];
       ctx.output.out(ctx.json || !format ? JSON.stringify(answer, null, 2) : format(answer, input));

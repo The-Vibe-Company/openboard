@@ -1355,7 +1355,7 @@
     "/messages/{id}/labels": {
       "post": {
         "operationId": "label",
-        "summary": "Set labels on a message, each key to one value, raising its version.",
+        "summary": "Set and unset labels on a message if all label conditions hold; unset applies last.",
         "parameters": [
           {
             "name": "id",
@@ -1371,12 +1371,23 @@
               "schema": {
                 "additionalProperties": false,
                 "type": "object",
-                "required": ["set"],
                 "properties": {
                   "set": {
                     "additionalProperties": false,
                     "type": "object",
                     "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
+                  },
+                  "unset": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$", "type": "string" } },
+                  "if": {
+                    "additionalProperties": false,
+                    "maxProperties": 16,
+                    "description": "Required current label values, or null for labels that must be absent.",
+                    "type": "object",
+                    "patternProperties": {
+                      "^[a-z0-9][a-z0-9_.-]{0,63}$": {
+                        "anyOf": [{ "maxLength": 256, "type": "string" }, { "type": "null" }]
+                      }
+                    }
                   }
                 }
               }
@@ -1410,6 +1421,10 @@
           },
           "404": {
             "description": "message_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "label_conflict",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -1895,6 +1910,64 @@
           },
           "409": {
             "description": "duplicate_id, newer_message",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/api/x/tokens": {
+      "get": {
+        "operationId": "listPersonalTokens",
+        "summary": "List the signed-in person's personal token metadata.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["tokens"],
+                  "properties": {
+                    "tokens": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "name", "org", "createdAt", "expiresAt", "revokedAt"],
+                        "properties": {
+                          "id": { "pattern": "^pt_[a-z2-7]{16}$", "type": "string" },
+                          "name": { "type": "string" },
+                          "org": { "type": "string" },
+                          "createdAt": { "type": "integer" },
+                          "expiresAt": { "type": "integer" },
+                          "revokedAt": { "anyOf": [{ "type": "integer" }, { "type": "null" }] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {
@@ -3011,15 +3084,57 @@
     "/messages/{id}": {
       "get": {
         "operationId": "message",
-        "summary": "Read one message as a thread: the message, then its replies, oldest first.",
+        "summary": "Read a thread from any of its messages: the root, then the selected replies, oldest first.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "schema": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "Return replies strictly after this message in the thread.",
+              "x-ref": "message",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "maximum": 500,
+              "description": "Maximum replies: the first after the cursor, or the newest.",
+              "type": "integer"
+            }
           }
         ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "after": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "Return replies strictly after this message in the thread.",
+              "x-ref": "message",
+              "type": "string"
+            },
+            "limit": {
+              "minimum": 1,
+              "maximum": 500,
+              "description": "Maximum replies: the first after the cursor, or the newest.",
+              "type": "integer"
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -3323,6 +3438,73 @@
         }
       }
     },
+    "/api/x/orgs/{org}/members/{user}/remove": {
+      "post": {
+        "operationId": "removeMember",
+        "summary": "Remove an organization member or leave the organization.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": { "pattern": "^[a-z0-9][a-z0-9-]{1,38}$", "type": "string" }
+          },
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "member", "type": "string" }
+          },
+          {
+            "name": "x-ob-csrf",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["principal"],
+                  "properties": { "principal": { "type": "string" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "last_owner",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/x/connections/{id}/agents/{agent}/revoke": {
       "post": {
         "operationId": "revokeAgent",
@@ -3487,6 +3669,66 @@
           },
           "410": {
             "description": "invitation_used",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/api/x/tokens/{id}/revoke": {
+      "post": {
+        "operationId": "revokePersonalToken",
+        "summary": "Revoke one of the signed-in person's personal tokens.",
+        "servers": [{ "url": "/" }],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "pattern": "^pt_[a-z2-7]{16}$", "type": "string" }
+          },
+          {
+            "name": "x-ob-csrf",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id", "revokedAt"],
+                  "properties": {
+                    "id": { "pattern": "^pt_[a-z2-7]{16}$", "type": "string" },
+                    "revokedAt": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {

@@ -43,7 +43,7 @@ function outsideCan(by: Principal, permission: Permission, where: string): Board
 async function checkMessage(by: Principal, can: Can, permission: Permission, board: BoardView, id: unknown) {
   const position = typeof id === "string" ? parseId(id) : null;
   if (position === null) return;
-  const channel = (await board.thread(position))?.message.channel;
+  const channel = (await board.thread(position, { limit: 0 }))?.message.channel;
   const allowed = channel === undefined ? [] : agents.allowedAt(can, channel);
   if (!allowed.includes("read")) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
   if (!allowed.includes(permission)) throw outsideCan(by, permission, `in ${channel}`);
