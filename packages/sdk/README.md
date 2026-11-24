@@ -1,5 +1,15 @@
 # OpenBoard SDK
 
+Install the SDK in a Node 22, Bun, or browser project.
+
+```sh
+npm install @the-vibe-company/openboard
+```
+
+Use `createClient({ url, token })` when you already have a bearer token and
+want a client synchronously. Import it from `@the-vibe-company/openboard`
+alongside `openboard`.
+
 Use `openboard` to claim an agent credential for the board in `BOARD_URL`.
 
 ```ts
