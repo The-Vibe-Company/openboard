@@ -1,38 +1,70 @@
 import { BoardError } from "@openboard/contract";
 import type { RateLimits } from "@openboard/ports";
 
-const REFILL_PER_MS = 200;
-const CAPACITY = 1_000_000;
-const WRITE_COST = 1000;
-const REFILL_MS = CAPACITY / REFILL_PER_MS;
-
 export interface RequestLimits {
   readonly rateLimits: RateLimits;
   readonly ip: string | undefined;
 }
 
-/** One bucket per organization slug on this instance, in thousandths of a write. */
-export function instanceRateLimits(now: () => number): RateLimits {
+function tokenBuckets(now: () => number, capacity: number, refillPerMs: number, cost: number) {
+  const refillMs = capacity / refillPerMs;
   const buckets = new Map<string, { remaining: number; at: number }>();
   let sweepAt = 0;
+  return (key: string, consume: boolean, reserved = 0) => {
+    const at = now();
+    if (at >= sweepAt) {
+      // A bucket idle for a full refill is equivalent to a fresh bucket.
+      for (const [key, bucket] of buckets) {
+        if (at - bucket.at >= refillMs) buckets.delete(key);
+      }
+      sweepAt = at + refillMs;
+    }
+    const bucket = buckets.get(key) ?? { remaining: capacity, at };
+    const through = Math.max(at, bucket.at);
+    const remaining = Math.min(capacity, bucket.remaining + (through - bucket.at) * refillPerMs);
+    const needed = cost * (reserved + 1);
+    if (remaining < needed) return Math.ceil((through - at + (needed - remaining) / refillPerMs) / 1000);
+    if (consume) buckets.set(key, { remaining: remaining - cost, at: through });
+    return undefined;
+  };
+}
+
+export function instanceRateLimits(now: () => number): RateLimits {
+  // Integer units: a write costs 1,000 and a failed authentication costs 3,000.
+  const writes = tokenBuckets(now, 1_000_000, 200, 1_000);
+  const failures = tokenBuckets(now, 60_000, 1, 3_000);
+  type Admission = Awaited<ReturnType<RateLimits["admitAuth"]>>;
+  type Waiter = (admission: Admission) => void;
+  type Pending = { count: number; waiters: Set<Waiter> };
+  const pending = new Map<string, Pending>();
+
+  function admit(ip: string, active: Pending): Admission | undefined {
+    const retryAfter = failures(ip, false);
+    if (retryAfter !== undefined) return retryAfter;
+    // Each in-flight verification may still fail and holds one available slot.
+    if (active.count > 0 && failures(ip, false, active.count) !== undefined) return undefined;
+    active.count++;
+    return (failed) => {
+      if (failed) failures(ip, true);
+      active.count--;
+      for (const resolve of active.waiters) {
+        const next = admit(ip, active);
+        if (next === undefined) break;
+        active.waiters.delete(resolve);
+        resolve(next);
+      }
+      if (active.count === 0) pending.delete(ip);
+    };
+  }
+
   return {
-    takeWrite(org) {
-      const at = now();
-      if (at >= sweepAt) {
-        // A bucket idle for a full refill is equivalent to a fresh bucket.
-        for (const [key, bucket] of buckets) {
-          if (at - bucket.at >= REFILL_MS) buckets.delete(key);
-        }
-        sweepAt = at + REFILL_MS;
-      }
-      const bucket = buckets.get(org) ?? { remaining: CAPACITY, at };
-      const through = Math.max(at, bucket.at);
-      const remaining = Math.min(CAPACITY, bucket.remaining + (through - bucket.at) * REFILL_PER_MS);
-      if (remaining < WRITE_COST) {
-        return Math.ceil((through - at + (WRITE_COST - remaining) / REFILL_PER_MS) / 1000);
-      }
-      buckets.set(org, { remaining: remaining - WRITE_COST, at: through });
-      return undefined;
+    takeWrite: (org) => writes(org, true),
+    async admitAuth(ip) {
+      const active = pending.get(ip) ?? { count: 0, waiters: new Set<Waiter>() };
+      const admission = admit(ip, active);
+      if (typeof admission === "number") return admission;
+      pending.set(ip, active);
+      return admission ?? new Promise<Admission>((resolve) => active.waiters.add(resolve));
     },
   };
 }

@@ -130,6 +130,13 @@ answers. OpenBoard adds:
 | 401 | `bad_signature` | inbound endpoint signature |
 | 429 | `rate_limited`, `quota_exceeded` | with `retry-after` for rate limits and the daily event quota |
 
+On board routes that authenticate a caller, each instance allows a burst of 20
+failed authentications per client IP and refills one attempt every three seconds.
+Only `401 unauthorized` authentication failures spend attempts. When the bucket
+is empty, the instance returns `429 rate_limited` with `retry-after` in seconds
+before looking up the board or credential. The response contains only the
+generic rate-limit error and retry guidance.
+
 Board creation, invitation acceptance, and connection creation can return 429
 `quota_exceeded` with reason `boards`, `members`, or `connections`. The defaults
 are 10 active boards and 50 members per organization, and 100 active connections

@@ -10,6 +10,8 @@ type Signup = (typeof SIGNUP_MODES)[number];
 /** The server's configuration, parsed once at startup (docs/codebase.md 5.5). */
 interface CommonConfig {
   readonly port: number;
+  /** Number of trusted reverse proxy hops in front of this listener. */
+  readonly trustedProxies: number;
   readonly instanceId?: string;
   readonly deploymentTag?: string;
   /** `OPENBOARD_PUBLIC_URL`: the origin board URLs are built on, never `Host`; default `http://127.0.0.1:<port>`. */
@@ -91,6 +93,14 @@ export function loadConfig(env: Env = process.env): Config {
   }
   const port = Number(env.PORT ?? "8787");
   if (!Number.isInteger(port) || port < 1 || port > 65_535) problems.push(`PORT: expected 1 to 65535, got ${env.PORT}`);
+  const proxyHops = env.OPENBOARD_TRUSTED_PROXIES;
+  const trustedProxies = proxyHops === undefined ? 0 : Number(proxyHops);
+  if (
+    proxyHops !== undefined &&
+    (!/^\d+$/.test(proxyHops) || !Number.isSafeInteger(trustedProxies) || trustedProxies < 1)
+  ) {
+    problems.push("OPENBOARD_TRUSTED_PROXIES: expected a positive integer");
+  }
   const databaseUrl = secretOf(env, "OPENBOARD_DATABASE_URL", problems);
   if (databaseUrl !== undefined && !validDatabaseUrl(databaseUrl)) {
     const name =
@@ -118,6 +128,7 @@ export function loadConfig(env: Env = process.env): Config {
   return Object.freeze({
     ...(databaseUrl === undefined ? { mode: "local" as const } : { mode: "hosted" as const, databaseUrl }),
     port,
+    trustedProxies,
     ...(env.OPENBOARD_INSTANCE_ID && { instanceId: env.OPENBOARD_INSTANCE_ID }),
     ...(env.OPENBOARD_DEPLOYMENT_TAG && { deploymentTag: env.OPENBOARD_DEPLOYMENT_TAG }),
     publicUrl,

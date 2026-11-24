@@ -393,6 +393,13 @@ must hold across instances (marked †):
 | Sign-in attempts per IP | 30/min |
 | SSE streams per principal / per organization | 20 / 500 |
 
+By default, per-IP limits use the socket peer address. Set
+`OPENBOARD_TRUSTED_PROXIES` to the number of trusted proxy hops (Railway: `1`).
+Only enable it when all requests to the listener pass through those proxies
+and each proxy appends its peer address to `X-Forwarded-For`. The server selects
+the entry that many positions from the right. Missing, short, or invalid
+chains fall back to the socket address. `X-Real-IP` is ignored.
+
 ### Audit
 
 Administrative actions are append-only events with their actor: organization

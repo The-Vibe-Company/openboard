@@ -558,7 +558,11 @@ Lease consumption and the database effect commit together.
   in a burst and refills at 200 writes per second. The aggregate rate scales
   with the number of instances. Authorized writes debit the bucket after
   permission checks so unauthorized requests cannot exhaust it. Scoped reads
-  skip the bucket. Forwarded-IP trust is deferred to tickets 200 and 205.
+  skip the bucket.
+- **Client IP.** Ticket 200 uses the socket peer by default and trusts a
+  right-indexed `X-Forwarded-For` entry only with an explicit
+  `OPENBOARD_TRUSTED_PROXIES` hop count. The same address reaches sign-in
+  limits in ticket 205. See docs/auth.md "Rate limits".
 
 ### D41. Budgets per mode, targets until measured (N9)
 
