@@ -275,6 +275,7 @@ function writer(tx: Db, dialect: Dialect, keys: BoardKeys, start: number, actor:
     agentByClaimKey: (connection, key) => findAgentByClaimKey(tx, dialect, keys, connection, key),
     profileHolder: (connection, profile) => profileHolder(tx, dialect, keys, connection, profile),
     async append(events) {
+      if (events.length === 0) return;
       for (const event of events) {
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);
         await appendEvent(tx, dialect, keys, event);

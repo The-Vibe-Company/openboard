@@ -5,7 +5,12 @@ import { lockBoardAs } from "../src/views/actors.ts";
 
 const keys = { orgId: 1, boardId: 1 };
 const ada = { id: "ob:user:ada", kind: "person", handle: "ada", name: "ada", avatar: null } as const;
-const sqliteText: Dialect = Object.freeze({ name: "sqlite", placeholder: () => "?", lockSuffix: "" });
+const sqliteText: Dialect = Object.freeze({
+  name: "sqlite",
+  placeholder: () => "?",
+  lockSuffix: "",
+  notifyHeadSuffix: "",
+});
 
 /** A connection that answers each statement by its first words and records what ran. */
 function recording(answer: (text: string) => Row[]) {
