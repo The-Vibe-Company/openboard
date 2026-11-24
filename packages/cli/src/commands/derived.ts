@@ -3,6 +3,7 @@ import { formats } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 import { runTaskCommand } from "./tasks/claim.ts";
 import { runCompleteTask } from "./tasks/complete.ts";
+import { runRenewTask } from "./tasks/renew.ts";
 
 type Contracted = (typeof operations)[number];
 type Invoke = (input: Readonly<Record<string, unknown>>) => Promise<unknown>;
@@ -165,6 +166,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
     async run(ctx) {
       const input = inputOf(ctx, args, fields, flags, nullEntries, alternative);
+      if (operation.name === "renewTask") return runRenewTask(ctx, input as { id: string; lease?: number });
       if (operation.name === "completeTask") return runCompleteTask(ctx, input as { id: string; result?: string });
       if (operation.name === "claimTask" || operation.name === "createTask") {
         const invoke = ctx.client[operation.name] as (

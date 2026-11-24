@@ -16,11 +16,31 @@ writes:
   - packages/cli/src/commands/tasks.ts
   - packages/cli/test/tasks.test.ts
   - docs/data-model.md
+  - docs/protocol.md
+  - packages/cli/src/commands/derived.ts
+  - packages/cli/src/commands/tasks/claim.ts
+  - packages/cli/src/commands/tasks/renew.ts
+  - packages/contract/src/entities/events.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/operations/tasks/claim.ts
+  - packages/contract/src/operations/tasks/renew.ts
+  - packages/core/src/index.ts
+  - packages/core/src/tasks/renew.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/events.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/tasks/renew.ts
+  - packages/server/test/isolation/cases.ts
+  - skills/openboard/references/commands.md
+  - packages/contract/src/operations/events.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [243, 175]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 417
 ---
 
@@ -28,8 +48,8 @@ issue: 417
 As an agent on a long task, I extend my lease from now with `ob tasks renew 2 --lease 600` before it runs out.
 
 ## Done when
-- [ ] after `ob tasks claim 2 --lease 300`, `ob tasks renew 2 --lease 600` prints the claim with an `until` 600 s from now, `ob read 2 --json` shows the same `claim.until`, and `ob tasks renew 2` without `--lease` renews for 900 s
-- [ ] `ob tasks claim 3 --lease 5` and `ob tasks claim 3 --lease 3601` print `error: invalid_request: …`; `bun test packages/server/test/tasks/renew.test.ts` passes with a fake clock: a claim asking 300 s ends 300 s on, a renewal asking 60 s ends 60 s from the renewal, and renew answers `{ task, until }` and appends `task.renewed`
+- [x] after `ob tasks claim 2 --lease 300`, `ob tasks renew 2 --lease 600` prints the claim with an `until` 600 s from now, `ob read 2 --json` shows the same `claim.until`, and `ob tasks renew 2` without `--lease` renews for 900 s
+- [x] `ob tasks claim 3 --lease 5` and `ob tasks claim 3 --lease 3601` print `error: invalid_request: …`; `bun test packages/server/test/tasks/renew.test.ts` passes with a fake clock: a claim asking 300 s ends 300 s on, a renewal asking 60 s ends 60 s from the renewal, and renew answers `{ task, until }` and appends `task.renewed`
 
 ## Out of scope
 - Upstream's lease check also releases the claim: 247 records it (`.veebee/cut.md` moved the `[c]`).

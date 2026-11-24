@@ -118,8 +118,8 @@ function prepareFeed(
         : [];
     const scan = {
       ...filters,
-      // Events about no message show only to a caller that reads every channel (upstream `03-http.md`).
-      all: (all === "true" || all === "1") && everywhere,
+      // The store excludes board-wide bookkeeping from channel-filtered reads.
+      all: (all === "true" || all === "1") && (everywhere || channel !== undefined),
       authors: author === undefined ? undefined : eventAuthors(author, current.actor, actors),
       mentions: mentions === undefined ? undefined : eventMentions(mentions, current.actor, mentionActors),
     };
@@ -176,7 +176,8 @@ function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boolean): 
 
   const visible = (view: ReturnType<typeof messages.messageView>) => (everywhere ? view : withoutMentionDetails(view));
   if (event.type === "task.completed") return [projectTaskCompleted(event, visible(current ?? historical))];
-  if (event.type === "task.claimed") return [projectTaskClaimed(event, visible(current ?? historical))];
+  if (event.type === "task.claimed" || event.type === "task.renewed")
+    return [projectTaskLease(event, visible(current ?? historical))];
   if (event.type === "task.created") return [projectTaskCreated(event, visible(current ?? historical))];
   if (event.type === "labels.changed") {
     const { view, set, unset, ...payload } = event.payload;
@@ -255,8 +256,8 @@ function projectTaskCreated(
   };
 }
 
-function projectTaskClaimed(
-  event: Extract<FeedEvent, { type: "task.claimed" }>,
+function projectTaskLease(
+  event: Extract<FeedEvent, { type: "task.claimed" | "task.renewed" }>,
   message: ReturnType<typeof messages.messageView>,
 ) {
   const { id, thread, epoch, until, by } = event.payload;

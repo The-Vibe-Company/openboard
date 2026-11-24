@@ -59,7 +59,8 @@ function eventPage(newest: boolean) {
       AND e.id > COALESCE(${"after"}, ${start}) AND e.id <= b.head
       AND (${newestOnly} = 0 OR (
         ((e.visibility = 0 AND e.type IN ${feedTypes})
-          OR (${"all"} = 1 AND e.visibility = 1 AND e.type IN ${bookkeepingTypes}))
+          OR (${"all"} = 1 AND e.visibility = 1 AND e.type IN ${bookkeepingTypes})
+          OR (${"renewals"} = 1 AND e.visibility = 0 AND e.type = 'task.renewed'))
         AND (CAST(${"channel"} AS TEXT) IS NULL OR e.channel = ${"channel"} OR e.channel LIKE ${"under"} ESCAPE '\\')
         AND (CAST(${"thread"} AS BIGINT) IS NULL OR e.thread = ${"thread"})
       ))
@@ -98,6 +99,12 @@ function messageEvent(row: Row): FeedEvent {
       ...common,
       type: "task.completed",
       payload: payload as Extract<TaskEvent, { type: "task.completed" }>["payload"],
+    };
+  if (row.type === "task.renewed")
+    return {
+      ...common,
+      type: "task.renewed",
+      payload: payload as Extract<TaskEvent, { type: "task.renewed" }>["payload"],
     };
   if (row.type === "task.claimed")
     return {
@@ -161,6 +168,7 @@ function feedEvent(
   event: () => FeedEvent | ActorSeen | ChannelCreated,
   filters: EventFilters,
   all: boolean,
+  renewals: boolean,
   root?: Snapshot,
   previous?: Snapshot,
 ): (FeedEvent | ActorSeen | ChannelCreated)[] {
@@ -174,7 +182,8 @@ function feedEvent(
       entry.type !== "labels.changed" &&
       entry.type !== "task.created" &&
       entry.type !== "task.claimed" &&
-      entry.type !== "task.completed") ||
+      entry.type !== "task.completed" &&
+      !(renewals && entry.type === "task.renewed")) ||
     !matchesEventChannel(String(entry.channel), filters.channel)
   )
     return [];
@@ -188,10 +197,10 @@ function feedEvent(
   return [message];
 }
 
-function filteredEvent(row: Row, filters: EventFilters, all: boolean): Page["events"] {
+function filteredEvent(row: Row, filters: EventFilters, all: boolean, renewals: boolean): Page["events"] {
   const entry = { type: String(row.type), visibility: Number(row.visibility), channel: String(row.channel) };
   const build = () => (entry.visibility === 1 ? bookkeepingEvent(row) : messageEvent(row));
-  const kept = feedEvent(entry, build, filters, all, snapshot(row.root), snapshot(row.previous));
+  const kept = feedEvent(entry, build, filters, all, renewals, snapshot(row.root), snapshot(row.previous));
   if (kept.length === 0 || typeof row.current !== "string") return kept;
   return [{ ...(kept[0] as FeedEvent), current: JSON.parse(row.current) as Message }];
 }
@@ -227,7 +236,7 @@ export function committedEvents(page: CommittedPage): CommittedEvents {
       const { all, history } = scanOf(filters);
       if (filters.last !== undefined || history || page.events.length > FORWARD_LIMIT) return undefined;
       const events = page.events.flatMap((event) =>
-        feedEvent(event, () => event as FeedEvent | ActorSeen | ChannelCreated, filters, all),
+        feedEvent(event, () => event as FeedEvent | ActorSeen | ChannelCreated, filters, all, filters.all === true),
       );
       return { head: page.head, cursor: page.head, events };
     },
@@ -262,13 +271,14 @@ export function eventReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<Bo
           history: history ? 1 : 0,
           rootLabels: filters.labels?.length ? 1 : 0,
           all: all ? 1 : 0,
+          renewals: filters.all === true ? 1 : 0,
         },
       );
       const first = rows[0];
       if (!first) throw new Error("the scoped board is missing");
       const head = Number(first.head);
       const cursor = Number(rows.at(-1)?.id ?? head);
-      const events = rows.flatMap((row) => filteredEvent(row, filters, all));
+      const events = rows.flatMap((row) => filteredEvent(row, filters, all, filters.all === true));
       if (last === undefined) return { head, cursor, events };
       return { head, cursor: head, events: events.slice(0, last).reverse() };
     },

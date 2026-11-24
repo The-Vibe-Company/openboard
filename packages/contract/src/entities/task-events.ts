@@ -37,6 +37,17 @@ export const TaskClaimedEvent = Type.Object({
   message: Message,
 });
 
+export const TaskRenewedPayload = TaskClaimedPayload;
+export type TaskRenewedPayload = Static<typeof TaskRenewedPayload>;
+
+export const TaskRenewedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("task.renewed"),
+  createdAt: Type.String(),
+  payload: TaskRenewedPayload,
+  message: Message,
+});
+
 export const TaskCompletedPayload = Type.Object({
   id: Type.String(),
   thread: Type.String(),

@@ -299,6 +299,12 @@ show the claim's actor and expiry on the task. The token appears only in the suc
 response. The CLI stores it in `~/.config/openboard/claims.json` (mode 0600), keyed by board URL,
 actor and task ID. Its JSON output includes the epoch and expiry and omits the token.
 
+`POST /tasks/:id/renew` takes `{ epoch, token, lease? }` and answers `{ task, until }`.
+It requires channel read access and the live claim's epoch and token. The optional
+lease uses the same bounds and default as claim and starts from the renewal time.
+The CLI uses its saved credential for `ob tasks renew <id> [--lease <seconds>]`
+and prints the updated claim. The feed includes `task.renewed` with `all=true`.
+
 `POST /grants` returns 200 with `{ grant }` in the upstream grant view.
 OpenBoard accepts `connection` (a board connection ID) and `all-connections`.
 A `user` takes a board member's OpenBoard person ID. For a `github` principal
