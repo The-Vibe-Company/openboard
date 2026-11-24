@@ -1,4 +1,5 @@
 import type { Author, Can, Named, Role } from "@openboard/contract";
+import type { RepositoryPrincipal } from "@openboard/core";
 
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
@@ -54,8 +55,9 @@ export interface Deps {
 
 /** Who a request writes as, once the pipeline has authenticated it. */
 export type Principal = Author & {
-  readonly [credentialKind]?: "local" | "connection" | "agent" | "session" | "personal";
+  readonly [credentialKind]?: "local" | "connection" | "agent" | "session" | "personal" | "oidc";
   readonly [credentialExpiry]?: number;
+  readonly [workloadOf]?: RepositoryPrincipal;
   readonly [credentialName]?: string;
   readonly [connectionOf]?: ConnectionIdentity;
   /** The agent an `obt_` token was claimed as, `ag_…`. */
@@ -95,6 +97,7 @@ export interface ConnectionIdentity {
 /** Request-only metadata. Symbol keys stay out of serialized message authors. */
 export const credentialKind = Symbol("credential kind");
 export const credentialExpiry = Symbol("credential expiry");
+export const workloadOf = Symbol("workload principal");
 export const credentialName = Symbol("credential name");
 export const connectionOf = Symbol("connection");
 export const agentOf = Symbol("agent");

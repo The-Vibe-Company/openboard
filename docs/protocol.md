@@ -357,6 +357,10 @@ OpenBoard accepts `connection` (a board connection ID) and `all-connections`.
 A `user` takes a board member's OpenBoard person ID. For a `github` principal
 without workflow, branch or event filters, the `repository` field can also
 carry the exact subject of a person's locally linked GitHub identity.
+A GitHub Actions bearer with the board URL as its audience writes as
+`github:repo:<repository_id>` with permissions from matching repository grants.
+For an OIDC identity, `GET /me` returns the token expiry as epoch milliseconds
+and `openboard.credential` is `oidc`.
 Project and app principal kinds are preserved for display. Grant creation
 appears as `ob.grant.created` in the board audit. The response and subsequent listings
 keep `can` as submitted, including `"all"`, the order of permission lists, and empty lists.

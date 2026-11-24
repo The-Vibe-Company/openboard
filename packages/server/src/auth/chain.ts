@@ -1,11 +1,13 @@
 import { BoardError, PROFILE_HEADER, parseProfileHeader } from "@openboard/contract";
 import { connections } from "@openboard/core";
 import type { BoardView, PlatformView } from "@openboard/ports";
-import { connectionOf, type Principal, profileAvatar, profileName, type ServerConfig } from "../deps.ts";
+import { connectionOf, type Deps, type Principal, profileAvatar, profileName, type ServerConfig } from "../deps.ts";
 import type { RequestLimits } from "../http/limits.ts";
 import { connectionVerifier } from "./connections.ts";
 import { localOwnerVerifier } from "./local-owner.ts";
+import { oidcVerifier } from "./oidc.ts";
 import { personalTokenVerifier } from "./personal-tokens.ts";
+import { oidcIssuer } from "./providers/index.ts";
 import { sessionVerifier } from "./sessions.ts";
 import { agentTokenVerifier } from "./tokens.ts";
 
@@ -17,23 +19,20 @@ export interface CredentialVerifier {
   readonly name: string;
   match(request: Request): boolean;
   /** `operation` is the name of the contract operation the request's route matched. */
-  verify(request: Request, board: BoardView, operation: string): Promise<Principal | null>;
+  verify(request: Request, board: BoardView, operation: string, audience?: string): Promise<Principal | null>;
 }
 
 /**
  * The chain this server runs, in docs/auth.md order: agent tokens (step 1), connection secrets (step 2), personal tokens
- * (step 3), the local owner token (step 4), then a browser's session (step 6). The clock checks credential lifetimes.
+ * (step 3), the local owner token (step 4), OIDC (step 5), then a browser's session (step 6). The clock checks credential lifetimes.
  */
-export function verifiers(
-  config: ServerConfig,
-  platform: PlatformView,
-  now: () => number,
-): readonly CredentialVerifier[] {
+export function verifiers(config: ServerConfig, platform: PlatformView, deps: Deps): readonly CredentialVerifier[] {
+  const { now } = deps;
   const chain: CredentialVerifier[] = [agentTokenVerifier(now), connectionVerifier(now), personalTokenVerifier(now)];
   if (config.mode === "local" && config.localOwnerTokenHash) {
     chain.push(localOwnerVerifier(config.localOwner, config.localOwnerTokenHash));
   }
-  chain.push(sessionVerifier(platform, now, config.publicUrl));
+  chain.push(oidcVerifier(deps, oidcIssuer), sessionVerifier(platform, now, config.publicUrl));
   return chain;
 }
 
@@ -99,10 +98,11 @@ export async function authenticate(
   chain: readonly CredentialVerifier[],
   board: BoardView,
   operation: string,
+  audience: string,
 ): Promise<Principal> {
   const verifier = chain.find((candidate) => candidate.match(request));
   if (!verifier) throw noCredential();
-  const principal = await verifier.verify(request, board, operation);
+  const principal = await verifier.verify(request, board, operation, audience);
   if (!principal) throw new BoardError("unauthorized", "the credential is not valid on this board");
   return withProfile(request, principal);
 }

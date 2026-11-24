@@ -7,7 +7,7 @@ import { authorizeExistingGrantChange, currentAuthority } from "./revoke.ts";
 
 export const updateGrantHandler: Handler<typeof updateGrant> = (ctx, input) =>
   ctx.board.write(async (writer) => {
-    const by = await currentAuthority(ctx.by, writer, "updating");
+    const by = await currentAuthority(ctx.by, writer, "updating", ctx.now);
     const position = /^g[1-9]\d*$/.test(input.id) ? Number(input.id.slice(1)) : NaN;
     const previous = Number.isSafeInteger(position) ? await writer.activeGrant(position) : null;
     await authorizeExistingGrantChange(ctx, by, previous, "updating");

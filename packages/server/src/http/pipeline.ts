@@ -1,7 +1,7 @@
 import { BoardError, decodeInput, type operations, type previewInvitation, type RawInput } from "@openboard/contract";
 import type { BoardView, PlatformView, RateLimits } from "@openboard/ports";
 import { keepInsideCan } from "../auth/access.ts";
-import { authenticate, limitAuthentication, verifiers } from "../auth/chain.ts";
+import { authenticate, type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
 import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
@@ -39,6 +39,7 @@ export interface Pipeline {
   readonly platformRoutes: readonly Route<Contracted>[];
   readonly tenants: Tenants;
   readonly platform: PlatformView;
+  readonly chain: readonly CredentialVerifier[];
   readonly providers: readonly LoginProvider[];
 }
 
@@ -224,7 +225,7 @@ async function run(
 }
 
 /** A tombstone is distinguishable only by a connection or agent that can prove it belonged to the board. */
-function requestBoard(pipeline: Pipeline, path: BoardPath, request: Request, chain: ReturnType<typeof verifiers>) {
+function requestBoard(pipeline: Pipeline, path: BoardPath, request: Request, chain: readonly CredentialVerifier[]) {
   return pipeline.tenants.board(path, async (board: BoardView) => {
     const verifier = chain.find(
       (verifier) => (verifier.name === "agent" || verifier.name === "connection") && verifier.match(request),
@@ -261,10 +262,11 @@ async function runBoard(
     return runPublic(url, path, operation, matched.params, pipeline);
   }
   if (operation.scope !== "board") throw notFound();
-  const chain = verifiers(pipeline.config, pipeline.platform, pipeline.deps.now);
+  const { chain } = pipeline;
+  const audience = `${pipeline.config.publicUrl}${path.mount}`;
   const { board, by } = await limitAuthentication(pipeline, async () => {
     const board = await requestBoard(pipeline, path, request, chain);
-    return { board, by: await authenticate(request, chain, board, operation.name) };
+    return { board, by: await authenticate(request, chain, board, operation.name, audience) };
   });
   logged.actor = by.actor;
   refuseClaimedConfiguration(request, operation);
@@ -275,14 +277,13 @@ async function runBoard(
   };
   const { now, randomBytes, schedule } = pipeline.deps;
   const boardUrl = `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`;
-  // The seeded local board has no account owner who can delete its organization.
   const implicitBoard = pipeline.config.mode === "local" && path.org === "local" && path.board === "main";
   const context = async (input: unknown) => {
     await keepInsideCan(operation, input, by, board);
     const reauthorize = async () => {
       // A parked request may outlive its board or organization. Resolve it again before returning data.
       const liveBoard = implicitBoard ? board : await requestBoard(pipeline, path, request, chain);
-      const current = await authenticate(request, chain, liveBoard, operation.name);
+      const current = await authenticate(request, chain, liveBoard, operation.name, audience);
       await keepInsideCan(operation, input, current, liveBoard);
       return current;
     };

@@ -14,7 +14,7 @@ import type { Db, Dialect, Row } from "../db.ts";
 import { query } from "../sql.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
 import { findAgent, findAgentByClaimKey, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
-import { type BoardStorage, repairStoredBytes, setHead } from "./boards.ts";
+import { type BoardStorage, boardIdentity, repairStoredBytes, setHead } from "./boards.ts";
 import { findChannel, foldChannelCreated } from "./channels.ts";
 import {
   connectionNamed,
@@ -298,6 +298,7 @@ function writer(
       const [row] = await query(tx, dialect, messageStatements.clientPost, { boardId: keys.boardId, clientId });
       return row ? (JSON.parse(String(row.view)) as Message) : null;
     },
+    listGrants: grantReads(tx, dialect, keys).listGrants,
     nextGrant: () => nextGrant(tx, dialect, keys),
     activeGrant: (id) => activeGrant(tx, dialect, keys, id),
     async grantMember(personId) {
@@ -323,12 +324,13 @@ export function boardView(
   jobs: JobWrites,
 ): Pick<
   BoardView,
-  "write" | "channelMessages" | "ownClientPost" | "mentionEvidence" | "taskRoot" | keyof BoardGrantReads
+  "write" | "identity" | "channelMessages" | "ownClientPost" | "mentionEvidence" | "taskRoot" | keyof BoardGrantReads
 > {
   const keys: BoardKeys = { orgId: scope.orgId, boardId: scope.boardId };
   return {
     ...taskReads(db, dialect, keys),
     ...grantReads(db, dialect, keys),
+    identity: () => boardIdentity(db, dialect, keys),
     async write(fn, as, taskId = null) {
       let release: (() => void) | undefined;
       let enqueued = false;

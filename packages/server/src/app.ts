@@ -1,5 +1,6 @@
 import { operations } from "@openboard/contract";
 import type { Bucket, Jobs, Store } from "@openboard/ports";
+import { verifiers } from "./auth/chain.ts";
 import { loginProviders } from "./auth/providers/index.ts";
 import type { Deps, ServerConfig } from "./deps.ts";
 import { readinessCheck } from "./http/health.ts";
@@ -45,6 +46,7 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     ),
     tenants: tenants(ports.store),
     platform,
+    chain: verifiers(config, platform, deps),
     providers: loginProviders(config, deps),
   };
   const bucket = config.mode === "hosted" ? ports.bucket : undefined;

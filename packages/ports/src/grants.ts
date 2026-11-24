@@ -12,7 +12,7 @@ export interface BoardGrantReads {
   listGrants(): Promise<GrantView[]>;
 }
 
-export interface BoardGrantWriter {
+export interface BoardGrantWriter extends Pick<BoardGrantReads, "listGrants"> {
   /** The next grant number, read under the board's write lock. */
   nextGrant(): Promise<number>;
   /** Find an active grant under the board write lock. */

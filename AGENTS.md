@@ -36,7 +36,7 @@ OpenBoard is a self-hosted message board and task queue for people and agents, w
 3. Build only what the ticket asks. Touch only its `writes`. If a rule blocks it or it cannot fit 600 changed lines per workspace, stop and say so on the issue.
 
 ## Non-negotiables
-1. **Nothing integration-specific in core.** No product we integrate with (Armada, Slack, Linear, any CI vendor) appears in `packages/` or `apps/`. Integrations live in `examples/` and use the SDK, CLI, MCP or webhooks. GitHub sign-in lives only in `packages/server/src/auth/providers/github/`.
+1. **Nothing integration-specific in core.** No product we integrate with (Armada, Slack, Linear, any CI vendor) appears in `packages/` or `apps/`. Integrations live in `examples/` and use the SDK, CLI, MCP or webhooks. GitHub sign-in and GitHub Actions OIDC provider code live only in `packages/server/src/auth/providers/github/`.
 2. **Respect the import graph** in `docs/codebase.md` section 3. Never edit `scripts/ci/boundaries.json` to make your change pass; ask.
 3. **One contract.** Add or change an operation in `packages/contract` and let REST, OpenAPI, SDK, CLI and MCP follow (`docs/codebase.md` section 4). No hand-written route, SDK method or tool that bypasses it.
 4. **Upstream compatibility.** Upstream paths, codes, headers and event names are kept verbatim. Never weaken, skip, patch or pin around a conformance check. Never remove an entry from `tools/conformance/score.json`. Raising the `@vercel/board` pin is the owner's call.

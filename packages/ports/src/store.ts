@@ -330,6 +330,8 @@ export interface BoardView extends RateView, BoardMessageReads, BoardTaskReads, 
     | "inactive"
     | null
   >;
+  /** Display names and slugs for this board and its organization. */
+  identity(): Promise<{ org: Named; board: Named }>;
   schema(id: string): Promise<SchemaView | null>;
   schemas(): Promise<SchemaView[]>;
   /**

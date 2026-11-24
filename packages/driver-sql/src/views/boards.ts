@@ -50,6 +50,8 @@ export const TIMELINE_ADVANCE = 1_000_000;
 export const boardStatements = {
   orgBySlug: sql`SELECT id FROM orgs WHERE slug = ${"slug"} AND deleted_at IS NULL`,
   boardBySlug: sql`SELECT id, deleted_at FROM boards WHERE org_id = ${"orgId"} AND slug = ${"slug"}`,
+  identity: sql`SELECT orgs.slug AS org_slug, orgs.name AS org_name, boards.slug AS board_slug, boards.name AS board_name
+    FROM boards JOIN orgs ON orgs.id = boards.org_id WHERE boards.org_id = ${"orgId"} AND boards.id = ${"boardId"}`,
   softDeleteBoard: sql`UPDATE boards SET deleted_at = ${"at"}
     WHERE org_id = ${"orgId"} AND slug = ${"slug"} AND deleted_at IS NULL RETURNING id, name${notifyDeletion}`,
   lockBoard: sql`SELECT boards.head, boards.timeline, ${serverTimeline} AS server_timeline, orgs.quotas, orgs.deleted_at, boards.deleted_at AS board_deleted_at,
@@ -116,6 +118,15 @@ export function platformView(db: Db, dialect: Dialect): Pick<PlatformView, "find
       const keys = { orgId, boardId: Number(board.id) };
       return board.deleted_at == null ? keys : { ...keys, deleted: true };
     },
+  };
+}
+
+export async function boardIdentity(db: Db, dialect: Dialect, keys: BoardKeys) {
+  const [row] = await query(db, dialect, boardStatements.identity, keys);
+  if (!row) throw new BoardError("not_found", "no such board");
+  return {
+    org: { slug: String(row.org_slug), name: String(row.org_name) },
+    board: { slug: String(row.board_slug), name: String(row.board_name) },
   };
 }
 

@@ -16,7 +16,11 @@ type Me = OutputOf<typeof getMe>;
 
 const BOARD = { org: { slug: "local", name: "Local" }, board: { slug: "main", name: "main" } } as const;
 /** A connection's secret or an agent token: the connection's name, profile, and effective permissions. */
-function connectionMe(by: Principal, credential: "connection" | "agent"): Me {
+function workflowMe(
+  by: Principal,
+  credential: "connection" | "agent" | "oidc",
+  board: Pick<Me["openboard"], "org" | "board"> = BOARD,
+): Me {
   const can = by[callerCan];
   if (!can) throw new BoardError("unauthorized", "the credential is not valid on this board");
   const { actor, principal, profile } = by;
@@ -29,9 +33,9 @@ function connectionMe(by: Principal, credential: "connection" | "agent"): Me {
     name,
     avatar,
     profile,
-    expiresAt: null,
+    expiresAt: by[credentialExpiry] ?? null,
     can,
-    openboard: { ...BOARD, role: null, credential },
+    openboard: { ...board, role: null, credential },
   };
 }
 
@@ -65,9 +69,11 @@ function personMe(by: Principal, member: SessionMember, credential: "session" | 
   };
 }
 
-export const getMeHandler: Handler<typeof getMe> = async ({ by }) => {
+export const getMeHandler: Handler<typeof getMe> = async (ctx) => {
+  const { by } = ctx;
   const credential = by[credentialKind];
-  if (credential === "connection" || credential === "agent") return connectionMe(by, credential);
+  if (credential === "connection" || credential === "agent") return workflowMe(by, credential);
+  if (credential === "oidc") return workflowMe(by, credential, await ctx.board.identity());
   const member = by[memberOf];
   if ((credential === "session" || credential === "personal") && member) return personMe(by, member, credential);
   if (!credential) throw new BoardError("unauthorized", "a local owner credential is required");
