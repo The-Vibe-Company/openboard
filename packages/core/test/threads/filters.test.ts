@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { channelFilter, textPattern } from "@openboard/core";
+import { channelFilter, mentionFilter, textPattern } from "@openboard/core";
 
 test("lowercases the text, Unicode letters included, and wraps it to match anywhere", () => {
   expect(textPattern("Crème BRÛLÉE")).toBe("%crème brûlée%");
@@ -12,4 +12,15 @@ test("escapes the escape character and both wildcards so each matches only itsel
 test("a channel names itself alone, and a trailing slash adds every channel under it, `_` matching only itself", () => {
   expect(channelFilter("dev_ops")).toEqual({ channel: "dev_ops" });
   expect(channelFilter("dev_ops/web/")).toEqual({ channel: "dev_ops/web", under: String.raw`dev\_ops/web/%` });
+});
+
+test("mentionFilter reads me, an explicit ID, and a name with or without its @", () => {
+  expect(mentionFilter("me", "ob:user:ada", true)).toEqual({ id: "ob:user:ada" });
+  expect(mentionFilter("@[ob:user:ada+claude]", "ob:user:me", true)).toEqual({ id: "ob:user:ada+claude" });
+  expect(mentionFilter("@Ada/Claude", "ob:user:me", true)).toEqual({ id: "Ada/Claude", handle: "ada/claude" });
+  expect(mentionFilter("ada@vercel.com", "ob:user:me", true)).toEqual({
+    id: "ada@vercel.com",
+    handle: "ada@vercel.com",
+  });
+  expect(mentionFilter("@ada", "ob:user:me", false)).toEqual({ id: "ada" });
 });

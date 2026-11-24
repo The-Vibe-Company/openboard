@@ -61,6 +61,13 @@ export const listThreads = defineOperation({
             description: "Only threads with a message by this handle, actor ID, or `me` for the caller's actor.",
           }),
         ),
+        mentions: Type.Optional(
+          Type.String({
+            pattern: "^(?!@?$)[^\\u0000]+$",
+            description:
+              "Only threads with a message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
+          }),
+        ),
         label: Type.Optional(Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }))),
         text: Type.Optional(
           Type.String({

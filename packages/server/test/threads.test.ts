@@ -274,3 +274,55 @@ test("GET /threads filters roots and replies by author before paging", async () 
   expect(await found("local-test/bot")).toEqual([authored, replied]);
   expect(await found("local-test/bot", "&text=review")).toEqual([]);
 });
+
+test("GET /threads finds threads that mention someone, by handle, ID or me, a person covering their agents", async () => {
+  app = makeApp();
+  const post = async (body: object, headers: Record<string, string> = {}) => {
+    const response = await app.fetch(
+      new Request(`${BOARD_URL}/messages`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${OWNER.token}`, "content-type": "application/json", ...headers },
+        body: JSON.stringify(body),
+      }),
+    );
+    expect(response.status).toBe(201);
+    return ((await response.json()) as Thread).message.id;
+  };
+  const found = async (mentions: string, token = OWNER.token) => {
+    const read = await app.fetch(
+      new Request(`${BOARD_URL}/threads?channel=dev&mentions=${encodeURIComponent(mentions)}`, {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    );
+    expect(read.status).toBe(200);
+    return ((await read.json()) as { threads: Thread[] }).threads.map(({ message }) => message.id);
+  };
+
+  const replied = await post({ channel: "dev", text: "root" });
+  await post({ channel: "dev", text: "bot here" }, { "x-board-profile": "bot" });
+  const me = await post({ channel: "dev", text: "over to @local-test" }, { "x-board-profile": "bot" });
+  const agent = await post({ channel: "dev", text: "cc @local-test/bot" });
+  await post({ re: replied, text: `ping @[${LOCAL_OWNER}]` });
+  await post({ channel: "dev", text: "`@local-test` in code, and @nobody" });
+  await post({ channel: "ops", text: "elsewhere @local-test" });
+
+  expect(await found("me")).toEqual([me, agent, replied]);
+  expect(await found("@LOCAL-TEST")).toEqual([me, agent, replied]);
+  expect(await found(LOCAL_OWNER)).toEqual([me, agent, replied]);
+  expect(await found(`@[${LOCAL_OWNER}+bot]`)).toEqual([agent]);
+  expect(await found("local-test/bot")).toEqual([agent]);
+  expect(await found("nobody")).toEqual([]);
+
+  const connection = await call(app, "POST", "/x/connections", {
+    name: "reader",
+    direct: true,
+    can: { dev: ["read"] },
+  });
+  const { secret } = (await connection.json()) as { secret: string };
+  expect(await found("local-test", secret)).toEqual([]);
+  expect(await found(LOCAL_OWNER, secret)).toEqual([me, agent, replied]);
+
+  const refused = await call(app, "GET", "/threads?channel=dev&mentions=%40");
+  expect(refused.status).toBe(400);
+  expect(await refused.json()).toMatchObject({ error: { code: "invalid_request" } });
+});

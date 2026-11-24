@@ -57,6 +57,24 @@ async function checkTextSearch(board: BoardView): Promise<void> {
   expect(await found("deploy fixed")).toEqual([lookalike.id]);
 }
 
+/** Threads whose root or reply holds `@[id]`, or `@[id+…` for an agent under it, with `%` and `_` as characters. */
+async function checkMentions(board: BoardView): Promise<void> {
+  const direct = await post(board, "dev", "over to @[ob:user:a_b%c]");
+  const agent = await post(board, "dev", "cc @[ob:user:a_b%c+claude]");
+  await post(board, "dev", "cc @[ob:user:axbyc] and @[ob:user:a_b%cd] and @ob:user:a_b%c");
+  const replied = await post(board, "dev", "root");
+  await reply(board, Number(replied.id), "ping @[ob:user:a_b%c]");
+  await post(board, "ops", "elsewhere @[ob:user:a_b%c]");
+  const found = async (id: string, limit?: number) =>
+    (await board.listThreads("dev", [], { mentions: { id }, limit })).threads.map(({ message }) => message.id);
+  expect(await found("ob:user:a_b%c")).toEqual([direct.id, agent.id, replied.id]);
+  expect(await found("ob:user:a_b%c", 1)).toEqual([replied.id]);
+  expect(await found("ob:user:a_b%c+claude")).toEqual([agent.id]);
+  expect(await found("ob:user:a_b")).toEqual([]);
+  await edit(board, Number(direct.id), "no one now");
+  expect(await found("ob:user:a_b%c")).toEqual([agent.id, replied.id]);
+}
+
 /** Text and labels hold on one message, its root's labels included, and the text filter pages back like any other. */
 async function checkTextWithLabels(board: BoardView): Promise<void> {
   const split = await post(board, "dev", "split");
@@ -191,6 +209,10 @@ function searchTests(localBoard: () => Promise<BoardView>): void {
 
   test("lists the threads of a channel and every channel under it, a page at a time", async () => {
     await checkSubtree(await localBoard());
+  });
+
+  test("finds threads by a root or a reply that mentions an actor ID or an agent under it", async () => {
+    await checkMentions(await localBoard());
   });
 }
 

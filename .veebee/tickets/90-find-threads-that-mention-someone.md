@@ -12,6 +12,7 @@ writes:
   - packages/ports/src/store.ts
   - packages/core/src/threads/filters.ts
   - packages/core/src/index.ts
+  - packages/core/test/threads/filters.test.ts
   - packages/cli/src/commands/read.ts
   - packages/cli/test/read-channel.test.ts
   - packages/server/openapi.json

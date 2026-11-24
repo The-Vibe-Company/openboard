@@ -2418,6 +2418,16 @@
             }
           },
           {
+            "name": "mentions",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^(?!@?$)[^\\u0000]+$",
+              "description": "Only threads with a message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
+              "type": "string"
+            }
+          },
+          {
             "name": "label",
             "in": "query",
             "required": false,
@@ -2483,6 +2493,11 @@
             "by": {
               "pattern": "^[^\\u0000]+$",
               "description": "Only threads with a message by this handle, actor ID, or `me` for the caller's actor.",
+              "type": "string"
+            },
+            "mentions": {
+              "pattern": "^(?!@?$)[^\\u0000]+$",
+              "description": "Only threads with a message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
               "type": "string"
             },
             "label": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } },

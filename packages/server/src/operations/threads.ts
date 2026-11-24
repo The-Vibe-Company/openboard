@@ -1,5 +1,5 @@
 import { BoardError, type listThreads, type readThread } from "@openboard/contract";
-import { channelFilter, formatId, parseId, textPattern } from "@openboard/core";
+import { channelFilter, formatId, mentionFilter, parseId, textPattern } from "@openboard/core";
 import { canListMentionActors, withoutMentionDetails } from "../auth/access.ts";
 import type { Handler } from "./index.ts";
 
@@ -54,6 +54,9 @@ export const listThreadsHandler: Handler<typeof listThreads> = async ({ board, b
     after,
     author: input.by === "me" ? { actor: by.actor } : input.by === undefined ? undefined : { query: input.by },
     limit,
+    // Only a caller that reads every channel may learn who goes by a handle, as message views show them.
+    mentions:
+      input.mentions === undefined ? undefined : mentionFilter(input.mentions, by.actor, canListMentionActors(by)),
     text: text === undefined ? undefined : textPattern(text),
     under,
   });

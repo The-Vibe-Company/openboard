@@ -71,6 +71,14 @@ function threadList(order: "ASC" | "DESC", subtree = false) {
       UNION ALL
       SELECT board_id, id, kind FROM actors WHERE board_id = ${"boardId"} AND lower(handle) = CAST(${"authorHandle"} AS TEXT)
         AND NOT EXISTS (SELECT 1 FROM exact_author WHERE board_id = ${"boardId"})
+    ), mentioned AS (
+      SELECT CAST(${"boardId"} AS BIGINT) AS board_id, CAST(${"mentionId"} AS TEXT) AS id
+      WHERE CAST(${"mentionId"} AS TEXT) IS NOT NULL
+      UNION
+      SELECT board_id, id FROM actors WHERE board_id = ${"boardId"} AND lower(handle) = CAST(${"mentionHandle"} AS TEXT)
+    ), mention_patterns AS (
+      SELECT board_id, replace(replace(replace(id, '\\', '\\\\'), '%', '\\%'), '_', '\\_') AS id
+      FROM mentioned WHERE board_id = ${"boardId"}
     ),
     recent AS (
       SELECT root.board_id, root.id, root.active, root.view, root.replies, root.last_reply
@@ -79,7 +87,8 @@ function threadList(order: "ASC" | "DESC", subtree = false) {
         AND (root.active, root.id) < (CAST(${"beforeActive"} AS BIGINT), CAST(${"beforeRoot"} AS BIGINT))
         AND root.active > CAST(${"after"} AS BIGINT)
         AND ((CAST(${"labels"} AS TEXT) = '[]' AND CAST(${"text"} AS TEXT) IS NULL
-          AND CAST(${"authorQuery"} AS TEXT) IS NULL AND CAST(${"authorActor"} AS TEXT) IS NULL) OR EXISTS (
+          AND CAST(${"authorQuery"} AS TEXT) IS NULL AND CAST(${"authorActor"} AS TEXT) IS NULL
+          AND CAST(${"mentionId"} AS TEXT) IS NULL) OR EXISTS (
           SELECT 1 FROM messages AS hit
           WHERE hit.board_id = ${"boardId"} AND (
             hit.id = root.id OR (hit.re = root.id AND (
@@ -90,6 +99,10 @@ function threadList(order: "ASC" | "DESC", subtree = false) {
             AND (CAST(${"authorQuery"} AS TEXT) IS NULL OR EXISTS (
               SELECT 1 FROM authors WHERE authors.board_id = ${"boardId"}
                 AND (authors.id = hit.actor OR (authors.kind = 'person' AND authors.id = hit.principal))
+            ))
+            AND (CAST(${"mentionId"} AS TEXT) IS NULL OR EXISTS (
+              SELECT 1 FROM mention_patterns AS mention WHERE mention.board_id = ${"boardId"}
+                AND (hit.text LIKE '%@[' || mention.id || ']%' ESCAPE '\\' OR hit.text LIKE '%@[' || mention.id || '+%' ESCAPE '\\')
             ))
             AND (CAST(${"text"} AS TEXT) IS NULL OR hit.text_lower LIKE CAST(${"text"} AS TEXT) ESCAPE '\\')
             AND NOT EXISTS (
@@ -132,13 +145,15 @@ const subtreeLists = [threadStatements.listSubtreeThreads, threadStatements.list
 /** The thread reads of one board's view: one statement reads the message and its replies together. */
 export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "thread" | "listThreads"> {
   return {
-    async listThreads(channel, labels = [], { author, before, after, limit = 50, text, under } = {}) {
+    async listThreads(channel, labels = [], { author, before, after, limit = 50, mentions, text, under } = {}) {
       const statement = (under === undefined ? oneChannelLists : subtreeLists)[after === undefined ? 0 : 1];
       const authorQuery = author && "query" in author ? author.query : null;
       const rows = await query(db, dialect, statement, {
         authorQuery,
         authorHandle: authorQuery?.toLowerCase() ?? null,
         authorActor: author && "actor" in author ? author.actor : null,
+        mentionId: mentions?.id ?? null,
+        mentionHandle: mentions?.handle ?? null,
         boardId: scope.boardId,
         orgId: scope.orgId,
         channel,

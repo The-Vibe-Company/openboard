@@ -77,3 +77,14 @@ test("ob read --by me keeps the explicit actor profile when paging older threads
   expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&by=me&limit=1`]);
   expect(lines.out.at(-1)).toBe("older: ob --as bot read dev --by me --before 2.2 --limit 1");
 });
+
+test("ob read --mentions me keeps the filter and the explicit actor profile when paging older threads", async () => {
+  const { code, lines, urls } = run(["--as", "bot", "read", "dev", "--mentions", "me", "--limit", "1"], {
+    threads: [{ message: message("2", "over to @[ob:user:local-test+bot]"), replies: 0, last: null }],
+    cursor: "3",
+    older: "2.2",
+  });
+  expect(await code).toBe(0);
+  expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&mentions=me&limit=1`]);
+  expect(lines.out.at(-1)).toBe("older: ob --as bot read dev --mentions me --before 2.2 --limit 1");
+});
