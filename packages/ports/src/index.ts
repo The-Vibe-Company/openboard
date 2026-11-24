@@ -4,6 +4,7 @@ export type { Bucket, LogSegment } from "./bucket.ts";
 export type { BoardGrantReads, BoardGrantWriter, PersonGrant } from "./grants.ts";
 export type { BoardJobWriter, Job, JobLease, JobPayload, JobSchedule, Jobs } from "./jobs.ts";
 export { BACKFILL_BOARD_ORG_JOB, PURGE_ORG_JOB } from "./jobs.ts";
+export type { OperatorOrgWrite, OperatorWrites } from "./operator.ts";
 export type { OrgAuditRecord } from "./org-audit-record.ts";
 export type { RateLimits } from "./seams.ts";
 export type {

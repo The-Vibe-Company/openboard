@@ -1,4 +1,5 @@
 import { readFileSync, statSync } from "node:fs";
+import { userInfo } from "node:os";
 import process from "node:process";
 
 /** The log levels `OPENBOARD_LOG_LEVEL` accepts (docs/codebase.md 5.4). */
@@ -181,6 +182,10 @@ export function loadConfig(env: Env = process.env): Config {
     ...(github && { github }),
     ...(backup && { backup }),
   });
+}
+
+export function operatorName(env: Env = process.env): string {
+  return env.OPENBOARD_OPERATOR?.trim() || userInfo().username;
 }
 
 /** The environment `ob`'s client commands read (`BOARD_URL`, `BOARD_TOKEN`), handed to `runCli`. */

@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import process from "node:process";
 import { runCli } from "@the-vibe-company/openboard-cli";
+import { admin } from "./admin.ts";
 import { type Config, ConfigError, clientEnvironment, loadConfig } from "./config.ts";
 import { migrate } from "./migrate.ts";
 import { serve } from "./serve.ts";
@@ -11,11 +12,12 @@ const output = {
 };
 
 /** The server commands (D42); each returns its exit code. */
-const serverCommands: Readonly<Record<string, (config: Config) => Promise<number>>> = {
+const serverCommands: Readonly<Record<string, (config: Config, args: readonly string[]) => Promise<number>>> = {
   serve: async (config) => {
     await serve(config);
     return 0;
   },
+  admin: (config, args) => admin(config, args, output),
   migrate: (config) => migrate(config, output),
 };
 
@@ -26,7 +28,7 @@ async function main(argv: readonly string[]): Promise<void> {
     (name === undefined || (name === "--help" && argv.length === 1)) &&
     /^openboard(?:-bun-.+)?$/.test(basename(process.execPath))
   ) {
-    output.out("Usage: openboard <serve | migrate>");
+    output.out("Usage: openboard <serve | migrate | admin>");
     output.out("For board client commands, run ob.");
     return;
   }
@@ -36,7 +38,7 @@ async function main(argv: readonly string[]): Promise<void> {
     return;
   }
   try {
-    process.exitCode = await command(loadConfig());
+    process.exitCode = await command(loadConfig(), argv.slice(1));
   } catch (error) {
     if (!(error instanceof ConfigError)) throw error;
     process.stderr.write(`${error.message}\n`);

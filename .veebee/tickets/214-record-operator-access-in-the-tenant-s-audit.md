@@ -15,11 +15,21 @@ writes:
   - packages/driver-sql/src/views/orgs.ts
   - docs/auth.md
   - docs/decisions.md
+  - apps/openboard/package.json
+  - apps/openboard/src/config.ts
+  - apps/openboard/tsconfig.json
+  - bun.lock
+  - docs/protocol.md
+  - packages/contract/src/operations/audit.ts
+  - packages/ports/src/index.ts
+  - packages/ports/src/operator.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/audit.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [161, 196, 209, 210]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 375
 ---
 
@@ -27,9 +37,9 @@ issue: 375
 As an organization admin, when the service's operator changes something in my organization, I see who did it, what and why in my organization's audit.
 
 ## Done when
-- [ ] with `OPENBOARD_DATABASE_URL` set, `bun apps/openboard/src/main.ts admin quota acme boards=20 --reason "customer asked"` sets the override, prints the organization's quotas, and exits 0; `GET /api/x/orgs/acme/audit` then lists `ob.operator.quota_changed` with actor `ob:operator:<name>`, the change and the reason
-- [ ] `bun test packages/server/test/operator.test.ts` passes on SQLite and on Postgres (`OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard`): an operator action without a reason, or on an unknown organization, is refused and records nothing, and an action and its audit event commit together or not at all
-- [ ] `bun apps/openboard/src/main.ts admin quota acme boards=20` without `--reason` prints `error: invalid_request: --reason is required` and exits 2
+- [x] with `OPENBOARD_DATABASE_URL` set, `bun apps/openboard/src/main.ts admin quota acme boards=20 --reason "customer asked"` sets the override, prints the organization's quotas, and exits 0; `GET /api/x/orgs/acme/audit` then lists `ob.operator.quota_changed` with actor `ob:operator:<name>`, the change and the reason
+- [x] `bun test packages/server/test/operator.test.ts` passes on SQLite and on Postgres (`OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard`): an operator action without a reason, or on an unknown organization, is refused and records nothing, and an action and its audit event commit together or not at all
+- [x] `bun apps/openboard/src/main.ts admin quota acme boards=20` without `--reason` prints `error: invalid_request: --reason is required` and exits 2
 
 ## Out of scope
 - The rest of the `openboard admin` command set (M15, 399), which records through the same function.

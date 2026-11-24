@@ -562,10 +562,17 @@ CSRF, XSS), the model covers cross-tenant access.
 | **Malware or content hosting through attachments** | Downloads need a credential (no public URLs); `attachment` disposition for unsafe types; per-organization storage quota |
 | **Noisy neighbours** | Per-organization rate limits and quotas; per-board locks isolate write contention; statement and lock timeouts |
 | **Sign-up abuse** | Sign-in through GitHub only in v1; org creation rate-limited per person and IP; `OPENBOARD_SIGNUP` switch |
-| **Operator access** | Operator actions on a tenant go through a support role and appear in the tenant's audit |
+| **Operator access** | The support role acts from a trusted deployment shell through `openboard admin`. The tenant's audit records every change. |
 | **Stolen database or backup** | Bearer credentials hashed; recoverable secrets (webhook signing secrets, receiver headers, inbound verify secrets) AES-256-GCM under `OPENBOARD_SECRET_KEY`, held only in the service environment |
 | **Data after deletion** | Hard delete 30 days after an organization's deletion request; backups age out within their retention |
 | **CSRF** | Origin check plus CSRF header for cookie writes; no CORS |
+
+Run `openboard admin quota acme boards=20 --reason "customer asked"` where
+`OPENBOARD_DATABASE_URL` points to the hosted database. The command updates
+one of `boards`, `members` or `connections` and prints the effective quotas.
+The operator's audit identity is `ob:operator:<name>`, where the name comes
+from `OPENBOARD_OPERATOR` or the OS user. The reason is visible to the
+organization's owners and admins in its audit.
 
 ### SSRF on webhook URLs
 
