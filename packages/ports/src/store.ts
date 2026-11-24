@@ -263,6 +263,12 @@ export interface ChannelMessagesQuery {
   readonly limit: number;
 }
 
+/** Where a thread stands in activity order: its latest activity's log position, then its root's ID. */
+export interface ThreadPosition {
+  readonly active: number;
+  readonly root: number;
+}
+
 /** A connection as stored, with its grant and the SHA-256 (hex) of its secret, which is never stored itself. */
 export interface ConnectionRecord {
   readonly connection: Connection;
@@ -330,11 +336,16 @@ export interface BoardView {
    * A zero limit reads the root alone.
    */
   thread(id: number, options?: { readonly after?: number; readonly limit?: number }): Promise<Thread | null>;
-  /** The channel's latest 50 threads in ascending activity order, with the same snapshot's board head. */
+  /**
+   * The channel's latest `limit` (50 by default) threads last active before `before`, or the latest overall, in
+   * ascending activity order, with the same snapshot's board head. `older` is the position of the page's oldest
+   * thread when an older one matches, else null.
+   */
   listThreads(
     channel: string,
     labels?: readonly (readonly [key: string, values?: readonly string[]])[],
-  ): Promise<{ threads: ThreadSummary[]; head: number }>;
+    page?: { readonly before?: ThreadPosition; readonly limit?: number },
+  ): Promise<{ threads: ThreadSummary[]; head: number; older: ThreadPosition | null }>;
   /** The person's membership of this board's organization, or null when they are not a member or are disabled. */
   member(personId: string): Promise<BoardMemberRecord | null>;
 }

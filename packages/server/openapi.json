@@ -1997,6 +1997,28 @@
             "in": "query",
             "required": false,
             "schema": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "A page's `older`: the threads last active before that page's, the latest `limit` of them.",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "maximum": 500,
+              "description": "Maximum threads, the latest; 50 by default.",
+              "type": "integer"
+            }
           }
         ],
         "x-query-schema": {
@@ -2009,7 +2031,19 @@
               "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
               "type": "string"
             },
-            "label": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } }
+            "label": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } },
+            "before": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "A page's `older`: the threads last active before that page's, the latest `limit` of them.",
+              "type": "string"
+            },
+            "limit": {
+              "minimum": 1,
+              "maximum": 500,
+              "description": "Maximum threads, the latest; 50 by default.",
+              "type": "integer"
+            }
           }
         },
         "responses": {
@@ -2019,7 +2053,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["threads", "cursor"],
+                  "required": ["threads", "cursor", "older"],
                   "properties": {
                     "threads": {
                       "type": "array",
@@ -2236,14 +2270,18 @@
                         }
                       }
                     },
-                    "cursor": { "type": "string" }
+                    "cursor": { "type": "string" },
+                    "older": {
+                      "description": "The `before` for the next older page, as it came, or null when no thread is older.",
+                      "anyOf": [{ "type": "string" }, { "type": "null" }]
+                    }
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "invalid_request, invalid_profile",
+            "description": "invalid_request, invalid_cursor, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {

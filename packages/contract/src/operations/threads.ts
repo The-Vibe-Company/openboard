@@ -48,12 +48,28 @@ export const listThreads = defineOperation({
       {
         channel: ChannelPath,
         label: Type.Optional(Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }))),
+        before: Type.Optional(
+          Type.String({
+            minLength: 1,
+            maxLength: 128,
+            description: "A page's `older`: the threads last active before that page's, the latest `limit` of them.",
+          }),
+        ),
+        limit: Type.Optional(
+          Type.Integer({ minimum: 1, maximum: 500, description: "Maximum threads, the latest; 50 by default." }),
+        ),
       },
       { additionalProperties: false },
     ),
   },
-  output: Type.Object({ threads: Type.Array(ThreadSummary), cursor: Type.String() }),
-  errors: ["invalid_request"],
+  output: Type.Object({
+    threads: Type.Array(ThreadSummary),
+    cursor: Type.String(),
+    older: Type.Union([Type.String(), Type.Null()], {
+      description: "The `before` for the next older page, as it came, or null when no thread is older.",
+    }),
+  }),
+  errors: ["invalid_request", "invalid_cursor"],
   access: { permission: "read", channel: "fromInput" },
   effects: { readOnly: true, idempotent: true, emits: [] },
   cli: false,

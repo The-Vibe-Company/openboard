@@ -77,3 +77,25 @@ test("ob read rejects reply paging flags on a channel without calling the board"
   expect(await code).toBe(2);
   expect(urls).toEqual([]);
 });
+
+test("ob read <channel> --limit ends with the command that reads the older page, labels and limit kept", async () => {
+  const page = { threads: [{ message: message("4", "new"), replies: 0, last: null }], cursor: "5", older: "4.4" };
+  const { code, lines, urls } = run(["read", "dev", "--label", "area=api", "--limit", "1"], page);
+  expect(await code).toBe(0);
+  expect(lines.out).toEqual(["#4  new  (0 replies)", "older: ob read dev --label area=api --before 4.4 --limit 1"]);
+  expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&label=area%3Dapi&limit=1`]);
+});
+
+test("ob read <channel> --before forwards the older and prints no older line on the last page", async () => {
+  const page = { threads: [{ message: message("2", "first"), replies: 0, last: null }], cursor: "5", older: null };
+  const { code, lines, urls } = run(["read", "dev", "--before", "4.4", "--limit", "2"], page);
+  expect(await code).toBe(0);
+  expect(lines.out).toEqual(["#2  first  (0 replies)"]);
+  expect(urls).toEqual([`${env.BOARD_URL}/threads?channel=dev&before=4.4&limit=2`]);
+});
+
+test("ob read rejects --before on a message ID without calling the board", async () => {
+  const { code, urls } = run(["read", "1", "--before", "4.4"], {});
+  expect(await code).toBe(2);
+  expect(urls).toEqual([]);
+});
