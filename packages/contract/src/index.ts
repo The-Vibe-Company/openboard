@@ -72,6 +72,7 @@ export {
   revokeAllSessions,
   revokeConnection,
   revokeInvitation,
+  rotateConnection,
   startDeviceSignIn,
 } from "./operations/index.ts";
 export { UPSTREAM_VERSION } from "./protocol.ts";

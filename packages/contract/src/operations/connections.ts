@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { CanInput, ClaimResult, ConnectionName, CreatedConnection } from "../entities/connections.ts";
+import { CanInput, ClaimResult, Connection, ConnectionName, CreatedConnection } from "../entities/connections.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
 /** A profile pattern: a profile name, optionally ending in `*` (`fixer-*`), or `*` for any. */
@@ -120,5 +120,33 @@ export const revokeAgent = defineOperation({
   cli: { command: ["connections", "revoke-agent"], args: ["id", "agent"] },
   mcp: false,
   why: "Agent revocation is a board administration command, like connection revocation.",
+  upstream: false,
+});
+
+/** How long a replaced secret keeps working: `0s` for no overlap, else a lifetime of at most 24 hours (`10m`, `24h`). */
+const Overlap = Type.String({ pattern: "^(?:0|[1-9][0-9]{0,6})[smhd]$" });
+
+export const rotateConnection = defineOperation({
+  name: "rotateConnection",
+  summary: "Replace a connection's secret, shown once; the old one keeps working for the overlap, at most 24 hours.",
+  route: { method: "POST", path: "/x/connections/:id/rotate" },
+  scope: "board",
+  input: {
+    params: Type.Object({ id: Ref("connection") }),
+    body: Type.Object({ overlap: Type.Optional(Overlap) }, { additionalProperties: false }),
+  },
+  output: Type.Object({
+    connection: Connection,
+    secret: Type.String(),
+    env: Type.Object({ BOARD_URL: Type.String(), BOARD_TOKEN: Type.String() }),
+    /** When the replaced secret stops working, or null when it stopped at once. */
+    previousUntil: Type.Union([Type.String(), Type.Null()]),
+  }),
+  errors: ["invalid_request", "unauthorized", "forbidden", "not_found"],
+  access: { permission: "manage", channel: "any" },
+  effects: { readOnly: false, idempotent: false, emits: ["ob.connection.rotated"] },
+  cli: false,
+  mcp: false,
+  why: "The new secret is shown once: `ob connections rotate` writes it to a 0600 file and never prints it, and no agent tool should carry it.",
   upstream: false,
 });

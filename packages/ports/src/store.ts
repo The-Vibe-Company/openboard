@@ -257,6 +257,8 @@ export interface ConnectionRecord {
   readonly connection: Connection;
   readonly grant: Grant;
   readonly secretHash: string;
+  /** The secret the last rotation replaced: its SHA-256 (hex), and the epoch milliseconds it works until; or null. */
+  readonly previous: { readonly secretHash: string; readonly until: number } | null;
   /** A claimed token's lifetime and hard cap, in seconds. */
   readonly tokenTtl: number;
   readonly tokenMax: number;

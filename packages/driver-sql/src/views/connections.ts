@@ -3,6 +3,7 @@ import {
   type AgentRevoked,
   type ConnectionCreated,
   type ConnectionRevoked,
+  type ConnectionRotated,
   connections,
   type GrantPrincipal,
   grants,
@@ -45,8 +46,12 @@ export const connectionStatements = {
   revokeAgent: sql`UPDATE connection_agents SET revoked_at = ${"at"}, revoked_by = ${"by"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND connection = ${"connection"} AND id = ${"agent"}
       AND revoked_at IS NULL`,
+  /** The new secret; the one it replaces moves to `prev_secret_hash`, working until `prev_secret_until` if not null. */
+  rotateSecret: sql`UPDATE connections SET prev_secret_hash = secret_hash, prev_secret_until = ${"until"},
+    secret_hash = ${"secretHash"}, secret_hint = ${"secretHint"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND revoked_at IS NULL`,
   /** The active connection with the first grant naming it: the one created with it. */
-  connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.direct, c.claims_max, c.claims_used,
+  connectionById: sql`SELECT c.id, c.name, c.secret_hash, c.secret_hint, c.prev_secret_hash, c.prev_secret_until, c.direct, c.claims_max, c.claims_used,
     c.profiles, c.token_ttl_s, c.token_max_s, c.created_by, c.created_at, g.id AS grant_id, g.principals, g.can
     FROM connections c JOIN grant_principals p ON p.board_id = c.board_id AND p.kind = 'connection' AND p.key = c.id
       JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
@@ -123,7 +128,14 @@ function recordOf(row: Row): ConnectionRecord {
   const tokenTtl = Number(row.token_ttl_s);
   const tokenMax = Number(row.token_max_s);
   const claims = { max: row.claims_max == null ? null : Number(row.claims_max), used: Number(row.claims_used) };
-  return { connection, grant: { id: grantId, principals, can }, secretHash, tokenTtl, tokenMax, claims };
+  const previous =
+    row.prev_secret_until == null || row.prev_secret_hash == null
+      ? null
+      : {
+          secretHash: Buffer.from(row.prev_secret_hash as Uint8Array).toString("hex"),
+          until: Number(row.prev_secret_until),
+        };
+  return { connection, grant: { id: grantId, principals, can }, secretHash, previous, tokenTtl, tokenMax, claims };
 }
 
 /** The connection with the ID on the board `keys` names, read with the caller's connection or transaction. */
@@ -169,5 +181,17 @@ export async function foldAgentRevoked(tx: Db, dialect: Dialect, keys: BoardKeys
     agent,
     at: event.at,
     by: event.actor,
+  });
+}
+
+/** Folds a rotation: the new secret's hash and hint, and the replaced one kept until the overlap ends, if any. */
+export async function foldConnectionRotated(tx: Db, dialect: Dialect, keys: BoardKeys, event: ConnectionRotated) {
+  const { connection: id, secretHash, secretHint, previousUntil } = event.payload;
+  await query(tx, dialect, connectionStatements.rotateSecret, {
+    ...keys,
+    id,
+    secretHash: Uint8Array.from(Buffer.from(secretHash, "hex")),
+    secretHint,
+    until: previousUntil,
   });
 }

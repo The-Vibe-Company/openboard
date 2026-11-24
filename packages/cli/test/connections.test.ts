@@ -127,3 +127,58 @@ describe("ob connections create --claims", () => {
     expect(lines.err.join("\n")).toContain("--claims takes a positive whole number");
   });
 });
+
+describe("ob connections rotate", () => {
+  const rotated = { ...created, previousUntil: "2023-11-14T22:23:20.000Z" };
+
+  test("writes the new secret to a 0600 file and says until when the old one works, never printing it", async () => {
+    const file = join(dir, "new.secret");
+    const fake = board(200, rotated);
+    const { lines, output } = capture();
+    const argv = ["connections", "rotate", connection.id, "--overlap", "10m", "--secret-file", file];
+    expect(await runCli(argv, env, { fetch: fake.fetch, output })).toBe(0);
+    expect(fake.seen).toEqual([
+      { url: `${BOARD_URL}/x/connections/${connection.id}/rotate`, body: { overlap: "10m" } },
+    ]);
+    expect(readFileSync(file, "utf8")).toBe(`${secret}\n`);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+    expect(lines.out).toEqual([
+      "rotated connection laptop",
+      `id         ${connection.id}`,
+      "old secret works until 2023-11-14T22:23:20.000Z",
+      `secret     written to ${file} (mode 0600)`,
+    ]);
+    expect([...lines.out, ...lines.err].join("\n")).not.toContain(secret);
+  });
+
+  test("sends no overlap when none is given, and leaves the secret out of --json", async () => {
+    const file = join(dir, "new.secret");
+    const fake = board(200, { ...rotated, previousUntil: null });
+    const { lines, output } = capture();
+    const argv = ["connections", "rotate", connection.id, "--secret-file", file, "--json"];
+    expect(await runCli(argv, env, { fetch: fake.fetch, output })).toBe(0);
+    expect(fake.seen[0]?.body).toEqual({});
+    expect(JSON.parse(lines.out.join("\n"))).toEqual({ connection, previousUntil: null, secretFile: file });
+  });
+
+  test("removes the secret file when the board refuses", async () => {
+    const file = join(dir, "new.secret");
+    const fake = board(400, { error: { code: "invalid_request", message: "overlap 25h is longer than 24 hours" } });
+    const { lines, output } = capture();
+    const argv = ["connections", "rotate", connection.id, "--overlap", "25h", "--secret-file", file];
+    expect(await runCli(argv, env, { fetch: fake.fetch, output })).toBe(1);
+    expect(existsSync(file)).toBe(false);
+    expect(lines.err).toEqual(["error: invalid_request: overlap 25h is longer than 24 hours"]);
+  });
+
+  test.each([
+    [[connection.id], "--secret-file is required"],
+    [["--secret-file", "x"], "expected 1 argument"],
+    [[connection.id, "--overlap"], "--overlap takes a value"],
+    [[connection.id, "--secret", "x"], "unknown option --secret"],
+  ])("exits 2 on %j", async (args, problem) => {
+    const { lines, output } = capture();
+    expect(await runCli(["connections", "rotate", ...args], env, { output })).toBe(2);
+    expect(lines.err[0]).toContain(problem);
+  });
+});

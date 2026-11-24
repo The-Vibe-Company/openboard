@@ -12,11 +12,28 @@ writes:
   - packages/ports/src/store.ts
   - packages/server/src/auth/connections.ts
   - packages/server/test/auth/rotate.test.ts
+  - packages/core/src/access/connections.ts
+  - packages/core/src/index.ts
+  - packages/core/test/access/connections.test.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/index.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/server/src/auth/chain.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/openapi.json
+  - packages/cli/src/commands/connections.ts
+  - packages/cli/src/commands/rotate.ts
+  - packages/cli/src/commands/index.ts
+  - packages/cli/src/main.ts
+  - packages/cli/test/connections.test.ts
+  - docs/auth.md
+  - docs/protocol.md
+  - docs/data-model.md
 conformance: []
 modes: [local]
 depends_on: [127, 129]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-t130
 issue: 131
 ---
 

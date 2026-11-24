@@ -72,7 +72,7 @@ function parse(ctx: CommandContext): CreateOptions {
 }
 
 /** Creates the secret file empty, readable by this user only, and refuses one that already exists. */
-function createSecretFile(path: string): number {
+export function createSecretFile(path: string): number {
   try {
     return openSync(path, "wx", 0o600);
   } catch (error) {

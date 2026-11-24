@@ -28,7 +28,7 @@ export function verifiers(
   platform: PlatformView,
   now: () => number,
 ): readonly CredentialVerifier[] {
-  const chain: CredentialVerifier[] = [agentTokenVerifier(now), connectionVerifier(), personalTokenVerifier(now)];
+  const chain: CredentialVerifier[] = [agentTokenVerifier(now), connectionVerifier(now), personalTokenVerifier(now)];
   if (config.mode === "local" && config.localOwnerTokenHash) {
     chain.push(localOwnerVerifier(config.localOwner, config.localOwnerTokenHash));
   }

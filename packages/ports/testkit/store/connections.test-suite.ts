@@ -35,6 +35,7 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
         connection: laptop,
         grant: { id: 4, principals: [{ kind: "connection", connection: laptop.id }], can: laptop.can },
         secretHash: "cd".repeat(32),
+        previous: null,
         tokenTtl: 3600,
         tokenMax: 86_400,
         claims: { max: null, used: 0 },
@@ -58,6 +59,7 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
   agentRevocationSuite(driver, open);
   oneAgentRevocationSuite(driver, open);
   agentRefreshSuite(driver, open);
+  rotationSuite(driver, open);
   claimsSuite(driver, open);
 }
 
@@ -234,6 +236,42 @@ function agentRefreshSuite(driver: string, open: OpenStore): void {
       expect(record?.tokenHash).toBe("12".repeat(32));
       expect(record?.previous).toEqual({ tokenHash: "ef".repeat(32), until: 61_000 });
       expect(await board.readEvents(0)).toEqual({ head: 3, cursor: 3, events: [] });
+    } finally {
+      await store.close();
+    }
+  });
+}
+
+/** Rotates the connection's secret under the lock, the way the server does. */
+function rotate(board: BoardView, id: string, hash: string, now: number, overlap?: string) {
+  return board.write(async (writer) => {
+    const command = { connection: id, ...(overlap === undefined ? {} : { overlap }) };
+    const secret = { hash, hint: `obc_…${hash.slice(0, 4)}` };
+    await writer.append([connections.decideRotate(writer.head, command, { by, now, secret })]);
+  });
+}
+
+/** A rotation keeps the new secret's hash and its predecessor's until the overlap ends; a second one drops the first. */
+function rotationSuite(driver: string, open: OpenStore): void {
+  test(`${driver}: a rotation keeps the new secret hash and its predecessor's until the overlap ends`, async () => {
+    const store = await open();
+    try {
+      const keys = await store.platform().findBoard("local", "main");
+      if (!keys) throw new Error("the implicit board local/main is missing");
+      const board = store.board(testScope(keys));
+      const laptop = await create(board, "laptop", "a");
+      const other = await create(board, "other", "b");
+      await rotate(board, laptop.id, "12".repeat(32), 1000, "10m");
+      const record = await board.connection(laptop.id);
+      expect(record?.secretHash).toBe("12".repeat(32));
+      expect(record?.connection.secretHint).toBe("obc_…1212");
+      expect(record?.previous).toEqual({ secretHash: "cd".repeat(32), until: 601_000 });
+      expect((await board.connection(other.id))?.secretHash).toBe("cd".repeat(32));
+      await rotate(board, laptop.id, "34".repeat(32), 2000);
+      const again = await board.connection(laptop.id);
+      expect(again?.secretHash).toBe("34".repeat(32));
+      expect(again?.previous).toBeNull();
+      expect(await board.readEvents(0)).toEqual({ head: 4, cursor: 4, events: [] });
     } finally {
       await store.close();
     }
