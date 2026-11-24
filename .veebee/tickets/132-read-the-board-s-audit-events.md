@@ -12,7 +12,7 @@ writes:
   - packages/ports/src/store.ts
   - packages/ports/src/index.ts
   - packages/ports/testkit/isolation.test-suite.ts
-  - packages/ports/testkit/store/index.ts
+  - packages/ports/testkit/index.ts
   - packages/contract/src/operations/index.ts
   - packages/contract/src/index.ts
   - packages/server/src/operations/index.ts
@@ -20,8 +20,9 @@ writes:
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
   - packages/driver-sql/migrations/0011-audit.sql
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/cli/src/commands/wait.ts
   - packages/server/openapi.json
-  - skills/openboard/references/commands.md
   - docs/protocol.md
 conformance: []
 modes: [local]

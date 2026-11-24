@@ -50,6 +50,7 @@ const boardCases: Cases<BoardView> = {
     }
   },
   readEvents: (a) => a.board.readEvents(0),
+  auditEvents: (a) => a.board.auditEvents(0, 500),
   thread: async (a, b) => {
     expectNull(await a.board.thread(b.message));
     return a.board.thread(a.message);
@@ -144,6 +145,7 @@ async function digestOf(b: StoreTenant): Promise<string> {
     await b.board.listChannels({ limit: 500 }),
     await b.board.listConnections(at),
     await b.board.readEvents(0),
+    await b.board.auditEvents(0, 500),
     await b.board.thread(b.message),
     await b.org.listMembers(),
     await b.org.listBoards(),
