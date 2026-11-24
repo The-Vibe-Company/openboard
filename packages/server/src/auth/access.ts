@@ -66,7 +66,9 @@ export async function keepInsideCan(
   const { access } = operation;
   if (access === null || by[credentialKind] === "local") return;
   const can: Can = by[callerCan] ?? {};
-  for (const permission of permissionsFor(access.permission, input)) {
+  // A call naming `re` may need another permission there, as making a task of a thread needs `label` (upstream).
+  const named = (input as { re?: unknown }).re !== undefined ? (access.re ?? access.permission) : access.permission;
+  for (const permission of permissionsFor(named, input)) {
     await checkPermission(by, can, { ...access, permission }, input, board);
   }
 }

@@ -1327,7 +1327,7 @@
     "/tasks": {
       "post": {
         "operationId": "createTask",
-        "summary": "Start a thread as a ready task.",
+        "summary": "Start a thread as a ready task, or make a ready task of the thread `re` roots.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1335,7 +1335,6 @@
               "schema": {
                 "additionalProperties": false,
                 "type": "object",
-                "required": ["channel", "text"],
                 "properties": {
                   "channel": {
                     "maxLength": 2048,
@@ -1343,6 +1342,13 @@
                     "type": "string"
                   },
                   "text": { "maxLength": 10000, "type": "string" },
+                  "re": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "description": "The root of a thread to make a task of as it is, instead of a new thread.",
+                    "x-ref": "message",
+                    "type": "string"
+                  },
                   "labels": {
                     "additionalProperties": false,
                     "type": "object",
@@ -1555,7 +1561,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, reserved_label, invalid_profile",
+            "description": "invalid_request, reserved_label, message_deleted, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {
@@ -1567,7 +1573,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
-            "description": "not_found",
+            "description": "message_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "409": {
+            "description": "already_a_task",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {

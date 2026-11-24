@@ -22,6 +22,21 @@ test("ob tasks create sends a task root and prints its ID", async () => {
   expect(lines).toEqual(["2"]);
 });
 
+test("ob tasks create <id> makes a task of the thread that message roots and prints its ID", async () => {
+  const env = { BOARD_URL: "http://127.0.0.1:8787/api/local/main" };
+  const lines: string[] = [];
+  const bodies: unknown[] = [];
+  const fetch = async (request: Request) => {
+    expect(`${request.method} ${request.url}`).toBe(`POST ${env.BOARD_URL}/tasks`);
+    bodies.push(await request.json());
+    return Response.json({ task: { id: "2" } }, { status: 201 });
+  };
+  const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  expect(await runCli(["tasks", "create", "2"], env, { fetch, output })).toBe(0);
+  expect(bodies).toEqual([{ re: "2" }]);
+  expect(lines).toEqual(["2"]);
+});
+
 const ENV = { BOARD_URL: "http://127.0.0.1:8787/api/local/main" };
 
 function root(id: string, text: string, labels: Record<string, string>) {

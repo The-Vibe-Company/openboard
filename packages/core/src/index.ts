@@ -31,7 +31,7 @@ export * as channels from "./channels/create.ts";
 
 import type { TaskEvent } from "./tasks/events.ts";
 
-export { decideCreateTask } from "./tasks/create.ts";
+export { decideCreateTask, decideMakeTask, type MakeTaskState } from "./tasks/create.ts";
 export type { TaskCreated, TaskEvent } from "./tasks/events.ts";
 export { OPEN_TASK_STATES, taskCursor, taskStates } from "./tasks/filters.ts";
 export type { ChannelCreated };

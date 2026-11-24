@@ -59,13 +59,14 @@ function takesEntries(args: readonly string[], fields: ReturnType<typeof fieldsO
   return fields.get(args.at(-1) ?? "")?.schema.type === "object";
 }
 
-/** Positional arguments in order, with options recognized only before `--`. */
+/** Positional arguments in order, or as many as `alternative` names filling it, with options only before `--`. */
 function inputOf(
   ctx: CommandContext,
   args: readonly string[],
   fields: ReturnType<typeof fieldsOf>,
   flags: ReadonlyMap<string, string>,
   nullEntries: ReadonlyMap<string, string>,
+  alternative?: readonly string[],
 ) {
   const input: Record<string, unknown> = {};
   const positional: string[] = [];
@@ -93,6 +94,12 @@ function inputOf(
     else input[name] = optionValue(field, value);
     at += 1;
   }
+  if (alternative !== undefined && positional.length === alternative.length) {
+    alternative.forEach((name, at) => {
+      input[name] = positional[at];
+    });
+    return input;
+  }
   const needed = requiredPositionals(args, fields);
   const entries = takesEntries(args, fields);
   if (positional.length < needed || (!entries && positional.length > args.length)) {
@@ -108,14 +115,14 @@ function inputOf(
 
 /** `ob <command…> <args…> [--option value]`, one per operation with a `cli` block. */
 function derive(operation: Contracted & { cli: CliSpec }): Command {
-  const { command, args, options: renamed = {}, nullEntryOptions = {} } = operation.cli;
+  const { command, args, alternative, options: renamed = {}, nullEntryOptions = {} } = operation.cli;
   const nullEntries = new Map(Object.entries(nullEntryOptions));
   const fields = fieldsOf(operation);
   // A field's flag is its own name unless the contract gives it upstream's: `--idempotency-key` for `id`.
   const flags = new Map<string, string>();
   const options: string[] = [];
   for (const [name, { schema }] of fields) {
-    if (args.includes(name)) continue;
+    if (args.includes(name) || alternative?.includes(name)) continue;
     const flag = renamed[name] ?? name;
     if (schema.type === "boolean" && renamed[name] !== undefined) {
       flags.set(flag, name);
@@ -139,11 +146,14 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   const needed = requiredPositionals(args, fields);
   const shown = args.map((arg, at) => (at < needed ? `<${arg}>` : `[${arg}]`));
   if (takesEntries(args, fields)) shown[shown.length - 1] = needed === args.length ? "<k=v>..." : "[k=v]...";
+  // Two forms each take all their arguments: `(<channel> <text> | <re>)`.
+  const forms = [args, alternative ?? []].map((form) => form.map((arg) => `<${arg}>`).join(" "));
+  if (alternative !== undefined) shown.splice(0, shown.length, `(${forms.join(" | ")})`);
   return {
     words: command,
     usage: `ob ${[...command, ...shown, ...options].join(" ")}`,
     async run(ctx) {
-      const input = inputOf(ctx, args, fields, flags, nullEntries);
+      const input = inputOf(ctx, args, fields, flags, nullEntries, alternative);
       const answer = await (ctx.client[operation.name] as Invoke)(input);
       const format = formats[operation.name];
       ctx.output.out(ctx.json || !format ? JSON.stringify(answer, null, 2) : format(answer, input));

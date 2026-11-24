@@ -44,6 +44,8 @@ export interface CliSpec {
   readonly command: readonly string[];
   /** Input fields taken as positional arguments, in order. */
   readonly args: readonly string[];
+  /** Another positional form, `(<args…> | <alternative…>)`: exactly this many positionals fill these fields instead. */
+  readonly alternative?: readonly string[];
   /** Input fields taken as `--<flag>` under another name than their own, as upstream's CLI names them. */
   readonly options?: Readonly<Record<string, string>>;
   /** Repeatable `--flag key` options, mapping each flag to the record field where that key gets a null value. */
@@ -83,6 +85,8 @@ export type Operation<
   readonly access: {
     readonly permission: "read" | "post" | "react" | "label" | "sync" | "manage";
     readonly channel: "fromInput" | "fromInputOrAny" | "fromMessage" | "any";
+    /** The permission a call that names `re` needs in that message's channel instead of `permission`. */
+    readonly re?: "read" | "post" | "react" | "label" | "sync" | "manage";
   } | null;
   readonly effects: {
     readonly readOnly: boolean;
