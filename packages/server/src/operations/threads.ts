@@ -1,5 +1,5 @@
 import { BoardError, type listThreads, type readThread } from "@openboard/contract";
-import { formatId, parseId, textPattern } from "@openboard/core";
+import { channelFilter, formatId, parseId, textPattern } from "@openboard/core";
 import { canListMentionActors, withoutMentionDetails } from "../auth/access.ts";
 import type { Handler } from "./index.ts";
 
@@ -22,11 +22,12 @@ function parseOlder(text: string): { active: number; root: number } | null {
 }
 
 /**
- * The latest threads of a channel, or those before a page's `older`, oldest first, with the `older` that pages on; or
+ * The latest threads of a channel, or of `dev/` and every channel under it, or those before a page's `older`, oldest first, with the `older` that pages on; or
  * the first threads active after the cursor `after`, without one. Asking both ways is refused before either is read.
  */
 export const listThreadsHandler: Handler<typeof listThreads> = async ({ board, by }, input) => {
-  const { channel, label, limit, text } = input;
+  const { label, limit, text } = input;
+  const { channel, under } = channelFilter(input.channel);
   if (input.before !== undefined && input.after !== undefined) {
     throw new BoardError("invalid_request", "before pages back from a page's older, and after reads forward: pass one");
   }
@@ -53,6 +54,7 @@ export const listThreadsHandler: Handler<typeof listThreads> = async ({ board, b
     after,
     limit,
     text: text === undefined ? undefined : textPattern(text),
+    under,
   });
   if ((before?.active ?? after ?? 0) > head) {
     throw new BoardError("invalid_cursor", `${before ? "before" : "after"}: cursor is ahead of the board`);

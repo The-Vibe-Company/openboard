@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { call, makeApp } from "./support/app.ts";
+import { BOARD_URL, call, makeApp } from "./support/app.ts";
 
 let app: ReturnType<typeof makeApp>;
 afterEach(() => app.close());
@@ -185,4 +185,52 @@ describe("searching a channel's threads by text", () => {
       expect(await read.json()).toMatchObject({ error: { code: "invalid_request" } });
     },
   );
+});
+
+describe("listing the threads of every channel under a pattern", () => {
+  async function post(channel: string, text: string): Promise<unknown> {
+    return ((await (await call(app, "POST", "/messages", { channel, text })).json()) as Thread).message.id;
+  }
+
+  test("GET /threads?channel=dev/ lists dev's threads and those under it, not a sibling's", async () => {
+    app = makeApp();
+    const own = await post("dev", "in dev");
+    const nested = await post("dev/web", "in dev/web");
+    await post("devops", "a sibling");
+    const read = await call(app, "GET", "/threads?channel=dev/");
+    expect(read.status).toBe(200);
+    expect(((await read.json()) as { threads: Thread[] }).threads.map(({ message }) => message.id)).toEqual([
+      own,
+      nested,
+    ]);
+  });
+
+  test.each([["dev//"], ["/"], ["dev/*"]])(
+    "GET /threads answers 400 invalid_request for channel=%s",
+    async (channel) => {
+      app = makeApp();
+      const read = await call(app, "GET", `/threads?channel=${encodeURIComponent(channel)}`);
+      expect(read.status).toBe(400);
+      expect(await read.json()).toMatchObject({ error: { code: "invalid_request" } });
+    },
+  );
+
+  test("refuses 403 a subtree a caller cannot read throughout, and lists one it can", async () => {
+    app = makeApp();
+    await post("dev/secret", "hidden");
+    const connection = await call(app, "POST", "/x/connections", {
+      name: "reader",
+      direct: true,
+      can: { "dev/": ["read"], "dev/secret": ["post"] },
+    });
+    const { secret } = (await connection.json()) as { secret: string };
+    const read = (channel: string) =>
+      app.fetch(
+        new Request(`${BOARD_URL}/threads?channel=${channel}`, { headers: { authorization: `Bearer ${secret}` } }),
+      );
+    const refused = await read("dev/");
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
+    expect((await read("dev/web/")).status).toBe(200);
+  });
 });

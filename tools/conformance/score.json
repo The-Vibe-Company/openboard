@@ -24,6 +24,7 @@
     "paging/pages back through a channel's threads by their `older`, each thread once",
     "paging/refuses to page threads back and forward at once",
     "search/finds threads by text anywhere in a message of theirs, in any case, as it reads now",
+    "search/lists the threads of every channel under a pattern at once",
     "sync/keeps noSync on a post and a reply, so sync sends neither"
   ],
   "hosted": []

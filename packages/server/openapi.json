@@ -2394,15 +2394,16 @@
     "/threads": {
       "get": {
         "operationId": "threads",
-        "summary": "List a channel's latest threads by activity, oldest first, with reply counts and latest replies.",
+        "summary": "List a channel's, or a subtree's (`dev/`), latest threads by activity, oldest first, with reply counts and latest replies.",
         "parameters": [
           {
             "name": "channel",
             "in": "query",
             "required": true,
             "schema": {
-              "maxLength": 2048,
-              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+              "maxLength": 2049,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*/?$",
+              "description": "A channel by its whole name, or `dev/` for `dev` and every channel under it.",
               "type": "string"
             }
           },
@@ -2464,8 +2465,9 @@
           "required": ["channel"],
           "properties": {
             "channel": {
-              "maxLength": 2048,
-              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+              "maxLength": 2049,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*/?$",
+              "description": "A channel by its whole name, or `dev/` for `dev` and every channel under it.",
               "type": "string"
             },
             "label": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } },

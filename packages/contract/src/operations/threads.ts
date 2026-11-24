@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { ChannelPath } from "../entities/messages.ts";
+import { CHANNEL_PATH_MAX, ChannelPath } from "../entities/messages.ts";
 import { Thread, ThreadSummary } from "../entities/threads.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
@@ -37,16 +37,24 @@ export const readThread = defineOperation({
   upstream: true,
 });
 
+/** A channel by its whole name, or with a trailing slash (`dev/`) the channel and every channel under it (upstream "Filters"). */
+const ChannelFilter = Type.String({
+  maxLength: CHANNEL_PATH_MAX + 1,
+  pattern: String(ChannelPath.pattern).replace(/\$$/, "/?$"),
+  description: "A channel by its whole name, or `dev/` for `dev` and every channel under it.",
+});
+
 export const listThreads = defineOperation({
   name: "listThreads",
   operationId: "threads",
-  summary: "List a channel's latest threads by activity, oldest first, with reply counts and latest replies.",
+  summary:
+    "List a channel's, or a subtree's (`dev/`), latest threads by activity, oldest first, with reply counts and latest replies.",
   route: { method: "GET", path: "/threads" },
   scope: "board",
   input: {
     query: Type.Object(
       {
-        channel: ChannelPath,
+        channel: ChannelFilter,
         label: Type.Optional(Type.Array(Type.String({ pattern: "^[a-z0-9][a-z0-9_.-]*(=.*)?$" }))),
         text: Type.Optional(
           Type.String({
