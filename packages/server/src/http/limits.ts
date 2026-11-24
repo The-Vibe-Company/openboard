@@ -1,8 +1,7 @@
 import { BoardError } from "@openboard/contract";
 import type { PlatformView, RateLimits } from "@openboard/ports";
 
-const PRINCIPAL_STREAM_CAP = 20;
-const ORG_STREAM_CAP = 500;
+import type { ServerConfig } from "../deps.ts";
 
 export interface RequestLimits {
   readonly rateLimits: RateLimits;
@@ -32,7 +31,11 @@ function tokenBuckets(now: () => number, capacity: number, refillPerMs: number, 
   };
 }
 
-export function requestRateLimits(now: () => number, platform: PlatformView): RateLimits {
+export function requestRateLimits(
+  now: () => number,
+  platform: PlatformView,
+  { perPrincipal = 20, perOrganization = 500 }: NonNullable<ServerConfig["streamLimits"]> = {},
+): RateLimits {
   // Integer units: a write costs 1,000 and a failed authentication costs 3,000.
   const writes = tokenBuckets(now, 1_000_000, 200, 1_000);
   const failures = tokenBuckets(now, 60_000, 1, 3_000);
@@ -66,7 +69,7 @@ export function requestRateLimits(now: () => number, platform: PlatformView): Ra
     reserveStream(org, principal) {
       const orgCount = byOrg.get(org) ?? 0;
       const principalCount = byPrincipal.get(principal) ?? 0;
-      if (orgCount >= ORG_STREAM_CAP || principalCount >= PRINCIPAL_STREAM_CAP) return undefined;
+      if (orgCount >= perOrganization || principalCount >= perPrincipal) return undefined;
       byOrg.set(org, orgCount + 1);
       byPrincipal.set(principal, principalCount + 1);
       let released = false;

@@ -39,7 +39,7 @@ export function createApp(
     track,
     config,
     deps,
-    rateLimits: requestRateLimits(deps.now, platform),
+    rateLimits: requestRateLimits(deps.now, platform, config.streamLimits),
     routes: routeTable(
       operations.filter(({ scope, route }) => scope === "board" || (scope === "public" && !route.mount)),
     ),

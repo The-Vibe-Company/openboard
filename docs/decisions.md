@@ -996,3 +996,13 @@ Only product choices; each has a recommendation.
 - **Consequence.** Production promotes the digest already published for staging
   to the version tag. The owner configures the production environment protection,
   Railway project token and HTTPS origin before enabling deployment.
+
+### D62. SSE caps are server settings and the benchmark uses one principal
+
+The server defaults to 20 open SSE streams per principal and 500 per organization
+on each instance. The composition root can override either cap through
+`ServerConfig.streamLimits`. There is no environment variable before v1.
+
+The local benchmark sets its principal cap to 50 and uses one credential for
+all 50 tails, preserving the workload measured for ticket 108. The HTTP cap
+tests use the server defaults. ([Issue #367](https://github.com/The-Vibe-Company/openboard/issues/367))

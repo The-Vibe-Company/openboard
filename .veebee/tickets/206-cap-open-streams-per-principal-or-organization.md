@@ -5,14 +5,17 @@ milestone: M7-hosted-deploy
 package: server
 writes:
   - packages/ports/src/seams.ts
+  - packages/server/src/app.ts
+  - packages/server/src/deps.ts
   - packages/server/src/http/limits.ts
   - packages/server/src/http/pipeline.ts
   - packages/server/src/operations/events.ts
   - packages/server/src/live/sse.ts
   - packages/contract/src/operations/events.ts
-  - packages/server/openapi.json
   - skills/openboard/references/commands.md
+  - docs/decisions.md
   - docs/protocol.md
+  - tools/bench/src/drivers.ts
   - tools/bench/src/workloads/sse.ts
   - packages/server/test/stream-caps.test.ts
   - packages/server/test/ha/drill.test.ts
@@ -38,3 +41,4 @@ As the operator of a shared instance, a principal opening streams in a loop is r
 ## Notes
 - docs/auth.md "Rate limits" (SSE streams per principal / per organization: 20 / 500, per instance). Count open streams on the instance's limiter from 199, released when a stream ends for any reason (client gone, 280 s end of 102, drain of 183), so a crashed client cannot hold a slot.
 - Depends on 102 and 183, the last tickets to change `packages/server/src/live/sse.ts` before this one.
+- Issue #367 keeps the original 50-tail, single-principal benchmark. The bench sets its own cap via `ServerConfig`; production uses the default caps.

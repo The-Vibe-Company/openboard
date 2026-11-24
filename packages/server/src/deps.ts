@@ -15,6 +15,11 @@ export interface ServerConfig {
   readonly localOwnerTokenHash?: string;
   /** `OPENBOARD_SIGNUP`: whether a new sign-in identity makes a new person; absent, `closed` (docs/auth.md). */
   readonly signup?: "open" | "invite" | "closed";
+  /** Per-instance SSE caps. Each omitted cap uses the server default. */
+  readonly streamLimits?: {
+    readonly perPrincipal?: number;
+    readonly perOrganization?: number;
+  };
   /** The OAuth clients of the sign-in providers this server offers, by provider ID; absent, none is offered. */
   readonly signIn?: Readonly<Record<string, OAuthClient>>;
 }
