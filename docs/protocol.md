@@ -799,8 +799,11 @@ above (`{{subject.thread}}`, `{{delivery.id}}`, `{{board.url}}`). Supply a JSON
 object or array of at most 16 KB, measured as UTF-8 JSON. Placeholders in
 string values use dot-separated paths. A value that is exactly one placeholder
 keeps its JSON type. A missing value renders as `null` on its own and as an empty
-string inside text. Templates support no logic or filters. Unknown paths are 400
-at creation once path validation is enabled.
+string inside text. Templates support no logic or filters. When you create a webhook or replace
+its body, unknown paths and unclosed `{{` placeholders return 400
+`invalid_request`. An unknown-path error names the path and suggests the
+closest valid path. You can reference event-specific fields under
+`event.payload` and label keys under `subject.labels`.
 
 The signature covers the rendered JSON. If it exceeds 256 KB in UTF-8, the
 delivery is dead with `lastError: "too_large"`.
