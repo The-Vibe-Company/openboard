@@ -1,4 +1,6 @@
+import type { Message } from "@openboard/contract";
 import {
+  channelFilter,
   type EventFilters,
   type LabelsChanged,
   type MessageDeleted,
@@ -10,10 +12,24 @@ import {
 } from "@openboard/core";
 import type { BoardScope, BoardView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
-import { query, sql } from "../sql.ts";
+import { type Fragment, query, sql } from "../sql.ts";
 
-export const eventStatements = {
-  readEvents: sql`SELECT b.head, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal,
+const NEWEST_LOOKBACK = 2000;
+
+const feedTypes: Fragment = {
+  fragment: () => "('message.posted', 'message.edited', 'message.deleted', 'labels.changed')",
+};
+
+function eventPage(newest: boolean) {
+  const projectedView: Fragment = { fragment: () => (newest ? ", m.view AS current" : ", NULL AS current") };
+  const joins: Fragment = {
+    fragment: () =>
+      newest ? "LEFT JOIN messages m ON m.org_id = e.org_id AND m.board_id = e.board_id AND m.id = e.message" : "",
+  };
+  const direction: Fragment = { fragment: () => (newest ? "DESC" : "ASC") };
+  const newestOnly: Fragment = { fragment: () => (newest ? "1" : "0") };
+  const start: Fragment = { fragment: () => (newest ? `b.head - ${NEWEST_LOOKBACK}` : "b.head") };
+  return sql`SELECT b.head, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal,
     e.visibility, e.payload,
     CASE WHEN ${"history"} = 1 AND e.visibility = 0 AND e.type IN ('message.edited', 'message.deleted', 'labels.changed') THEN (
       SELECT p.payload FROM events p
@@ -29,11 +45,22 @@ export const eventStatements = {
         AND p.message = e.thread AND p.id < e.id AND p.visibility = 0
         AND p.type IN ('message.posted', 'message.edited', 'message.deleted', 'labels.changed')
       ORDER BY p.id DESC LIMIT 1
-    ) END AS root
+    ) END AS root${projectedView}
     FROM boards b LEFT JOIN events e ON e.org_id = b.org_id AND e.board_id = b.id
-      AND e.id > COALESCE(${"after"}, b.head) AND e.id <= b.head
+      AND e.id > COALESCE(${"after"}, ${start}) AND e.id <= b.head
+      AND (${newestOnly} = 0 OR (
+        e.visibility = 0 AND e.type IN ${feedTypes}
+        AND (CAST(${"channel"} AS TEXT) IS NULL OR e.channel = ${"channel"} OR e.channel LIKE ${"under"} ESCAPE '\\')
+        AND (CAST(${"thread"} AS BIGINT) IS NULL OR e.thread = ${"thread"})
+      ))
+    ${joins}
     WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"}
-    ORDER BY e.id ASC LIMIT 200`,
+    ORDER BY e.id ${direction} LIMIT ${"limit"}`;
+}
+
+export const eventStatements = {
+  readEvents: eventPage(false),
+  newestEvents: eventPage(true),
 };
 
 type FeedEvent = MessagePosted | MessageEdited | MessageDeleted | LabelsChanged;
@@ -68,7 +95,7 @@ function snapshot(payload: unknown): Parameters<typeof matchesEventMessage>[0] |
   return state.view ?? state;
 }
 
-function filteredEvent(row: Row, filters: EventFilters): FeedEvent[] {
+function filteredEvent(row: Row, filters: EventFilters): (FeedEvent & { current?: Message })[] {
   if (
     Number(row.visibility) !== 0 ||
     (row.type !== "message.posted" &&
@@ -82,27 +109,51 @@ function filteredEvent(row: Row, filters: EventFilters): FeedEvent[] {
   const current = event.type === "message.posted" ? messages.messageView(event) : event.payload.view;
   const root = snapshot(row.root);
   const previous = snapshot(row.previous);
-  return matchesEventMessage(current, root, filters) ||
-    (previous !== undefined && matchesEventMessage(previous, root, filters))
-    ? [event]
-    : [];
+  if (
+    !matchesEventMessage(current, root, filters) &&
+    !(previous !== undefined && matchesEventMessage(previous, root, filters))
+  )
+    return [];
+  if (typeof row.current !== "string") return [event];
+  return [{ ...event, current: JSON.parse(row.current) as Message }];
 }
 
 export function eventReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "readEvents"> {
   return {
     async readEvents(after, filters = {}) {
-      const rows = await query(db, dialect, eventStatements.readEvents, {
-        orgId: scope.orgId,
-        boardId: scope.boardId,
-        after: after ?? null,
-        history: filters.text !== undefined || filters.mentions !== undefined || filters.labels?.length ? 1 : 0,
-        rootLabels: filters.labels?.length ? 1 : 0,
-      });
+      const { last } = filters;
+      const selected = filters.channel === undefined ? undefined : channelFilter(filters.channel);
+      const history = filters.text !== undefined || filters.mentions !== undefined || Boolean(filters.labels?.length);
+      // Like upstream's local feed, bound the lookback when filtering historical payloads.
+      const limit =
+        last === undefined
+          ? 200
+          : history || filters.from !== undefined || filters.authors !== undefined
+            ? NEWEST_LOOKBACK
+            : last;
+      const rows = await query(
+        db,
+        dialect,
+        last === undefined ? eventStatements.readEvents : eventStatements.newestEvents,
+        {
+          orgId: scope.orgId,
+          boardId: scope.boardId,
+          after: last === undefined ? (after ?? null) : null,
+          channel: selected?.channel ?? null,
+          under: selected?.under ?? null,
+          thread: filters.thread ?? null,
+          limit,
+          history: history ? 1 : 0,
+          rootLabels: filters.labels?.length ? 1 : 0,
+        },
+      );
       const first = rows[0];
       if (!first) throw new Error("the scoped board is missing");
       const head = Number(first.head);
       const cursor = Number(rows.at(-1)?.id ?? head);
-      return { head, cursor, events: rows.flatMap((row) => filteredEvent(row, filters)) };
+      const events = rows.flatMap((row) => filteredEvent(row, filters));
+      if (last === undefined) return { head, cursor, events };
+      return { head, cursor: head, events: events.slice(0, last).reverse() };
     },
   };
 }

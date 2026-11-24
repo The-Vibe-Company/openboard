@@ -332,6 +332,11 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 
 ## Events
 
+`GET /events?channel=dev&last=2` returns the channel's newest events, oldest first,
+with the current message views and the board head as `cursor`. Pass that cursor as
+`after` to continue from the same point. `last` accepts integers from 1 through
+100. Combining it with `after` or `wait` returns 400 `invalid_request`.
+
 The feed carries upstream's event types with upstream payloads
 (`03-http.md`, "Event types"): `message.posted|edited|deleted`,
 `reaction.added|removed`, `labels.changed`, `channel.created`, `actor.seen`,

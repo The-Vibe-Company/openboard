@@ -16,6 +16,7 @@
     "core/posts once for a client ID, however many times it is sent",
     "core/puts a reply in its root's thread",
     "core/raises the version with each edit, reaction, and label",
+    "core/reads a channel's newest events, oldest first, and goes on from their cursor",
     "core/reads a thread's replies after one of its messages, and as many of its newest as it's asked for",
     "core/reads events after a cursor, each with a cursor of its own",
     "core/reads one channel's messages after a cursor of its own, oldest first, and on from where it stopped",
