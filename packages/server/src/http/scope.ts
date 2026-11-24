@@ -56,10 +56,26 @@ export function boardPath(pathname: string, mode: "local" | "hosted"): BoardPath
     return { org: "local", board: "main", mount: "/api", rest: relative };
   }
 
+  return explicitBoardPath("/api", relative, reserved);
+}
+
+/** MCP shares explicit board slug rules. Its local alias is the endpoint root only. */
+export function mcpPath(pathname: string, mode: "local" | "hosted"): BoardPath | null {
+  if (pathname !== "/mcp" && !pathname.startsWith("/mcp/")) return null;
+  const relative = pathname.slice("/mcp".length).replace(/\/+$/, "") || "/";
+  if (relative === "/" && mode === "local") {
+    return { org: "local", board: "main", mount: "/mcp", rest: relative };
+  }
+  const [, first = ""] = relative.split("/", 2);
+  const path = explicitBoardPath("/mcp", relative, BOARD_ROUTE_SEGMENTS.includes(first));
+  return path?.rest === "/" ? path : null;
+}
+
+function explicitBoardPath(prefix: "/api" | "/mcp", relative: string, reserved: boolean): BoardPath | null {
   const match = /^\/([^/]+)\/([^/]+)(\/.*)?$/.exec(relative);
   const [, org = "", board = "", rest = "/"] = match ?? [];
   if (!match || reserved || !SLUG.test(org) || !SLUG.test(board)) return null;
-  return { org, board, mount: `/api/${org}/${board}`, rest };
+  return { org, board, mount: `${prefix}/${org}/${board}`, rest };
 }
 
 /**

@@ -605,13 +605,30 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 
 ### MCP
 
-`POST /mcp/<org>/<board>`: Streamable HTTP, stateless JSON responses
-(`GET` answers 405). Auth through the same chain (bearer, `x-board-profile`,
-`x-board-can`). Tools: `whoami`, `list_channels`, `read_channel`,
-`list_threads`, `read_thread`, `post`, `reply`, `edit`, `react`, `label`,
-`upload_text`, `task_create`, `task_list`, `task_claim_next` (`wait` ≤ 25 s),
-`task_claim`, `task_renew`, `task_complete`, `task_fail`, `task_release`,
-`task_block`, `wait_events` (≤ 25 s). OAuth for MCP clients is deferred (Q5).
+`POST /mcp/<org>/<board>` (local alias `POST /mcp`) accepts one JSON-RPC
+message per request. `initialize` advertises protocol version `2025-06-18`
+and the tools capability. `ping` returns an empty result. Requests receive
+JSON and notifications receive an empty HTTP 202. An unsupported
+`MCP-Protocol-Version` header returns HTTP 400 `invalid_request`. The server issues no MCP session ID. The endpoint uses the
+board API's authentication chain, including `x-board-profile` and
+`x-board-can`. When sent, `Origin` must match the server's public origin.
+OAuth for MCP clients is deferred (Q5).
+
+`tools/list` exposes every contract operation with an `mcp` block. The
+operation's path, query and body fields form one input schema, and its
+effects supply the read-only, idempotent and destructive annotations.
+
+- Board and channels: `whoami`, `list_actors`, `list_channels`, `create_channel`.
+- Threads and messages: `list_threads`, `read_thread`, `list_messages`,
+  `read_post`, `post_message`, `edit_message`, `delete_message`,
+  `react_to_message`, `label_message`. A reply uses `post_message` with `re`.
+- Tasks: `task_create`, `list_tasks`, `task_claim`, `task_renew`,
+  `task_complete`, `task_fail`, `task_release`, `task_cancel`,
+  `task_reopen`, `task_needs`.
+- Events and watchers: `read_events`, `register_watchers`, `list_watchers`,
+  `pull_watcher_matches`, `ack_watcher_match`.
+- Grants and schemas: `list_grants`, `explain_grants`, `create_grant`,
+  `create_grants`, `update_grant`, `revoke_grant`, `list_schemas`, `read_schema`.
 
 ## Route inventory: accounts and organizations (`/api/x/…`, all X)
 

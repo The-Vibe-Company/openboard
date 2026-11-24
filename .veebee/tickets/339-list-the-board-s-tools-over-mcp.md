@@ -6,15 +6,17 @@ package: server
 writes:
   - packages/server/src/mcp/facade.ts
   - packages/server/src/mcp/tools.ts
-  - packages/server/src/http/router.ts
+  - packages/server/src/http/pipeline.ts
+  - packages/server/src/http/input.ts
   - packages/server/src/http/scope.ts
   - packages/server/test/mcp/tools.test.ts
   - docs/protocol.md
+  - skills/openboard/SKILL.md
 conformance: []
 modes: [local, hosted]
 depends_on: [209, 282, 334]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-339
 issue: 524
 ---
 
