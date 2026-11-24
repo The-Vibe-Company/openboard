@@ -66,8 +66,8 @@ function runner(
       requestId: () => instanceId,
       randomBytes: (size) => new Uint8Array(size),
       log: {
-        info(message) {
-          if (message === "job completed") completed.push(instanceId);
+        info(message, fields) {
+          if (message === "job completed" && fields.kind === PURGE_ORG_JOB) completed.push(instanceId);
         },
         error(message) {
           throw new Error(message);
@@ -156,6 +156,9 @@ for (const legacy of [false, true]) {
     const snapshot = () => store.tenantRows(deletedKeys, siblings);
     const otherDigest = async () => digest((await store.tenantRows(other)).rows);
     try {
+      // The seeded uploads are attached. Let their checks finish before taking the purge snapshots.
+      await clock.armed;
+      await clock.advance(NOW + day);
       const before = await snapshot();
       expect(before.missing).toEqual([]);
       expectSeeded(before.rows, legacy);
@@ -165,7 +168,6 @@ for (const legacy of [false, true]) {
       };
       expect(await new Response(await store.blobs.get(deletedBlob)).text()).toBe(deleted.marker);
       const surviving = await otherDigest();
-      await clock.armed;
       await clock.advance(NOW + 29 * day);
       expect(completed).toEqual([]);
       expect(digest((await snapshot()).rows)).toBe(digest(before.rows));

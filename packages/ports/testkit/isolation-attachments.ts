@@ -1,4 +1,5 @@
 import { expect } from "bun:test";
+import { BLOB_GC_JOB, type Store } from "@openboard/ports";
 import { at, type StoreTenant } from "./isolation-seed.ts";
 
 const attachment = {
@@ -17,6 +18,14 @@ export const attachmentBoardCases = {
     await putAttachment(b);
     expect(await b.board.attachments([attachment.id])).toHaveLength(1);
     expect(await a.board.attachments([attachment.id])).toEqual([]);
+  },
+  collectAttachment: async (a: StoreTenant, b: StoreTenant, store: Store) => {
+    await putAttachment(b);
+    const lease = { instanceId: "isolation", claimedAt: at + 86_400_000 };
+    const { job } = await store.jobs.claim([BLOB_GC_JOB], lease);
+    if (!job) throw new Error("missing GC job");
+    expect(await a.board.collectAttachment(job.id, lease)).toBe(false);
+    expect(await b.board.attachments([attachment.id])).toHaveLength(1);
   },
   uploadAttachment: async (a: StoreTenant, b: StoreTenant) => {
     await putAttachment(a);

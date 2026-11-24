@@ -7,6 +7,7 @@ export interface BlobKey {
 
 export interface Blobs {
   put(key: BlobKey, bytes: Uint8Array, at: number): Promise<void>;
+  delete(key: BlobKey): Promise<void>;
   get(key: BlobKey): Promise<ReadableStream<Uint8Array> | null>;
 }
 

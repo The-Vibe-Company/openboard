@@ -3,6 +3,7 @@ import type { BoardKeys } from "./store.ts";
 export const JOB_LEASE_MS = 30_000;
 
 export const USAGE_ROLLUP_JOB = "usage-rollup";
+export const BLOB_GC_JOB = "blob-gc";
 export const TASK_EXPIRY_JOB = "task-expiry";
 export const BACKFILL_BOARD_ORG_JOB = "backfill-board-org";
 export const PURGE_ORG_JOB = "purge-org";

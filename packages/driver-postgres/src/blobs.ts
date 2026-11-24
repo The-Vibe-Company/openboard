@@ -6,6 +6,9 @@ export function postgresBlobs(db: Db): Blobs {
     async put(key, data, at) {
       await query(db, postgresText, attachmentStatements.insertBlob, { ...key, size: data.byteLength, data, at });
     },
+    async delete(key) {
+      await query(db, postgresText, attachmentStatements.deleteBlob, { ...key });
+    },
     async get(key) {
       const [row] = await query(db, postgresText, attachmentStatements.getBlob, { ...key });
       if (!row) return null;

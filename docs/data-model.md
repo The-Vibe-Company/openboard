@@ -767,10 +767,17 @@ pattern (`docs/04-reference/05-conformance.md`).
 - **Keys:** `org/<org_id>/sha256/<hash>`. Content-addressed within an
   organization only, never across organizations, so one tenant cannot infer
   another's files by uploading the same bytes.
-- **Upload:** read the body (≤ 4 MB) while hashing, write the blob (an
-  `INSERT … ON CONFLICT DO NOTHING` on Postgres, a temp file then rename
-  locally), then record the attachment in a board write. An unattached blob is
-  removed by the GC job after 24 h.
+- **Upload:** read the body (≤ 4 MB) while hashing. In the board write,
+  record the attachment and enqueue its GC job for 24 hours later. Store the
+  blob by hash (`INSERT … ON CONFLICT DO NOTHING` on Postgres, a temp file
+  then rename locally).
+- **Collection:** the job removes the upload row if it has never been
+  attached. It removes the blob and releases the stored-byte charge once
+  no attachment in the organization references the hash. SQLite commits a
+  cleanup job before unlinking a file, and rechecks references before unlinking.
+  The collection migration queues a batched backfill for boards with existing
+  unattached uploads. A trigger schedules uploads from older Postgres replicas
+  during a rolling deploy.
 - **Download:** streamed through the app (never a redirect: the API must not
   redirect, D8), with `content-security-policy: sandbox`, `nosniff`,
   `cache-control: private, max-age=31536000, immutable`, and `inline` only for
