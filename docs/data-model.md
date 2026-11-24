@@ -371,6 +371,8 @@ CREATE TABLE events (
 );
 CREATE INDEX events_thread  ON events (board_id, thread, id)  WHERE thread IS NOT NULL;
 CREATE INDEX events_channel ON events (board_id, channel, id) WHERE channel IS NOT NULL;
+-- When each connection was last used (D51): only writes by connections and their agents pay for it.
+CREATE INDEX events_connection ON events (board_id, principal, id) WHERE principal LIKE 'ob:conn:%';
 ```
 
 - Append only: no `UPDATE` or `DELETE` on `events` except the organization
@@ -518,6 +520,7 @@ CREATE TABLE connection_agents (
 );
 -- A profile is held while its agent is unrevoked and its token unexpired: checked under the board lock (D50).
 CREATE UNIQUE INDEX agents_claim_key    ON connection_agents (connection, claim_key) WHERE claim_key IS NOT NULL;
+CREATE INDEX connection_agents_board    ON connection_agents (board_id, connection, created_at);
 
 CREATE TABLE webhooks (
   id TEXT PRIMARY KEY, org_id BIGINT NOT NULL, board_id BIGINT NOT NULL,

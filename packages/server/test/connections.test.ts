@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
+import type { ClaimResult, CreatedConnection, ManagedConnection } from "@openboard/contract";
 import { hashToken } from "../src/auth/secrets.ts";
-import { BOARD_URL, call, LOCAL_OWNER, makeApp } from "./support/app.ts";
+import { BOARD_URL, call, LOCAL_OWNER, makeApp, NOW, OWNER, PUBLIC_URL } from "./support/app.ts";
+import { browserSession, makeBrowserApp } from "./support/browser-session.ts";
 
 const SECRET = /^obc_[a-z2-7]{16}_[A-Za-z0-9_-]{43}$/;
 
@@ -22,7 +24,7 @@ test("POST /x/connections creates a connection with its grant and answers its se
         can: { "*": ["read", "post", "react", "label", "sync", "manage"] },
         direct: true,
         profiles: ["*"],
-        secretHint: `obc_…${body.secret.slice(-4)}`,
+        secretHint: `…${body.secret.slice(-4)}`,
         createdBy: LOCAL_OWNER,
         createdAt: "2023-11-14T22:13:20.000Z",
       },
@@ -90,6 +92,94 @@ test("POST /x/connections needs a credential", async () => {
     const response = await app.fetch(request);
     expect(response.status).toBe(401);
     expect(await response.json()).toMatchObject({ error: { code: "unauthorized" } });
+  } finally {
+    await app.close();
+  }
+});
+
+function bearer(app: ReturnType<typeof makeApp>, token: string, path: string, method = "GET", body?: object) {
+  const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
+  const init = { method, headers, ...(body ? { body: JSON.stringify(body) } : {}) };
+  return app.fetch(new Request(BOARD_URL + path, init));
+}
+
+test("GET /x/connections lists each connection with its live agents, last use and hint, never a secret", async () => {
+  const clock = { now: NOW };
+  const app = makeApp({ now: () => clock.now });
+  try {
+    const create = async (name: string, direct: boolean) =>
+      (await (
+        await call(app, "POST", "/x/connections", { name, can: { "*": "all" }, direct })
+      ).json()) as CreatedConnection;
+    const laptop = await create("laptop", true);
+    const fixers = await create("fixers", false);
+    const gone = await create("gone", true);
+    expect((await call(app, "POST", `/x/connections/${gone.connection.id}/revoke`)).status).toBe(200);
+    clock.now = NOW + 60_000;
+    const claimed = await bearer(app, fixers.secret, "/x/connections/claim", "POST", { profile: "Fixer-2" });
+    const { agent, token } = (await claimed.json()) as ClaimResult;
+    clock.now = NOW + 120_000;
+
+    const response = await call(app, "GET", "/x/connections");
+    expect(response.status).toBe(200);
+    const text = await response.text();
+    const lastUsedAt = "2023-11-14T22:14:20.000Z";
+    expect(JSON.parse(text)).toEqual({
+      connections: [
+        { ...fixers.connection, lastUsedAt, agents: [{ ...agent, profile: "Fixer-2", createdAt: lastUsedAt }] },
+        { ...laptop.connection, lastUsedAt: null, agents: [] },
+      ],
+    });
+    expect(fixers.connection.secretHint).toBe(`…${fixers.secret.slice(-4)}`);
+    for (const secret of [laptop.secret, fixers.secret, token, "obc_", "obt_"]) expect(text).not.toContain(secret);
+
+    const one = await call(app, "GET", `/x/connections/${fixers.connection.id}`);
+    expect(await one.json()).toEqual({
+      connection: (JSON.parse(text) as { connections: ManagedConnection[] }).connections[0],
+    });
+    for (const id of [gone.connection.id, "cn_zzzzzzzzzzzzzzzz"]) {
+      const missing = await call(app, "GET", `/x/connections/${id}`);
+      expect(missing.status).toBe(404);
+      expect(await missing.json()).toMatchObject({ error: { code: "not_found" } });
+    }
+  } finally {
+    await app.close();
+  }
+});
+
+test("GET /x/connections is for the people who manage the board, not its connections or agents", async () => {
+  const app = makeApp();
+  try {
+    const created = await call(app, "POST", "/x/connections", { name: "laptop", can: { "*": "all" }, direct: true });
+    const { secret, connection } = (await created.json()) as CreatedConnection;
+    for (const path of ["/x/connections", `/x/connections/${connection.id}`]) {
+      const refused = await bearer(app, secret, path);
+      expect(refused.status).toBe(403);
+      expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
+      expect((await app.fetch(new Request(BOARD_URL + path))).status).toBe(401);
+    }
+  } finally {
+    await app.close();
+  }
+});
+
+test("GET /x/connections answers an organization owner and hides the board from outsiders", async () => {
+  const app = makeBrowserApp(OWNER.hash);
+  try {
+    const ada = await browserSession(app.fetch, "ada");
+    const org = new Request(`${PUBLIC_URL}/api/x/orgs`, {
+      method: "POST",
+      headers: ada.headers,
+      body: JSON.stringify({ name: "Acme", slug: "acme" }),
+    });
+    expect((await app.fetch(org)).status).toBe(201);
+    const list = (headers: Record<string, string>) =>
+      app.fetch(new Request(`${PUBLIC_URL}/api/acme/main/x/connections`, { headers }));
+    const answered = await list({ cookie: ada.headers.cookie ?? "" });
+    expect(answered.status).toBe(200);
+    expect(await answered.json()).toEqual({ connections: [] });
+    const outsider = await browserSession(app.fetch, "lin");
+    expect((await list({ cookie: outsider.headers.cookie ?? "" })).status).toBe(404);
   } finally {
     await app.close();
   }

@@ -38,7 +38,7 @@ export const Connection = Type.Object({
   can: Can,
   direct: Type.Boolean(),
   profiles: Type.Array(Type.String()),
-  /** The first and last characters of the secret, for people to tell secrets apart. */
+  /** `…` and the last four characters of the secret, for people to tell secrets apart; never its `obc_` prefix. */
   secretHint: Type.String(),
   createdBy: Type.String(),
   createdAt: Type.String(),
@@ -72,3 +72,22 @@ export const ClaimResult = Type.Object({
   env: Type.Object({ BOARD_URL: Type.String(), BOARD_TOKEN: Type.String(), BOARD_PROFILE: Type.String() }),
 });
 export type ClaimResult = Static<typeof ClaimResult>;
+
+/** A live agent of a connection as its managers see it: no token, only who it writes as and until when. */
+export const ConnectionAgent = Type.Object({
+  ...ClaimedAgent.properties,
+  /** The pinned profile as the claim spelled it. */
+  profile: Type.String(),
+  createdAt: Type.String(),
+});
+export type ConnectionAgent = Static<typeof ConnectionAgent>;
+
+/** A connection as the people who manage it see it: its live agents and when it was last used, never a secret. */
+export const ManagedConnection = Type.Object({
+  ...Connection.properties,
+  /** When the connection or one of its agents last wrote on the board, a claim included; null when never. */
+  lastUsedAt: Type.Union([Type.String(), Type.Null()]),
+  /** Its unrevoked agents whose hard expiry has not passed, oldest first. */
+  agents: Type.Array(ConnectionAgent),
+});
+export type ManagedConnection = Static<typeof ManagedConnection>;

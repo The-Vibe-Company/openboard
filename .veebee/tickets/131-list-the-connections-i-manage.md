@@ -10,11 +10,26 @@ writes:
   - packages/ports/testkit/store/connections.test-suite.ts
   - packages/server/test/connections.test.ts
   - packages/ports/src/store.ts
+  - packages/contract/src/entities/connections.ts
+  - packages/contract/src/operations/index.ts
+  - packages/contract/src/index.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/openapi.json
+  - packages/server/test/auth/rotate.test.ts
+  - packages/driver-sql/migrations/0009-connection-use.sql
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sqlite/test/open.test.ts
+  - packages/cli/src/output.ts
+  - packages/cli/test/connections.test.ts
+  - docs/auth.md
+  - docs/protocol.md
+  - docs/data-model.md
+  - docs/decisions.md
 conformance: []
 modes: [local]
 depends_on: [130]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-t131
 issue: 132
 ---
 

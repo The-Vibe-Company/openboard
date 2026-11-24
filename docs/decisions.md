@@ -698,6 +698,23 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   Ticket 126 lets a claim with the holder's `idempotencyKey` through; ticket
   129's revoke frees the profile by setting `revoked_at`.
 
+### D51. A connection's last use is its latest event; its hint never shows a prefix
+
+- **Context.** Ticket 131 lists connections with their last use, and no
+  `obc_` or `obt_` value. `last_used_at` columns exist but nothing sets them,
+  and stamping every authenticated request would add a write to every read.
+  The hint was the secret's first and last four characters, so it began with
+  `obc_`.
+- **Decision.** Last use is the time of the latest event whose principal is
+  the connection: a write by its secret or one of its agents, or a claim or
+  refresh. Reads do not count. A partial index on `events`, limited to
+  connection principals, finds it (SQLite names it with `INDEXED BY`, as it
+  plans without statistics). The hint is `…` and the secret's last four
+  characters; a rotation keeps the secret's ID, so its first characters never
+  told two secrets apart.
+- **Consequence.** A connection whose agents only read shows its last claim
+  or refresh. Hints stored before this change keep their old form.
+
 ## Hard blockers found
 
 None. Limits worth knowing:

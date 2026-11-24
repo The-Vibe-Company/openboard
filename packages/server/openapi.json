@@ -916,6 +916,128 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           }
         }
+      },
+      "get": {
+        "operationId": "listConnections",
+        "summary": "List the board's active connections the caller manages, by name, with their agents and last use.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["connections"],
+                  "properties": {
+                    "connections": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "principal",
+                          "name",
+                          "grant",
+                          "can",
+                          "direct",
+                          "profiles",
+                          "secretHint",
+                          "createdBy",
+                          "createdAt",
+                          "lastUsedAt",
+                          "agents"
+                        ],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "principal": { "type": "string" },
+                          "name": { "pattern": "^[a-z0-9][a-z0-9-]{0,62}$", "type": "string" },
+                          "grant": { "type": "string" },
+                          "can": {
+                            "type": "object",
+                            "patternProperties": {
+                              "^(.*)$": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    { "const": "read", "type": "string" },
+                                    { "const": "post", "type": "string" },
+                                    { "const": "react", "type": "string" },
+                                    { "const": "label", "type": "string" },
+                                    { "const": "sync", "type": "string" },
+                                    { "const": "manage", "type": "string" }
+                                  ]
+                                }
+                              }
+                            }
+                          },
+                          "direct": { "type": "boolean" },
+                          "profiles": { "type": "array", "items": { "type": "string" } },
+                          "secretHint": { "type": "string" },
+                          "createdBy": { "type": "string" },
+                          "createdAt": { "type": "string" },
+                          "lastUsedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "agents": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "actor", "can", "expiresAt", "hardExpiresAt", "profile", "createdAt"],
+                              "properties": {
+                                "id": { "type": "string" },
+                                "actor": { "type": "string" },
+                                "can": {
+                                  "type": "object",
+                                  "patternProperties": {
+                                    "^(.*)$": {
+                                      "type": "array",
+                                      "items": {
+                                        "anyOf": [
+                                          { "const": "read", "type": "string" },
+                                          { "const": "post", "type": "string" },
+                                          { "const": "react", "type": "string" },
+                                          { "const": "label", "type": "string" },
+                                          { "const": "sync", "type": "string" },
+                                          { "const": "manage", "type": "string" }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                },
+                                "expiresAt": { "type": "string" },
+                                "hardExpiresAt": { "type": "string" },
+                                "profile": { "type": "string" },
+                                "createdAt": { "type": "string" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
       }
     },
     "/api/x/orgs/{org}/invitations": {
@@ -1179,6 +1301,135 @@
           },
           "409": {
             "description": "revision_conflict",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/x/connections/{id}": {
+      "get": {
+        "operationId": "getConnection",
+        "summary": "Read one active connection of the board with its agents and last use.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "connection", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["connection"],
+                  "properties": {
+                    "connection": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "principal",
+                        "name",
+                        "grant",
+                        "can",
+                        "direct",
+                        "profiles",
+                        "secretHint",
+                        "createdBy",
+                        "createdAt",
+                        "lastUsedAt",
+                        "agents"
+                      ],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "principal": { "type": "string" },
+                        "name": { "pattern": "^[a-z0-9][a-z0-9-]{0,62}$", "type": "string" },
+                        "grant": { "type": "string" },
+                        "can": {
+                          "type": "object",
+                          "patternProperties": {
+                            "^(.*)$": {
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  { "const": "read", "type": "string" },
+                                  { "const": "post", "type": "string" },
+                                  { "const": "react", "type": "string" },
+                                  { "const": "label", "type": "string" },
+                                  { "const": "sync", "type": "string" },
+                                  { "const": "manage", "type": "string" }
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        "direct": { "type": "boolean" },
+                        "profiles": { "type": "array", "items": { "type": "string" } },
+                        "secretHint": { "type": "string" },
+                        "createdBy": { "type": "string" },
+                        "createdAt": { "type": "string" },
+                        "lastUsedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "agents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "actor", "can", "expiresAt", "hardExpiresAt", "profile", "createdAt"],
+                            "properties": {
+                              "id": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "can": {
+                                "type": "object",
+                                "patternProperties": {
+                                  "^(.*)$": {
+                                    "type": "array",
+                                    "items": {
+                                      "anyOf": [
+                                        { "const": "read", "type": "string" },
+                                        { "const": "post", "type": "string" },
+                                        { "const": "react", "type": "string" },
+                                        { "const": "label", "type": "string" },
+                                        { "const": "sync", "type": "string" },
+                                        { "const": "manage", "type": "string" }
+                                      ]
+                                    }
+                                  }
+                                }
+                              },
+                              "expiresAt": { "type": "string" },
+                              "hardExpiresAt": { "type": "string" },
+                              "profile": { "type": "string" },
+                              "createdAt": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "500": {

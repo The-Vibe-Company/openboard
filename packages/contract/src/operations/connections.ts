@@ -1,5 +1,12 @@
 import { Type } from "@sinclair/typebox";
-import { CanInput, ClaimResult, Connection, ConnectionName, CreatedConnection } from "../entities/connections.ts";
+import {
+  CanInput,
+  ClaimResult,
+  Connection,
+  ConnectionName,
+  CreatedConnection,
+  ManagedConnection,
+} from "../entities/connections.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
 /** A profile pattern: a profile name, optionally ending in `*` (`fixer-*`), or `*` for any. */
@@ -148,5 +155,37 @@ export const rotateConnection = defineOperation({
   cli: false,
   mcp: false,
   why: "The new secret is shown once: `ob connections rotate` writes it to a 0600 file and never prints it, and no agent tool should carry it.",
+  upstream: false,
+});
+
+export const listConnections = defineOperation({
+  name: "listConnections",
+  summary: "List the board's active connections the caller manages, by name, with their agents and last use.",
+  route: { method: "GET", path: "/x/connections" },
+  scope: "board",
+  input: {},
+  output: Type.Object({ connections: Type.Array(ManagedConnection) }),
+  errors: ["unauthorized", "forbidden"],
+  access: { permission: "manage", channel: "any" },
+  effects: { readOnly: true, idempotent: true, emits: [] },
+  cli: { command: ["connections"], args: [] },
+  mcp: false,
+  why: "Listing connections is a board administration command, like revoking one.",
+  upstream: false,
+});
+
+export const getConnection = defineOperation({
+  name: "getConnection",
+  summary: "Read one active connection of the board with its agents and last use.",
+  route: { method: "GET", path: "/x/connections/:id" },
+  scope: "board",
+  input: { params: Type.Object({ id: Ref("connection") }) },
+  output: Type.Object({ connection: ManagedConnection }),
+  errors: ["unauthorized", "forbidden", "not_found"],
+  access: { permission: "manage", channel: "any" },
+  effects: { readOnly: true, idempotent: true, emits: [] },
+  cli: { command: ["connections", "show"], args: ["id"] },
+  mcp: false,
+  why: "Reading a connection is a board administration command, like revoking one.",
   upstream: false,
 });

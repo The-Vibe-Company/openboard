@@ -1,4 +1,4 @@
-import type { Can, Connection } from "@openboard/contract";
+import type { Can, Connection, ConnectionAgent, ManagedConnection } from "@openboard/contract";
 import {
   type AgentRevoked,
   type ConnectionCreated,
@@ -11,11 +11,20 @@ import {
 } from "@openboard/core";
 import type { BoardKeys, BoardScope, BoardView, ConnectionRecord } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
-import { query, sql } from "../sql.ts";
+import { type Fragment, query, sql } from "../sql.ts";
+import { codePointOrder } from "./channels.ts";
 
 /** A claimed token's lifetime and hard cap until the connection names its own (docs/auth.md "Connections"). */
 const TOKEN_TTL_S = 3600;
 const TOKEN_MAX_S = 86_400;
+
+/**
+ * SQLite plans without statistics and would walk the board's whole log by primary key instead of the partial index of
+ * connection writes, so it is named there; Postgres picks it from its statistics.
+ */
+const byConnectionIndex: Fragment = Object.freeze({
+  fragment: (dialect: Dialect) => (dialect.name === "sqlite" ? " INDEXED BY events_connection" : ""),
+});
 
 export const connectionStatements = {
   nextGrant: sql`SELECT next_grant FROM boards WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
@@ -56,6 +65,25 @@ export const connectionStatements = {
     FROM connections c JOIN grant_principals p ON p.board_id = c.board_id AND p.kind = 'connection' AND p.key = c.id
       JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
     WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.id = ${"id"} AND c.revoked_at IS NULL ORDER BY g.id LIMIT 1`,
+  /**
+   * The board's active connections by name, each with the first grant naming it and the time of its latest event,
+   * found through the partial index `events_connection`, which the `LIKE` term, the index's own predicate, unlocks.
+   */
+  managedConnections: sql`SELECT c.id, c.name, c.secret_hint, c.direct, c.profiles, c.created_by, c.created_at,
+    g.id AS grant_id, g.can, (SELECT e.at FROM events e${byConnectionIndex} WHERE e.org_id = ${"orgId"} AND e.board_id = ${"boardId"}
+      AND e.principal LIKE 'ob:conn:%' AND e.principal = 'ob:conn:' || c.id ORDER BY e.id DESC LIMIT 1) AS last_used
+    FROM connections c JOIN grants g ON g.org_id = c.org_id AND g.board_id = c.board_id
+      AND g.id = (SELECT MIN(p.grant_id) FROM grant_principals p
+        WHERE p.board_id = ${"boardId"} AND p.kind = 'connection' AND p.key = c.id)
+    WHERE c.org_id = ${"orgId"} AND c.board_id = ${"boardId"} AND c.revoked_at IS NULL
+      AND (c.id = ${"id"} OR ${"all"} = 1)
+    ORDER BY c.name${codePointOrder}`,
+  /** The live agents of the board's active connections, or of one of them, oldest first. */
+  managedAgents: sql`SELECT a.id, a.connection, a.profile, a.profile_key, a.can, a.token_expires, a.hard_expires,
+    a.created_at FROM connection_agents a
+    WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"} AND a.revoked_at IS NULL AND a.hard_expires > ${"now"}
+      AND (a.connection = ${"id"} OR ${"all"} = 1)
+    ORDER BY a.created_at, a.id`,
 };
 
 /** Reads the next grant ID under the caller's board lock. */
@@ -157,9 +185,63 @@ export async function profileHolder(tx: Db, dialect: Dialect, keys: BoardKeys, c
   return row ? { id: String(row.id), tokenExpires: Number(row.token_expires) } : null;
 }
 
-export function connectionReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "connection"> {
+function managedAgentOf(row: Row): ConnectionAgent {
+  return {
+    id: String(row.id),
+    actor: `${connections.connectionPrincipal(String(row.connection))}+${String(row.profile_key)}`,
+    can: JSON.parse(String(row.can)) as Can,
+    expiresAt: isoTime(Number(row.token_expires)),
+    hardExpiresAt: isoTime(Number(row.hard_expires)),
+    profile: String(row.profile),
+    createdAt: isoTime(Number(row.created_at)),
+  };
+}
+
+function managedOf(row: Row, agents: readonly ConnectionAgent[]): ManagedConnection {
+  const id = String(row.id);
+  return {
+    id,
+    principal: connections.connectionPrincipal(id),
+    name: String(row.name),
+    grant: grants.formatGrantId(Number(row.grant_id)),
+    can: JSON.parse(String(row.can)) as Can,
+    direct: Number(row.direct) === 1,
+    profiles: JSON.parse(String(row.profiles)) as string[],
+    secretHint: String(row.secret_hint),
+    createdBy: String(row.created_by),
+    createdAt: isoTime(Number(row.created_at)),
+    lastUsedAt: row.last_used == null ? null : isoTime(Number(row.last_used)),
+    agents: [...agents],
+  };
+}
+
+/**
+ * The active connections `id` selects (all of them when null), each with its live agents at `now`. Two reads, no
+ * lock: an agent claimed or a connection revoked between them shows on the next read, never another connection's.
+ */
+async function managedConnections(db: Db, dialect: Dialect, keys: BoardKeys, id: string | null, now: number) {
+  const params = { orgId: keys.orgId, boardId: keys.boardId, id: id ?? "", all: id === null ? 1 : 0 };
+  const rows = await query(db, dialect, connectionStatements.managedConnections, params);
+  if (rows.length === 0) return [];
+  const agentRows = await query(db, dialect, connectionStatements.managedAgents, { ...params, now });
+  const agents = new Map<string, ConnectionAgent[]>();
+  for (const row of agentRows) {
+    const list = agents.get(String(row.connection)) ?? [];
+    list.push(managedAgentOf(row));
+    agents.set(String(row.connection), list);
+  }
+  return rows.map((row) => managedOf(row, agents.get(String(row.id)) ?? []));
+}
+
+export function connectionReads(
+  db: Db,
+  dialect: Dialect,
+  scope: BoardScope,
+): Pick<BoardView, "connection" | "listConnections" | "managedConnection"> {
   return {
     connection: (id) => findConnection(db, dialect, scope, id),
+    listConnections: (now) => managedConnections(db, dialect, scope, null, now),
+    managedConnection: async (id, now) => (await managedConnections(db, dialect, scope, id, now))[0] ?? null,
   };
 }
 

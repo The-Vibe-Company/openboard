@@ -61,6 +61,7 @@ export function connectionsSuite(driver: string, open: OpenStore): void {
   agentRefreshSuite(driver, open);
   rotationSuite(driver, open);
   claimsSuite(driver, open);
+  listingSuite(driver, open);
 }
 
 function agentRevocationSuite(driver: string, open: OpenStore): void {
@@ -272,6 +273,60 @@ function rotationSuite(driver: string, open: OpenStore): void {
       expect(again?.secretHash).toBe("34".repeat(32));
       expect(again?.previous).toBeNull();
       expect(await board.readEvents(0)).toEqual({ head: 4, cursor: 4, events: [] });
+    } finally {
+      await store.close();
+    }
+  });
+}
+
+/** Owners list the active connections by name with their live agents and the time of their latest event. */
+function listingSuite(driver: string, open: OpenStore): void {
+  test(`${driver}: lists active connections by name with their live agents and last use, never a secret`, async () => {
+    const store = await open();
+    try {
+      const keys = await store.platform().findBoard("local", "main");
+      if (!keys) throw new Error("the implicit board local/main is missing");
+      const board = store.board(testScope(keys));
+      const laptop = await create(board, "laptop", "a");
+      const ci = await create(board, "ci", "b");
+      const gone = await create(board, "gone", "c");
+      const asCi = { by: { ...by, actor: ci.principal, principal: ci.principal } };
+      const connection = { ...ci, profiles: ["*"], tokenTtl: 3600, tokenMax: 86_400, claims };
+      const claim = (letter: string, profile: string, now: number) =>
+        board.write(async (writer) => {
+          const token = { id: `ag_${letter.repeat(16)}`, hash: letter.repeat(64) };
+          const context = { ...asCi, now, connection, token };
+          const decided = agents.decideClaim({ head: writer.head, holder: null }, { profile }, context);
+          await writer.append(decided.events);
+          return decided.agent;
+        });
+      const early = await claim("d", "early", 1_000);
+      const late = await claim("e", "late", 90_000_000);
+      await board.write(async (writer) => {
+        const record = await writer.connection(gone.id);
+        if (!record) throw new Error("connection missing before revocation");
+        const command = { connection: gone.id, grant: record.grant.id };
+        await writer.append([connections.decideRevoke(writer.head, command, { by, now: 90_000_001 })]);
+      });
+      const listed = await board.listConnections(90_000_002);
+      expect(listed.map(({ name }) => name)).toEqual(["ci", "laptop"]);
+      expect(listed[0]).toEqual({
+        ...ci,
+        lastUsedAt: "1970-01-02T01:00:00.000Z",
+        agents: [{ ...late, profile: "late", createdAt: "1970-01-02T01:00:00.000Z" }],
+      });
+      expect(listed[1]).toEqual({ ...laptop, lastUsedAt: null, agents: [] });
+      expect(JSON.stringify(listed)).not.toContain("cd".repeat(32));
+      const earlier = await board.managedConnection(ci.id, 2_000);
+      expect(earlier?.agents).toEqual([
+        { ...early, profile: "early", createdAt: "1970-01-01T00:00:01.000Z" },
+        { ...late, profile: "late", createdAt: "1970-01-02T01:00:00.000Z" },
+      ]);
+      expect(await board.managedConnection(gone.id, 2_000)).toBeNull();
+      expect(await board.managedConnection("cn_zzzzzzzzzzzzzzzz", 2_000)).toBeNull();
+      const otherOrg = store.board(testScope({ ...keys, orgId: keys.orgId + 1 }));
+      expect(await otherOrg.listConnections(2_000)).toEqual([]);
+      expect(await otherOrg.managedConnection(ci.id, 2_000)).toBeNull();
     } finally {
       await store.close();
     }

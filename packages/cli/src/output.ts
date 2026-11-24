@@ -1,4 +1,11 @@
-import type { createChannel, listChannels, OutputOf } from "@openboard/contract";
+import type {
+  createChannel,
+  getConnection,
+  listChannels,
+  listConnections,
+  ManagedConnection,
+  OutputOf,
+} from "@openboard/contract";
 import type { BoardError } from "@the-vibe-company/openboard";
 
 /** Where the CLI writes; tests hand in their own. */
@@ -75,6 +82,14 @@ function channelsText(output: unknown, input: Readonly<Record<string, unknown>>)
   return [...lines, "", `(more not shown: ${argv.map(shellWord).join(" ")})`].join("\n");
 }
 
+/** A connection on one line, then one indented line per live agent; the hint is never enough to use its secret. */
+function connectionText(connection: ManagedConnection): string {
+  const { name, id, secretHint, lastUsedAt, agents } = connection;
+  const head = `${name}  ${id}  secret ${secretHint}  last used ${lastUsedAt ?? "never"}`;
+  const agentLines = agents.map((agent) => `  agent ${agent.id}  ${agent.profile}  expires ${agent.expiresAt}`);
+  return [head, ...(agentLines.length > 0 ? agentLines : ["  no agents"])].join("\n");
+}
+
 /** How a derived command prints its operation's answer and input without `--json`; raw JSON for one not listed. */
 export const formats: Readonly<Record<string, (output: unknown, input: Readonly<Record<string, unknown>>) => string>> =
   Object.freeze({
@@ -82,6 +97,11 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
       const { channel, created } = output as OutputOf<typeof createChannel>;
       return created ? `created ${channel.path}` : `${channel.path} already exists`;
     },
+    getConnection: (output) => connectionText((output as OutputOf<typeof getConnection>).connection),
     listChannels: channelsText,
+    listConnections: (output) => {
+      const { connections } = output as OutputOf<typeof listConnections>;
+      return connections.length === 0 ? "no connections" : connections.map(connectionText).join("\n");
+    },
     postMessage: (output: unknown) => (output as { message: { id: string } }).message.id,
   });
