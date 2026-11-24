@@ -10,12 +10,15 @@ writes:
   - apps/web/src/routes/invite.$token.tsx
   - apps/web/src/routes/device.tsx
   - apps/web/src/routes/device.css
-  - apps/web/src/routes/auth.css
+  - apps/web/src/components/AuthPage.css
+  - apps/web/src/components/AuthPage.tsx
   - apps/web/src/routes/landing.css
+  - docs/design.md
 conformance: []
 modes: [local, hosted]
 depends_on: [411]
-status: draft
+status: done
+claimed_by: Codex
 issue: 791
 ---
 

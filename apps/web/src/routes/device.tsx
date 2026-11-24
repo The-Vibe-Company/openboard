@@ -4,6 +4,8 @@ import { BoardError, type ErrorCode } from "@the-vibe-company/openboard";
 import { useState } from "react";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
+import { AuthPage } from "../components/AuthPage.tsx";
+import { Button, Field, Input } from "../ui/index.ts";
 import "./device.css";
 
 export const Route = createFileRoute("/device")({ component: Device });
@@ -11,24 +13,26 @@ export const Route = createFileRoute("/device")({ component: Device });
 function Device() {
   const session = useQuery(sessionQuery);
   return (
-    <main className="sign-in device-sign-in">
-      <section aria-labelledby="device-title">
-        <h1 id="device-title">Approve a terminal sign-in</h1>
-        {session.isError ? (
-          <p role="alert">Could not load your session.</p>
-        ) : !session.data ? (
-          <p role="status">Loading your session…</p>
-        ) : session.data.signedIn && session.data.person && session.data.csrf ? (
-          <DeviceApproval
-            key={session.data.person.principal}
-            principal={session.data.person.principal}
-            csrf={session.data.csrf}
-          />
-        ) : (
-          <Link to="/signin">Sign in to approve</Link>
-        )}
-      </section>
-    </main>
+    <AuthPage
+      title="Approve a terminal sign-in"
+      description="Use the code shown in your terminal to review the request."
+    >
+      {session.isError ? (
+        <p role="alert">Could not load your session.</p>
+      ) : !session.data ? (
+        <p role="status">Loading your session…</p>
+      ) : session.data.signedIn && session.data.person && session.data.csrf ? (
+        <DeviceApproval
+          key={session.data.person.principal}
+          principal={session.data.person.principal}
+          csrf={session.data.csrf}
+        />
+      ) : (
+        <Link className="auth-link" to="/signin">
+          Sign in to approve
+        </Link>
+      )}
+    </AuthPage>
   );
 }
 
@@ -65,6 +69,9 @@ function DeviceApproval({ principal, csrf }: { principal: string; csrf: string }
     <>
       <DeviceCodeForm
         disabled={busy}
+        error={
+          invalid ? "This code is not valid" : preview.isError ? "Could not check the code. Try again." : undefined
+        }
         onCheck={(userCode) => {
           approve.reset();
           preview.mutate(userCode);
@@ -76,20 +83,18 @@ function DeviceApproval({ principal, csrf }: { principal: string; csrf: string }
       />
       {account.isError && <p role="alert">Could not load your organization.</p>}
       {account.isSuccess && !org && <p>Join or create an organization before approving a sign-in.</p>}
-      {invalid && <p role="alert">This code is not valid</p>}
-      {preview.isError && !invalid && <p role="alert">Could not check the code. Try again.</p>}
       <div aria-live="polite" aria-atomic="true">
         {confirmation && <DeviceDetails request={request} org={org} />}
       </div>
       {confirmation && (
         <>
-          <button
+          <Button
             type="button"
             disabled={busy}
             onClick={() => approve.mutate({ userCode: request.userCode, org: org.slug })}
           >
             Approve
-          </button>
+          </Button>
           {approve.isError && (
             <p role="alert">
               {sessionChanged
@@ -113,7 +118,7 @@ function DeviceDetails({
   return (
     <>
       <p>Confirm that the code and client name match your terminal.</p>
-      <dl>
+      <dl className="device-details">
         <dt>Code</dt>
         <dd>{request.userCode}</dd>
         <dt>Client</dt>
@@ -139,10 +144,12 @@ function DeviceDetails({
 
 function DeviceCodeForm({
   disabled,
+  error,
   onCheck,
   onEdit,
 }: {
   disabled: boolean;
+  error: string | undefined;
   onCheck: (code: string) => void;
   onEdit: () => void;
 }) {
@@ -154,23 +161,27 @@ function DeviceCodeForm({
         onCheck(code.trim().toUpperCase());
       }}
     >
-      <label htmlFor="device-code">User code</label>
-      <input
-        id="device-code"
-        value={code}
-        required
-        maxLength={19}
-        autoComplete="off"
-        spellCheck={false}
-        disabled={disabled}
-        onChange={(event) => {
-          setCode(event.target.value);
-          onEdit();
-        }}
-      />
-      <button type="submit" disabled={disabled || !code.trim()}>
+      <Field label="User code" error={error && <span role="alert">{error}</span>}>
+        {(props) => (
+          <Input
+            {...props}
+            className="device-code"
+            value={code}
+            required
+            maxLength={19}
+            autoComplete="off"
+            spellCheck={false}
+            disabled={disabled}
+            onChange={(event) => {
+              setCode(event.target.value);
+              onEdit();
+            }}
+          />
+        )}
+      </Field>
+      <Button type="submit" disabled={disabled || !code.trim()}>
         Check code
-      </button>
+      </Button>
     </form>
   );
 }
