@@ -75,4 +75,4 @@ export function runIsolationSuite(driver: string, open: OpenStore): void {
   isolationSuite(driver, open);
 }
 
-export { runJobsSuite } from "./jobs.test-suite.ts";
+export { runJobsSuite, runJobWakeSuite, type WithJobStores } from "./jobs.test-suite.ts";

@@ -24,12 +24,15 @@ import purgeIndexesDdl from "../migrations/0022-org-purge-indexes.sql" with { ty
 import shippingDdl from "../migrations/0023-shipping.sql" with { type: "text" };
 import orgOnBoardRowsDdl from "../migrations/0024-org-on-board-rows.sql" with { type: "text" };
 import oidcKeysDdl from "../migrations/0025-oidc-keys.sql" with { type: "text" };
+import jobNotificationsDdl from "../migrations/0026-job-notifications.sql" with { type: "text" };
+import purgeTombstoneNotificationsDdl from "../migrations/0027-purge-tombstone-notifications.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
 import { actorReads } from "./views/actors.ts";
 import { agentReads } from "./views/agents.ts";
 import { auditReads, orgAuditReads } from "./views/audit.ts";
+import { oidcKeysView } from "./views/auth/oidc.ts";
 import { orgBoardsView, platformView } from "./views/boards.ts";
 import { channelReads } from "./views/channels.ts";
 import { connectionReads } from "./views/connections.ts";
@@ -41,7 +44,6 @@ import { purgeOrgView } from "./views/jobs/purge.ts";
 import { shippingPlatform, shippingView } from "./views/jobs/shipping.ts";
 import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
-import { oidcKeysView } from "./views/auth/oidc.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
 import { rateView } from "./views/rates/index.ts";
 import { schemaReads } from "./views/schemas/registry.ts";
@@ -57,6 +59,7 @@ export { localBroadcaster } from "./local-broadcaster.ts";
 export { seedTaskNeed, simulateLegacyDeletion, tenantRows } from "./purge-test-data.ts";
 export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
 export { claimJob, nextJob, releaseJobs } from "./views/jobs/index.ts";
+export { jobWake } from "./views/jobs/wake.ts";
 
 /** A migration of the one DDL source, in Postgres syntax (docs/data-model.md "DDL"). */
 export interface Migration {
@@ -92,6 +95,8 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 23, name: "0023-shipping", sql: shippingDdl },
   { version: 24, name: "0024-org-on-board-rows", sql: orgOnBoardRowsDdl },
   { version: 25, name: "0025-oidc-keys", sql: oidcKeysDdl },
+  { version: 26, name: "0026-job-notifications", sql: jobNotificationsDdl },
+  { version: 27, name: "0027-purge-tombstone-notifications", sql: purgeTombstoneNotificationsDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */

@@ -11,12 +11,15 @@ function fakeClock() {
   let now = NOW;
   const timers = new Map<() => void | Promise<void>, number>();
   const armed = Promise.withResolvers<void>();
+  const purgeArmed = Promise.withResolvers<void>();
   return {
     now: () => now,
     armed: armed.promise,
+    purgeArmed: purgeArmed.promise,
     schedule(delay: number, run: () => void | Promise<void>) {
       timers.set(run, now + delay);
       if (timers.size === 4) armed.resolve();
+      if (delay > 86_400_000) purgeArmed.resolve();
       return () => {
         timers.delete(run);
       };
@@ -195,6 +198,7 @@ if (postgresTestUrl() !== undefined) {
       expect(writes).toEqual(initial);
 
       expect((await send("/api/x/orgs/alpha/delete", a)).status).toBe(200);
+      await clock.purgeArmed;
       await clock.advance(NOW + 30 * 86_400_000);
       expect(decode(objects, prefix)).toEqual([]);
       expect(decode(objects, bravoPrefix).length).toBeGreaterThan(0);

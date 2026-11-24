@@ -87,9 +87,9 @@ async function checkDeletion(db: Store) {
   await expect(platform.createOrg(acme(ada))).rejects.toMatchObject({ code: "slug_taken" });
   const due = at + 30 * 86_400_000;
   const lease = { instanceId: "purger", claimedAt: due };
-  expect(await db.jobs.claim([PURGE_ORG_JOB], { ...lease, claimedAt: due - 1 })).toBeNull();
-  expect(await db.jobs.claim([PURGE_ORG_JOB], lease)).toMatchObject({ ...keys, kind: PURGE_ORG_JOB });
-  expect(await db.jobs.claim([PURGE_ORG_JOB], lease)).toBeNull();
+  expect((await db.jobs.claim([PURGE_ORG_JOB], { ...lease, claimedAt: due - 1 })).job).toBeNull();
+  expect((await db.jobs.claim([PURGE_ORG_JOB], lease)).job).toMatchObject({ ...keys, kind: PURGE_ORG_JOB });
+  expect((await db.jobs.claim([PURGE_ORG_JOB], lease)).job).toBeNull();
 }
 
 export function orgsSuite(driver: string, open: OpenStore): void {

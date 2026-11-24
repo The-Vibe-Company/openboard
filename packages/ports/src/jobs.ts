@@ -15,12 +15,14 @@ export interface JobLease {
 
 export type JobSchedule = (delayMs: number, run: () => void | Promise<void>) => () => void;
 
+export type JobClaim = { readonly job: Job } | { readonly job: null; readonly nextDue: number | null };
+
 /** Cross-board dispatch exposes routing metadata only. Effects re-enter the scoped board writer. */
 export interface Jobs {
-  claim(kinds: readonly string[], lease: JobLease): Promise<Job | null>;
+  claim(kinds: readonly string[], lease: JobLease): Promise<JobClaim>;
   /** Make this runner’s outstanding leases due immediately, optionally protecting its current job. */
   release(instanceId: string, now: number, exceptId?: string): Promise<void>;
-  watch(kinds: readonly string[], schedule: JobSchedule, wake: () => Promise<void>): () => void;
+  watch(kinds: readonly string[], schedule: JobSchedule, wake: () => Promise<number | null>): () => void;
 }
 
 export type JobPayload = Readonly<Record<string, unknown>>;

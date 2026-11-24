@@ -334,7 +334,7 @@ export function boardView(
     identity: () => boardIdentity(db, dialect, keys),
     async write(fn, as, taskId = null) {
       let release: (() => void) | undefined;
-      let enqueued = false;
+      let enqueued: Map<string, number> | undefined;
       try {
         const { result, page } = await db.transaction(async (tx) => {
           const now = jobs.now();
@@ -342,8 +342,9 @@ export function boardView(
           const locked = await lockBoardAs(tx, dialect, keys, as ?? null, window, taskId);
           const { head, storage } = locked;
           const events: BoardEvent[] = [];
-          const queue = jobWriter(tx, dialect, keys, jobs, () => {
-            enqueued = true;
+          const queue = jobWriter(tx, dialect, keys, (kind, dueAt) => {
+            enqueued ??= new Map();
+            enqueued.set(kind, Math.min(dueAt, enqueued.get(kind) ?? Infinity));
           });
           const boardWriter = writer(tx, dialect, keys, locked, events, queue, now, taskId);
           const result = await fn(boardWriter);
@@ -352,7 +353,7 @@ export function boardView(
           if (page !== undefined) release = broadcaster.prepareCommit?.(scope, page);
           return { result, page };
         });
-        if (enqueued) jobs.committed();
+        if (enqueued) for (const [kind, dueAt] of enqueued) jobs.committed(kind, dueAt);
         if (page !== undefined) broadcaster.publish(scope, page);
         return result;
       } finally {

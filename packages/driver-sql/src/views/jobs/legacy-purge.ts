@@ -6,7 +6,7 @@ import { type Fragment, query, sql } from "../../sql.ts";
 const pickLock: Fragment = {
   fragment: ({ name }) => (name === "postgres" ? " FOR UPDATE OF o SKIP LOCKED" : ""),
 };
-const unqueued: Fragment = {
+export const unqueued: Fragment = {
   fragment: () => `o.deleted_at IS NOT NULL AND o.purged_at IS NULL
   AND EXISTS (SELECT 1 FROM boards b WHERE b.org_id = o.id)
   AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.org_id = o.id AND j.kind = '${PURGE_ORG_JOB}')`,
@@ -14,7 +14,6 @@ const unqueued: Fragment = {
 
 /** Dispatch metadata only, like the ordinary job picker. Old writers leave a tombstone and no job row. */
 export const legacyPurgePlatform = {
-  nextLegacyPurge: sql`SELECT MIN(o.deleted_at) AS deleted_at FROM orgs o WHERE ${unqueued}`,
   pickLegacyPurge: sql`SELECT o.id, o.deleted_at FROM orgs o
     WHERE o.deleted_at <= ${"through"} AND ${unqueued}
     ORDER BY o.deleted_at, o.id LIMIT 1${pickLock}`,
@@ -28,11 +27,6 @@ export const legacyPurgeScoped = {
     VALUES (${"orgId"}, ${"boardId"}, ${"kind"}, ${"until"}, ${"instanceId"}, ${"payload"})
     RETURNING CAST(id AS TEXT) AS id`,
 };
-
-export async function nextLegacyPurge(db: Db, dialect: Dialect) {
-  const [row] = await query(db, dialect, legacyPurgePlatform.nextLegacyPurge, {});
-  return row?.deleted_at == null ? null : Number(row.deleted_at) + ORG_PURGE_RETENTION_MS;
-}
 
 /** Recover deletions written by an old instance only when their original retention has elapsed.
  * The compatible runner creates an already-claimed lease; old runners never enqueue or claim this kind.

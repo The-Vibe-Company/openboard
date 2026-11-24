@@ -1,13 +1,13 @@
 import { expect, test } from "bun:test";
 import { messages } from "@openboard/core";
-import type { Store } from "@openboard/ports";
+import type { JobClaim, Store } from "@openboard/ports";
 import { testScope } from "@openboard/ports/testkit";
 import { createApp, type JobHandler } from "../../src/index.ts";
 import { LOCAL_OWNER, PUBLIC_URL } from "../support/app.ts";
 import { openStore } from "../support/drivers.ts";
 import { postgresTestUrl } from "../support/env.ts";
 
-function fakeClock() {
+function fakeClock(instances = 1) {
   let now = 0;
   const timers = new Map<() => void | Promise<void>, number>();
   const armed = Promise.withResolvers<void>();
@@ -17,7 +17,7 @@ function fakeClock() {
     pending: () => [...timers.values()].sort((a, b) => a - b),
     schedule(delay: number, run: () => void | Promise<void>) {
       timers.set(run, now + delay);
-      armed.resolve();
+      if (timers.size === instances) armed.resolve();
       return () => {
         timers.delete(run);
       };
@@ -57,7 +57,7 @@ function app(store: Store, instanceId: string, clock: ReturnType<typeof fakeCloc
 
 const hosted = postgresTestUrl() !== undefined;
 test(`${hosted ? "postgres: two runners" : "sqlite: due timer"} execute every due board job once`, async () => {
-  const clock = fakeClock();
+  const clock = fakeClock(hosted ? 2 : 1);
   const one = openStore(clock.now);
   const two = one.sibling?.();
   const keys = await one.platform().findBoard("local", "main");
@@ -79,17 +79,15 @@ test(`${hosted ? "postgres: two runners" : "sqlite: due timer"} execute every du
     await board.write(async (writer) => {
       for (const text of expected) await writer.enqueue("test", 2000, { text });
     });
-    // The first poll on the sibling must also be armed before advancing the shared clock.
-    if (two) await two.platform().findBoard("local", "main");
     await clock.armed;
-    expect(clock.pending()).toEqual(two ? [1000, 1000] : [2000]);
+    expect(clock.pending()).toEqual(two ? [2000, 2000] : [2000]);
     await clock.advance(1000);
     expect(runs).toEqual([]);
     expect(clock.pending()).toEqual(two ? [2000, 2000] : [2000]);
     await clock.advance(2000);
     expect(runs.sort()).toEqual(expected);
-    await clock.advance(3000);
-    expect(clock.pending()).toEqual(two ? [4000, 4000] : []);
+    await clock.advance(32_000);
+    expect(clock.pending()).toEqual([]);
     expect(runs.sort()).toEqual(expected);
     expect((await board.channelMessages({ channel: "jobs/test", limit: 50 }))?.map(({ text }) => text).sort()).toEqual(
       expected,
@@ -106,34 +104,33 @@ if (hosted)
     const two = one.sibling?.();
     const keys = await one.platform().findBoard("local", "main");
     if (!two || !keys) throw new Error("Postgres cluster fixture is missing");
-    const first = app(one, "one", clock, async () => {});
     const ran: unknown[] = [];
     const second = app(two, "two", clock, async (_writer, payload) => {
       ran.push(payload);
     });
     try {
       await one.board(testScope(keys)).write((writer) => writer.enqueue("test", 2000, { text: "recovered" }));
-      await clock.advance(1000);
-      // Pick without entering a board write, then stop the instance before its effect.
-      expect(await one.jobs.claim(["test"], { instanceId: "one", claimedAt: 2000 })).toMatchObject(keys);
-      await first.close();
-      await two.platform().findBoard("local", "main");
       await clock.armed;
+      // Pick without entering a board write, then stop the instance before its effect.
+      expect((await one.jobs.claim(["test"], { instanceId: "one", claimedAt: 2000 })).job).toMatchObject(keys);
+      await one.close();
+      await clock.advance(2_000);
+      expect(clock.pending()).toEqual([32_000]);
       await clock.advance(31_999);
       expect(ran).toEqual([]);
-      await clock.advance(32_999);
+      await clock.advance(32_000);
       expect(ran).toEqual([{ text: "recovered" }]);
     } finally {
-      await Promise.all([first.close(), second.close()]);
+      await Promise.all([one.close(), second.close()]);
     }
   });
 
-test("a wake during an empty claim triggers another claim without waiting for the poll", async () => {
+test("a wake during an empty claim triggers another claim before returning its next due time", async () => {
   const clock = fakeClock();
   const store = openStore(clock.now);
   const observed = Promise.withResolvers<void>();
-  const reply = Promise.withResolvers<null>();
-  let wake: (() => Promise<void>) | undefined;
+  const reply = Promise.withResolvers<JobClaim>();
+  let wake: (() => Promise<number | null>) | undefined;
   let claims = 0;
   const runner = app(
     {
@@ -141,7 +138,7 @@ test("a wake during an empty claim triggers another claim without waiting for th
       jobs: {
         ...store.jobs,
         claim: async () => {
-          if (++claims !== 1) return null;
+          if (++claims !== 1) return { job: null, nextDue: null };
           observed.resolve();
           return reply.promise;
         },
@@ -160,11 +157,11 @@ test("a wake during an empty claim triggers another claim without waiting for th
     const first = wake();
     await observed.promise;
     const second = wake();
-    reply.resolve(null);
+    reply.resolve({ job: null, nextDue: null });
     await Promise.all([first, second]);
     expect(claims).toBe(2);
   } finally {
-    reply.resolve(null);
+    reply.resolve({ job: null, nextDue: null });
     await runner.close();
   }
 });

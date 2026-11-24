@@ -129,7 +129,7 @@ export function purgeOrgView(
         if (!org) return false;
         // Wait for writes that began before the soft delete before removing their rows.
         const boards = await query(tx, dialect, purgeStatements.purge_lock_boards, keys);
-        const writer = jobWriter(tx, dialect, keys, jobs, () => {});
+        const writer = jobWriter(tx, dialect, keys, () => {});
         const finishedAt = deleteBackup ? jobs.now() : now;
         const payload = await writer.takeJob(id, lease, finishedAt);
         if (!payload || org.deleted_at == null || Number(org.deleted_at) !== payload.deletedAt) return false;

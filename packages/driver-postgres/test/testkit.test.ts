@@ -1,5 +1,13 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { type OpenStore, ratesSuite, runBroadcasterSuite, runJobsSuite, runStoreSuite } from "@openboard/ports/testkit";
+import {
+  type OpenStore,
+  ratesSuite,
+  runBroadcasterSuite,
+  runJobsSuite,
+  runJobWakeSuite,
+  runStoreSuite,
+  type WithJobStores,
+} from "@openboard/ports/testkit";
 import { SQL } from "bun";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
 import { migrate } from "../src/migrate.ts";
@@ -36,12 +44,12 @@ if (url) {
   runStoreSuite("postgres", open);
   runJobsSuite("postgres", open);
   runBroadcasterSuite("postgres", open);
-  ratesSuite("postgres", async (run) => {
+  const withStores: WithJobStores = async (now, run) => {
     const database = await databases.create();
     try {
-      const first = await postgresDriver({ url: database.url });
+      const first = await postgresDriver({ url: database.url }, now);
       try {
-        const second = await postgresDriver({ url: database.url });
+        const second = await postgresDriver({ url: database.url }, now);
         try {
           await run(first, second);
         } finally {
@@ -53,7 +61,17 @@ if (url) {
     } finally {
       await database.drop();
     }
-  });
+  };
+  runJobWakeSuite("postgres", withStores);
+  ratesSuite("postgres", (run) =>
+    withStores(
+      () => 0,
+      (first, second) => {
+        if (!second) throw new Error("Postgres peer is missing");
+        return run(first, second);
+      },
+    ),
+  );
 
   test("retries an unrecorded concurrent migration and replaces a failed build", async () => {
     const database = await databases.create();

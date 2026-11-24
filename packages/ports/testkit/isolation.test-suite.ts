@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
 import { BACKFILL_BOARD_ORG_JOB, type BoardView, type BoardWriter, type OrgView, type Store } from "../src/index.ts";
 import { type OpenStore, testScope } from "./index.ts";
-import { at, boardCreation, seedPersonGrant, type StoreTenant, storeTenant } from "./isolation-seed.ts";
+import { at, boardCreation, type StoreTenant, seedPersonGrant, storeTenant } from "./isolation-seed.ts";
 import { appendSchema } from "./store/schemas.test-suite.ts";
 import { pull, seedWatcher } from "./store/watchers.test-suite.ts";
 
@@ -229,7 +229,7 @@ const orgCases: Cases<OrgView> = {
   backfillBoardOrgIds: async (a, b, store) => {
     await b.board.write((writer) => writer.enqueue(BACKFILL_BOARD_ORG_JOB, at, {}));
     const lease = { instanceId: "backfill-test", claimedAt: at };
-    const job = await store.jobs.claim([BACKFILL_BOARD_ORG_JOB], lease);
+    const job = (await store.jobs.claim([BACKFILL_BOARD_ORG_JOB], lease)).job;
     if (!job) throw new Error("missing second organization's backfill job");
     expect(await a.org.backfillBoardOrgIds(job.boardId, job.id, lease, at)).toBe(false);
     expect(await b.org.backfillBoardOrgIds(job.boardId, job.id, lease, at)).toBe(true);
@@ -332,7 +332,7 @@ export function isolationSuite(driver: string, open: OpenStore): void {
     const keys = await store.platform().findBoard("bravo", "main");
     const lease = { instanceId: "picker", claimedAt: at };
     await b.board.write((writer) => writer.enqueue("test", at, { marker: b.marker }));
-    const job = await store.jobs.claim(["test"], lease);
+    const job = (await store.jobs.claim(["test"], lease)).job;
     if (!job) throw new Error("due job is missing");
     if (!keys) throw new Error("bravo board is missing");
     expect(job).toEqual({ ...keys, id: expect.any(String), kind: "test" });

@@ -3,11 +3,15 @@ import { splitStatements } from "@openboard/driver-sql";
 /**
  * Renders a migration written for Postgres to SQLite, by the mechanical differences of docs/data-model.md "DDL":
  * integer types become `INTEGER`, `BYTEA` becomes `BLOB`, identity keys become `INTEGER PRIMARY KEY`, tables are
- * `STRICT` and, with a composite key, `WITHOUT ROWID`; `CREATE EXTENSION`, trigram indexes and `CONCURRENTLY` go.
+ * `STRICT` and, with a composite key, `WITHOUT ROWID`. Postgres functions, triggers, extensions and trigram indexes
+ * are omitted, and `CONCURRENTLY` is stripped.
  */
 export function renderDdl(postgres: string): string {
   return splitStatements(postgres)
-    .filter((statement) => !/^CREATE EXTENSION\b/i.test(statement) && !/\bUSING\s+gin\b/i.test(statement))
+    .filter(
+      (statement) =>
+        !/^CREATE (?:EXTENSION|FUNCTION|TRIGGER)\b/i.test(statement) && !/\bUSING\s+gin\b/i.test(statement),
+    )
     .map(renderStatement)
     .map((statement) => `${statement};`)
     .join("\n");

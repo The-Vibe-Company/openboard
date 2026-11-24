@@ -27,27 +27,21 @@ export function startJobs(
   const kinds = [...registry.keys()];
   let stopped = false;
   let pending = false;
-  let active: Promise<void> | undefined;
+  let active: Promise<number | null> | undefined;
   let currentJob: string | undefined;
 
   async function run() {
     while (!stopped) {
       const lease = { instanceId: leaseOwner, claimedAt: deps.now() };
-      const job = await jobs.claim(kinds, lease);
-      if (!job || stopped) return;
+      const claim = await jobs.claim(kinds, lease);
+      if (stopped) return null;
+      if (!claim.job) return claim.nextDue;
+      const { job } = claim;
       const handler = registry.get(job.kind);
       if (!handler) continue;
       currentJob = job.id;
       try {
-        const ran =
-          typeof handler === "function"
-            ? await tenants.jobBoard(job).write(async (writer) => {
-                const payload = await writer.takeJob(job.id, lease, deps.now());
-                if (payload === null) return false;
-                await handler(writer, payload);
-                return true;
-              })
-            : await handler.run(tenants.jobOrg(job), job, lease, deps.now(), bucket);
+        const ran = await runEffect(tenants, handler, job, lease, deps.now, bucket);
         if (ran) deps.log.info("job completed", { kind: job.kind, instanceId });
       } catch {
         // Leave the lease to expire. An unsuccessful transaction rolls back both consumption and the effect.
@@ -56,29 +50,33 @@ export function startJobs(
         currentJob = undefined;
       }
     }
+    return null;
   }
 
   async function drain() {
     try {
+      let nextDue: number | null;
       do {
         pending = false;
         try {
-          await run();
+          nextDue = await run();
         } catch {
           deps.log.error("job claim failed", { instanceId });
+          nextDue = deps.now() + 1_000;
         }
         // A notification during the last claim may describe work that missed that claim's snapshot.
       } while (!stopped && pending);
+      return nextDue;
     } finally {
       active = undefined;
     }
   }
 
   const stop = jobs.watch(kinds, deps.schedule, async () => {
-    if (stopped) return;
+    if (stopped) return null;
     pending = true;
     active ??= drain();
-    await active;
+    return active;
   });
   return async (release = false) => {
     stopped = true;
@@ -90,6 +88,23 @@ export function startJobs(
     // A claim might have finished during shutdown, or the current effect might have rolled back.
     if (release && running) await releaseLeases(jobs, deps, leaseOwner, instanceId);
   };
+}
+
+function runEffect(
+  tenants: Tenants,
+  handler: JobHandler | OrgJobHandler,
+  job: Job,
+  lease: JobLease,
+  now: () => number,
+  bucket?: Bucket,
+): Promise<boolean> {
+  if (typeof handler !== "function") return handler.run(tenants.jobOrg(job), job, lease, now(), bucket);
+  return tenants.jobBoard(job).write(async (writer) => {
+    const payload = await writer.takeJob(job.id, lease, now());
+    if (payload === null) return false;
+    await handler(writer, payload);
+    return true;
+  });
 }
 
 async function releaseLeases(jobs: Jobs, deps: Deps, leaseOwner: string, instanceId: string, exceptId?: string) {
