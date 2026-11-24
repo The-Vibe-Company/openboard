@@ -89,3 +89,10 @@ test("local SSE fan-out uses the measured budget and noise floor", () => {
     `local SSE fan-out p99: ${over} ms exceeds budget ${p99Ms} ms by more than 20% and 1 ms`,
   ]);
 });
+
+test("the quick run leaves the SSE fan-out's latency to the full bench but keeps its other latencies", () => {
+  const { p99Ms } = budgets.local.sseFanOut;
+  const sse = { tails: 50, events: 1000, p50: 0, p99: Math.ceil(p99Ms * 1.2 + 1) };
+  expect(compareBudgets({ ...localReport, sse }, { latency: true, sseLatency: false })).toEqual([]);
+  expect(compareBudgets({ ...localReport, sse }, { latency: true })).toHaveLength(1);
+});
