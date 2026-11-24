@@ -4,6 +4,9 @@ import { boardErrorText } from "./board.ts";
 import { browserClient } from "./client.ts";
 
 type Board = { org: string; board: string };
+export const threadKeys = {
+  all: ({ org, board }: Board) => ["board", org, board, "thread"] as const,
+};
 export type ThreadMessage = Awaited<ReturnType<Client["readThread"]>>["message"];
 
 export function threadErrorText(error: Error) {
@@ -12,7 +15,7 @@ export function threadErrorText(error: Error) {
 
 export function threadQuery(board: Board, id: string) {
   return queryOptions({
-    queryKey: ["board", board.org, board.board, "thread", id],
+    queryKey: [...threadKeys.all(board), id],
     retry: (failureCount, error) =>
       !(error instanceof BoardError && (error.code === "message_not_found" || error.code === "not_found")) &&
       failureCount < 2,

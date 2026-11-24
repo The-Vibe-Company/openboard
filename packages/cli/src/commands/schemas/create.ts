@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { BoardError, type createSchema, type InputOf } from "@openboard/contract";
+import type { createSchema, InputOf } from "@openboard/contract";
+import { BoardError } from "@the-vibe-company/openboard";
 import { type Command, type CommandContext, Misuse } from "../index.ts";
 
 function readDefinition(file: string, data: string | undefined): Record<string, unknown> {

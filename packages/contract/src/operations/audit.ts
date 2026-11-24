@@ -3,7 +3,7 @@ import { ClaimedAgent, Connection } from "../entities/connections.ts";
 import { GrantView } from "../entities/grants.ts";
 import { InvitationRole } from "../entities/invitations.ts";
 import { Author } from "../entities/messages.ts";
-import { Named, Role, Slug } from "../entities/orgs.ts";
+import { DeletedOrg, Named, Role, Slug } from "../entities/orgs.ts";
 import { defineOperation } from "../operation.ts";
 
 /** One audit entry: its log position as a cursor, when and by whom, and what changed; never a secret or its hash. */
@@ -92,6 +92,7 @@ function orgEntry<Kind extends string, Payload extends TProperties>(type: Kind, 
 /** An organization event (`org_events`) as the audit shows it (docs/auth.md "Audit"). */
 export const OrgAuditEvent = Type.Union([
   orgEntry("ob.org.created", { org: Named, owner: Type.String() }),
+  orgEntry("ob.org.deleted", DeletedOrg.properties),
   orgEntry("ob.board.created", { board: Named }),
   orgEntry("ob.invitation.created", { id: Type.String(), role: InvitationRole }),
   orgEntry("ob.invitation.revoked", { id: Type.String() }),

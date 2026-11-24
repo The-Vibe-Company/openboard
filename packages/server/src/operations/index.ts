@@ -61,7 +61,7 @@ import {
   reactToMessageHandler,
   readPostHandler,
 } from "./messages.ts";
-import { createOrgHandler } from "./orgs.ts";
+import { createOrgHandler, deleteOrgHandler } from "./orgs.ts";
 import { createSchemaHandler, listSchemasHandler, readSchemaHandler } from "./schemas/registry.ts";
 import {
   ackInboxHandler,
@@ -194,6 +194,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   createGrant: createGrantHandler,
   createInvitation: createInvitationHandler,
   createOrg: createOrgHandler,
+  deleteOrg: deleteOrgHandler,
   createSchema: createSchemaHandler,
   createTask: createTaskHandler,
   deleteMessage: deleteMessageHandler,

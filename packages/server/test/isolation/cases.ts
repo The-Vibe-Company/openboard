@@ -171,6 +171,7 @@ export interface PathCase {
   readonly headers: Headers;
   /** 401 for a board-bound credential off its board, 404 for a person outside the organization (docs/codebase.md 6.5). */
   readonly status: 401 | 404;
+  readonly twin?: Call;
 }
 
 /**
@@ -178,12 +179,20 @@ export interface PathCase {
  * organization the call carries B's own IDs and input, so a scope check that let A through would reach B's resource.
  */
 export function pathCases(seeded: Seeded): PathCase[] {
-  const { a, b, aOther } = seeded;
+  const { a, b, aOther, deleted } = seeded;
   const cases: PathCase[] = [];
   for (const operation of scoped) {
     const add = (who: string, where: string, call: Call, headers: Headers, status: 401 | 404) =>
       cases.push({ name: `${operation.name}: A's ${who} on ${where}`, call, headers, status });
     const onB = callOf(operation, b);
+    const onDeleted = callOf(operation, deleted);
+    const onUnknown = callOf(operation, { ...deleted, org: "unknown-org" });
+    for (const kind of operation.scope === "org"
+      ? (["session"] as const)
+      : (["session", "personal", "connection", "agent"] as const)) {
+      const name = `${operation.name}: deleted organization's ${kind}`;
+      cases.push({ name, call: onDeleted, headers: deleted[kind], status: 404, twin: onUnknown });
+    }
     if (operation.scope === "org") {
       add("session", "B's organization", onB, a.session, 404);
       continue;

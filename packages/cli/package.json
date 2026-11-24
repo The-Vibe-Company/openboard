@@ -12,9 +12,27 @@
   },
   "scripts": {
     "typecheck": "tsc -b",
-    "test": "bun test --pass-with-no-tests"
+    "test": "bun test --pass-with-no-tests",
+    "build": "bun scripts/build.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.5"
+  },
+  "bin": {
+    "ob": "./bin/ob.js"
+  },
+  "engines": {
+    "node": ">=22.1.0"
+  },
+  "files": [
+    "bin/ob.js",
+    "dist/main.js",
+    "dist/NOTICE",
+    "dist/TYPEBOX-LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/The-Vibe-Company/openboard.git",
+    "directory": "packages/cli"
   }
 }

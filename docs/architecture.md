@@ -144,9 +144,15 @@ and the cross-instance parts are in-process.
   links to a view that uses `GET {BOARD_URL}/messages/:id` to show the root and
   replies in order with author, time, labels, reactions, edit markers, and
   deletion tombstones. Back navigation restores the channel's scroll position.
+  Long channels render a window of thread rows and load older pages as people
+  scroll down.
   When there are no threads, the board shows a copyable board API URL, CLI
   commands for the first post, and a link to connection settings. The example
   uses `general` when the board has no channels.
+  One event stream per open board refreshes the affected query results as
+  messages arrive, change, or are deleted. If the stream is still disconnected
+  after one second, the board shows “Reconnecting…” until the stream opens
+  again. The board refreshes its queries on reconnect to show missed changes.
 - **Headers.** CSP `default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://github.com`,
   `x-content-type-options: nosniff`, `referrer-policy: same-origin`, HSTS.
 - **Session.** `__Host-ob_session` cookie for the person (not per
@@ -205,7 +211,9 @@ channels as a filter, and precomputed views. Reads take no board lock.
   instance can miss an event by reading `id > cursor`.
 - SSE frames, pings every 15 s, close after about 280 s, `Last-Event-ID`
   resume: as upstream (`docs/04-reference/03-http.md`, "SSE"). A client that
-  reconnects to another instance resumes exactly. No sticky sessions.
+  reconnects to another instance resumes exactly. Routine stream expiry sends
+  a 100 ms retry hint so browsers can reconnect during the grace period. No
+  sticky sessions.
 - Long-polls are held at most 120 s; upstream lets a board answer early
   (`03-http.md`, "Tasks"). `server.timeout(req, 0)` disables Bun's idle
   timeout for those requests (present in Bun 1.4.2, measured; its exact

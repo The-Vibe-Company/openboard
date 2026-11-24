@@ -1,0 +1,9 @@
+.channel-thread-list {
+  position: relative;
+  overflow-anchor: none;
+}
+
+.channel-thread-list > li {
+  position: absolute;
+  inset: 0 0 auto;
+}

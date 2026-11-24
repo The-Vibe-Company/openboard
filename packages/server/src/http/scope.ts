@@ -62,7 +62,7 @@ export function boardPath(pathname: string, mode: "local" | "hosted"): BoardPath
   return { org, board, mount: `/api/${org}/${board}`, rest };
 }
 
-/** The board a path names. Unknown slugs answer 404 without saying which part is unknown (docs/codebase.md 4.4). */
+/** Unknown and deleted slugs answer the same 404 before board authentication (docs/codebase.md 4.4). */
 async function resolveBoard(store: Store, path: BoardPath): Promise<BoardKeys> {
   const keys = await store.platform().findBoard(path.org, path.board);
   if (!keys) throw notFound();

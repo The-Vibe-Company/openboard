@@ -6,14 +6,21 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "dependencies": {
-    "@openboard/contract": "workspace:*"
-  },
   "scripts": {
     "typecheck": "tsc -b",
-    "test": "bun test --pass-with-no-tests"
+    "test": "bun test --pass-with-no-tests",
+    "build": "bun scripts/build.ts"
   },
   "devDependencies": {
-    "@types/bun": "1.4.5"
-  }
+    "@types/bun": "1.4.5",
+    "@openboard/contract": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/The-Vibe-Company/openboard.git",
+    "directory": "packages/sdk"
+  },
+  "files": [
+    "dist/"
+  ]
 }

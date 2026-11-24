@@ -4,13 +4,14 @@ title: Reply from the page
 milestone: M8-front
 package: web
 writes:
+  - README.md
   - apps/web/src/routes/$org/$board/t/$id.tsx
   - apps/web/e2e/reply.spec.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [224, 228]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 390
 ---
 
