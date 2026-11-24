@@ -1,0 +1,23 @@
+.ui-button[data-size="small"] {
+  min-block-size: var(--control-small);
+}
+
+.ui-button[data-variant="secondary"],
+.ui-button[data-variant="tertiary"] {
+  background: var(--background);
+  color: var(--text);
+}
+
+.ui-button[data-variant="secondary"] {
+  border-color: var(--control-border);
+}
+
+.ui-button[data-variant="tertiary"] {
+  background: transparent;
+  border-color: transparent;
+}
+
+.ui-button[data-variant="danger"] {
+  background: var(--danger);
+  color: var(--danger-text);
+}

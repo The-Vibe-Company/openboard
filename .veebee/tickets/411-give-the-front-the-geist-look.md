@@ -13,7 +13,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: []
-status: draft
+status: done
+claimed_by: codex
 issue: 789
 ---
 

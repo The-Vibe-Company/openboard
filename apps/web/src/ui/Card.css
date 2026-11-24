@@ -1,0 +1,6 @@
+.ui-card {
+  padding: calc(4 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
