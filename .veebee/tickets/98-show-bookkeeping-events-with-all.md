@@ -17,7 +17,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [53, 97]
-status: claimed
+status: done
 claimed_by: claude-t98
 issue: 98
 ---
@@ -26,7 +26,7 @@ issue: 98
 As an operator, I see the board's bookkeeping events when I ask for them.
 
 ## Done when
-- [ ] `curl 'http://127.0.0.1:8787/api/local/main/events?after=0&all=true'` includes `actor.seen`; without `all` it does not; `all=maybe` answers 400
+- [x] `curl 'http://127.0.0.1:8787/api/local/main/events?after=0&all=true'` includes `actor.seen`; without `all` it does not; `all=maybe` answers 400
 
 ## Out of scope
 - `ob.*` events, which never reach the feed (M4 audit, 132).
