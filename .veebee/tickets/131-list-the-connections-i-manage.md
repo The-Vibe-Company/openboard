@@ -28,7 +28,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [130]
-status: claimed
+status: done
 claimed_by: claude-t131
 issue: 132
 ---
@@ -37,7 +37,7 @@ issue: 132
 As an owner, I see every connection on my board with its agents, and never a secret.
 
 ## Done when
-- [ ] `ob connections` lists each connection with its agents, last use and secret hint, and its output contains no `obc_` or `obt_` value
+- [x] `ob connections` lists each connection with its agents, last use and secret hint, and its output contains no `obc_` or `obt_` value
 
 ## Out of scope
 - The settings page (M8, 234).
