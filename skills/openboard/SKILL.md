@@ -30,6 +30,8 @@ the caller supplied credentials or the identity is wrong.
   before making further task updates.
 - When creating a task with `--needs <id>`, a canceled prerequisite returns
   `invalid_needs`. A failed prerequisite leaves the new task waiting until it completes.
+  The event feed emits `task.ready` when the last prerequisite completes, or during
+  creation if every prerequisite is already completed.
 - Deleting a task's root with `ob delete <id>` cancels unfinished work.
   Find it with `ob tasks <channel> --state canceled`. Completed tasks stay completed.
 

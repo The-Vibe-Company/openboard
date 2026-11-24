@@ -1,15 +1,15 @@
 import { afterEach, expect, test } from "bun:test";
-import type { Message, OutputOf, readEvents } from "@openboard/contract";
+import type { createTask, Message, OutputOf, readEvents } from "@openboard/contract";
 import { BOARD_URL, call, makeApp } from "../support/app.ts";
 
 let app: ReturnType<typeof makeApp>;
 afterEach(() => app.close());
 
-async function postOnlyHeaders() {
+async function postOnlyHeaders(readBuild = false) {
   const connection = await call(app, "POST", "/x/connections", {
     name: "poster",
     direct: true,
-    can: { dev: ["post"] },
+    can: { dev: ["post"], ...(readBuild ? { build: ["read"] } : {}) },
   });
   expect(connection.status).toBe(201);
   const { secret } = (await connection.json()) as { secret: string };
@@ -102,4 +102,31 @@ test("adoption preserves a post-only writer's original plain post under its key"
   const task = await create("/tasks");
   expect(task.status).toBe(409);
   expect(await task.json()).toMatchObject({ error: { code: "duplicate_id" } });
+});
+
+test("a post-only writer recovers readiness reached during creation", async () => {
+  app = makeApp();
+  const prerequisite = await call(app, "POST", "/tasks", { channel: "build", text: "build", claim: true });
+  expect(prerequisite.status).toBe(201);
+  const { task: build, claim } = (await prerequisite.json()) as OutputOf<typeof createTask>;
+  const completion = await call(app, "POST", `/tasks/${build.id}/complete`, {
+    token: claim?.token,
+    epoch: claim?.epoch,
+  });
+  expect(completion.status).toBe(200);
+  const headers = await postOnlyHeaders(true);
+  const command = { channel: "dev", text: "deploy", id: "deploy-42", needs: [build.id] };
+  const create = () =>
+    app.fetch(new Request(`${BOARD_URL}/tasks`, { method: "POST", headers, body: JSON.stringify(command) }));
+  const first = await create();
+  expect(first.status).toBe(201);
+  const { task } = (await first.json()) as OutputOf<typeof createTask>;
+  expect(task.task.state).toBe("ready");
+  expect((await call(app, "POST", `/messages/${task.id}/labels`, { set: { private: "label" } })).status).toBe(200);
+  const replay = await create();
+  expect(replay.status).toBe(201);
+  expect(await replay.json()).toEqual({ task });
+  const recovered = await app.fetch(new Request(`${BOARD_URL}/posts/deploy-42`, { headers }));
+  expect(recovered.status).toBe(200);
+  expect(await recovered.json()).toEqual({ message: task });
 });

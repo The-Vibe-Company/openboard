@@ -1,8 +1,10 @@
 import { type Actor, type Author, BoardError, type Message, type Task } from "@openboard/contract";
 import { parseId } from "../ids.ts";
 import {
+  type ActorSeen,
   actorSeen,
   decidePost,
+  type MessagePosted,
   type PostCommand,
   type PostContext,
   type PostState,
@@ -10,11 +12,12 @@ import {
 } from "../messages/post.ts";
 import type { TaskCreated } from "./events.ts";
 import type { TaskNeeds } from "./needs.ts";
+import { readyTask } from "./readiness.ts";
 import { withTask } from "./view.ts";
 
 function initialTask(by: Author, needs: TaskNeeds): Task {
   return {
-    state: needs.waitingOn > 0 ? "waiting" : "ready",
+    state: needs.ids.length > 0 ? "waiting" : "ready",
     owner: by.principal,
     by: by.actor,
     for: null,
@@ -72,7 +75,7 @@ export function decideCreateTask(
       ...(command.id === undefined ? {} : { blind: context.blind ?? false }),
     },
   };
-  return { events: [...events, created], task };
+  return creationResult(events, created, task, needs);
 }
 
 /** What the board holds when a thread is made a task, read under the board's lock. */
@@ -128,5 +131,16 @@ export function decideMakeTask(
       view: task,
     },
   };
-  return { events: seen ? [seen, created] : [created], task };
+  return creationResult(seen ? [seen] : [], created, task, needs);
+}
+
+function creationResult(
+  preceding: readonly (ActorSeen | MessagePosted)[],
+  created: TaskCreated,
+  task: Message & { task: Task },
+  needs: TaskNeeds,
+) {
+  if (needs.ids.length === 0 || needs.waitingOn > 0) return { events: [...preceding, created], task };
+  const ready = readyTask(created, task, created.id + 1);
+  return { events: [...preceding, created, ready], task: ready.payload.view };
 }

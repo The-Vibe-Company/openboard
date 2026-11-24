@@ -97,9 +97,18 @@ async function blindRootSnapshot(ctx: BoardContext, message: Message): Promise<M
   const root = parseId(message.id);
   if (root === null) throw new Error("invalid stored task position");
   const { events } = await ctx.board.readEvents(root - 1, { thread: message.id });
-  const [posted, created] = events;
+  const [posted, created, ready] = events;
   if (created?.type === "task.created" && created.id === root + 1 && created.payload.blind !== undefined) {
-    return created.payload.blind ? created.payload.view : null;
+    if (!created.payload.blind) return null;
+    if (
+      created.payload.waitingOn === 0 &&
+      created.payload.view.task?.state === "waiting" &&
+      ready?.type === "task.ready" &&
+      ready.id === created.id + 1
+    ) {
+      return ready.payload.view;
+    }
+    return created.payload.view;
   }
   if (posted?.type !== "message.posted" || posted.id !== root) return null;
   return withoutMentionDetails(messages.messageView(posted));
