@@ -53,7 +53,7 @@ Unix seconds and the `dl_…` delivery ID.
 
 The agent can reply and complete the task using the
 [command reference](commands.md). To report runner lifecycle events, an
-administrator creates a signed endpoint at `POST {BOARD_URL}/x/inbound`.
+administrator runs `ob inbound create --file runner-status.json --secret-file inbound.secret` and registers the URL it prints.
 Give it only the permissions needed for its actions on the relevant channels.
 For example, configure `thread.from` as `{{body.externalRef}}` and
 `thread.pattern` as `^ob:(\d+)$`. Map `turn.finished` to a reply with

@@ -46,6 +46,16 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
   labelMessage: () => ({ body: { set: { state: "seen" } } }),
   changeMemberRole: () => ({ body: { role: "admin" } }),
   createChannel: (tenant) => ({ body: { path: `${tenant.org}/new` } }),
+  createInbound: (tenant) => ({
+    body: {
+      name: tenant.marker,
+      can: { "*": "all" },
+      verify: {},
+      thread: { from: "{{body.ref}}", pattern: "^ob:(\\d+)$" },
+      rules: [],
+    },
+  }),
+  updateInbound: () => ({ body: { rules: [] } }),
   createWebhook: (tenant) => ({
     body: { name: tenant.marker, url: "http://127.0.0.1:9000/hook", filter: { tail: "dev" } },
   }),

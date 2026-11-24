@@ -35,6 +35,15 @@ function auditEntry(event: AuditRecord): AuditEvent {
     principal: event.principal,
   };
   switch (event.type) {
+    case "ob.inbound.created":
+      return {
+        ...common,
+        type: event.type,
+        payload: { id: event.payload.inbound.id, name: event.payload.inbound.name },
+      };
+    case "ob.inbound.updated":
+    case "ob.inbound.deleted":
+      return { ...common, type: event.type, payload: { id: event.payload.id } };
     case "ob.webhook.created":
       return {
         ...common,

@@ -27,6 +27,7 @@ import {
   profileHolder,
 } from "./connections.ts";
 import { activeGrant, foldGrantEvent, grantReads, otherGrantIssuers } from "./grants.ts";
+import { foldInbound, inboundWriter } from "./inbound/index.ts";
 import { type JobWrites, jobWriter } from "./jobs/index.ts";
 import { messageStatements } from "./messages/statements.ts";
 import { messageStorage } from "./messages/storage.ts";
@@ -153,6 +154,12 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
   else if (event.type === "ob.watchers.registered") await foldWatchersRegistered(tx, dialect, keys, event);
   else if (event.type === "ob.webhook.created" || event.type === "ob.webhook.deleted")
     await foldWebhook(tx, dialect, keys, event);
+  else if (
+    event.type === "ob.inbound.created" ||
+    event.type === "ob.inbound.updated" ||
+    event.type === "ob.inbound.deleted"
+  )
+    await foldInbound(tx, dialect, keys, event);
   else if (event.type !== "watch.failed") await foldTaskEvent(tx, dialect, keys, event);
 }
 
@@ -221,6 +228,7 @@ function writer(
     ...taskWriter(tx, dialect, keys, preloaded),
     ...jobs,
     ...watcherWriter(tx, dialect, keys),
+    ...inboundWriter(tx, dialect, keys),
     ...webhookWriter(tx, dialect, keys),
     ...deliveryWriter(tx, dialect, keys),
     ...schemaWriter(tx, dialect, keys),

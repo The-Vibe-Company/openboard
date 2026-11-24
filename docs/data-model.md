@@ -552,9 +552,13 @@ CREATE TABLE webhooks (
 );
 CREATE TABLE inbound_endpoints (
   id TEXT PRIMARY KEY, org_id BIGINT NOT NULL, board_id BIGINT NOT NULL,
-  name TEXT NOT NULL, verify TEXT NOT NULL, rules TEXT NOT NULL, enabled SMALLINT NOT NULL,
-  created_by TEXT NOT NULL, created_at BIGINT NOT NULL,
+  name TEXT NOT NULL, grant_id BIGINT NOT NULL,
+  config TEXT NOT NULL,                           -- JSON including public verification settings and rules
   UNIQUE (board_id, name)
+);
+CREATE TABLE inbound_secrets (
+  id TEXT PRIMARY KEY, org_id BIGINT NOT NULL, board_id BIGINT NOT NULL,
+  key_version BIGINT NOT NULL, ciphertext TEXT NOT NULL
 );
 ```
 
@@ -568,6 +572,12 @@ then checks `board_id` against the request's scope.
 Webhook events carry a `secretId` reference. Full organization purge removes
 `webhook_secrets`. Organization export excludes the table so exported events
 can reconstruct subscriptions without the signing credentials.
+
+Both secret tables use AES-256-GCM with keys derived from
+`OPENBOARD_SECRET_KEY` using HKDF-SHA256. The webhook key uses info
+`openboard/webhook-signing/v1` and binds the webhook ID and secret ID as
+authenticated data. The inbound key uses info `openboard/inbound-verify/v1`
+and binds the endpoint ID as authenticated data.
 
 ```sql
 CREATE TABLE webhook_secrets (

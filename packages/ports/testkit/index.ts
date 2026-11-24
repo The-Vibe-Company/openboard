@@ -1,3 +1,4 @@
+import { inboundSuite } from "./store/inbound.test-suite.ts";
 import { webhooksSuite } from "./store/webhooks.test-suite.ts";
 
 export { runBroadcasterSuite } from "./broadcaster.test-suite.ts";
@@ -72,6 +73,7 @@ export function runStoreSuite(driver: string, open: OpenStore): void {
   threadsSuite(driver, open);
   watchersSuite(driver, open);
   webhooksSuite(driver, open);
+  inboundSuite(driver, open);
 }
 
 /** Every scoped store method across two organizations: nothing of B reaches A (docs/codebase.md 6.5). */

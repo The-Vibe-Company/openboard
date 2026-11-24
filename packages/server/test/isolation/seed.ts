@@ -212,8 +212,19 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
     send("POST", `/api/${org}/main/x/webhooks/${webhook.id}/test`, session),
     "test delivery",
   );
+  const { inbound } = await ok<{ inbound: { id: string } }>(
+    send("POST", `/api/${org}/main/x/inbound`, session, {
+      name: marker,
+      can: { "*": "all" },
+      verify: {},
+      thread: { from: "{{body.ref}}", pattern: "^ob:(\\d+)$" },
+      rules: [],
+    }),
+    "inbound",
+  );
   const ids = {
     ...made,
+    inbound: inbound.id,
     webhook: webhook.id,
     delivery: delivery.id,
     export: id,
@@ -261,7 +272,7 @@ export async function seed(
   const a = await tenant(send, store, "alpha", "a", 1);
   const aOther = "other";
   await ok(send("POST", "/api/x/orgs/alpha/boards", a.session, { slug: aOther, name: aOther }), "board");
-  const b = await tenant(send, store, "bravo", "b", 12);
+  const b = await tenant(send, store, "bravo", "b", 16);
   const events = await ok<{ cursor: string }>(send("GET", "/api/alpha/main/events", a.session), "events");
   if (Number(b.ids.message) <= Number(events.cursor)) throw new Error("seed: B's last message must be past A's head");
   const deleted = await tenant(send, store, "archived", "c", 0);

@@ -20,6 +20,9 @@ function entry<Kind extends string, Payload extends TProperties>(type: Kind, pay
 
 /** A board's `ob.*` event as the audit shows it (docs/auth.md "Audit"). */
 export const AuditEvent = Type.Union([
+  entry("ob.inbound.created", { id: Type.String(), name: Type.String() }),
+  entry("ob.inbound.updated", { id: Type.String() }),
+  entry("ob.inbound.deleted", { id: Type.String() }),
   entry("ob.webhook.created", { id: Type.String(), name: Type.String() }),
   entry("ob.webhook.deleted", { id: Type.String() }),
   entry("ob.schema.registered", { id: Type.String() }),

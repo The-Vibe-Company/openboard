@@ -28,6 +28,8 @@ export function principalFlags(principal: GrantPrincipal): string {
       return `--all-projects --environment ${principal.environments.join(",")}`;
     case "app":
       return `--app ${principal.name ?? principal.clientId}`;
+    case "hook":
+      return `ob:hook:${principal.inbound}`;
     case "connection":
       return `--connection ${principal.connection}`;
     default:

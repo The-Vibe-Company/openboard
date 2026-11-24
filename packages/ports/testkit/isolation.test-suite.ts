@@ -10,8 +10,9 @@ import {
   type Store,
 } from "../src/index.ts";
 import { type OpenStore, testScope } from "./index.ts";
+import { seedCase } from "./isolation-case-seeds.ts";
 import { at, boardCreation, type StoreTenant, seedPersonGrant, storeTenant } from "./isolation-seed.ts";
-import { appendSchema } from "./store/schemas.test-suite.ts";
+import { inboundCipher, inboundId } from "./store/inbound.test-suite.ts";
 import { pull, seedWatcher } from "./store/watchers.test-suite.ts";
 import { seedWebhook } from "./store/webhooks.test-suite.ts";
 
@@ -29,6 +30,8 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  * case does not compile. A case answers what the view gave, which must hold nothing of B.
  */
 const boardCases: Cases<BoardView> = {
+  inboundEndpoints: async (a) => expect(await a.board.inboundEndpoints()).toEqual([]),
+  inboundEndpoint: async (a) => expectNull(await a.board.inboundEndpoint(inboundId)),
   webhooks: async (a) => {
     expect(await a.board.webhooks()).toEqual([]);
   },
@@ -139,6 +142,14 @@ const boardCases: Cases<BoardView> = {
 
 /** One case per `BoardWriter` member, inside A's write with B's IDs. */
 const writerCases: Cases<BoardWriter> = {
+  inboundEndpoints: async (a) => expect(await inWrite(a, (writer) => writer.inboundEndpoints())).toEqual([]),
+  inboundEndpoint: async (a) => expectNull(await inWrite(a, (writer) => writer.inboundEndpoint(inboundId))),
+  inboundQuota: async (a) => expectNull(await inWrite(a, (writer) => writer.inboundQuota())),
+  inboundSecret: async (a, b) => {
+    expect(await inWrite(b, (writer) => writer.inboundSecret(inboundId))).toEqual(inboundCipher);
+    expectNull(await inWrite(a, (writer) => writer.inboundSecret(inboundId)));
+  },
+  storeInboundSecret: (a) => inWrite(a, (writer) => writer.storeInboundSecret("ib_local", inboundCipher)),
   webhooks: async (a) => {
     expect(await inWrite(a, (writer) => writer.webhooks())).toEqual([]);
   },
@@ -404,6 +415,7 @@ async function digestOf(b: StoreTenant): Promise<string> {
     await b.board.listConnections(at),
     await b.board.watcherRegistrations(null),
     await b.board.schemas(),
+    await b.board.inboundEndpoints(),
     await b.board.readEvents(0),
     await b.board.auditEvents(0, 500),
     await b.board.thread(b.message),
@@ -500,32 +512,6 @@ async function checkExportFailure(store: Store) {
   } finally {
     upload.resolve();
     expect(await running).toBe(false);
-  }
-}
-
-async function seedCase(method: string, a: StoreTenant, b: StoreTenant) {
-  if (["watcherRegistrations", "watcherRegistrationHash", "pullWatcherMatches", "ackWatcherMatch"].includes(method)) {
-    await seedWatcher(a.board, a.actor, a.channel, at);
-    await seedWatcher(b.board, b.actor, b.channel, at);
-  }
-  if (["schema", "schemas", "schemaCount"].includes(method)) {
-    await inWrite(a, (writer) => appendSchema(writer, a.actor, a.marker, at));
-    await inWrite(b, (writer) => appendSchema(writer, b.actor, b.marker, at));
-  }
-  if (["readExport", "auditExportDownload", "runExport", "exportAudit"].includes(method)) {
-    await b.org.requestExport("foreign", b.personId, at, () => {});
-  }
-  if (["webhooks", "webhook", "removeWebhookSecret", "beginWebhookPing"].includes(method)) {
-    await seedWebhook(b.board, b.marker, b.actor);
-  }
-  if (method === "webhookDeliveries" || method === "retryWebhookDelivery") {
-    const foreign = await seedWebhook(b.board, b.marker, b.actor);
-    await inWrite(b, async (writer) => {
-      await writer.beginWebhookPing(foreign, "foreign-ping", at);
-      if (method === "retryWebhookDelivery") {
-        await writer.finishWebhookAttempt("foreign-ping", 1, { state: "dead", status: 422, error: "status", now: at });
-      }
-    });
   }
 }
 

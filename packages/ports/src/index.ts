@@ -2,6 +2,7 @@ export type { IdentityRecord, PersonRecord, SessionRecord, SignedInPerson, SignI
 export type { Broadcaster, CommittedEvents, CommittedPage } from "./broadcaster.ts";
 export type { Bucket, LogSegment } from "./bucket.ts";
 export type { BoardGrantReads, BoardGrantWriter, PersonGrant } from "./grants.ts";
+export * from "./inbound/index.ts";
 export type { BoardJobWriter, Job, JobClaim, JobLease, JobPayload, JobSchedule, Jobs } from "./jobs.ts";
 export { BACKFILL_BOARD_ORG_JOB, PURGE_ORG_JOB, TASK_EXPIRY_JOB } from "./jobs.ts";
 export type {
@@ -35,5 +36,4 @@ export type {
   Store,
 } from "./store.ts";
 export type { BoardTaskReads, BoardTaskWriter, TaskListQuery } from "./tasks.ts";
-
 export * from "./webhooks/index.ts";

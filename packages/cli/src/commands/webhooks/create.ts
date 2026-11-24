@@ -2,7 +2,7 @@ import { closeSync, openSync, readFileSync, unlinkSync, writeFileSync } from "no
 import { BoardError, type WebhookSpec } from "@openboard/contract";
 import { type Command, Misuse } from "../index.ts";
 
-function options(args: readonly string[], optionsEnd: number) {
+export function secretFileOptions(args: readonly string[], optionsEnd: number) {
   const flags = new Map<string, string>();
   for (let i = 0; i < args.length; i += 2) {
     const flag = args[i];
@@ -18,17 +18,17 @@ function options(args: readonly string[], optionsEnd: number) {
   return { spec, secret };
 }
 
-function readSpec(path: string): WebhookSpec {
+export function readSpec<T>(path: string): T {
   try {
     const value: unknown = JSON.parse(readFileSync(path, "utf8"));
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
-    return value as WebhookSpec;
+    return value as T;
   } catch {
     throw new Misuse("expected a readable JSON object in --file");
   }
 }
 
-function reserveSecret(path: string, verbatim: boolean): { fd: number } | { secret: string } {
+export function reserveSecret(path: string, verbatim: boolean): { fd: number } | { secret: string } {
   try {
     return { fd: openSync(path, "wx", 0o600) };
   } catch (error) {
@@ -44,8 +44,8 @@ export const createWebhookCommand: Command = {
   words: ["webhooks", "create"],
   usage: "ob webhooks create --file <spec.json> --secret-file <path>",
   async run(ctx) {
-    const paths = options(ctx.args, ctx.optionsEnd);
-    const spec = readSpec(paths.spec);
+    const paths = secretFileOptions(ctx.args, ctx.optionsEnd);
+    const spec = readSpec<WebhookSpec>(paths.spec);
     if (spec.signing?.secret !== undefined) throw new Misuse("put the signing secret in --secret-file");
     const preset = spec.signing?.preset;
     const verbatim = preset === "stripe" || preset === "ts-id-body";

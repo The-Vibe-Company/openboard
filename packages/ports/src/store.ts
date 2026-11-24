@@ -33,6 +33,7 @@ import type { BoardMessageReads, ChannelMessagesQuery, ChannelsQuery } from "./b
 import type { CommittedEvents } from "./broadcaster.ts";
 import type { Bucket, OrgLogMaintenance } from "./bucket.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
+import type { BoardInboundReads, BoardInboundWriter } from "./inbound/index.ts";
 import type { BoardJobWriter, JobLease, Jobs } from "./jobs.ts";
 import type { OidcKeyStore } from "./oidc-keys.ts";
 import type { OperatorReads, OperatorWrites } from "./operator.ts";
@@ -203,6 +204,7 @@ export interface BoardWriter
     BoardGrantWriter,
     BoardJobWriter,
     BoardWatcherWriter,
+    BoardInboundWriter,
     BoardWebhookWriter {
   readonly head: number;
   schema(id: string): Promise<SchemaView | null>;
@@ -296,6 +298,7 @@ export interface BoardView
     BoardTaskReads,
     BoardGrantReads,
     BoardWatcherReads,
+    BoardInboundReads,
     BoardWebhookReads {
   /**
    * Wake when a write advances this board past the cursor, with the head it reached and its events when in memory.

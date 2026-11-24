@@ -4,6 +4,7 @@ import {
   connectCommand,
   createConnectionCommand,
   createGrantCommand,
+  createInboundCommand,
   createSchemaCommand,
   createWebhookCommand,
   derivedCommands,
@@ -33,6 +34,7 @@ export const commands: readonly AnyCommand[] = [
   updateGrantCommand,
   useCommand,
   createConnectionCommand,
+  createInboundCommand,
   createWebhookCommand,
   createGrantCommand,
   explainGrantsCommand,
@@ -159,6 +161,12 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
       "all-users": "All members of the board's organization.",
       everyone: "The upstream everyone principal.",
     },
+  },
+  "inbound create": {
+    summary: "Create an inbound endpoint and store the verify secret privately.",
+    operations: ["createInbound"],
+    example: "ob inbound create --file runner-status.json --secret-file ./inbound.secret",
+    options: { file: "JSON inbound endpoint spec.", "secret-file": "Existing verify secret or a new 0600 file." },
   },
   "webhooks create": {
     summary: "Subscribe to board events and store the signing secret privately.",

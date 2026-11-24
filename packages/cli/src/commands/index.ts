@@ -45,6 +45,7 @@ export { createConnectionCommand } from "./connections.ts";
 export { derivedCommands } from "./derived.ts";
 export { explainGrantsCommand } from "./grants/explain.ts";
 export { createGrantCommand, updateGrantCommand } from "./grants.ts";
+export { createInboundCommand } from "./inbound/index.ts";
 export { loginCommand } from "./login.ts";
 export { messagesCommand } from "./messages.ts";
 export { downloadOrgExportCommand, exportOrgCommand } from "./org/export.ts";

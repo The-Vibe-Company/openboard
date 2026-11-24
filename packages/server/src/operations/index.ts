@@ -48,6 +48,13 @@ import { listGrantsHandler } from "./grants/list.ts";
 import { revokeGrantHandler } from "./grants/revoke.ts";
 import { updateGrantHandler } from "./grants/update.ts";
 import {
+  createInboundHandler,
+  deleteInboundHandler,
+  getInboundHandler,
+  listInboundHandler,
+  updateInboundHandler,
+} from "./inbound/index.ts";
+import {
   acceptInvitationHandler,
   createInvitationHandler,
   listMembersHandler,
@@ -220,6 +227,11 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   createOrg: createOrgHandler,
   createSchema: createSchemaHandler,
   createTask: createTaskHandler,
+  createInbound: createInboundHandler,
+  deleteInbound: deleteInboundHandler,
+  getInbound: getInboundHandler,
+  listInbound: listInboundHandler,
+  updateInbound: updateInboundHandler,
   createWebhook: createWebhookHandler,
   deleteBoard: deleteBoardHandler,
   deleteMessage: deleteMessageHandler,

@@ -64,6 +64,8 @@ const boardDeletes = {
       webhook_deliveries: "id",
       webhook_secrets: "id",
       webhooks: "id",
+      inbound_secrets: "id",
+      inbound_endpoints: "id",
       watcher_registrations: "board_id, owner",
     },
     "both",
