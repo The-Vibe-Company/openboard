@@ -1,5 +1,5 @@
 import type { Store } from "@openboard/ports";
-import { createApp, type Deps, type Logger, mintLocalOwnerToken } from "../../src/index.ts";
+import { createApp, type Deps, type Logger, mintLocalOwnerToken, type ServerConfig } from "../../src/index.ts";
 import { openStore } from "./drivers.ts";
 
 /** `OPENBOARD_PUBLIC_URL` of every test app. */
@@ -16,19 +16,22 @@ export function unexpectedTimer(): never {
   throw new Error("unexpected timer");
 }
 
+type AppOptions = Pick<ServerConfig, "signup" | "signIn"> &
+  Pick<Deps, "fetch"> & {
+    readonly mode?: ServerConfig["mode"];
+    readonly now?: () => number;
+    readonly log?: Logger;
+    readonly schedule?: Deps["schedule"];
+    readonly store?: Store;
+  };
+
 /**
  * One app on the test store (in-memory SQLite, or a fresh Postgres database with `OPENBOARD_TEST_DRIVER=postgres`),
  * with a fixed clock unless one is given, a logger that keeps the errors it is told unless one is given, request IDs
  * `req-1`, `req-2`, … in the order requests arrive, and random bytes all 1, then all 2, ….
  */
-export function makeApp(
-  options: {
-    readonly now?: () => number;
-    readonly log?: Logger;
-    readonly schedule?: Deps["schedule"];
-    readonly store?: Store;
-  } = {},
-) {
+export function makeApp(options: AppOptions = {}) {
+  const { mode = "local", signup, signIn, fetch } = options;
   const logged: Readonly<Record<string, unknown>>[] = [];
   const now = options.now ?? (() => NOW);
   const log: Logger = options.log ?? {
@@ -38,7 +41,15 @@ export function makeApp(
   let minted = 0;
   let drawn = 0;
   const app = createApp(
-    { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, localOwnerTokenHash: OWNER.hash },
+    {
+      mode,
+      publicUrl: PUBLIC_URL,
+      localOwner: LOCAL_OWNER,
+      // Keep a configured hash in hosted tests to exercise the verifier's mode guard.
+      localOwnerTokenHash: OWNER.hash,
+      ...(signup && { signup }),
+      ...(signIn && { signIn }),
+    },
     { store: options.store ?? openStore(now) },
     {
       now,
@@ -46,6 +57,7 @@ export function makeApp(
       requestId: () => `req-${++minted}`,
       schedule: options.schedule ?? unexpectedTimer,
       randomBytes: (length) => new Uint8Array(length).fill(++drawn),
+      ...(fetch && { fetch }),
     },
   );
   return { ...app, logged };
