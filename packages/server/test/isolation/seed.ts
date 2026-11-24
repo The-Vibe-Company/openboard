@@ -229,6 +229,10 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
     send("POST", `/api/${org}/main/x/webhooks/${webhook.id}/test`, session),
     "test delivery",
   );
+  const { schedule } = await ok<{ schedule: { id: string } }>(
+    send("POST", `/api/${org}/main/schedules`, session, { channel: "dev", text: marker, in: "1d" }),
+    "schedule",
+  );
   const { inbound } = await ok<{ inbound: { id: string } }>(
     send("POST", `/api/${org}/main/x/inbound`, session, {
       name: marker,
@@ -240,6 +244,7 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
     "inbound",
   );
   const ids = {
+    schedule: schedule.id,
     ...made,
     inbound: inbound.id,
     webhook: webhook.id,

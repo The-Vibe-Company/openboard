@@ -71,7 +71,7 @@ export const postMessageHandler: Handler<typeof postMessage> = async (ctx, reque
 };
 
 // Use the writer so registration and validation observe the same board lock.
-async function validateBlocks(writer: BoardWriter, text: string): Promise<MessageBlock[]> {
+export async function validateBlocks(writer: BoardWriter, text: string): Promise<MessageBlock[]> {
   const found = findBlocks(text);
   if (!found.length) return [];
   const schemas = new Map(builtInSchemas().map(({ id, schema }) => [id, schema]));

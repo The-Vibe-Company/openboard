@@ -1,8 +1,10 @@
 import type { operations, RawInput } from "@openboard/contract";
+import { checkScheduleTiming, messages } from "@openboard/core";
 import type { BoardView } from "@openboard/ports";
 import { keepInsideCan, narrowCaller } from "../auth/access.ts";
 import { authenticate, type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
+import type { Principal } from "../deps.ts";
 import { streamEvents } from "../operations/events.ts";
 import { handlerOf } from "../operations/index.ts";
 import { recoverGrant } from "./errors.ts";
@@ -45,6 +47,15 @@ export function authenticateBoard(
     const by = narrowCaller(request, await authenticate(request, chain, board, operation, audience));
     return { board, by };
   });
+}
+
+/** Check the schedule command's shape before an invalid target can enter permission lookup. */
+function boardInput(operation: BoardOperation, raw: RawInput, by: Principal) {
+  if (operation.name !== "createSchedule") return validate(operation, raw);
+  const input = validate(operation, raw);
+  messages.checkPost({ ...input, text: input.text ?? "" }, by);
+  checkScheduleTiming(input);
+  return input;
 }
 
 export async function runBoard(
@@ -91,7 +102,7 @@ export async function runBoard(
       limitStream(pipeline.rateLimits, path.org, by.principal),
     );
   }
-  const input = validate(operation, raw);
+  const input = boardInput(operation, raw, by);
   const output = await handlerOf(operation)(await context(input), input).catch(recoverGrant(operation, input));
   const response = operationResponse(operation, output);
   if (operation.name === "createWebhook" || operation.name === "updateWebhook" || operation.name === "createInbound") {

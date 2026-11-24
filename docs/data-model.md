@@ -486,6 +486,7 @@ CREATE TABLE schedules (
   sent BIGINT NOT NULL DEFAULT 0, next_at BIGINT, last_message BIGINT, state TEXT NOT NULL, canceled TEXT,
   by_actor TEXT NOT NULL, by_principal TEXT NOT NULL, by_profile TEXT, creator TEXT NOT NULL,
   blind SMALLINT NOT NULL DEFAULT 0, created_at BIGINT NOT NULL,
+  author TEXT NOT NULL, mentions TEXT NOT NULL, blocks TEXT NOT NULL,
   PRIMARY KEY (board_id, id)
 );
 CREATE INDEX schedules_due ON schedules (next_at) WHERE state = 'pending';          -- global: job picker

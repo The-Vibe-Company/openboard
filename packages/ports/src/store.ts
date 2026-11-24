@@ -217,6 +217,7 @@ export interface BoardWriter
   readonly head: number;
   schema(id: string): Promise<SchemaView | null>;
   schemaCount(): Promise<number>;
+  nextSchedule(): Promise<number>;
   /** The actors available to resolve handles under the write lock. */
   mentionActors(handles: ReadonlySet<string>): Promise<MentionActor[]>;
   /** Check the selected message versions that established candidate visibility before the lock. */

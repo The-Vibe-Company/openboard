@@ -63,6 +63,7 @@ const boardDeletes = {
       grants: "board_id, id",
       messages: "board_id, id",
       schemas: "board_id, id",
+      schedules: "board_id, id",
       tasks: "board_id, id",
       task_batches: "board_id, principal, id",
       watcher_matches: "board_id, id",

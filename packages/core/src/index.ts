@@ -60,7 +60,13 @@ export { decideRenewTask } from "./tasks/renew.ts";
 export { decideReopenTask } from "./tasks/reopen.ts";
 export { decideCompleteTask, decideSettlement } from "./tasks/settle.ts";
 export type { ChannelCreated };
+import type { ScheduleCanceled, ScheduleCreated } from "./schedules/create.ts";
+export { decideSchedule, parseScheduleId, type ScheduleCanceled, type ScheduleCreated } from "./schedules/create.ts";
+export { checkScheduleTiming, firstScheduleTime } from "./schedules/timing.ts";
+
 export type BoardEvent =
+  | ScheduleCreated
+  | ScheduleCanceled
   | ActorSeen
   | AgentClaimed
   | AgentRefreshed

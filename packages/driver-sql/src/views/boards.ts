@@ -28,6 +28,12 @@ export const messageBytes: Fragment = Object.freeze({
       ? "octet_length(convert_to(m.text, 'UTF8')) + COALESCE(octet_length(convert_to(CAST(CAST(m.view AS JSON) -> 'blocks' AS TEXT), 'UTF8')), 0)"
       : "octet_length(m.text) + COALESCE(octet_length(m.view -> 'blocks'), 0)",
 });
+export const scheduleBytes: Fragment = Object.freeze({
+  fragment: ({ name }: Dialect) =>
+    name === "postgres"
+      ? "octet_length(convert_to(s.text, 'UTF8')) + octet_length(convert_to(s.blocks, 'UTF8'))"
+      : "octet_length(s.text) + octet_length(s.blocks)",
+});
 const skipLocked: Fragment = Object.freeze({
   fragment: ({ name }: Dialect) => (name === "postgres" ? " FOR UPDATE SKIP LOCKED" : ""),
 });
@@ -72,6 +78,9 @@ export const boardStatements = {
     CASE WHEN boards.stored_bytes_head = boards.head THEN boards.stored_bytes ELSE (
       SELECT COALESCE(SUM(${messageBytes}), 0)
       FROM messages m WHERE m.org_id = ${"orgId"} AND m.board_id = ${"boardId"} AND m.deleted = 0
+    ) + (
+      SELECT COALESCE(SUM(${scheduleBytes}), 0) FROM schedules s
+      WHERE s.org_id = ${"orgId"} AND s.board_id = ${"boardId"}
     ) END AS board_bytes,
     (SELECT snapshot.head FROM boards snapshot
       WHERE snapshot.org_id = ${"orgId"} AND snapshot.id = ${"boardId"}) AS snapshot_head,
@@ -80,6 +89,9 @@ export const boardStatements = {
     (SELECT COALESCE(SUM(CASE WHEN sibling.stored_bytes_head = sibling.head THEN sibling.stored_bytes ELSE (
       SELECT COALESCE(SUM(${messageBytes}), 0)
       FROM messages m WHERE m.org_id = ${"orgId"} AND m.board_id = sibling.id AND m.deleted = 0
+    ) + (
+      SELECT COALESCE(SUM(${scheduleBytes}), 0) FROM schedules s
+      WHERE s.org_id = ${"orgId"} AND s.board_id = sibling.id
     ) END), 0) FROM boards sibling WHERE sibling.org_id = ${"orgId"} AND sibling.id <> ${"boardId"}) + COALESCE(orgs.attachment_bytes, 0) AS other_bytes
     FROM orgs JOIN boards ON boards.org_id = orgs.id
     CROSS JOIN (SELECT CAST(${"day"} AS BIGINT) AS day, CAST(${"nextDay"} AS BIGINT) AS next_day) quota_clock
@@ -100,6 +112,9 @@ export const boardStatements = {
     UPDATE boards SET stored_bytes = (
       SELECT COALESCE(SUM(${messageBytes}), 0) FROM messages m
       WHERE m.org_id = ${"orgId"} AND m.board_id = stale.id AND m.deleted = 0
+    ) + (
+      SELECT COALESCE(SUM(${scheduleBytes}), 0) FROM schedules s
+      WHERE s.org_id = ${"orgId"} AND s.board_id = stale.id
     ), stored_bytes_head = stale.head
     FROM stale WHERE boards.org_id = ${"orgId"} AND boards.id = stale.id`,
   orgBoards: sql`SELECT slug, name FROM boards WHERE org_id = ${"orgId"} AND deleted_at IS NULL ORDER BY slug`,

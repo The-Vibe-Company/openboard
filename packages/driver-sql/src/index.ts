@@ -50,6 +50,7 @@ import webhookJobIndexesDdl from "../migrations/0048-webhook-job-indexes.sql" wi
 import attachmentDdl from "../migrations/0049-attachments.sql" with { type: "text" };
 import attachmentGcDdl from "../migrations/0050-attachment-gc.sql" with { type: "text" };
 import attachmentGcBackfillDdl from "../migrations/0051-attachment-gc-backfill.sql" with { type: "text" };
+import scheduleDdl from "../migrations/0052-schedules.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -154,6 +155,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 49, name: "0049-attachments", sql: attachmentDdl },
   { version: 50, name: "0050-attachment-gc", sql: attachmentGcDdl },
   { version: 51, name: "0051-attachment-gc-backfill", sql: attachmentGcBackfillDdl },
+  { version: 52, name: "0052-schedules", sql: scheduleDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */

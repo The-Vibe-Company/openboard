@@ -14,6 +14,7 @@ export * from "./entities/messages.ts";
 export { download, upload } from "./operations/attachments/index.ts";
 export * from "./entities/org/exports.ts";
 export * from "./entities/orgs.ts";
+export * from "./entities/schedules/index.ts";
 export * from "./entities/schemas/view.ts";
 export * from "./entities/task-events.ts";
 export * from "./entities/tasks.ts";
@@ -155,6 +156,7 @@ export {
   unblockTask,
   updateGrant,
 } from "./operations/index.ts";
+export { cancelSchedule, createSchedule, listSchedules } from "./operations/schedules/index.ts";
 export { listWebhookDeliveries, retryWebhookDelivery } from "./operations/webhooks/deliveries.ts";
 export {
   createWebhook,

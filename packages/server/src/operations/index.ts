@@ -79,6 +79,7 @@ import {
 import { getMetricsHandler, type MetricsContext } from "./metrics/index.ts";
 import { downloadOrgExportHandler, getOrgExportHandler, requestOrgExportHandler } from "./org/exports.ts";
 import { createOrgHandler, deleteOrgHandler } from "./orgs.ts";
+import { createScheduleHandler, noScheduler } from "./schedules/index.ts";
 import { createSchemaHandler, listSchemasHandler, readSchemaHandler } from "./schemas/registry.ts";
 import {
   ackInboxHandler,
@@ -232,6 +233,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   ackWatcherMatch: ackWatcherMatchHandler,
   approveDeviceSignIn: approveDeviceSignInHandler,
   attachSync: attachSyncHandler,
+  cancelSchedule: noScheduler,
   cancelTask: cancelTaskHandler,
   blockTask: blockTaskHandler,
   setTaskNeeds: setTaskNeedsHandler,
@@ -248,6 +250,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   createGrants: createGrantsHandler,
   createInvitation: createInvitationHandler,
   createOrg: createOrgHandler,
+  createSchedule: createScheduleHandler,
   createSchema: createSchemaHandler,
   createTask: createTaskHandler,
   createTaskBatch: createTaskBatchHandler,
@@ -290,6 +293,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listMembers: listMembersHandler,
   listMessages: listMessagesHandler,
   listPersonalTokens: listPersonalTokensHandler,
+  listSchedules: noScheduler,
   listSchemas: listSchemasHandler,
   listSyncCopies: listSyncCopiesHandler,
   listSyncTargets: listSyncTargetsHandler,

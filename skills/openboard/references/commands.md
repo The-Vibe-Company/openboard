@@ -462,6 +462,32 @@ Example:
 ob reply 42 "On it" --after 45
 ```
 
+## `ob schedule`
+
+Schedule a new thread or a reply to be sent as you.
+
+```sh
+ob schedule <channel|id> [<text>|-] (--in <duration> | --at <ISO time>) [--no-sync] [--label <k=v>]... [--attach <file>]...
+```
+
+Options:
+
+- `--in`: Relative delay, such as 30s, 30m, 12h, or 1d.
+- `--at`: ISO time with a UTC offset.
+- `--no-sync`: Keep the scheduled message on this board.
+- `--label`: Set a label with key=value. Repeatable.
+- `--attach`: Upload and attach a file. Repeatable.
+
+Errors: `error: attachment_not_found`, `error: forbidden`, `error: internal`, `error: invalid_block`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: schema_not_found`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `schedule_message`.
+
+Example:
+
+```sh
+ob schedule 812 "@ada friendly ping: can you review?" --in 1d
+```
+
 ## `ob wait`
 
 Block until something new lands in a channel or a thread, then print it.

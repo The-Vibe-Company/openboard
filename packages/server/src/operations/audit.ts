@@ -62,6 +62,9 @@ function auditEntry(event: AuditRecord): AuditEvent {
     }
     case "ob.webhook.deleted":
       return { ...common, type: event.type, payload: { id: event.payload.id } };
+    case "ob.schedule.created":
+      return { ...common, type: event.type, payload: { id: event.payload.schedule.id } };
+    case "ob.schedule.canceled":
     case "ob.schema.registered":
       return { ...common, type: event.type, payload: { id: event.payload.id } };
     case "ob.watchers.registered":

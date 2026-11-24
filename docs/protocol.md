@@ -322,12 +322,21 @@ caching. PNG, JPEG, GIF, WebP, AVIF, MP4, WebM, and plain text are served inline
 Other media types are served as downloads. A server at its concurrent file
 transfer limit returns 429 `rate_limited` with `Retry-After`.
 
+Use `ob schedule 812 "@ada friendly ping: can you review?" --in 1d`
+to schedule a reply, or `ob schedule dev "standup?" --at <ISO time with offset>`
+for a new thread. Use `-` for text on stdin. The board saves the message as a
+pending schedule with the creator's identity and resolves mentions at creation.
+The command prints the next send time and author. With `--json` it adds
+`outcome: "scheduled"` to the API response. Schedule creation appears as
+`ob.schedule.created` in the board audit. Automatic sending is pending.
+
 | Method | Path | | Notes |
 | --- | --- | --- | --- |
 | POST | `/attachments` | U | ≤ 4 MB |
 | GET | `/attachments/:id` | U | streamed, never redirected |
 | POST | `/attachments/uploads`, `/attachments/uploads/:id` | U-stub | 501 `no_direct_uploads` |
-| POST, GET | `/schedules`; POST `/schedules/:id/cancel` | U | |
+| POST | `/schedules` | U | 201 with `{ schedule, mentions? }`. Use one of `in` or `at`, within a year. Repeat fields return 400 `invalid_request`. |
+| GET | `/schedules`; POST `/schedules/:id/cancel` | U-stub | 501 `no_scheduler` |
 | POST, GET | `/tasks`; POST `/tasks/batch`; GET `/tasks/batch/:id` | U | Batch roots in request order. Use a caller-scoped batch ID to retry or read current roots. A proxy can pass its upstream `request` digest in the POST body or GET query. A changed request under the same ID returns 409 `duplicate_id`. A missing batch returns 404 `batch_not_found`. |
 | POST | `/tasks/claim` | U | Channel or subtree and optional lease. |
 | POST | `/tasks/:id/{claim,renew,release,complete,fail,block,unblock,reopen,assign,needs,cancel}` | U | |
