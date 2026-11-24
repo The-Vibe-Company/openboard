@@ -21,7 +21,7 @@ writes:
 conformance: ["search/lists the threads of every channel under a pattern at once"]
 modes: [local]
 depends_on: [87]
-status: claimed
+status: done
 claimed_by: claude-opus-t88
 issue: 88
 ---
@@ -30,7 +30,7 @@ issue: 88
 As a person, I read a whole subtree of channels as one list.
 
 ## Done when
-- [ ] `ob read dev/` lists the threads of `dev` and `dev/web` together
+- [x] `ob read dev/` lists the threads of `dev` and `dev/web` together
 
 ## Out of scope
 - Channel listing under a prefix (91).
