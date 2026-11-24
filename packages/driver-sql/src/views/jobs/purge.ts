@@ -44,6 +44,7 @@ const orgDeletes = deletes(
     personal_tokens: "id",
     shipping: "org_id, board_id",
     tenant_rate_counters: "key, window_start",
+    usage_daily: "day",
   },
   "org",
 );

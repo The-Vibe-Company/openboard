@@ -11,11 +11,13 @@ export function renderDdl(postgres: string): string {
   return statements
     .filter(
       (statement) =>
-        (/^CREATE TRIGGER sync_task_expiry_job\b/i.test(statement) ||
+        (/^CREATE TRIGGER (?:sync_task_expiry_job|queue_usage_|adjust_late_usage_|keep_unrolled_usage_|clear_purged_org_usage)/i.test(
+          statement,
+        ) ||
           !/^CREATE (?:EXTENSION|FUNCTION|TRIGGER)\b/i.test(statement)) &&
         !/\bUSING\s+gin\b/i.test(statement),
     )
-    .map((statement) => renderTaskExpiryTrigger(statement, statements) ?? renderStatement(statement))
+    .map((statement) => inlineTrigger(statement, statements) ?? renderStatement(statement))
     .map((statement) => `${statement};`)
     .join("\n");
 }
@@ -44,14 +46,26 @@ export function renderMigration(migration: Migration): string {
   );
 }
 
-// The task expiry trigger uses shared SQL; SQLite inlines the function's DML.
-function renderTaskExpiryTrigger(statement: string, statements: readonly string[]): string | undefined {
-  const call = "EXECUTE FUNCTION sync_task_expiry_job()";
-  if (!statement.endsWith(call)) return undefined;
-  const definition = statements.find((candidate) => candidate.startsWith("CREATE FUNCTION sync_task_expiry_job()"));
-  const body = /\bBEGIN\s+([\s\S]+?)\s+RETURN NEW;/.exec(definition ?? "")?.[1];
-  if (!body) throw new Error("cannot render the task expiry trigger");
-  return statement.replace(call, `BEGIN ${body} END`);
+// SQLite inlines the shared DML in row triggers that also run on Postgres.
+function inlineTrigger(statement: string, statements: readonly string[]): string | undefined {
+  const call = /EXECUTE FUNCTION (\w+)\((?:'(at|created_at)')?\)$/.exec(statement);
+  if (!call) return undefined;
+  const functionName = `CREATE FUNCTION ${call[1]}()`;
+  const definition =
+    statements.find((candidate) => candidate.startsWith(functionName)) ??
+    (call[1] === "queue_usage_day" &&
+      splitStatements(migrations.find(({ name }) => name === "0044-usage")?.sql ?? "").find((candidate) =>
+        candidate.startsWith(functionName),
+      ));
+  if (call[1] === "keep_unrolled_usage_delivery") {
+    const guard = /IF (EXISTS \([\s\S]+?\)) THEN/.exec(definition || "")?.[1];
+    if (!guard) throw new Error(`cannot render trigger ${call[1]}`);
+    return statement.replace(call[0], `BEGIN SELECT RAISE(IGNORE) WHERE ${guard}; END`);
+  }
+  const body = /\bBEGIN\s+([\s\S]+?)\s+RETURN NEW;/.exec(definition || "")?.[1];
+  if (!body) throw new Error(`cannot render trigger ${call[1]}`);
+  const dml = call[2] ? body.replace(/^[\s\S]*?END IF;\s*/, "").replaceAll("source_at", `NEW.${call[2]}`) : body;
+  return statement.replace(call[0], `BEGIN ${dml} END`);
 }
 
 // Postgres can delete from a simple view directly. SQLite needs the declared base-row key.

@@ -29,6 +29,7 @@ import {
 import { activeGrant, foldGrantEvent, grantReads, otherGrantIssuers } from "./grants.ts";
 import { foldInbound, inboundWriter } from "./inbound/index.ts";
 import { type JobWrites, jobWriter } from "./jobs/index.ts";
+import { notifyUsageDay } from "./jobs/usage.ts";
 import { messageStatements } from "./messages/statements.ts";
 import { messageStorage } from "./messages/storage.ts";
 import { orgReads } from "./orgs.ts";
@@ -178,6 +179,7 @@ function eventWriter(
   usage: ReturnType<typeof messageStorage>,
   measured: number,
   jobs: ReturnType<typeof jobWriter>,
+  enqueued: JobWrites["committed"],
 ): Pick<BoardWriter, "append" | "head"> {
   let { head, hasWatchers, hasWebhooks } = locked;
   const { dailyEvents } = locked;
@@ -202,8 +204,9 @@ function eventWriter(
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);
         await usage.account(event);
         if (hasWatchers) await matchWatchers(tx, dialect, keys, event);
-        if (hasWebhooks) await matchWebhooks(tx, dialect, keys, jobs, event, now);
+        if (hasWebhooks) await matchWebhooks(tx, dialect, keys, jobs, event, now, enqueued);
         await appendEvent(tx, dialect, keys, event);
+        if (dialect.name === "sqlite") notifyUsageDay(event.at, enqueued);
         if (
           (event.type === "ob.webhook.created" || event.type === "ob.webhook.updated") &&
           event.payload.webhook.enabled
@@ -228,19 +231,20 @@ function writer(
   jobs: ReturnType<typeof jobWriter>,
   now: number,
   taskId: number | null,
+  enqueued: JobWrites["committed"],
 ): BoardWriter {
   const { actor, storage } = locked;
   // Once a callback appends events, later reads must see its folds.
   const preloaded = (id: number) => (id === taskId && committed.length === 0 ? locked.row : undefined);
   const usage = messageStorage(tx, dialect, keys, storage, preloaded);
-  const events = eventWriter(tx, dialect, keys, locked, committed, usage, now, jobs);
+  const events = eventWriter(tx, dialect, keys, locked, committed, usage, now, jobs, enqueued);
   return {
     ...taskWriter(tx, dialect, keys, preloaded),
     ...jobs,
     ...watcherWriter(tx, dialect, keys),
     ...inboundWriter(tx, dialect, keys),
     ...webhookWriter(tx, dialect, keys),
-    ...deliveryWriter(tx, dialect, keys),
+    ...deliveryWriter(tx, dialect, keys, enqueued),
     ...schemaWriter(tx, dialect, keys),
     append: events.append,
     get head() {
@@ -334,11 +338,12 @@ export function boardView(
           const locked = await lockBoardAs(tx, dialect, keys, as ?? null, window, taskId);
           const { head, storage } = locked;
           const events: BoardEvent[] = [];
-          const queue = jobWriter(tx, dialect, keys, (kind, dueAt) => {
+          const enqueuing: JobWrites["committed"] = (kind, dueAt) => {
             enqueued ??= new Map();
             enqueued.set(kind, Math.min(dueAt, enqueued.get(kind) ?? Infinity));
-          });
-          const boardWriter = writer(tx, dialect, keys, locked, events, queue, now, taskId);
+          };
+          const queue = jobWriter(tx, dialect, keys, enqueuing);
+          const boardWriter = writer(tx, dialect, keys, locked, events, queue, jobs.now(), taskId, enqueuing);
           const result = await fn(boardWriter);
           const page = boardWriter.head > head ? { after: head, head: boardWriter.head, events } : undefined;
           if (page !== undefined && storage.staleSiblings) await repairStoredBytes(tx, dialect, keys);
