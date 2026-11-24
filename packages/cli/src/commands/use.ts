@@ -23,7 +23,10 @@ async function checkBoard(ctx: StandaloneContext, boardUrl: string, token: strin
   } catch (error) {
     if (!(error instanceof BoardError)) throw error;
     if (error.code === "not_found") throw new BoardError("not_found", `no board ${name} you can use`);
-    throw new BoardError(error.code, `the board ${name} refused the personal credential`);
+    if (error.code === "unauthorized" || error.code === "forbidden") {
+      throw new BoardError(error.code, `the board ${name} refused the personal credential`);
+    }
+    throw new BoardError(error.code, `could not check the board ${name}; it stays unchanged`);
   }
 }
 
@@ -38,17 +41,17 @@ export const useCommand = {
     }
     const path = personalConfigPath(ctx.env);
     if (!path) throw new Misuse("HOME is required to read the personal credential");
+    const saved = storedPersonal(ctx.env);
+    if (!saved) throw new BoardError("unauthorized", "no personal sign-in: run ob login <origin> first");
+    const org = wanted.org ?? saved.org;
+    if (org !== saved.org) {
+      throw new BoardError("invalid_request", `you are signed in to ${saved.org}; boards of ${org} are out of reach`);
+    }
+    const next = { origin: saved.origin, org, board: wanted.board };
+    const url = personalBoardUrl(next);
     const context = await storePersonalLogin(path, async () => {
-      const saved = storedPersonal(ctx.env);
-      if (!saved) throw new BoardError("unauthorized", "no personal sign-in: run ob login <origin> first");
-      const org = wanted.org ?? saved.org;
-      if (org !== saved.org) {
-        throw new BoardError("invalid_request", `you are signed in to ${saved.org}; boards of ${org} are out of reach`);
-      }
-      const next = { origin: saved.origin, org, board: wanted.board };
-      const boardUrl = personalBoardUrl(next);
-      await checkBoard(ctx, boardUrl, saved.token, `${org}/${wanted.board}`);
-      return { credential: { token: saved.token, ...next }, result: { org, board: wanted.board, url: boardUrl } };
+      await checkBoard(ctx, url, saved.token, `${org}/${wanted.board}`);
+      return { credential: { token: saved.token, ...next }, result: { org, board: wanted.board, url } };
     });
     if (ctx.json) ctx.output.out(JSON.stringify(context));
     else ctx.output.out(`Using ${context.org}/${context.board}: ${context.url}`);

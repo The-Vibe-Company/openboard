@@ -1,8 +1,14 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { clientConfig, personalConfigPath, storePersonalLogin } from "../src/config.ts";
+import {
+  agentConfigPath,
+  clientConfig,
+  personalConfigPath,
+  storeAgentClaim,
+  storePersonalLogin,
+} from "../src/config.ts";
 import { runCli } from "../src/main.ts";
 
 const origin = "http://127.0.0.1:8787";
@@ -10,12 +16,16 @@ const token = ["obp", "a".repeat(16), "b".repeat(43)].join("_");
 const boards = new Set(["main", "ops"]);
 
 /** A home signed in to `acme/main`, a board server that knows `acme/main` and `acme/ops`, and captured output. */
-async function signedIn(run: (env: { HOME: string }, cli: (...argv: string[]) => Promise<number>) => Promise<void>) {
+async function signedIn(
+  run: (env: { HOME: string }, cli: (...argv: string[]) => Promise<number>) => Promise<void>,
+  answer?: () => Promise<Response>,
+) {
   const home = mkdtempSync(join(tmpdir(), "ob-use-"));
   const env = { HOME: home };
   const lines = { out: [] as string[], err: [] as string[], urls: [] as string[] };
   const fetch = async (request: Request) => {
     lines.urls.push(`${request.method} ${request.url}`);
+    if (answer) return answer();
     expect(request.headers.get("authorization") === `Bearer ${token}`).toBe(true);
     const [, org, board] = /^\/api\/([^/]+)\/([^/]+)\//.exec(new URL(request.url).pathname) ?? [];
     if (org !== "acme" || !boards.has(board ?? "")) {
@@ -102,7 +112,43 @@ test("without a personal sign-in ob use says to log in first", async () => {
     const code = await runCli(["use", "ops"], { HOME: home }, { output: { out() {}, err: (line) => err.push(line) } });
     expect(code).toBe(1);
     expect(err).toEqual(["error: unauthorized: no personal sign-in: run ob login <origin> first"]);
+    expect(existsSync(join(home, ".config"))).toBe(false);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
+});
+
+test.each([
+  [
+    "a refused credential",
+    async () => Response.json({ error: { code: "unauthorized", message: "no" } }, { status: 401 }),
+    "error: unauthorized: the board acme/ops refused the personal credential",
+  ],
+  [
+    "an unreachable board",
+    async () => Promise.reject(new TypeError("connection refused")),
+    "error: unreachable: could not check the board acme/ops; it stays unchanged",
+  ],
+])("%s keeps the saved board and its private file", async (_name, answer, message) => {
+  const lines = await signedIn(async (env, cli) => {
+    const path = personalConfigPath(env) ?? "";
+    const before = readFileSync(path, "utf8");
+    expect(await cli("use", "ops")).toBe(1);
+    expect(readFileSync(path, "utf8")).toBe(before);
+    expect(statSync(path).mode & 0o777).toBe(0o600);
+  }, answer);
+  expect(lines.err).toEqual([message]);
+});
+
+test("ob use makes the personal sign-in active over an agent connection saved after it", async () => {
+  const agent = ["obt", "a".repeat(16), "b".repeat(43)].join("_");
+  await signedIn(async (env, cli) => {
+    utimesSync(personalConfigPath(env) ?? "", 1, 1);
+    const context = { boardUrl: `${origin}/api/acme/main`, profile: "worker" };
+    await storeAgentClaim(agentConfigPath(env) ?? "", context, async () => agent);
+    expect(clientConfig(env).token === agent).toBe(true);
+    expect(await cli("use", "ops")).toBe(0);
+    expect(clientConfig(env).boardUrl).toBe(`${origin}/api/acme/ops`);
+    expect(clientConfig(env).token === token).toBe(true);
+  });
 });
