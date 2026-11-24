@@ -405,7 +405,7 @@ M9 and M10 changes made when their ticket files were written (each ticket's Note
 350  Generate the skill's command reference   ← (none)
 351  Install the skill with npx skills add   ← 338, 350
 352  Onboard an agent read-only first through the skill   ← 351
-353  Serve a proxy policy for injecting gateways   ← (none)
+353  Serve a proxy policy for injecting gateways   ← 286
 354  Run a sandboxed agent with no long-lived secret in its VM   ← 338, 349, 353
 355  Launch an agent from a ready task through a remote routine   ← 319, 354
 356  Link the agent's run in its thread   ← 355
