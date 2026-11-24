@@ -63,7 +63,7 @@ export const editMessage = defineOperation({
     ),
   },
   output: Type.Object({ ok: Type.Literal(true), mentions: Type.Optional(Type.Array(Mention)) }),
-  errors: ["invalid_request", "message_not_found", "message_deleted", "revision_conflict"],
+  errors: ["invalid_request", "message_not_found", "message_deleted", "forbidden", "revision_conflict"],
   access: { permission: "post", channel: "fromMessage" },
   effects: { readOnly: false, idempotent: false, emits: ["message.edited"] },
   cli: { command: ["edit"], args: ["id", "text"], options: { revision: "if-revision" } },
