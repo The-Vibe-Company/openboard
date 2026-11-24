@@ -14,11 +14,12 @@ writes:
   - packages/driver-postgres/test/counters.test.ts
   - .github/workflows/ci.yml
   - bun.lock
+  - tools/bench/tsconfig.json
 conformance: []
 modes: [local, hosted]
 depends_on: [170, 172]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-t173
 issue: 253
 ---
 

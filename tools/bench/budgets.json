@@ -9,5 +9,16 @@
       "reply": { "p50Ms": 0.13, "p99Ms": 0.24 },
       "channelRead": { "p50Ms": 0.27, "p99Ms": 1.45 }
     }
+  },
+  "hosted": {
+    "counters": {
+      "statements": { "post": 11, "reply": 14, "channelRead": 4 },
+      "idleTimers": 0
+    },
+    "measured": {
+      "post": { "p50Ms": 2.32, "p99Ms": 4.27 },
+      "reply": { "p50Ms": 3, "p99Ms": 6 },
+      "channelRead": { "p50Ms": 1.2, "p99Ms": 1.67 }
+    }
   }
 }

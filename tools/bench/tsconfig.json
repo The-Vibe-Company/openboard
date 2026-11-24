@@ -9,7 +9,13 @@
   "include": ["budgets.json", "src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"],
   "references": [
     {
+      "path": "../../packages/contract"
+    },
+    {
       "path": "../../packages/server"
+    },
+    {
+      "path": "../../packages/driver-postgres"
     },
     {
       "path": "../../packages/driver-sqlite"
