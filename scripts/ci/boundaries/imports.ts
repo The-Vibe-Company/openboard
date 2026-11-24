@@ -22,6 +22,8 @@ const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 
 /** Returns every module a file imports, and which of them it imports as values. */
 export function scanImports(file: string, source: string): Imports {
+  // The transpiler rejects hashbangs even though Node and npm require them on executables.
+  source = source.replace(/^#![^\r\n]*/, "");
   const loader = file.endsWith("x") ? "tsx" : /\.[cm]?js$/.test(file) ? "js" : "ts";
   const transpiler = new Bun.Transpiler({ loader });
   const values = new Set(transpiler.scanImports(source).map((entry) => entry.path));

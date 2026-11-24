@@ -5,6 +5,8 @@ import { type AnyCommand, commands } from "./commands/usage.ts";
 import { clientConfig } from "./config.ts";
 import { consoleOutput, type Output, printError } from "./output.ts";
 
+export { clientEnvironment } from "./config.ts";
+
 export interface CliOptions {
   readonly output?: Output;
   readonly fetch?: (request: Request) => Promise<Response>;

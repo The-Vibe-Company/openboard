@@ -170,7 +170,7 @@ jobs:
       - name: Explain skipped npm publish
         if: vars.NPM_PUBLISH != 'on' || steps.version.outputs.version == ''
         run: |
-          echo 'SDK publish to npm skipped because this commit has no release or the repository variable `NPM_PUBLISH` is not set to `on`.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'SDK and CLI publish to npm skipped because this commit has no release or the repository variable `NPM_PUBLISH` is not set to `on`.' >> "$GITHUB_STEP_SUMMARY"
 
   binaries:
     name: Build release binaries (${{ matrix.target }})
@@ -275,7 +275,7 @@ jobs:
           [[ "$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{.Manifest.Digest}}')" == "$IMAGE_DIGEST" ]]
 
   publish-sdk:
-    name: Publish SDK to npm
+    name: Publish SDK and CLI to npm
     needs: [release, release-assets]
     if: needs.release.outputs.version != '' && vars.NPM_PUBLISH == 'on'
     runs-on: ubuntu-latest
@@ -297,10 +297,11 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       - run: bun install --frozen-lockfile
       - run: bun packages/sdk/scripts/build.ts
-      - name: Pack and publish SDK with provenance
+      - run: bun packages/cli/scripts/build.ts
+      - name: Pack and publish SDK then CLI with provenance
         env:
           VERSION: ${{ needs.release.outputs.version }}
-        run: bun scripts/release/npm.ts "v$VERSION" "$RUNNER_TEMP" --publish
+        run: bun scripts/release/npm.ts "v$VERSION" "$RUNNER_TEMP" --with-cli --publish
 
   production:
     name: Deploy production
@@ -364,7 +365,7 @@ jobs:
               echo '- Release assets and image were not published successfully.'
             fi
             if [[ "$NPM_RESULT" == failure ]]; then
-              echo '- SDK publish to npm failed.'
+              echo '- SDK and CLI publish to npm failed.'
             fi
             if [[ "$STAGING_RESULT" != success ]]; then
               echo '- Staging did not complete successfully.'

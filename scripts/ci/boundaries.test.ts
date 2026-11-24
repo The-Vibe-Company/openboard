@@ -151,6 +151,12 @@ test("refuses two workspaces sharing a name, which would make the graph ambiguou
   ]);
 });
 
+test("checks imports in a Node executable with a hashbang", () => {
+  const { values, all } = scanImports("bin/ob.js", '#!/usr/bin/env node\nimport process from "node:process";');
+  expect([...values]).toEqual(["node:process"]);
+  expect([...all]).toEqual(["node:process"]);
+});
+
 test("finds every form of type-only import", () => {
   const source = [
     'import type { A } from "a";',
