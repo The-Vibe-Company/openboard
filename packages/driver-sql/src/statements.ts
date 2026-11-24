@@ -15,6 +15,7 @@ import { invitationStatements } from "./views/invitations.ts";
 import { jobPlatformStatements, jobStatements } from "./views/jobs/index.ts";
 import { legacyPurgePlatform, legacyPurgeScoped } from "./views/jobs/legacy-purge.ts";
 import { purgeStatements } from "./views/jobs/purge.ts";
+import { shippingStatements } from "./views/jobs/shipping.ts";
 import { membershipStatements } from "./views/memberships.ts";
 import { messageStatements } from "./views/messages/statements.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
@@ -52,6 +53,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...readinessStatements,
   ...purgeStatements,
   ...schemaStatements,
+  ...shippingStatements,
   ...taskFoldStatements,
   ...taskListStatements,
   ...taskReadStatements,
@@ -95,6 +97,7 @@ export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...orgPlatformStatements,
   ...Object.keys(rateStatements),
   ...Object.keys(readinessStatements),
+  "shippingOrgs",
   "orgMembership",
   "invitationByHash",
 ]);

@@ -1,9 +1,9 @@
-import type { BoardWriter, Job, JobLease, JobPayload, Jobs, OrgView } from "@openboard/ports";
+import type { BoardWriter, Bucket, Job, JobLease, JobPayload, Jobs, OrgView } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
 import type { Tenants } from "../http/scope.ts";
 
 export interface OrgJobHandler {
-  run(org: OrgView, job: Job, lease: JobLease, now: number): Promise<boolean>;
+  run(org: OrgView, job: Job, lease: JobLease, now: number, bucket?: Bucket): Promise<boolean>;
 }
 
 export type JobHandlers = Readonly<Record<string, JobHandler | OrgJobHandler>>;
@@ -17,6 +17,7 @@ export function startJobs(
   deps: Deps,
   instance: string | undefined,
   handlers: JobHandlers,
+  bucket?: Bucket,
 ): (release?: boolean) => Promise<void> {
   const registry = new Map(Object.entries(handlers));
   if (registry.size === 0) return async () => {};
@@ -46,7 +47,7 @@ export function startJobs(
                 await handler(writer, payload);
                 return true;
               })
-            : await handler.run(tenants.jobOrg(job), job, lease, deps.now());
+            : await handler.run(tenants.jobOrg(job), job, lease, deps.now(), bucket);
         if (ran) deps.log.info("job completed", { kind: job.kind, instanceId });
       } catch {
         // Leave the lease to expire. An unsuccessful transaction rolls back both consumption and the effect.

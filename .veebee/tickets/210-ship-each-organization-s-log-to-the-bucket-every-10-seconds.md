@@ -5,26 +5,33 @@ milestone: M7-hosted-deploy
 package: server
 writes:
   - packages/ports/src/bucket.ts
+  - packages/ports/src/jobs.ts
   - packages/ports/src/index.ts
   - packages/ports/src/store.ts
+  - packages/ports/testkit/isolation.test-suite.ts
   - packages/driver-sql/migrations/*-shipping.sql
-  - packages/driver-sql/src/views/shipping.ts
+  - packages/driver-sql/src/views/jobs/shipping.ts
+  - packages/driver-sql/src/views/jobs/purge.ts
+  - packages/driver-sql/src/views/jobs/index.ts
   - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
   - packages/server/src/jobs/ship-log.ts
   - packages/server/src/jobs/purge-org.ts
   - packages/server/src/jobs/registry.ts
   - packages/server/src/app.ts
+  - packages/server/src/http/scope.ts
   - packages/server/test/ha/ship-log.test.ts
+  - packages/server/test/isolation/seed.ts
   - apps/openboard/src/bucket.ts
   - apps/openboard/src/config.ts
   - apps/openboard/src/compose.ts
   - apps/openboard/test/config.test.ts
+  - docs/codebase.md
 conformance: []
 modes: [hosted]
 depends_on: [199, 208]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 371
 ---
 

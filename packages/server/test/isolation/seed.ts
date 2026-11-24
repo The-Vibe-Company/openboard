@@ -43,7 +43,7 @@ export interface Seeded {
 }
 
 /** Signs `login` in through the store, as the browser sign-in would, and answers their session headers. */
-async function signIn(store: Store, login: string, digit: string) {
+export async function signIn(store: Store, login: string, digit: string) {
   const [value, csrf] = [digit.repeat(43), digit.toUpperCase().repeat(43)];
   const identity = { provider: "github", subject: digit, login, name: login, email: null, avatar: null };
   const session = { idHash: createHash("sha256").update(value).digest("hex"), csrf, expiresAt: NOW + 86_400_000 };

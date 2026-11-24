@@ -374,6 +374,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 | Variable | Meaning |
 |---|---|
 | `OPENBOARD_DATABASE_URL` | set: hosted mode on Postgres (`postgres://…`), with organizations and sign-up; unset: local mode on SQLite, with the implicit organization `local` and board `main` |
+| `OPENBOARD_BACKUP_S3_ENDPOINT`, `_BUCKET`, `_REGION`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY` | Hosted log shipping to a private S3-compatible bucket. Set all five (using the `OPENBOARD_BACKUP_S3_` prefix) or none. The secret access key can also come from `OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY_FILE`. |
 | `OPENBOARD_DATA_DIR` | SQLite mode: database, blobs, backups (default `./.openboard`) |
 | `OPENBOARD_SIGNUP` | `open`, `invite` or `closed` (docs/auth.md); local mode defaults to `closed`, no sign-up unless set (D48) |
 | `OPENBOARD_PUBLIC_URL` | canonical origin, never derived from `Host` |
@@ -389,6 +390,8 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 - Clients read upstream's `BOARD_URL` and `BOARD_TOKEN`, plus `OPENBOARD_SECRET` for `ob connect` (only in `packages/cli/src/config.ts`), so `vb` and `ob` share one setup. The SDK reads nothing.
 - A secret is never an argv value. `ob connect <url> --as <name>` reads the connection secret from stdin, `--secret-file <path>`, or `OPENBOARD_SECRET` (armada: `AGENTS.md` non-negotiable 4).
 - The authoritative list is the `Config` schema, printed by `openboard serve --help`.
+
+Use a private, unversioned backup bucket dedicated to one database. Enable the configuration after all replicas run a version that purges the bucket prefix. Keep the same bucket accessible to every replica while it contains tenant logs so the purge job can delete them.
 
 ### 5.6 No global state, no single-process state
 

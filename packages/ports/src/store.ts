@@ -30,8 +30,9 @@ import type {
 import type { PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
 import type { BoardMessageReads } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
+import type { OrgLogMaintenance } from "./bucket.ts";
 import type { BoardGrantReads, BoardGrantWriter } from "./grants.ts";
-import type { BoardJobWriter, JobLease, Jobs } from "./jobs.ts";
+import type { BoardJobWriter, Jobs } from "./jobs.ts";
 import type { OrgAuditRecord } from "./org-audit-record.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
 import type { BoardKeys, BoardScope, OrgScope } from "./tenant-scope.ts";
@@ -66,10 +67,8 @@ interface RateView {
   takeRate(key: string, limit: number, windowMs: number, now: number): Promise<number | undefined>;
 }
 
-export interface OrgView extends RateView {
+export interface OrgView extends RateView, OrgLogMaintenance {
   deleteOrg(personId: string, at: number, admit?: () => void): Promise<DeletedOrg>;
-  /** Consume the purge lease and remove the soft-deleted organization’s data atomically. */
-  purgeOrg(boardId: number, jobId: string, lease: JobLease, now: number): Promise<boolean>;
   listMembers(): Promise<{ principal: string; role: Role }[]>;
   /** The organization's first `limit` events after its event ID `after`, oldest first, and the last event ID read first. */
   auditEvents(after: number, limit: number): Promise<{ events: OrgAuditRecord[]; head: number }>;
@@ -140,6 +139,8 @@ type DevicePoll = { status: "missing" | "pending" | "too_soon" } | { status: "is
 
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
 export interface PlatformView extends RateView {
+  /** Maintenance scan of unpurged organization IDs with unshipped events in ascending order. */
+  shippingOrgs(after: number, limit: number): Promise<number[]>;
   /** Start a device request and prune prior expired requests using the supplied clock. */
   startDevice(deviceHash: string, userCode: string, clientName: string, now: number, expiresAt: number): Promise<void>;
   /** Read the display metadata of an unused, live code. */

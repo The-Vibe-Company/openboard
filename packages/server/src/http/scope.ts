@@ -94,7 +94,7 @@ export interface Tenants {
   board(path: BoardPath, provesOwnership: (board: BoardView) => Promise<boolean>): Promise<BoardView>;
   /** A background job enters its board using routing keys from the trusted picker. */
   jobBoard(job: Job): BoardView;
-  jobOrg(job: Job): OrgView;
+  jobOrg(job: Pick<Job, "orgId">): OrgView;
   /** The view of an organization the person administers; 404 for a non-member, 403 `forbidden` for a member. */
   adminOrg(slug: string, personId: string): Promise<OrgView>;
   /** The view of an organization the person belongs to, with any role; 404 for anyone else. */

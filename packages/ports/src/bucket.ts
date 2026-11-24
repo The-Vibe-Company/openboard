@@ -1,0 +1,30 @@
+import type { JobLease } from "./jobs.ts";
+
+/** A private backup bucket. Keys and prefixes are relative to its root. */
+export interface Bucket {
+  put(key: string, bytes: Uint8Array, deadline: number): Promise<void>;
+  list(prefix: string): AsyncIterable<string>;
+  deletePrefix(prefix: string): Promise<void>;
+}
+
+export interface LogSegment {
+  /** Null for the organization log. */
+  readonly boardId: number | null;
+  readonly first: number;
+  readonly last: number;
+  readonly deadline: number;
+  readonly events: readonly object[];
+}
+
+export interface OrgLogMaintenance {
+  /** Consume the purge lease and remove the soft-deleted organization’s data atomically. */
+  purgeOrg(
+    boardId: number,
+    jobId: string,
+    lease: JobLease,
+    now: number,
+    deleteBackup?: () => Promise<void>,
+  ): Promise<boolean>;
+  /** Deliver pending log segments. The store serializes delivery and purge, and advances only after upload. */
+  shipLogs(upload: (segment: LogSegment) => Promise<void>, stopped: () => boolean, now: () => number): Promise<void>;
+}

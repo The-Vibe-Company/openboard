@@ -1,5 +1,5 @@
 import { operations } from "@openboard/contract";
-import type { Jobs, Store } from "@openboard/ports";
+import type { Bucket, Jobs, Store } from "@openboard/ports";
 import { loginProviders } from "./auth/providers/index.ts";
 import type { Deps, ServerConfig } from "./deps.ts";
 import { readinessCheck } from "./http/health.ts";
@@ -9,6 +9,7 @@ import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
 import { staticFiles } from "./http/static.ts";
 import { type JobHandlers, startJobs } from "./jobs/registry.ts";
+import { logShippingJobs } from "./jobs/ship-log.ts";
 
 export const DRAIN_TIMEOUT_MS = 10_000;
 
@@ -16,6 +17,7 @@ export const DRAIN_TIMEOUT_MS = 10_000;
 export interface Ports {
   readonly store: Store;
   readonly jobs: Jobs;
+  readonly bucket?: Bucket;
 }
 
 /** One server instance: everything hangs off it, so two apps in one process share nothing (5.6). */
@@ -45,14 +47,29 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     platform,
     providers: loginProviders(config, deps),
   };
-  const stopJobs = startJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, handlers);
+  const bucket = config.mode === "hosted" ? ports.bucket : undefined;
+  if (config.mode === "hosted" && !bucket) deps.log.info("log shipping is off", {});
+  const stopJobs = startJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, handlers, bucket);
+  // Large bucket purges can outlive a lease. Give shipping its own runner so purges cannot occupy every poller.
+  const stopShipping =
+    bucket &&
+    startJobs(
+      ports.jobs,
+      pipeline.tenants,
+      deps,
+      config.instanceId,
+      logShippingJobs(bucket, platform, pipeline.tenants, deps, shutdown.signal),
+    );
+  const stopBackground = async (release = false) => {
+    await Promise.all([stopJobs(release), stopShipping?.(release)]);
+  };
   let draining: Promise<void> | undefined;
   let closing: Promise<void> | undefined;
   async function finishDrain() {
     const timeout = Promise.withResolvers<void>();
     const cancel = deps.schedule(DRAIN_TIMEOUT_MS, timeout.resolve);
     try {
-      await Promise.race([Promise.allSettled([...active, stopJobs(true)]), timeout.promise]);
+      await Promise.race([Promise.allSettled([...active, stopBackground(true)]), timeout.promise]);
     } finally {
       cancel();
     }
@@ -69,7 +86,7 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     },
     /** Releases the ports it was given. */
     close() {
-      closing ??= (draining ?? stopJobs()).finally(() => ports.store.close());
+      closing ??= (draining ?? stopBackground()).finally(() => ports.store.close());
       return closing;
     },
   };

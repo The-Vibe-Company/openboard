@@ -1,4 +1,11 @@
-import { type BoardJobWriter, type BoardKeys, type Jobs, PURGE_ORG_JOB } from "@openboard/ports";
+import {
+  type BoardJobWriter,
+  type BoardKeys,
+  type JobLease,
+  type JobPayload,
+  type Jobs,
+  PURGE_ORG_JOB,
+} from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
 
@@ -41,6 +48,8 @@ export const jobStatements = {
   enqueueJob: sql`INSERT INTO jobs (org_id, board_id, kind, available_at, payload)
     VALUES (${"orgId"}, ${"boardId"}, ${"kind"}, ${"dueAt"}, ${"payload"})`,
   notifyJobs: sql`SELECT ${notify}`,
+  readLeasedJob: sql`SELECT payload FROM jobs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
+    AND instance_id = ${"instanceId"} AND available_at = ${"until"} AND available_at > ${"now"}`,
   takeJob: sql`DELETE FROM jobs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
     AND instance_id = ${"instanceId"} AND available_at = ${"until"} AND available_at > ${"now"}
     RETURNING payload`,
@@ -83,6 +92,24 @@ export interface JobWrites {
   readonly committed: () => void;
 }
 
+export async function readLeasedJob(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  id: string,
+  lease: JobLease,
+  now: number,
+): Promise<JobPayload | null> {
+  const [row] = await query(tx, dialect, jobStatements.readLeasedJob, {
+    ...keys,
+    id,
+    instanceId: lease.instanceId,
+    until: lease.claimedAt + leaseMs,
+    now,
+  });
+  return row ? (JSON.parse(String(row.payload)) as JobPayload) : null;
+}
+
 export function jobWriter(
   tx: Db,
   dialect: Dialect,
@@ -98,6 +125,7 @@ export function jobWriter(
       }
       enqueued();
     },
+    readJob: (id, lease, now) => readLeasedJob(tx, dialect, keys, id, lease, now),
     async takeJob(id, { instanceId, claimedAt }, now) {
       const [row] = await query(tx, dialect, jobStatements.takeJob, {
         ...keys,
