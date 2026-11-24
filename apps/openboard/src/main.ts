@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import process from "node:process";
 import { runCli } from "@the-vibe-company/openboard-cli";
 import { type Config, ConfigError, clientEnvironment, loadConfig } from "./config.ts";
@@ -21,6 +22,14 @@ const serverCommands: Readonly<Record<string, (config: Config) => Promise<number
 /** The `openboard` / `ob` executable: server commands here, every other command to the client CLI. */
 async function main(argv: readonly string[]): Promise<void> {
   const name = argv[0];
+  if (
+    (name === undefined || (name === "--help" && argv.length === 1)) &&
+    /^openboard(?:-bun-.+)?$/.test(basename(process.execPath))
+  ) {
+    output.out("Usage: openboard <serve | migrate>");
+    output.out("For board client commands, run ob.");
+    return;
+  }
   const command = name !== undefined && Object.hasOwn(serverCommands, name) ? serverCommands[name] : undefined;
   if (!command) {
     process.exitCode = await runCli(argv, clientEnvironment());
