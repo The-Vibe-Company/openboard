@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { runCli } from "../src/main.ts";
 
 const env = { BOARD_URL: "http://127.0.0.1:8787/api/local/main" };
-const message = (id: string, text: string) => ({ id, text });
+const message = (id: string, text: string) => ({ id, text, by: { actor: "ada" }, createdAt: "2026-01-01T00:00:00Z" });
 
 function run(argv: string[], answer: unknown) {
   const lines = { out: [] as string[], err: [] as string[] };
@@ -12,7 +12,7 @@ function run(argv: string[], answer: unknown) {
     return new Response(JSON.stringify(answer), { headers: { "content-type": "application/json" } });
   };
   const output = { out: (line: string) => lines.out.push(line), err: (line: string) => lines.err.push(line) };
-  return { code: runCli(argv, env, { fetch, output }), lines, urls };
+  return { code: runCli(argv, env, { fetch, output, now: () => Date.parse("2026-01-01T00:01:00Z") }), lines, urls };
 }
 
 test("ob messages <channel> --after --limit reads the page after the cursor and prints the command that reads on", async () => {

@@ -209,7 +209,7 @@ ob connections rotate cn_7k2m4q3t5v2w6x7y --overlap 10m --secret-file ./secret
 
 ## `ob read`
 
-List a channel's threads by activity, or print one thread when given a message ID.
+List a channel's threads by activity with each root's author handle and age, or print one thread by message ID.
 
 ```sh
 ob read <channel> [--label <key[=value]>]... [--by <handle>] [--mentions <handle>] [--text <text>] [--before <older> | --after <cursor>] [--limit <limit>] | ob read <id> [--after <id>] [--limit <limit>]

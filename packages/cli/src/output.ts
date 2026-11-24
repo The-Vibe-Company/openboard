@@ -54,11 +54,16 @@ function authorText(author: NonNullable<Written["author"]>): string {
   return author.via ? `${author.name} via ${author.via.name}` : author.name;
 }
 
+/** First line of a message, with an ellipsis when more lines follow. */
+export function messagePreview(text: string): string {
+  const [first = "", ...rest] = text.trim().split(/\r?\n/);
+  return `${first.trimEnd()}${rest.length > 0 ? " …" : ""}`;
+}
+
 /** A message on one line: its ID, who wrote it when the board says, then the first line of its text. */
 export function messageLine(message: Written): string {
-  const [first = "", ...rest] = message.text.trim().split(/\r?\n/);
   const by = message.author ? `${authorText(message.author)}: ` : "";
-  return `#${message.id}  ${by}${first.trimEnd()}${rest.length > 0 ? " …" : ""}`;
+  return `#${message.id}  ${by}${messagePreview(message.text)}`;
 }
 
 /** A word as a shell reads it back: quoted unless it is plain. */
