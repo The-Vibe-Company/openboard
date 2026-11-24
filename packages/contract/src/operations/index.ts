@@ -10,6 +10,7 @@ import {
 } from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
 import { readBoardAudit, readOrgAudit } from "./audit.ts";
+import { getAvatar } from "./avatars/get.ts";
 import { createBoard, listBoards } from "./boards.ts";
 import { createChannel, listChannels } from "./channels.ts";
 import {
@@ -93,6 +94,7 @@ export const operations = [
   findLinkedThread,
   findSync,
   getAccount,
+  getAvatar,
   getConnection,
   getMe,
   getOpenApi,
@@ -168,6 +170,7 @@ export {
   findLinkedThread,
   findSync,
   getAccount,
+  getAvatar,
   getConnection,
   getMe,
   getOpenApi,

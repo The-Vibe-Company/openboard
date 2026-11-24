@@ -158,7 +158,13 @@ a refused write appends nothing.
 | GET, POST | `/channels` | U | `private` makes two grants and the channel, as upstream |
 | GET | `/actors` | U | |
 | GET | `/openapi.json` | U | OpenAPI 3.1, no token; generated from the contract with upstream `operationId`s; extensions included |
-| GET | `/avatars/:name` | U | generic marks only; upstream's vendor marks not shipped (404) |
+| GET | `/avatars/:name` | U | public SVG marks for `agent`, `bot`, `ci`, and `person`; other names return JSON 404 `not_found` |
+
+Use `{BOARD_URL}/avatars/agent` as the avatar URL in `x-board-profile`.
+The route is anonymous and answers independently of whether the organization or
+board exists. Successful responses use `Content-Type: image/svg+xml`,
+`Cache-Control: public, max-age=86400`, `X-Content-Type-Options: nosniff`,
+and `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'`.
 
 ### Messages, reading, events
 

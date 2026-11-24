@@ -58,7 +58,7 @@ export function requestOf(
       for (const item of value) url.searchParams.append(name, String(item));
     } else url.searchParams.set(name, String(value));
   }
-  const headers: Record<string, string> = { accept: "application/json" };
+  const headers: Record<string, string> = { accept: operation.responseType ?? "application/json" };
   if (!platformMount && options.token) headers.authorization = `Bearer ${options.token}`;
   if (!platformMount && options.profile) headers[PROFILE_HEADER] = options.profile;
   if (operation.route.method !== "GET" && options.csrf) {
@@ -91,8 +91,14 @@ function isNextStep(value: unknown): value is NextStep {
 }
 
 /** The board's answer, or its error envelope thrown as a `BoardError`. */
-export async function answerOf(response: Response): Promise<unknown> {
+export async function answerOf(response: Response, responseType?: Operation["responseType"]): Promise<unknown> {
   const text = await response.text();
+  if (response.ok && responseType !== undefined) {
+    const mediaType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+    if (mediaType !== responseType)
+      throw new BoardError("remote_error", `the board did not answer with ${responseType}`);
+    return text;
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -130,7 +136,7 @@ export function createClient(options: ClientOptions): Client {
   const methods = operations.map((operation) => [
     operation.name,
     async (input: Readonly<Record<string, unknown>>, request?: { readonly signal?: AbortSignal }) =>
-      answerOf(await reach(send, requestOf(operation, input, options, request?.signal))),
+      answerOf(await reach(send, requestOf(operation, input, options, request?.signal)), operation.responseType),
   ]);
   return Object.freeze(Object.fromEntries(methods)) as Client;
 }

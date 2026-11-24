@@ -62,7 +62,7 @@ function describeOperation(operation: Operation) {
   const success = {
     description: "Success",
     content: {
-      "application/json": { schema: operation.output },
+      [operation.responseType ?? "application/json"]: { schema: operation.output },
       ...(operation.eventStream && { [operation.eventStream]: { schema: { type: "string" } } }),
     },
   };

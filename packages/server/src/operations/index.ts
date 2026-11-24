@@ -23,6 +23,7 @@ import {
 } from "./accounts.ts";
 import { getMeHandler, listActorsHandler } from "./actors.ts";
 import { readBoardAuditHandler, readOrgAuditHandler } from "./audit.ts";
+import { getAvatarHandler } from "./avatars/get.ts";
 import { createBoardHandler, listBoardsHandler } from "./boards.ts";
 import { createChannelHandler, listChannelsHandler } from "./channels.ts";
 import {
@@ -190,6 +191,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   findLinkedThread: findLinkedThreadHandler,
   findSync: findSyncHandler,
   getAccount: getAccountHandler,
+  getAvatar: getAvatarHandler,
   getConnection: getConnectionHandler,
   getMe: getMeHandler,
   getOpenApi: getOpenApiHandler,
