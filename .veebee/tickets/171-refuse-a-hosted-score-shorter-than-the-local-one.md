@@ -11,8 +11,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [170]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 251
 ---
 
