@@ -1,14 +1,110 @@
-import { createTestDatabases } from "@openboard/driver-postgres";
+import { afterAll } from "bun:test";
+import { createTestDatabases, postgresDriver } from "@openboard/driver-postgres";
 import { type Catalog, postgresCatalog } from "@openboard/driver-postgres/catalog";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { sqliteCatalog } from "@openboard/driver-sqlite/catalog";
 import type { Store } from "@openboard/ports";
+import { postgresTestUrl } from "./env.ts";
 
 export type { Catalog };
 
-/** The store HTTP tests run on: in-memory SQLite. Postgres with two instances arrives with the Postgres driver. */
+type TestDatabases = Awaited<ReturnType<typeof createTestDatabases>>;
+
+/**
+ * The run's migrated template, when the run shares one (`shareTemplate`, from `test/support/preload.ts`). Test support
+ * state, outside `src`: Bun runs every test file in one process and has no hook that ends a run but a preload's.
+ */
+let run: { template?: Promise<TestDatabases> } | undefined;
+
+/** Makes every Postgres store of this run clone one template; answers what drops it once the run ends. */
+export function shareTemplate(): () => Promise<void> {
+  const shared: { template?: Promise<TestDatabases> } = {};
+  run = shared;
+  return async () => {
+    if (run === shared) run = undefined;
+    if (shared.template) await (await shared.template).close();
+  };
+}
+
+/**
+ * The store HTTP tests run on: in-memory SQLite, or with `OPENBOARD_TEST_DRIVER=postgres` a fresh database cloned from
+ * a migrated template. The Postgres store connects on its first use, so `makeApp()` stays synchronous; a database that
+ * cannot be reached fails that use, never skips it.
+ */
 export function openStore(now: () => number): Store {
-  return sqliteDriver({ memory: true }, now);
+  const url = postgresTestUrl();
+  return url ? postgresStore(url, now) : sqliteDriver({ memory: true }, now);
+}
+
+function postgresStore(url: string, now: () => number): Store {
+  // Without a run's template, the store migrates its own and drops it with its database.
+  const shared = run;
+  let own: Promise<TestDatabases> | undefined;
+  const template = () => {
+    if (!shared) {
+      own ??= createTestDatabases(url);
+      return own;
+    }
+    shared.template ??= createTestDatabases(url);
+    return shared.template;
+  };
+  let database: { readonly drop: () => Promise<void> } | undefined;
+  let opening: Promise<Store> | undefined;
+  const open = async () => {
+    const created = await (await template()).create();
+    database = created;
+    return postgresDriver({ url: created.url }, now);
+  };
+  let closed: Promise<void> | undefined;
+  const opened = () => {
+    // As a closed SQLite store does: a store used after its close fails, and does not open a fresh database.
+    if (closed) return Promise.reject(new Error("The store is closed"));
+    opening ??= open();
+    return opening;
+  };
+  const close = async () => {
+    const store = await opening?.catch(() => undefined);
+    await store?.close();
+  };
+  const store: Store = {
+    platform: () => deferred(async () => (await opened()).platform()),
+    board: (scope) => deferred(async () => (await opened()).board(scope)),
+    org: (scope) => deferred(async () => (await opened()).org(scope)),
+    // Tests close an app and its store, often both: the second close is the first one's promise.
+    close: () => {
+      closed ??= close();
+      return closed;
+    },
+  };
+  // Runs when the test, or the file or describe block, that opened the store ends: every store is closed and dropped.
+  afterAll(async () => {
+    try {
+      await store.close();
+    } finally {
+      try {
+        await database?.drop();
+      } finally {
+        if (own) await (await own).close();
+      }
+    }
+  });
+  return store;
+}
+
+/** A view whose every method waits for `view`, then calls it: every store view method is asynchronous. */
+function deferred<View extends object>(view: () => Promise<View>): View {
+  return new Proxy({} as View, {
+    get(_, method) {
+      // Not a thenable: awaiting a view must not call `then` on the store.
+      if (typeof method !== "string" || method === "then") return undefined;
+      return async (...args: unknown[]) => {
+        const target = (await view()) as unknown as Record<string, (...args: unknown[]) => unknown>;
+        const call = target[method];
+        if (typeof call !== "function") throw new TypeError(`The store view has no method ${method}`);
+        return call(...args);
+      };
+    },
+  });
 }
 
 /** Both engines' catalogs after every migration: a fresh in-memory SQLite and a fresh database on the Postgres at `url`. */

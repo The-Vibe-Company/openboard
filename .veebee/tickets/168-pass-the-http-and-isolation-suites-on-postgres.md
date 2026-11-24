@@ -9,12 +9,14 @@ writes:
   - packages/server/test/support/env.ts
   - packages/server/package.json
   - packages/driver-postgres/test/isolation.test.ts
+  - packages/server/test/support/preload.ts
+  - packages/server/bunfig.toml
   - bun.lock
 conformance: []
 modes: [local, hosted]
 depends_on: [163, 165, 166]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-opus-t168
 issue: 248
 ---
 

@@ -1,0 +1,3 @@
+[test]
+# One Postgres template per run instead of one per store (test/support/preload.ts).
+preload = ["./test/support/preload.ts"]
