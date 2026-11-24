@@ -26,6 +26,7 @@ type Params = Readonly<Record<string, string>>;
 
 export interface Pipeline {
   readonly shutdown: AbortSignal;
+  readonly staticFiles: (request: Request, path: string) => Promise<Response> | undefined;
   readonly schemaReady: () => Promise<boolean>;
   readonly track: <T>(work: Promise<T>) => Promise<T>;
   readonly config: ServerConfig;
@@ -267,7 +268,7 @@ export async function handle(request: Request, pipeline: Pipeline): Promise<Resp
   try {
     const probe = request.method === "GET" ? healthProbe(url.pathname, pipeline) : undefined;
     if (!probe && pipeline.shutdown.aborted) throw new BoardError("unavailable", "the instance is draining");
-    response = await (probe ?? run(request, url, pipeline, logged));
+    response = await (probe ?? pipeline.staticFiles(request, url.pathname) ?? run(request, url, pipeline, logged));
   } catch (error) {
     response = errorResponse(error, log);
   }

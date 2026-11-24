@@ -4,12 +4,16 @@ title: Serve the front from the binary outside /api
 milestone: M8-front
 package: web
 writes:
+  - docs/codebase.md
+  - apps/web/src/routeTree.gen.ts
   - apps/web/package.json
   - apps/web/tsconfig.json
   - apps/web/vite.config.ts
   - apps/web/index.html
   - apps/web/src/main.tsx
   - apps/web/src/styles.css
+  - apps/web/src/assets/geist-sans.woff2
+  - apps/web/public/assets/geist-ofl-930853ee.txt
   - apps/web/src/routes/__root.tsx
   - apps/web/src/routes/index.tsx
   - apps/web/src/api/client.ts
@@ -23,19 +27,26 @@ writes:
   - packages/server/src/web/assets.ts
   - packages/server/src/http/static.ts
   - packages/server/src/http/pipeline.ts
+  - packages/server/src/app.ts
+  - packages/server/test/support/app.ts
   - packages/server/src/deps.ts
+  - packages/server/test/messages.test.ts
+  - packages/server/test/fixtures/web/**
   - packages/server/test/static.test.ts
   - scripts/build/index.ts
   - scripts/build/build.test.ts
   - scripts/ci/boundaries.json
+  - scripts/ci/fixtures/boundaries/driver/driver.test.ts
+  - scripts/ci/fixtures/boundaries/driver/allowed/apps/web/e2e/support/serve.ts
   - package.json
   - bun.lock
+  - bunfig.toml
   - .gitignore
 conformance: []
 modes: [local, hosted]
 depends_on: [187]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 377
 ---
 

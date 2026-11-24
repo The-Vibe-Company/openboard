@@ -180,9 +180,13 @@ An entry means "may import". Anything not listed is forbidden. The table lists d
 | `examples/*` | `sdk`, `cli` by published names | whatever the recipe declares in its own `package.json` |
 | `scripts/*` | any workspace except `examples/*` | root dev dependencies |
 
+The web build configuration may import Vite and its React and TanStack Router plugins.
+The web Playwright configuration and browser tests may import Playwright.
+Only the web E2E support directory may import the server and SQLite driver for browser tests, with driver composition confined to `apps/web/e2e/support/serve.ts`.
+
 Universal rules:
 - **`driver-sql` is imported only by `driver-sqlite` and `driver-postgres`.**
-- **Drivers are imported only by composition roots**: `apps/openboard/src/compose.ts`, `packages/server/test/support/drivers.ts`, `tools/conformance/src/drivers.ts`, `tools/bench/src/drivers.ts`, and each driver's own tests. Any other file importing `@openboard/driver-*` fails CI.
+- **Drivers are imported only by composition roots**: `apps/openboard/src/compose.ts`, `apps/web/e2e/support/serve.ts`, `packages/server/test/support/drivers.ts`, `tools/conformance/src/drivers.ts`, `tools/bench/src/drivers.ts`, and each driver's own tests. Any other file importing `@openboard/driver-*` fails CI.
 - **CI renderer exception:** `scripts/ci/migrations.ts` can import the pure `@openboard/driver-sqlite/ddl` subpath.
 - **No SQL outside a driver** (section 3.2).
 - Nothing imports `examples/*`. Only `tools/conformance` imports `@vercel/board`, never at runtime.
@@ -493,6 +497,9 @@ Keeping `Verify` under two minutes (armada: `docs/ci-budget.md`): the six jobs r
 `bun run build` (`scripts/build/index.ts`):
 1. `vite build` in `apps/web` -> `apps/web/dist/`.
 2. `bun build --compile --minify apps/openboard/src/main.ts` with every file of `apps/web/dist/` as an extra entrypoint, embedded in the executable. `packages/server/src/web/assets.ts` serves them from `Bun.embeddedFiles` when compiled and from disk in development. A build test runs the binary and fetches `/` and one hashed asset.
+   For source development, `bun run dev` starts Vite on localhost:5173 and proxies `/api` and `/auth` to port 8787.
+   Run `bun run e2e` to build the front and exercise it in Chromium with a SQLite-backed app and a fake sign-in provider.
+   Install Chromium first with `bun run --cwd apps/web --bun playwright install chromium`.
 3. Targets `bun-linux-x64`, `bun-linux-arm64`, `bun-darwin-arm64`, `bun-darwin-x64` -> `dist/openboard-<target>`, copied as `dist/ob-<target>` (same bytes; the name only changes the default help). Both drivers are in every binary; `OPENBOARD_DATABASE_URL` selects one at startup.
 4. `packages/cli` is also bundled for npm (`bun build --target=node`) as a client-only `ob`: `ob serve` there answers with a `next` hint to install the executable or run the image.
 5. `packages/sdk` is bundled to ESM + `.d.ts` with the contract inlined.

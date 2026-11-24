@@ -4,6 +4,8 @@ import type { Author, Can, Named, Role } from "@openboard/contract";
 export interface ServerConfig {
   readonly instanceId?: string | undefined;
   readonly deploymentTag?: string | undefined;
+  /** Vite output directory for a source app with a front. */
+  readonly webDir?: string;
   readonly mode: "local" | "hosted";
   /** `OPENBOARD_PUBLIC_URL`: the canonical origin, no trailing slash; board URLs are built on it, never on `Host`. */
   readonly publicUrl: string;

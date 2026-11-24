@@ -291,7 +291,7 @@ describe("answering only for boards and routes that exist", () => {
     ["an unknown organization", "http://127.0.0.1:8787/api/acme/main/messages?channel=dev"],
     ["an unknown board", "http://127.0.0.1:8787/api/local/other/messages?channel=dev"],
     ["an unknown route", "http://127.0.0.1:8787/api/local/main/nowhere"],
-    ["a path outside any board", "http://127.0.0.1:8787/elsewhere"],
+    ["a path outside any board under the API mount", "http://127.0.0.1:8787/api/nope"],
   ])("answers 404 not_found as JSON for %s", async (_, url) => {
     app = makeApp();
     const missing = await answer(app.fetch(new Request(url)));
