@@ -14,6 +14,7 @@ import {
   type OrgOperation,
   type PublicOperation,
 } from "../operations/index.ts";
+import { streamEvents } from "../operations/events.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
@@ -190,24 +191,35 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
   const by = await verify();
   logged.actor = by.actor;
   refuseClaimedConfiguration(request, operation);
-  const input = validate(operation, {
+  const raw = {
     params: matched.params,
     query: readQuery(operation, url.searchParams),
     body: request.method === "GET" ? undefined : await readBody(request),
-  });
-  await keepInsideCan(operation, input, by, board);
-  const reauthorize = async () => {
-    const current = await verify();
-    await keepInsideCan(operation, input, current, board);
-    return current;
   };
   const { now, randomBytes, schedule } = pipeline.deps;
   const boardUrl = `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`;
-  const output = await handlerOf(operation)(
-    { board, by, now, boardUrl, randomBytes, schedule, reauthorize, signal: request.signal },
-    input,
-  );
-  return operationResponse(operation, output);
+  const context = async (input: unknown) => {
+    await keepInsideCan(operation, input, by, board);
+    const reauthorize = async () => {
+      const current = await verify();
+      await keepInsideCan(operation, input, current, board);
+      return current;
+    };
+    return { board, by, now, boardUrl, randomBytes, schedule, reauthorize, signal: request.signal };
+  };
+  if (
+    operation.name === "readEvents" &&
+    operation.eventStream &&
+    request.headers.get("accept")?.includes(operation.eventStream)
+  ) {
+    const input = decodeInput(operation, raw);
+    return streamEvents(await context(input), input);
+  }
+  const input = validate(operation, raw);
+  const output = await handlerOf(operation)(await context(input), input);
+  const response = operationResponse(operation, output);
+  if (operation.eventStream) response.headers.set("vary", "Accept");
+  return response;
 }
 
 const REQUEST_ID = "x-request-id";

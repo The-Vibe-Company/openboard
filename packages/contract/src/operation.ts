@@ -75,6 +75,8 @@ export type Operation<
   readonly scope: S;
   readonly input: I;
   readonly output: O;
+  /** Optional alternate HTTP representation, negotiated through Accept. */
+  readonly eventStream?: "text/event-stream";
   /** The success status, or the boolean output field that distinguishes 201 from 200. */
   readonly status?: 200 | 201 | { readonly createdWhen: string };
   readonly errors: readonly ErrorCode[];

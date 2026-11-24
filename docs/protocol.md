@@ -78,7 +78,7 @@ organization and board, and the secret is bound to that board.
 Upstream's transport treats a `text/html` answer with status 2xx/401/403, a 401
 carrying `x-vercel-error`, or a redirect to `/sso-api` as Vercel Deployment
 Protection and fails (`src/client/node.ts`, `through()`). So every path under
-`/api` answers JSON (unknown paths: 404 `not_found`), never redirects, never
+`/api` answers JSON by default (unknown paths: 404 `not_found`), never redirects, never
 sends `x-vercel-*` headers; the SPA fallback never applies under `/api`.
 
 ## Mentions
@@ -146,7 +146,7 @@ answers. OpenBoard adds:
 | POST | `/messages/:id/delete` | U | `ob delete <id> --if-revision <n>` deletes only at the observed revision. Profiles can edit or delete their own messages, and an unprofiled principal can change any message it or its profiles wrote. Other callers receive 403 `forbidden`. Edits and tombstones retain the original author. Both edit and delete send the optional `revision` in the body and return 409 `revision_conflict` if it differs. |
 | POST | `/messages/:id/reactions` | U | |
 | POST | `/messages/:id/labels` | U | `ob label <id> [k=v]... [--unset k]... [--if k=v]... [--if-unset k]...` sends `{ set?, unset?, if? }`, at least one of the two (400 `invalid_request` otherwise). Each key holds one value; `unset` applies after `set`, so a key in both is removed. Unsetting a key the message lacks still raises its `version`. The optional `if` maps up to 16 keys to their required current string value or `null` for absence. The server checks every condition under the board lock before applying the write. A mismatch returns 409 `label_conflict` without changing the labels, version, or event stream. Setting or unsetting a key under `board.` returns 400 `reserved_label`. |
-| GET | `/events` | U | JSON feed with `after` and filters; long-poll via `wait` |
+| GET | `/events` | U | JSON feed with `after` and filters; long-poll via `wait`; SSE via `Accept: text/event-stream` |
 
 The feed accepts `channel` (including a trailing-slash subtree), `re` (thread
 root ID), `by`, `mentions`, repeated `label`, `text`, and `from` (`board`
