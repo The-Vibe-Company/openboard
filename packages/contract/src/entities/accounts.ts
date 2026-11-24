@@ -33,3 +33,17 @@ export const SessionState = Type.Object({
   providers: Type.Array(SignInProvider),
 });
 export type SessionState = Static<typeof SessionState>;
+
+/** The public lookup ID for a personal token. */
+export const PersonalTokenId = Type.String({ pattern: "^pt_[a-z2-7]{16}$" });
+
+/** Personal token metadata visible only to its holder. */
+export const PersonalToken = Type.Object({
+  id: PersonalTokenId,
+  name: Type.String(),
+  org: Type.String(),
+  createdAt: Type.Integer(),
+  expiresAt: Type.Integer(),
+  revokedAt: Type.Union([Type.Integer(), Type.Null()]),
+});
+export type PersonalToken = Static<typeof PersonalToken>;

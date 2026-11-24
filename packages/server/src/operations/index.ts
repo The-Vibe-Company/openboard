@@ -15,8 +15,10 @@ import {
   approveDeviceSignInHandler,
   getAccountHandler,
   getSessionHandler,
+  listPersonalTokensHandler,
   pollDeviceSignInHandler,
   revokeAllSessionsHandler,
+  revokePersonalTokenHandler,
   startDeviceSignInHandler,
 } from "./accounts.ts";
 import { getMeHandler, listActorsHandler } from "./actors.ts";
@@ -150,6 +152,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listMembers: listMembersHandler,
   listMessages: listMessagesHandler,
   listThreads: listThreadsHandler,
+  listPersonalTokens: listPersonalTokensHandler,
   pollDeviceSignIn: pollDeviceSignInHandler,
   postMessage: postMessageHandler,
   previewInvitation: previewInvitationHandler,
@@ -160,6 +163,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   refreshAgentToken: refreshAgentTokenHandler,
   revokeConnection: revokeConnectionHandler,
   revokeAllSessions: revokeAllSessionsHandler,
+  revokePersonalToken: revokePersonalTokenHandler,
   revokeInvitation: revokeInvitationHandler,
   startDeviceSignIn: startDeviceSignInHandler,
 };
