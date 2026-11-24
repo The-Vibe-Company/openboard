@@ -39,6 +39,7 @@ import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
 import { readEventsHandler } from "./events.ts";
 import { createGrantHandler } from "./grants/create.ts";
 import { listGrantsHandler } from "./grants/list.ts";
+import { revokeGrantHandler } from "./grants/revoke.ts";
 import {
   acceptInvitationHandler,
   createInvitationHandler,
@@ -219,6 +220,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   revokeAgent: revokeAgentHandler,
   revokeAllSessions: revokeAllSessionsHandler,
   revokeConnection: revokeConnectionHandler,
+  revokeGrant: revokeGrantHandler,
   revokeInvitation: revokeInvitationHandler,
   revokePersonalToken: revokePersonalTokenHandler,
   rotateConnection: rotateConnectionHandler,

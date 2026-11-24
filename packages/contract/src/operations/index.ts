@@ -26,6 +26,7 @@ import { discoverBoard, getOpenApi } from "./discovery.ts";
 import { readEvents } from "./events.ts";
 import { createGrant } from "./grants/create.ts";
 import { listGrants } from "./grants/list.ts";
+import { revokeGrant } from "./grants/revoke.ts";
 import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
 import { changeMemberRole, removeMember } from "./memberships.ts";
 import {
@@ -123,6 +124,7 @@ export const operations = [
   revokeAgent,
   revokeAllSessions,
   revokeConnection,
+  revokeGrant,
   revokeInvitation,
   revokePersonalToken,
   rotateConnection,
@@ -190,6 +192,7 @@ export {
   revokeAgent,
   revokeAllSessions,
   revokeConnection,
+  revokeGrant,
   revokeInvitation,
   revokePersonalToken,
   rotateConnection,

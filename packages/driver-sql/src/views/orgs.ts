@@ -69,7 +69,11 @@ export function orgView(db: Db, dialect: Dialect): Pick<PlatformView, "createOrg
 }
 
 /** A board's view of who belongs to its organization. */
-export function orgReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "member"> {
+export function orgReads(
+  db: Db,
+  dialect: Dialect,
+  scope: Pick<BoardScope, "orgId" | "boardId">,
+): Pick<BoardView, "member"> {
   return {
     async member(personId): Promise<BoardMemberRecord | null> {
       const { orgId, boardId } = scope;

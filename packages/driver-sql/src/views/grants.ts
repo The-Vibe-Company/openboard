@@ -1,5 +1,5 @@
 import type { CanInput, GrantPrincipal, GrantView } from "@openboard/contract";
-import { type GrantCreated, grants, isoTime } from "@openboard/core";
+import { type GrantCreated, type GrantRevoked, grants, isoTime } from "@openboard/core";
 import type { BoardGrantReads, BoardKeys } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { type Fragment, query, sql } from "../sql.ts";
@@ -22,7 +22,7 @@ export const grantStatements = {
     VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"principals"}, ${"can"}, 0, ${"by"}, ${"at"})`,
   insertGrantPrincipal: sql`INSERT INTO grant_principals (board_id, grant_id, kind, key, detail)
     VALUES (${"boardId"}, ${"grantId"}, ${"kind"}, ${"key"}, ${"detail"})`,
-  personGrants: sql`SELECT DISTINCT g.id, g.can
+  personGrants: sql`SELECT DISTINCT g.id, g.can, g.capped
     FROM grant_principals p JOIN grants g ON g.board_id = p.board_id AND g.id = p.grant_id
     JOIN boards b ON b.id = g.board_id AND b.org_id = g.org_id
     JOIN memberships m ON m.org_id = b.org_id JOIN users u ON u.id = m.user_id
@@ -31,13 +31,25 @@ export const grantStatements = {
       AND u.public_id = ${"personId"} AND u.disabled_at IS NULL
       AND ((p.kind = 'user' AND p.key = u.public_id)
         OR (p.kind = 'all-users' AND p.key = '')
-        OR (p.kind = 'github' AND p.key = i.subject))`,
-  listGrants: sql`SELECT id, principals, can, capped, by, at FROM grants
-    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND revoked = 0 ORDER BY id`,
+        OR (p.kind = 'github' AND p.key = i.subject))
+    UNION ALL
+    SELECT 1, '{"*":"all"}', 1 FROM boards b
+    JOIN memberships m ON m.org_id = b.org_id JOIN users u ON u.id = m.user_id
+    WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"}
+      AND u.public_id = ${"personId"} AND u.disabled_at IS NULL
+      AND NOT EXISTS (SELECT 1 FROM grants WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = 1)`,
+  activeGrant: sql`SELECT id, principals, can, capped, by, at, revoked FROM grants
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  revokeGrant: sql`UPDATE grants SET revoked = 1
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND revoked = 0`,
+  revokeStartingGrant: sql`INSERT INTO grants (org_id, board_id, id, principals, can, capped, revoked)
+    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, '[]', '{}', 0, 1)`,
+  listGrants: sql`SELECT id, principals, can, capped, by, at, revoked FROM grants
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND (revoked = 0 OR id <= 3) ORDER BY id`,
 };
 
 /**
- * The grants every board starts with, as upstream's `STARTING_GRANTS`: no row holds them, so the view answers them.
+ * The grants every board starts with, as upstream's `STARTING_GRANTS`. Rows for these IDs record revocation only.
  * g1 names every member of the organization, capped by role (docs/auth.md); g2 and g3 are kept for upstream parity
  * and let no one in, since OpenBoard has no projects or apps.
  */
@@ -76,11 +88,16 @@ export function grantReads(db: Db, dialect: Dialect, keys: BoardKeys): BoardGran
   return {
     async personGrants(personId) {
       const rows = await query(db, dialect, grantStatements.personGrants, { ...keys, personId });
-      return rows.map(({ can }) => JSON.parse(String(can)) as CanInput);
+      return rows.map(({ can, capped }) => ({
+        can: JSON.parse(String(can)) as CanInput,
+        capped: Number(capped) === 1,
+      }));
     },
     async listGrants() {
       const rows = await query(db, dialect, grantStatements.listGrants, keys);
-      return [...structuredClone(STARTING_GRANTS), ...rows.map(grantView)];
+      const revoked = new Set(rows.filter(({ revoked }) => Number(revoked) === 1).map(({ id }) => Number(id)));
+      const starting = STARTING_GRANTS.filter((_, index) => !revoked.has(index + 1));
+      return [...structuredClone(starting), ...rows.filter(({ revoked }) => Number(revoked) === 0).map(grantView)];
     },
   };
 }
@@ -106,7 +123,23 @@ function principalKey(principal: GrantPrincipal, position: number): string {
   return `detail:${position}`;
 }
 
-export async function foldGrantEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: GrantCreated) {
+export async function activeGrant(db: Db, dialect: Dialect, keys: BoardKeys, id: number): Promise<GrantView | null> {
+  const [row] = await query(db, dialect, grantStatements.activeGrant, { ...keys, id });
+  if (row) return Number(row.revoked) === 0 ? grantView(row) : null;
+  return structuredClone(STARTING_GRANTS[id - 1] ?? null);
+}
+
+export async function foldGrantEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: GrantCreated | GrantRevoked) {
+  if (event.type === "ob.grant.revoked") {
+    const id = Number(event.payload.grant.slice(1));
+    const statement = id <= STARTING_GRANTS.length ? grantStatements.revokeStartingGrant : grantStatements.revokeGrant;
+    await query(tx, dialect, statement, { ...keys, id });
+    return;
+  }
+  await foldGrantCreated(tx, dialect, keys, event);
+}
+
+async function foldGrantCreated(tx: Db, dialect: Dialect, keys: BoardKeys, event: GrantCreated) {
   const { grant } = event.payload;
   const id = Number(grant.id.slice(1));
   await query(tx, dialect, grantStatements.insertGrant, {

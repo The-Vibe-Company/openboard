@@ -1,6 +1,6 @@
-import { BoardError, type Can, type Message, type Operation } from "@openboard/contract";
-import { agents, grants, parseId } from "@openboard/core";
-import type { BoardView } from "@openboard/ports";
+import { BoardError, type Can, type Message, type Operation, type Role } from "@openboard/contract";
+import { agents, grants, parseId, resolveCan } from "@openboard/core";
+import type { BoardView, PersonGrant } from "@openboard/ports";
 import { callerCan, credentialKind, memberOf, type Principal } from "../deps.ts";
 
 type Permission = NonNullable<Operation["access"]>["permission"] | "label";
@@ -14,6 +14,15 @@ function permissionsFor(permission: Permission, input: unknown): Permission[] {
 }
 
 const EVERY = "on every channel";
+
+export function personGrantCan(active: readonly PersonGrant[], role: Role): Can {
+  return resolveCan(
+    active.map(({ can, capped }) => {
+      const compiled = grants.compileCan(can);
+      return capped ? grants.capByRole(compiled, role) : compiled;
+    }),
+  );
+}
 
 /** Why `by` may not `permission` `where`, in the words of the credential it holds, with one way out. */
 function outsideCan(by: Principal, permission: Permission, where: string): BoardError {

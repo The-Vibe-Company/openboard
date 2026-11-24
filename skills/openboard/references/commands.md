@@ -710,3 +710,29 @@ Example:
 ```sh
 ob connections revoke cn_7k2m4q3t5v2w6x7y
 ```
+
+## `ob grants revoke`
+
+Revoke a board grant.
+
+```sh
+ob grants revoke <id> [--lock-me-out]
+```
+
+Arguments:
+
+- `id`: A grant ID.
+
+Options:
+
+- `--lock-me-out`: A switch: present means yes.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `revoke_grant`.
+
+Example:
+
+```sh
+ob grants revoke id
+```

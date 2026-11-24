@@ -6099,6 +6099,22 @@
                             "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
                             "properties": {
                               "cursor": { "type": "string" },
+                              "type": { "const": "ob.grant.revoked", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["grant"],
+                                "properties": { "grant": { "type": "string" } }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
                               "type": { "const": "ob.connection.created", "type": "string" },
                               "createdAt": { "type": "string" },
                               "actor": { "type": "string" },
@@ -9120,6 +9136,66 @@
                   "type": "object",
                   "required": ["id", "revokedAt"],
                   "properties": { "id": { "type": "string" }, "revokedAt": { "type": "string" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/grants/{id}/revoke": {
+      "post": {
+        "operationId": "revokeGrant",
+        "summary": "Revoke a board grant.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "grant", "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": { "lockMeOut": { "type": "boolean" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["revoked"],
+                  "properties": { "revoked": { "type": "boolean" } }
                 }
               }
             }

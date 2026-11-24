@@ -127,3 +127,32 @@ test("grants lists each grant as upstream's vb grants prints it, and --json prin
   const json = await run(["grants", "--json"]);
   expect(JSON.parse(json.out.join("\n"))).toEqual({ grants });
 });
+
+test("grants revoke prints the result and projects --lock-me-out into the request", async () => {
+  const boardUrl = "http://127.0.0.1:8787/api/local/main";
+  const run = async (revoked: boolean, ...flags: string[]) => {
+    const out: string[] = [];
+    const code = await runCli(
+      ["grants", "revoke", "g5", ...flags],
+      { BOARD_URL: boardUrl },
+      {
+        fetch: async (request) => {
+          expect(request.method).toBe("POST");
+          expect(request.url).toBe(`${boardUrl}/grants/g5/revoke`);
+          expect(await request.json()).toEqual(flags.includes("--lock-me-out") ? { lockMeOut: true } : {});
+          return Response.json({ revoked });
+        },
+        output: {
+          out: (line) => out.push(line),
+          err: (line) => {
+            throw new Error(line);
+          },
+        },
+      },
+    );
+    expect(code).toBe(0);
+    return out;
+  };
+  expect(await run(true)).toEqual(["revoked g5"]);
+  expect(await run(false, "--lock-me-out", "--json")).toEqual(['{\n  "revoked": false\n}']);
+});

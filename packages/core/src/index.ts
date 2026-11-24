@@ -1,6 +1,6 @@
 import type { AgentClaimed, AgentRefreshed } from "./access/agents.ts";
 import type { AgentRevoked, ConnectionCreated, ConnectionRevoked, ConnectionRotated } from "./access/connections.ts";
-import type { GrantCreated } from "./access/grant-events.ts";
+import type { GrantCreated, GrantRevoked } from "./access/grant-events.ts";
 import type { ChannelCreated } from "./channels/create.ts";
 import type { MessageDeleted } from "./messages/delete.ts";
 import type { MessageEdited } from "./messages/edit.ts";
@@ -31,11 +31,11 @@ export * as grants from "./access/grants.ts";
 export { grantPrincipals } from "./access/principals.ts";
 export { resolveCan, withinPin } from "./access/resolve.ts";
 export * as channels from "./channels/create.ts";
-export type { GrantCreated };
+export type { GrantCreated, GrantRevoked };
 
 import type { TaskEvent } from "./tasks/events.ts";
 
-export { decideCreateTask, decideMakeTask, replayTask, type MakeTaskState } from "./tasks/create.ts";
+export { decideCreateTask, decideMakeTask, type MakeTaskState, replayTask } from "./tasks/create.ts";
 export type { TaskCreated, TaskEvent } from "./tasks/events.ts";
 export { OPEN_TASK_STATES, taskCursor, taskStates } from "./tasks/filters.ts";
 export type { ChannelCreated };
@@ -52,6 +52,7 @@ export type BoardEvent =
   | MessageEdited
   | MessageDeleted
   | GrantCreated
+  | GrantRevoked
   | LabelsChanged
   | ReactionAdded
   | ReactionRemoved

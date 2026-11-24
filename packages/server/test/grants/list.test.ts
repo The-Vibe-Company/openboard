@@ -53,7 +53,7 @@ test("GET /grants lists the starting grants and every unrevoked grant, oldest fi
   }
 });
 
-test("GET /grants needs manage everywhere: a narrower connection and any claimed token get 403", async () => {
+test("GET /grants needs manage at *: a narrower connection and any claimed token get 403", async () => {
   const app = makeApp();
   try {
     const narrow = (await (

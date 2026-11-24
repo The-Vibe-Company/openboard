@@ -21,6 +21,7 @@ function entry<Kind extends string, Payload extends TProperties>(type: Kind, pay
 /** A board's `ob.*` event as the audit shows it (docs/auth.md "Audit"). */
 export const AuditEvent = Type.Union([
   entry("ob.grant.created", { grant: GrantView }),
+  entry("ob.grant.revoked", { grant: Type.String() }),
   entry("ob.connection.created", {
     connection: Connection,
     /** How many claims the secret makes before it is spent, or null for no limit. */

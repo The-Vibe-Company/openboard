@@ -17,7 +17,8 @@ import {
   nextGrant,
   profileHolder,
 } from "./connections.ts";
-import { foldGrantEvent, grantReads } from "./grants.ts";
+import { activeGrant, foldGrantEvent, grantReads } from "./grants.ts";
+import { orgReads } from "./orgs.ts";
 import { foldTaskEvent } from "./tasks/task-folds.ts";
 import { taskReads } from "./tasks/tasks.ts";
 
@@ -188,8 +189,9 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
     payload: JSON.stringify(event.payload),
   });
   if (event.type === "channel.created") await foldChannelCreated(tx, dialect, keys, event);
-  else if (event.type === "ob.grant.created") await foldGrantEvent(tx, dialect, keys, event);
-  else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
+  else if (event.type === "ob.grant.created" || event.type === "ob.grant.revoked") {
+    await foldGrantEvent(tx, dialect, keys, event);
+  } else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
   else if (event.type === "ob.connection.revoked") await foldConnectionRevoked(tx, dialect, keys, event);
   else if (event.type === "actor.seen") await foldActorSeen(tx, dialect, keys, event);
   else if (event.type === "ob.agent.claimed") await foldAgentClaimed(tx, dialect, keys, event);
@@ -283,6 +285,12 @@ function writer(
       return row ? (JSON.parse(String(row.view)) as Message) : null;
     },
     nextGrant: () => nextGrant(tx, dialect, keys),
+    activeGrant: (id) => activeGrant(tx, dialect, keys, id),
+    async grantMember(personId) {
+      const member = await orgReads(tx, dialect, keys).member(personId);
+      if (!member) return null;
+      return { role: member.role, grants: await grantReads(tx, dialect, keys).personGrants(personId) };
+    },
     connectionNamed: (name) => connectionNamed(tx, dialect, keys, name),
     connection: (id) => findConnection(tx, dialect, keys, id),
     agent: (id) => findAgent(tx, dialect, keys, id),
