@@ -12,7 +12,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [191]
-status: blocked
+status: draft
 claimed_by: null
 issue: 354
 ---
@@ -36,4 +36,4 @@ As the owner, I merge release-please's release PR and that version reaches produ
 - Owner first: a Railway environment `production` (Railway Postgres, one node; the `openboard` service with two replicas from the GHCR image, no volume; `railway.hosted.json` as on staging) and a GitHub environment `production` holding its own `RAILWAY_TOKEN`, ideally with the owner as required reviewer. Agents cannot create accounts, tokens or environments; the second criterion is checked once they exist. A new workflow step is the owner's to approve (AGENTS.md "Pull requests").
 - Pin actions by commit, as `.github/workflows/ci.yml` does.
 
-Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.
+Re-enabled (owner, 2026-11-24: "Ok pour railway pour moi"). Railway is set up: project `openboard` (d2f79d2f-64b8-4c30-b922-3b9502e6ea4e), environment `staging` with a `Postgres` service and an empty `openboard` service at https://openboard-staging.up.railway.app, variables OPENBOARD_DATABASE_URL (reference to Postgres), OPENBOARD_SECRET_KEY, OPENBOARD_PUBLIC_URL, OPENBOARD_SIGNUP=closed already set. GitHub OAuth credentials and any deploy token are set by the owner; never print or commit them.

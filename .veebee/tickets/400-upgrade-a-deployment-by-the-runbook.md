@@ -11,7 +11,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [193]
-status: blocked
+status: draft
 claimed_by: null
 issue: 595
 ---
@@ -33,4 +33,4 @@ As someone running OpenBoard myself, on a laptop, one container or several behin
 - The drill downloads a release binary from this repository's GitHub releases (194), the only download it makes; it verifies the published SHA-256 before running it.
 - Owner first: staging access for the third criterion.
 
-Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.
+Re-enabled (owner, 2026-11-24: "Ok pour railway pour moi"). Railway is set up: project `openboard` (d2f79d2f-64b8-4c30-b922-3b9502e6ea4e), environment `staging` with a `Postgres` service and an empty `openboard` service at https://openboard-staging.up.railway.app, variables OPENBOARD_DATABASE_URL (reference to Postgres), OPENBOARD_SECRET_KEY, OPENBOARD_PUBLIC_URL, OPENBOARD_SIGNUP=closed already set. GitHub OAuth credentials and any deploy token are set by the owner; never print or commit them.

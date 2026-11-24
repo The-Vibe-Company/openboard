@@ -10,7 +10,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [120, 123, 167, 184, 188, 402]
-status: blocked
+status: draft
 claimed_by: null
 issue: 269
 ---
@@ -32,4 +32,4 @@ As the owner, a staging OpenBoard runs on Railway as two replicas on one Railway
 - `railway-deploy.ts` reads `RAILWAY_TOKEN` from its environment (scripts read their own, docs/codebase.md 3.2) and never prints it; it calls Railway's API with the global `fetch`.
 - Also check on staging, and record in the PR: the app-to-database round trip (docs/architecture.md "Hosted on Railway", to measure before launch) and whether the app role can read `pg_control_checkpoint()` (185).
 
-Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.
+Re-enabled (owner, 2026-11-24: "Ok pour railway pour moi"). Railway is set up: project `openboard` (d2f79d2f-64b8-4c30-b922-3b9502e6ea4e), environment `staging` with a `Postgres` service and an empty `openboard` service at https://openboard-staging.up.railway.app, variables OPENBOARD_DATABASE_URL (reference to Postgres), OPENBOARD_SECRET_KEY, OPENBOARD_PUBLIC_URL, OPENBOARD_SIGNUP=closed already set. GitHub OAuth credentials and any deploy token are set by the owner; never print or commit them.

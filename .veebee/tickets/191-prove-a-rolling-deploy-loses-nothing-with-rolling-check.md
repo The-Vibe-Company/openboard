@@ -11,7 +11,7 @@ writes:
 conformance: []
 modes: [hosted]
 depends_on: [183, 190]
-status: blocked
+status: draft
 claimed_by: null
 issue: 271
 ---
@@ -32,4 +32,4 @@ As the owner, every staging deploy proves that a client following the board thro
 - The board and secret: a dedicated organization on staging (D43 names one for conformance; the same can serve) with a direct connection, created once by the owner through sign-in on staging; its secret lives in the GitHub environment `staging` and reaches the script on stdin, never as an argument (D42).
 - `rolling-check.test.ts` covers the counting against an in-process stream, no network.
 
-Deferred (owner, 2026-11-24): "pas besoin de déployer sur Railway pour l'instant, je m'en occuperai plus tard". Status `blocked` until the owner deploys; the orchestrator does not launch it.
+Re-enabled (owner, 2026-11-24: "Ok pour railway pour moi"). Railway is set up: project `openboard` (d2f79d2f-64b8-4c30-b922-3b9502e6ea4e), environment `staging` with a `Postgres` service and an empty `openboard` service at https://openboard-staging.up.railway.app, variables OPENBOARD_DATABASE_URL (reference to Postgres), OPENBOARD_SECRET_KEY, OPENBOARD_PUBLIC_URL, OPENBOARD_SIGNUP=closed already set. GitHub OAuth credentials and any deploy token are set by the owner; never print or commit them.
