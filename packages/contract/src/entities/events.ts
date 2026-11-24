@@ -50,4 +50,18 @@ const DeletedEvent = Type.Object({
   message: Message,
 });
 
-export const Event = Type.Union([PostedEvent, EditedEvent, DeletedEvent]);
+const LabelsChangedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("labels.changed"),
+  createdAt: Type.String(),
+  payload: Type.Object({
+    id: Type.String(),
+    thread: Type.String(),
+    set: Labels,
+    unset: Type.Array(Type.String()),
+    by: Author,
+  }),
+  message: Message,
+});
+
+export const Event = Type.Union([PostedEvent, EditedEvent, DeletedEvent, LabelsChangedEvent]);

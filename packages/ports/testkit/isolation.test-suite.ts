@@ -21,6 +21,10 @@ const boardCases: Cases<BoardView> = {
   personalToken: async (a, b) => expectNull(await a.board.personalToken(b.tokenHash, at)),
   write: (a, b) => a.board.write(async (writer) => writer.actor, b.actor).then(expectNull),
   mentionEvidence: (a, b) => a.board.mentionEvidence(new Set([`${b.marker.split("-")[0]}-owner`])),
+  findFilterActors: async (a, b) => {
+    expect(await a.board.findFilterActors(b.actor, { id: b.actor })).toEqual([]);
+    return a.board.findFilterActors(a.actor);
+  },
   listActors: (a) => a.board.listActors(),
   channelMessages: async (a, b) => {
     expect(await a.board.channelMessages({ channel: b.channel, limit: 500 })).toEqual([]);

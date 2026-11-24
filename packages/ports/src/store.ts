@@ -12,19 +12,10 @@ import type {
   Named,
   PersonalToken,
   Role,
-  Thread,
-  ThreadSummary,
 } from "@openboard/contract";
-import type {
-  BoardCreation,
-  BoardEvent,
-  Grant,
-  MessageDeleted,
-  MessageEdited,
-  MessagePosted,
-  messages,
-  OrgCreation,
-} from "@openboard/core";
+import type { BoardCreation, BoardEvent, Grant, messages, OrgCreation } from "@openboard/core";
+
+import type { BoardMessageReads } from "./board-message-reads.ts";
 
 declare const minted: unique symbol;
 
@@ -320,7 +311,7 @@ export interface MentionEvidence {
 }
 
 /** One board's storage; every statement it runs is bound to its scope. */
-export interface BoardView {
+export interface BoardView extends BoardMessageReads {
   /** Look up a personal credential in scope. A known but unusable token returns "inactive"; a scope miss returns null. */
   personalToken(
     tokenHash: string,
@@ -337,6 +328,11 @@ export interface BoardView {
   write<T>(fn: (writer: BoardWriter) => Promise<T>, actor?: string): Promise<T>;
   /** Candidate authors, reactors and possible prose references, from one snapshot outside the write lock. */
   mentionEvidence(handles: ReadonlySet<string>): Promise<MentionEvidence[]>;
+  /** Actor candidates for one feed's author and mention filters, using the board's current names. */
+  findFilterActors(
+    author?: string,
+    mention?: { readonly id: string; readonly handle?: string },
+  ): Promise<Pick<Actor, "id" | "kind" | "handle">[]>;
   /** Every actor the board has seen write, by handle then ID, and the board head at the time of the read. */
   listActors(): Promise<{ actors: Actor[]; head: number }>;
   /** The channel's first `limit` messages after `after`, or its latest `limit`, oldest first. Null if `after` exceeds the board head. */
@@ -356,38 +352,6 @@ export interface BoardView {
   managedConnection(id: string, now: number): Promise<ManagedConnection | null>;
   /** The first `limit` channels the query selects, by path, with their counts and the board head at the time of the read. */
   listChannels(query: ChannelsQuery): Promise<{ channels: Channel[]; head: number }>;
-  /** Scans up to 200 log entries and returns the default feed and scanned cursor. */
-  readEvents(
-    after?: number,
-  ): Promise<{ head: number; cursor: number; events: (MessagePosted | MessageEdited | MessageDeleted)[] }>;
-  /**
-   * The root and selected replies in ascending order, or null when no message has the requested ID.
-   * A zero limit reads the root alone.
-   */
-  thread(id: number, options?: { readonly after?: number; readonly limit?: number }): Promise<Thread | null>;
-  /**
-   * The channel's latest `limit` (50 by default) threads last active before `before`, or the latest overall, in
-   * ascending activity order, with the same snapshot's board head. `older` is the position of the page's oldest
-   * thread when an older one matches, else null. With `after`, a log position, the first `limit` threads last active
-   * after it instead, and `older` is null. Pass `before` or `after`, not both. With `text`, a `LIKE` operand from
-   * core's `textPattern`, only threads whose root or a reply currently has a lowercased text it matches. With
-   * `under`, a `LIKE` operand from core's `channelFilter`, the threads of every channel it matches as well.
-   * With `author`, the matching message must also be by the exact actor, or match the actor ID or handle in `query`;
-   * with `mentions`, it mentions `id`, `handle` as written, or with `resolve` an actor with either (core's `mentionFilter`).
-   */
-  listThreads(
-    channel: string,
-    labels?: readonly (readonly [key: string, values?: readonly string[]])[],
-    page?: {
-      readonly author?: { readonly actor: string } | { readonly query: string };
-      readonly before?: ThreadPosition;
-      readonly after?: number;
-      readonly limit?: number;
-      readonly mentions?: { readonly id: string; readonly handle?: string; readonly resolve: boolean };
-      readonly text?: string;
-      readonly under?: string;
-    },
-  ): Promise<{ threads: ThreadSummary[]; head: number; older: ThreadPosition | null }>;
   /** The person's membership of this board's organization, or null when they are not a member or are disabled. */
   member(personId: string): Promise<BoardMemberRecord | null>;
 }

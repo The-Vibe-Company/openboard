@@ -43,3 +43,116 @@ test.each(["bad", "1"])("rejects invalid event cursor %s", async (cursor) => {
     await app.close();
   }
 });
+
+test("filters the feed by historical message and root labels across the cursor", async () => {
+  const app = makeApp();
+  try {
+    expect(
+      (
+        await call(app, "POST", "/messages", {
+          channel: "dev",
+          text: "root",
+          labels: { status: "open" },
+        })
+      ).status,
+    ).toBe(201);
+    expect((await call(app, "POST", "/messages", { re: "2", text: "Reply 100%_done" })).status).toBe(201);
+    expect((await call(app, "POST", "/messages/2/labels", { set: { status: "closed" } })).status).toBe(200);
+    expect((await call(app, "POST", "/messages", { re: "2", text: "too late" })).status).toBe(201);
+    expect(
+      (
+        await call(app, "POST", "/messages", {
+          channel: "dev/web",
+          text: "child",
+          labels: { status: "open" },
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await call(app, "POST", "/messages", {
+          channel: "other",
+          text: "outside",
+          labels: { status: "open" },
+        })
+      ).status,
+    ).toBe(201);
+
+    const read = async (query: string) => {
+      const response = await call(app, "GET", `/events?${query}`);
+      expect(response.status).toBe(200);
+      const page = (await response.json()) as OutputOf<typeof readEvents>;
+      return { events: page.events.map(({ cursor, type }) => [cursor, type]), cursor: page.cursor };
+    };
+    expect(await read("after=0&channel=dev&label=status=open")).toEqual({
+      events: [
+        ["2", "message.posted"],
+        ["3", "message.posted"],
+        ["4", "labels.changed"],
+      ],
+      cursor: "7",
+    });
+    expect(await read("after=3&channel=dev/&label=status=open")).toEqual({
+      events: [
+        ["4", "labels.changed"],
+        ["6", "message.posted"],
+      ],
+      cursor: "7",
+    });
+    expect(await read("after=0&re=2&label=status=open&text=100%25_&by=me&from=board")).toEqual({
+      events: [["3", "message.posted"]],
+      cursor: "7",
+    });
+    expect(await read("after=0&by=LOCAL-TEST&re=2&text=reply")).toEqual({
+      events: [["3", "message.posted"]],
+      cursor: "7",
+    });
+  } finally {
+    await app.close();
+  }
+});
+
+test("an edit that removes matching text and mentions is still delivered after the original post cursor", async () => {
+  const app = makeApp();
+  try {
+    expect((await call(app, "POST", "/messages", { channel: "dev", text: "hello @[someone]" })).status).toBe(201);
+    expect((await call(app, "POST", "/messages/2/edit", { text: "goodbye" })).status).toBe(200);
+    const response = await call(app, "GET", "/events?after=2&text=HELLO&mentions=%40%5Bsomeone%5D");
+    expect(response.status).toBe(200);
+    const page = (await response.json()) as OutputOf<typeof readEvents>;
+    expect(page.cursor).toBe("3");
+    expect(page.events.map(({ type, message }) => [type, message.text])).toEqual([["message.edited", "goodbye"]]);
+  } finally {
+    await app.close();
+  }
+});
+
+test("a channel-limited credential reads only events it may see", async () => {
+  const app = makeApp();
+  try {
+    await call(app, "POST", "/messages", { channel: "dev", text: "public @[someone]" });
+    await call(app, "POST", "/messages", { channel: "dev/secret", text: "private" });
+    const connection = await call(app, "POST", "/x/connections", {
+      name: "feed-reader",
+      direct: true,
+      can: { dev: ["read"] },
+    });
+    expect(connection.status).toBe(201);
+    const { secret } = (await connection.json()) as { secret: string };
+    const read = (query: string) =>
+      app.fetch(
+        new Request(`http://localhost/api/local/main/events?${query}`, {
+          headers: { authorization: `Bearer ${secret}` },
+        }),
+      );
+    expect((await read("after=0")).status).toBe(403);
+    const response = await read("after=0&channel=dev");
+    expect(response.status).toBe(200);
+    const page = (await response.json()) as OutputOf<typeof readEvents>;
+    expect(page.events.map(({ message }) => message.channel)).toEqual(["dev"]);
+    expect(page.events[0]?.message.mentions).toBeUndefined();
+    expect((await read("after=0&channel=dev/secret")).status).toBe(403);
+  } finally {
+    await app.close();
+  }
+});

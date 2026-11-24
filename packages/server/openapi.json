@@ -2413,7 +2413,7 @@
             "required": false,
             "schema": {
               "pattern": "^[^\\u0000]+$",
-              "description": "Only threads with a message by this handle, actor ID, or `me` for the caller's actor.",
+              "description": "A message by this handle, actor ID, or `me` for the caller's actor.",
               "type": "string"
             }
           },
@@ -2423,7 +2423,7 @@
             "required": false,
             "schema": {
               "pattern": "^(?!@?$)[^\\u0000]+$",
-              "description": "Only threads with a message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
+              "description": "A message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
               "type": "string"
             }
           },
@@ -2441,7 +2441,7 @@
               "minLength": 1,
               "maxLength": 200,
               "pattern": "^[^\\u0000]+$",
-              "description": "Only threads with a message that now says this, in any case, and has the labels; `%` and `_` match only themselves.",
+              "description": "A case-insensitive substring of the message text; `%` and `_` match only themselves.",
               "type": "string"
             }
           },
@@ -2492,12 +2492,12 @@
             },
             "by": {
               "pattern": "^[^\\u0000]+$",
-              "description": "Only threads with a message by this handle, actor ID, or `me` for the caller's actor.",
+              "description": "A message by this handle, actor ID, or `me` for the caller's actor.",
               "type": "string"
             },
             "mentions": {
               "pattern": "^(?!@?$)[^\\u0000]+$",
-              "description": "Only threads with a message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
+              "description": "A message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
               "type": "string"
             },
             "label": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } },
@@ -2505,7 +2505,7 @@
               "minLength": 1,
               "maxLength": 200,
               "pattern": "^[^\\u0000]+$",
-              "description": "Only threads with a message that now says this, in any case, and has the labels; `%` and `_` match only themselves.",
+              "description": "A case-insensitive substring of the message text; `%` and `_` match only themselves.",
               "type": "string"
             },
             "after": {
@@ -3067,11 +3067,114 @@
       "get": {
         "operationId": "events",
         "summary": "Read the board's events after a cursor, oldest first.",
-        "parameters": [{ "name": "after", "in": "query", "required": false, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "after", "in": "query", "required": false, "schema": { "type": "string" } },
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxLength": 2049,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*/?$",
+              "description": "A channel by its whole name, or `dev/` for `dev` and every channel under it.",
+              "type": "string"
+            }
+          },
+          {
+            "name": "re",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "The root ID of the thread to follow.",
+              "x-ref": "thread",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": { "pattern": "^[^\\u0000]+$", "type": "string" }
+          },
+          {
+            "name": "by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^[^\\u0000]+$",
+              "description": "A message by this handle, actor ID, or `me` for the caller's actor.",
+              "type": "string"
+            }
+          },
+          {
+            "name": "mentions",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^(?!@?$)[^\\u0000]+$",
+              "description": "A message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
+              "type": "string"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } }
+          },
+          {
+            "name": "text",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^[^\\u0000]+$",
+              "description": "A case-insensitive substring of the message text; `%` and `_` match only themselves.",
+              "type": "string"
+            }
+          }
+        ],
         "x-query-schema": {
           "additionalProperties": false,
           "type": "object",
-          "properties": { "after": { "type": "string" } }
+          "properties": {
+            "after": { "type": "string" },
+            "channel": {
+              "maxLength": 2049,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*/?$",
+              "description": "A channel by its whole name, or `dev/` for `dev` and every channel under it.",
+              "type": "string"
+            },
+            "re": {
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "The root ID of the thread to follow.",
+              "x-ref": "thread",
+              "type": "string"
+            },
+            "from": { "pattern": "^[^\\u0000]+$", "type": "string" },
+            "by": {
+              "pattern": "^[^\\u0000]+$",
+              "description": "A message by this handle, actor ID, or `me` for the caller's actor.",
+              "type": "string"
+            },
+            "mentions": {
+              "pattern": "^(?!@?$)[^\\u0000]+$",
+              "description": "A message mentioning this handle (`@` optional), actor ID (`@[id]`), or `me`; a person's covers their agents.",
+              "type": "string"
+            },
+            "label": { "type": "array", "items": { "pattern": "^[a-z0-9][a-z0-9_.-]*(=.*)?$", "type": "string" } },
+            "text": {
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^[^\\u0000]+$",
+              "description": "A case-insensitive substring of the message text; `%` and `_` match only themselves.",
+              "type": "string"
+            }
+          }
         },
         "responses": {
           "200": {
@@ -3468,6 +3571,177 @@
                                     }
                                   },
                                   "from": { "type": "null" }
+                                }
+                              },
+                              "message": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "channel",
+                                  "text",
+                                  "re",
+                                  "replyTo",
+                                  "thread",
+                                  "labels",
+                                  "reactions",
+                                  "by",
+                                  "noSync",
+                                  "origin",
+                                  "from",
+                                  "createdAt",
+                                  "editedAt",
+                                  "deleted",
+                                  "undelivered",
+                                  "attachments",
+                                  "links",
+                                  "version",
+                                  "revision",
+                                  "author",
+                                  "blocks"
+                                ],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "channel": { "type": "string" },
+                                  "text": { "type": "string" },
+                                  "mentions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["written", "actor", "candidates"],
+                                      "properties": {
+                                        "written": { "type": "string" },
+                                        "actor": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "required": ["id", "handle", "name"],
+                                              "properties": {
+                                                "id": { "type": "string" },
+                                                "handle": { "type": "string" },
+                                                "name": { "type": "string" }
+                                              }
+                                            },
+                                            { "type": "null" }
+                                          ]
+                                        },
+                                        "candidates": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "required": ["id", "handle", "name"],
+                                            "properties": {
+                                              "id": { "type": "string" },
+                                              "handle": { "type": "string" },
+                                              "name": { "type": "string" }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "replyTo": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "thread": { "type": "string" },
+                                  "labels": {
+                                    "additionalProperties": false,
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                                    }
+                                  },
+                                  "reactions": {
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^(.*)$": { "type": "array", "items": { "type": "string" } }
+                                    }
+                                  },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "noSync": { "type": "boolean" },
+                                  "origin": { "type": "null" },
+                                  "from": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "createdAt": { "type": "string" },
+                                  "editedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                  "deleted": { "type": "boolean" },
+                                  "undelivered": {
+                                    "type": "object",
+                                    "patternProperties": { "^(.*)$": { "type": "string" } }
+                                  },
+                                  "attachments": { "type": "array", "items": {} },
+                                  "links": { "type": "array", "items": {} },
+                                  "version": { "type": "integer" },
+                                  "revision": { "type": "integer" },
+                                  "author": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": ["kind", "handle", "name", "avatar"],
+                                        "properties": {
+                                          "kind": {
+                                            "anyOf": [
+                                              { "const": "person", "type": "string" },
+                                              { "const": "workflow", "type": "string" },
+                                              { "const": "agent", "type": "string" }
+                                            ]
+                                          },
+                                          "handle": { "type": "string" },
+                                          "name": { "type": "string" },
+                                          "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                                          "via": {
+                                            "type": "object",
+                                            "required": ["name", "environment"],
+                                            "properties": {
+                                              "name": { "type": "string" },
+                                              "environment": { "type": "null" }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      { "type": "null" }
+                                    ]
+                                  },
+                                  "blocks": { "type": "array", "items": {} }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "payload", "message"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "labels.changed", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id", "thread", "set", "unset", "by"],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "thread": { "type": "string" },
+                                  "set": {
+                                    "additionalProperties": false,
+                                    "type": "object",
+                                    "patternProperties": {
+                                      "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                                    }
+                                  },
+                                  "unset": { "type": "array", "items": { "type": "string" } },
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  }
                                 }
                               },
                               "message": {
