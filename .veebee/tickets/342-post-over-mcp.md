@@ -8,8 +8,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [341]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t342
 issue: 527
 ---
 
@@ -17,7 +17,7 @@ issue: 527
 As an agent in an MCP client, I post a message to `dev` with `post_message` and it lands under my profile, once even if my client retries.
 
 ## Done when
-- [ ] `bun test packages/server/test/mcp/post.test.ts` passes: `post_message` with `{ "channel": "dev", "text": "hi @ada", "id": "c1" }` posts as `ob:conn:cn_…+fixer-2` for a token pinned to `fixer-2`, and a second call with the same `id` returns the same message; an `x-board-profile` on the MCP request is honoured for a direct connection and refused 403 for a token pinned to another profile, as on REST; a post to a channel the credential may only read gives `isError: true` with `error: forbidden: …`; `label_message`, `react_to_message` and `edit_message` work the same way
+- [x] `bun test packages/server/test/mcp/post.test.ts` passes: `post_message` with `{ "channel": "dev", "text": "hi @ada", "id": "c1" }` posts as `ob:conn:cn_…+fixer-2` for a token pinned to `fixer-2`, and a second call with the same `id` returns the same message; an `x-board-profile` on the MCP request is honoured for a direct connection and refused 403 for a token pinned to another profile, as on REST; a post to a channel the credential may only read gives `isError: true` with `error: forbidden: …`; `label_message`, `react_to_message` and `edit_message` work the same way
 
 ## Out of scope
 - Replies and their preconditions (343); tasks (344, 345).
