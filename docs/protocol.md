@@ -459,8 +459,8 @@ ownership rule to every task state. Lifting a hold clears it and emits
 A task with prerequisites becomes waiting. If they are all completed, the same
 write appends `task.ready`. An already unheld task emits no events. Use
 `ob tasks unblock <id>` to lift a hold. The CLI prints `unblocked <id>` or
-`unchanged`. Upgraded replicas serve `task.unblocked` in the feed. During rollout,
-writers omit persisted pull-watcher matches and webhook deliveries for this event.
+`unchanged`. The feed and outbound webhooks include `task.unblocked`.
+The writer omits persisted pull-watcher matches for this event.
 
 `POST /tasks/:id/cancel` takes `{ reason }` and returns `{ task }`. The task's maker profile or
 its principal acting as itself can cancel it with channel read and either post or label access.
@@ -484,8 +484,8 @@ clears its failure reason, and retains its claim epoch. The feed includes
 `task.reopened` with `{ id, thread, by }`. Reopening a ready, waiting, claimed, or
 blocked task emits no event. Use `ob tasks reopen <id>` to retry a failed task
 after fixing the cause. The CLI prints `reopened <id>` or `unchanged`.
-During a rolling deploy, upgraded replicas serve `task.reopened` in the feed.
-The writer omits [persisted pull-watcher matches and webhook deliveries](decisions.md#task-reopening-during-a-rolling-deploy) for this event.
+The feed and outbound webhooks include `task.reopened`.
+The writer omits [persisted pull-watcher matches](decisions.md#task-reopening-during-a-rolling-deploy) for this event.
 
 At the lease deadline, the thread and task list use the effective state
 `ready`, or `blocked` if the task has a hold. A background job or the next successful
@@ -809,7 +809,6 @@ POST {BOARD_URL}/x/webhooks
 { "name": "fix-queue-to-routine",
   "url": "https://receiver.example.com/hooks/abc",
   "filter": { "tail": "work/fix/",
-              "types": ["task.created", "task.ready", "task.released", "task.expired", "task.reopened", "task.unblocked"],
               "became": { "task": "ready" } },
   "signing": { "preset": "standard-webhooks" },
   "headers": { "authorization": "Bearer …" },
@@ -821,8 +820,11 @@ POST {BOARD_URL}/x/webhooks
 - **Filter:** `tail` is upstream's tail grammar (channel or `prefix/`,
   `--label`, `--by`, `--mentions`, `--text`, `--re`, `--all`), with the feed's
   rule that an event is delivered when its message matches before or after it;
-  `types` narrows event types; `became` fires on a state transition computed
-  in the writing transaction (the common "a task is workable now" trigger).
+  `types` narrows event types. `"became": { "task": "ready" }` matches the
+  event that changes a thread root's task state to ready. The writer compares
+  the state immediately before and after each event, including events in the
+  same transaction. The tail and any supplied types must also match.
+  Other `became` keys or values return 400 `invalid_request`.
 - **Who may create:** `manage` at every pattern the tail can match on that
   board. At send time, the subscription is disabled with
   `disabledReason: "creator_access"` and an `ob.webhook.disabled` audit event
