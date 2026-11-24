@@ -172,7 +172,6 @@ export async function seed(): Promise<Seeded> {
     return Uint8Array.from({ length }, (_, index) => (drawn * 31 + index * 7) % 256);
   };
   // As every HTTP test's app: two instances on one Postgres database, requests alternating, or one app on SQLite.
-  // As every HTTP test's app: two instances on one Postgres database, requests alternating, or one app on SQLite.
   const app = createCluster(
     { mode: "local", publicUrl: PUBLIC_URL, localOwner: LOCAL_OWNER, signup: "open" },
     { store },
