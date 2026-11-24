@@ -131,7 +131,7 @@ async function launch(mode: "claim" | "proxy", args: string[], secret: string) {
     ...args,
     "--",
     node,
-    "--experimental-permission",
+    "--permission",
     `--allow-fs-read=${agentDir}`,
     "./agent.mjs",
     mode,
