@@ -853,8 +853,12 @@ response. `ob webhooks disable <id>` pauses dispatch and `ob webhooks enable
 ### Delivery semantics
 
 - **Outbox:** rows inserted in the writing transaction; at-least-once.
-- **Order:** per subscription and thread, one at a time; ≤ 4 in flight per
-  subscription, ≤ 32 per instance; any instance may send (leased rows).
+- **Order:** per subscription and thread, one event delivery at a time, in event
+  order. A retry holds its lane until the delivery settles. A dead delivery
+  releases its lane. At most four event deliveries can be in flight per
+  subscription, and at most 32 per instance. Any instance may send (leased
+  rows). Version 1 requires both a thread and a message and never delivers
+  `channel.created`.
 - **Outcomes:** 2xx within 10 s succeeds; network error, timeout, 408, 425,
   429, 5xx retry at 10 s, 30 s, 2 min, 10 min, 30 min, 1 h, 3 h, 6 h, 12 h
   (honouring `retry-after` ≤ 1 h); other 4xx dead at once; 410 disables the

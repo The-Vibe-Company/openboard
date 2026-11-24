@@ -8,7 +8,7 @@ export function postgresJobs(sql: Pick<SQL, "listen">, db: Db, now: () => number
     claim: claimJob(db, postgresText),
     release: releaseJobs(db, postgresText),
     watch(kinds, schedule, wake) {
-      const watcher = jobWake(now, schedule, () => nextJob(db, postgresText, kinds), wake);
+      const watcher = jobWake(now, schedule, () => nextJob(db, postgresText, kinds, now()), wake);
       let stopped = false;
       let cancelRetry: (() => void) | undefined;
 

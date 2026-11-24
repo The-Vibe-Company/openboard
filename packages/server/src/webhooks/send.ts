@@ -84,13 +84,16 @@ export async function sendWebhook(
   config: TargetConfig,
   { webhookFetch, resolveHost, schedule }: Pick<Deps, "webhookFetch" | "resolveHost" | "schedule">,
   payload: SignedWebhookRequest,
+  remainingLeaseMs = webhookTimeoutMs,
 ) {
+  const timeoutMs = Math.min(webhookTimeoutMs, remainingLeaseMs);
+  if (timeoutMs <= 0) return { status: null, retryAfter: null, error: "timeout" };
   if (!webhookFetch) return { status: null, retryAfter: null, error: "fetch_unavailable" };
   const controller = new AbortController();
   let status: number | null = null;
   let retryAfter: string | null = null;
   const timeout = Promise.withResolvers<{ status: number | null; error: string }>();
-  const cancel = schedule(webhookTimeoutMs, () => {
+  const cancel = schedule(timeoutMs, () => {
     timeout.resolve({ status, error: "timeout" });
     controller.abort();
   });

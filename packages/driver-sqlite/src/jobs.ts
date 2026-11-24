@@ -21,7 +21,7 @@ export function sqliteJobs(
       watchers.clear();
     },
     watch(kinds, schedule, wake) {
-      const watcher = jobWake(now, schedule, () => nextJob(db, sqliteDialect, kinds), wake);
+      const watcher = jobWake(now, schedule, () => nextJob(db, sqliteDialect, kinds, now()), wake);
       watchers.set(watcher, kinds);
       watcher.refresh();
       return () => {
