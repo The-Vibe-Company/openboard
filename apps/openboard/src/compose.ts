@@ -1,4 +1,4 @@
-import { postgresDriver } from "@openboard/driver-postgres";
+import { migratePostgres, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { createApp, type Deps, jsonLogger } from "@openboard/server";
 import type { Config } from "./config.ts";
@@ -6,6 +6,23 @@ import type { Config } from "./config.ts";
 async function hostedStore(url: string, now: () => number) {
   try {
     return await postgresDriver({ url }, now);
+  } catch {
+    // Connection errors can contain credentials supplied in the URL.
+    throw new Error("Could not open or migrate the Postgres database");
+  }
+}
+
+/**
+ * `openboard migrate`: hosted mode migrates under the migration lock and reports each migration applied; local mode
+ * opens the data directory, which the SQLite driver migrates on open. Returns the names applied (none locally).
+ */
+export async function migrateSchema(config: Config, onApplied: (name: string) => void): Promise<string[]> {
+  if (config.mode === "local") {
+    await sqliteDriver({ dir: config.dataDir, sync: config.sync }).close();
+    return [];
+  }
+  try {
+    return await migratePostgres({ url: config.databaseUrl }, Date.now, onApplied);
   } catch {
     // Connection errors can contain credentials supplied in the URL.
     throw new Error("Could not open or migrate the Postgres database");
