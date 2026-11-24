@@ -7,6 +7,7 @@ import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
+import { streamEvents } from "../operations/events.ts";
 import {
   type AccountOperation,
   type DeviceOperation,
@@ -14,7 +15,6 @@ import {
   type OrgOperation,
   type PublicOperation,
 } from "../operations/index.ts";
-import { streamEvents } from "../operations/events.ts";
 import { errorResponse, invalidPostChannel } from "./errors.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
@@ -24,6 +24,8 @@ type Contracted = (typeof operations)[number];
 type Params = Readonly<Record<string, string>>;
 
 export interface Pipeline {
+  readonly shutdown: AbortSignal;
+  readonly track: <T>(work: Promise<T>) => Promise<T>;
   readonly config: ServerConfig;
   readonly deps: Deps;
   /** Board and public operations, relative to `BOARD_URL`. */
@@ -205,7 +207,17 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
       await keepInsideCan(operation, input, current, board);
       return current;
     };
-    return { board, by, now, boardUrl, randomBytes, schedule, reauthorize, signal: request.signal };
+    return {
+      board,
+      by,
+      now,
+      boardUrl,
+      randomBytes,
+      schedule,
+      reauthorize,
+      signal: request.signal,
+      shutdown: pipeline.shutdown,
+    };
   };
   if (
     operation.name === "readEvents" &&
@@ -213,7 +225,7 @@ async function run(request: Request, url: URL, pipeline: Pipeline, logged: Reque
     request.headers.get("accept")?.includes(operation.eventStream)
   ) {
     const input = decodeInput(operation, raw);
-    return streamEvents(await context(input), input, request.headers.get("last-event-id"));
+    return streamEvents(await context(input), input, request.headers.get("last-event-id"), pipeline.track);
   }
   const input = validate(operation, raw);
   const output = await handlerOf(operation)(await context(input), input);
@@ -251,6 +263,9 @@ export async function handle(request: Request, pipeline: Pipeline): Promise<Resp
   };
   let response: Response;
   try {
+    if (pipeline.shutdown.aborted && url.pathname !== "/healthz" && url.pathname !== "/readyz") {
+      throw new BoardError("unavailable", "the instance is draining");
+    }
     response = await run(request, url, pipeline, logged);
   } catch (error) {
     response = errorResponse(error, log);

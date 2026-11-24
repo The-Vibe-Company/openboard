@@ -20,7 +20,6 @@ export async function measure(
   try {
     const idleTimers = await countArmedTimers(async () => {
       server = await boot(mode);
-      await Promise.all(server.instances.map(({ app }) => app.drain()));
     });
     if (!server) throw new Error(`${mode} did not boot`);
     const workloads = await runMessageWorkloads(server, sizes);

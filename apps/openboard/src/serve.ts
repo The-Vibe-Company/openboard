@@ -2,7 +2,7 @@ import { mkdir, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
-import { mintLocalOwnerToken } from "@openboard/server";
+import { type App, DRAIN_TIMEOUT_MS, mintLocalOwnerToken } from "@openboard/server";
 import { compose } from "./compose.ts";
 import type { Config } from "./config.ts";
 
@@ -46,19 +46,29 @@ export async function serve(config: Config): Promise<void> {
       await server.stop();
       throw error;
     }
-    registerShutdown(server, app.close);
+    registerShutdown(server, app);
   } catch (error) {
     await app.close();
     throw error;
   }
 }
 
-function registerShutdown(server: { stop(): Promise<void> }, close: () => Promise<void>): void {
-  const stop = async () => {
-    await server.stop();
-    await close();
-    process.exit(130);
+function registerShutdown(server: { stop(): Promise<void> }, app: App): void {
+  let stopping = false;
+  const stop = async (code: number) => {
+    if (stopping) return;
+    stopping = true;
+    const deadline = setTimeout(() => process.exit(1), DRAIN_TIMEOUT_MS);
+    try {
+      await Promise.all([server.stop(), app.drain()]);
+      await app.close();
+    } catch {
+      code = 1;
+    } finally {
+      clearTimeout(deadline);
+      process.exit(code);
+    }
   };
-  process.once("SIGINT", stop);
-  process.once("SIGTERM", stop);
+  process.on("SIGINT", () => void stop(130));
+  process.on("SIGTERM", () => void stop(0));
 }

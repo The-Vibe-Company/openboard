@@ -1,4 +1,4 @@
-export { type App, createApp, type Ports } from "./app.ts";
+export { type App, createApp, DRAIN_TIMEOUT_MS, type Ports } from "./app.ts";
 export { mintLocalOwnerToken } from "./auth/local-owner.ts";
 export type { Deps, Logger, Principal, ServerConfig } from "./deps.ts";
 export { createOpenApi } from "./http/openapi.ts";

@@ -84,6 +84,7 @@ import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 export interface BoardContext {
   readonly board: BoardView;
   readonly signal: AbortSignal;
+  readonly shutdown: AbortSignal;
   readonly schedule: Deps["schedule"];
   readonly reauthorize: () => Promise<Principal>;
   readonly by: Principal;

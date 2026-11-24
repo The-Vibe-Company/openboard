@@ -1,5 +1,5 @@
-import { formatId } from "@openboard/core";
 import type { OutputOf, readEvents } from "@openboard/contract";
+import { formatId } from "@openboard/core";
 import type { Deps } from "../deps.ts";
 
 /** Upstream pings a quiet stream every 15 s so proxies do not cut it for idleness (`03-http.md`, "SSE"). */
@@ -26,25 +26,18 @@ function pageFrames(page: Page): string {
 export function eventStream(
   first: Page,
   requestSignal: AbortSignal,
+  shutdown: AbortSignal,
   schedule: Deps["schedule"],
   read: (after: number, signal: AbortSignal) => Promise<Page | undefined>,
   close: () => void,
 ): Response {
   const abort = new AbortController();
   const deadline = new AbortController();
-  const signal = AbortSignal.any([requestSignal, abort.signal, deadline.signal]);
+  const signal = AbortSignal.any([requestSignal, abort.signal, deadline.signal, shutdown]);
   const encoder = new TextEncoder();
   let cursor = first.cursor;
   let cancelPing = () => {};
   let cancelDeadline = () => {};
-  const stop = () => {
-    cancelPing();
-    cancelDeadline();
-    close();
-  };
-  if (signal.aborted) stop();
-  else signal.addEventListener("abort", stop, { once: true });
-
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       controller.enqueue(encoder.encode(": connected\n\n"));
@@ -54,22 +47,33 @@ export function eventStream(
         if ((controller.desiredSize ?? 0) > 0) controller.enqueue(encoder.encode(": ping\n\n"));
         cancelPing = schedule(PING_INTERVAL_MS, ping);
       };
-      if (signal.aborted) return;
+      const stop = () => {
+        cancelPing();
+        cancelDeadline();
+        close();
+        if (abort.signal.aborted) return;
+        if (shutdown.aborted) controller.enqueue(encoder.encode(`retry: 1000\nid: ${formatId(cursor)}\n\n`));
+        controller.close();
+      };
+      if (signal.aborted) {
+        stop();
+        return;
+      }
+      signal.addEventListener("abort", stop, { once: true });
       cancelPing = schedule(PING_INTERVAL_MS, ping);
       cancelDeadline = schedule(STREAM_MAX_MS, () => deadline.abort());
     },
     async pull(controller) {
-      if (signal.aborted) {
-        controller.close();
-        return;
-      }
+      if (signal.aborted) return;
       // A failed read errors the stream without calling `cancel`: abort so the pings stop with it.
       const page = await read(cursor, signal).catch((error: unknown) => {
+        if (signal.aborted) return undefined;
         abort.abort();
         throw error;
       });
-      if (signal.aborted || page === undefined) {
-        if (!abort.signal.aborted) controller.close();
+      if (signal.aborted) return;
+      if (page === undefined) {
+        deadline.abort();
         return;
       }
       cursor = page.cursor;

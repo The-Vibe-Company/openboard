@@ -405,6 +405,11 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 
 ## Events
 
+During graceful shutdown, an open SSE stream ends with a `retry: 1000` frame
+carrying its last emitted cursor as `id:`. Reconnect with that cursor in
+`Last-Event-ID` to resume on another instance. A draining instance returns
+503 `unavailable` for new board requests. An in-flight long-poll returns its latest page.
+
 `GET /events?channel=dev&last=2` returns the channel's newest events, oldest first,
 with the current message views and the board head as `cursor`. Pass that cursor as
 `after` to continue from the same point. `last` accepts integers from 1 through

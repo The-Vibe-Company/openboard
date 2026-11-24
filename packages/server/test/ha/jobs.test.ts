@@ -139,6 +139,7 @@ test("a wake during an empty claim triggers another claim without waiting for th
     {
       ...store,
       jobs: {
+        ...store.jobs,
         claim: async () => {
           if (++claims !== 1) return null;
           observed.resolve();

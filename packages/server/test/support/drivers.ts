@@ -107,6 +107,7 @@ function driverOn(open: () => Promise<Store>): Store {
   return {
     jobs: {
       claim: async (...args) => (await opened()).jobs.claim(...args),
+      release: async (...args) => (await opened()).jobs.release(...args),
       watch: (...args) => subscribeLater(async () => (await opened()).jobs, "watch")(...args),
     },
     platform: () => deferred(async () => (await opened()).platform()),

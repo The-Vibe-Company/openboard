@@ -373,7 +373,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 | `OPENBOARD_SIGNUP` | `open`, `invite` or `closed` (docs/auth.md); local mode defaults to `closed`, no sign-up unless set (D48) |
 | `OPENBOARD_PUBLIC_URL` | canonical origin, never derived from `Host` |
 | `OPENBOARD_SECRET_KEY` | encrypts recoverable secrets (D29) |
-| `OPENBOARD_INSTANCE_ID` | optional; defaults to a random ID per process, used for job leases and logs |
+| `OPENBOARD_INSTANCE_ID` | Optional job log label. Each runner uses a generated lease owner ID and uses that ID as its default log label. |
 | `OPENBOARD_GITHUB_CLIENT_ID`, `OPENBOARD_GITHUB_CLIENT_SECRET` | GitHub sign-in |
 | `OPENBOARD_LOG_LEVEL` | log level |
 | `PORT` | listening port (Railway sets it), default `8787`; the only unprefixed variable |

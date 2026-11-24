@@ -9,24 +9,28 @@ export function startJobs(
   jobs: Jobs,
   tenants: Tenants,
   deps: Deps,
-  instance: string | (() => string),
+  instance: string | undefined,
   handlers: Readonly<Record<string, JobHandler>>,
-): () => Promise<void> {
+): (release?: boolean) => Promise<void> {
   const registry = new Map(Object.entries(handlers));
   if (registry.size === 0) return async () => {};
-  const instanceId = typeof instance === "string" ? instance : instance();
+  // A configured instance label may be reused by a replacement while the old runner is draining.
+  const leaseOwner = deps.requestId();
+  const instanceId = instance ?? leaseOwner;
   const kinds = [...registry.keys()];
   let stopped = false;
   let pending = false;
   let active: Promise<void> | undefined;
+  let currentJob: string | undefined;
 
   async function run() {
     while (!stopped) {
-      const lease = { instanceId, claimedAt: deps.now() };
+      const lease = { instanceId: leaseOwner, claimedAt: deps.now() };
       const job = await jobs.claim(kinds, lease);
       if (!job || stopped) return;
       const handler = registry.get(job.kind);
       if (!handler) continue;
+      currentJob = job.id;
       try {
         const ran = await tenants.jobBoard(job).write(async (writer) => {
           const payload = await writer.takeJob(job.id, lease, deps.now());
@@ -38,6 +42,8 @@ export function startJobs(
       } catch {
         // Leave the lease to expire. An unsuccessful transaction rolls back both consumption and the effect.
         deps.log.error("job failed", { kind: job.kind, instanceId });
+      } finally {
+        currentJob = undefined;
       }
     }
   }
@@ -64,9 +70,22 @@ export function startJobs(
     active ??= drain();
     await active;
   });
-  return async () => {
+  return async (release = false) => {
     stopped = true;
     stop();
-    await active;
+    const running = active;
+    // An unfinished job must keep its lease. Return any others even if the current job hits the shutdown cap.
+    if (release) await releaseLeases(jobs, deps, leaseOwner, instanceId, currentJob);
+    await running;
+    // A claim might have finished during shutdown, or the current effect might have rolled back.
+    if (release && running) await releaseLeases(jobs, deps, leaseOwner, instanceId);
   };
+}
+
+async function releaseLeases(jobs: Jobs, deps: Deps, leaseOwner: string, instanceId: string, exceptId?: string) {
+  try {
+    await jobs.release(leaseOwner, deps.now(), exceptId);
+  } catch {
+    deps.log.error("job lease release failed", { instanceId });
+  }
 }
