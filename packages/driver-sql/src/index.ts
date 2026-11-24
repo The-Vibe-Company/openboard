@@ -23,6 +23,7 @@ import purgeStateDdl from "../migrations/0021-org-purge-state.sql" with { type: 
 import purgeIndexesDdl from "../migrations/0022-org-purge-indexes.sql" with { type: "text" };
 import shippingDdl from "../migrations/0023-shipping.sql" with { type: "text" };
 import orgOnBoardRowsDdl from "../migrations/0024-org-on-board-rows.sql" with { type: "text" };
+import oidcKeysDdl from "../migrations/0025-oidc-keys.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -40,6 +41,7 @@ import { purgeOrgView } from "./views/jobs/purge.ts";
 import { shippingPlatform, shippingView } from "./views/jobs/shipping.ts";
 import { membershipView } from "./views/memberships.ts";
 import { boardView } from "./views/messages.ts";
+import { oidcKeysView } from "./views/auth/oidc.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
 import { rateView } from "./views/rates/index.ts";
 import { schemaReads } from "./views/schemas/registry.ts";
@@ -89,6 +91,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 22, name: "0022-org-purge-indexes", sql: purgeIndexesDdl },
   { version: 23, name: "0023-shipping", sql: shippingDdl },
   { version: 24, name: "0024-org-on-board-rows", sql: orgOnBoardRowsDdl },
+  { version: 25, name: "0025-oidc-keys", sql: oidcKeysDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -102,6 +105,7 @@ export function createViews(
     schemaReady: () => checkSchema(db, dialect, migrations.at(-1)?.version ?? 0),
     platform: () => ({
       ...platformView(db, dialect),
+      ...oidcKeysView(db, dialect),
       ...shippingPlatform(db, dialect),
       queueBoardOrgBackfill: (now, signal) => queueBoardOrgBackfill(db, dialect, jobs, now, signal),
       ...rateView(db, dialect),

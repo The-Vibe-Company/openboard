@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
 import { BACKFILL_BOARD_ORG_JOB, type BoardView, type BoardWriter, type OrgView, type Store } from "../src/index.ts";
 import { type OpenStore, testScope } from "./index.ts";
-import { at, boardCreation, type StoreTenant, storeTenant } from "./isolation-seed.ts";
+import { at, boardCreation, seedPersonGrant, type StoreTenant, storeTenant } from "./isolation-seed.ts";
 import { appendSchema } from "./store/schemas.test-suite.ts";
 import { pull, seedWatcher } from "./store/watchers.test-suite.ts";
 
@@ -171,6 +171,16 @@ const writerCases: Cases<BoardWriter> = {
     return inWrite(a, async (writer) => expectNull(await writer.taskClaimProof(b.task)));
   },
   clientPost: (a, b) => inWrite(a, async (writer) => expectNull(await writer.clientPost(b.clientId))),
+  otherGrantIssuers: async (a, b, store) => {
+    await inWrite(b, async (writer) => expect(await writer.otherGrantIssuers(0)).toEqual(["https://bravo.example"]));
+    expect(await a.org.createBoard(boardCreation("ops", a.actor), a.personId)).toBe("created");
+    const keys = await store.platform().findBoard("alpha", "ops");
+    if (!keys) throw new Error("missing seeded board");
+    await seedPersonGrant(store.board(testScope(keys)), a.personId, a.actor, "ops", "https://issuer.example");
+    await inWrite(a, async (writer) => expect(await writer.otherGrantIssuers(0)).toEqual(["https://issuer.example"]));
+    await a.org.deleteBoard("ops", a.personId, at);
+    return inWrite(a, async (writer) => expect(await writer.otherGrantIssuers(0)).toEqual([]));
+  },
   nextGrant: (a) => inWrite(a, async (writer) => expect(await writer.nextGrant()).toBe(6)),
   activeGrant: async (a, b) => {
     const foreign = (await b.board.listGrants()).at(-1);

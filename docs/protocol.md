@@ -132,7 +132,7 @@ answers. OpenBoard adds:
 
 Malformed channel paths and patterns return HTTP 400 with the OpenBoard
 reason `invalid_channel`. The code is `invalid_request` for channel fields,
-`invalid_grant` for grant patterns, and `bad_watcher` for watcher tails.
+`invalid_grant` for invalid grant patterns, unsafe OIDC issuer URLs or the eight-issuer organization limit, and `bad_watcher` for watcher tails.
 When the server can correct the path, `next` can show a corrected command or
 API call. A watcher command previews the corrected channel before you update
 the registration.

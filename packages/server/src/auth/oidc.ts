@@ -1,10 +1,19 @@
-import { BoardError } from "@openboard/contract";
-import { grants, matchesWorkload, type RepositoryPrincipal, resolveCan } from "@openboard/core";
-import type { BoardGrantReads } from "@openboard/ports";
+import { BoardError, type GrantView } from "@openboard/contract";
+import {
+  grants,
+  matchesOidcClaims,
+  matchesWorkload,
+  type OidcPrincipal,
+  type RepositoryPrincipal,
+  resolveCan,
+} from "@openboard/core";
+import type { BoardGrantReads, PlatformView } from "@openboard/ports";
 import { callerCan, credentialExpiry, credentialKind, type Deps, type Principal, workloadOf } from "../deps.ts";
+import { publicHttps, resolvesPublicly } from "../public-host.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { bearer } from "./secrets.ts";
 
+type Workload = RepositoryPrincipal | OidcPrincipal;
 type Claims = Record<string, unknown>;
 
 export interface OidcIssuer {
@@ -14,6 +23,8 @@ export interface OidcIssuer {
 }
 
 const KEY_TTL_MS = 300_000;
+const RELOAD_INTERVAL_MS = 30_000;
+const MAX_RESPONSE_BYTES = 65_536;
 const FETCH_TIMEOUT_MS = 5000;
 const JWT = /^[\w-]+\.[\w-]+\.[\w-]+$/;
 type Fetch = NonNullable<Deps["fetch"]>;
@@ -28,8 +39,29 @@ function decode(value: string): Claims | null {
   return record(JSON.parse(Buffer.from(value, "base64url").toString("utf8")));
 }
 
-/** Discovery and keys stay on the preconfigured public issuer's origin. */
-function oidcFetch(fetch: Fetch, schedule: Deps["schedule"]): FetchObject {
+async function responseObject(response: Response): Promise<Claims | null> {
+  const body = response.body;
+  if (!body) return null;
+  if (!response.ok || response.redirected || Number(response.headers.get("content-length")) > MAX_RESPONSE_BYTES) {
+    void body.cancel().catch(() => {});
+    return null;
+  }
+  const reader = body.getReader();
+  const buffer = new Uint8Array(MAX_RESPONSE_BYTES);
+  let offset = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return record(JSON.parse(new TextDecoder().decode(buffer.subarray(0, offset))));
+    if (offset + value.length > buffer.length) {
+      void reader.cancel().catch(() => {});
+      return null;
+    }
+    buffer.set(value, offset);
+    offset += value.length;
+  }
+}
+
+function oidcFetch(fetch: Fetch, resolve: NonNullable<Deps["resolveHost"]>, schedule: Deps["schedule"]): FetchObject {
   return async (url) => {
     const abort = new AbortController();
     const deadline = Promise.withResolvers<null>();
@@ -38,8 +70,9 @@ function oidcFetch(fetch: Fetch, schedule: Deps["schedule"]): FetchObject {
       deadline.resolve(null);
     });
     const read = async () => {
+      if (!(await resolvesPublicly(url, resolve)) || abort.signal.aborted) return null;
       const response = await fetch(new Request(url.href, { redirect: "error", signal: abort.signal }));
-      return response.ok && !response.redirected ? record(await response.json()) : null;
+      return responseObject(response);
     };
     try {
       return await Promise.race([read(), deadline.promise]);
@@ -49,23 +82,20 @@ function oidcFetch(fetch: Fetch, schedule: Deps["schedule"]): FetchObject {
   };
 }
 
-async function loadKeys(fetchObject: FetchObject, issuer: string): Promise<Map<string, CryptoKey>> {
-  const keys = new Map<string, CryptoKey>();
+async function loadDocument(fetchObject: FetchObject, issuer: string): Promise<Claims | null> {
   const base = new URL(issuer);
-  // The built-in issuer is vetted. Exclude literal IPs and local name forms even in server configuration.
-  if (
-    base.protocol !== "https:" ||
-    base.username ||
-    base.password ||
-    !/^(?:[a-z0-9-]+\.)+[a-z][a-z0-9-]*$/i.test(base.hostname) ||
-    /\.(?:localhost|local|internal|test|invalid|onion)$/i.test(base.hostname)
-  )
-    return keys;
-  const discovery = await fetchObject(new URL(`${issuer}/.well-known/openid-configuration`));
-  if (discovery?.issuer !== issuer || typeof discovery.jwks_uri !== "string") return keys;
+  if (!publicHttps(base) || base.search || base.hash) return null;
+  const discoveryUrl = new URL(base);
+  discoveryUrl.pathname = `${base.pathname.replace(/\/$/, "")}/.well-known/openid-configuration`;
+  const discovery = await fetchObject(discoveryUrl);
+  if (discovery?.issuer !== issuer || typeof discovery.jwks_uri !== "string") return null;
   const jwks = URL.parse(discovery.jwks_uri);
-  if (!jwks || jwks.origin !== base.origin || jwks.username || jwks.password || jwks.hash) return keys;
-  const document = await fetchObject(jwks);
+  if (!jwks || jwks.origin !== base.origin || jwks.username || jwks.password || jwks.hash) return null;
+  return fetchObject(jwks);
+}
+
+async function importKeys(document: Claims | null): Promise<Map<string, CryptoKey>> {
+  const keys = new Map<string, CryptoKey>();
   if (!Array.isArray(document?.keys)) return keys;
   for (const entry of document.keys as unknown[]) {
     const key = record(entry);
@@ -86,23 +116,50 @@ async function loadKeys(fetchObject: FetchObject, issuer: string): Promise<Map<s
   return keys;
 }
 
-function keyCache(fetch: FetchObject, issuer: string, now: Deps["now"]) {
+type KeyStore = Pick<PlatformView, "reserveOidcReload" | "readOidcKeys" | "finishOidcReload">;
+
+function keyCache(fetch: FetchObject, issuer: string, now: Deps["now"], store: KeyStore) {
   let cached = new Map<string, CryptoKey>();
   let expiresAt = 0;
   let pending: Promise<void> | undefined;
-  return async (kid: string) => {
-    if (now() < expiresAt && cached.has(kid)) return cached.get(kid);
-    pending ??= loadKeys(fetch, issuer)
-      .then((keys) => {
-        if (!keys.size) return;
-        cached = keys;
-        expiresAt = now() + KEY_TTL_MS;
-      })
-      .finally(() => {
-        pending = undefined;
-      });
-    await pending;
-    return now() < expiresAt ? cached.get(kid) : undefined;
+  let nextRead = 0;
+  async function refresh() {
+    const stored = await store.readOidcKeys(issuer, now());
+    if (stored && stored.expiresAt > expiresAt) {
+      cached = await importKeys(record(JSON.parse(stored.document)));
+      expiresAt = stored.expiresAt;
+      return;
+    }
+    const started = now();
+    // Hold the lease through both fetch deadlines, then start cooldown when loading finishes.
+    const leaseUntil = started + RELOAD_INTERVAL_MS + 2 * FETCH_TIMEOUT_MS;
+    if (!(await store.reserveOidcReload(issuer, started, leaseUntil))) return;
+    let loaded: { document: string; expiresAt: number } | null = null;
+    try {
+      const document = await loadDocument(fetch, issuer);
+      const keys = await importKeys(document);
+      if (!keys.size) return;
+      loaded = { document: JSON.stringify(document), expiresAt: now() + KEY_TTL_MS };
+      cached = keys;
+      expiresAt = loaded.expiresAt;
+    } finally {
+      const completedAt = now();
+      nextRead = completedAt + RELOAD_INTERVAL_MS;
+      await store.finishOidcReload(issuer, leaseUntil, completedAt, nextRead, loaded);
+    }
+  }
+  return {
+    expired: () => !pending && now() >= Math.max(expiresAt, nextRead),
+    async keyFor(kid: string) {
+      if (now() < expiresAt && cached.has(kid)) return cached.get(kid);
+      if (!pending && now() >= nextRead) {
+        pending = refresh().finally(() => {
+          pending = undefined;
+        });
+      }
+      await pending;
+      return now() < expiresAt ? cached.get(kid) : undefined;
+    },
   };
 }
 
@@ -110,18 +167,15 @@ function matchesAudience(aud: unknown, expected: string): boolean {
   return aud === expected || (Array.isArray(aud) && aud.length === 1 && aud[0] === expected);
 }
 
-function issuerVerifier(issuer: string, fetch: FetchObject, now: Deps["now"]) {
-  const keyFor = keyCache(fetch, issuer, now);
-  return async (token: string, audience: string) => {
+function issuerVerifier(now: Deps["now"]) {
+  return async (token: string, audience: string, claims: Claims, keyFor: ReturnType<typeof keyCache>["keyFor"]) => {
     try {
       const [head = "", payload = "", signature = ""] = token.split(".");
       const header = decode(head);
-      const claims = decode(payload);
       if (
         header?.alg !== "RS256" ||
         typeof header.kid !== "string" ||
         header.crit !== undefined ||
-        claims?.iss !== issuer ||
         !matchesAudience(claims.aud, audience) ||
         typeof claims.exp !== "number" ||
         !Number.isFinite(claims.exp) ||
@@ -147,9 +201,13 @@ function issuerVerifier(issuer: string, fetch: FetchObject, now: Deps["now"]) {
   };
 }
 
-async function workloadCan(board: Pick<BoardGrantReads, "listGrants">, principal: RepositoryPrincipal) {
-  const matching = (await board.listGrants()).filter(({ principals }) =>
-    principals.some((grant) => matchesWorkload(grant, principal)),
+function workloadCan(grantViews: readonly GrantView[], principal: Workload) {
+  const matching = grantViews.filter(({ principals }) =>
+    principals.some((grant) =>
+      principal.kind === "github"
+        ? matchesWorkload(grant, principal)
+        : grant.kind === "oidc" && matchesOidcClaims(grant, principal),
+    ),
   );
   return matching.length ? resolveCan(matching.map(({ can }) => grants.compileCan(can))) : null;
 }
@@ -162,16 +220,44 @@ export async function currentWorkload(
 ): Promise<Principal> {
   const principal = by[workloadOf];
   if (!principal) return by;
-  const can = await workloadCan(writer, principal);
+  const can = workloadCan(await writer.listGrants(), principal);
   if (now() >= (by[credentialExpiry] ?? 0))
     throw new BoardError("unauthorized", "the credential expired before the grant change");
   return { ...by, [callerCan]: can ?? {} };
 }
 
+function tokenClaims(token: string): Claims | null {
+  try {
+    return decode(token.split(".")[1] ?? "");
+  } catch {
+    return null;
+  }
+}
+
+function oidcIdentity(issuer: string, claims: Claims): { id: string; principal: OidcPrincipal } | null {
+  if (typeof claims.sub !== "string" || !claims.sub) return null;
+  // Preserve the separator even when an issuer path or explicit port contains a colon.
+  const escapeActorPart = (part: string) => part.replaceAll("%", "%25").replaceAll("+", "%2B");
+  const label = escapeActorPart(issuer.slice("https:".length)).replaceAll(":", "%3A");
+  return { id: `oidc:https:${label}:${escapeActorPart(claims.sub)}`, principal: { kind: "oidc", issuer, claims } };
+}
+
 /** Verify a JWT before resolving its permissions against the request's scoped board. */
-export function oidcVerifier(deps: Deps, issuer: OidcIssuer): CredentialVerifier {
-  const { fetch, now } = deps;
-  const check = fetch && issuerVerifier(issuer.url, oidcFetch(fetch, deps.schedule), now);
+export function oidcVerifier(deps: Deps, issuer: OidcIssuer, store: KeyStore): CredentialVerifier {
+  const { fetch, now, resolveHost } = deps;
+  const outbound = fetch && resolveHost && oidcFetch(fetch, resolveHost, deps.schedule);
+  const check = issuerVerifier(now);
+  const caches = new Map<string, ReturnType<typeof keyCache>>();
+  function cacheFor(url: string, fetchObject: FetchObject) {
+    let cache = caches.get(url);
+    if (cache) return cache;
+    for (const [name, entry] of caches) {
+      if (entry.expired()) caches.delete(name);
+    }
+    cache = keyCache(fetchObject, url, now, store);
+    caches.set(url, cache);
+    return cache;
+  }
   return {
     name: "oidc",
     match: (request) => {
@@ -179,24 +265,43 @@ export function oidcVerifier(deps: Deps, issuer: OidcIssuer): CredentialVerifier
       return token !== null && token.length <= 16_384 && JWT.test(token);
     },
     async verify(request, board, _operation, audience) {
-      if (!check || !audience) return null;
-      const verified = await check(bearer(request) ?? "", audience);
+      if (!outbound || !audience) return null;
+      const token = bearer(request) ?? "";
+      const claims = tokenClaims(token);
+      const url = claims?.iss;
+      if (!claims || typeof url !== "string") return null;
+      const builtIn = url === issuer.url;
+      if (
+        !builtIn &&
+        !(await board.listGrants()).some(({ principals }) =>
+          principals.some((grant) => grant.kind === "oidc" && grant.issuer === url),
+        )
+      )
+        return null;
+      const verified = await check(token, audience, claims, cacheFor(url, outbound).keyFor);
       if (!verified) return null;
-      const { claims, expiry } = verified;
-      const identity = issuer.identify(claims);
-      if (!identity) return null;
-      const can = await workloadCan(board, identity.principal);
+      const { expiry } = verified;
+      const repository = builtIn ? issuer.identify(claims) : null;
+      const generic = oidcIdentity(url, claims);
+      if (!repository && !generic) return null;
+      const currentGrants = await board.listGrants();
       if (now() >= expiry) return null;
-      if (!can) throw new BoardError("forbidden", "no grant authorizes this credential on this board");
-      return {
-        actor: identity.id,
-        principal: identity.id,
-        profile: null,
-        [credentialKind]: "oidc",
-        [workloadOf]: identity.principal,
-        [credentialExpiry]: expiry,
-        [callerCan]: can,
-      };
+      for (const identity of [repository, generic]) {
+        if (!identity) continue;
+        const can = workloadCan(currentGrants, identity.principal);
+        if (can)
+          return {
+            actor: identity.id,
+            principal: identity.id,
+            profile: null,
+            [credentialKind]: "oidc",
+            [workloadOf]: identity.principal,
+            [credentialExpiry]: expiry,
+            [callerCan]: can,
+          };
+      }
+      if (builtIn && !repository) return null;
+      throw new BoardError("forbidden", "no grant authorizes this credential on this board");
     },
   };
 }

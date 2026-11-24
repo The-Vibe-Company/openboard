@@ -134,3 +134,4 @@ export {
   type WatchFailed,
 } from "./watchers/ack.ts";
 export { validateWatchers, type WatchersRegistered } from "./watchers/register.ts";
+export { matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";

@@ -2,6 +2,7 @@ import { BoardError, type updateGrant } from "@openboard/contract";
 import { changeGrantPrincipals, type GrantUpdated, grantPrincipals, isoTime } from "@openboard/core";
 import { credentialKind, memberOf } from "../../deps.ts";
 import type { Handler } from "../index.ts";
+import { checkIssuerLimit, validateGrantIssuers } from "./oidc.ts";
 import { requireGrantManage, writtenCan } from "./create.ts";
 import { authorizeExistingGrantChange, currentAuthority } from "./revoke.ts";
 
@@ -24,9 +25,11 @@ export const updateGrantHandler: Handler<typeof updateGrant> = (ctx, input) =>
       await requireGrantManage(
         current,
         Object.keys(can),
-        add.some(({ kind }) => kind === "oidc"),
+        principals.some(({ kind }) => kind === "oidc"),
       );
     }
+    validateGrantIssuers(add);
+    if (add.some(({ kind }) => kind === "oidc")) await checkIssuerLimit(writer, principals, position);
     ctx.debitWrite();
     for (const named of add) {
       if (named.kind === "connection" && !(await writer.connection(named.connection))) {
