@@ -14,6 +14,13 @@ export const readEvents = defineOperation({
     query: Type.Object(
       {
         after: Type.Optional(Type.String()),
+        wait: Type.Optional(
+          Type.Number({
+            minimum: 0,
+            maximum: 300,
+            description: "Long-poll timeout in seconds. Currently returns immediately for every value.",
+          }),
+        ),
         channel: Type.Optional(ChannelFilter),
         re: Type.Optional(Ref("thread", { description: "The root ID of the thread to follow." })),
         from: Type.Optional(Type.String({ pattern: "^[^\\u0000]+$" })),

@@ -3070,6 +3070,17 @@
         "parameters": [
           { "name": "after", "in": "query", "required": false, "schema": { "type": "string" } },
           {
+            "name": "wait",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "maximum": 300,
+              "description": "Long-poll timeout in seconds. Currently returns immediately for every value.",
+              "type": "number"
+            }
+          },
+          {
             "name": "channel",
             "in": "query",
             "required": false,
@@ -3142,6 +3153,12 @@
           "type": "object",
           "properties": {
             "after": { "type": "string" },
+            "wait": {
+              "minimum": 0,
+              "maximum": 300,
+              "description": "Long-poll timeout in seconds. Currently returns immediately for every value.",
+              "type": "number"
+            },
             "channel": {
               "maxLength": 2049,
               "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*/?$",

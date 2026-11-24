@@ -12,6 +12,7 @@ writes:
   - packages/server/src/operations/threads.ts
   - packages/server/openapi.json
   - docs/protocol.md
+  - tools/conformance/score.json
   - packages/contract/src/operation.ts
   - packages/driver-postgres/test/testkit.test.ts
   - packages/server/src/auth/access.ts

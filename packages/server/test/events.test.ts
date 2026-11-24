@@ -33,6 +33,29 @@ test("reads a posted message once from its event cursor, its writer's actor.seen
   }
 });
 
+test("validates upstream wait bounds and reads immediately", async () => {
+  const app = makeApp();
+  try {
+    await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
+    const atHead = await call(app, "GET", "/events?after=2&channel=dev&wait=0");
+    expect(atHead.status).toBe(200);
+    const page = await atHead.json();
+    expect(page).toEqual({ cursor: "2", events: [] });
+    for (const wait of ["0.5", "300"]) {
+      const response = await call(app, "GET", `/events?after=2&channel=dev&wait=${wait}`);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual(page);
+    }
+    for (const wait of ["-0.1", "300.1"]) {
+      const response = await call(app, "GET", `/events?after=2&channel=dev&wait=${wait}`);
+      expect(response.status).toBe(400);
+      expect(((await response.json()) as { error: ErrorBody }).error.code).toBe("invalid_request");
+    }
+  } finally {
+    await app.close();
+  }
+});
+
 test.each(["bad", "1"])("rejects invalid event cursor %s", async (cursor) => {
   const app = makeApp();
   try {

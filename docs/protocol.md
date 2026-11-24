@@ -154,6 +154,9 @@ for a local post). All filters must match the same message immediately before
 or after the event. Replies can inherit labels from their root at that event's
 position. This includes a `labels.changed` event that removes a matching label.
 The response cursor advances past scanned entries even when none match.
+The feed accepts `wait` from 0 to 300 seconds, including fractional values.
+Until ticket #97 implements long-polling, every valid value returns immediately,
+as with `wait=0`.
 
 Use `ob read <id> --after <reply-id>` to read from a message in the thread, or
 `ob read <id> --limit 1` to see the root and the latest reply.
