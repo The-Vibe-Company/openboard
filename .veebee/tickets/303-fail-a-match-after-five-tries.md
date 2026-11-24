@@ -7,13 +7,27 @@ writes:
   - packages/core/src/watchers/ack.ts
   - packages/core/test/watchers/ack.test.ts
   - packages/contract/src/entities/events.ts
-  - packages/driver-sql/src/views/watchers.ts
+  - packages/driver-sql/src/views/watchers/index.ts
+  - packages/driver-sql/src/views/events.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/core/src/index.ts
+  - packages/ports/src/board-message-reads.ts
+  - packages/ports/src/watchers.ts
+  - packages/ports/testkit/store/watchers.test-suite.ts
+  - packages/cli/src/commands/tail.ts
+  - packages/cli/test/tail.test.ts
+  - packages/contract/src/operations/watchers/index.ts
+  - packages/server/src/operations/watchers/index.ts
+  - packages/server/src/operations/events.ts
+  - packages/server/openapi.json
+  - docs/protocol.md
+  - skills/openboard/SKILL.md
   - packages/server/test/watchers/retries.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [300]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 488
 ---
 
@@ -21,8 +35,8 @@ issue: 488
 As an agent whose watcher could not handle a match, I ack it with an error to have it handed to me again later, or skip it, and after five failed tries the board records `watch.failed` so someone sees it.
 
 ## Done when
-- [ ] `bun test packages/server/test/watchers/retries.test.ts` passes: an ack `{ lease, error: "timeout" }` makes the match come back from a later pull with `attempt` one higher, not before its wait has passed on the fake clock; the fifth error appends `watch.failed` on `GET /events` (upstream's payload, naming the watcher and the error) and the match is never handed out again; an ack `{ lease, skip: true }` drops it with no event; a later match of the same thread waits behind a failing one
-- [ ] `bun test packages/core/test/watchers/ack.test.ts` passes: the wait before each retry and the fifth-try failure are pure decisions from the match's attempt and `now`
+- [x] `bun test packages/server/test/watchers/retries.test.ts` passes: an ack `{ lease, error: "timeout" }` makes the match come back from a later pull with `attempt` one higher, not before its wait has passed on the fake clock; the fifth error appends `watch.failed` on `GET /events` (upstream's payload, naming the watcher and the error) and the match is never handed out again; an ack `{ lease, skip: true }` drops it with no event; a later match of the same thread waits behind a failing one
+- [x] `bun test packages/core/test/watchers/ack.test.ts` passes: the wait before each retry and the fifth-try failure are pure decisions from the match's attempt and `now`
 
 ## Out of scope
 - Webhook retries, a different schedule over a different table (307).

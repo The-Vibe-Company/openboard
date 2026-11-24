@@ -147,7 +147,7 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
     });
   } else if (event.type === "message.posted") await foldMessagePosted(tx, dialect, keys, event);
   else if (event.type === "ob.watchers.registered") await foldWatchersRegistered(tx, dialect, keys, event);
-  else await foldTaskEvent(tx, dialect, keys, event);
+  else if (event.type !== "watch.failed") await foldTaskEvent(tx, dialect, keys, event);
 }
 
 function contentBytes(message: Pick<Message, "text" | "blocks"> | null): number {

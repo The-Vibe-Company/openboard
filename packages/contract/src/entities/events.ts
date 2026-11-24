@@ -82,7 +82,20 @@ const ChannelCreatedEvent = Type.Object({
   payload: Type.Object({ channel: ChannelPath, by: Author }),
 });
 
+const WatchFailedEvent = Type.Object({
+  cursor: Type.String(),
+  type: Type.Literal("watch.failed"),
+  createdAt: Type.String(),
+  payload: Type.Object({
+    matched: Type.String(),
+    thread: Type.String(),
+    error: Type.String({ minLength: 1, maxLength: 500 }),
+    watcher: Type.Optional(Type.String()),
+  }),
+});
+
 export const Event = Type.Union([
+  WatchFailedEvent,
   PostedEvent,
   EditedEvent,
   DeletedEvent,

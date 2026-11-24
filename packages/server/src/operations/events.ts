@@ -166,11 +166,11 @@ type FeedEvent = Awaited<ReturnType<Parameters<typeof readEventsHandler>[0]["boa
 type WireEvents = OutputOf<typeof readEvents>["events"];
 
 export function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boolean): WireEvents {
-  if (event.visibility === 1) {
+  if (event.visibility === 1 || event.type === "watch.failed") {
     const common = { cursor: formatId(event.id), createdAt: isoTime(event.at) };
-    return event.type === "actor.seen"
-      ? [{ ...common, type: event.type, payload: event.payload }]
-      : [{ ...common, type: event.type, payload: event.payload }];
+    if (event.type === "watch.failed") return [{ ...common, type: event.type, payload: event.payload }];
+    if (event.type === "actor.seen") return [{ ...common, type: event.type, payload: event.payload }];
+    return [{ ...common, type: event.type, payload: event.payload }];
   }
   const current = event.current;
   const historical = event.type === "message.posted" ? messages.messageView(event) : event.payload.view;

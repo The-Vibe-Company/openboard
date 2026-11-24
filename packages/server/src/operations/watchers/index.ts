@@ -6,7 +6,8 @@ import type {
   Registration,
   registerWatchers,
 } from "@openboard/contract";
-import { formatId, validateWatchers } from "@openboard/core";
+import { formatId, validateWatchers, type WatchFailed } from "@openboard/core";
+import type { BoardWriter } from "@openboard/ports";
 import { allowedEverywhere, canListMentionActors, canReadChannel } from "../../auth/access.ts";
 import { callerCan, credentialKind } from "../../deps.ts";
 import { tailBoard } from "../../live/fan-out.ts";
@@ -51,19 +52,43 @@ export const listWatchersHandler: Handler<typeof listWatchers> = async ({ board,
   return { watchers: await board.watcherRegistrations(all ? null : by.actor) };
 };
 
+type Failure = Pick<WatchFailed, "channel" | "thread" | "payload">;
+
+function appendFailure(writer: BoardWriter, by: BoardContext["by"], at: number, failure: Failure) {
+  return writer.append([
+    {
+      ...failure,
+      id: writer.head + 1,
+      type: "watch.failed",
+      at,
+      actor: by.actor,
+      principal: by.principal,
+      message: null,
+      visibility: 0,
+    },
+  ]);
+}
+
 async function leaseMatches(ctx: BoardContext, limit: number, refresh: boolean) {
   const { board, now, randomBytes } = ctx;
   const by = refresh ? await ctx.reauthorize() : ctx.by;
   const revealMentions = canListMentionActors(by);
   return board.write(async (writer) => {
+    const failures: Failure[] = [];
+    const at = now();
     const matches = await writer.pullWatcherMatches({
       owner: by.actor,
-      now: now(),
+      now: at,
+      onFailure: (failure) => {
+        failures.push(failure);
+      },
       limit,
       mintLease: () => Buffer.from(randomBytes(24)).toString("base64url"),
       canRead: (channel) => canReadChannel(by, channel),
       canReadActorDirectory: revealMentions,
     });
+    const [failure] = failures;
+    if (failure) await appendFailure(writer, by, at, failure);
     const events = matches.map(({ event, ...match }) => {
       const [view] = projectEvent(event, revealMentions, false);
       if (!view) throw new Error("a watcher matched an event outside the feed");
@@ -90,10 +115,15 @@ export const pullWatcherMatchesHandler: Handler<typeof pullWatcherMatches> = asy
 };
 
 export const ackWatcherMatchHandler: Handler<typeof ackWatcherMatch> = async (
-  { board, by, debitWrite },
-  { id, lease },
+  { board, by, debitWrite, now },
+  input,
 ) => {
   debitWrite();
-  await board.write((writer) => writer.ackWatcherMatch({ owner: by.actor, id, lease }));
+  await board.write(async (writer) => {
+    const at = now();
+    const failure = await writer.ackWatcherMatch({ ...input, owner: by.actor, now: at });
+    if (!failure || !canReadChannel(by, failure.channel)) return;
+    await appendFailure(writer, by, at, failure);
+  });
   return { ok: true };
 };
