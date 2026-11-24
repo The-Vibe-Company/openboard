@@ -4,14 +4,15 @@ title: Run the PR size check in CI
 milestone: M15-operations
 package: tools
 writes:
+  - .veebee/tickets/408-run-the-pr-size-check-in-ci.md
   - .github/workflows/ci.yml
   - scripts/ci/pr-size.ts
   - scripts/ci/pr-size.test.ts
 conformance: []
 modes: [local]
 depends_on: []
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-t408
 issue: 727
 ---
 

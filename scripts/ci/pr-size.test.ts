@@ -1,5 +1,8 @@
 import { expect, test } from "bun:test";
-import { hasSizeException, workspaceLineCounts } from "./pr-size.ts";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { workspaceLineCounts } from "./pr-size.ts";
 
 test("counts additions and mixed edits separately for each workspace", () => {
   const diff = [
@@ -30,8 +33,62 @@ test("ignores generated files, lockfiles, deletion-only edits and paths outside 
   expect(workspaceLineCounts(diff).size).toBe(0);
 });
 
-test("allows only the exact size-exception label on the pull request", () => {
-  expect(hasSizeException({ pull_request: { labels: [{ name: "size-exception" }] } })).toBe(true);
-  expect(hasSizeException({ pull_request: { labels: [{ name: "size-exception-extra" }] } })).toBe(false);
-  expect(hasSizeException({ label: { name: "size-exception" } })).toBe(false);
+function runCheck(lines: number, label?: string) {
+  const cwd = mkdtempSync(join(tmpdir(), "openboard-pr-size-"));
+  const git = (...args: string[]) => {
+    const result = Bun.spawnSync(["git", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", ...args], {
+      cwd,
+    });
+    if (!result.success) throw new Error(result.stderr.toString());
+    return result.stdout.toString().trim();
+  };
+
+  try {
+    git("init", "--quiet");
+    git(
+      "-c",
+      "user.name=Test",
+      "-c",
+      "user.email=test@example.test",
+      "commit",
+      "--quiet",
+      "--allow-empty",
+      "-m",
+      "Base",
+    );
+    const base = git("rev-parse", "HEAD");
+    mkdirSync(join(cwd, "packages/core"), { recursive: true });
+    writeFileSync(join(cwd, "packages/core/feature.ts"), "added line\n".repeat(lines));
+    git("add", "packages/core/feature.ts");
+    git("-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "--quiet", "-m", "PR head");
+    const head = git("rev-parse", "HEAD");
+    git("checkout", "--quiet", "--detach", base);
+
+    return Bun.spawnSync([process.execPath, join(import.meta.dir, "pr-size.ts"), "--base", base, "--head", head], {
+      cwd,
+      env: { ...process.env, PR_LABELS: JSON.stringify(label ? [{ name: label }] : []) },
+    });
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+}
+
+test("accepts a pull request within the workspace limit", () => {
+  const result = runCheck(600);
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr.toString()).toBe("");
+});
+
+test("rejects an oversized pull request without the exact exception label", () => {
+  const result = runCheck(601, "size-exception-extra");
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr.toString().trim()).toBe(
+    "packages/core: 601 changed lines, over the 600-line limit; split the PR",
+  );
+});
+
+test("accepts an oversized pull request with the size-exception label", () => {
+  const result = runCheck(601, "size-exception");
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout.toString().trim()).toBe("PR size check passed with the size-exception label.");
 });
