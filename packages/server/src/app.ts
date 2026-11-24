@@ -1,5 +1,5 @@
 import { operations } from "@openboard/contract";
-import type { Bucket, Jobs, Store } from "@openboard/ports";
+import { BACKFILL_BOARD_ORG_JOB, type Bucket, type Jobs, type Store } from "@openboard/ports";
 import { verifiers } from "./auth/chain.ts";
 import { loginProviders } from "./auth/providers/index.ts";
 import type { Deps, ServerConfig } from "./deps.ts";
@@ -9,6 +9,7 @@ import { handle, type Pipeline } from "./http/pipeline.ts";
 import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
 import { staticFiles } from "./http/static.ts";
+import { startBoardOrgBackfill } from "./jobs/board-org-startup.ts";
 import { type JobHandlers, startJobs } from "./jobs/registry.ts";
 import { logShippingJobs } from "./jobs/ship-log.ts";
 
@@ -62,8 +63,11 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
       config.instanceId,
       logShippingJobs(bucket, platform, pipeline.tenants, deps, shutdown.signal),
     );
+  const stopBackfill = Object.hasOwn(handlers, BACKFILL_BOARD_ORG_JOB)
+    ? startBoardOrgBackfill(platform, deps)
+    : undefined;
   const stopBackground = async (release = false) => {
-    await Promise.all([stopJobs(release), stopShipping?.(release)]);
+    await Promise.all([stopJobs(release), stopShipping?.(release), stopBackfill?.()]);
   };
   let draining: Promise<void> | undefined;
   let closing: Promise<void> | undefined;

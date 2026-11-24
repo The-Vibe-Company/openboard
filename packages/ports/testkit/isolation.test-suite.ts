@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
-import type { BoardView, BoardWriter, OrgView, Store } from "../src/index.ts";
+import { BACKFILL_BOARD_ORG_JOB, type BoardView, type BoardWriter, type OrgView, type Store } from "../src/index.ts";
 import { type OpenStore, testScope } from "./index.ts";
 import { at, boardCreation, type StoreTenant, storeTenant } from "./isolation-seed.ts";
 import { appendSchema } from "./store/schemas.test-suite.ts";
@@ -216,6 +216,14 @@ const writerCases: Cases<BoardWriter> = {
 
 /** One case per `OrgView` method, on A's organization, with B's people and IDs. */
 const orgCases: Cases<OrgView> = {
+  backfillBoardOrgIds: async (a, b, store) => {
+    await b.board.write((writer) => writer.enqueue(BACKFILL_BOARD_ORG_JOB, at, {}));
+    const lease = { instanceId: "backfill-test", claimedAt: at };
+    const job = await store.jobs.claim([BACKFILL_BOARD_ORG_JOB], lease);
+    if (!job) throw new Error("missing second organization's backfill job");
+    expect(await a.org.backfillBoardOrgIds(job.boardId, job.id, lease, at)).toBe(false);
+    expect(await b.org.backfillBoardOrgIds(job.boardId, job.id, lease, at)).toBe(true);
+  },
   shipLogs: async (a, b) => {
     const events: object[] = [];
     await a.org.shipLogs(

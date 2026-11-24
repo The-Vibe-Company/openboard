@@ -22,6 +22,7 @@ import schemasDdl from "../migrations/0020-schemas.sql" with { type: "text" };
 import purgeStateDdl from "../migrations/0021-org-purge-state.sql" with { type: "text" };
 import purgeIndexesDdl from "../migrations/0022-org-purge-indexes.sql" with { type: "text" };
 import shippingDdl from "../migrations/0023-shipping.sql" with { type: "text" };
+import orgOnBoardRowsDdl from "../migrations/0024-org-on-board-rows.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -34,7 +35,7 @@ import { connectionReads } from "./views/connections.ts";
 import { deviceView, personalTokenView } from "./views/device.ts";
 import { committedEvents, eventReads } from "./views/events.ts";
 import { invitationPlatform, invitationView } from "./views/invitations.ts";
-import type { JobWrites } from "./views/jobs/index.ts";
+import { type JobWrites, queueBoardOrgBackfill, runBoardOrgBackfill } from "./views/jobs/index.ts";
 import { purgeOrgView } from "./views/jobs/purge.ts";
 import { shippingPlatform, shippingView } from "./views/jobs/shipping.ts";
 import { membershipView } from "./views/memberships.ts";
@@ -87,6 +88,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 21, name: "0021-org-purge-state", sql: purgeStateDdl },
   { version: 22, name: "0022-org-purge-indexes", sql: purgeIndexesDdl },
   { version: 23, name: "0023-shipping", sql: shippingDdl },
+  { version: 24, name: "0024-org-on-board-rows", sql: orgOnBoardRowsDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -101,6 +103,7 @@ export function createViews(
     platform: () => ({
       ...platformView(db, dialect),
       ...shippingPlatform(db, dialect),
+      queueBoardOrgBackfill: (now, signal) => queueBoardOrgBackfill(db, dialect, jobs, now, signal),
       ...rateView(db, dialect),
       ...accountView(db, dialect),
       ...deviceView(db, dialect),
@@ -114,6 +117,8 @@ export function createViews(
       ...membershipView(db, dialect, scope, jobs),
       ...purgeOrgView(db, dialect, scope, jobs),
       ...shippingView(db, dialect, scope),
+      backfillBoardOrgIds: (boardId, id, lease, now) =>
+        runBoardOrgBackfill(db, dialect, jobs, { orgId: scope.orgId, boardId }, id, lease, now),
       ...orgAuditReads(db, dialect, scope),
     }),
     board: (scope) => ({

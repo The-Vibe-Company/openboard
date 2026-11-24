@@ -1,4 +1,5 @@
 import {
+  BACKFILL_BOARD_ORG_JOB,
   type BoardJobWriter,
   type BoardKeys,
   type JobLease,
@@ -9,6 +10,7 @@ import {
 import type { Db, Dialect } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
 
+import { backfillBoardOrgIds, backfillPlatformStatements, backfillStatements } from "./backfill-board-org.ts";
 import { claimLegacyPurge, nextLegacyPurge } from "./legacy-purge.ts";
 
 const leaseMs = 30_000;
@@ -137,4 +139,63 @@ export function jobWriter(
       return row ? JSON.parse(String(row.payload)) : null;
     },
   };
+}
+
+/** Queue one job per affected board, serializing concurrent startups against each other and the runner. */
+export async function queueBoardOrgBackfill(
+  db: Db,
+  dialect: Dialect,
+  jobs: JobWrites,
+  now: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  let after = 0;
+  while (!signal?.aborted) {
+    const boards = await query(db, dialect, backfillPlatformStatements.backfillBoardPage, { after });
+    if (boards.length === 0) return;
+    for (const row of boards) {
+      if (signal?.aborted) return;
+      after = Number(row.board_id);
+      if (Number(row.pending) === 0) continue;
+      await enqueueBoardOrgBackfill(db, dialect, jobs, { orgId: Number(row.org_id), boardId: after }, now);
+    }
+  }
+}
+
+async function enqueueBoardOrgBackfill(db: Db, dialect: Dialect, jobs: JobWrites, keys: BoardKeys, now: number) {
+  const queued = await db.transaction(async (tx) => {
+    const [board] = await query(tx, dialect, backfillStatements.backfillLockBoard, keys);
+    if (!board) return false;
+    const kind = BACKFILL_BOARD_ORG_JOB;
+    const [pending] = await query(tx, dialect, backfillStatements.queuedBoardOrgBackfill, { ...keys, kind });
+    if (pending) return false;
+    await jobWriter(tx, dialect, keys, jobs, () => {}).enqueue(kind, now, {});
+    return true;
+  });
+  if (queued) jobs.committed();
+}
+
+export async function runBoardOrgBackfill(
+  db: Db,
+  dialect: Dialect,
+  jobs: JobWrites,
+  keys: BoardKeys,
+  id: string,
+  lease: JobLease,
+  now: number,
+): Promise<boolean> {
+  let enqueued = false;
+  const ran = await db.transaction(async (tx) => {
+    // Soft-deleted organizations retain their data until purge. This lock only checks the stored keys.
+    const [board] = await query(tx, dialect, backfillStatements.backfillLockBoard, keys);
+    if (!board) return false;
+    const writer = jobWriter(tx, dialect, keys, jobs, () => {
+      enqueued = true;
+    });
+    if ((await writer.takeJob(id, lease, now)) === null) return false;
+    if (await backfillBoardOrgIds(tx, dialect, keys)) await writer.enqueue(BACKFILL_BOARD_ORG_JOB, now, {});
+    return true;
+  });
+  if (enqueued) jobs.committed();
+  return ran;
 }
