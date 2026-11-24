@@ -11,7 +11,7 @@ writes:
 conformance: []
 modes: [local]
 depends_on: [41, 135, 144]
-status: claimed
+status: done
 claimed_by: claude-opus-t155
 issue: 156
 ---

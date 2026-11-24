@@ -77,4 +77,5 @@ test("an acme member's write without the CSRF proof is still 403 forbidden", asy
   const { app, ada } = await twoOrganizations();
   const refused = await send(app, "POST", "/api/acme/main/messages", ada, { channel: "dev", text: "x" }, false);
   expect(refused.status).toBe(403);
+  expect(((await refused.json()) as { error: ErrorBody }).error.code).toBe("forbidden");
 });
