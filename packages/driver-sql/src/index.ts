@@ -48,6 +48,8 @@ import usageDeliveryDdl from "../migrations/0046-usage.sql" with { type: "text" 
 import usagePurgeDdl from "../migrations/0047-usage.sql" with { type: "text" };
 import webhookJobIndexesDdl from "../migrations/0048-webhook-job-indexes.sql" with { type: "text" };
 import attachmentDdl from "../migrations/0049-attachments.sql" with { type: "text" };
+import attachmentGcDdl from "../migrations/0050-attachment-gc.sql" with { type: "text" };
+import attachmentGcBackfillDdl from "../migrations/0051-attachment-gc-backfill.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -81,14 +83,14 @@ import { watcherReads } from "./views/watchers/index.ts";
 import { webhookReads } from "./views/webhooks/webhooks.ts";
 
 export type { Db, Dialect, Row, SqlValue } from "./db.ts";
-export { query } from "./sql.ts";
-export { attachmentStatements } from "./views/attachments/index.ts";
 export { postgresText, withWebhookMetrics } from "./db.ts";
 export { splitStatements } from "./ddl.ts";
 export { localBroadcaster } from "./local-broadcaster.ts";
 export { databaseRows, seedTaskNeed, simulateLegacyDeletion, tenantRows } from "./purge-test-data.ts";
+export { query } from "./sql.ts";
 export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
 export { seedSweep, sweepSnapshot } from "./sweep-test-data.ts";
+export { attachmentStatements } from "./views/attachments/index.ts";
 export { claimJob, dueJobMetrics, nextJob, releaseJobs } from "./views/jobs/index.ts";
 export { jobWake } from "./views/jobs/wake.ts";
 
@@ -150,6 +152,8 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 47, name: "0047-usage", sql: usagePurgeDdl },
   { version: 48, name: "0048-webhook-job-indexes", sql: webhookJobIndexesDdl },
   { version: 49, name: "0049-attachments", sql: attachmentDdl },
+  { version: 50, name: "0050-attachment-gc", sql: attachmentGcDdl },
+  { version: 51, name: "0051-attachment-gc-backfill", sql: attachmentGcBackfillDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -206,7 +210,7 @@ export function createViews(
       ...auditReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),
       ...attachmentReads(db, dialect, scope),
-      ...attachmentWrites(db, dialect, scope, blobs),
+      ...attachmentWrites(db, dialect, scope, blobs, jobs),
       ...watcherReads(db, dialect, scope),
       ...inboundReads(db, dialect, scope),
       ...webhookReads(db, dialect, scope),

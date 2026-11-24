@@ -1,4 +1,5 @@
 import {
+  BLOB_GC_JOB,
   type BoardView,
   type BoardWriter,
   type Bucket,
@@ -11,6 +12,7 @@ import {
 } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
 import type { Tenants } from "../http/scope.ts";
+import { blobGcJob } from "./blob-gc.ts";
 import { taskExpiryJob } from "./task-expiry.ts";
 
 export interface OrgJobHandler {
@@ -40,7 +42,7 @@ export function startBoardJobs(
     tenants,
     deps,
     instance,
-    { ...handlers, [TASK_EXPIRY_JOB]: taskExpiryJob },
+    { ...handlers, [TASK_EXPIRY_JOB]: taskExpiryJob, [BLOB_GC_JOB]: blobGcJob },
     bucket,
     onActivity,
   );

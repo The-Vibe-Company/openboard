@@ -35,6 +35,9 @@ export function sqliteBlobs(dir?: string): Blobs & { close(): Promise<void>; pur
         await rm(staging, { recursive: true, force: true });
       }
     },
+    async delete(key) {
+      await rm(await path(key), { force: true });
+    },
     async get(key) {
       const file = Bun.file(await path(key));
       return (await file.exists()) ? file.stream() : null;

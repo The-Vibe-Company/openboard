@@ -1,4 +1,3 @@
-import type { AttachmentReads, AttachmentWrites } from "./attachments/blobs.ts";
 import type {
   Actor,
   Author,
@@ -32,6 +31,7 @@ import type {
   QuotaOutcome,
 } from "@openboard/core";
 import type { DeviceView, PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
+import type { AttachmentReads, AttachmentWrites } from "./attachments/blobs.ts";
 import type { BoardMessageReads, ChannelMessagesQuery, ChannelsQuery } from "./board-message-reads.ts";
 import type { CommittedEvents } from "./broadcaster.ts";
 import type { OrgLogMaintenance } from "./bucket.ts";
@@ -310,6 +310,8 @@ export interface BoardView
     BoardWebhookReads,
     AttachmentReads,
     AttachmentWrites {
+  /** Consume a live GC lease and remove the expired upload if it has never been attached. */
+  collectAttachment(jobId: string, lease: JobLease): Promise<boolean>;
   /**
    * Wake when a write advances this board past the cursor, with the head it reached and its events when in memory.
    * Returns an unsubscribe.
@@ -378,5 +380,5 @@ export interface BoardView
   member(personId: string): Promise<BoardMemberRecord | null>;
 }
 
-export type { DatabaseDump, Store, StoreMetrics, WebhookOutcome } from "./store/driver.ts";
 export type { ChannelMessagesQuery, ChannelsQuery, ThreadPosition } from "./board-message-reads.ts";
+export type { DatabaseDump, Store, StoreMetrics, WebhookOutcome } from "./store/driver.ts";

@@ -93,6 +93,7 @@ function renderStatement(statement: string): string {
     )
     .replace(/\bBIGINT\s+GENERATED\s+ALWAYS\s+AS\s+IDENTITY\s+PRIMARY\s+KEY\b/gi, "INTEGER PRIMARY KEY")
     .replace(/\b(?:BIGINT|SMALLINT|INTEGER)\b/g, "INTEGER")
+    .replace(/\s+FOR KEY SHARE(?: OF \w+)?$/i, "")
     .replace(/\bBYTEA\b/g, "BLOB")
     .replace(/\bstrpos(?=\s*\()/gi, "instr")
     .replace(/\bCREATE\s+(UNIQUE\s+)?INDEX\s+CONCURRENTLY\b/gi, (_, unique = "") => `CREATE ${unique}INDEX`);
