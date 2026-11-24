@@ -7,11 +7,12 @@ writes:
   - packages/core/src/tasks/ownership.ts
   - packages/core/test/tasks/ownership.test.ts
   - packages/server/test/tasks/profile-ownership.test.ts
+  - tools/conformance/score.json
 conformance: ["tasks/lets a profile change only the tasks it made, and its principal all of them"]
 modes: [local, hosted]
 depends_on: [264, 272, 286]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 467
 ---
 
@@ -19,9 +20,9 @@ issue: 467
 As a principal running several agents, each agent changes only the tasks it made, while I as myself change all of them.
 
 ## Done when
-- [ ] narrowed with `x-board-can: dev=read,post,react,label` and writing as profile `own`, a caller gets 403 `task_not_owned` assigning, holding, cancelling or changing the needs of its principal's task, and of a task another profile made, while it changes its own; its principal as itself, narrowed the same, changes all of them
-- [ ] the principal making the profile's thread a task, then the profile editing that root, holds the task (`blocked.kind` `edited`, 272)
-- [ ] `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `tasks/lets a profile change only the tasks it made, and its principal all of them`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
+- [x] narrowed with `x-board-can: dev=read,post,react,label` and writing as profile `own`, a caller gets 403 `task_not_owned` assigning, holding, cancelling or changing the needs of its principal's task, and of a task another profile made, while it changes its own; its principal as itself, narrowed the same, changes all of them
+- [x] the principal making the profile's thread a task, then the profile editing that root, holds the task (`blocked.kind` `edited`, 272)
+- [x] `bun run conformance` and `bun run conformance --driver postgres --instances 2` both pass `tasks/lets a profile change only the tasks it made, and its principal all of them`, and `--update` records it in `tools/conformance/score.json` under `local` and `hosted`
 
 ## Out of scope
 - The ownership rule itself (250).
