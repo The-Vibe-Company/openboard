@@ -39,6 +39,7 @@ interface ServeOptions {
   port?: number;
   withProvider?: boolean;
   now?: () => number;
+  onResponse?: (request: Request, response: Response) => Response | Promise<Response>;
 }
 
 export async function serve({
@@ -47,6 +48,7 @@ export async function serve({
   port = 0,
   withProvider = true,
   now = Date.now,
+  onResponse,
 }: ServeOptions = {}) {
   const { path, remove: clean } =
     dataDir === undefined ? await temporaryDataDir() : { path: dataDir, remove: () => Promise.resolve() };
@@ -56,7 +58,10 @@ export async function serve({
     server = Bun.serve({
       hostname: "localhost",
       port,
-      fetch: (request) => app?.fetch(request) ?? new Response(null, { status: 503 }),
+      async fetch(request) {
+        const response = app ? await app.fetch(request) : new Response(null, { status: 503 });
+        return onResponse ? onResponse(request, response) : response;
+      },
     });
   } catch (error) {
     await clean();

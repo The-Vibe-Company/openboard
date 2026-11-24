@@ -5,14 +5,17 @@ milestone: M8-front
 package: web
 writes:
   - apps/web/src/api/live.ts
+  - apps/web/src/api/thread.ts
   - apps/web/src/routes/$org/$board/route.tsx
   - apps/web/test/live.test.ts
   - apps/web/e2e/live.spec.ts
+  - apps/web/e2e/support/serve.ts
+  - docs/architecture.md
 conformance: []
 modes: [local, hosted]
 depends_on: [102, 224]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 388
 ---
 
