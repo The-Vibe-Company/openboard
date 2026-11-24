@@ -11,11 +11,20 @@ writes:
   - examples/sandboxed-agent/src/proxy.ts
   - examples/sandboxed-agent/test/sandbox.test.ts
   - scripts/ci/boundaries.json
+  - scripts/ci/boundaries.test.ts
+  - scripts/ci/boundaries/driver.ts
+  - scripts/ci/boundaries/graph.ts
+  - scripts/ci/boundaries/manifest.ts
+  - scripts/ci/boundaries/types.ts
+  - scripts/ci/fixtures/boundaries/driver/driver.test.ts
+  - docs/codebase.md
+  - skills/openboard/references/connect.md
+  - bun.lock
 conformance: []
 modes: [local, hosted]
 depends_on: [338, 349, 353]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 539
 ---
 

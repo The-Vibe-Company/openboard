@@ -50,9 +50,11 @@ async function importedPackages(
 
 /** The graph entries of a workspace: its own key and every key inside it (`packages/ports/testkit`). */
 function rulesOf(config: Config, dir: string): Rule[] {
-  return Object.entries(config.graph)
+  const rules = Object.entries(config.graph)
     .filter(([key]) => key === dir || key.startsWith(`${dir}/`))
     .map(([, rule]) => rule);
+  if (rules.length > 0 && dir.startsWith("examples/")) rules.push({ may: config.tests.examples, external: [] });
+  return rules;
 }
 
 /** `@types/bun` -> `bun`, `@types/scope__name` -> `@scope/name`; null for anything else. */

@@ -130,6 +130,21 @@ test("a quote before a type query does not hide it", async () => {
   expect(found[1]).toContain("core -> server (type-only import of @openboard/server)");
 });
 
+test("example tests may compose a SQLite board without opening the same imports to example source", async () => {
+  const root = "examples/sandboxed-agent";
+  const source = 'export * from "@openboard/server";\nexport * from "@openboard/driver-sqlite";';
+  expect(await messages({ [`${root}/test/support/board.ts`]: source })).toEqual([]);
+  const found = await messages({ [`${root}/src/board.test.ts`]: source });
+  expect(found).toHaveLength(2);
+  expect(found[0]).toContain("driver import outside a composition root");
+  expect(found[1]).toContain("server (@openboard/server) is not in the allow-list");
+  expect(
+    await messages({
+      [`${root}/test/hosted.ts`]: 'export * from "@openboard/driver-postgres";',
+    }),
+  ).toEqual([expect.stringContaining("driver import outside a composition root")]);
+});
+
 test("refuses a workspace the graph does not list", async () => {
   const found = await messages({ "examples/recipe/package.json": '{ "name": "recipe" }' });
   expect(found).toEqual([

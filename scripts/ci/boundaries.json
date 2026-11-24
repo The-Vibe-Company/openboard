@@ -57,22 +57,19 @@
       "external": ["node:*"]
     },
     "examples/webhook-receiver": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] },
-    "examples/webhook-receiver/test": {
-      "may": ["sdk", "cli", "server", "driver-sqlite"],
-      "external": ["bun", "node:*"]
-    }
+    "examples/sandboxed-agent": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] }
   },
   "drivers": {
     "$comment": "docs/codebase.md 3.1 universal rules: a driver is imported only by these composition roots and by its own workspace (its tests), with exact CI-only imports listed separately.",
     "workspaces": ["driver-sqlite", "driver-postgres"],
+    "exampleTestDriver": "driver-sqlite",
     "ciImports": { "scripts/ci/migrations.ts": "@openboard/driver-sqlite/ddl" },
     "compositionRoots": [
       "apps/openboard/src/compose.ts",
       "apps/web/e2e/support/serve.ts",
       "packages/server/test/support/drivers.ts",
       "tools/conformance/src/drivers.ts",
-      "tools/bench/src/drivers.ts",
-      "examples/webhook-receiver/test/receiver.test.ts"
+      "tools/bench/src/drivers.ts"
     ]
   },
   "dbClients": {
@@ -83,5 +80,5 @@
     ]
   },
   "denyTerms": ["armada", "slack", "linear", "notion", "discord", "granite"],
-  "tests": { "external": ["bun:test", "@openboard/ports/testkit"] }
+  "tests": { "external": ["bun:test", "@openboard/ports/testkit"], "examples": ["server", "driver-sqlite"] }
 }

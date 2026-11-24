@@ -57,6 +57,18 @@
         "vite": "^8.3.8",
       },
     },
+    "examples/sandboxed-agent": {
+      "name": "@openboard/sandboxed-agent",
+      "version": "0.0.0",
+      "dependencies": {
+        "@the-vibe-company/openboard": "workspace:*",
+      },
+      "devDependencies": {
+        "@openboard/driver-sqlite": "workspace:*",
+        "@openboard/server": "workspace:*",
+        "@types/bun": "1.4.5",
+      },
+    },
     "examples/webhook-receiver": {
       "name": "@openboard/webhook-receiver",
       "version": "0.0.0",
@@ -277,6 +289,8 @@
     "@openboard/driver-sqlite": ["@openboard/driver-sqlite@workspace:packages/driver-sqlite"],
 
     "@openboard/ports": ["@openboard/ports@workspace:packages/ports"],
+
+    "@openboard/sandboxed-agent": ["@openboard/sandboxed-agent@workspace:examples/sandboxed-agent"],
 
     "@openboard/server": ["@openboard/server@workspace:packages/server"],
 
