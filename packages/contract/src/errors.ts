@@ -47,6 +47,7 @@ const CODES = {
     "not_in_channel",
     "not_a_project",
     "join_disabled",
+    "invitation_email_mismatch",
   ],
   404: [
     "not_found",

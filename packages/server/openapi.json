@@ -126,7 +126,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "403": {
-            "description": "forbidden",
+            "description": "forbidden, invitation_email_mismatch",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {

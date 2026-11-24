@@ -245,7 +245,7 @@ OpenBoard extends the CLI with `ob messages <channel>` for flat channel reads th
 | GET, POST | `/api/x/orgs/:org/invitations` | admin | `{ role, email?, send? }` → `{ invitation, url }` |
 | POST | `/api/x/orgs/:org/invitations/:id/revoke` | admin | → `{ id, revokedAt }` and `ob.invitation.revoked`; 410 `invitation_used` if already accepted or revoked. Accepting a revoked link answers 410 `invitation_used` |
 | GET | `/api/x/invitations/:token` | anyone | organization name, role, expiry (for the accept page) |
-| POST | `/api/x/invitations/accept` | person | `{ token }` → `{ org, role }` |
+| POST | `/api/x/invitations/accept` | person | `{ token }` → `{ org, role }`. A bound invitation requires a matching verified email (case-insensitive), or returns 403 `invitation_email_mismatch` without consuming the link. |
 | GET, POST | `/api/x/orgs/:org/boards` | member / admin | list; create `{ slug, name }` with seeded grants |
 | POST | `/api/x/orgs/:org/boards/:board/delete` | admin | soft delete |
 | GET | `/api/x/orgs/:org/audit` | admin | organization events |
