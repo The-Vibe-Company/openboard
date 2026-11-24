@@ -3,6 +3,7 @@ import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
+import { Avatar, Button, Card, EmptyState, Table } from "../ui/index.ts";
 import "./account.css";
 
 export const Route = createFileRoute("/account")({ component: Account });
@@ -32,9 +33,9 @@ function Account() {
       <main className="account">
         <h1>Account</h1>
         <p role="alert">Could not load your account.</p>
-        <button type="button" onClick={() => void session.refetch()}>
+        <Button variant="secondary" onClick={() => void session.refetch()}>
           Try again
-        </button>
+        </Button>
       </main>
     );
   }
@@ -49,18 +50,26 @@ function Account() {
 
   return (
     <main className="account">
-      <h1>Account</h1>
-      <section aria-labelledby="sessions-title">
+      <header className="account-profile">
+        <Avatar name={person.handle} src={person.avatar ?? undefined} />
+        <div>
+          <h1>Account</h1>
+          <p>
+            Signed in as <strong>{person.handle}</strong>
+          </p>
+        </div>
+      </header>
+      <Card role="region" aria-labelledby="sessions-title">
         <h2 id="sessions-title">Browser sessions</h2>
-        <p>
-          Signed in as <strong>{person.handle}</strong>
-        </p>
-        <button type="button" disabled={signOutEverywhere.isPending} onClick={() => signOutEverywhere.mutate(csrf)}>
+        <Button variant="danger" pending={signOutEverywhere.isPending} onClick={() => signOutEverywhere.mutate(csrf)}>
           Sign out everywhere
-        </button>
+        </Button>
         {signOutEverywhere.isError && <p role="alert">Could not sign out everywhere. Try again.</p>}
-      </section>
-      <PersonalTokens key={person.principal} principal={person.principal} csrf={csrf} />
+      </Card>
+      <Card role="region" aria-labelledby="tokens-title">
+        <h2 id="tokens-title">Personal tokens</h2>
+        <PersonalTokens key={person.principal} principal={person.principal} csrf={csrf} />
+      </Card>
     </main>
   );
 }
@@ -103,22 +112,56 @@ function PersonalTokens({ principal, csrf }: { principal: string; csrf: string }
     },
   });
 
-  let content = <p role="status">Loading personal tokens…</p>;
   if (tokens.isError) {
-    content = (
+    return (
       <>
         <p role="alert">Could not load your personal tokens.</p>
-        <button type="button" onClick={() => void tokens.refetch()}>
+        <Button variant="secondary" onClick={() => void tokens.refetch()}>
           Try again
-        </button>
+        </Button>
       </>
     );
-  } else if (tokens.data?.tokens.length === 0) {
-    content = <p>No personal tokens.</p>;
-  } else if (tokens.data) {
-    content = (
-      <ul className="personal-tokens">
-        {tokens.data.tokens.map((token) => (
+  }
+  if (!tokens.data) return <p role="status">Loading personal tokens…</p>;
+  if (tokens.data.tokens.length === 0) {
+    return (
+      <EmptyState>
+        <p>No personal tokens.</p>
+        <p>
+          Run <code>ob login</code> in your terminal to create one.
+        </p>
+      </EmptyState>
+    );
+  }
+  return <PersonalTokenTable tokens={tokens.data.tokens} revoke={revoke} />;
+}
+
+type PersonalToken = Awaited<ReturnType<ReturnType<typeof browserClient>["listPersonalTokens"]>>["tokens"][number];
+
+function PersonalTokenTable({
+  tokens,
+  revoke,
+}: {
+  tokens: PersonalToken[];
+  revoke: {
+    isPending: boolean;
+    isError: boolean;
+    variables: string | undefined;
+    mutate: (id: string) => void;
+  };
+}) {
+  return (
+    <Table aria-labelledby="tokens-title">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Organization</th>
+          <th scope="col">Expires</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {tokens.map((token) => (
           <PersonalTokenRow
             key={token.id}
             token={token}
@@ -127,19 +170,10 @@ function PersonalTokens({ principal, csrf }: { principal: string; csrf: string }
             onRevoke={() => revoke.mutate(token.id)}
           />
         ))}
-      </ul>
-    );
-  }
-
-  return (
-    <section aria-labelledby="tokens-title">
-      <h2 id="tokens-title">Personal tokens</h2>
-      {content}
-    </section>
+      </tbody>
+    </Table>
   );
 }
-
-type PersonalToken = Awaited<ReturnType<ReturnType<typeof browserClient>["listPersonalTokens"]>>["tokens"][number];
 
 function PersonalTokenRow({
   token,
@@ -156,33 +190,32 @@ function PersonalTokenRow({
   const revoked = token.revokedAt !== null;
   const blocked = pending || revoked;
   return (
-    <li>
-      <h3>{token.name}</h3>
-      <dl>
-        <div>
-          <dt>Organization</dt>
-          <dd>{token.org}</dd>
+    <tr>
+      <th scope="row">
+        <h3>{token.name}</h3>
+      </th>
+      <td>{token.org}</td>
+      <td>
+        <time dateTime={expiry.toISOString()}>
+          {expiry.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}
+        </time>
+      </td>
+      <td>
+        <div aria-live="polite">
+          <Button
+            variant="secondary"
+            size="small"
+            aria-label={revoked ? `Revoked: ${token.name}` : `Revoke ${token.name}`}
+            aria-disabled={blocked}
+            onClick={() => {
+              if (!blocked) onRevoke();
+            }}
+          >
+            {revoked ? "Revoked" : "Revoke"}
+          </Button>
         </div>
-        <div>
-          <dt>Expires</dt>
-          <dd>
-            <time dateTime={expiry.toISOString()}>{expiry.toLocaleString()}</time>
-          </dd>
-        </div>
-      </dl>
-      <div aria-live="polite">
-        <button
-          type="button"
-          aria-label={revoked ? `Revoked: ${token.name}` : `Revoke ${token.name}`}
-          aria-disabled={blocked}
-          onClick={() => {
-            if (!blocked) onRevoke();
-          }}
-        >
-          {revoked ? "Revoked" : "Revoke"}
-        </button>
-      </div>
-      {failed && <p role="alert">Could not revoke this token. Try again.</p>}
-    </li>
+        {failed && <p role="alert">Could not revoke this token. Try again.</p>}
+      </td>
+    </tr>
   );
 }

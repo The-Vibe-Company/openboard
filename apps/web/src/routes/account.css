@@ -1,50 +1,55 @@
 .account {
-  display: block;
-  box-sizing: border-box;
+  display: grid;
+  place-content: start stretch;
+  place-items: start stretch;
+  gap: calc(6 * var(--space));
   width: min(100%, 44rem);
   margin-inline: auto;
-  padding: 2rem 1rem;
+  padding: calc(8 * var(--space)) calc(4 * var(--space));
   overflow-wrap: anywhere;
 }
 
-.account h1 {
+.account .account-profile {
+  display: flex;
+  align-items: center;
+  gap: calc(4 * var(--space));
+}
+
+.account .account-profile .ui-avatar {
+  flex: none;
+  inline-size: var(--control-medium);
+}
+
+.account :is(h1, h3, .account-profile p) {
   margin: 0;
 }
 
-.account section {
-  margin-top: 2rem;
+.account h2 {
+  margin-block: 0 calc(4 * var(--space));
 }
 
-.account button {
-  font: inherit;
-  padding: 0.4rem 0.8rem;
+.account .ui-table :is(thead th, button) {
+  white-space: nowrap;
 }
 
-.account .personal-tokens {
-  padding-inline-start: 1.25rem;
+.account .ui-table th {
+  text-align: start;
 }
 
-.account .personal-tokens li {
-  padding-block: 1rem;
-  border-top: 1px solid #ddd;
+.account .ui-table th:first-child {
+  min-inline-size: 7ch;
 }
 
-.account .personal-tokens h3 {
-  margin: 0;
+@media (max-width: 30rem) {
+  .account .ui-card {
+    padding-inline: calc(3 * var(--space));
+  }
+
+  .account .ui-table :is(th, td) {
+    padding-inline: var(--space);
+  }
 }
 
-.account .personal-tokens dt {
-  font-weight: 600;
-}
-
-.account .personal-tokens dd {
-  margin-inline-start: 0;
-}
-
-.account .personal-tokens dl div + div {
-  margin-top: 0.5rem;
-}
-
-.account .personal-tokens button[aria-disabled="true"] {
+.account .ui-table button[aria-disabled="true"] {
   opacity: 0.65;
 }

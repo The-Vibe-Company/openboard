@@ -93,7 +93,7 @@ test("lists device sign-in token metadata and revokes its board access", async (
     const { expiresAt } = await active.json();
 
     await page.reload();
-    const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Laptop" }) });
+    const row = page.getByRole("row").filter({ has: page.getByRole("heading", { name: "Laptop" }) });
     await expect(row.getByText("acme", { exact: true })).toBeVisible();
     await expect(row.locator("time")).toBeVisible();
     await expect(row.locator("time")).toHaveAttribute("datetime", new Date(expiresAt).toISOString());
