@@ -4,7 +4,7 @@ import type { SQL } from "bun";
 
 interface Subscription {
   position: number;
-  readonly wake: (page?: CommittedPage) => void;
+  readonly wake: (page: CommittedPage | undefined, head: number) => void;
 }
 
 interface Board {
@@ -173,7 +173,7 @@ export async function postgresBroadcaster(
       if (position <= subscription.position || !board.subscribers.has(subscription)) continue;
       subscription.position = position;
       try {
-        subscription.wake(page);
+        subscription.wake(page, position);
       } catch {
         remove(boardId, board, subscription);
       }

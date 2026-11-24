@@ -330,8 +330,14 @@ export interface MentionEvidence {
 
 /** One board's storage; every statement it runs is bound to its scope. */
 export interface BoardView extends BoardMessageReads, BoardTaskReads, BoardGrantReads {
-  /** Wake when a write advances this board past the cursor, with its events when in memory. Returns an unsubscribe. */
-  subscribeEvents(fromPosition: number, wake: (committed?: CommittedEvents) => void): () => void;
+  /**
+   * Wake when a write advances this board past the cursor, with the head it reached and its events when in memory.
+   * Returns an unsubscribe.
+   */
+  subscribeEvents(
+    fromPosition: number,
+    wake: (committed: CommittedEvents | undefined, head: number) => void,
+  ): () => void;
   /** Look up a personal credential in scope. A known but unusable token returns "inactive"; a scope miss returns null. */
   personalToken(
     tokenHash: string,

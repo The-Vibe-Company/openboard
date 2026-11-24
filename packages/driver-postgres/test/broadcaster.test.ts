@@ -134,10 +134,10 @@ if (url) {
       () => () => {},
     );
     try {
-      const wakes: (CommittedPage | undefined)[] = [];
+      const wakes: { page: CommittedPage | undefined; head: number }[] = [];
       const remoteWake = Promise.withResolvers<void>();
-      broadcaster.subscribe(writer.scope, after, (page) => {
-        wakes.push(page);
+      broadcaster.subscribe(writer.scope, after, (page, head) => {
+        wakes.push({ page, head });
         if (page === undefined) remoteWake.resolve();
       });
 
@@ -152,14 +152,17 @@ if (url) {
       flushed = Promise.withResolvers<void>();
       await sql.notify("ob_events", payload);
       await flushed.promise;
-      expect(wakes).toStrictEqual([page]);
+      expect(wakes).toStrictEqual([{ page, head: page.head }]);
 
-      await writer.board.write(async (tx) => {
+      const remote = await writer.board.write(async (tx) => {
         await append(tx);
         return append(tx);
       });
       await remoteWake.promise;
-      expect(wakes).toStrictEqual([page, undefined]);
+      expect(wakes).toStrictEqual([
+        { page, head: page.head },
+        { page: undefined, head: Math.max(...remote) },
+      ]);
     } finally {
       await broadcaster.close();
     }

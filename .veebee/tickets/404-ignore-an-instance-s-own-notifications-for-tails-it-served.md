@@ -5,6 +5,9 @@ milestone: M6-high-availability
 package: driver-postgres
 writes:
   - packages/ports/src/broadcaster.ts
+  - packages/ports/src/store.ts
+  - packages/driver-sql/src/index.ts
+  - packages/driver-sql/src/local-broadcaster.ts
   - packages/driver-sql/src/views/messages.ts
   - packages/driver-postgres/src/broadcaster.ts
   - packages/driver-postgres/test/broadcaster.test.ts
@@ -24,6 +27,7 @@ As an operator on Postgres, a post served to my instance's tails from memory cos
 ## Done when
 - [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/live/fan-out.test.ts --rerun-each 20` passes every run, with the single-instance cases asserting zero store reads for tails served from memory
 - [ ] a test in `packages/driver-postgres/test/broadcaster.test.ts` shows that a notification for a position a subscriber already reached (from the local publish) does not wake it again, while a notification from another instance for a newer position still does
+- [ ] the fan-out test shows a head-only wake for a position the tail has read neither starts a store read nor displaces a queued page, while a newer head still starts a store read
 
 ## Out of scope
 - Cross-instance in-memory delivery (notifications carry only the head, D36).

@@ -141,7 +141,7 @@ test("a filtered tail and a channel-limited caller still receive only what they 
 }, 1000);
 
 test("a tail sends a page from the store when it is behind, the queue overflows, or a wake carries no page", () => {
-  let wake: (committed?: CommittedEvents) => void = () => {};
+  let wake: Parameters<BoardView["subscribeEvents"]>[1] = () => {};
   let subscribed = 0;
   const board = {
     subscribeEvents(_from: number, onWake: typeof wake) {
@@ -156,21 +156,46 @@ test("a tail sends a page from the store when it is behind, the queue overflows,
   tail.settle({ cursor: 2, head: 2 });
   expect(tail.take(2)).toBe("wait");
   const third = page(2, 3);
-  wake(third);
+  wake(third, 3);
   expect(tail.take(2)).toEqual({ committed: third });
-  wake(page(3, 4));
-  wake(page(4, 5));
+  wake(page(3, 4), 4);
+  wake(page(4, 5), 5);
   expect(tail.take(3)).toBe("store");
   tail.settle({ cursor: 5, head: 5 });
-  wake();
+  wake(undefined, 6);
   expect(tail.take(5)).toBe("store");
   tail.settle({ cursor: 6, head: 6 });
-  wake(page(4, 5));
+  wake(page(4, 5), 5);
   expect(tail.take(6)).toBe("wait");
-  wake(page(7, 8));
+  wake(page(7, 8), 8);
   expect(tail.take(6)).toBe("store");
   tail.close();
   expect(subscribed).toBe(0);
+});
+
+test("a late head-only wake skips the store once the cursor covers its head", () => {
+  let wake: Parameters<BoardView["subscribeEvents"]>[1] = () => {};
+  const board = {
+    subscribeEvents(_from: number, onWake: typeof wake) {
+      wake = onWake;
+      return () => {};
+    },
+  } as unknown as BoardView;
+  const tail = tailBoard(board, undefined);
+  expect(tail.take(undefined)).toBe("store");
+  wake(undefined, 2);
+  tail.settle({ cursor: 3, head: 3 });
+
+  expect(tail.take(3)).toBe("wait");
+  wake(undefined, 3);
+  const page: CommittedEvents = { after: 3, head: 4, read: () => undefined };
+  wake(page, 4);
+  expect(tail.take(3)).toEqual({ committed: page });
+
+  wake(undefined, 6);
+  wake(undefined, 4);
+  expect(tail.take(4)).toBe("store");
+  tail.close();
 });
 
 test("a page served from memory carries the same events a store read returns", async () => {
