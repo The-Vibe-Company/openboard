@@ -34,19 +34,23 @@ export function makeClaim(
 
 export const claimTaskHandler: Handler<typeof claimTask> = async (ctx, { id, lease }) => {
   const position = parseId(id);
-  return ctx.board.write(async (writer) => {
-    const target = position === null ? null : await writer.message(position);
-    const { events, ...answer } = makeClaim(
-      ctx,
-      { head: writer.head, actor: writer.actor, target },
-      id,
-      ctx.now(),
-      lease,
-    );
-    ctx.debitWrite();
-    await writer.append(events);
-    return answer;
-  }, ctx.by.actor);
+  return ctx.board.write(
+    async (writer) => {
+      const target = position === null ? null : await writer.message(position);
+      const { events, ...answer } = makeClaim(
+        ctx,
+        { head: writer.head, actor: writer.actor, target },
+        id,
+        ctx.now(),
+        lease,
+      );
+      ctx.debitWrite();
+      await writer.append(events);
+      return answer;
+    },
+    ctx.by.actor,
+    position,
+  );
 };
 
 /** Append creation and, if requested, its claim together while the board lock is held. */

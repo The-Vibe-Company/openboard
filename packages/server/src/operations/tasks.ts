@@ -82,14 +82,18 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
 
 async function makeTask(ctx: BoardContext, re: string, claim: boolean | undefined) {
   const position = parseId(re);
-  const answer = await ctx.board.write(async (writer) => {
-    const target = position === null ? null : await writer.message(position);
-    const state = { head: writer.head, target, actor: writer.actor };
-    const now = ctx.now();
-    const decided = decideMakeTask(state, re, { by: ctx.by, author: authorOf(ctx.by), now });
-    ctx.debitWrite();
-    return writeNewTask(ctx, writer, decided, claim, now);
-  }, ctx.by.actor);
+  const answer = await ctx.board.write(
+    async (writer) => {
+      const target = position === null ? null : await writer.message(position);
+      const state = { head: writer.head, target, actor: writer.actor };
+      const now = ctx.now();
+      const decided = decideMakeTask(state, re, { by: ctx.by, author: authorOf(ctx.by), now });
+      ctx.debitWrite();
+      return writeNewTask(ctx, writer, decided, claim, now);
+    },
+    ctx.by.actor,
+    position,
+  );
   const { task } = answer;
   return canListMentionActors(ctx.by)
     ? answer

@@ -50,6 +50,7 @@ export const boardStatements = {
         AND e.id > COALESCE(CAST(${eventTally} ->> 'head' AS BIGINT), 0)
     ) END AS event_count,
     actors.id, actors.kind, actors.handle, actors.name, actors.avatar, actors.via,
+    target.view, tasks.claim_token, tasks.claim_until,
     CASE WHEN boards.stored_bytes_head = boards.head THEN boards.stored_bytes ELSE (
       SELECT COALESCE(SUM(${messageBytes}), 0)
       FROM messages m WHERE m.org_id = ${"orgId"} AND m.board_id = ${"boardId"} AND m.deleted = 0
@@ -65,6 +66,8 @@ export const boardStatements = {
     FROM boards JOIN orgs ON orgs.id = boards.org_id
     CROSS JOIN (SELECT CAST(${"day"} AS BIGINT) AS day, CAST(${"nextDay"} AS BIGINT) AS next_day) quota_clock
     LEFT JOIN actors ON actors.org_id = boards.org_id AND actors.board_id = boards.id AND actors.id = ${"actor"}
+    LEFT JOIN messages target ON target.org_id = boards.org_id AND target.board_id = boards.id AND target.id = ${"taskId"}
+    LEFT JOIN tasks ON tasks.org_id = target.org_id AND tasks.board_id = target.board_id AND tasks.id = target.id
     WHERE boards.org_id = ${"orgId"} AND boards.id = ${"boardId"}${boardLock}`,
   setHead: sql`UPDATE boards SET head = ${"head"}, timeline = ${serverTimeline},
     stored_bytes = ${"storedBytes"}, stored_bytes_head = ${"head"},
@@ -121,12 +124,13 @@ export async function lockBoard(
   keys: BoardKeys,
   actor: string | null,
   window: { readonly day: number; readonly nextDay: number },
+  taskId: number | null,
 ) {
-  const params = { ...keys, ...window };
-  let actorLoaded = dialect.name === "sqlite";
+  const params = { ...keys, ...window, taskId };
+  let actorLoaded = dialect.name === "sqlite" || taskId !== null;
   let [row] = await query(tx, dialect, boardStatements.lockBoard, { ...params, actor: actorLoaded ? actor : null });
   // A waiting Postgres statement refreshes only the locked row. If another writer advanced it, get a
-  // fresh snapshot of sibling usage, the legacy own-board fallback and the actor together.
+  // fresh snapshot of sibling usage, the legacy own-board fallback, the actor and the task target together.
   if (row?.snapshot_head != null && Number(row.snapshot_head) !== Number(row.head)) {
     [row] = await query(tx, dialect, boardStatements.lockBoard, { ...params, actor });
     actorLoaded = true;

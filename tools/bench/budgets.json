@@ -6,8 +6,8 @@
         "reply": 11,
         "channelRead": 3,
         "taskCreate": 12,
-        "taskClaim": 10,
-        "taskComplete": 11
+        "taskClaim": 9,
+        "taskComplete": 9
       },
       "idleTimers": 0
     },
@@ -49,16 +49,16 @@
         "reply": 14,
         "channelRead": 4,
         "taskCreate": 14,
-        "taskClaim": 13,
-        "taskComplete": 14
+        "taskClaim": 11,
+        "taskComplete": 11
       },
       "roundTrips": {
         "post": 11,
         "reply": 14,
         "channelRead": 4,
-        "taskCreate": 14,
-        "taskClaim": 13,
-        "taskComplete": 14
+        "taskCreate": 13,
+        "taskClaim": 10,
+        "taskComplete": 10
       },
       "idleTimers": 0
     },

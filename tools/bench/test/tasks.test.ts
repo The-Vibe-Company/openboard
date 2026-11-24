@@ -15,8 +15,8 @@ test("the local bench measures each step of two task cycles and fails on a highe
   const workloads = taskRows(report);
   expect(workloads.map(({ workload, runs, statements }) => [workload, runs, statements])).toEqual([
     ["taskCreate", 2, 12],
-    ["taskClaim", 2, 10],
-    ["taskComplete", 2, 11],
+    ["taskClaim", 2, 9],
+    ["taskComplete", 2, 9],
   ]);
   for (const { p50, p99 } of workloads) expect(0 < p50 && p50 <= p99).toBe(true);
   expect(compareBudgets({ ...report, workloads }, { latency: false })).toEqual([]);
@@ -24,7 +24,7 @@ test("the local bench measures each step of two task cycles and fails on a highe
     row.workload === "taskClaim" ? { ...row, statements: row.statements + 1 } : row,
   );
   expect(compareBudgets({ ...report, workloads: slower }, { latency: false })).toEqual([
-    "local claimTask (taskClaim) statements: 10 -> 11",
+    "local claimTask (taskClaim) statements: 9 -> 10",
   ]);
 });
 
@@ -36,9 +36,9 @@ test.skipIf(process.env.OPENBOARD_TEST_DRIVER !== "postgres")(
     expect(
       workloads.map(({ workload, runs, statements, roundTrips }) => [workload, runs, statements, roundTrips]),
     ).toEqual([
-      ["taskCreate", 2, 14, 14],
-      ["taskClaim", 2, 13, 13],
-      ["taskComplete", 2, 14, 14],
+      ["taskCreate", 2, 14, 13],
+      ["taskClaim", 2, 11, 10],
+      ["taskComplete", 2, 11, 10],
     ]);
     expect(compareBudgets({ ...report, workloads }, { latency: false })).toEqual([]);
   },

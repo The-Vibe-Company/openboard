@@ -10,12 +10,16 @@ writes:
   - packages/server/src/operations/tasks/claim.ts
   - packages/server/src/operations/tasks/complete.ts
   - packages/server/src/operations/tasks.ts
+  - packages/driver-sql/src/views/actors.ts
+  - packages/driver-sql/src/views/boards.ts
+  - packages/ports/src/store.ts
   - tools/bench/budgets.json
+  - tools/bench/test/tasks.test.ts
 conformance: []
 modes: [hosted]
 depends_on: []
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 725
 ---
 
