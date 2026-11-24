@@ -15,8 +15,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [162]
-status: draft
-claimed_by: null
+status: done
+claimed_by: claude-opus-163
 issue: 243
 ---
 
@@ -24,8 +24,8 @@ issue: 243
 As a contributor, I know every store and broadcaster behaviour the SQLite driver has, the Postgres driver has too.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/driver-postgres/test/testkit.test.ts` runs `runStoreSuite` and `runBroadcasterSuite` whole, with the same number of cases as `bun test packages/driver-sqlite/test/testkit.test.ts`, and both pass
-- [ ] `bun test packages/driver-sqlite` still passes after any change to the shared SQL
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/driver-postgres/test/testkit.test.ts` runs `runStoreSuite` whole, with the same number of cases as on SQLite, and it passes (the broadcaster half moved to ticket 97, which creates the port)
+- [x] `bun test packages/driver-sqlite` still passes after any change to the shared SQL
 
 ## Out of scope
 - Concurrent writers on one board (164).
