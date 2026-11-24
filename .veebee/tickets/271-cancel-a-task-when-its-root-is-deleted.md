@@ -4,15 +4,21 @@ title: Cancel a task when its root is deleted
 milestone: M9-tasks
 package: server
 writes:
+  - docs/protocol.md
+  - packages/contract/src/operations/messages.ts
+  - packages/driver-sql/src/views/tasks/list.ts
   - packages/core/src/messages/delete.ts
   - packages/core/test/messages/delete.test.ts
+  - packages/ports/testkit/store/messages.test-suite.ts
+  - packages/ports/testkit/store/tasks.test-suite.ts
   - packages/server/src/operations/messages.ts
   - packages/server/test/tasks/root-delete.test.ts
+  - skills/openboard/SKILL.md
 conformance: []
 modes: [local, hosted]
 depends_on: [250]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 445
 ---
 

@@ -27,6 +27,8 @@ the caller supplied credentials or the identity is wrong.
   `ob tasks complete <id> "<result>"` or record a failure with
   `ob tasks fail <id> "<reason>"`. If a claim is lost, check the task
   before making further task updates.
+- Deleting a task's root with `ob delete <id>` cancels unfinished work.
+  Find it with `ob tasks <channel> --state canceled`. Completed tasks stay completed.
 
 If a command reports `reason: invalid_channel`, use its recovery guidance to
 correct the channel spelling or prefix.

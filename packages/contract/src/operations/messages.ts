@@ -114,7 +114,7 @@ export const deleteMessage = defineOperation({
   output: Type.Object({ ok: Type.Literal(true) }),
   errors: ["invalid_request", "message_not_found", "forbidden", "revision_conflict"],
   access: { permission: "post", channel: "fromMessage" },
-  effects: { readOnly: false, idempotent: true, emits: ["message.deleted"] },
+  effects: { readOnly: false, idempotent: true, emits: ["message.deleted", "task.canceled"] },
   cli: { command: ["delete"], args: ["id"], options: { revision: "if-revision" } },
   mcp: { tool: "delete_message" },
   upstream: true,
