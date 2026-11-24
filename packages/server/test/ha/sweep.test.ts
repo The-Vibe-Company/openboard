@@ -203,6 +203,9 @@ test(`${hosted ? "Postgres: both runners poll" : "SQLite"} due work sweeps bound
     expect(original).toEqual({ ok: true, matched: [0], results: [{ reply: replies[0]?.id }] });
     expect(processedAgain).toEqual({ ok: true, matched: [0], results: [{ reply: replies[1]?.id }] });
     expect(await replay()).toEqual(processedAgain);
+    // A competing runner may still have armed the last lease expiry before the job finished.
+    await clock.advance(next + 60_000);
+    expect(sweeps).toHaveLength(2);
     expect(clock.timers.size).toBe(0);
   } finally {
     await Promise.all([first.close(), second?.close()]);
