@@ -9,11 +9,22 @@ writes:
   - apps/web/src/api/schemas.ts
   - apps/web/test/block-view.test.ts
   - apps/web/e2e/blocks.spec.ts
+  - apps/web/src/markdown.ts
+  - apps/web/src/components/BlockView.css
+  - apps/web/src/routes/$org/$board/t/$id.tsx
+  - apps/web/package.json
+  - apps/web/tsconfig.json
+  - bun.lock
+  - packages/contract/src/entities/schemas/fences.ts
+  - packages/contract/src/index.ts
+  - packages/core/src/schemas/blocks.ts
+  - docs/design.md
+  - skills/openboard/SKILL.md
 conformance: []
 modes: [local, hosted]
 depends_on: [224, 225, 364]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 561
 ---
 

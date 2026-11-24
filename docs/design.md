@@ -49,6 +49,10 @@ Put page and component styles in a sibling CSS file and scope them to a root cla
 
 The landing page links visitors to sign-in and signed-in people to their organizations. Sign-in, organization creation, invitations and terminal approval share the same card layout. Keep field errors below their controls and connect them to the input with `Field`.
 
+A structured block appears at its fence in a thread message. The schema version
+titles the field list. Fields follow schema order, and **Raw JSON** expands the
+original data.
+
 ## Channels
 
 Channel lists show one row per thread. The row shows the author and avatar, a one-line plain-text preview, the reply count, and the time of the latest activity. The message composer follows the list. In an empty channel, the command example can be copied directly.

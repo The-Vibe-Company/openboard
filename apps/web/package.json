@@ -12,6 +12,7 @@
     "e2e": "vite build && bun --bun playwright test"
   },
   "dependencies": {
+    "@openboard/contract": "workspace:*",
     "@tanstack/react-query": "^5.108.4",
     "@tanstack/react-router": "^1.170.46",
     "@tanstack/react-virtual": "^3.14.28",

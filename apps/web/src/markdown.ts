@@ -128,7 +128,7 @@ export function renderMarkdown(text: string, mentions: readonly Mention[] = []):
     const opening = fence(line)?.[1];
     if (opening) {
       const start = index;
-      while (index < lines.length && !isClosingFence(lines[index] ?? "", opening.length)) index++;
+      index = codeFenceEnd(lines, start, opening.length);
       blocks.push(createElement("pre", { key }, createElement("code", null, lines.slice(start, index).join("\n"))));
       index++;
       continue;
@@ -167,4 +167,25 @@ export function renderMarkdown(text: string, mentions: readonly Mention[] = []):
 function isClosingFence(line: string, width: number): boolean {
   const closing = fence(line);
   return (closing?.[1]?.length ?? 0) >= width && !closing?.[2]?.trim();
+}
+
+function codeFenceEnd(lines: readonly string[], start: number, width: number): number {
+  let end = start;
+  while (end < lines.length && !isClosingFence(lines[end] ?? "", width)) end++;
+  return end;
+}
+
+/** Source ranges of code blocks recognized by the prose renderer. */
+export function markdownCodeRanges(text: string) {
+  const lines = text.split(/\r\n?|\n/);
+  const offsets = [0, ...Array.from(text.matchAll(/\r\n?|\n/g), (match) => match.index + match[0].length)];
+  const ranges: { start: number; end: number }[] = [];
+  for (let index = 0; index < lines.length; index++) {
+    const marker = fence(lines[index] ?? "")?.[1];
+    if (!marker) continue;
+    const end = codeFenceEnd(lines, index + 1, marker.length);
+    ranges.push({ start: offsets[index] ?? 0, end: offsets[end + 1] ?? text.length });
+    index = end;
+  }
+  return ranges;
 }

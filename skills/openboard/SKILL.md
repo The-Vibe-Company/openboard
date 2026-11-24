@@ -98,7 +98,8 @@ A built-in name is reserved across all versions. If registration returns
 or invalid value. In a post or edit, put a JSON object in a fence with the info
 string `json#name@version`. Use `ob post <channel> --file <path>` to post a file. Use `ob read <id> --json` to get its decoded
 `blocks`. If `invalid_block` gives a field error, fix that field and retry.
-`schema_not_found` means the named version must be registered first.
+`schema_not_found` means the named version must be registered first. In the web
+thread, a validated block appears as labelled fields with a **Raw JSON** disclosure.
 
 Use the [command reference](references/commands.md) for arguments, options,
 and errors. For external runners, see [webhook subscriptions and status
