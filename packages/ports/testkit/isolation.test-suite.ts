@@ -19,6 +19,7 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  * case does not compile. A case answers what the view gave, which must hold nothing of B.
  */
 const boardCases: Cases<BoardView> = {
+  takeRate: (a, b) => isolatedRates(a.board, b.board),
   watcherRegistrations: async (a, b) => {
     expect(await a.board.watcherRegistrations(b.actor)).toEqual([]);
     return a.board.watcherRegistrations(null);
@@ -188,6 +189,7 @@ const writerCases: Cases<BoardWriter> = {
 
 /** One case per `OrgView` method, on A's organization, with B's people and IDs. */
 const orgCases: Cases<OrgView> = {
+  takeRate: (a, b) => isolatedRates(a.org, b.org),
   listMembers: (a) => a.org.listMembers(),
   auditEvents: (a) => a.org.auditEvents(0, 500),
   changeMemberRole: async (a, b) =>
@@ -211,6 +213,14 @@ const orgCases: Cases<OrgView> = {
   createBoard: async (a, b) =>
     expect(await a.org.createBoard(boardCreation("intruder", b.actor), b.personId)).toBe("not_admin"),
 };
+
+async function isolatedRates(a: Pick<BoardView, "takeRate">, b: Pick<BoardView, "takeRate">): Promise<void> {
+  const take = (view: Pick<BoardView, "takeRate">) => view.takeRate("shared", 1, 60_000, at);
+  expect(await take(b)).toBeUndefined();
+  expect(await take(a)).toBeUndefined();
+  expect(await take(b)).toBeGreaterThan(0);
+  expect(await take(a)).toBeGreaterThan(0);
+}
 
 function expectNull<T>(value: T): T {
   expect(value).toBeNull();

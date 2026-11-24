@@ -13,11 +13,18 @@ import type { Handler } from "./index.ts";
 
 import { signedIn } from "./orgs.ts";
 
+const DAY_MS = 86_400_000;
 const inviteToken = /^[A-Za-z0-9_-]{43}$/;
 const digest = (token: string) => Buffer.from(hashToken(token), "hex");
 
 export const createInvitationHandler: Handler<typeof createInvitation> = async (ctx, input) => {
   const at = ctx.now();
+  const seconds = await ctx.org.takeRate("invitation-create", 50, DAY_MS, at);
+  if (seconds !== undefined) {
+    throw new BoardError("rate_limited", "too many invitations for this organization", {
+      next: [{ kind: "wait", seconds }],
+    });
+  }
   const id = `inv_${base32(ctx.randomBytes(10))}`;
   const token = base64url(ctx.randomBytes(32));
   const personId = ctx.person.id;

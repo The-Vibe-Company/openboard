@@ -1,11 +1,31 @@
 import { describe, expect, test } from "bun:test";
-import { runJobsSuite, runStoreSuite } from "@openboard/ports/testkit";
+import { mkdtempSync, rmSync } from "node:fs";
+import { ratesSuite, runJobsSuite, runStoreSuite } from "@openboard/ports/testkit";
 import { renderDdl } from "../src/ddl.ts";
 import { sqliteDriver } from "../src/index.ts";
 
 const open = async () => sqliteDriver({ memory: true }, () => 0);
 runStoreSuite("sqlite", open);
 runJobsSuite("sqlite", open);
+ratesSuite("sqlite", async (run) => {
+  const dir = mkdtempSync("openboard-rates-");
+  try {
+    const options = { dir, scheduleSnapshot: () => () => {} };
+    const first = sqliteDriver(options, () => 0);
+    try {
+      const second = sqliteDriver(options, () => 0);
+      try {
+        await run(first, second);
+      } finally {
+        await second.close();
+      }
+    } finally {
+      await first.close();
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 describe("rendering Postgres DDL for SQLite", () => {
   test("applies the mechanical differences", () => {

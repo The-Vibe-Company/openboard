@@ -1,4 +1,6 @@
 import type { ThreadMessage } from "../api/thread.ts";
+import { renderMarkdown } from "../markdown.ts";
+import "./MessageView.css";
 
 export function MessageView({ message }: { message: ThreadMessage }) {
   const author = message.author?.name ?? message.from ?? message.by.profile ?? message.by.actor;
@@ -16,7 +18,7 @@ export function MessageView({ message }: { message: ThreadMessage }) {
           <em>Message deleted</em>
         </p>
       ) : (
-        <p className="thread-message-text">{message.text}</p>
+        <div className="thread-message-text">{renderMarkdown(message.text, message.mentions)}</div>
       )}
       {labels.length > 0 && (
         <ul className="thread-message-metadata" aria-label="Labels">

@@ -3,6 +3,7 @@ import type { Db, Dialect } from "../../db.ts";
 import { query, sql } from "../../sql.ts";
 
 const CLOCK_SKEW_MS = 60_000;
+const RESERVED_RATE_PREFIX = /^(?:board|org|platform):/;
 
 export const rateStatements = {
   pruneRates: sql`DELETE FROM rate_counters WHERE expires_at <= ${"through"}`,
@@ -15,9 +16,12 @@ export const rateStatements = {
 };
 
 /** The upsert serializes competing debits, including requests from different instances. */
-export function rateView(db: Db, dialect: Dialect): Pick<PlatformView, "takeRate"> {
+export function rateView(db: Db, dialect: Dialect, prefix?: string): Pick<PlatformView, "takeRate"> {
   return {
-    async takeRate(key, limit, windowMs, now) {
+    async takeRate(rateKey, limit, windowMs, now) {
+      // Escape reserved prefixes on platform keys while preserving existing sign-in buckets.
+      const namespace = prefix ?? (RESERVED_RATE_PREFIX.test(rateKey) ? "platform:" : "");
+      const key = namespace + rateKey;
       const windowStart = Math.floor(now / windowMs) * windowMs;
       const expiresAt = windowStart + windowMs;
       const [row] = await query(db, dialect, rateStatements.takeRate, { key, windowStart, expiresAt, limit });

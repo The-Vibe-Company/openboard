@@ -4,13 +4,15 @@ title: Rate-limit invitations per organization
 milestone: M7-hosted-deploy
 package: server
 writes:
+  - packages/contract/src/operations/invitations.ts
+  - docs/protocol.md
   - packages/server/src/operations/invitations.ts
   - packages/server/test/ha/invitation-limit.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [201]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 365
 ---
 
@@ -18,8 +20,8 @@ issue: 365
 As the operator of a shared instance, an organization creating invitation links in a loop is stopped after 50 a day, on every instance.
 
 ## Done when
-- [ ] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/invitation-limit.test.ts` passes, requests alternating between two instances: an organization's 51st invitation within a day answers 429 `rate_limited` with a `retry-after` and creates no link, another organization still invites, and invitations pass again the next window
-- [ ] the same file passes on SQLite: `bun test packages/server/test/ha/invitation-limit.test.ts`
+- [x] `OPENBOARD_TEST_DRIVER=postgres OPENBOARD_TEST_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard bun test packages/server/test/ha/invitation-limit.test.ts` passes, requests alternating between two instances: an organization's 51st invitation within a day answers 429 `rate_limited` with a `retry-after` and creates no link, another organization still invites, and invitations pass again the next window
+- [x] the same file passes on SQLite: `bun test packages/server/test/ha/invitation-limit.test.ts`
 
 ## Out of scope
 - Members per organization, a count quota (196).

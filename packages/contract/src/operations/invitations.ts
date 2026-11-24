@@ -21,7 +21,7 @@ export const createInvitation = defineOperation({
     ),
   },
   output: Type.Object({ invitation: Invitation, url: Type.String() }),
-  errors: ["invalid_request", "not_found", "unauthorized", "forbidden"],
+  errors: ["invalid_request", "not_found", "unauthorized", "forbidden", "rate_limited"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: ["ob.invitation.created"] },
   cli: false,
