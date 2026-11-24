@@ -15,7 +15,7 @@ import {
   type OrgOperation,
   type PublicOperation,
 } from "../operations/index.ts";
-import { errorResponse, invalidPostChannel } from "./errors.ts";
+import { errorResponse, recoverGrant, rejectedInput } from "./errors.ts";
 import { healthProbe } from "./health.ts";
 import { limitStream, limitWrite, type RequestLimits } from "./limits.ts";
 import { operationResponse } from "./respond.ts";
@@ -64,11 +64,11 @@ async function readBody(request: Request): Promise<unknown> {
   }
 }
 
-function validate(operation: Contracted, raw: RawInput) {
+function validate<Op extends Contracted>(operation: Op, raw: RawInput) {
   try {
     return decodeInput(operation, raw);
   } catch (error) {
-    throw operation.name === "postMessage" ? invalidPostChannel(error, raw.body) : error;
+    throw rejectedInput(error, operation, raw);
   }
 }
 
@@ -80,7 +80,7 @@ async function runPublic(
   params: Readonly<Record<string, string>>,
   pipeline: Pipeline,
 ): Promise<Response> {
-  const input = decodeInput(operation, { params, query: readQuery(operation, url.searchParams) });
+  const input = validate(operation, { params, query: readQuery(operation, url.searchParams) });
   const boardUrl = `${pipeline.config.publicUrl}${path.mount}`;
   const output = await handlerOf(operation)({ boardUrl, now: pipeline.deps.now }, input);
   return operationResponse(operation, output);
@@ -165,14 +165,14 @@ async function runOrg(
 }
 
 async function runPreview(url: URL, operation: typeof previewInvitation, params: Params, pipeline: Pipeline) {
-  const input = decodeInput(operation, { params, query: readQuery(operation, url.searchParams) });
+  const input = validate(operation, { params, query: readQuery(operation, url.searchParams) });
   const output = await handlerOf(operation)({ platform: pipeline.platform, now: pipeline.deps.now }, input);
   return operationResponse(operation, output);
 }
 
 async function runDevice(request: Request, operation: DeviceOperation, pipeline: Pipeline & RequestLimits) {
   const { config, deps, platform } = pipeline;
-  const input = decodeInput(operation, { body: await readBody(request) });
+  const input = validate(operation, { body: await readBody(request) });
   const output = await handlerOf(operation)(
     {
       platform,
@@ -292,13 +292,13 @@ async function runBoard(
     operation.eventStream &&
     request.headers.get("accept")?.includes(operation.eventStream)
   ) {
-    const input = decodeInput(operation, raw);
+    const input = validate(operation, raw);
     return streamEvents(await context(input), input, request.headers.get("last-event-id"), pipeline.track, () =>
       limitStream(pipeline.rateLimits, path.org, by.principal),
     );
   }
   const input = validate(operation, raw);
-  const output = await handlerOf(operation)(await context(input), input);
+  const output = await handlerOf(operation)(await context(input), input).catch(recoverGrant(operation, input));
   const response = operationResponse(operation, output);
   if (operation.eventStream) response.headers.set("vary", "Accept");
   return response;

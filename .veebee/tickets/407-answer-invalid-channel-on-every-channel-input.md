@@ -9,11 +9,22 @@ writes:
   - packages/server/src/http/pipeline.ts
   - packages/server/test/channel-input.test.ts
   - packages/cli/test/channel-input.test.ts
+  - docs/protocol.md
+  - packages/contract/src/channel-input.ts
+  - packages/contract/src/entities/messages.ts
+  - packages/contract/src/errors.ts
+  - packages/contract/src/index.ts
+  - packages/contract/src/operations/thread-filters.ts
+  - packages/core/src/access/grants.ts
+  - packages/core/src/events/tail.ts
+  - packages/core/src/index.ts
+  - packages/core/src/watchers/register.ts
+  - skills/openboard/SKILL.md
 conformance: []
 modes: [local, hosted]
 depends_on: []
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 726
 ---
 
