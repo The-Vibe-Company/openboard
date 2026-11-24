@@ -21,37 +21,37 @@ import { messageStatements } from "../messages/statements.ts";
 
 export const watcherStatements = {
   registrations: sql`SELECT owner, watch, hash FROM watcher_registrations
-    WHERE board_id = ${"boardId"} AND (CAST(${"owner"} AS TEXT) IS NULL OR owner = ${"owner"}) ORDER BY owner`,
-  watcherRegistrationHash: sql`SELECT hash FROM watcher_registrations WHERE board_id = ${"boardId"} AND owner = ${"owner"}`,
-  replaceRegistration: sql`INSERT INTO watcher_registrations (board_id, owner, watch, hash, at)
-    VALUES (${"boardId"}, ${"owner"}, ${"watch"}, ${"hash"}, ${"at"})
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND (CAST(${"owner"} AS TEXT) IS NULL OR owner = ${"owner"}) ORDER BY owner`,
+  watcherRegistrationHash: sql`SELECT hash FROM watcher_registrations WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND owner = ${"owner"}`,
+  replaceRegistration: sql`INSERT INTO watcher_registrations (org_id, board_id, owner, watch, hash, at)
+    VALUES (${"orgId"}, ${"boardId"}, ${"owner"}, ${"watch"}, ${"hash"}, ${"at"})
     ON CONFLICT (board_id, owner) DO UPDATE SET watch = excluded.watch, hash = excluded.hash, at = excluded.at
-    WHERE watcher_registrations.board_id = ${"boardId"}`,
-  addWatcherMatch: sql`INSERT INTO watcher_matches (board_id, id, owner, watcher, thread, event, state, next_at, needs_actor_directory)
-    VALUES (${"boardId"}, ${"id"}, ${"owner"}, ${"watcher"}, ${"thread"}, ${"event"}, 'pending', ${"at"}, ${"needsDirectory"})`,
+    WHERE watcher_registrations.org_id = ${"orgId"} AND watcher_registrations.board_id = ${"boardId"}`,
+  addWatcherMatch: sql`INSERT INTO watcher_matches (org_id, board_id, id, owner, watcher, thread, event, state, next_at, needs_actor_directory)
+    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"owner"}, ${"watcher"}, ${"thread"}, ${"event"}, 'pending', ${"at"}, ${"needsDirectory"})`,
   nextWatcherMatches: sql`SELECT m.id AS match_id, m.watcher, m.attempt, m.lease, e.id, e.type, e.at, e.thread,
       e.message, e.channel, e.actor, e.principal, e.payload
-    FROM watcher_matches m JOIN events e ON e.board_id = m.board_id AND e.id = m.event
-    WHERE m.board_id = ${"boardId"} AND m.owner = ${"owner"} AND e.org_id = ${"orgId"}
+    FROM watcher_matches m JOIN events e ON e.org_id = m.org_id AND e.board_id = m.board_id AND e.id = m.event
+    WHERE m.org_id = ${"orgId"} AND m.board_id = ${"boardId"} AND m.owner = ${"owner"}
       AND m.needs_actor_directory <= ${"canReadDirectory"}
       AND (m.event, m.id) > (${"afterEvent"}, ${"afterId"})
       AND m.state = 'pending' AND m.next_at <= ${"now"} AND (m.lease_until IS NULL OR m.lease_until <= ${"now"})
-      AND NOT EXISTS (SELECT 1 FROM watcher_matches older WHERE older.board_id = ${"boardId"}
+      AND NOT EXISTS (SELECT 1 FROM watcher_matches older WHERE older.org_id = ${"orgId"} AND older.board_id = ${"boardId"}
         AND older.owner = m.owner AND older.thread = m.thread AND older.state = 'pending'
         AND (older.event, older.id) < (m.event, m.id))
     ORDER BY m.event, m.id LIMIT 50`,
   discardWatcherThread: sql`DELETE FROM watcher_matches
-    WHERE board_id = ${"boardId"} AND owner = ${"owner"} AND thread = ${"thread"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND owner = ${"owner"} AND thread = ${"thread"}
       AND state = 'pending' AND (lease_until IS NULL OR lease_until <= ${"now"})`,
   discardDirectoryMatches: sql`DELETE FROM watcher_matches
-    WHERE board_id = ${"boardId"} AND owner = ${"owner"} AND needs_actor_directory = 1
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND owner = ${"owner"} AND needs_actor_directory = 1
       AND state = 'pending' AND (lease_until IS NULL OR lease_until <= ${"now"})`,
   leaseWatcherMatch: sql`UPDATE watcher_matches SET lease = ${"lease"}, lease_until = ${"until"}, attempt = ${"attempt"}
-    WHERE board_id = ${"boardId"} AND owner = ${"owner"} AND id = ${"id"}`,
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND owner = ${"owner"} AND id = ${"id"}`,
   watcherLease: sql`SELECT lease FROM watcher_matches
-    WHERE board_id = ${"boardId"} AND owner = ${"owner"} AND id = ${"id"}`,
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND owner = ${"owner"} AND id = ${"id"}`,
   removeWatcherMatch: sql`DELETE FROM watcher_matches
-    WHERE board_id = ${"boardId"} AND owner = ${"owner"} AND id = ${"id"}`,
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND owner = ${"owner"} AND id = ${"id"}`,
 };
 
 function registration(row: Row): Registration {

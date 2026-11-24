@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
 import type { BoardView, BoardWriter, OrgView, Store } from "../src/index.ts";
-import type { OpenStore } from "./index.ts";
+import { type OpenStore, testScope } from "./index.ts";
 import { at, boardCreation, type StoreTenant, storeTenant } from "./isolation-seed.ts";
 import { pull, seedWatcher } from "./store/watchers.test-suite.ts";
 
@@ -261,6 +261,26 @@ export function isolationSuite(driver: string, open: OpenStore): void {
     holdsNothingOf(b, job, "Jobs.claim");
     expect(await a.board.write((writer) => writer.takeJob(job.id, lease, at))).toBeNull();
     expect(await b.board.write((writer) => writer.takeJob(job.id, lease, at))).toEqual({ marker: b.marker });
+  });
+  test(`${driver}: isolation: a board ID under another organization exposes neither registrations nor matches`, async () => {
+    store = await open();
+    await storeTenant(store, "alpha", "a", 2);
+    const b = await storeTenant(store, "bravo", "b", 12);
+    const platform = store.platform();
+    const aKeys = await platform.findBoard("alpha", "main");
+    const bKeys = await platform.findBoard("bravo", "main");
+    if (!aKeys || !bKeys) throw new Error("missing isolation board");
+    await seedWatcher(b.board, b.actor, b.channel, at);
+
+    const foreign = store.board(testScope({ orgId: aKeys.orgId, boardId: bKeys.boardId }));
+    expect(await foreign.watcherRegistrations(null)).toEqual([]);
+    expect(await foreign.watcherRegistrations(b.actor)).toEqual([]);
+    await expect(pull(foreign, b.actor, at)).rejects.toThrow(
+      `board ${bKeys.boardId} of organization ${aKeys.orgId} is missing`,
+    );
+
+    expect(await b.board.watcherRegistrations(b.actor)).toMatchObject([{ owner: b.actor }]);
+    expect(await pull(b.board, b.actor, at)).toMatchObject([{ watcher: "seed", attempt: 0 }]);
   });
   const groups = [
     ["BoardView", boardCases],

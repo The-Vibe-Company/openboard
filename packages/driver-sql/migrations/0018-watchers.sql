@@ -1,4 +1,5 @@
 CREATE TABLE watcher_registrations (
+  org_id BIGINT NOT NULL,
   board_id BIGINT NOT NULL,
   owner TEXT NOT NULL,
   watch TEXT NOT NULL,
@@ -8,6 +9,7 @@ CREATE TABLE watcher_registrations (
 );
 
 CREATE TABLE watcher_matches (
+  org_id BIGINT NOT NULL,
   board_id BIGINT NOT NULL,
   id TEXT NOT NULL,
   owner TEXT NOT NULL,

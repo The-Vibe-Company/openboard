@@ -502,7 +502,7 @@ CREATE TABLE schemas (
 );
 
 CREATE TABLE watcher_registrations (
-  board_id BIGINT NOT NULL, owner TEXT NOT NULL, watch TEXT NOT NULL, hash TEXT NOT NULL, at BIGINT NOT NULL,
+  org_id BIGINT NOT NULL, board_id BIGINT NOT NULL, owner TEXT NOT NULL, watch TEXT NOT NULL, hash TEXT NOT NULL, at BIGINT NOT NULL,
   PRIMARY KEY (board_id, owner)
 );
 
@@ -553,7 +553,7 @@ then checks `board_id` against the request's scope.
 
 ```sql
 CREATE TABLE watcher_matches (
-  board_id BIGINT NOT NULL, id TEXT NOT NULL, owner TEXT NOT NULL, watcher TEXT NOT NULL,
+  org_id BIGINT NOT NULL, board_id BIGINT NOT NULL, id TEXT NOT NULL, owner TEXT NOT NULL, watcher TEXT NOT NULL,
   thread BIGINT NOT NULL, event BIGINT NOT NULL, state TEXT NOT NULL,
   lease TEXT, lease_until BIGINT, attempt BIGINT NOT NULL DEFAULT 0, next_at BIGINT NOT NULL,
   needs_actor_directory SMALLINT NOT NULL,     -- 1 when the match relies on resolving a mention by handle
