@@ -52,6 +52,8 @@ Read the JSON result in `structuredContent`. On `isError`, inspect its
   prerequisites. Completed, failed, and canceled tasks reject changes with
   `task_finished`. A change that would make a
   task wait for itself, directly or through other tasks, returns `invalid_needs`.
+  Prerequisites must be in channels you can read. An unreadable prerequisite
+  returns `invalid_needs`, and filtering a task list by it returns no matches.
 - When creating a task with `--needs <id>`, a canceled prerequisite returns
   `invalid_needs`. A failed prerequisite leaves the new task waiting until it completes.
   The event feed emits `task.ready` when the last prerequisite completes, or during

@@ -72,6 +72,7 @@
     "tasks/refuses a change of needs that would make a task wait for itself, straight back or through others",
     "tasks/refuses a prerequisite that was canceled, which can never complete, and takes one that failed",
     "tasks/starts a thread as a task, or makes one of a thread that was there: it reads as its thread, and board.task finds it",
+    "tasks/takes read in a prerequisite's channel to wait for it: a caller narrowed out of it makes no task that needs it",
     "watchers/matches a registered tail, hands the match to a pull, and takes its ack",
     "watchers/refuses a caller narrowed with x-board-can its principal's watchers: registering, pulling, and acking",
     "watchers/wakes by path only where its discovery says so, and only a Vercel project"
@@ -143,6 +144,7 @@
     "tasks/refuses a change of needs that would make a task wait for itself, straight back or through others",
     "tasks/refuses a prerequisite that was canceled, which can never complete, and takes one that failed",
     "tasks/starts a thread as a task, or makes one of a thread that was there: it reads as its thread, and board.task finds it",
+    "tasks/takes read in a prerequisite's channel to wait for it: a caller narrowed out of it makes no task that needs it",
     "watchers/matches a registered tail, hands the match to a pull, and takes its ack",
     "watchers/refuses a caller narrowed with x-board-can its principal's watchers: registering, pulling, and acking",
     "watchers/wakes by path only where its discovery says so, and only a Vercel project"

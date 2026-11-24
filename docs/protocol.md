@@ -371,7 +371,7 @@ already 409 `already_a_task`, and `re` with `channel`, `text`, `labels`, `noSync
 `invalid_request`. The CLI is `ob tasks create <id>`, which prints the ID.
 
 Either creation form accepts up to 20 prerequisite task IDs in `needs`. Use a repeatable
-`--needs <id>` with `ob tasks create`. A missing prerequisite, a plain thread, a canceled task, or a task
+`--needs <id>` with `ob tasks create`. A missing or unreadable prerequisite, a plain thread, a canceled task, or a task
 that names itself as a prerequisite returns 400 `invalid_needs`. The new task is
 `waiting` until all its prerequisites complete. Failed tasks can still be named as
 prerequisites, and the new task waits for them to complete. Claiming a task while waiting returns
@@ -415,6 +415,7 @@ or one state), `label` on the root, `by` (who wrote the root: handle, actor ID o
 root stands; follow `task.created` on the feed to see every new task. A full page's `cursor` is its
 last task's ID; a shorter one's is the board head. As `GET /events`
 does, a list without `channel` needs `read` on every channel, and a subtree needs it throughout.
+A `needs` filter naming a prerequisite outside the caller's readable channels returns an empty page.
 With `latest=true` (or `latest=1`), the list selects the `limit` most recently active matching tasks
 by thread activity and returns them with the latest active last. The cursor is
 the board head. Combining an enabled `latest` with `after` returns 400 `invalid_request`.
