@@ -55,3 +55,4 @@ export { tailCommand } from "./tail.ts";
 export { useCommand } from "./use.ts";
 export { waitCommand } from "./wait.ts";
 export { whoamiCommand } from "./whoami.ts";
+export { downloadOrgExportCommand, exportOrgCommand } from "./org/export.ts";

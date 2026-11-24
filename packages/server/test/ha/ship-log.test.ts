@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { BoardKeys, Bucket, LogSegment, Store } from "@openboard/ports";
-import { testOrgScope } from "@openboard/ports/testkit";
+import { fakeBucket, testOrgScope } from "@openboard/ports/testkit";
 import { createApp, maintenanceJobs } from "../../src/index.ts";
 import { signIn } from "../isolation/seed.ts";
 import { LOCAL_OWNER, makeApp, NOW, PUBLIC_URL } from "../support/app.ts";
@@ -36,28 +36,6 @@ function fakeClock() {
       );
     },
   };
-}
-
-function fakeBucket() {
-  const objects = new Map<string, Uint8Array>();
-  const writes: string[] = [];
-  const bucket: Bucket = {
-    async put(key, bytes) {
-      objects.set(key, bytes);
-      writes.push(key);
-    },
-    async putStream(key, stream) {
-      objects.set(key, await new Response(stream).bytes());
-      writes.push(key);
-    },
-    async *list(prefix) {
-      for (const key of objects.keys()) if (key.startsWith(prefix)) yield key;
-    },
-    async deletePrefix(prefix) {
-      for await (const key of bucket.list(prefix)) objects.delete(key);
-    },
-  };
-  return { bucket, objects, writes };
 }
 
 function runner(store: Store, bucket: Bucket, clock: ReturnType<typeof fakeClock>, id: string, polls: string[]) {

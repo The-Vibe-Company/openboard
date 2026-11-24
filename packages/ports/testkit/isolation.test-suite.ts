@@ -1,6 +1,14 @@
 import { afterEach, expect, test } from "bun:test";
 import { messages } from "@openboard/core";
-import { BACKFILL_BOARD_ORG_JOB, type BoardView, type BoardWriter, type OrgView, type Store } from "../src/index.ts";
+import {
+  BACKFILL_BOARD_ORG_JOB,
+  EXPORT_ORG_JOB,
+  EXPORT_RUN_MS,
+  type BoardView,
+  type BoardWriter,
+  type OrgView,
+  type Store,
+} from "../src/index.ts";
 import { type OpenStore, testScope } from "./index.ts";
 import { at, boardCreation, type StoreTenant, seedPersonGrant, storeTenant } from "./isolation-seed.ts";
 import { appendSchema } from "./store/schemas.test-suite.ts";
@@ -226,6 +234,27 @@ const writerCases: Cases<BoardWriter> = {
 
 /** One case per `OrgView` method, on A's organization, with B's people and IDs. */
 const orgCases: Cases<OrgView> = {
+  exportAudit: (a) => a.org.exportAudit(0, 100),
+  requestExport: async (a, b) => {
+    await expect(a.org.requestExport("foreign", b.personId, at, () => {})).rejects.toMatchObject({ code: "forbidden" });
+  },
+  readExport: async (a) => {
+    await expect(a.org.readExport("foreign", a.personId, at)).rejects.toMatchObject({ code: "not_found" });
+  },
+  auditExportDownload: async (a) => {
+    await expect(a.org.auditExportDownload("foreign", a.personId, at, () => {})).rejects.toMatchObject({
+      code: "not_found",
+    });
+  },
+  runExport: async (a, _b, store) => {
+    const lease = { instanceId: "foreign-export", claimedAt: at };
+    const { job } = await store.jobs.claim([EXPORT_ORG_JOB], lease);
+    if (!job) throw new Error("missing foreign export job");
+    const unexpected = async () => {
+      throw new Error("foreign export reached bucket");
+    };
+    expect(await a.org.runExport(job, lease, () => at, unexpected, unexpected)).toBe(false);
+  },
   backfillBoardOrgIds: async (a, b, store) => {
     await b.board.write((writer) => writer.enqueue(BACKFILL_BOARD_ORG_JOB, at, {}));
     const lease = { instanceId: "backfill-test", claimedAt: at };
@@ -314,8 +343,96 @@ async function digestOf(b: StoreTenant): Promise<string> {
     await b.board.listTasks({ states: ["ready"], limit: 500 }),
     await b.org.listMembers(),
     await b.org.auditEvents(0, 500),
+    await b.org.exportAudit(0, 500),
     await b.org.listBoards(),
   ]);
+}
+
+async function checkExportLease(store: Store) {
+  const a = await storeTenant(store, "alpha", "a", 2);
+  await a.org.requestExport("export", a.personId, at, () => {});
+  const lease = { instanceId: "first-export-runner", claimedAt: at };
+  const { job } = await store.jobs.claim([EXPORT_ORG_JOB], lease);
+  if (!job) throw new Error("missing queued export");
+  const upload = Promise.withResolvers<void>();
+  const publishing = Promise.withResolvers<() => Promise<boolean>>();
+  let now = at;
+  const running = a.org.runExport(
+    job,
+    lease,
+    () => now,
+    async (_key, _source, progress) => {
+      publishing.resolve(progress);
+      await upload.promise;
+    },
+    async () => {
+      throw new Error("unexpected deletion");
+    },
+  );
+  try {
+    const heartbeat = await Promise.race([publishing.promise, running]);
+    if (typeof heartbeat !== "function") throw new Error("export did not start");
+    now += EXPORT_RUN_MS / 2;
+    expect(await heartbeat()).toBe(true);
+    now += EXPORT_RUN_MS / 2 + 61_000;
+    const contender = { instanceId: "other-export-runner", claimedAt: now };
+    expect((await store.jobs.claim([EXPORT_ORG_JOB], contender)).job).toBeNull();
+  } finally {
+    upload.resolve();
+    expect(await running).toBe(true);
+  }
+  expect(await a.org.readExport("export", a.personId, now)).toMatchObject({ status: "ready" });
+}
+
+async function checkExportFailure(store: Store) {
+  const a = await storeTenant(store, "alpha", "a", 2);
+  await a.org.requestExport("export", a.personId, at, () => {});
+  const lease = { instanceId: "first-export-runner", claimedAt: at };
+  const { job } = await store.jobs.claim([EXPORT_ORG_JOB], lease);
+  if (!job) throw new Error("missing queued export");
+  let now = at;
+  const upload = Promise.withResolvers<void>();
+  const publishing = Promise.withResolvers<void>();
+  const cleanup = async () => {
+    throw new Error("export cleanup ran early");
+  };
+  const running = a.org.runExport(
+    job,
+    lease,
+    () => now,
+    async () => {
+      publishing.resolve();
+      await upload.promise;
+    },
+    cleanup,
+  );
+  try {
+    await Promise.race([publishing.promise, running]);
+    now += EXPORT_RUN_MS + 61_000;
+    const contender = { instanceId: "other-export-runner", claimedAt: now };
+    const { job: competing } = await store.jobs.claim([EXPORT_ORG_JOB], contender);
+    if (!competing) throw new Error("expired lease was not reclaimable");
+    const unexpected = async () => {
+      throw new Error("a second upload would overwrite the first");
+    };
+    let republished = false;
+    await a.org.runExport(
+      competing,
+      contender,
+      () => now,
+      async () => {
+        republished = true;
+        await unexpected();
+      },
+      cleanup,
+    );
+    expect(republished).toBe(false);
+    expect(await a.org.readExport("export", a.personId, now)).toMatchObject({ status: "failed" });
+    expect(await a.org.requestExport("another", a.personId, now, () => {})).toMatchObject({ status: "pending" });
+  } finally {
+    upload.resolve();
+    expect(await running).toBe(false);
+  }
 }
 
 /**
@@ -360,6 +477,14 @@ export function isolationSuite(driver: string, open: OpenStore): void {
     expect(await b.board.watcherRegistrations(b.actor)).toMatchObject([{ owner: b.actor }]);
     expect(await pull(b.board, b.actor, at)).toMatchObject([{ watcher: "seed", attempt: 0 }]);
   });
+  test(`${driver}: an in-progress export outlives the ordinary job lease`, async () => {
+    store = await open();
+    await checkExportLease(store);
+  });
+  test(`${driver}: an ambiguous export never republishes its key and frees the organization slot`, async () => {
+    store = await open();
+    await checkExportFailure(store);
+  });
   const groups = [
     ["BoardView", boardCases],
     ["BoardWriter", writerCases],
@@ -380,6 +505,9 @@ export function isolationSuite(driver: string, open: OpenStore): void {
         if (["schema", "schemas", "schemaCount"].includes(method)) {
           await inWrite(a, (writer) => appendSchema(writer, a.actor, a.marker, at));
           await inWrite(b, (writer) => appendSchema(writer, b.actor, b.marker, at));
+        }
+        if (["readExport", "auditExportDownload", "runExport", "exportAudit"].includes(method)) {
+          await b.org.requestExport("foreign", b.personId, at, () => {});
         }
         const before = await digestOf(b);
         holdsNothingOf(b, await run(a, b, store), `${view}.${method}`);

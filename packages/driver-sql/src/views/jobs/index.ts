@@ -62,6 +62,9 @@ export const jobStatements = {
     VALUES (${"orgId"}, ${"boardId"}, ${"kind"}, ${"dueAt"}, ${"payload"})`,
   readLeasedJob: sql`SELECT payload FROM jobs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
     AND instance_id = ${"instanceId"} AND available_at = ${"until"} AND available_at > ${"now"}`,
+  extendJob: sql`UPDATE jobs SET available_at = ${"extendedUntil"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
+    AND instance_id = ${"instanceId"} AND available_at = ${"until"} AND available_at > ${"now"} RETURNING payload`,
   takeJob: sql`DELETE FROM jobs WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
     AND instance_id = ${"instanceId"} AND available_at = ${"until"} AND available_at > ${"now"}
     RETURNING payload`,
@@ -135,6 +138,29 @@ export async function readLeasedJob(
     now,
   });
   return row ? (JSON.parse(String(row.payload)) as JobPayload) : null;
+}
+
+export async function extendLeasedJob(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  id: string,
+  lease: JobLease,
+  now: number,
+  extendedUntil: number,
+): Promise<{ payload: JobPayload; lease: JobLease } | null> {
+  const { instanceId, claimedAt } = lease;
+  const [row] = await query(tx, dialect, jobStatements.extendJob, {
+    ...keys,
+    id,
+    instanceId,
+    until: claimedAt + leaseMs,
+    now,
+    extendedUntil,
+  });
+  return row
+    ? { payload: JSON.parse(String(row.payload)), lease: { instanceId, claimedAt: extendedUntil - leaseMs } }
+    : null;
 }
 
 export function jobWriter(tx: Db, dialect: Dialect, keys: BoardKeys, enqueued: JobWrites["committed"]): BoardJobWriter {

@@ -50,7 +50,7 @@ export function shippingPlatform(db: Db, dialect: Dialect): Pick<PlatformView, "
   };
 }
 
-function logEvent(row: Row) {
+export function logEvent(row: Row) {
   return {
     ...row,
     id: Number(row.id),

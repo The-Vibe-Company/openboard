@@ -51,6 +51,46 @@ Example:
 ob login https://board.example
 ```
 
+## `ob org export`
+
+Request a hosted organization export as its owner.
+
+```sh
+ob org export
+```
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: not_supported`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob org export
+```
+
+## `ob org export download`
+
+Download a ready organization export.
+
+```sh
+ob org export download <id> --out <file>
+```
+
+Options:
+
+- `--out`: Create the archive at this path.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: not_supported`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob org export download ex_0123456789abcdef0123456789abcdef --out acme.tar.gz
+```
+
 ## `ob grants update`
 
 Change a grant by its ID.

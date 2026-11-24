@@ -29,6 +29,7 @@ import purgeTombstoneNotificationsDdl from "../migrations/0027-purge-tombstone-n
 import jobKeyDdl from "../migrations/0028-job-key.sql" with { type: "text" };
 import jobKeyIndexDdl from "../migrations/0029-job-key-index.sql" with { type: "text" };
 import taskExpiryJobsDdl from "../migrations/0030-task-expiry-jobs.sql" with { type: "text" };
+import exportsDdl from "../migrations/0031-exports.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -43,6 +44,7 @@ import { deviceView, personalTokenView } from "./views/device.ts";
 import { committedEvents, eventReads } from "./views/events.ts";
 import { invitationPlatform, invitationView } from "./views/invitations.ts";
 import { type JobWrites, queueBoardOrgBackfill, runBoardOrgBackfill } from "./views/jobs/index.ts";
+import { exportsView } from "./views/jobs/exports.ts";
 import { purgeOrgView } from "./views/jobs/purge.ts";
 import { shippingPlatform, shippingView } from "./views/jobs/shipping.ts";
 import { membershipView } from "./views/memberships.ts";
@@ -104,6 +106,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 28, name: "0028-job-key", sql: jobKeyDdl },
   { version: 29, name: "0029-job-key-index", sql: jobKeyIndexDdl },
   { version: 30, name: "0030-task-expiry-jobs", sql: taskExpiryJobsDdl },
+  { version: 31, name: "0031-exports", sql: exportsDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -134,6 +137,7 @@ export function createViews(
       ...membershipView(db, dialect, scope, jobs),
       ...purgeOrgView(db, dialect, scope, jobs),
       ...shippingView(db, dialect, scope),
+      ...exportsView(db, dialect, scope, jobs),
       backfillBoardOrgIds: (boardId, id, lease, now) =>
         runBoardOrgBackfill(db, dialect, jobs, { orgId: scope.orgId, boardId }, id, lease, now),
       ...orgAuditReads(db, dialect, scope),

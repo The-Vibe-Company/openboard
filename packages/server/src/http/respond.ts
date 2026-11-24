@@ -14,6 +14,18 @@ export function operationResponse({ responseType, status }: Operation, output: u
     Reflect.get(output, status.createdWhen) === true;
   const code = typeof status === "object" ? (created ? 201 : 200) : (status ?? 200);
   if (responseType === undefined) return json(output, code);
+  if (responseType === "application/gzip") {
+    if (!(output instanceof ReadableStream)) throw new TypeError("expected a streamed archive");
+    return new Response(output, {
+      status: code,
+      headers: {
+        "content-type": responseType,
+        "content-disposition": 'attachment; filename="openboard-export.tar.gz"',
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff",
+      },
+    });
+  }
   if (typeof output !== "string") throw new TypeError("expected a string response body");
   return new Response(output, {
     status: code,

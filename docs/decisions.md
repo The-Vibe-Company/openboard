@@ -572,7 +572,7 @@ reconcile the timer with the queue, including any outstanding lease expiries.
   or an unknown organization leaves no change or event.
 
 - **Deletion rollout.** The purge handler and enqueue ship together under the job
-  rollout exception in codebase.md §5.7. The enqueue is first due at `purgeAt`,
+  rollout rule in codebase.md §5.7. The enqueue is first due at `purgeAt`,
   30 days after soft deletion. A compatible runner can also lease an older
   deletion without a queue row once its original retention period has elapsed.
 

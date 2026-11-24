@@ -11,6 +11,7 @@ import { channelStatements } from "./views/channels.ts";
 import { connectionStatements } from "./views/connections.ts";
 import { devicePlatform, deviceScoped } from "./views/device.ts";
 import { eventStatements } from "./views/events.ts";
+import { exportStatements } from "./views/jobs/exports.ts";
 import { grantStatements } from "./views/grants.ts";
 import { invitationStatements } from "./views/invitations.ts";
 import { backfillPlatformStatements, backfillStatements } from "./views/jobs/backfill-board-org.ts";
@@ -44,6 +45,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...devicePlatform,
   ...deviceScoped,
   ...eventStatements,
+  ...exportStatements,
   ...grantStatements,
   ...invitationStatements,
   ...backfillPlatformStatements,

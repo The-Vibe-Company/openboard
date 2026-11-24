@@ -37,6 +37,7 @@ import type { BoardJobWriter, JobLease, Jobs } from "./jobs.ts";
 import type { OidcKeyStore } from "./oidc-keys.ts";
 import type { OperatorReads, OperatorWrites } from "./operator.ts";
 import type { OrgAuditRecord } from "./org-audit-record.ts";
+import type { OrgExports } from "./org/exports.ts";
 import type { BoardTaskReads, BoardTaskWriter } from "./tasks.ts";
 import type { BoardKeys, BoardScope, OrgScope } from "./tenant-scope.ts";
 import type { BoardWatcherReads, BoardWatcherWriter } from "./watchers.ts";
@@ -70,7 +71,7 @@ interface RateView {
   takeRate(key: string, limit: number, windowMs: number, now: number): Promise<number | undefined>;
 }
 
-export interface OrgView extends RateView, OrgLogMaintenance {
+export interface OrgView extends RateView, OrgLogMaintenance, OrgExports {
   /** Consume a backfill lease and fill one batch under the board lock. */
   backfillBoardOrgIds(boardId: number, jobId: string, lease: JobLease, now: number): Promise<boolean>;
   deleteOrg(personId: string, at: number, admit?: () => void): Promise<DeletedOrg>;
