@@ -26,7 +26,7 @@ describe("labeling a message", () => {
     const labeled = await call(app, "POST", "/messages/2/labels", { set: { status: "done", owner: "me" } });
     expect([labeled.status, await labeled.json()]).toEqual([200, { ok: true }]);
     const after = await root();
-    expect(after).toMatchObject({ labels: { status: "done", repo: "web", owner: "me" }, revision: 0, version: 3 });
+    expect(after).toMatchObject({ labels: { status: "done", repo: "web", owner: "me" }, revision: 1, version: 3 });
     expect(after.version).toBeGreaterThan(before.version);
     const listed = (await (await call(app, "GET", "/messages?channel=dev")).json()) as { messages: unknown[] };
     expect(listed.messages).toEqual([after]);
@@ -97,7 +97,7 @@ describe("unsetting a label", () => {
     const unset = await call(app, "POST", "/messages/2/labels", { unset: ["status", "missing"] });
     expect([unset.status, await unset.json()]).toEqual([200, { ok: true }]);
     const after = await root();
-    expect(after).toMatchObject({ labels: { repo: "web" }, revision: 0 });
+    expect(after).toMatchObject({ labels: { repo: "web" }, revision: 1 });
     expect(after.version).toBeGreaterThan(before.version);
     const found = (await (await call(app, "GET", "/threads?channel=dev&label=status")).json()) as { threads: [] };
     expect(found.threads).toEqual([]);

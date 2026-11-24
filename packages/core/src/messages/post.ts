@@ -182,7 +182,7 @@ export function messageView(event: MessagePosted): Message {
     attachments: [],
     links: [],
     version: event.id,
-    revision: 0,
+    revision: 1,
     author: payload.author ?? null,
     blocks: [],
   };

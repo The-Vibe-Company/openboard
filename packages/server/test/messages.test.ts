@@ -32,7 +32,7 @@ describe("posting a first message on the local board", () => {
       by: { actor: LOCAL_OWNER, principal: LOCAL_OWNER, profile: null },
       createdAt: "2023-11-14T22:13:20.000Z",
       version: 2,
-      revision: 0,
+      revision: 1,
     });
   });
 
@@ -416,7 +416,7 @@ describe("editing a message", () => {
       text: "new text",
       createdAt: "2023-11-14T22:13:20.000Z",
       editedAt: "2023-11-14T22:13:20.000Z",
-      revision: 1,
+      revision: 2,
       version: 4,
     };
     expect(await thread.json()).toMatchObject({ replies: [expected] });
@@ -431,28 +431,28 @@ describe("editing a message", () => {
     app = makeApp();
     await call(app, "POST", "/messages", { channel: "dev", text: "original" });
     const attempts = await Promise.all(
-      ["first", "second"].map((text) => answer(call(app, "POST", "/messages/2/edit", { text, revision: 0 }))),
+      ["first", "second"].map((text) => answer(call(app, "POST", "/messages/2/edit", { text, revision: 1 }))),
     );
     expect(attempts.map(({ status }) => status).sort()).toEqual([200, 409]);
     expect(attempts.find(({ status }) => status === 409)?.body.error.code).toBe("revision_conflict");
     const text = attempts[0]?.status === 200 ? "first" : "second";
 
-    const stale = await answer(call(app, "POST", "/messages/2/delete", { revision: 0 }));
+    const stale = await answer(call(app, "POST", "/messages/2/delete", { revision: 1 }));
     expect([stale.status, stale.body.error.code]).toEqual([409, "revision_conflict"]);
     expect(await (await call(app, "GET", "/messages/2")).json()).toMatchObject({
-      message: { text, deleted: false, revision: 1, version: 3 },
+      message: { text, deleted: false, revision: 2, version: 3 },
     });
     expect(await (await call(app, "GET", "/events?after=3")).json()).toMatchObject({ cursor: "3", events: [] });
 
-    const deleted = await call(app, "POST", "/messages/2/delete", { revision: 1 });
+    const deleted = await call(app, "POST", "/messages/2/delete", { revision: 2 });
     expect(deleted.status).toBe(200);
-    const staleEdit = await answer(call(app, "POST", "/messages/2/edit", { text: "late", revision: 1 }));
-    const staleDelete = await answer(call(app, "POST", "/messages/2/delete", { revision: 1 }));
+    const staleEdit = await answer(call(app, "POST", "/messages/2/edit", { text: "late", revision: 2 }));
+    const staleDelete = await answer(call(app, "POST", "/messages/2/delete", { revision: 2 }));
     for (const { status, body } of [staleEdit, staleDelete]) {
       expect([status, body.error.code]).toEqual([409, "revision_conflict"]);
     }
     expect(await (await call(app, "GET", "/messages/2")).json()).toMatchObject({
-      message: { text: "", deleted: true, revision: 2, version: 4 },
+      message: { text: "", deleted: true, revision: 3, version: 4 },
     });
   });
 
@@ -488,7 +488,7 @@ describe("deleting a message", () => {
     expect(after.status).toBe(200);
     expect(await after.json()).toMatchObject({ threads: [] });
 
-    const tombstone = { id: "2", text: "", deleted: true, labels: {}, revision: 1, version: 4 };
+    const tombstone = { id: "2", text: "", deleted: true, labels: {}, revision: 2, version: 4 };
     const thread = await answer(call(app, "GET", "/messages/2"));
     expect(thread.body).toMatchObject({ message: tombstone, replies: [reply] });
     expect(thread.body.message.labels).toEqual({});
@@ -546,7 +546,7 @@ describe("reacting to a message", () => {
     expect((await reactAs("bot", "eyes")).status).toBe(200);
     const bot = `${LOCAL_OWNER}+bot`;
     expect(await (await call(app, "GET", "/messages/2")).json()).toMatchObject({
-      message: { reactions: { eyes: [LOCAL_OWNER, bot], thumbs_up: [bot] }, revision: 0, version: 6 },
+      message: { reactions: { eyes: [LOCAL_OWNER, bot], thumbs_up: [bot] }, revision: 1, version: 6 },
     });
   });
 
@@ -560,7 +560,7 @@ describe("reacting to a message", () => {
       const response = await call(app, "POST", "/messages/2/reactions", { emoji: "eyes", remove: true });
       expect([response.status, await response.json()]).toEqual([200, { ok: true }]);
       expect(await (await call(app, "GET", "/messages/2")).json()).toMatchObject({
-        message: { reactions: { eyes: [`${LOCAL_OWNER}+bot`] }, revision: 0, version: 6 },
+        message: { reactions: { eyes: [`${LOCAL_OWNER}+bot`] }, revision: 1, version: 6 },
       });
     }
   });

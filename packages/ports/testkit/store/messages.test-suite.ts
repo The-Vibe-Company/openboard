@@ -252,12 +252,12 @@ function editMessageSuite(open: OpenStore) {
       const { events } = await board.readEvents(1);
       const edits = events.filter((event) => event.type === "message.edited");
       expect(edits.map(({ payload: { view } }) => [view.revision, view.version])).toEqual([
-        [1, 2],
-        [2, 3],
+        [2, 2],
+        [3, 3],
       ]);
       const stored = await board.channelMessages({ channel: "dev", limit: 50 });
       expect(stored?.[0]).toEqual(edits[1]?.payload.view);
-      expect(stored?.[0]).toMatchObject({ id: original.id, createdAt: original.createdAt, revision: 2 });
+      expect(stored?.[0]).toMatchObject({ id: original.id, createdAt: original.createdAt, revision: 3 });
     });
   });
 }
@@ -311,7 +311,7 @@ function reactionSuite(open: OpenStore) {
       await Promise.all([react("ob:user:a"), react("ob:user:b")]);
       const [stored] = (await board.channelMessages({ channel: "dev", limit: 50 })) ?? [];
       expect(stored?.reactions.eyes?.toSorted()).toEqual(["ob:user:a", "ob:user:b"]);
-      expect(stored).toMatchObject({ version: 3, revision: 0 });
+      expect(stored).toMatchObject({ version: 3, revision: 1 });
       expect((await board.thread(1))?.message).toEqual(stored);
     });
   });
@@ -330,7 +330,7 @@ function labelWriteSuite(open: OpenStore) {
         });
       await Promise.all([label({ status: "done" }), label({ owner: "a" })]);
       const [stored] = (await board.channelMessages({ channel: "dev", limit: 50 })) ?? [];
-      expect(stored).toMatchObject({ labels: { status: "done", owner: "a" }, version: 3, revision: 0 });
+      expect(stored).toMatchObject({ labels: { status: "done", owner: "a" }, version: 3, revision: 1 });
       expect((await board.thread(1))?.message).toEqual(stored);
     });
 
