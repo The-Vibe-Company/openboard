@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": ".",
+    "outDir": "../../.tsbuild/examples/remote-routine",
+    "types": ["bun"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "webhook.json"],
+  "references": [
+    { "path": "../../packages/driver-sqlite" },
+    { "path": "../../packages/server" },
+    { "path": "../../packages/sdk" }
+  ]
+}

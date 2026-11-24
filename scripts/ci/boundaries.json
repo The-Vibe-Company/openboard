@@ -62,7 +62,8 @@
     },
     "examples/webhook-receiver": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] },
     "examples/chat-bridge": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] },
-    "examples/sandboxed-agent": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] }
+    "examples/sandboxed-agent": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] },
+    "examples/remote-routine": { "may": ["sdk", "cli"], "external": ["bun", "node:*"] }
   },
   "drivers": {
     "$comment": "docs/codebase.md 3.1 universal rules: a driver is imported only by these composition roots and by its own workspace (its tests), with exact CI-only imports listed separately.",
