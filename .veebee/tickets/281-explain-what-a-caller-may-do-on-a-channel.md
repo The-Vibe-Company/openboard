@@ -25,7 +25,7 @@ writes:
   - docs/codebase.md
 conformance: ["grants/lets the most specific pattern decide, then the closest principal there, and adds up ties"]
 modes: [local, hosted]
-depends_on: [280, 213, 214]
+depends_on: [280, 213]
 status: draft
 claimed_by: null
 issue: 456
@@ -45,3 +45,5 @@ As a board owner or an agent, I ask why someone may or may not act on a channel,
 ## Notes
 - Upstream `GET /grants/explain` (query `channel`, and for someone else `user`, `project` and `environment`, `github` and `workflow`, `branch`, `event`, `oidc` and `claim=name=value`, `app`) and `Explanation` in `@vercel/board`; `docs/01-board/09-access.md` "How grants combine". Explain lives in its own files (`contract/operations/explain.ts`, `server/operations/explain.ts`, `core/access/explain.ts`, `cli/commands/explain.ts`) so 295 changes it while 282-289 change grants.
 - **Proposal for the owner: a second conformance run.** Upstream's grant checks keep their run inside a pattern they close with a grant naming the run itself (`self()` in `@vercel/board`'s `dist/conformance-*.mjs`), which can name a person, a project or an app, never a connection: with D43's connection, the checks recorded by 281, 282, 285, 288 and 289 are skipped ("closing a pattern to everyone would close it to this run too…"). A run as the owner skips the lockout check instead (284). Proposed: run the kit twice in `tools/conformance/src/run.ts`, the second run counted only where the first skipped, so no recorded check can be lost to it; record a decision amending D43 in docs/decisions.md and update docs/auth.md "The credential that runs conformance" and docs/codebase.md 6.3. Until the owner agrees, stop with `needs-decision`: without it M10's "10 pass" cannot be met. Depends on 213 and 214, the last tickets before it to change `tools/conformance/src/run.ts` (through 192), docs/codebase.md and docs/auth.md.
+
+No longer waits for 214 (orchestrator, 2026-11-24): it only ordered edits to `tools/conformance/src/run.ts` and the docs; whichever lands second rebases. The second conformance run proposed above is approved (orchestrator, for the owner): it counts only checks the first run skipped, so no recorded check can be lost; record the decision amending D43 as proposed and go ahead without `needs-decision`.
