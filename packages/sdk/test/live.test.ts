@@ -1,5 +1,5 @@
 import { expect, mock, test } from "bun:test";
-import { BoardError, type BoardEvent, tail } from "../src/index.ts";
+import { BoardError, type BoardEvent, retryDelayMs, tail } from "../src/index.ts";
 
 const url = "http://127.0.0.1:8787/api/local/main";
 const token = "fixture";
@@ -265,4 +265,11 @@ test("aborting while the stream is open ends the tail quietly", async () => {
   await Promise.resolve();
   abort.abort();
   expect((await next).done).toBe(true);
+});
+
+test("reconnect delays double from 250 ms to 10 s with jitter between half and all of each step", () => {
+  expect([0, 1, 2, 3, 6, 20].map((attempt) => retryDelayMs(attempt, () => 1))).toEqual([
+    250, 500, 1000, 2000, 10000, 10000,
+  ]);
+  expect([0, 1, 6].map((attempt) => retryDelayMs(attempt, () => 0))).toEqual([125, 250, 5000]);
 });
