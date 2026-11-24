@@ -1,0 +1,3 @@
+[test]
+# Playwright owns the browser specs.
+pathIgnorePatterns = ["**/apps/web/e2e/**"]

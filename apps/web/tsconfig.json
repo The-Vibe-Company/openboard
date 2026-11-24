@@ -3,7 +3,29 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": ".",
-    "outDir": "../../.tsbuild/apps/web"
+    "outDir": "../../.tsbuild/apps/web",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["bun", "vite/client"],
+    "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "test/**/*.ts",
+    "test/**/*.tsx",
+    "vite.config.ts",
+    "playwright.config.ts",
+    "e2e/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../../packages/sdk"
+    },
+    {
+      "path": "../../packages/server"
+    },
+    {
+      "path": "../../packages/driver-sqlite"
+    }
+  ]
 }

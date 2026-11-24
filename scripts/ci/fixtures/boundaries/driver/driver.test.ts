@@ -8,7 +8,7 @@ import { checkBoundaries, findWorkspaces, loadConfig } from "../../../boundaries
 const config = await loadConfig(join(import.meta.dir, "../../../boundaries.json"));
 const roots: string[] = [];
 const ROOTS =
-  "apps/openboard/src/compose.ts, packages/server/test/support/drivers.ts, tools/conformance/src/drivers.ts, tools/bench/src/drivers.ts";
+  "apps/openboard/src/compose.ts, apps/web/e2e/support/serve.ts, packages/server/test/support/drivers.ts, tools/conformance/src/drivers.ts, tools/bench/src/drivers.ts";
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
@@ -23,6 +23,7 @@ async function sandbox(files: Record<string, string>): Promise<string> {
     "packages/driver-sqlite": "@openboard/driver-sqlite",
     "packages/driver-postgres": "@openboard/driver-postgres",
     "apps/openboard": "openboard",
+    "apps/web": "@openboard/web",
     "tools/conformance": "@openboard/conformance",
     "tools/bench": "@openboard/bench",
   };
@@ -78,6 +79,7 @@ test("refuses a driver import from a file that is not the root, even in a worksp
 test("accepts a driver import in each composition root and in the driver's own workspace", async () => {
   const files = await fixtures("allowed", [
     "apps/openboard/src/compose.ts",
+    "apps/web/e2e/support/serve.ts",
     "packages/server/test/support/drivers.ts",
     "tools/conformance/src/drivers.ts",
     "tools/bench/src/drivers.ts",

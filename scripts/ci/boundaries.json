@@ -24,6 +24,10 @@
     },
     "apps/web": {
       "may": ["sdk", "contract"],
+      "external": ["vite", "@vitejs/plugin-react", "@tanstack/router-plugin", "@playwright/test"]
+    },
+    "apps/web/src": {
+      "may": ["sdk", "contract"],
       "external": [
         "react",
         "react-dom",
@@ -32,6 +36,11 @@
         "@tanstack/react-virtual",
         "geist"
       ]
+    },
+    "apps/web/e2e": { "may": [], "external": ["@playwright/test"] },
+    "apps/web/e2e/support": {
+      "may": ["server", "driver-sqlite"],
+      "external": ["@playwright/test", "bun", "node:fs", "node:os", "node:path"]
     },
     "tools/conformance": {
       "may": ["server", "ports", "driver-sqlite", "driver-postgres", "contract"],
@@ -48,6 +57,7 @@
     "ciImports": { "scripts/ci/migrations.ts": "@openboard/driver-sqlite/ddl" },
     "compositionRoots": [
       "apps/openboard/src/compose.ts",
+      "apps/web/e2e/support/serve.ts",
       "packages/server/test/support/drivers.ts",
       "tools/conformance/src/drivers.ts",
       "tools/bench/src/drivers.ts"

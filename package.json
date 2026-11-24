@@ -24,7 +24,11 @@
     "conformance": "bun tools/conformance/src/run.ts",
     "bench": "bun tools/bench/src/run.ts",
     "build": "bun scripts/build/index.ts",
-    "ob": "bun apps/openboard/src/main.ts"
+    "ob": "bun apps/openboard/src/main.ts",
+    "dev": "bun run --parallel dev:api dev:web",
+    "e2e": "bun run --cwd apps/web e2e",
+    "dev:api": "PORT=8787 OPENBOARD_PUBLIC_URL=http://localhost:5173 bun apps/openboard/src/main.ts serve",
+    "dev:web": "bun run --cwd apps/web dev"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

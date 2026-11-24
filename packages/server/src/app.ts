@@ -6,6 +6,7 @@ import { readinessCheck } from "./http/health.ts";
 import { handle, type Pipeline } from "./http/pipeline.ts";
 import { routeTable } from "./http/router.ts";
 import { tenants } from "./http/scope.ts";
+import { staticFiles } from "./http/static.ts";
 import { type JobHandler, startJobs } from "./jobs/registry.ts";
 
 export const DRAIN_TIMEOUT_MS = 10_000;
@@ -31,6 +32,7 @@ export function createApp(
   };
   const pipeline: Pipeline = {
     shutdown: shutdown.signal,
+    staticFiles: staticFiles(config.webDir),
     schemaReady: readinessCheck(() => ports.store.schemaReady()),
     track,
     config,
