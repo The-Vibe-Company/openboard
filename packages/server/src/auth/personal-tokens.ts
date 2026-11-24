@@ -1,9 +1,10 @@
 import { BoardError } from "@openboard/contract";
-import { credentialExpiry, credentialKind, memberOf } from "../deps.ts";
+import { grants } from "@openboard/core";
+import { callerCan, credentialExpiry, credentialKind, memberOf } from "../deps.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { bearer, hashToken } from "./secrets.ts";
 
-/** A personal token inherits the holder's current membership and is scoped by the board's view. */
+/** A personal token inherits the holder's current membership, and the role-capped `can` it gives, scoped by the board's view. */
 export function personalTokenVerifier(now: () => number): CredentialVerifier {
   return {
     name: "personal",
@@ -25,6 +26,7 @@ export function personalTokenVerifier(now: () => number): CredentialVerifier {
         [credentialKind]: "personal",
         [credentialExpiry]: expiresAt,
         [memberOf]: { handle, name, avatar, ...member },
+        [callerCan]: grants.allUsersCan(member.role),
       };
     },
   };

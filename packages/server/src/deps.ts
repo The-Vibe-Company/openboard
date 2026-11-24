@@ -48,8 +48,13 @@ export type Principal = Author & {
   readonly [connectionOf]?: ConnectionIdentity;
   /** The agent an `obt_` token was claimed as, `ag_…`. */
   readonly [agentOf]?: string;
-  /** What an `obt_` token was claimed for: every request it makes stays inside it (docs/auth.md "Pinned narrowing"). */
-  readonly [pinnedCan]?: Can;
+  /**
+   * The `can` the caller acts under, which every request it makes stays inside: an `obt_` token's pinned can
+   * (docs/auth.md "Pinned narrowing"), an `obc_` connection's grant, a member's role-capped `*` grant (session or
+   * `obp_` personal token). Only the local owner carries none, and may do everything; any other caller without one
+   * may do nothing.
+   */
+  readonly [callerCan]?: Can;
   /** A profile's name as the caller spelled it, which is how it is shown; `profile` is its lowercase. */
   readonly [profileName]?: string;
   readonly [profileAvatar]?: string | null;
@@ -80,7 +85,7 @@ export const credentialKind = Symbol("credential kind");
 export const credentialExpiry = Symbol("credential expiry");
 export const connectionOf = Symbol("connection");
 export const agentOf = Symbol("agent");
-export const pinnedCan = Symbol("pinned can");
+export const callerCan = Symbol("caller can");
 export const profileName = Symbol("profile name");
 export const profileAvatar = Symbol("profile avatar");
 export const tokenHashOf = Symbol("token hash");
