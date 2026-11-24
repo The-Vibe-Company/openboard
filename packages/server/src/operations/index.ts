@@ -8,7 +8,7 @@ import type {
   SignInProvider,
   startDeviceSignIn,
 } from "@openboard/contract";
-import type { BoardView, OrgView, PersonRecord, PlatformView } from "@openboard/ports";
+import type { BoardView, Bucket, OrgView, PersonRecord, PlatformView } from "@openboard/ports";
 import type { Session } from "../auth/sessions.ts";
 import type { Deps, Principal } from "../deps.ts";
 import type { RequestLimits } from "../http/limits.ts";
@@ -39,6 +39,7 @@ import {
   rotateConnectionHandler,
 } from "./connections.ts";
 import { discoverBoardHandler, getOpenApiHandler } from "./discovery.ts";
+import { downloadOrgExportHandler, getOrgExportHandler, requestOrgExportHandler } from "./org/exports.ts";
 import { readEventsHandler } from "./events.ts";
 import { createGrantHandler } from "./grants/create.ts";
 import { explainGrantsHandler } from "./grants/explain.ts";
@@ -129,9 +130,10 @@ export interface AccountContext extends RequestLimits {
 }
 
 export interface OrgContext extends RequestLimits {
+  readonly bucket: Bucket | undefined;
   readonly debitWrite: () => void;
   readonly org: OrgView;
-  readonly person: PersonRecord;
+  readonly person: Pick<PersonRecord, "id" | "handle" | "name" | "avatar">;
   readonly now: () => number;
   readonly publicUrl: string;
   readonly randomBytes: (length: number) => Uint8Array;
@@ -191,18 +193,20 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   claimTask: claimTaskHandler,
   completeTask: completeTaskHandler,
   createBoard: createBoardHandler,
-  deleteBoard: deleteBoardHandler,
   createChannel: createChannelHandler,
   createConnection: createConnectionHandler,
   createGrant: createGrantHandler,
   createInvitation: createInvitationHandler,
   createOrg: createOrgHandler,
-  deleteOrg: deleteOrgHandler,
   createSchema: createSchemaHandler,
   createTask: createTaskHandler,
+  deleteBoard: deleteBoardHandler,
   deleteMessage: deleteMessageHandler,
+  deleteOrg: deleteOrgHandler,
   discoverBoard: discoverBoardHandler,
+  downloadOrgExport: downloadOrgExportHandler,
   editMessage: editMessageHandler,
+  explainGrants: explainGrantsHandler,
   findLinkedThread: findLinkedThreadHandler,
   findSync: findSyncHandler,
   getAccount: getAccountHandler,
@@ -210,6 +214,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   getConnection: getConnectionHandler,
   getMe: getMeHandler,
   getOpenApi: getOpenApiHandler,
+  getOrgExport: getOrgExportHandler,
   getSession: getSessionHandler,
   getSyncThread: getSyncThreadHandler,
   importSync: importSyncHandler,
@@ -221,7 +226,6 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listChannels: listChannelsHandler,
   listConnections: listConnectionsHandler,
   listGrants: listGrantsHandler,
-  explainGrants: explainGrantsHandler,
   listMembers: listMembersHandler,
   listMessages: listMessagesHandler,
   listPersonalTokens: listPersonalTokensHandler,
@@ -250,9 +254,10 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   recordSyncReceipt: recordSyncReceiptHandler,
   refreshAgentToken: refreshAgentTokenHandler,
   registerWatchers: registerWatchersHandler,
-  removeMember: removeMemberHandler,
   releaseTask: releaseTaskHandler,
+  removeMember: removeMemberHandler,
   renewTask: renewTaskHandler,
+  requestOrgExport: requestOrgExportHandler,
   revokeAgent: revokeAgentHandler,
   revokeAllSessions: revokeAllSessionsHandler,
   revokeConnection: revokeConnectionHandler,

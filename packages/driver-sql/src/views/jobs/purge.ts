@@ -39,6 +39,8 @@ const orgDeletes = deletes(
     jobs: "id",
     memberships: "org_id, user_id",
     org_events: "org_id, id",
+    org_export_audit: "org_id, id",
+    org_exports: "org_id, id",
     personal_tokens: "id",
     shipping: "org_id, board_id",
     tenant_rate_counters: "key, window_start",
@@ -75,6 +77,7 @@ export const purgeStatements = {
   purge_lock_org: sql`SELECT o.deleted_at FROM orgs o JOIN boards b ON b.org_id = o.id
     WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"}${lockOrg}`,
   purge_lock_boards: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} ORDER BY id${forUpdate}`,
+  purge_check_exports: sql`SELECT 1 FROM org_exports WHERE org_id = ${"orgId"} LIMIT 1`,
   purge_check_shipping: sql`SELECT 1 FROM shipping WHERE org_id = ${"orgId"} LIMIT 1`,
   purge_boards: deleteBatch("boards", "id", "org"),
   markPurgeStarted: sql`UPDATE jobs SET payload = ${"payload"}
@@ -142,8 +145,10 @@ export function purgeOrgView(
         const finishedAt = deleteBackup ? jobs.now() : now;
         const payload = await writer.takeJob(id, lease, finishedAt);
         if (!payload || org.deleted_at == null || Number(org.deleted_at) !== payload.deletedAt) return false;
-        if (!deleteBackup && (await query(tx, dialect, purgeStatements.purge_check_shipping, keys)).length) {
-          throw new Error("Backup bucket required to purge shipped logs");
+        if (!deleteBackup) {
+          const shipped = await query(tx, dialect, purgeStatements.purge_check_shipping, keys);
+          const exports = await query(tx, dialect, purgeStatements.purge_check_exports, keys);
+          if (shipped.length || exports.length) throw new Error("Backup bucket required to purge backups");
         }
         await query(tx, dialect, purgeStatements.markPurgeComplete, { ...keys, now: finishedAt });
         await removeRows(tx, dialect, orgId, boards);

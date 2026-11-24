@@ -81,6 +81,10 @@ if (url) {
           {
             async put() {},
             async *list() {},
+            async read() {
+              return null;
+            },
+            async delete() {},
             async deletePrefix() {},
             async putStream(_key, stream) {
               const restore = Bun.spawn([pgRestore, `--dbname=${restored}`, "--exit-on-error"], {

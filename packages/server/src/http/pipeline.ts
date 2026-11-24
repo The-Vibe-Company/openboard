@@ -1,8 +1,9 @@
 import { BoardError, decodeInput, type operations, type previewInvitation, type RawInput } from "@openboard/contract";
-import type { BoardView, PlatformView, RateLimits } from "@openboard/ports";
+import type { BoardView, Bucket, PlatformView, RateLimits } from "@openboard/ports";
 import { keepInsideCan, narrowCaller } from "../auth/access.ts";
 import { authenticate, type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
+import { bearer, hashToken } from "../auth/secrets.ts";
 import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, ServerConfig } from "../deps.ts";
@@ -26,6 +27,7 @@ type Contracted = (typeof operations)[number];
 type Params = Readonly<Record<string, string>>;
 
 export interface Pipeline {
+  readonly bucket: Bucket | undefined;
   readonly shutdown: AbortSignal;
   readonly staticFiles: (request: Request, path: string) => Promise<Response> | undefined;
   readonly schemaReady: () => Promise<boolean>;
@@ -120,6 +122,18 @@ async function runAccount(
   return response;
 }
 
+async function exportTokenPerson(request: Request, slug: string, pipeline: Pipeline, at: number) {
+  const token = bearer(request);
+  if (!token || !/^obp_[a-z2-7]{16}_[A-Za-z0-9_-]{43}$/.test(token)) {
+    throw new BoardError("unauthorized", "a personal token is required");
+  }
+  const board = await pipeline.tenants.board({ org: slug, board: "main", mount: "", rest: "" }, async () => false);
+  const person = await board.personalToken(hashToken(token), at);
+  if (!person) throw notFound();
+  if (person === "inactive") throw new BoardError("unauthorized", "the personal token is inactive");
+  return person;
+}
+
 /**
  * An `org` operation: the browser's session is the person, who must belong to the organization the path names (404
  * otherwise, as for an unknown one, before any CSRF proof is asked). Reading (`access.permission` `read`) takes any
@@ -135,11 +149,17 @@ async function runOrg(
   const { config, deps, platform } = pipeline;
   const at = deps.now();
   const live = await liveSession(request, platform, at);
-  if (!live) throw new BoardError("unauthorized", "sign in first");
-  const resolve = operation.access?.permission === "read" ? pipeline.tenants.memberOrg : pipeline.tenants.adminOrg;
   const slug = params.org ?? "";
-  const org = await resolve(slug, live.record.person.id);
-  const session = await proveSession(request, live, platform, at, config.publicUrl);
+  const by =
+    live?.record.person ?? (operation.orgPersonalToken ? await exportTokenPerson(request, slug, pipeline, at) : null);
+  if (!by) throw new BoardError("unauthorized", "sign in first");
+  const resolve = operation.orgPersonalToken
+    ? pipeline.tenants.ownerOrg
+    : operation.access?.permission === "read"
+      ? pipeline.tenants.memberOrg
+      : pipeline.tenants.adminOrg;
+  const org = await resolve(slug, by.id);
+  if (live) await proveSession(request, live, platform, at, config.publicUrl);
   const input = validate(operation, {
     params,
     query: readQuery(operation, url.searchParams),
@@ -151,7 +171,8 @@ async function runOrg(
     {
       org,
       debitWrite,
-      person: session.person,
+      bucket: pipeline.bucket,
+      person: by,
       now,
       randomBytes,
       publicUrl: config.publicUrl,

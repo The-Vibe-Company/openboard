@@ -58,6 +58,10 @@ if (postgresTestUrl()) {
         async *list(prefix) {
           for (const { key } of writes) if (key.startsWith(prefix)) yield key;
         },
+        async read() {
+          return null;
+        },
+        async delete() {},
         async deletePrefix() {},
         async putStream(key, stream) {
           const archive = await new Response(stream).bytes();

@@ -17,6 +17,13 @@ export function backupBucket(config: BackupConfig, now: () => number): NonNullab
   }
 
   return {
+    async read(key) {
+      const file = client.file(key);
+      return (await file.exists()) ? file.stream() : null;
+    },
+    async delete(key) {
+      await client.delete(key);
+    },
     async put(key, bytes, deadline) {
       const remaining = Math.min(5_000, deadline - now());
       const expiresIn = Math.floor(remaining / 1_000);

@@ -4,7 +4,17 @@ import { orgPrefix } from "./ship-log.ts";
 
 const purgeOrg: OrgJobHandler = {
   run: (org, job, lease, now, bucket) =>
-    org.purgeOrg(job.boardId, job.id, lease, now, bucket && (() => bucket.deletePrefix(orgPrefix(job.orgId)))),
+    org.purgeOrg(
+      job.boardId,
+      job.id,
+      lease,
+      now,
+      bucket &&
+        (async () => {
+          await bucket.deletePrefix(orgPrefix(job.orgId));
+          await bucket.deletePrefix(`exports/${job.orgId}/`);
+        }),
+    ),
 };
 
 export const maintenanceJobs: JobHandlers = Object.freeze({

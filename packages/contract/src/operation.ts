@@ -14,6 +14,7 @@ export type RefKind =
   | "grant"
   | "schema"
   | "file"
+  | "export"
   | "schedule"
   | "webhook"
   | "watcherMatch"
@@ -85,12 +86,13 @@ export type Operation<
   readonly bodyDefaults?: false;
   readonly output: O;
   /** The success media type for a raw string body. Defaults to JSON. */
-  readonly responseType?: "image/svg+xml";
+  readonly responseType?: "image/svg+xml" | "application/gzip";
+  readonly orgPersonalToken?: true;
   readonly invalidInputCode?: ErrorCode;
   /** Optional alternate HTTP representation, negotiated through Accept. */
   readonly eventStream?: "text/event-stream";
   /** The success status, or the boolean output field that distinguishes 201 from 200. */
-  readonly status?: 200 | 201 | { readonly createdWhen: string };
+  readonly status?: 200 | 201 | 202 | { readonly createdWhen: string };
   readonly errors: readonly ErrorCode[];
   readonly access: {
     readonly permission: "read" | "post" | "react" | "label" | "sync" | "manage";

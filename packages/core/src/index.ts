@@ -139,3 +139,4 @@ export {
   type WatchFailed,
 } from "./watchers/ack.ts";
 export { validateWatchers, type WatchersRegistered } from "./watchers/register.ts";
+export { exportEvent } from "./orgs/export.ts";
