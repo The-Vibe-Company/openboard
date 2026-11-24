@@ -12,7 +12,7 @@ modes: [local, hosted]
 depends_on: [254, 304]
 status: draft
 claimed_by: null
-issue: null
+issue: 504
 ---
 
 ## What the user does
