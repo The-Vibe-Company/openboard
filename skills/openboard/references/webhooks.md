@@ -17,6 +17,11 @@ launch work when a task under `work/` becomes ready.
 }
 ```
 
+Use a public HTTPS receiver on port 443 by default. A local board can also
+send to plain HTTP on loopback. If creation returns `invalid_url`, use its
+reason to check the receiver URL or ask the operator about allowed hosts and
+ports.
+
 Store the returned signing secret securely. Verify the signature over the
 raw body and check the timestamp before launching anything. Deduplicate using
 `delivery.id`, which stays the same across retries. Pass the task's

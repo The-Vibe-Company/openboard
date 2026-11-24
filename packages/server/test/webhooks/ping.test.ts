@@ -17,7 +17,7 @@ async function json<T>(response: Promise<Response>, status: number): Promise<T> 
   return (await result.json()) as T;
 }
 
-function setup(status: number | null) {
+function setup(status: number | null, resolveHost?: (host: string) => Promise<string[]>) {
   let now = NOW;
   const store = openSnapshotStore(() => now);
   const requests: Request[] = [];
@@ -31,7 +31,8 @@ function setup(status: number | null) {
       wakes.push(wake);
       return () => {};
     },
-    fetch: async (request) => {
+    ...(resolveHost && { resolveHost }),
+    webhookFetch: async (request) => {
       now += 12;
       requests.push(request);
       if (status === null) throw new Error("connection refused");
@@ -126,6 +127,27 @@ test("returns not_found for a deleted or unknown webhook", async () => {
     }
     expect(requests).toHaveLength(0);
     expect(await rows()).toHaveLength(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test("rechecks the target before pinging and does not connect after DNS changes to a private address", async () => {
+  let address = "8.8.8.8";
+  const { app, requests, rows } = setup(200, async () => [address]);
+  try {
+    const { webhook } = await json<OutputOf<typeof createWebhook>>(
+      call(app, "POST", "/x/webhooks", { ...spec, url: "https://receiver.example/hook" }),
+      201,
+    );
+    address = "10.0.0.5";
+    const { delivery } = await json<OutputOf<typeof testWebhook>>(
+      call(app, "POST", `/x/webhooks/${webhook.id}/test`),
+      200,
+    );
+    expect(delivery).toMatchObject({ status: null, ok: false, error: "unreachable" });
+    expect(requests).toHaveLength(0);
+    expect(await rows()).toMatchObject([{ type: "board.ping", state: "dead", last_error: "invalid_url" }]);
   } finally {
     await app.close();
   }

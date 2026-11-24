@@ -125,6 +125,17 @@ export interface ErrorSpec {
 const REASONS: Partial<Record<ErrorCode, readonly string[]>> = {
   quota_exceeded: ["boards", "members", "connections", "webhooks", "stored_bytes", "daily_events"],
   invalid_request: ["invalid_channel"],
+  invalid_url: [
+    "syntax",
+    "credentials",
+    "fragment",
+    "scheme",
+    "port",
+    "service_host",
+    "reserved_host",
+    "dns",
+    "address",
+  ],
   invalid_grant: ["invalid_channel"],
   bad_watcher: ["invalid_channel"],
 };

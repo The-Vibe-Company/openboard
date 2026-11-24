@@ -4,6 +4,22 @@ title: Refuse a private or loopback webhook URL
 milestone: M11-webhooks-and-watchers
 package: server
 writes:
+  - apps/web/e2e/support/serve.ts
+  - apps/web/e2e/webhooks.spec.ts
+  - packages/server/test/webhooks/ping.test.ts
+  - packages/server/test/webhooks/sign-github.test.ts
+  - packages/server/test/webhooks/template.test.ts
+  - skills/openboard/references/webhooks.md
+  - packages/contract/src/errors.ts
+  - docs/protocol.md
+  - .veebee/tickets/305-refuse-a-private-or-loopback-webhook-url.md
+  - packages/server/src/public-host.ts
+  - packages/server/src/operations/index.ts
+  - packages/server/src/operations/webhooks/index.ts
+  - packages/server/src/jobs/webhooks.ts
+  - packages/server/src/webhooks/request.ts
+  - packages/server/test/support/app.ts
+  - packages/server/test/webhooks/deliver.test.ts
   - packages/server/src/webhooks/target.ts
   - packages/server/src/webhooks/send.ts
   - packages/server/test/webhooks/target.test.ts
@@ -16,8 +32,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [304]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 490
 ---
 
@@ -25,9 +41,9 @@ issue: 490
 As the operator of a shared instance, no tenant can make the board call an address inside our network, at creation or at any later attempt, while a tenant's public HTTPS receiver works.
 
 ## Done when
-- [ ] `bun test packages/server/test/webhooks/target.test.ts` passes in hosted mode: creating a webhook on `https://10.0.0.5/`, `https://169.254.169.254/`, `https://[::1]/`, `https://[::ffff:127.0.0.1]/`, `https://100.64.0.1/`, `https://x.internal/`, `https://x.railway.internal/`, the service's own public host, `http://` anything, a port other than 443, or a URL with credentials answers 400 `invalid_url` with the reason; `https://receiver.example/` whose fake DNS answers a public address is created and delivered to that address with TLS verified for the host name; a name that later resolves to `10.0.0.5` makes that attempt fail without connecting, and a `3xx` answer is not followed
-- [ ] the same file: `OPENBOARD_WEBHOOK_ALLOWED_HOSTS=hooks.corp` lets a private address through for that host only, `OPENBOARD_WEBHOOK_ALLOWED_PORTS=8443` allows that port, no request field can loosen the guard; in local mode a loopback `http` target still works and a private (RFC 1918) one is refused; a response body over 8 KB is read only to 8 KB
-- [ ] `openboard serve` with `OPENBOARD_WEBHOOK_ALLOWED_HOSTS=not a host` exits 2 naming the variable
+- [x] `bun test packages/server/test/webhooks/target.test.ts` passes in hosted mode: creating a webhook on `https://10.0.0.5/`, `https://169.254.169.254/`, `https://[::1]/`, `https://[::ffff:127.0.0.1]/`, `https://100.64.0.1/`, `https://x.internal/`, `https://x.railway.internal/`, the service's own public host, `http://` anything, a port other than 443, or a URL with credentials answers 400 `invalid_url` with the reason; `https://receiver.example/` whose fake DNS answers a public address is created and delivered to that address with TLS verified for the host name; a name that later resolves to `10.0.0.5` makes that attempt fail without connecting, and a `3xx` answer is not followed
+- [x] the same file: `OPENBOARD_WEBHOOK_ALLOWED_HOSTS=hooks.corp` lets a private address through for that host only, `OPENBOARD_WEBHOOK_ALLOWED_PORTS=8443` allows that port, no request field can loosen the guard; in local mode a loopback `http` target still works and a private (RFC 1918) one is refused; a response body over 8 KB is read only to 8 KB
+- [x] `openboard serve` with `OPENBOARD_WEBHOOK_ALLOWED_HOSTS=not a host` exits 2 naming the variable
 
 ## Out of scope
 - Per-organization delivery caps (324); anything about redirects of the board's own API (D8).

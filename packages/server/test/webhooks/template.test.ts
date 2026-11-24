@@ -23,7 +23,7 @@ function setup() {
       wakes.push(wake);
       return () => {};
     },
-    fetch: async (request) => {
+    webhookFetch: async (request) => {
       requests.push(request);
       return new Response(null, { status: 204 });
     },

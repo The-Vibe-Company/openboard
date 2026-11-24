@@ -57,8 +57,6 @@ export async function temporaryDataDir() {
   return { path, remove: () => rm(path, { recursive: true, force: true }) };
 }
 
-const webhookReceiverPath = "/test/webhook-receiver";
-
 interface ServeOptions {
   receiveWebhook?: (request: Request) => Promise<Response>;
   signup?: NonNullable<ServerConfig["signup"]>;
@@ -95,8 +93,8 @@ async function bootApp(url: string, path: string, mode: ServerConfig["mode"], op
         },
         log: { info() {}, error() {} },
         randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
-        fetch: (request) =>
-          receiveWebhook && request.url === url + webhookReceiverPath ? fetch(request) : fakeProvider(request),
+        fetch: fakeProvider,
+        ...(receiveWebhook && { webhookFetch: fetch }),
       },
     );
   } catch (error) {
@@ -113,10 +111,11 @@ export async function serve(options: ServeOptions = {}) {
   const apps: App[] = [];
   let next = 0;
   let server: Bun.Server<undefined> | undefined;
+  let receiver: Bun.Server<undefined> | undefined;
 
   async function stop() {
     try {
-      await server?.stop(true);
+      await Promise.all([server?.stop(true), receiver?.stop(true)]);
       const results = await Promise.allSettled(apps.map((app) => app.close()));
       for (const result of results) {
         if (result.status === "rejected") throw result.reason;
@@ -134,9 +133,6 @@ export async function serve(options: ServeOptions = {}) {
         const instance = next;
         next = (next + 1) % instances;
         const pathname = new URL(request.url).pathname;
-        if (receiveWebhook && pathname === webhookReceiverPath && request.method === "POST") {
-          return receiveWebhook(request);
-        }
         if (request.method === "GET" && pathname.endsWith("/events")) listener.timeout(request, 0);
         const app = apps[instance];
         const response = app ? await app.fetch(request) : new Response(null, { status: 503 });
@@ -151,10 +147,11 @@ export async function serve(options: ServeOptions = {}) {
       },
     });
     const url = `http://localhost:${server.port}`;
+    if (receiveWebhook) receiver = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: receiveWebhook });
     for (let i = 0; i < instances; i++) apps.push(await bootApp(url, storage.path, mode, options));
     return {
       url,
-      webhookReceiverUrl: url + webhookReceiverPath,
+      webhookReceiverUrl: receiver?.url.href,
       drain: async () => {
         await Promise.all(apps.map((app) => app.drain()));
       },

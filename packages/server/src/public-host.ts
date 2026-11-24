@@ -30,7 +30,7 @@ function publicV4(address: string): boolean {
   );
 }
 
-function publicAddress(address: string): boolean {
+export function publicAddress(address: string): boolean {
   if (!address.includes(":")) return publicV4(address);
   const canonical = URL.parse(`http://[${address}]`)?.hostname.slice(1, -1);
   if (!canonical) return false;

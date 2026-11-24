@@ -25,9 +25,9 @@ import {
 } from "../../auth/access.ts";
 import { callerCan } from "../../deps.ts";
 import { deliverWebhook } from "../../jobs/webhooks.ts";
-import { webhookPingRequest } from "../../webhooks/request.ts";
+import { signedWebhookRequest } from "../../webhooks/request.ts";
 import { sealWebhookSecret } from "../../webhooks/secret-box.ts";
-import { webhookTarget } from "../../webhooks/target.ts";
+import { webhookTarget, withDnsDeadline } from "../../webhooks/target.ts";
 import type { BoardContext, Handler } from "../index.ts";
 
 function canManage(ctx: BoardContext, channel: string | undefined) {
@@ -60,13 +60,13 @@ function audit(ctx: BoardContext, id: number, at: number) {
 }
 
 export const createWebhookHandler: Handler<typeof createWebhook> = async (ctx, spec) => {
-  const url = webhookTarget(spec.url, ctx.webhookConfig.mode);
   const { tail, signing, headers, publicHeaders, body } = validateWebhook(spec);
   requireManage(ctx, tail.channel);
   if (!ctx.webhookConfig.secretKey) {
     throw new BoardError("not_supported", "webhook signing is unavailable", { hint: "Set OPENBOARD_SECRET_KEY." });
   }
   ctx.debitWrite();
+  const { url } = await webhookTarget(spec.url, ctx.webhookConfig, withDnsDeadline(ctx.resolveHost, ctx.schedule));
   const now = ctx.now();
   const id = `wh_${base32(ctx.randomBytes(10))}`;
   const secretId = base32(ctx.randomBytes(10));
@@ -137,8 +137,8 @@ export const testWebhookHandler: Handler<typeof testWebhook> = async (ctx, { id 
     webhook: id,
     name: record.webhook.name,
   });
-  const { status, error } = await deliverWebhook(ctx.webhookConfig.secretKey, ctx, record, secret, (credentials) =>
-    webhookPingRequest(ctx.webhookConfig.mode, record.webhook, deliveryId, start, credentials, body),
+  const { status, error } = await deliverWebhook(ctx.webhookConfig, ctx, record, secret, (credentials) =>
+    signedWebhookRequest(record.webhook.signing.preset, deliveryId, start, credentials, body),
   );
   const now = ctx.now();
   const outcome = webhookOutcome(status);

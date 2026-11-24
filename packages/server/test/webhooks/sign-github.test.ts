@@ -25,7 +25,7 @@ test("signs the delivered bytes with the receiver's secret and omits it from cre
       wakes.push(wake);
       return () => {};
     },
-    fetch: async (request) => {
+    webhookFetch: async (request) => {
       requests.push(request);
       return new Response(null, { status: 204 });
     },

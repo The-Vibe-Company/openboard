@@ -197,10 +197,13 @@ options; people now have accounts, organizations, memberships, invitations.
   Requirement C needs the board to wake external code.
 - **Decision.** Webhook subscriptions call URLs configured at runtime, with:
   `manage` required at every pattern the filter can match, per-delivery
-  re-check of the creator's read access, an SSRF policy (https, public
-  addresses only, checked per attempt, no redirects), and a transactional
-  outbox with at-least-once delivery, per-thread ordering, backoff, dead
+  re-check of the creator's read access, an SSRF policy (HTTPS with a checked
+  public address by default, checked at creation and per attempt, no redirects),
+  and a transactional outbox with at-least-once delivery, per-thread ordering, backoff, dead
   letters.
+- **Local receivers.** Local mode also allows plain HTTP on loopback so a
+  receiver on the same machine works without configuration. Operators can
+  configure exact private HTTPS receiver hosts and additional HTTPS ports.
 - **Consequence.** A new attack surface we own (SSRF, exfiltration) and
   mitigate in [auth.md](./auth.md#ssrf-on-webhook-urls).
 
