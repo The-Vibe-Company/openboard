@@ -8,7 +8,7 @@ writes:
   - scripts/ci/skill-onboarding.test.ts
 conformance: []
 modes: [local, hosted]
-depends_on: [351]
+depends_on: [351, 265, 281]
 status: draft
 claimed_by: null
 issue: 537
@@ -26,3 +26,5 @@ As an agent given only the skill, a `BOARD_URL` and a secret, I first find out w
 
 ## Notes
 docs/auth.md "Agent UX" (`BOARD_URL`, `whoami`, `--as`) and "Three ways to connect"; 281 (`ob grants explain`), 265 (`ob tasks claim --next`). The test lives in `scripts/ci/` because `scripts/*` may import any workspace and the skill is not a workspace (docs/codebase.md 3.1).
+
+Waits for 265 (`ob tasks claim --next`) and 281 (`ob grants explain`) (orchestrator, 2026-11-24, #537): its walkthrough runs both commands for real.
