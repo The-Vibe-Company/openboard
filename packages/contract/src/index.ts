@@ -23,6 +23,7 @@ export {
   isErrorCode,
   type NextStep,
 } from "./errors.ts";
+export { principalFlags } from "./grant-display.ts";
 export { PROFILE_HEADER, type ProfileHeader, parseProfileHeader, RETIRED_HEADERS } from "./headers.ts";
 export {
   type CliSpec,
