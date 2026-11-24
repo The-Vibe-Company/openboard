@@ -148,6 +148,11 @@ const writerCases: Cases<BoardWriter> = {
     await inWrite(a, (writer) => writer.removeWebhookSecret(foreign));
     expect(await b.board.webhook(foreign.webhook.id)).toEqual(foreign);
   },
+  beginWebhookPing: async (a, b) => {
+    const [foreign] = await b.board.webhooks();
+    if (!foreign) throw new Error("missing foreign webhook");
+    await inWrite(a, async (writer) => expectNull(await writer.beginWebhookPing(foreign, "foreign-ping", at)));
+  },
   beginWebhookAttempt: (a) =>
     inWrite(a, async (writer) => expectNull(await writer.beginWebhookAttempt("missing", "fixture", at))),
   finishWebhookAttempt: (a) =>
@@ -541,7 +546,7 @@ export function isolationSuite(driver: string, open: OpenStore): void {
         if (["readExport", "auditExportDownload", "runExport", "exportAudit"].includes(method)) {
           await b.org.requestExport("foreign", b.personId, at, () => {});
         }
-        if (["webhooks", "webhook", "removeWebhookSecret"].includes(method)) {
+        if (["webhooks", "webhook", "removeWebhookSecret", "beginWebhookPing"].includes(method)) {
           await seedWebhook(b.board, b.marker, b.actor);
         }
         const before = await digestOf(b);

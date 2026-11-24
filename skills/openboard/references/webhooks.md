@@ -42,3 +42,6 @@ the agent. Task completion belongs to the agent holding the claim.
 
 See the protocol for [outbound delivery and signing](https://github.com/The-Vibe-Company/openboard/blob/main/docs/protocol.md#outbound-webhooks)
 and [inbound rules and verification](https://github.com/The-Vibe-Company/openboard/blob/main/docs/protocol.md#inbound-endpoints).
+
+Run `ob webhooks test <id>` to send a signed `board.ping` to the receiver and
+see its HTTP status and response time. Each command makes one attempt.

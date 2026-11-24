@@ -918,6 +918,28 @@ Example:
 ob webhooks
 ```
 
+## `ob webhooks test`
+
+Send a signed, single-attempt ping to a webhook receiver.
+
+```sh
+ob webhooks test <id>
+```
+
+Arguments:
+
+- `id`: A webhook ID.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob webhooks test id
+```
+
 ## `ob post`
 
 Post a message: a new thread in a channel, or a reply in the thread of any message `re` names.

@@ -22,8 +22,16 @@ export const deliveryStatements = {
   addDelivery: sql`INSERT INTO webhook_deliveries
     (org_id, board_id, id, webhook, event, thread, state, next_at, created_at, root_view)
     VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"webhook"}, ${"event"}, ${"thread"}, 'pending', ${"now"}, ${"now"}, ${"root"})`,
+  addPing: sql`INSERT INTO webhook_deliveries
+    (org_id, board_id, id, webhook, event, thread, type, state, attempt, next_at, created_at)
+    SELECT ${"orgId"}, ${"boardId"}, ${"id"}, id, NULL, NULL, 'board.ping', 'sending', 1, ${"now"}, ${"now"}
+    FROM webhooks
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"webhook"} AND secret_id = ${"secretId"}
+    RETURNING id`,
+  pingSecret: sql`SELECT ciphertext, key_version FROM webhook_secrets
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND webhook_id = ${"webhook"} AND id = ${"secretId"}`,
   beginDelivery: sql`UPDATE webhook_deliveries SET state = 'sending', attempt = attempt + 1, instance = ${"instance"}
-    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND state IN ('pending', 'sending')
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND event IS NOT NULL AND state IN ('pending', 'sending')
     RETURNING attempt`,
   deliveryInput: sql`SELECT w.config, w.secret_id, w.owner_actor, w.owner, w.directory, s.ciphertext, s.key_version, d.root_view,
       d.attempt, e.id, e.type, e.at, e.thread, e.message, e.channel, e.actor, e.principal, e.payload
@@ -43,8 +51,16 @@ export function deliveryWriter(
   db: Db,
   dialect: Dialect,
   keys: BoardKeys,
-): Pick<BoardWebhookWriter, "beginWebhookAttempt" | "finishWebhookAttempt"> {
+): Pick<BoardWebhookWriter, "beginWebhookPing" | "beginWebhookAttempt" | "finishWebhookAttempt"> {
   return {
+    async beginWebhookPing(record, id, now) {
+      const params = { ...keys, id, webhook: record.webhook.id, secretId: record.secretId, now };
+      if (!(await query(db, dialect, deliveryStatements.addPing, params)).length) return null;
+      const [row] = await query(db, dialect, deliveryStatements.pingSecret, params);
+      return typeof row?.ciphertext === "string"
+        ? { ciphertext: row.ciphertext, keyVersion: Number(row.key_version) }
+        : null;
+    },
     async beginWebhookAttempt(id, instance, now) {
       const params = { ...keys, id, instance, now };
       if (!(await query(db, dialect, deliveryStatements.beginDelivery, params)).length) return null;

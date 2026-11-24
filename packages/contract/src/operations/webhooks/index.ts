@@ -69,3 +69,23 @@ export const listWebhooks = defineOperation({
   effects: { readOnly: true, idempotent: true, emits: [] },
   cli: { command: ["webhooks"], args: [] },
 });
+
+export const testWebhook = defineOperation({
+  ...common,
+  name: "testWebhook",
+  summary: "Send a signed, single-attempt ping to a webhook receiver.",
+  route: { method: "POST", path: "/x/webhooks/:id/test" },
+  input: { params },
+  output: Type.Object({
+    delivery: Type.Object({
+      id: Type.String(),
+      status: Type.Union([Type.Integer(), Type.Null()]),
+      ok: Type.Boolean(),
+      ms: Type.Integer({ minimum: 0 }),
+      error: Type.Optional(Type.Literal("unreachable")),
+    }),
+  }),
+  errors: ["not_found", "forbidden"],
+  effects: { readOnly: false, idempotent: false, emits: [] },
+  cli: { command: ["webhooks", "test"], args: ["id"] },
+});

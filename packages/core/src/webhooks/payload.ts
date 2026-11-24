@@ -50,11 +50,17 @@ function encodeWebhookPayload<T extends { event: { message: Message; payload: ob
   return body;
 }
 
+type Delivery = { id: string; attempt: number; webhook: string; name: string };
+
+export function webhookPing(url: string, org: string, board: string, delivery: Delivery): string {
+  return JSON.stringify({ type: "board.ping", version: 1, delivery, board: { url, org, board } });
+}
+
 export function webhookPayload(
   origin: string,
   org: string,
   board: string,
-  delivery: { id: string; attempt: number; webhook: string; name: string },
+  delivery: Delivery,
   event: { message: Message; payload: object },
   root: Message,
   template: object | null = null,

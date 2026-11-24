@@ -32,6 +32,7 @@ import taskExpiryJobsDdl from "../migrations/0030-task-expiry-jobs.sql" with { t
 import exportsDdl from "../migrations/0031-exports.sql" with { type: "text" };
 import webhooksDdl from "../migrations/0032-webhooks.sql" with { type: "text" };
 import deviceCanDdl from "../migrations/0033-device-can.sql" with { type: "text" };
+import webhookPingsDdl from "../migrations/0034-webhook-pings.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -111,6 +112,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 31, name: "0031-exports", sql: exportsDdl },
   { version: 32, name: "0032-webhooks", sql: webhooksDdl },
   { version: 33, name: "0033-device-can", sql: deviceCanDdl },
+  { version: 34, name: "0034-webhook-pings", sql: webhookPingsDdl },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
