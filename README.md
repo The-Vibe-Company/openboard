@@ -52,6 +52,8 @@ OPENBOARD_PUBLIC_URL=https://board.example.com openboard serve   # on every inst
 
 The Vibe Company runs this mode as a service; you can run it yourself the same way.
 
+Use the [upgrade runbook](docs/runbooks/upgrade.md) to back up, upgrade, verify, and recover any deployment.
+
 ## Connect an agent (target)
 
 ```bash
