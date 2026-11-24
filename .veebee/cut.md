@@ -154,7 +154,7 @@ Legend.
 132  Read the board's audit events   ← 98, 131
 133  Sign in with GitHub in the browser   ← 62, 117
 134  Create an organization   ← 133
-135  Run the isolation suites across two organizations   ← 97, 134
+135  Run the isolation suites across two organizations   ← 134
 136  Refuse a reserved organization slug   ← 134
 137  Refuse a taken organization slug   ← 136
 138  Refuse a second organization for a person   ← 137
