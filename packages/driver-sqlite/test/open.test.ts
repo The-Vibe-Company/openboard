@@ -60,23 +60,9 @@ test("keeps a posted message and the migration records on reopen", async () => {
         { org_id: 1, board_id: 1, id: 1, type: "message.posted" },
       ]);
       expect(database.query("PRAGMA journal_mode").get()).toEqual({ journal_mode: "wal" });
-      expect(database.query("SELECT version, applied_at FROM schema_migrations").all()).toEqual([
-        { version: 1, applied_at: 100 },
-        { version: 2, applied_at: 100 },
-        { version: 3, applied_at: 100 },
-        { version: 4, applied_at: 100 },
-        { version: 5, applied_at: 100 },
-        { version: 6, applied_at: 100 },
-        { version: 7, applied_at: 100 },
-        { version: 8, applied_at: 100 },
-        { version: 9, applied_at: 100 },
-        { version: 10, applied_at: 100 },
-        { version: 11, applied_at: 100 },
-        { version: 12, applied_at: 100 },
-        { version: 13, applied_at: 100 },
-        { version: 14, applied_at: 100 },
-        { version: 15, applied_at: 100 },
-      ]);
+      expect(database.query("SELECT version, applied_at FROM schema_migrations ORDER BY version").all()).toEqual(
+        Array.from({ length: 17 }, (_, index) => ({ version: index + 1, applied_at: 100 })),
+      );
     } finally {
       database.close();
     }
@@ -139,6 +125,49 @@ test("pins a legacy connection's original grant before an edit names it in an ea
       connection: { grant: "g4", can: { ops: ["read"] } },
       effectiveCan: { ops: ["read"], dev: ["read"] },
     });
+  } finally {
+    await driver.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a new writer counts events appended by a pre-quota writer during an upgrade", async () => {
+  const dir = mkdtempSync("openboard-legacy-events-");
+  const scope = testScope({ orgId: 1, boardId: 1 });
+  const driver = sqliteDriver({ dir }, () => 100);
+  const actor = "ob:user:local-dev";
+  const write = (path: string) =>
+    driver.board(scope).write((writer) =>
+      writer.append([
+        {
+          id: writer.head + 1,
+          type: "channel.created",
+          at: 100,
+          actor,
+          principal: actor,
+          thread: null,
+          message: null,
+          channel: path,
+          visibility: 1,
+          payload: { channel: path, by: { actor, principal: actor, profile: null } },
+        },
+      ]),
+    );
+  try {
+    await driver.platform().setOrgQuotas(scope.orgId, { eventsPerBoardPerDay: 2 });
+    await write("first");
+
+    // The old writer appends and advances the board head without touching the tally.
+    using database = new Database(join(dir, "board.db"));
+    database.transaction(() => {
+      database.run(`INSERT INTO events (org_id, board_id, id, type, at, channel, actor, principal, visibility, payload)
+        SELECT org_id, board_id, 2, type, at, 'legacy', actor, principal, visibility, json_set(payload, '$.channel', 'legacy')
+        FROM events WHERE org_id = 1 AND board_id = 1 AND id = 1`);
+      database.run("UPDATE boards SET head = 2, stored_bytes_head = 2 WHERE org_id = 1 AND id = 1");
+    })();
+
+    await expect(write("refused")).rejects.toMatchObject({ code: "quota_exceeded", reason: "daily_events" });
+    expect(database.query("SELECT id FROM events ORDER BY id").all()).toEqual([{ id: 1 }, { id: 2 }]);
   } finally {
     await driver.close();
     rmSync(dir, { recursive: true, force: true });

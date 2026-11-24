@@ -113,6 +113,10 @@ export function defineOperation<
   O extends TSchema,
   const S extends Scope,
 >(operation: Operation<I, O, N, S>): Operation<I, O, N, S> {
+  const { scope, effects, errors } = operation;
+  if (scope === "board" && effects.emits.length > 0 && !errors.includes("quota_exceeded")) {
+    return Object.freeze({ ...operation, errors: [...errors, "quota_exceeded" as const] });
+  }
   return Object.freeze(operation);
 }
 
