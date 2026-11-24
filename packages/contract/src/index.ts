@@ -47,6 +47,7 @@ export {
   changeMemberRole,
   claimConnection,
   claimTask,
+  completeTask,
   createBoard,
   createChannel,
   createConnection,

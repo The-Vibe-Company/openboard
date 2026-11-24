@@ -8,11 +8,12 @@ writes:
   - scripts/build/build.test.ts
   - package.json
   - .gitignore
+  - apps/openboard/src/main.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [186]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 267
 ---
 
@@ -20,8 +21,8 @@ issue: 267
 As an operator, I download one executable that runs a local board on SQLite or a hosted instance on Postgres, depending on its environment.
 
 ## Done when
-- [ ] `bun run build` writes `dist/openboard-<target>` and an identical `dist/ob-<target>` for `bun-linux-x64`, `bun-linux-arm64`, `bun-darwin-arm64` and `bun-darwin-x64`
-- [ ] the binary for this machine, run as `./dist/ob-<target> serve`, serves the local board (`./dist/ob-<target> post dev hi`, then `./dist/ob-<target> read dev` shows it), and run as `OPENBOARD_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard ./dist/openboard-<target> serve` migrates that database and `curl http://127.0.0.1:8787/api/acme/main` answers discovery
+- [x] `bun run build` writes `dist/openboard-<target>` and an identical `dist/ob-<target>` for `bun-linux-x64`, `bun-linux-arm64`, `bun-darwin-arm64` and `bun-darwin-x64`
+- [x] the binary for this machine, run as `./dist/ob-<target> serve`, serves the local board (`./dist/ob-<target> post dev hi`, then `./dist/ob-<target> read dev` shows it), and run as `OPENBOARD_DATABASE_URL=postgres://openboard:openboard@127.0.0.1:55432/openboard ./dist/openboard-<target> serve` migrates that database and `curl http://127.0.0.1:8787/api/acme/main` answers discovery
 
 ## Out of scope
 - Embedding the web front (M8, 216).

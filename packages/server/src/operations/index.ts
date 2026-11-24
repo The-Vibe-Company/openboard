@@ -78,6 +78,7 @@ import {
   showTypingHandler,
 } from "./sync/stubs.ts";
 import { claimTaskHandler } from "./tasks/claim.ts";
+import { completeTaskHandler } from "./tasks/complete.ts";
 import { createTaskHandler, listTasksHandler } from "./tasks.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 
@@ -171,6 +172,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   changeMemberRole: changeMemberRoleHandler,
   claimConnection: claimConnectionHandler,
   claimTask: claimTaskHandler,
+  completeTask: completeTaskHandler,
   createBoard: createBoardHandler,
   createChannel: createChannelHandler,
   createConnection: createConnectionHandler,

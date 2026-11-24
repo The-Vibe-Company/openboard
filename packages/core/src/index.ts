@@ -37,6 +37,7 @@ import type { TaskEvent } from "./tasks/events.ts";
 
 export { decideClaimTask } from "./tasks/claim.ts";
 export { decideCreateTask, decideMakeTask, type MakeTaskState, replayTask } from "./tasks/create.ts";
+export { decideCompleteTask } from "./tasks/settle.ts";
 export type { TaskClaimed, TaskCreated, TaskEvent } from "./tasks/events.ts";
 export { OPEN_TASK_STATES, taskCursor, taskStates } from "./tasks/filters.ts";
 export type { ChannelCreated };

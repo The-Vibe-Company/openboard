@@ -9,6 +9,9 @@ export const taskFoldStatements = {
   claimTask: sql`UPDATE tasks SET state = 'claimed', epoch = ${"epoch"}, claim_actor = ${"actor"},
     claim_until = ${"until"}, claim_token = ${"hash"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
+  completeTask: sql`UPDATE tasks SET state = 'completed', result = ${"result"},
+    claim_actor = NULL, claim_until = NULL, claim_token = NULL
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
   projectTaskRoot: sql`UPDATE messages SET labels = ${"labels"}, version = ${"version"}, view = ${"view"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND re IS NULL`,
 };
@@ -24,6 +27,12 @@ export async function foldTaskEvent(tx: Db, dialect: Dialect, keys: BoardKeys, e
       actor: by.actor,
       profile: by.profile,
       at: event.at,
+    });
+  } else if (event.type === "task.completed") {
+    await query(tx, dialect, taskFoldStatements.completeTask, {
+      ...keys,
+      id: event.message,
+      result: event.payload.result,
     });
   } else {
     const { epoch, untilMs, tokenHash } = event.payload;
