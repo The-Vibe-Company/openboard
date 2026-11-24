@@ -7,12 +7,17 @@ writes:
   - packages/server/src/mcp/facade.ts
   - packages/server/src/mcp/call.ts
   - packages/server/src/http/pipeline.ts
+  - packages/server/src/http/board.ts
+  - packages/contract/src/operation.ts
+  - apps/openboard/src/serve.ts
+  - docs/protocol.md
+  - skills/openboard/SKILL.md
   - packages/server/test/mcp/read.test.ts
 conformance: []
 modes: [local, hosted]
 depends_on: [340]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex-341
 issue: 526
 ---
 

@@ -1,0 +1,101 @@
+import type { operations, RawInput } from "@openboard/contract";
+import type { BoardView } from "@openboard/ports";
+import { keepInsideCan, narrowCaller } from "../auth/access.ts";
+import { authenticate, type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
+import { refuseClaimedConfiguration } from "../auth/tokens.ts";
+import { streamEvents } from "../operations/events.ts";
+import { handlerOf } from "../operations/index.ts";
+import { recoverGrant } from "./errors.ts";
+import { validate } from "./input.ts";
+import { limitStream, limitWrite, type RequestLimits } from "./limits.ts";
+import type { Pipeline } from "./pipeline.ts";
+import { operationResponse } from "./respond.ts";
+import type { BoardPath } from "./scope.ts";
+
+export type BoardOperation = Extract<(typeof operations)[number], { readonly scope: "board" }>;
+
+function boardAudience(pipeline: Pipeline, path: BoardPath): string {
+  return `${pipeline.config.publicUrl}${path.mount}`;
+}
+
+/** A tombstone is distinguishable only by a connection or agent that can prove it belonged to the board. */
+function requestBoard(pipeline: Pipeline, path: BoardPath, request: Request, chain: readonly CredentialVerifier[]) {
+  return pipeline.tenants.board(path, async (board: BoardView) => {
+    const verifier = chain.find(
+      (verifier) => (verifier.name === "agent" || verifier.name === "connection") && verifier.match(request),
+    );
+    if (!verifier) return false;
+    const authorization = request.headers.get("authorization") ?? "";
+    const proof = new Request(request.url, { headers: { authorization } });
+    // The claim operation recognizes both direct and claim-only secrets. Profile headers are irrelevant here.
+    return (await verifier.verify(proof, board, "claimConnection")) !== null;
+  });
+}
+
+export function authenticateBoard(
+  request: Request,
+  path: BoardPath,
+  pipeline: Pipeline & RequestLimits,
+  operation: string,
+) {
+  const { chain } = pipeline;
+  const audience = boardAudience(pipeline, path);
+  return limitAuthentication(pipeline, async () => {
+    const board = await requestBoard(pipeline, path, request, chain);
+    const by = narrowCaller(request, await authenticate(request, chain, board, operation, audience));
+    return { board, by };
+  });
+}
+
+export async function runBoard(
+  request: Request,
+  path: BoardPath,
+  operation: BoardOperation,
+  pipeline: Pipeline & RequestLimits,
+  { board, by }: Awaited<ReturnType<typeof authenticateBoard>>,
+  readInput: () => RawInput | Promise<RawInput>,
+  stream = false,
+) {
+  const { chain } = pipeline;
+  const audience = boardAudience(pipeline, path);
+  refuseClaimedConfiguration(request, operation);
+  const raw = await readInput();
+  const implicitBoard = pipeline.config.mode === "local" && path.org === "local" && path.board === "main";
+  const context = async (input: unknown) => {
+    await keepInsideCan(operation, input, by, board);
+    const reauthorize = async () => {
+      // A parked request may outlive its board or organization. Resolve it again before returning data.
+      const liveBoard = implicitBoard ? board : await requestBoard(pipeline, path, request, chain);
+      const current = narrowCaller(request, await authenticate(request, chain, liveBoard, operation.name, audience));
+      await keepInsideCan(operation, input, current, liveBoard);
+      return current;
+    };
+    return {
+      board,
+      debitWrite: () => limitWrite(pipeline.rateLimits, path.org, operation.effects.readOnly),
+      rateLimits: pipeline.rateLimits,
+      ip: pipeline.ip,
+      by,
+      ...pipeline.deps,
+      boardUrl: `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`,
+      webhookConfig: pipeline.config,
+      reauthorize,
+      signal: request.signal,
+      shutdown: pipeline.shutdown,
+    };
+  };
+  if (stream && operation.name === "readEvents") {
+    const input = validate(operation, raw);
+    return streamEvents(await context(input), input, request.headers.get("last-event-id"), pipeline.track, () =>
+      limitStream(pipeline.rateLimits, path.org, by.principal),
+    );
+  }
+  const input = validate(operation, raw);
+  const output = await handlerOf(operation)(await context(input), input).catch(recoverGrant(operation, input));
+  const response = operationResponse(operation, output);
+  if (operation.name === "createWebhook" || operation.name === "updateWebhook" || operation.name === "createInbound") {
+    response.headers.set("cache-control", "no-store");
+  }
+  if (operation.eventStream) response.headers.set("vary", "Accept");
+  return response;
+}

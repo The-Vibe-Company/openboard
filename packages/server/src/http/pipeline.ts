@@ -1,16 +1,14 @@
 import { BoardError, getMe, type operations, type previewInvitation } from "@openboard/contract";
-import type { BoardView, Bucket, PlatformView, RateLimits } from "@openboard/ports";
-import { keepInsideCan, narrowCaller } from "../auth/access.ts";
-import { authenticate, type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
+import type { Bucket, PlatformView, RateLimits } from "@openboard/ports";
+import { type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
 import { accountPersonalToken, exportTokenPerson } from "../auth/personal-tokens.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
 import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
-import type { Deps, ServerConfig } from "../deps.ts";
+import type { Deps, Logger, ServerConfig } from "../deps.ts";
 import { runSigned } from "../inbound/receive.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
 import { mcpMethodNotAllowed, mcpPost } from "../mcp/facade.ts";
-import { streamEvents } from "../operations/events.ts";
 import {
   type AccountOperation,
   type DeviceOperation,
@@ -18,10 +16,11 @@ import {
   type OrgOperation,
   type PublicOperation,
 } from "../operations/index.ts";
-import { errorResponse, recoverGrant } from "./errors.ts";
+import { authenticateBoard, runBoard } from "./board.ts";
+import { errorResponse } from "./errors.ts";
 import { healthProbe } from "./health.ts";
 import { readBody, readQuery, validate } from "./input.ts";
-import { limitStream, limitWrite, type RequestLimits } from "./limits.ts";
+import { limitWrite, type RequestLimits } from "./limits.ts";
 import { REQUEST_ID, requestIdOf } from "./request-id.ts";
 import { operationResponse } from "./respond.ts";
 import { matchRoute, type Route } from "./router.ts";
@@ -197,6 +196,7 @@ async function run(
   url: URL,
   pipeline: Pipeline & RequestLimits,
   logged: RequestFields,
+  log: Logger,
 ): Promise<Response> {
   if (url.pathname === "/auth/logout" && request.method === "POST") {
     return signOut(request, pipeline.platform, pipeline.deps.now(), pipeline.config.publicUrl);
@@ -211,7 +211,7 @@ async function run(
     if (response) return response;
   }
   const mcp = mcpPath(url.pathname, pipeline.config.mode);
-  if (mcp) return runMcp(request, mcp, pipeline, logged);
+  if (mcp) return runMcp(request, mcp, pipeline, logged, log);
   const path = boardPath(url.pathname, pipeline.config.mode);
   if (!path) throw notFound();
   logged.org = path.org;
@@ -235,39 +235,24 @@ async function run(
     const output = await runSigned(request, (ctx) => handlerOf(operation)(ctx, input), path, pipeline);
     return operationResponse(operation, output);
   }
-  return runBoard(request, url, path, { operation, params: matched.params }, pipeline, logged);
-}
-
-/** A tombstone is distinguishable only by a connection or agent that can prove it belonged to the board. */
-function requestBoard(pipeline: Pipeline, path: BoardPath, request: Request, chain: readonly CredentialVerifier[]) {
-  return pipeline.tenants.board(path, async (board: BoardView) => {
-    const verifier = chain.find(
-      (verifier) => (verifier.name === "agent" || verifier.name === "connection") && verifier.match(request),
-    );
-    if (!verifier) return false;
-    const authorization = request.headers.get("authorization") ?? "";
-    const proof = new Request(request.url, { headers: { authorization } });
-    // The claim operation recognizes both direct and claim-only secrets. Profile headers are irrelevant here.
-    return (await verifier.verify(proof, board, "claimConnection")) !== null;
+  const caller = await authenticateBoard(request, path, pipeline, operation.name);
+  logged.actor = caller.by.actor;
+  const readInput = async () => ({
+    params: matched.params,
+    query: readQuery(operation, url.searchParams),
+    body: request.method === "GET" ? undefined : await readBody(request),
   });
+  const stream = !!operation.eventStream && !!request.headers.get("accept")?.includes(operation.eventStream);
+  return runBoard(request, path, operation, pipeline, caller, readInput, stream);
 }
 
-function authenticateBoard(
+async function runMcp(
   request: Request,
   path: BoardPath,
   pipeline: Pipeline & RequestLimits,
-  operation: string,
-  audience: string,
+  logged: RequestFields,
+  log: Logger,
 ) {
-  const { chain } = pipeline;
-  return limitAuthentication(pipeline, async () => {
-    const board = await requestBoard(pipeline, path, request, chain);
-    const by = narrowCaller(request, await authenticate(request, chain, board, operation, audience));
-    return { board, by };
-  });
-}
-
-async function runMcp(request: Request, path: BoardPath, pipeline: Pipeline & RequestLimits, logged: RequestFields) {
   logged.org = path.org;
   const { publicUrl } = pipeline.config;
   const origin = request.headers.get("origin");
@@ -276,76 +261,17 @@ async function runMcp(request: Request, path: BoardPath, pipeline: Pipeline & Re
   }
   if (request.method !== "POST") return mcpMethodNotAllowed();
 
-  const audience = `${publicUrl}/api/${path.org}/${path.board}`;
-  // Discovery accepts the same credentials as whoami and executes no board operation.
-  const { by } = await authenticateBoard(request, path, pipeline, getMe.name, audience);
-  logged.actor = by.actor;
-  return mcpPost(request);
-}
-
-type RouteMatch = { operation: Extract<Contracted, { scope: "board" }>; params: Params };
-
-async function runBoard(
-  request: Request,
-  url: URL,
-  path: BoardPath,
-  matched: RouteMatch,
-  pipeline: Pipeline & RequestLimits,
-  logged: RequestFields,
-) {
-  const { operation } = matched;
-  const { chain } = pipeline;
-  const audience = `${pipeline.config.publicUrl}${path.mount}`;
-  const { board, by } = await authenticateBoard(request, path, pipeline, operation.name, audience);
-  logged.actor = by.actor;
-  refuseClaimedConfiguration(request, operation);
-  const raw = {
-    params: matched.params,
-    query: readQuery(operation, url.searchParams),
-    body: request.method === "GET" ? undefined : await readBody(request),
-  };
-  const implicitBoard = pipeline.config.mode === "local" && path.org === "local" && path.board === "main";
-  const context = async (input: unknown) => {
-    await keepInsideCan(operation, input, by, board);
-    const reauthorize = async () => {
-      // A parked request may outlive its board or organization. Resolve it again before returning data.
-      const liveBoard = implicitBoard ? board : await requestBoard(pipeline, path, request, chain);
-      const current = narrowCaller(request, await authenticate(request, chain, liveBoard, operation.name, audience));
-      await keepInsideCan(operation, input, current, liveBoard);
-      return current;
-    };
-    return {
-      board,
-      debitWrite: () => limitWrite(pipeline.rateLimits, path.org, operation.effects.readOnly),
-      rateLimits: pipeline.rateLimits,
-      ip: pipeline.ip,
-      by,
-      ...pipeline.deps,
-      boardUrl: `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`,
-      webhookConfig: pipeline.config,
-      reauthorize,
-      signal: request.signal,
-      shutdown: pipeline.shutdown,
-    };
-  };
-  if (
-    operation.name === "readEvents" &&
-    operation.eventStream &&
-    request.headers.get("accept")?.includes(operation.eventStream)
-  ) {
-    const input = validate(operation, raw);
-    return streamEvents(await context(input), input, request.headers.get("last-event-id"), pipeline.track, () =>
-      limitStream(pipeline.rateLimits, path.org, by.principal),
+  const apiPath = { ...path, mount: `/api/${path.org}/${path.board}` };
+  // MCP exposes only board operations with the same credential admission as whoami.
+  // Authenticate before consuming the request body, then authorize the selected tool in runBoard.
+  const caller = await authenticateBoard(request, apiPath, pipeline, getMe.name);
+  logged.actor = caller.by.actor;
+  return mcpPost(request, (operation, readInput) => {
+    logged.op = operation.name;
+    return runBoard(request, apiPath, operation, pipeline, caller, readInput).catch((error) =>
+      errorResponse(error, log),
     );
-  }
-  const input = validate(operation, raw);
-  const output = await handlerOf(operation)(await context(input), input).catch(recoverGrant(operation, input));
-  const response = operationResponse(operation, output);
-  if (operation.name === "createWebhook" || operation.name === "updateWebhook" || operation.name === "createInbound") {
-    response.headers.set("cache-control", "no-store");
-  }
-  if (operation.eventStream) response.headers.set("vary", "Accept");
-  return response;
+  });
 }
 
 /** Redact invitation tokens and user approval codes before route matching. */
@@ -374,7 +300,7 @@ export async function handle(request: Request, pipeline: Pipeline, ip?: string):
     if (!probe && pipeline.shutdown.aborted) throw new BoardError("unavailable", "the instance is draining");
     response = await (probe ??
       pipeline.staticFiles(request, url.pathname) ??
-      run(request, url, { ...pipeline, ip }, logged));
+      run(request, url, { ...pipeline, ip }, logged, log));
   } catch (error) {
     response = errorResponse(error, log);
   }

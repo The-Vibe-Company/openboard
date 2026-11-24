@@ -1,5 +1,6 @@
 import { BoardError } from "@openboard/contract";
 import manifest from "../../package.json" with { type: "json" };
+import { findTool, type InvokeTool, toolResponse } from "./call.ts";
 import { listTools } from "./tools.ts";
 
 const PROTOCOL_VERSION = "2025-06-18";
@@ -31,7 +32,7 @@ function acceptsJson(accept: string | null): boolean {
   });
 }
 
-export async function mcpPost(request: Request): Promise<Response> {
+export async function mcpPost(request: Request, invoke: InvokeTool): Promise<Response> {
   if (!acceptsJson(request.headers.get("accept"))) {
     return Response.json(
       { error: { message: "Accept must include application/json." } },
@@ -64,6 +65,13 @@ export async function mcpPost(request: Request): Promise<Response> {
   if (id === undefined) return new Response(null, { status: 202 });
   if (!(typeof id === "string" || (typeof id === "number" && Number.isInteger(id)))) {
     return rpcError(null, -32600, "Invalid Request", 400);
+  }
+
+  if (method === "tools/call") {
+    const params = message.params as Record<string, unknown> | undefined;
+    const operation = findTool(params?.name);
+    if (!operation) return rpcError(id, -32602, "Unknown tool");
+    return toolResponse({ id, operation, args: params?.arguments }, invoke);
   }
 
   const result = (value: object) => Response.json({ jsonrpc: "2.0", id, result: value });

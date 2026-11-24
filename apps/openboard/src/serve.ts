@@ -35,7 +35,10 @@ export async function serve(config: Config): Promise<void> {
       hostname: config.host,
       port: config.port,
       fetch(request, server) {
-        if (request.method === "GET" && /\/events\/*$/.test(new URL(request.url).pathname)) server.timeout(request, 0);
+        const { pathname } = new URL(request.url);
+        if (request.method === "GET" && /\/events\/*$/.test(pathname)) server.timeout(request, 0);
+        // MCP tools can wait for up to 25 seconds on the shared board pipeline (D28).
+        if (request.method === "POST" && /^\/mcp(?:\/|$)/.test(pathname)) server.timeout(request, 30);
         return app.fetch(request, {
           ip: clientIp(request.headers, server.requestIP(request)?.address, config.trustedProxies),
         });

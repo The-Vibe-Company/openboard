@@ -150,8 +150,10 @@ export type OutputOf<Op> = Op extends Operation<OperationInput, infer O> ? Stati
 
 /** The raw parts of a request, before validation; path params and query values are strings. */
 export interface RawInput {
-  readonly params?: Readonly<Record<string, string>>;
-  readonly query?: Readonly<Record<string, string | readonly string[]>>;
+  readonly params?: Readonly<Record<string, unknown>>;
+  readonly query?: Readonly<Record<string, unknown>>;
+  /** MCP supplies native JSON types for path and query fields. */
+  readonly typed?: true;
   readonly body?: unknown;
 }
 
@@ -236,8 +238,8 @@ export function decodeInput<Op extends Operation>(operation: Op, raw: RawInput):
   try {
     checkBodyArrayLimit(operation, raw.body);
     return {
-      ...decodePart(operation.input.params, raw.params, "path", true),
-      ...decodePart(operation.input.query, raw.query, "query", true),
+      ...decodePart(operation.input.params, raw.params, "path", !raw.typed),
+      ...decodePart(operation.input.query, raw.query, "query", !raw.typed),
       ...decodePart(
         operation.input.body,
         raw.body,
