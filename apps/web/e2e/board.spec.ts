@@ -59,6 +59,7 @@ test("a member sees the latest threads and keeps the selected channel on reload"
       await expect(rows.first()).toContainText("Earlier thread");
 
       const header = memberPage.getByRole("banner");
+      await header.getByRole("button", { name: "User menu" }).click();
       await header.getByRole("button", { name: "Sign out" }).click();
       await expect(memberPage).toHaveURL(`${server.url}/`);
       await expect(header.getByRole("link", { name: "Sign in" })).toBeVisible();
@@ -99,6 +100,114 @@ test("the organization opens its default board and outsiders see Not found", asy
       await context.close();
     }
   } finally {
+    await server.stop();
+  }
+});
+
+for (const width of [1280, 375]) {
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`the board shell navigates at ${width}px in ${colorScheme} mode`, async ({ page }) => {
+      const server = await serve();
+      try {
+        await page.setViewportSize({ width, height: 800 });
+        await page.emulateMedia({ colorScheme });
+        await signIn(page, server.url, "ada");
+        const owner = sessionClient(page, server.url);
+        await owner.createOrg({ slug: "acme", name: "Acme" });
+        await owner.createBoard({ org: "acme", slug: "planning", name: "Planning" });
+        await owner.postMessage({ channel: "general", text: "General conversation" });
+        await owner.postMessage({ channel: "engineering", text: "Build notes" });
+
+        await page.goto(`${server.url}/acme/main`);
+        const header = page.getByRole("banner");
+        await expect(header).toContainText(/OpenBoard\s*\/\s*acme\s*\/\s*main/, { useInnerText: true });
+        const channels = page.getByRole("navigation", { name: "Channels" });
+        const menu = page.getByRole("button", { name: "Board menu" });
+        if (width === 375) {
+          await expect(channels).toBeHidden();
+          await expect(menu).toHaveAttribute("aria-expanded", "false");
+          await menu.click();
+        } else {
+          await expect(menu).toBeHidden();
+        }
+        await expect(channels.getByRole("link")).toHaveText(["engineering", "general"]);
+        await channels.getByRole("link", { name: "general" }).click();
+        if (width === 375) {
+          await expect(channels).toBeHidden();
+          await expect(menu).toBeFocused();
+          await menu.click();
+        }
+        const current = channels.getByRole("link", { name: "general" });
+        await expect(current).toHaveAttribute("aria-current", "page");
+        await expect(current).toHaveCSS(
+          "background-color",
+          colorScheme === "light" ? "rgb(234, 234, 234)" : "rgb(38, 38, 38)",
+        );
+        await expectNoHorizontalScroll(page);
+
+        await page.getByRole("link", { name: "Settings", exact: true }).click();
+        await expect(page).toHaveURL(`${server.url}/acme/main/settings/connections`);
+        const switchBoard = header.getByRole("button", { name: "Switch board: main" });
+        await switchBoard.click();
+        await expect(header.getByRole("link", { name: "main", exact: true })).toBeVisible();
+        await header.getByRole("link", { name: "Planning" }).click();
+        await expect(page).toHaveURL(`${server.url}/acme/planning`);
+
+        await header.getByRole("button", { name: "Switch organization: acme" }).click();
+        await header.getByRole("link", { name: "Acme", exact: true }).click();
+        await expect(page).toHaveURL(`${server.url}/acme/main`);
+        const userMenu = header.getByRole("button", { name: "User menu" });
+        await userMenu.click();
+        await expect(header.getByRole("button", { name: "Sign out" })).toBeVisible();
+        await expectNoHorizontalScroll(page);
+        await page.keyboard.press("Escape");
+        await expect(header.getByRole("link", { name: "Account" })).toBeHidden();
+        await expect(userMenu).toBeFocused();
+        await userMenu.click();
+        await header.getByRole("link", { name: "Account" }).click();
+        await expect(page).toHaveURL(`${server.url}/account`);
+      } finally {
+        await server.stop();
+      }
+    });
+  }
+}
+
+async function expectNoHorizontalScroll(page: Page) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(page.viewportSize()?.width);
+}
+
+test("refreshes the header when another tab changes the account during an organization read", async ({
+  page,
+  browser,
+}) => {
+  const server = await serve();
+  const otherContext = await browser.newContext();
+  try {
+    await signIn(page, server.url, "ada");
+    await sessionClient(page, server.url).createOrg({ slug: "acme", name: "Acme" });
+    const otherPage = await otherContext.newPage();
+    await signIn(otherPage, server.url, "lin");
+    await sessionClient(otherPage, server.url).createOrg({ slug: "studio", name: "Studio" });
+    const cookies = await otherContext.cookies(server.url);
+
+    await page.route(
+      `${server.url}/api/x/me`,
+      async (route) => {
+        await page.context().addCookies(cookies);
+        await route.continue();
+      },
+      { times: 1 },
+    );
+    await page.goto(`${server.url}/acme/main`);
+    const header = page.getByRole("banner");
+    const userMenu = header.getByRole("button", { name: "User menu" });
+    await expect(userMenu).toHaveText("lin");
+    await header.getByRole("button", { name: "Switch organization: acme" }).click();
+    await expect(header.getByRole("link", { name: "Studio" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Acme" })).toHaveCount(0);
+  } finally {
+    await otherContext.close();
     await server.stop();
   }
 });
