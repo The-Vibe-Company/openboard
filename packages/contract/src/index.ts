@@ -11,7 +11,7 @@ export * from "./entities/inbound/index.ts";
 export * from "./entities/invitations.ts";
 export * from "./entities/attachments/index.ts";
 export * from "./entities/messages.ts";
-export { download, upload } from "./operations/attachments/index.ts";
+export { download, finishUpload, startUpload, upload } from "./operations/attachments/index.ts";
 export * from "./entities/org/exports.ts";
 export * from "./entities/orgs.ts";
 export * from "./entities/schemas/view.ts";

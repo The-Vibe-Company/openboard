@@ -158,7 +158,11 @@ export const ERRORS = catalog();
 
 /** A way out of an error (docs/codebase.md 5.3). */
 const NextStep = Type.Union([
-  Type.Object({ kind: Type.Literal("run"), argv: Type.Unsafe<readonly string[]>(Type.Array(Type.String())) }),
+  Type.Object({
+    kind: Type.Literal("run"),
+    argv: Type.Unsafe<readonly string[]>(Type.Array(Type.String())),
+    description: Type.Optional(Type.String()),
+  }),
   Type.Object({ kind: Type.Literal("call"), operation: Type.String(), input: Type.Unknown() }),
   Type.Object({ kind: Type.Literal("wait"), seconds: Type.Number() }),
   Type.Object({ kind: Type.Literal("read"), url: Type.String() }),

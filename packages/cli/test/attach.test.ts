@@ -112,3 +112,24 @@ test("a missing destination or later attachment sends no upload or post", async 
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("posting a 5 MiB file gives recovery guidance without issuing a request", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "ob-cli-attach-"));
+  const file = join(dir, "demo.mp4");
+  const errors: string[] = [];
+  const fetch = async () => {
+    throw new Error("unexpected request");
+  };
+  try {
+    await Bun.write(file, new Uint8Array(5 * 1024 * 1024));
+    const code = await runCli(
+      ["post", "dev", "demo", "--attach", file],
+      { BOARD_URL: "http://127.0.0.1:9876/api/local/main" },
+      { fetch, output: { out() {}, err: (message) => errors.push(message) } },
+    );
+    expect(code).toBe(1);
+    expect(errors).toEqual(["error: too_large: attachments are at most 4 MB", "next: ob post --help"]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -356,7 +356,10 @@ function referenceOf(command: AnyCommand): CommandReference {
     ...(derived?.name === "assignTask" && { pool: "Return the task to the pool." }),
     ...(derived?.name === "setTaskNeeds" && { none: "Clear every prerequisite." }),
     ...(derived?.name === "createTask" && { file: "Path to a JSON task array, or - for stdin." }),
-    ...(derived?.name === "postMessage" && { file: "Path to the message text, or - for stdin." }),
+    ...(derived?.name === "postMessage" && {
+      file: "Path to the message text, or - for stdin.",
+      attach: "A local file of at most 4 MB; repeatable up to ten files.",
+    }),
   };
   return {
     command: `ob ${words}`,

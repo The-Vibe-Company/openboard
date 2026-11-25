@@ -308,7 +308,11 @@ Upload sends the raw bytes, the file's media type in `content-type`, and its
 URI-encoded name in `x-board-filename`. A successful upload returns 201
 `{ attachment: { id, name, type, size } }`. A post supplies those IDs in
 `attachments`. An empty upload returns 400 `invalid_request`, and a file
-over 4 MiB returns 413 `too_large`. Uploads keep the final path component,
+over 4 MiB returns 413 `too_large`. The CLI rejects oversized files locally
+and points to `ob post --help`. Both direct-upload routes return 501
+`no_direct_uploads` to authenticated board callers. Their `next` run step
+points to `ob post --help` and uses the optional OpenBoard-only `description`
+field to state the 4 MB limit. Uploads keep the final path component,
 strip ASCII controls and surrounding whitespace, and default an empty name
 to `file`. A resulting name that starts with a dot or contains invisible
 formatting characters or line or paragraph separators returns 400

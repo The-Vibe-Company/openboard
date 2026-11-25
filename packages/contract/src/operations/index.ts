@@ -10,7 +10,7 @@ import {
   startDeviceSignIn,
 } from "./accounts.ts";
 import { getMe, listActors } from "./actors.ts";
-import { download, upload } from "./attachments/index.ts";
+import { download, finishUpload, startUpload, upload } from "./attachments/index.ts";
 import { readBoardAudit, readOrgAudit } from "./audit.ts";
 import { getAvatar } from "./avatars/get.ts";
 import { createBoard, deleteBoard, listBoards } from "./boards.ts";
@@ -148,6 +148,7 @@ export const operations = [
   explainGrants,
   findLinkedThread,
   findSync,
+  finishUpload,
   getAccount,
   getAvatar,
   getConnection,
@@ -219,6 +220,7 @@ export const operations = [
   rotateConnection,
   showTyping,
   startDeviceSignIn,
+  startUpload,
   updateGrant,
   updateWebhook,
   upload,
