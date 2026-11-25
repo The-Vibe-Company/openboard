@@ -35,6 +35,26 @@
   min-inline-size: 0;
 }
 
+.task-details .task-needs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(1.5 * var(--space));
+}
+
+.task-details .task-needs a {
+  padding: calc(0.5 * var(--space)) calc(2 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--background);
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+  text-decoration: none;
+}
+
+.task-details .task-needs a:hover {
+  border-color: var(--control-border);
+}
+
 .task-state-badge.ui-badge {
   display: inline-flex;
   align-items: center;

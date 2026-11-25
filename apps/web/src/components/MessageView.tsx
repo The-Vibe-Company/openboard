@@ -52,10 +52,23 @@ function messageBody(message: ThreadMessage, board: Board) {
   return [...parts, <Fragment key={text.length}>{renderMarkdown(text.slice(cursor), mentions)}</Fragment>];
 }
 
+const INLINE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentHref(board: Board, id: string): string {
+  return `/api/${encodeURIComponent(board.org)}/${encodeURIComponent(board.board)}/attachments/${encodeURIComponent(id)}`;
+}
+
 export function MessageView({ message, board }: { message: ThreadMessage; board: Board }) {
   const author = message.author?.name ?? message.from ?? message.by.profile ?? message.by.actor;
   const labels = Object.entries(message.labels);
   const reactions = Object.entries(message.reactions);
+  const attachments = message.deleted ? [] : message.attachments;
   return (
     <article className="thread-message">
       <header>
@@ -74,6 +87,27 @@ export function MessageView({ message, board }: { message: ThreadMessage; board:
         </p>
       ) : (
         <div className="thread-message-text">{messageBody(message, board)}</div>
+      )}
+      {attachments.length > 0 && (
+        <ul className="thread-message-attachments" aria-label="Attachments">
+          {attachments.map((file) => {
+            const href = attachmentHref(board, file.id);
+            const inlineImage = INLINE_IMAGE_TYPES.has(file.type.toLowerCase());
+            return (
+              <li key={file.id} className={inlineImage ? "attachment-item attachment-image" : "attachment-item"}>
+                {inlineImage && (
+                  <a className="attachment-preview" href={href} target="_blank" rel="noopener noreferrer">
+                    <img src={href} alt={file.name} loading="lazy" />
+                  </a>
+                )}
+                <a className="attachment-chip" href={href} download={file.name}>
+                  <span className="attachment-name">{file.name}</span>
+                  <span className="attachment-size">{formatBytes(file.size)}</span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
       )}
       {labels.length > 0 && (
         <ul className="thread-message-metadata" aria-label="Labels">

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { type Task, type TaskActor, taskActorsQuery } from "../api/tasks.ts";
 import { Badge } from "../ui/index.ts";
 import "./TaskState.css";
@@ -45,6 +46,7 @@ export function TaskState({
   const owner = actors?.get(task.owner)?.name ?? maker?.via?.name ?? task.owner;
   const claim = task.claim;
   const holder = claim ? actors?.get(claim.actor) : undefined;
+  const assignee = task.for ? actors?.get(task.for) : undefined;
   return (
     <section className="task-details" aria-label="Task details">
       <h2>Task</h2>
@@ -55,6 +57,12 @@ export function TaskState({
         </dd>
         <dt>Owner</dt>
         <dd>{owner}</dd>
+        {task.for && (
+          <>
+            <dt>Assigned</dt>
+            <dd>{claimHolderText(task.for, assignee)}</dd>
+          </>
+        )}
         {claim && (
           <>
             <dt>Claim holder</dt>
@@ -67,10 +75,34 @@ export function TaskState({
             </dd>
           </>
         )}
+        {task.needs.length > 0 && (
+          <>
+            <dt>Needs</dt>
+            <dd className="task-needs">
+              {task.needs.map((need) => (
+                <Link key={need} to="/$org/$board/t/$id" params={{ ...board, id: need }} search={true}>
+                  #{need}
+                </Link>
+              ))}
+            </dd>
+          </>
+        )}
         {task.blocked && (
           <>
             <dt>Hold</dt>
             <dd>{task.blocked.kind ? `${task.blocked.kind}: ${task.blocked.reason}` : task.blocked.reason}</dd>
+          </>
+        )}
+        {task.result && (
+          <>
+            <dt>Result</dt>
+            <dd>{task.result}</dd>
+          </>
+        )}
+        {task.reason && (
+          <>
+            <dt>Reason</dt>
+            <dd>{task.reason}</dd>
           </>
         )}
       </dl>

@@ -1,6 +1,7 @@
 import { expect, mock, test } from "bun:test";
 import { boardKeys, threadsQuery } from "../src/api/board.ts";
 import { followBoard } from "../src/api/live.ts";
+import { taskActorsQuery, tasksQuery } from "../src/api/tasks.ts";
 import { threadKeys } from "../src/api/thread.ts";
 
 const board = { org: "acme", board: "main" };
@@ -52,13 +53,32 @@ test("a burst refetches each affected query once, including threads opened by re
   live.event("message.posted", "dev", "10", "10");
   live.event("message.edited", "dev", "10");
   live.event("message.deleted", "dev", "10");
-  live.event("task.completed", "ops", "11");
+  live.source.dispatchEvent(new MessageEvent("board", { data: '{"type":"actor.seen"}' }));
   expect(live.schedule).toHaveBeenCalledTimes(1);
   expect(live.invalidate).not.toHaveBeenCalled();
   live.schedule.mock.calls[0]?.[0]();
   expect(live.invalidate.mock.calls.flat()).toEqual([
     { queryKey: boardKeys.channels(board), exact: true },
     { queryKey: threadsQuery(board, "dev").queryKey, exact: true },
+    { queryKey: tasksQuery(board, "dev").queryKey, exact: true },
+    { queryKey: aliasKey, exact: true },
+  ]);
+  live.stop();
+});
+
+test("task and channel events invalidate tasks, threads, actors, channels, and open thread detail live", () => {
+  const live = fixture();
+  live.event("task.claimed", "dev", "10");
+  live.event("task.completed", "ops", "11");
+  live.source.dispatchEvent(new MessageEvent("board", { data: '{"type":"channel.created"}' }));
+  live.schedule.mock.calls[0]?.[0]();
+  expect(live.invalidate.mock.calls.flat()).toEqual([
+    { queryKey: tasksQuery(board, "dev").queryKey, exact: true },
+    { queryKey: taskActorsQuery(board, true).queryKey, exact: true },
+    { queryKey: threadsQuery(board, "dev").queryKey, exact: true },
+    { queryKey: tasksQuery(board, "ops").queryKey, exact: true },
+    { queryKey: threadsQuery(board, "ops").queryKey, exact: true },
+    { queryKey: boardKeys.channels(board), exact: true },
     { queryKey: aliasKey, exact: true },
   ]);
   live.stop();
