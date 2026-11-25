@@ -1,15 +1,22 @@
+.channel-threads:not(.channel-thread-list) > .channel-thread-row {
+  position: static;
+}
+
 .channel-thread-row .channel-thread-link {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
   align-items: start;
-  block-size: 64px;
+  block-size: auto;
+  min-block-size: 64px;
   padding: 10px 8px;
   color: var(--board-dim);
 }
 
-.channel-thread-row .channel-thread-link:hover {
-  background: var(--board-shade);
-  text-decoration: none;
+@media (hover: hover) and (pointer: fine) {
+  .channel-thread-row .channel-thread-link:hover {
+    background: var(--board-shade);
+    text-decoration: none;
+  }
 }
 
 .channel-thread-row .channel-thread-link:focus-visible {
@@ -22,22 +29,56 @@
   border-radius: 4px;
 }
 
+.channel-thread-content {
+  min-inline-size: 0;
+}
+
 .channel-thread-meta {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 6px;
+  overflow: hidden;
   color: var(--board-muted);
   white-space: nowrap;
 }
 
-.channel-thread-meta strong,
-.channel-thread-preview {
+.channel-thread-meta strong {
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.channel-thread-meta strong {
   color: var(--board-text);
   font-weight: 600;
+}
+
+.channel-thread-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.channel-thread-meta time,
+.channel-thread-replies {
+  flex: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.channel-thread-meta time::before,
+.channel-thread-replies::before {
+  content: "·";
+  margin-inline-end: 6px;
+  color: var(--board-faint);
+}
+
+.channel-thread-replies[data-empty="true"] {
+  color: var(--board-faint);
+}
+
+.channel-thread-kind {
+  padding-inline: 5px;
+  border: 1px solid var(--board-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--board-shade);
+  font-size: 11px;
 }

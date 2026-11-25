@@ -85,6 +85,7 @@ function ThreadPage() {
         <>
           {!data.message.deleted && data.message.task && (
             <TaskState
+              key={data.message.id}
               board={params}
               taskId={data.message.id}
               channel={data.message.channel}
@@ -92,18 +93,13 @@ function ThreadPage() {
               recordedState={data.message.labels["board.task"]}
             />
           )}
-          <ol className="thread-messages" aria-label="Thread messages">
-            {[data.message, ...data.replies].map((item) => (
-              <li key={item.id}>
-                <MessageView message={item} board={params} />
-              </li>
-            ))}
-          </ol>
+          <ThreadMessages messages={[data.message, ...data.replies]} board={params} />
           {thread.isRefetchError && <p role="alert">{threadErrorText(thread.error)}</p>}
           {person && csrf && (
             <Composer
               key={JSON.stringify([...options.queryKey, person.principal])}
               board={params}
+              placeholder="Write a reply… Markdown supported"
               onPost={(draft) =>
                 sendThreadReply(
                   params,
@@ -132,6 +128,24 @@ function ThreadPage() {
         </>
       )}
     </section>
+  );
+}
+
+function ThreadMessages({
+  messages,
+  board,
+}: {
+  messages: readonly ThreadMessage[];
+  board: { org: string; board: string };
+}) {
+  return (
+    <ol className="thread-messages" aria-label="Thread messages">
+      {messages.map((message) => (
+        <li key={message.id}>
+          <MessageView message={message} board={board} />
+        </li>
+      ))}
+    </ol>
   );
 }
 

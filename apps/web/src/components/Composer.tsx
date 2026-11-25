@@ -1,15 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { BoardError } from "@the-vibe-company/openboard";
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode,
-  type Ref,
-  type RefObject,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import type { ChangeEvent, FormEvent, ReactNode, RefObject } from "react";
+import { type Ref, useId, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
 import { Button, Input, PaperclipIcon, TagIcon, Textarea, XIcon } from "../ui/index.ts";
@@ -25,6 +18,9 @@ type ComposerProps = {
   ref?: Ref<HTMLFormElement>;
   board?: Board;
   allowTask?: boolean;
+  defaultMode?: "message" | "task";
+  placeholder?: string;
+  submitLabel?: string;
   onPost: (draft: ComposerDraft) => Promise<void>;
   onCreateTask?: (draft: TaskComposerDraft) => Promise<void>;
 };
@@ -121,8 +117,9 @@ function useFileAttachments(
   return { files, setFiles, removeFile, uploading, onFilesSelected };
 }
 
-function useComposerState({ board, onPost, onCreateTask }: Pick<ComposerProps, "board" | "onPost" | "onCreateTask">) {
-  const [mode, setMode] = useState<"message" | "task">("message");
+function useComposerState({ board, defaultMode, onPost, onCreateTask, allowTask }: ComposerProps) {
+  const [selectedMode, setMode] = useState(defaultMode ?? "message");
+  const mode = allowTask && onCreateTask ? selectedMode : "message";
   const [showLabels, setShowLabels] = useState(false);
   const [text, setText] = useState("");
   const [labelsText, setLabelsText] = useState("");
@@ -193,10 +190,11 @@ function useComposerState({ board, onPost, onCreateTask }: Pick<ComposerProps, "
   };
 }
 
-export function Composer({ ref, board, allowTask, onPost, onCreateTask }: ComposerProps) {
+export function Composer(props: ComposerProps) {
+  const { ref, board, allowTask, placeholder, submitLabel, onCreateTask } = props;
   const messageId = useId();
-  const s = useComposerState({ board, onPost, onCreateTask });
-  const isTask = Boolean(allowTask && s.mode === "task");
+  const s = useComposerState(props);
+  const isTask = s.mode === "task";
 
   return (
     <form ref={ref} className="composer" onSubmit={s.submit}>
@@ -207,7 +205,8 @@ export function Composer({ ref, board, allowTask, onPost, onCreateTask }: Compos
         id={messageId}
         rows={3}
         placeholder={
-          isTask ? "Describe the task… First line becomes the task title" : "Write a message… Markdown supported"
+          placeholder ??
+          (isTask ? "Describe the task… First line becomes the task title" : "Write a message… Markdown supported")
         }
         value={s.text}
         readOnly={s.pending}
@@ -219,21 +218,21 @@ export function Composer({ ref, board, allowTask, onPost, onCreateTask }: Compos
           }
         }}
       />
-      {(isTask || s.showLabels) && (
-        <ComposerExtras
-          isTask={isTask}
-          pending={s.pending}
-          labelsText={s.labelsText}
-          needsText={s.needsText}
-          onLabels={s.setLabelsText}
-          onNeeds={s.setNeedsText}
-        />
-      )}
+      <ComposerExtras
+        isTask={isTask}
+        showLabels={s.showLabels}
+        pending={s.pending}
+        labelsText={s.labelsText}
+        needsText={s.needsText}
+        onLabels={s.setLabelsText}
+        onNeeds={s.setNeedsText}
+      />
       <ComposerAttachments files={s.files} onRemove={s.removeFile} />
       <ComposerFooter
         hasBoard={Boolean(board)}
         isTask={isTask}
         showLabels={s.showLabels}
+        submitLabel={submitLabel}
         uploading={s.uploading}
         pending={s.pending}
         canSubmit={s.canSubmit}
@@ -264,6 +263,7 @@ export function Composer({ ref, board, allowTask, onPost, onCreateTask }: Compos
 
 function ComposerExtras({
   isTask,
+  showLabels,
   pending,
   labelsText,
   needsText,
@@ -271,6 +271,7 @@ function ComposerExtras({
   onNeeds,
 }: {
   isTask: boolean;
+  showLabels: boolean;
   pending: boolean;
   labelsText: string;
   needsText: string;
@@ -279,18 +280,22 @@ function ComposerExtras({
 }) {
   const labelsId = useId();
   const needsId = useId();
+  if (!isTask && !showLabels) return null;
   return (
     <div className="composer-extras">
-      <div>
-        <label htmlFor={labelsId}>Labels (comma-separated key=value)</label>
-        <Input
-          id={labelsId}
-          placeholder="stage=review, priority=high"
-          value={labelsText}
-          disabled={pending}
-          onChange={(e) => onLabels(e.currentTarget.value)}
-        />
-      </div>
+      {showLabels && (
+        <div>
+          <label htmlFor={labelsId}>Labels (comma-separated key=value)</label>
+          <Input
+            id={labelsId}
+            name="labels"
+            placeholder="stage=review, priority=high"
+            value={labelsText}
+            disabled={pending}
+            onChange={(e) => onLabels(e.currentTarget.value)}
+          />
+        </div>
+      )}
       {isTask && (
         <div>
           <label htmlFor={needsId}>Depends on task IDs</label>
@@ -328,6 +333,7 @@ function ComposerFooter({
   hasBoard,
   isTask,
   showLabels,
+  submitLabel,
   uploading,
   pending,
   canSubmit,
@@ -339,6 +345,7 @@ function ComposerFooter({
   hasBoard: boolean;
   isTask: boolean;
   showLabels: boolean;
+  submitLabel?: string;
   uploading: boolean;
   pending: boolean;
   canSubmit: boolean;
@@ -350,6 +357,7 @@ function ComposerFooter({
   return (
     <div className="composer-footer">
       <div className="composer-tools">
+        {children}
         {hasBoard && (
           <>
             <input
@@ -369,14 +377,23 @@ function ComposerFooter({
             </button>
           </>
         )}
-        <button type="button" className="composer-tool-btn" aria-pressed={showLabels} onClick={onToggleLabels}>
+        <button
+          type="button"
+          className="composer-tool-btn"
+          aria-pressed={showLabels}
+          onClick={(event) => {
+            const form = event.currentTarget.form;
+            flushSync(onToggleLabels);
+            if (!showLabels && event.detail === 0)
+              form?.querySelector<HTMLInputElement>('input[name="labels"]')?.focus();
+          }}
+        >
           <TagIcon width={14} height={14} /> Labels
         </button>
-        {children}
       </div>
       <span className="composer-hint">⌘↵ to {isTask ? "create" : "post"}</span>
       <Button type="submit" pending={pending} disabled={uploading || !canSubmit}>
-        {pending ? (isTask ? "Creating…" : "Posting…") : isTask ? "Create task" : "Post"}
+        {pending ? (isTask ? "Creating…" : "Posting…") : (submitLabel ?? (isTask ? "Create task" : "Post"))}
       </Button>
     </div>
   );
