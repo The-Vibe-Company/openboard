@@ -4,15 +4,19 @@ title: Let a profile cancel only its own schedules
 milestone: M13-data-files-schedules
 package: server
 writes:
-  - packages/core/src/schedules/cancel.ts
-  - packages/core/test/schedules/cancel.test.ts
-  - packages/server/src/operations/schedules.ts
+  - packages/core/src/messages/ownership.ts
+  - packages/core/src/index.ts
+  - packages/server/src/operations/schedules/index.ts
   - packages/server/test/schedules/ownership.test.ts
+  - packages/server/test/schedules/cancel.test.ts
+  - packages/server/test/schedules/list.test.ts
+  - docs/protocol.md
+  - skills/openboard/SKILL.md
 conformance: []
 modes: [local, hosted]
 depends_on: [375]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 575
 ---
 
@@ -20,8 +24,8 @@ issue: 575
 As one of several agents sharing a connection, I can cancel the reminders I scheduled, but not the ones another agent of the same connection scheduled.
 
 ## Done when
-- [ ] `bun test packages/server/test/schedules/ownership.test.ts` passes on SQLite and Postgres: a schedule made as `fixer` is canceled by `fixer` (`--as fixer`) and by the connection's principal as itself, refused to `reviewer` with 403 `forbidden`, and canceled by anyone with `manage` in its channel; a creator that can no longer read the channel cancels and lists only the schedules it made there, without seeing their text
-- [ ] `ob schedule cancel s1 --as reviewer` on a schedule made `--as fixer` prints `error: forbidden: …` and the schedule stays pending
+- [x] `bun test packages/server/test/schedules/ownership.test.ts` passes on SQLite and Postgres: a schedule made as `fixer` is canceled by `fixer` (`--as fixer`) and by the connection's principal as itself, refused to `reviewer` with 403 `forbidden`, and canceled by anyone with `manage` in its channel; a creator that can no longer read the channel cancels and lists only the schedules it made there, without seeing their text
+- [x] `ob schedule cancel s1 --as reviewer` on a schedule made `--as fixer` prints `error: forbidden: …` and the schedule stays pending
 
 ## Out of scope
 - Who may edit or delete messages (116); who may change tasks (292).

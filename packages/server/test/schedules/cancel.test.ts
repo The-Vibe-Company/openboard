@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { AuditEvent, cancelSchedule, CreatedConnection, OutputOf, ScheduleView } from "@openboard/contract";
+import type { AuditEvent, CreatedConnection, cancelSchedule, OutputOf, ScheduleView } from "@openboard/contract";
 import { BOARD_URL, call, LOCAL_OWNER, makeApp, OWNER, PUBLIC_URL } from "../support/app.ts";
 import { browserSession, makeBrowserApp } from "../support/browser-session.ts";
 
@@ -60,7 +60,7 @@ test("withholds unreadable schedules, forbids other posters, and lets a channel 
         }),
       );
     for (const response of [
-      await cancel(OWNER.token, "work=post"),
+      await cancel(secret, "work=post"),
       await cancel(OWNER.token, "work=read", "/schedules/s9/cancel"),
     ]) {
       expect(await json(response, 404)).toMatchObject({ error: { code: "schedule_not_found" } });

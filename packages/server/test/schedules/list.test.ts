@@ -118,6 +118,7 @@ test("a post-only caller lists its blind schedules and sees normal schedules in 
         headers: {
           authorization: `Bearer ${OWNER.token}`,
           "x-board-can": can,
+          "x-board-profile": "fixer",
           "content-type": "application/json",
         },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -133,7 +134,7 @@ test("a post-only caller lists its blind schedules and sees normal schedules in 
     await json(await call(app, "POST", "/schedules", { ...schedule, channel: "dev" }), 201);
     const { schedules } = await json<OutputOf<typeof listSchedules>>(await restricted("/schedules"));
     expect(schedules.map(({ id, text }) => ({ id, text }))).toEqual([
-      { id: "s2", text: "later @…" },
+      { id: "s2", text: "" },
       { id: "s3", text: "later" },
     ]);
     const readOnly = await json<OutputOf<typeof listSchedules>>(await restricted("/schedules", undefined, "dev=read"));

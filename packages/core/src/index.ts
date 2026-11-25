@@ -45,6 +45,7 @@ export type { GrantCreated, GrantRevoked, GrantUpdated };
 
 import type { TaskEvent } from "./tasks/events.ts";
 
+export { ownsAuthoredResource } from "./messages/ownership.ts";
 export { decideCancelSchedule } from "./schedules/cancel.ts";
 export { decideAssignTask, taskAssignee } from "./tasks/assignment/assign.ts";
 export { batchNeedPositions, decideTaskBatch } from "./tasks/batches/create.ts";

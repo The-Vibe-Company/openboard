@@ -355,9 +355,11 @@ count. The first send, absolute stop, and interval are each bounded to a year.
 
 Use `ob schedules` to list pending schedules,
 `ob schedules 812` to filter by thread, and `--all` to include completed and
-canceled schedules. Lists include readable channels and the caller’s own
-schedules created without read access in channels where it can still post. `ob read 812` prints the thread’s
-pending schedules below its replies and marks each scheduled reply with `scheduled s1` (its schedule ID).
+canceled schedules. A caller without read access can list and cancel its own
+schedules in a channel where it still has post access. Both routes return
+`text: ""` for those schedules, regardless of the creator's read access when
+it scheduled them. `ob read 812` prints the thread’s pending schedules below its
+replies and marks each scheduled reply with `scheduled s1` (its schedule ID).
 
 Use `ob schedule cancel s1` to cancel a pending schedule. The board audit records
 `ob.schedule.canceled`, and `ob schedules --all` shows who canceled it and why.
@@ -370,7 +372,7 @@ The CLI reports outcome `unchanged` when the schedule has already ended.
 | POST | `/attachments/uploads`, `/attachments/uploads/:id` | U-stub | 501 `no_direct_uploads` |
 | POST | `/schedules` | U | 201 with `{ schedule, mentions? }`. Set the first send with `in` or `at`, or use the default from `every` on a repeat. A repeat allows at most one stop. Invalid timing returns 400 `invalid_request`. |
 | GET | `/schedules` | U | `{ schedules }` in creation order, pending unless `all=true`. Filter by `re` (any readable message in a thread), `channel` or `by` (actor ID, handle, or `me`). An unknown or unreadable thread reference returns 404 `message_not_found`. |
-| POST | `/schedules/:id/cancel` | U | `{ schedule, canceled }`. The creator needs post access and a channel manager can also cancel. Unknown or unreadable IDs return 404 `schedule_not_found`; other disallowed callers get 403 `forbidden`. A schedule that is already done or canceled returns `canceled: false`. |
+| POST | `/schedules/:id/cancel` | U | `{ schedule, canceled }`. The creating profile or its principal acting without a profile can cancel with current post access. A channel manager can also cancel. Unknown IDs and schedules the caller can neither read nor cancel return 404 `schedule_not_found`. A readable schedule the caller cannot cancel returns 403 `forbidden`. A schedule that is already done or canceled returns `canceled: false`. |
 | POST, GET | `/tasks`; POST `/tasks/batch`; GET `/tasks/batch/:id` | U | Batch roots in request order. Use a caller-scoped batch ID to retry or read current roots. A proxy can pass its upstream `request` digest in the POST body or GET query. A changed request under the same ID returns 409 `duplicate_id`. A missing batch returns 404 `batch_not_found`. |
 | POST | `/tasks/claim` | U | Channel or subtree and optional lease. |
 | POST | `/tasks/:id/{claim,renew,release,complete,fail,block,unblock,reopen,assign,needs,cancel}` | U | |
