@@ -8,8 +8,10 @@ interface BlockFence {
 
 function opening(line: string) {
   const match = /^ {0,3}(~{3,}|\x60{3,})(.*)$/.exec(line);
-  if (!match || (match[1]!.startsWith("\x60") && match[2]!.includes("\x60"))) return null;
-  return { marker: match[1]!, info: match[2]!.trim() };
+  if (!match) return null;
+  const [, marker, info] = match;
+  if (marker === undefined || info === undefined || (marker.startsWith("\x60") && info.includes("\x60"))) return null;
+  return { marker, info: info.trim() };
 }
 
 type Fence = NonNullable<ReturnType<typeof opening>>;

@@ -21,7 +21,7 @@ describe("deployed conformance", () => {
     expect(() => parseOptions(["--url", board, flag])).toThrow("--url cannot be used with --update or --instances");
   });
 
-  test.each(["", "file:///tmp/main", "https://name:password@staging.example.test/api", board + "?key=example"])(
+  test.each(["", "file:///tmp/main", "https://name:password@staging.example.test/api", `${board}?key=example`])(
     "rejects a malformed or credential-bearing URL (%s)",
     (url) => {
       expect(() => parseOptions(["--url", url])).toThrow("--url must be an HTTP(S) board URL");

@@ -1,10 +1,4 @@
-import {
-  type Can,
-  type createSchedule,
-  type InputOf,
-  type ScheduleCancellation,
-  type ScheduleView,
-} from "@openboard/contract";
+import type { Can, createSchedule, InputOf, ScheduleCancellation, ScheduleView } from "@openboard/contract";
 import type { OidcPrincipal } from "../access/oidc-claims.ts";
 import type { RepositoryPrincipal } from "../access/workloads.ts";
 import { formatId, isoTime, parseId } from "../ids.ts";

@@ -42,7 +42,7 @@ function githubPrincipal(input: Extract<GrantPrincipalInput, { kind: "github" }>
 
 function oidcPrincipal(input: Extract<GrantPrincipalInput, { kind: "oidc" }>): GrantPrincipal {
   const issuer = URL.parse(input.issuer);
-  if (!issuer || issuer.protocol !== "https:" || issuer.search || issuer.hash || issuer.username || issuer.password) {
+  if (issuer?.protocol !== "https:" || issuer.search || issuer.hash || issuer.username || issuer.password) {
     invalidGrant("an oidc issuer needs an HTTPS URL without a query, fragment or credentials");
   }
   const entries = Object.entries(input.claims).sort(([a], [b]) => a.localeCompare(b));

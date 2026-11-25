@@ -6,7 +6,7 @@ import type { Client } from "@the-vibe-company/openboard";
 export type Policy = Awaited<ReturnType<Client["getConnectionPolicy"]>>;
 
 const loopback = "127.0.0.1";
-const authorizationTemplate = "Bearer ${OPENBOARD_SECRET}";
+const authorizationTemplate = `Bearer \${OPENBOARD_SECRET}`;
 const requestHeaders = ["accept", "content-type", "last-event-id", "mcp-session-id", "mcp-protocol-version"];
 const responseHeaders = ["content-type", "mcp-session-id", "mcp-protocol-version", "retry-after"];
 
