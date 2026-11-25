@@ -104,6 +104,19 @@ test("a 60 second lease lasts the requested 60 seconds", async () => {
   expect(await response.json()).toMatchObject({ claim: { until: "2023-11-14T22:14:20.000Z" } });
 });
 
+test("starting or adopting a task with claim and lease honors the requested lease", async () => {
+  app = makeApp();
+  await call(app, "POST", "/messages", { channel: "dev", text: "adopt with lease" });
+  for (const input of [{ channel: "dev", text: "quick create" }, { re: "2" }]) {
+    const response = await call(app, "POST", "/tasks", { ...input, claim: true, lease: 60 });
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      task: { task: { state: "claimed" } },
+      claim: { epoch: 1, until: "2023-11-14T22:14:20.000Z" },
+    });
+  }
+});
+
 test("adding claim to an existing ready task's client ID does not report success", async () => {
   app = makeApp();
   const request = { channel: "dev", text: "keyed task", id: "keyed-task" };

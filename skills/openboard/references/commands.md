@@ -710,7 +710,7 @@ ob channels create dev/ci
 Start a thread as a task, or make a task of the thread `re` roots.
 
 ```sh
-ob tasks create (<channel> <text> | <re>) [--for <for>] [--needs <needs>]... [--label <k=v>]... [--attach <attach>]... [--claim] [--no-sync] [--idempotency-key <idempotency-key>]
+ob tasks create (<channel> <text> | <re>) [--for <for>] [--needs <needs>]... [--label <k=v>]... [--attach <attach>]... [--claim] [--lease <lease>] [--no-sync] [--idempotency-key <idempotency-key>]
 ob tasks create <channel> --file <path> [--idempotency-key <id>]
 ```
 
@@ -727,6 +727,7 @@ Options:
 - `--label`: A `key=value` entry; repeatable.
 - `--attach`: A value; repeatable.
 - `--claim`: Claim the task in the same write.
+- `--lease`: Lease in seconds, default 900.
 - `--no-sync`: A switch: present means yes.
 - `--idempotency-key`: An idempotency key for a new task thread.
 - `--file`: Path to a JSON task array, or - for stdin.

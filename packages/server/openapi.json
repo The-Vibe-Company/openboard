@@ -5174,6 +5174,12 @@
                     }
                   },
                   "claim": { "description": "Claim the task in the same write.", "type": "boolean" },
+                  "lease": {
+                    "minimum": 30,
+                    "maximum": 3600,
+                    "description": "Lease in seconds, default 900.",
+                    "type": "integer"
+                  },
                   "noSync": { "type": "boolean" },
                   "id": {
                     "minLength": 1,
