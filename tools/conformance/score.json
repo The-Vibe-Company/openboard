@@ -3,7 +3,14 @@
     "grants/caps a person by their team role, so a viewer reads but neither posts nor manages": "No team roles to cap a grant.",
     "grants/names an app by its slug or client ID, keeps it by client ID, and every app as a group": "No apps.",
     "grants/lets a member grant on a pattern after a lock under it": "A run cannot lift a lock it is shut out by.",
-    "grants/lets a project on another team in, in its environments": "Grants across teams are unspecified."
+    "grants/lets a project on another team in, in its environments": "Grants across teams are unspecified.",
+    "sync/hands a sync each message change as a match of its @sync watcher": "platform sync is deferred (D19)",
+    "sync/keeps sync's records: an import as a profile of its importer, its lookups by platform ID, a receipt, and where it's synced": "platform sync is deferred (D19)",
+    "sync/meets a platform user an import's text mentions: an actor as one who wrote would be, whom the text names by that actor's ID": "platform sync is deferred (D19)",
+    "sync/queues a platform thread's events in its sync's inbox once, and leases each after the one before is acked": "platform sync is deferred (D19)",
+    "sync/refuses a caller narrowed with x-board-can sync's records: imports, receipts, and the inbox": "platform sync is deferred (D19)",
+    "sync/takes an edit of a long message in its sync's inbox, under the longest event ID the protocol allows, and refuses a longer one": "platform sync is deferred (D19)",
+    "tasks/holds a task when anyone but its owner edits its root, which ends its claim": "platform sync is deferred (D19)"
   },
   "local": [
     "attachments/refuses a name that would download as a dotfile",
