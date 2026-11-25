@@ -1,5 +1,5 @@
 import { BoardError, type createSchedule } from "@openboard/contract";
-import { decideSchedule, firstScheduleTime, grantMatchingClaims, parseId } from "@openboard/core";
+import { decideSchedule, grantMatchingClaims, parseId, resolveScheduleTiming } from "@openboard/core";
 import { canReadChannel } from "../../auth/access.ts";
 import { authorOf } from "../../auth/author.ts";
 import { agentOf, credentialKind, personalPin, requestScope, workloadOf } from "../../deps.ts";
@@ -10,7 +10,7 @@ import { resolvePostMentions, validateBlocks, writeWithMentionVisibility } from 
 export const createScheduleHandler: Handler<typeof createSchedule> = async (ctx, request) => {
   const input = { ...request, text: request.text ?? "" };
   const now = ctx.now();
-  const firstAt = firstScheduleTime(input, now);
+  const timing = resolveScheduleTiming(input, now);
   ctx.debitWrite();
   return writeWithMentionVisibility(ctx, input.text, async (writer, visibility) => {
     const re = parseId(input.re ?? "");
@@ -38,7 +38,7 @@ export const createScheduleHandler: Handler<typeof createSchedule> = async (ctx,
         by: { actor, principal, profile },
         now,
         author: authorOf(ctx.by),
-        firstAt,
+        timing,
         blocks,
         attachments,
         creator,

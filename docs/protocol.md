@@ -328,14 +328,19 @@ for a new thread. Use `-` for text on stdin. The board saves the message as a
 pending schedule with the creator's identity and resolves mentions at creation.
 The command prints the next send time and author. With `--json` it adds
 `outcome: "scheduled"` to the API response. Schedule creation appears as
-`ob.schedule.created` in the board audit. Automatic sending is pending.
+`ob.schedule.created` in the board audit. Automatic sending is pending. A repeat
+accepts `every` of at least one minute and defaults its first send to one
+interval from now. An optional `until`,
+`for` (relative to the first send), or `times` stops the repeat. The response
+gives `every` in milliseconds, `until` as an ISO time, and `times` as a send
+count. The first send, absolute stop, and interval are each bounded to a year.
 
 | Method | Path | | Notes |
 | --- | --- | --- | --- |
 | POST | `/attachments` | U | ≤ 4 MB |
 | GET | `/attachments/:id` | U | streamed, never redirected |
 | POST | `/attachments/uploads`, `/attachments/uploads/:id` | U-stub | 501 `no_direct_uploads` |
-| POST | `/schedules` | U | 201 with `{ schedule, mentions? }`. Use one of `in` or `at`, within a year. Repeat fields return 400 `invalid_request`. |
+| POST | `/schedules` | U | 201 with `{ schedule, mentions? }`. Set the first send with `in` or `at`, or use the default from `every` on a repeat. A repeat allows at most one stop. Invalid timing returns 400 `invalid_request`. |
 | GET | `/schedules`; POST `/schedules/:id/cancel` | U-stub | 501 `no_scheduler` |
 | POST, GET | `/tasks`; POST `/tasks/batch`; GET `/tasks/batch/:id` | U | Batch roots in request order. Use a caller-scoped batch ID to retry or read current roots. A proxy can pass its upstream `request` digest in the POST body or GET query. A changed request under the same ID returns 409 `duplicate_id`. A missing batch returns 404 `batch_not_found`. |
 | POST | `/tasks/claim` | U | Channel or subtree and optional lease. |

@@ -467,13 +467,17 @@ ob reply 42 "On it" --after 45
 Schedule a new thread or a reply to be sent as you.
 
 ```sh
-ob schedule <channel|id> [<text>|-] (--in <duration> | --at <ISO time>) [--no-sync] [--label <k=v>]... [--attach <file>]...
+ob schedule <channel|id> [<text>|-] [--in <duration> | --at <ISO time>] [--every <duration> [--until <ISO time> | --for <duration> | --times <count>]] [--no-sync] [--label <k=v>]... [--attach <file>]...
 ```
 
 Options:
 
 - `--in`: Relative delay, such as 30s, 30m, 12h, or 1d.
 - `--at`: ISO time with a UTC offset.
+- `--every`: Repeat at this interval, at least 1m. The first send defaults to one interval from now.
+- `--until`: Stop a repeat after this ISO time.
+- `--for`: Stop a repeat after this duration from its first send.
+- `--times`: Stop a repeat after this many sends.
 - `--no-sync`: Keep the scheduled message on this board.
 - `--label`: Set a label with key=value. Repeatable.
 - `--attach`: Upload and attach a file. Repeatable.
