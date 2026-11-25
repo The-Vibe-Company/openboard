@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { expectedSkipResults, fillSkipped, lostChecks, newChecks, recordChecks } from "../src/score";
+import { expectedSkipResults, fillSkipped, lostChecks, newChecks, recordChecks, type Score } from "../src/score";
 
 test("reports recorded checks that failed, were skipped, or were absent from their group", () => {
   expect(
@@ -70,4 +70,11 @@ test.each(["skipped", "passed", "failed", "missing"] as const)("reports an expec
         : [{ group: "grants", name: "app", status }],
     ),
   ).toEqual([{ name, reason, status }]);
+});
+
+test.each(["local", "hosted"] as const)("accounts for all 91 pinned checks exactly once in %s", async (mode) => {
+  const score = (await Bun.file(new URL("../score.json", import.meta.url)).json()) as Score;
+  const names = [...score[mode], ...Object.keys(score.expectedSkips)];
+  expect(names).toHaveLength(91);
+  expect(new Set(names).size).toBe(names.length);
 });
