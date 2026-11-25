@@ -378,7 +378,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 | Variable | Meaning |
 |---|---|
 | `OPENBOARD_DATABASE_URL` | set: hosted mode on Postgres (`postgres://…`), with organizations and sign-up; unset: local mode on SQLite, with the implicit organization `local` and board `main` |
-| `OPENBOARD_BACKUP_S3_ENDPOINT`, `_BUCKET`, `_REGION`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY` | Hosted log shipping to a private S3-compatible bucket. Set all five (using the `OPENBOARD_BACKUP_S3_` prefix) or none. The secret access key can also come from `OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY_FILE`. |
+| `OPENBOARD_BACKUP_S3_ENDPOINT`, `_BUCKET`, `_REGION`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY` | Log and attachment shipping to a private S3-compatible bucket in both modes. Local mode also streams retained SQLite snapshots to UTC-named keys and retries failed uploads while the local copies remain available. Set all five (using the `OPENBOARD_BACKUP_S3_` prefix) or none. The secret access key can also come from `OPENBOARD_BACKUP_S3_SECRET_ACCESS_KEY_FILE`. |
 | `OPENBOARD_HOST` | Listener hostname or IP address (default `127.0.0.1` in local mode, `0.0.0.0` in hosted mode) |
 | `OPENBOARD_DATA_DIR` | SQLite mode: database, blobs, backups (default `./.openboard`) |
 | `OPENBOARD_SIGNUP` | `open`, `invite` or `closed` (docs/auth.md); local mode defaults to `closed`, no sign-up unless set (D48) |

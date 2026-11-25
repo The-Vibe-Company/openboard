@@ -1,7 +1,10 @@
 import { lookup } from "node:dns/promises";
+import { join } from "node:path";
 import { migratePostgres, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
+import type { PlatformView } from "@openboard/ports";
 import { createApp, type Deps, jsonLogger, maintenanceJobs, usageJobs } from "@openboard/server";
+import { snapshotShipping } from "./backup.ts";
 import { backupBucket } from "./bucket.ts";
 import type { Config } from "./config.ts";
 
@@ -50,8 +53,12 @@ export async function withAdminStore<Result>(
 }
 
 /** The one place a driver is chosen: SQLite for local mode, Postgres for hosted mode. */
-export async function compose(config: Config, localOwnerTokenHash?: string) {
-  const now = () => Date.now();
+export async function compose(
+  config: Config,
+  localOwnerTokenHash?: string,
+  overrides?: { readonly deps: Pick<Deps, "now" | "schedule" | "log">; readonly backupBucket: typeof backupBucket },
+) {
+  const now = overrides?.deps.now ?? Date.now;
   const deps: Deps = {
     now,
     residentBytes: () => process.memoryUsage.rss(),
@@ -65,8 +72,15 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
     fetch: (request) => fetch(request, { redirect: request.redirect === "manual" ? "manual" : "error" }),
     webhookFetch: (request, options) => fetch(request, options),
     resolveHost: async (hostname) => (await lookup(hostname, { all: true })).map(({ address }) => address),
+    ...overrides?.deps,
   };
   const { mode, publicUrl, localOwner, signup, github } = config;
+  const bucket = config.backup ? (overrides?.backupBucket ?? backupBucket)(config.backup, deps.now) : undefined;
+  if (mode === "local" && !bucket) deps.log.info("log shipping is off", {});
+  const snapshots =
+    mode === "local" && bucket
+      ? snapshotShipping(bucket, (): PlatformView => store.platform(), join(config.dataDir, "backups"), deps)
+      : undefined;
   const store =
     config.mode === "hosted"
       ? await hostedStore(config.databaseUrl, deps.now)
@@ -74,12 +88,13 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
           {
             dir: config.dataDir,
             sync: config.sync,
+            ...(overrides && { scheduleSnapshot: deps.schedule }),
+            ...(snapshots && { onSnapshot: snapshots.refresh }),
             onSnapshotError: () => deps.log.error("SQLite snapshot failed", {}),
           },
           deps.now,
         );
-  const bucket = mode === "hosted" && config.backup ? backupBucket(config.backup, deps.now) : undefined;
-  return createApp(
+  const app = createApp(
     {
       mode,
       ...(config.secretKey && { secretKey: config.secretKey }),
@@ -98,4 +113,17 @@ export async function compose(config: Config, localOwnerTokenHash?: string) {
     deps,
     { ...maintenanceJobs, ...usageJobs },
   );
+  if (!snapshots) return app;
+  snapshots.refresh();
+  return {
+    fetch: app.fetch,
+    drain() {
+      snapshots.stop();
+      return app.drain();
+    },
+    close() {
+      snapshots.stop();
+      return app.close();
+    },
+  };
 }

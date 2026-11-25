@@ -11,6 +11,9 @@
       "path": "../../packages/contract"
     },
     {
+      "path": "../../packages/ports"
+    },
+    {
       "path": "../../packages/server"
     },
     {

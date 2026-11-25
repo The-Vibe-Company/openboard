@@ -20,6 +20,7 @@
     "test": "bun test --pass-with-no-tests"
   },
   "devDependencies": {
+    "@openboard/ports": "workspace:*",
     "@types/bun": "1.4.5"
   }
 }
