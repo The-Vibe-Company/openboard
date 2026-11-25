@@ -302,7 +302,12 @@ Use `ob post dev "after the fix" --attach after.png` to upload and attach a
 local file in one command. Repeat `--attach` for up to ten files. Read the
 attachment ID from the thread and use `ob download <id> [path]` to save it.
 Use `-` as the path to send the raw bytes to stdout. A message or reply with
-an attachment can omit its text.
+an attachment can omit its text. Use `ob tasks create dev "fix the flaky build"
+--attach build.log` to attach a file to a new task's root. The task create API
+accepts up to ten uploaded IDs in `attachments` per new root, including each
+entry in a batch. An unknown ID returns 404 `attachment_not_found` and aborts
+the entire write. Creating a task from an existing root with `re` returns
+400 `invalid_request` if `attachments` is supplied.
 
 Upload sends the raw bytes, the file's media type in `content-type`, and its
 URI-encoded name in `x-board-filename`. A successful upload returns 201

@@ -111,7 +111,10 @@ export function refFields(operation: Operation): { part: Part; field: string; ki
       const kind = refKind(property);
       if (kind) found.push({ part, field, kind });
       if (operation.name === "createTaskBatch" && part === "body" && field === "tasks") {
-        found.push({ part, field: "tasks.0.needs", kind: "task", array: true });
+        found.push(
+          { part, field: "tasks.0.needs", kind: "task", array: true },
+          { part, field: "tasks.0.attachments", kind: "file", array: true },
+        );
       }
       if (part === "body" && property.type === "array" && property.items && !Array.isArray(property.items)) {
         const itemKind = refKind(property.items);
@@ -181,9 +184,9 @@ export function callOf(
   for (const { part, field, kind } of refFields(operation)) {
     if (part === "params") parts.params[field] = tenant.ids[kind];
   }
-  if (override?.field === "tasks.0.needs") {
+  if (override?.field === "tasks.0.needs" || override?.field === "tasks.0.attachments") {
     const [task] = parts.body.tasks as [Fields];
-    task.needs = [override.value];
+    task[override.field.slice("tasks.0.".length)] = [override.value];
   } else if (override?.field.includes(".")) {
     const [field, key] = override.field.split(".").slice(-2) as [string, string];
     const target = override.field.startsWith("grants.") ? (parts.body.grants as [Fields])[0] : parts.body;

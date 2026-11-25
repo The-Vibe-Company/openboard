@@ -31,7 +31,7 @@ function initialTask(by: Author, needs: TaskNeeds, assignee?: string | null): Ta
   };
 }
 
-type CreateTaskCommand = Pick<PostCommand, "text" | "labels" | "noSync" | "id"> & {
+type CreateTaskCommand = Pick<PostCommand, "text" | "labels" | "noSync" | "id" | "attachments"> & {
   channel: string;
   for?: string | null;
 };

@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import { AttachmentIds } from "../../entities/attachments/index.ts";
 import { ChannelPath, Labels, MESSAGE_TEXT_MAX } from "../../entities/messages.ts";
 import { defineOperation, Ref } from "../../operation.ts";
 
@@ -22,6 +23,7 @@ export const createTask = defineOperation({
         for: Type.Optional(TaskAssignee),
         needs: Type.Optional(Type.Array(Ref("task"), { maxItems: 20 })),
         labels: Type.Optional(Labels),
+        attachments: Type.Optional(AttachmentIds),
         claim: Type.Optional(Type.Boolean({ description: "Claim the task in the same write." })),
         noSync: Type.Optional(Type.Boolean()),
         id: Type.Optional(
@@ -36,6 +38,7 @@ export const createTask = defineOperation({
   errors: [
     "quota_exceeded",
     "invalid_request",
+    "attachment_not_found",
     "invalid_needs",
     "task_waiting",
     "task_assigned",
@@ -57,7 +60,7 @@ export const createTask = defineOperation({
     command: ["tasks", "create"],
     args: ["channel", "text"],
     alternative: ["re"],
-    options: { id: "idempotency-key", labels: "label", noSync: "no-sync", claim: "claim" },
+    options: { attachments: "attach", id: "idempotency-key", labels: "label", noSync: "no-sync", claim: "claim" },
   },
   mcp: { tool: "task_create" },
   upstream: true,

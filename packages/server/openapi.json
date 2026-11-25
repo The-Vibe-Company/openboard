@@ -5162,6 +5162,17 @@
                     "type": "object",
                     "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
                   },
+                  "attachments": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                      "x-ref": "file",
+                      "type": "string"
+                    }
+                  },
                   "claim": { "description": "Claim the task in the same write.", "type": "boolean" },
                   "noSync": { "type": "boolean" },
                   "id": {
@@ -5412,7 +5423,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
-            "description": "message_not_found, not_found",
+            "description": "attachment_not_found, message_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "409": {
@@ -6131,6 +6142,17 @@
                           "type": "object",
                           "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
                         },
+                        "attachments": {
+                          "maxItems": 10,
+                          "type": "array",
+                          "items": {
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                            "x-ref": "file",
+                            "type": "string"
+                          }
+                        },
                         "noSync": { "type": "boolean" },
                         "for": {
                           "description": "The task owner's profile actor ID, or null for the pool.",
@@ -6428,7 +6450,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
-            "description": "not_found",
+            "description": "attachment_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "409": {

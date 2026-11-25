@@ -95,6 +95,7 @@ Read the JSON result in `structuredContent`. On `isError`, inspect its
   `ob tasks fail <id> "<reason>"`. A task owner can run `ob tasks reopen <id>`
   after fixing the cause. If a claim is lost, check the task
   before making further task updates.
+- Start a task with a local file on its root with `ob tasks create dev "fix the flaky build" --attach build.log`.
 - Use `ob tasks create <channel> --file plan.json --idempotency-key <key>` to
   create a plan in one write. The file contains an ordered JSON array of tasks.
   Give a prerequisite a `key` and refer to it as `{"key":"..."}` in another

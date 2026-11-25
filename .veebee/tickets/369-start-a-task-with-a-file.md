@@ -4,17 +4,28 @@ title: Start a task with a file
 milestone: M13-data-files-schedules
 package: server
 writes:
-  - packages/core/src/tasks/create.ts
-  - packages/core/test/tasks/create.test.ts
-  - packages/server/src/operations/tasks.ts
-  - packages/server/test/attachments/task.test.ts
-  - packages/cli/src/commands/tasks.ts
+  - docs/protocol.md
+  - packages/cli/src/commands/derived.ts
   - packages/cli/test/tasks.test.ts
+  - packages/contract/src/entities/attachments/index.ts
+  - packages/contract/src/operations/messages.ts
+  - packages/contract/src/operations/tasks/batch.ts
+  - packages/contract/src/operations/tasks/create.ts
+  - packages/core/src/tasks/batches/create.ts
+  - packages/core/src/tasks/create.ts
+  - packages/server/openapi.json
+  - packages/server/src/operations/tasks.ts
+  - packages/server/src/operations/tasks/batch.ts
+  - packages/server/test/attachments/task.test.ts
+  - packages/server/test/isolation/cases.ts
+  - skills/openboard/SKILL.md
+  - skills/openboard/references/commands.md
+  - tools/conformance/score.json
 conformance: ["attachments/starts a task with a file, which its root carries"]
 modes: [local, hosted]
 depends_on: [238, 268, 291, 367]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 564
 ---
 

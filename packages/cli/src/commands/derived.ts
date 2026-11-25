@@ -191,6 +191,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     flags.set("next", "next");
   }
   const post = operation.name === "postMessage";
+  const createTask = operation.name === "createTask";
   const derived: Command = {
     words: command,
     ...(operation.name === "listWebhookDeliveries" && { help: operation.summary }),
@@ -210,8 +211,12 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
       if (post) {
         if ((typeof input.channel === "string") === (typeof input.re === "string"))
           throw new Misuse("expected a channel or --re with one message ID");
-        if (Array.isArray(input.attachments)) input.attachments = await uploadFiles(ctx, input.attachments);
-        else if (input.text === undefined) throw new Misuse("expected a channel and the message's text");
+        if (input.attachments === undefined && input.text === undefined)
+          throw new Misuse("expected a channel and the message's text");
+      }
+      if (Array.isArray(input.attachments)) {
+        if (createTask && input.re !== undefined) throw new Misuse("--attach requires a new task thread");
+        input.attachments = await uploadFiles(ctx, input.attachments);
       }
       return runDerived(ctx, operation.name, input);
     },

@@ -1,10 +1,11 @@
-import { BoardError, type Message } from "@openboard/contract";
+import { type Attachment, BoardError, type Message } from "@openboard/contract";
 import type { SettledMentions } from "../../messages/mentions.ts";
 import { actorSeen, type PostContext } from "../../messages/post.ts";
 import { decideCreateTask, type MakeTaskState } from "../create.ts";
 import { checkNeeds, needPositions } from "../needs.ts";
 
 type Entry = Omit<Parameters<typeof decideCreateTask>[1], "channel" | "id"> & {
+  files?: readonly Attachment[];
   key?: string;
   needs?: readonly (string | { key: string })[];
 };
@@ -83,7 +84,7 @@ export function decideTaskBatch(
     return decideCreateTask(
       { head: plan.position - 1 },
       { ...entry, channel },
-      { ...context, needs: { ids: [...needs], waitingOn } },
+      { ...context, attachments: entry.files, needs: { ids: [...needs], waitingOn } },
       mentions[index],
     );
   });
