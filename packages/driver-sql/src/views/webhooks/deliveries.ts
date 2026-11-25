@@ -40,14 +40,18 @@ const unfinishedDelivery: Fragment = {
 };
 export const earlierDelivery: Fragment = {
   fragment: (dialect) => {
-    // An ordered, bounded probe favors the lane index even before fresh statistics are available.
-    const exists = (lane: Fragment, order: string) => `(SELECT 1 FROM webhook_deliveries prior
-      WHERE prior.org_id = d.org_id AND prior.board_id = d.board_id AND ${unfinishedDelivery.fragment(dialect)}
+    // Keep the tenant checks on event probes as filters on Postgres so cold
+    // estimates cannot turn them into scans of the tenant's webhook history.
+    // Pings use the history index's creation order.
+    const eventTenant = dialect.name === "postgres" ? "IS NOT DISTINCT FROM" : "=";
+    const exists = (lane: Fragment, order: string, tenant = eventTenant) => `(SELECT 1 FROM webhook_deliveries prior
+      WHERE prior.org_id ${tenant} d.org_id AND prior.board_id ${tenant} d.board_id
+        AND ${unfinishedDelivery.fragment(dialect)}
         AND ${lane.fragment(dialect)}
       ORDER BY ${order} LIMIT 1) IS NOT NULL`;
     return `(CASE WHEN d.thread IS NOT NULL THEN ${exists(earlierThreaded, "prior.event DESC")}
       WHEN d.event IS NOT NULL THEN ${exists(earlierThreadless, "prior.event DESC")}
-      ELSE ${exists(earlierPing, "prior.created_at DESC, prior.id DESC")} END)`;
+      ELSE ${exists(earlierPing, "prior.created_at DESC, prior.id DESC", "=")} END)`;
   },
 };
 

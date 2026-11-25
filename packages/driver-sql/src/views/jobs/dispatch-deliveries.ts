@@ -30,15 +30,19 @@ export const readyDeliveryLane: Fragment = {
 
 // A finishing runner immediately picks again. A waiting peer can sleep until
 // the first slot could expire, unless newly enqueued work wakes it sooner.
+// Four live leases already fill the webhook, so only the first four matter.
 export const dispatchAt: Fragment = {
   fragment: (dialect) => `CASE WHEN jobs.kind IN ${webhookJobKinds} THEN
     ${dialect.name === "postgres" ? "GREATEST" : "MAX"}(jobs.available_at, COALESCE((
       SELECT (
         SELECT CASE WHEN COUNT(*) >= 4 OR COUNT(CASE WHEN active.thread IS NOT DISTINCT FROM d.thread THEN 1 END) > 0
           THEN MIN(active.lease_until) END
-        FROM webhook_deliveries active
-        WHERE active.org_id = d.org_id AND active.board_id = d.board_id AND active.webhook = d.webhook
-          AND active.id <> d.id AND active.state = 'sending' AND active.lease_until > (SELECT at FROM input)
+        FROM (
+          SELECT active.thread, active.lease_until FROM webhook_deliveries active
+          WHERE active.org_id = d.org_id AND active.board_id = d.board_id AND active.webhook = d.webhook
+            AND active.id <> d.id AND active.state = 'sending' AND active.lease_until > (SELECT at FROM input)
+          ORDER BY active.lease_until LIMIT 4
+        ) active
       ) ${jobDelivery.fragment(dialect)}
     ), jobs.available_at))
     ELSE jobs.available_at END`,
