@@ -67,8 +67,10 @@ function oidcFetch(fetch: Fetch, resolve: NonNullable<Deps["resolveHost"]>, sche
       const response = await fetch(new Request(url.href, { redirect: "error", signal: abort.signal }));
       return responseObject(response);
     };
+    const inflight = read();
+    inflight.catch(() => {});
     try {
-      return await Promise.race([read(), deadline.promise]);
+      return await Promise.race([inflight, deadline.promise]);
     } finally {
       cancel();
     }

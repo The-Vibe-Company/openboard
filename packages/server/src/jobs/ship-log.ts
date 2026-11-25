@@ -1,6 +1,7 @@
 import type { BackupAttachment, Blobs, Bucket, LogSegment, PlatformView } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
 import type { Tenants } from "../http/scope.ts";
+import { errorMessage } from "../log.ts";
 import type { OrgJobHandler } from "./registry.ts";
 
 export const SHIP_LOG_JOB = "ship-log";
@@ -68,8 +69,8 @@ export function logShippingJobs(
             "application/json",
           ),
       );
-    } catch {
-      deps.log.error("log shipping failed", { orgId });
+    } catch (error) {
+      deps.log.error("log shipping failed", { orgId, error: errorMessage(error) });
     }
   }
 

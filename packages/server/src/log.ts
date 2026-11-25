@@ -3,23 +3,37 @@ import type { Logger } from "./deps.ts";
 const sensitiveKey =
   /token|secret|authorization|cookie|password|signature|signing[-_]?key|body|^text$|message[-_]?text/i;
 
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
 export interface JsonLoggerOptions {
   /** The clock each line's `t` is read from, in epoch milliseconds. */
   readonly now: () => number;
+  /** Minimum severity emitted; defaults to `"info"`. */
+  readonly level?: LogLevel;
   /** Where each line goes; standard output unless a test collects them. */
   readonly write?: (line: string) => void;
+}
+
+/** Extract a concise, safe error message for structured operational logs. */
+export function errorMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  return raw.length > 300 ? `${raw.slice(0, 300)}…` : raw;
 }
 
 /** The server's one logger (docs/codebase.md 5.4): one JSON object per line, `{ "t", "level", "msg", ...fields }`. */
 export function jsonLogger(options: JsonLoggerOptions): Logger {
   const write = options.write ?? ((line: string) => console.log(line));
+  const suppressInfo = options.level === "warn" || options.level === "error";
   const emit = (level: string) => (msg: string, fields: Readonly<Record<string, unknown>>) =>
     write(
       JSON.stringify({ t: options.now(), level, msg, ...fields }, (key, value) =>
         sensitiveKey.test(key) ? undefined : value,
       ),
     );
-  return { info: emit("info"), error: emit("error") };
+  return {
+    info: suppressInfo ? () => {} : emit("info"),
+    error: emit("error"),
+  };
 }
 
 /** `log` with `fields` added to every line it prints, so each line of one request carries its request ID. */

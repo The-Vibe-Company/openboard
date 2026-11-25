@@ -61,10 +61,10 @@ describe("the public URL board URLs are built on", () => {
 });
 
 describe("the log level", () => {
-  test("accepts debug, info, warn or error, and nothing else is required", () => {
-    for (const level of ["debug", "info", "warn", "error"])
-      expect(() => load({ OPENBOARD_LOG_LEVEL: level })).not.toThrow();
-    expect(() => load({})).not.toThrow();
+  test("accepts debug, info, warn or error, and propagates logLevel", () => {
+    for (const level of ["debug", "info", "warn", "error"] as const)
+      expect(load({ OPENBOARD_LOG_LEVEL: level }).logLevel).toBe(level);
+    expect(load({}).logLevel).toBe("info");
   });
 
   test("refuses an unknown level, naming the variable and the values it accepts", () => {

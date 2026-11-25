@@ -77,27 +77,36 @@ async function shipRetainedSnapshots(
 export function snapshotShipping(bucket: Bucket, platform: () => PlatformView, dir: string, deps: Deps) {
   const shutdown = new AbortController();
   let pending = false;
-  let running = false;
+  let active: Promise<void> | undefined;
   let cancelRetry: (() => void) | undefined;
 
-  async function ship() {
-    if (running || shutdown.signal.aborted) return;
-    running = true;
+  async function runShip() {
     cancelRetry?.();
     cancelRetry = undefined;
+    let shouldRetry = false;
     try {
       do {
         pending = false;
         await shipRetainedSnapshots(bucket, platform(), dir, deps, shutdown.signal);
       } while (pending && !shutdown.signal.aborted);
-    } catch {
+    } catch (error) {
       if (!shutdown.signal.aborted) {
-        deps.log.error("SQLite snapshot upload failed", {});
-        cancelRetry = deps.schedule(retryInterval, ship);
+        const message = error instanceof Error ? error.message : String(error);
+        deps.log.error("SQLite snapshot upload failed", { error: message.slice(0, 300) });
+        shouldRetry = true;
       }
     } finally {
-      running = false;
+      active = undefined;
+      if (shouldRetry && !shutdown.signal.aborted) {
+        cancelRetry = deps.schedule(retryInterval, ship);
+      }
     }
+  }
+
+  function ship() {
+    if (active || shutdown.signal.aborted) return active;
+    active = runShip();
+    return active;
   }
 
   return {
@@ -106,9 +115,10 @@ export function snapshotShipping(bucket: Bucket, platform: () => PlatformView, d
       // At startup the composition root still needs to finish opening its store.
       queueMicrotask(() => void ship());
     },
-    stop() {
+    async stop() {
       shutdown.abort();
       cancelRetry?.();
+      await active;
     },
   };
 }

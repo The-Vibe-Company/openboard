@@ -47,8 +47,10 @@ export function withDnsDeadline(resolve: Deps["resolveHost"], schedule: Deps["sc
   return async (host) => {
     const deadline = Promise.withResolvers<never>();
     const cancel = schedule(webhookTimeoutMs, () => deadline.reject(new Error("DNS lookup timed out")));
+    const lookup = resolve(host);
+    lookup.catch(() => {});
     try {
-      return await Promise.race([resolve(host), deadline.promise]);
+      return await Promise.race([lookup, deadline.promise]);
     } finally {
       cancel();
     }

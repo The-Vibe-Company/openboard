@@ -1,6 +1,9 @@
 import type { Operation } from "@openboard/contract";
 
-const JSON_TYPE = { "content-type": "application/json; charset=utf-8" };
+const JSON_TYPE = {
+  "content-type": "application/json; charset=utf-8",
+  "x-content-type-options": "nosniff",
+};
 
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: JSON_TYPE });

@@ -34,6 +34,7 @@ export async function serve(config: Config): Promise<void> {
     const server = Bun.serve({
       hostname: config.host,
       port: config.port,
+      maxRequestBodySize: 8 * 1024 * 1024,
       fetch(request, server) {
         const { pathname } = new URL(request.url);
         if (

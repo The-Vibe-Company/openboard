@@ -13,6 +13,7 @@ import {
 } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
 import type { Tenants } from "../http/scope.ts";
+import { errorMessage } from "../log.ts";
 import { blobGcJob } from "./blob-gc.ts";
 import { scheduleSendJob } from "./schedules.ts";
 import { taskExpiryJob } from "./task-expiry.ts";
@@ -92,8 +93,8 @@ export function startJobs(
         pending = false;
         try {
           nextDue = await run(owner, instanceId);
-        } catch {
-          deps.log.error("job claim failed", { instanceId });
+        } catch (error) {
+          deps.log.error("job claim failed", { instanceId, error: errorMessage(error) });
           nextDue = deps.now() + 1_000;
         }
         // A notification during the last claim may describe work that missed that claim's snapshot.
@@ -138,9 +139,9 @@ async function runLoggedEffect(
   try {
     const ran = await runEffect(tenants, handler, job, lease, deps.now, bucket);
     if (ran) deps.log.info("job completed", { kind: job.kind, instanceId });
-  } catch {
+  } catch (error) {
     // Leave the lease to expire. An unsuccessful transaction rolls back both consumption and the effect.
-    deps.log.error("job failed", { kind: job.kind, instanceId });
+    deps.log.error("job failed", { kind: job.kind, instanceId, error: errorMessage(error) });
   }
 }
 
@@ -168,7 +169,7 @@ function runEffect(
 async function releaseLeases(jobs: Jobs, deps: Deps, leaseOwner: string, instanceId: string, exceptId?: string) {
   try {
     await jobs.release(leaseOwner, deps.now(), exceptId);
-  } catch {
-    deps.log.error("job lease release failed", { instanceId });
+  } catch (error) {
+    deps.log.error("job lease release failed", { instanceId, error: errorMessage(error) });
   }
 }

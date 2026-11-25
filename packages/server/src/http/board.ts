@@ -16,6 +16,23 @@ import type { BoardPath } from "./scope.ts";
 
 export type BoardOperation = Extract<(typeof operations)[number], { readonly scope: "board" }>;
 
+const NO_STORE_BOARD_OPS = new Set([
+  "createWebhook",
+  "updateWebhook",
+  "createInbound",
+  "createConnection",
+  "rotateConnection",
+  "claimConnection",
+  "refreshAgentToken",
+  "getConnectionPolicy",
+]);
+
+function applyBoardHeaders(operation: BoardOperation, response: Response): Response {
+  if (NO_STORE_BOARD_OPS.has(operation.name)) response.headers.set("cache-control", "no-store");
+  if (operation.eventStream) response.headers.set("vary", "Accept");
+  return response;
+}
+
 function boardAudience(pipeline: Pipeline, path: BoardPath): string {
   return `${pipeline.config.publicUrl}${path.mount}`;
 }
@@ -104,10 +121,5 @@ export async function runBoard(
   }
   const input = boardInput(operation, raw, by);
   const output = await handlerOf(operation)(await context(input), input).catch(recoverGrant(operation, input));
-  const response = operationResponse(operation, output);
-  if (operation.name === "createWebhook" || operation.name === "updateWebhook" || operation.name === "createInbound") {
-    response.headers.set("cache-control", "no-store");
-  }
-  if (operation.eventStream) response.headers.set("vary", "Accept");
-  return response;
+  return applyBoardHeaders(operation, operationResponse(operation, output));
 }

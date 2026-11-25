@@ -1,5 +1,6 @@
 import { BoardError } from "@openboard/contract";
 import manifest from "../../package.json" with { type: "json" };
+import { readBoundedText } from "../http/input.ts";
 import { findTool, type InvokeTool, toolResponse } from "./call.ts";
 import { listTools } from "./tools.ts";
 
@@ -47,7 +48,7 @@ export async function mcpPost(request: Request, invoke: InvokeTool): Promise<Res
 
   let message: unknown;
   try {
-    message = await request.json();
+    message = JSON.parse(await readBoundedText(request));
   } catch (error) {
     if (error instanceof SyntaxError) return rpcError(null, -32700, "Parse error", 400);
     throw error;

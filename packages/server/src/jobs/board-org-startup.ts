@@ -1,5 +1,6 @@
 import type { PlatformView } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
+import { errorMessage } from "../log.ts";
 
 /** Start the sweep without delaying readiness, and retry transient database failures while serving. */
 export function startBoardOrgBackfill(
@@ -13,9 +14,9 @@ export function startBoardOrgBackfill(
   async function sweep() {
     try {
       await platform.queueBoardOrgBackfill(deps.now(), shutdown.signal);
-    } catch {
+    } catch (error) {
       if (shutdown.signal.aborted) return;
-      deps.log.error("could not queue board organization backfill", {});
+      deps.log.error("could not queue board organization backfill", { error: errorMessage(error) });
       cancelRetry = deps.schedule(1000, () => {
         active = sweep();
       });

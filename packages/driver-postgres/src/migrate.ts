@@ -10,6 +10,8 @@ export const MIGRATION_LOCK = 0x6f70656e626f6172n;
 
 /** How long one lock attempt waits before it retries in a new statement (see `lockFor`). */
 const LOCK_ATTEMPT = "100ms";
+/** Upper bound on lock retries (~5 minutes at 100ms each) so a stuck lock cannot spin forever. */
+const MAX_LOCK_ATTEMPTS = 3_000;
 
 async function applied(sql: SQL, version: number): Promise<boolean> {
   const rows = await sql`SELECT version FROM schema_migrations WHERE version = ${version}`;
@@ -57,18 +59,24 @@ export async function migrate(sql: SQL, now: number, onApplied?: (name: string) 
  */
 async function lockFor(session: SQL): Promise<void> {
   await session`SELECT set_config('lock_timeout', ${LOCK_ATTEMPT}, false)`;
+  const reset = () => session`RESET lock_timeout`;
   try {
-    for (;;) {
+    for (let attempt = 0; attempt < MAX_LOCK_ATTEMPTS; attempt++) {
       try {
         await session`SELECT pg_advisory_lock(${MIGRATION_LOCK})`;
-        return;
+        break;
       } catch (error) {
         if ((error as { errno?: unknown }).errno !== "55P03") throw error;
+        if (attempt + 1 === MAX_LOCK_ATTEMPTS) {
+          throw new Error("Timed out waiting for the Postgres migration lock");
+        }
       }
     }
-  } finally {
-    await session`RESET lock_timeout`;
+  } catch (error) {
+    await reset().catch(() => {});
+    throw error;
   }
+  await reset();
 }
 
 /**
@@ -78,13 +86,18 @@ async function lockFor(session: SQL): Promise<void> {
  */
 export async function migrateLocked(sql: SQL, now: number, onApplied?: (name: string) => void): Promise<string[]> {
   const session = await sql.reserve();
+  const unlock = () => session`SELECT pg_advisory_unlock(${MIGRATION_LOCK})`;
   try {
     await lockFor(session);
+    let appliedNames: string[];
     try {
-      return await migrate(session, now, onApplied);
-    } finally {
-      await session`SELECT pg_advisory_unlock(${MIGRATION_LOCK})`;
+      appliedNames = await migrate(session, now, onApplied);
+    } catch (error) {
+      await unlock().catch(() => {});
+      throw error;
     }
+    await unlock();
+    return appliedNames;
   } finally {
     await session.release();
   }
