@@ -86,14 +86,18 @@ if (url) {
   }
 
   test("three Postgres pools post 60 messages while a cursor reader sees each position in order", async () => {
-    const writers = [await board(await openStore()), await board(await openStore()), await board(await openStore())];
-    const reader = writers[2]!;
+    const reader = await board(await openStore());
+    const writers = [await board(await openStore()), await board(await openStore()), reader];
     const texts = Array.from({ length: 60 }, (_, i) => `post ${i + 1}`);
     const expected = texts.map((_, i) => i + 1);
     let writing = true;
     const reading = follow(reader, () => writing);
     const writingPosts = Promise.allSettled(
-      texts.map((text, i) => writers[i % writers.length]!.write((writer) => appendPost(writer, text))),
+      texts.map(async (text, i) => {
+        const target = writers[i % writers.length];
+        if (!target) throw new Error("missing writer for post");
+        return target.write((writer) => appendPost(writer, text));
+      }),
     ).finally(() => {
       writing = false;
     });

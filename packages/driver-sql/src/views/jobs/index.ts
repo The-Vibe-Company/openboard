@@ -20,7 +20,6 @@ import { backfillBoardOrgIds, backfillPlatformStatements, backfillStatements } f
 import { claimLegacyPurge, unqueued } from "./legacy-purge.ts";
 
 const contentionRetryMs = 100;
-
 const kinds: Fragment = {
   fragment: ({ name }) =>
     name === "postgres" ? "jsonb_array_elements_text(input.kinds::jsonb)" : "json_each(input.kinds)",
@@ -74,11 +73,16 @@ function dispatchParams(kinds: readonly string[], now: number) {
   return { kinds: JSON.stringify(kinds), now, windowEnd: windowStart + webhookWindowMs };
 }
 
+// Resolve the globally unique delivery ID before joining tenant data or checking its lane.
 const jobDelivery: Fragment = {
-  fragment: ({ name }) => `FROM webhook_deliveries d
-    JOIN webhooks w ON w.org_id = d.org_id AND w.board_id = d.board_id AND w.id = d.webhook AND w.enabled = 1
-    WHERE d.org_id = jobs.org_id AND d.board_id = jobs.board_id
-      AND d.id = ${name === "postgres" ? "jobs.payload::jsonb ->> 'id'" : "json_extract(jobs.payload, '$.id')"}`,
+  fragment: ({ name }) => `FROM (
+    SELECT org_id, board_id, id, webhook, thread, event, created_at FROM webhook_deliveries
+    WHERE id = ${name === "postgres" ? "jobs.payload::jsonb ->> 'id'" : "json_extract(jobs.payload, '$.id')"}
+    LIMIT 1
+  ) d
+  WHERE d.org_id = jobs.org_id AND d.board_id = jobs.board_id
+    AND (SELECT w.enabled FROM webhooks w WHERE w.id = d.webhook
+      AND w.org_id = d.org_id AND w.board_id = d.board_id) = 1`,
 };
 
 // A blocked follower must not keep the timer awake while its lane head waits.
