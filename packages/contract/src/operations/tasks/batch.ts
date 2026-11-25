@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import { AttachmentIds } from "../../entities/attachments/index.ts";
 import { ChannelPath, Labels, MESSAGE_TEXT_MAX, Mention } from "../../entities/messages.ts";
 import { defineOperation, Ref } from "../../operation.ts";
 import { TaskAssignee } from "./assign.ts";
@@ -27,6 +28,7 @@ export const createTaskBatch = defineOperation({
               key: Type.Optional(BatchKey),
               text: Type.String({ maxLength: MESSAGE_TEXT_MAX }),
               labels: Type.Optional(Labels),
+              attachments: Type.Optional(AttachmentIds),
               noSync: Type.Optional(Type.Boolean()),
               for: Type.Optional(TaskAssignee),
               needs: Type.Optional(
@@ -52,6 +54,7 @@ export const createTaskBatch = defineOperation({
   },
   errors: [
     "invalid_request",
+    "attachment_not_found",
     "batch_too_large",
     "invalid_needs",
     "reserved_label",

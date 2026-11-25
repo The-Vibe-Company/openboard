@@ -3,6 +3,7 @@ import { batchNeedPositions, decideTaskBatch, effectiveTask, messages, taskAssig
 import { canReadChannel, keepInsideCan } from "../../auth/access.ts";
 import { authorOf } from "../../auth/author.ts";
 import { hashToken } from "../../auth/secrets.ts";
+import { resolveAttachments } from "../attachments/index.ts";
 import type { BoardContext, Handler } from "../index.ts";
 import { resolvePostMentions, visibleReplay, writeWithMentionVisibility } from "../messages.ts";
 
@@ -18,7 +19,7 @@ function requestDigest(channel: string, tasks: import("@openboard/contract").Inp
         task.text,
         Object.entries(task.labels ?? {}).sort(([a], [b]) => (a < b ? -1 : 1)),
         task.noSync ?? false,
-        [],
+        task.attachments ?? [],
         task.needs ?? [],
         task.for ?? null,
       ]),
@@ -67,9 +68,12 @@ export const createTaskBatchHandler: Handler<typeof createTaskBatch> = async (ct
       }
       const existing = await writer.taskNeeds(batchNeedPositions(tasks));
       const mentions = [];
-      for (const [index, { text }] of tasks.entries()) {
+      const entries = [];
+      for (const [index, task] of tasks.entries()) {
+        const files = task.attachments?.length ? await resolveAttachments(writer, ctx.by, task.attachments) : [];
+        entries.push({ ...task, files });
         mentions.push(
-          await resolvePostMentions(writer, ctx, text, channel, undefined, {
+          await resolvePostMentions(writer, ctx, task.text, channel, undefined, {
             ...visibility,
             handles: handlesByTask[index] ?? new Set(),
           }),
@@ -77,7 +81,7 @@ export const createTaskBatchHandler: Handler<typeof createTaskBatch> = async (ct
       }
       const canRead = (root: Message) => canReadChannel(ctx.by, root.channel);
       const context = { by: ctx.by, author: authorOf(ctx.by), now: ctx.now(), blind: !canReadChannel(ctx.by, channel) };
-      const batch = decideTaskBatch(writer, channel, tasks, context, existing, canRead, mentions, key);
+      const batch = decideTaskBatch(writer, channel, entries, context, existing, canRead, mentions, key);
       await writer.append(batch.events);
       return { tasks: batch.tasks };
     },

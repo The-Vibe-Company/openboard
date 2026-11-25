@@ -684,7 +684,7 @@ ob channels create dev/ci
 Start a thread as a task, or make a task of the thread `re` roots.
 
 ```sh
-ob tasks create (<channel> <text> | <re>) [--for <for>] [--needs <needs>]... [--label <k=v>]... [--claim] [--no-sync] [--idempotency-key <idempotency-key>]
+ob tasks create (<channel> <text> | <re>) [--for <for>] [--needs <needs>]... [--label <k=v>]... [--attach <attach>]... [--claim] [--no-sync] [--idempotency-key <idempotency-key>]
 ob tasks create <channel> --file <path> [--idempotency-key <id>]
 ```
 
@@ -699,12 +699,13 @@ Options:
 - `--for`: The task owner's profile actor ID, or null for the pool.
 - `--needs`: A value; repeatable.
 - `--label`: A `key=value` entry; repeatable.
+- `--attach`: A value; repeatable.
 - `--claim`: Claim the task in the same write.
 - `--no-sync`: A switch: present means yes.
 - `--idempotency-key`: An idempotency key for a new task thread.
 - `--file`: Path to a JSON task array, or - for stdin.
 
-Errors: `error: already_a_task`, `error: batch_too_large`, `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_needs`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: task_assigned`, `error: task_waiting`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: already_a_task`, `error: attachment_not_found`, `error: batch_too_large`, `error: duplicate_id`, `error: forbidden`, `error: internal`, `error: invalid_needs`, `error: invalid_profile`, `error: invalid_request`, `error: message_deleted`, `error: message_not_found`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: reserved_label`, `error: task_assigned`, `error: task_waiting`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: `task_create`, `task_create_batch`.
 

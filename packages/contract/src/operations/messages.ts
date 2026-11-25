@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { ATTACHMENT_ID_PATTERN } from "../entities/attachments/index.ts";
+import { AttachmentIds } from "../entities/attachments/index.ts";
 import { ChannelPath, LabelKey, Labels, MESSAGE_TEXT_MAX, Mention, Message } from "../entities/messages.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
@@ -28,9 +28,7 @@ export const postMessage = defineOperation({
             description: "Message text, which may be empty when the message has attachments.",
           }),
         ),
-        attachments: Type.Optional(
-          Type.Array(Ref("file", { pattern: ATTACHMENT_ID_PATTERN.source }), { maxItems: 10 }),
-        ),
+        attachments: Type.Optional(AttachmentIds),
         labels: Type.Optional(Labels),
         noSync: Type.Optional(Type.Boolean()),
         sync: Type.Optional(

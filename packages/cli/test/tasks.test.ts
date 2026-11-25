@@ -401,3 +401,35 @@ test("ob tasks claim keeps polling until its wait budget runs out without holdin
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test("ob tasks create uploads the file before creating a new task and rejects it on an existing root", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ob-task-attach-"));
+  const source = join(dir, "build.log");
+  const id = "att_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const calls: string[] = [];
+  const lines: string[] = [];
+  const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  const fetch = async (request: Request) => {
+    const path = new URL(request.url).pathname;
+    calls.push(path);
+    if (path.endsWith("/attachments")) {
+      expect(request.headers.get("x-board-filename")).toBe("build.log");
+      expect(await request.text()).toBe("build failed");
+      return Response.json({ attachment: { id, name: "build.log", type: "application/octet-stream", size: 12 } });
+    }
+    expect(await request.json()).toEqual({ channel: "dev", text: "fix the flaky build", attachments: [id] });
+    return Response.json({ task: { id: "2" } }, { status: 201 });
+  };
+  try {
+    writeFileSync(source, "build failed");
+    const create = (...args: string[]) =>
+      runCli(["tasks", "create", ...args, "--attach", source], ENV, { fetch, output });
+    expect(await create("dev", "fix the flaky build")).toBe(0);
+    expect(await create("2")).toBe(2);
+    expect(calls).toEqual(["/api/local/main/attachments", "/api/local/main/tasks"]);
+    expect(lines[0]).toBe("2");
+    expect(lines[1]).toStartWith("error: invalid_request: --attach requires a new task thread");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -16,6 +16,7 @@ import {
 import type { BoardWriter } from "@openboard/ports";
 import { canListMentionActors, canReadChannel, withoutMentionDetails } from "../auth/access.ts";
 import { authorOf } from "../auth/author.ts";
+import { resolveAttachments } from "./attachments/index.ts";
 import type { BoardContext, Handler } from "./index.ts";
 import { resolvePostMentions, visibleReplay, writeWithMentionVisibility } from "./messages.ts";
 import { writeNewTask } from "./tasks/claim.ts";
@@ -32,27 +33,28 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
       text !== undefined ||
       input.labels !== undefined ||
       input.noSync !== undefined ||
+      input.attachments !== undefined ||
       id !== undefined
     ) {
       throw new BoardError(
         "invalid_request",
-        "`channel`, `text`, `labels`, `noSync` and `id` are a new thread's: `re` makes a task of a thread as it is",
+        "`channel`, `text`, `labels`, `noSync`, `attachments` and `id` are a new thread's: `re` makes a task of a thread as it is",
       );
     }
     return makeTask(ctx, re, input);
   }
-  if (channel === undefined || text === undefined) {
+  if (channel === undefined || (text === undefined && !input.attachments?.length)) {
     throw new BoardError(
       "invalid_request",
       "a task needs `channel` and `text` for a new thread, or `re` for a thread that's there",
     );
   }
-  const command = { ...input, channel, text };
+  const command = { ...input, channel, text: text ?? "" };
   messages.checkPost(command, ctx.by);
   ctx.debitWrite();
   const { replay, ...answer } = await writeWithMentionVisibility(
     ctx,
-    text,
+    command.text,
     async (writer, visibility) => {
       const landed = id === undefined ? null : await writer.clientPost(id);
       const state = { head: writer.head, actor: writer.actor, landed };
@@ -64,11 +66,17 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
         }
         return { task: replayed, replay: true };
       }
-      const mentions = await resolvePostMentions(writer, ctx, text, channel, undefined, visibility);
+      const attachments = input.attachments?.length ? await resolveAttachments(writer, ctx.by, input.attachments) : [];
+      const mentions = await resolvePostMentions(writer, ctx, command.text, channel, undefined, visibility);
       const decided = decideCreateTask(
         state,
         command,
-        { ...context, blind: !canReadChannel(ctx.by, channel), needs: await readNeeds(ctx, writer, input.needs) },
+        {
+          ...context,
+          attachments,
+          blind: !canReadChannel(ctx.by, channel),
+          needs: await readNeeds(ctx, writer, input.needs),
+        },
         mentions,
       );
       return { ...(await writeNewTask(ctx, writer, decided, input.claim, context.now)), replay: false };
