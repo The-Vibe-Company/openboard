@@ -20,11 +20,6 @@
   margin: 0;
 }
 
-.channel-header-hash {
-  color: var(--muted);
-  font-weight: 400;
-}
-
 .channel-filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -130,6 +125,7 @@
   .channel-filter-input input {
     inline-size: 100%;
     min-inline-size: 0;
+    font-size: 16px;
   }
 
   .channel-view > .composer {

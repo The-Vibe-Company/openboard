@@ -6,7 +6,7 @@ import { routerOptions } from "./router.options.ts";
 const api = "http://127.0.0.1:8787";
 
 export default defineConfig({
-  plugins: [tanstackRouter(routerOptions), react()],
+  plugins: [tanstackRouter({ ...routerOptions, autoCodeSplitting: true }), react()],
   server: {
     host: "localhost",
     port: 5173,

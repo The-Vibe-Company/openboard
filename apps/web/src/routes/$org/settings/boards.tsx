@@ -3,6 +3,7 @@ import { createFileRoute, getRouteApi, Link } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { type FormEvent, useState } from "react";
 import { boardUrl, browserClient } from "../../../api/client.ts";
+import { sessionQuery } from "../../../api/session.ts";
 import { Button, Card, EmptyState, Field, Input, Table } from "../../../ui/index.ts";
 
 export const Route = createFileRoute("/$org/settings/boards")({
@@ -72,12 +73,13 @@ function OrganizationBoards() {
 }
 
 function CreateBoardForm({ org }: { org: string }) {
+  const { data: session } = useQuery(sessionQuery);
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const create = useMutation({
     mutationFn: (input: { name: string; slug: string }) =>
-      browserClient(window.location.origin).createBoard({ org, ...input }),
+      browserClient(window.location.origin, { csrf: session?.csrf ?? undefined }).createBoard({ org, ...input }),
     onSuccess: async () => {
       setName("");
       setSlug("");

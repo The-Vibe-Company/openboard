@@ -3,6 +3,7 @@ import { createFileRoute, useBlocker } from "@tanstack/react-router";
 import { BoardError, type Client } from "@the-vibe-company/openboard";
 import { type FormEvent, useState } from "react";
 import { browserClient } from "../../../../api/client.ts";
+import { sessionQuery } from "../../../../api/session.ts";
 import { SecretOnce } from "../../../../components/SecretOnce.tsx";
 import { Button, Card, Field, Input, Table } from "../../../../ui/index.ts";
 
@@ -35,7 +36,8 @@ function ConnectionsRoute() {
 }
 
 function Connections({ org, board }: { org: string; board: string }) {
-  const client = browserClient(window.location.origin, { org, board });
+  const { data: session } = useQuery(sessionQuery);
+  const client = browserClient(window.location.origin, { org, board, csrf: session?.csrf ?? undefined });
   const list = useQuery({
     queryKey: ["connections", org, board],
     queryFn: ({ signal }) => client.listConnections({}, { signal }),

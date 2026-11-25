@@ -44,7 +44,8 @@ function Invitation({ token, signInError }: { token: string; signInError: string
   });
   const session = useQuery(sessionQuery);
   const join = useMutation({
-    mutationFn: () => browserClient(window.location.origin).acceptInvitation({ token }),
+    mutationFn: () =>
+      browserClient(window.location.origin, { csrf: session.data?.csrf ?? undefined }).acceptInvitation({ token }),
     onSuccess: ({ org }) => window.location.replace(`/${encodeURIComponent(org.slug)}/main`),
   });
   const invite = preview.data;

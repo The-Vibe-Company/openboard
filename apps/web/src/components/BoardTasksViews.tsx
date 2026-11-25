@@ -1,7 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, useId, useState } from "react";
 import type { ThreadSummary } from "../api/board.ts";
 import { browserClient } from "../api/client.ts";
+import { sessionQuery } from "../api/session.ts";
 import type { TaskActor } from "../api/tasks.ts";
 import { markdownPreview } from "../markdown.ts";
 import { Badge, Button, Input, Textarea } from "../ui/index.ts";
@@ -23,13 +25,13 @@ function taskTitle(summary: ThreadSummary) {
   return markdownPreview(summary.message.text) || `Thread #${summary.message.id}`;
 }
 
-async function submitTaskDraft(board: Board, draft: NewTaskDraft) {
+async function submitTaskDraft(board: Board, draft: NewTaskDraft, csrf: string | undefined) {
   const labels = parseLabelInput(draft.labels);
   const needs = draft.needs
     .split(/[,\s]+/)
     .map((id) => id.replace(/^#/, "").trim())
     .filter((id) => /^\d+$/.test(id));
-  await browserClient(window.location.origin, board).createTask({
+  await browserClient(window.location.origin, { ...board, csrf }).createTask({
     channel: draft.channel,
     text: draft.text,
     ...(labels ? { labels } : {}),
@@ -133,6 +135,7 @@ export function NewTaskForm({
   onCancel: () => void;
   onCreated: () => Promise<void>;
 }) {
+  const { data: session } = useQuery(sessionQuery);
   const id = useId();
   const [draft, setDraft] = useState<NewTaskDraft>({ channel: "", text: "", labels: "", needs: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -144,7 +147,11 @@ export function NewTaskForm({
     setSubmitting(true);
     setError("");
     try {
-      await submitTaskDraft(board, { ...draft, channel: draft.channel.trim() || defaultChannel });
+      await submitTaskDraft(
+        board,
+        { ...draft, channel: draft.channel.trim() || defaultChannel },
+        session?.csrf ?? undefined,
+      );
       await onCreated();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create task.");
