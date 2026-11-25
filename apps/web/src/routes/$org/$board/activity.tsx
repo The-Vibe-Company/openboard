@@ -15,10 +15,10 @@ export const Route = createFileRoute("/$org/$board/activity")({
   component: BoardActivityPage,
 });
 
-type Category = "all" | "messages" | "tasks" | "meta" | "system";
+export type Category = "all" | "messages" | "tasks" | "meta" | "system";
 type Board = { org: string; board: string };
 
-const CATEGORIES: readonly [Category, string][] = [
+export const CATEGORIES: readonly [Category, string][] = [
   ["all", "All"],
   ["messages", "Messages"],
   ["tasks", "Tasks"],
@@ -62,7 +62,7 @@ function eventSummary(event: BoardEvent): { text: string; channel?: string; thre
   return { text: type };
 }
 
-function mergeBoardEvents(streamed: readonly BoardEvent[], initial: readonly BoardEvent[], category: Category) {
+export function mergeBoardEvents(streamed: readonly BoardEvent[], initial: readonly BoardEvent[], category: Category) {
   const merged = new Map<string, BoardEvent>();
   for (const item of streamed) merged.set(item.cursor, item);
   for (const item of [...initial].reverse()) {
@@ -162,7 +162,7 @@ function BoardActivity({ org, boardSlug }: { org: string; boardSlug: string }) {
   );
 }
 
-function ActivityFeed({ board, events }: { board: Board; events: readonly BoardEvent[] }) {
+export function ActivityFeed({ board, events }: { board: Board; events: readonly BoardEvent[] }) {
   const now = useRelativeTimeClock();
   return (
     <ol className="activity-feed" aria-label="Live board events">

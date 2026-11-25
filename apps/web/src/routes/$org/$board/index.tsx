@@ -1,17 +1,27 @@
 import { type QueryClient, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useElementScrollRestoration } from "@tanstack/react-router";
+import { createFileRoute, Link, useElementScrollRestoration } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
-import { type FormEvent, type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { boardErrorText, boardKeys, type ThreadSummary, threadsQuery } from "../../../api/board.ts";
+import {
+  type FormEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { boardErrorText, boardKeys, type ThreadFilters, type ThreadSummary, threadsQuery } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
-import { subscribeBoardEvents } from "../../../api/live.ts";
+import { subscribeBoardEvents, useChannelEvents } from "../../../api/live.ts";
 import { sessionQuery } from "../../../api/session.ts";
-import { tasksQuery } from "../../../api/tasks.ts";
+import { channelAllTasksQuery, tasksQuery } from "../../../api/tasks.ts";
 import { Composer, type ComposerDraft, type TaskComposerDraft } from "../../../components/Composer.tsx";
 import { EmptyChannel } from "../../../components/EmptyChannel.tsx";
-import { TaskList, useChannelTasks } from "../../../components/TaskList.tsx";
+import { channelPills, channelTaskLists, type TaskFilter, useChannelTasks } from "../../../components/TaskList.tsx";
 import { ThreadList } from "../../../components/ThreadList.tsx";
 import { Button, FilterIcon, SearchIcon, XIcon } from "../../../ui/index.ts";
+import { ActivityFeed, CATEGORIES, type Category, mergeBoardEvents } from "./activity.tsx";
 import { useSelectedChannel } from "./route.tsx";
 import "./channel.css";
 
@@ -68,6 +78,7 @@ async function postToChannel(
 
 function ChannelHeader({
   channel,
+  tabs,
   heading,
   searchDraft,
   labelDraft,
@@ -79,6 +90,7 @@ function ChannelHeader({
   onClear,
 }: {
   channel: string;
+  tabs: ReturnType<typeof channelTabs>;
   heading: RefObject<HTMLHeadingElement | null>;
 } & ReturnType<typeof useChannelFilters>) {
   return (
@@ -111,9 +123,13 @@ function ChannelHeader({
               Filter
             </Button>
           )}
-          <span className="channel-live">● live</span>
         </form>
+        <span className="channel-live">
+          <span className="channel-live-dot" aria-hidden="true" />
+          {" live"}
+        </span>
       </div>
+      {tabs}
       {(activeSearch || activeLabel) && (
         <div className="channel-filter-active">
           <span>
@@ -145,13 +161,13 @@ function useChannelFilters() {
   const [labelDraft, setLabelDraft] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
   const [activeLabel, setActiveLabel] = useState("");
-  const filters = useMemo(
-    () =>
-      activeSearch || activeLabel
-        ? { text: activeSearch || undefined, label: activeLabel ? [activeLabel] : undefined }
-        : undefined,
-    [activeSearch, activeLabel],
-  );
+  const filters = useMemo(() => {
+    const label = activeLabel
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    return activeSearch || label.length ? { text: activeSearch || undefined, label } : undefined;
+  }, [activeSearch, activeLabel]);
   return {
     searchDraft,
     labelDraft,
@@ -180,7 +196,7 @@ function useChannelFilters() {
   };
 }
 
-function useChannelThreads(board: Board, channel: string, filters: ReturnType<typeof useChannelFilters>["filters"]) {
+function useChannelThreads(board: Board, channel: string, filters?: ThreadFilters) {
   const options = useMemo(() => threadsQuery(board, channel, filters), [board, channel, filters]);
   const { queryKey } = options;
   useEffect(() => {
@@ -191,7 +207,7 @@ function useChannelThreads(board: Board, channel: string, filters: ReturnType<ty
       }
     });
   }, [board, channel, filters, queryKey]);
-  return { threads: useInfiniteQuery(options), queryKey };
+  return useInfiniteQuery(options);
 }
 
 function useChannelScrollRestoration(hasRows: boolean) {
@@ -205,79 +221,147 @@ function useChannelScrollRestoration(hasRows: boolean) {
 
 function ChannelView({ board, selectedChannel }: { board: Board; selectedChannel: string }) {
   const channel = selectedChannel || "general";
+  const { view = "all" } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>("Open");
   const queryClient = useQueryClient();
   const f = useChannelFilters();
-  const { threads, queryKey } = useChannelThreads(board, channel, f.filters);
+  const key = f.filters ? threadsQuery(board, channel, f.filters).queryKey : null;
   const { data: session } = useQuery(sessionQuery);
   const writeScope = { ...board, csrf: session?.csrf ?? undefined };
-  const openTasks = useChannelTasks(board, channel);
-  const rows = useMemo(() => {
-    const taskIds = new Set(openTasks.data?.pages.flatMap((page) => page.tasks.map(({ message }) => message.id)));
-    return threads.data && uniqueThreads(threads.data.pages).filter(({ message }) => !taskIds.has(message.id));
-  }, [threads.data, openTasks.data]);
-  const hasRows = rows !== undefined && !threadReadDenied(threads.error);
-  const noMatches = f.filters && !threads.hasNextPage && threads.data?.pages.every((page) => !page.threads.length);
-  useChannelScrollRestoration(hasRows);
+  const canCompose = view !== "activity" && (!session || session.signedIn);
+  const tasks = useChannelTasks(board, channel, f.filters);
   const heading = useRef<HTMLHeadingElement>(null);
   const composer = useRef<HTMLFormElement>(null);
-
+  const switchView = (next: typeof view, filter: typeof taskFilter = "Open") => {
+    setTaskFilter(filter);
+    void navigate({ search: { channel: selectedChannel || undefined, view: next === "all" ? undefined : next } });
+  };
   async function handleCreateTask(draft: TaskComposerDraft) {
     await browserClient(window.location.origin, writeScope).createTask({ channel, ...draft });
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: tasksQuery(board, channel).queryKey, exact: true }),
+      queryClient.invalidateQueries({ queryKey: channelAllTasksQuery(board, channel).queryKey, exact: true }),
       queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) }),
-      queryClient.invalidateQueries({ queryKey: boardKeys.threads(board) }),
+      queryClient.invalidateQueries({ queryKey: threadsQuery(board, channel).queryKey }),
     ]);
     if (!selectedChannel) void queryClient.invalidateQueries({ queryKey: boardKeys.channels(board), exact: true });
   }
 
+  const manage = (filter: TaskFilter) => switchView("tasks", filter);
+  const post = (draft: ComposerDraft) =>
+    postToChannel(queryClient, writeScope, channel, selectedChannel, draft, key, heading);
+  const tabs = channelTabs(board, channel, view, tasks.count, switchView);
   return (
     <div className="channel-view">
-      <ChannelHeader channel={channel} heading={heading} {...f} />
-      <Button
-        className="channel-compose-shortcut"
-        variant="secondary"
-        onClick={() => composer.current?.querySelector("textarea")?.focus()}
-      >
-        Skip to composer
-      </Button>
-      <TaskList board={board} query={openTasks} />
+      <ChannelHeader channel={channel} heading={heading} {...f} tabs={tabs} />
+      {canCompose && (
+        <Button
+          className="channel-compose-shortcut"
+          variant="secondary"
+          onClick={() => composer.current?.querySelector("textarea")?.focus()}
+        >
+          Skip to composer
+        </Button>
+      )}
+      {view !== "activity" &&
+        view !== "messages" &&
+        channelTaskLists(board, channel, tasks, view === "all" ? undefined : taskFilter, setTaskFilter, manage)}
+      {(view === "all" || view === "messages") && (
+        <ChannelMessages board={board} channel={channel} filters={f.filters} tasks={tasks} />
+      )}
+      {view === "activity" && <ChannelActivity board={board} channel={channel} />}
+      {canCompose && <Composer ref={composer} board={board} allowTask onPost={post} onCreateTask={handleCreateTask} />}
+    </div>
+  );
+}
+
+const views = ["all", "messages", "tasks", "activity"] as const;
+type View = (typeof views)[number];
+function channelTabs(board: Board, channel: string, view: View, count: string | number, select: (view: View) => void) {
+  return (
+    <div className="channel-tabs-bar">
+      <div className="channel-tabs" role="tablist" aria-label="Channel views">
+        {views.map((key) => (
+          <button key={key} role="tab" type="button" aria-selected={view === key} onClick={() => select(key)}>
+            {key.slice(0, 1).toUpperCase() + key.slice(1)}
+            {key === "tasks" && !!count && (
+              <span className="channel-tasks-count" aria-hidden="true">
+                {count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+      <Link className="channel-tasks-board-link" to="/$org/$board/tasks" params={board} search={{ channel }}>
+        All tasks →
+      </Link>
+    </div>
+  );
+}
+
+function ChannelMessages(props: {
+  board: Board;
+  channel: string;
+  filters?: ThreadFilters;
+  tasks: ReturnType<typeof useChannelTasks>;
+}) {
+  const { board, channel, filters, tasks } = props;
+  const threads = useChannelThreads(board, channel, filters);
+  const { hasTasks, ready, open, done } = tasks;
+  const { view = "all" } = Route.useSearch();
+  const rows = useMemo(
+    () => threads.data && uniqueThreads(threads.data.pages).filter(({ message }) => !message.task),
+    [threads.data],
+  );
+  const hasRows = rows !== undefined && !threadReadDenied(threads.error);
+  const empty = hasRows && rows.length === 0 && !threads.hasNextPage;
+  const noMatches = filters && empty && (view === "messages" || (ready && !open.length && !done.length));
+  const { fetchNextPage } = threads;
+  const fetchOlder = useCallback(() => void fetchNextPage({ cancelRefetch: false }), [fetchNextPage]);
+  const canFetchOlder = threads.hasNextPage && !threads.isFetching && !threads.isFetchNextPageError;
+  useChannelScrollRestoration(hasRows);
+  return (
+    <>
+      {view === "all" && hasTasks && (
+        <div className="channel-section-head">
+          <h2>Messages</h2>
+        </div>
+      )}
       {threads.isPending && <p role="status">Loading threads…</p>}
       {threads.isError && <p role="alert">{boardErrorText(threads.error)}</p>}
-      {hasRows &&
-        rows?.length === 0 &&
-        !threads.hasNextPage &&
-        openTasks.isSuccess &&
-        !openTasks.data.pages.some((page) => page.tasks.length) &&
-        !f.filters && <EmptyChannel board={board} channel={channel} />}
-      {hasRows && noMatches && <p role="status">No matching threads.</p>}
-      {hasRows && rows && (rows.length > 0 || threads.hasNextPage) && (
-        <ThreadList
-          threads={rows}
-          hasOlder={threads.hasNextPage}
-          fetchOlder={
-            threads.hasNextPage && !threads.isFetching && !threads.isFetchNextPageError
-              ? () => void threads.fetchNextPage({ cancelRefetch: false })
-              : undefined
-          }
-        />
+      {empty && !filters && !hasTasks && ready && <EmptyChannel board={board} channel={channel} />}
+      {empty && !filters && hasTasks && <p className="channel-empty-note">No messages in #{channel} yet.</p>}
+      {noMatches && <p role="status">No matching threads.</p>}
+      {hasRows && (rows.length > 0 || threads.hasNextPage) && (
+        <ThreadList threads={rows} hasOlder={threads.hasNextPage} fetchOlder={canFetchOlder ? fetchOlder : undefined} />
       )}
       {threads.isFetchingNextPage && <p role="status">Loading older threads…</p>}
       {threads.isFetchNextPageError && (
-        <button type="button" onClick={() => void threads.fetchNextPage({ cancelRefetch: false })}>
+        <button type="button" onClick={fetchOlder}>
           Retry loading older threads
         </button>
       )}
-      <Composer
-        ref={composer}
-        board={board}
-        allowTask={true}
-        onPost={(draft) =>
-          postToChannel(queryClient, writeScope, channel, selectedChannel, draft, f.filters ? queryKey : null, heading)
-        }
-        onCreateTask={handleCreateTask}
-      />
-    </div>
+    </>
+  );
+}
+
+function ChannelActivity({ board, channel }: { board: Board; channel: string }) {
+  const [category, setCategory] = useState<Category>("all");
+  const { initial, streamed, history } = useChannelEvents(board, channel);
+  const [snapshot, setSnapshot] = useState<typeof streamed | null>(null);
+  const events = mergeBoardEvents(snapshot ?? streamed, snapshot ? [] : history, category);
+  const toggle = () => setSnapshot(snapshot ? null : mergeBoardEvents(streamed, history, "all"));
+  return (
+    <section aria-label="Channel activity">
+      <Button size="small" variant="secondary" onClick={toggle}>
+        {snapshot ? "Resume stream" : "Pause stream"}
+      </Button>
+      {channelPills("Filter event types", CATEGORIES, category, setCategory)}
+      {events.length > 0 && <ActivityFeed board={board} events={events} />}
+      {initial.error && <p role="alert">{boardErrorText(initial.error)}</p>}
+      {!events.length && initial.isSuccess && <p role="status">No matching events recorded yet.</p>}
+    </section>
   );
 }
 

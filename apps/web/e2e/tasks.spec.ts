@@ -164,3 +164,42 @@ async function expectTaskLayout(page: Page, badges: Locator, screen: string) {
   if (originalViewport) await page.setViewportSize(originalViewport);
   await page.emulateMedia({ colorScheme: null });
 }
+
+test("channel tabs keep terminal tasks out of messages at desktop and mobile widths", async ({ page }) => {
+  const app = await serve();
+  try {
+    await signIn(page, app.url, "ada");
+    const owner = sessionClient(page, app.url);
+    await owner.createOrg({ slug: "acme", name: "Acme" });
+    await owner.createTask({ channel: "dev", text: "Open work" });
+    for (const state of ["completed", "failed"] as const) {
+      const { task, claim } = await owner.createTask({ channel: "dev", text: `${state} work`, claim: true });
+      if (!claim) throw new Error("Expected task claim");
+      const lease = { id: task.id, epoch: claim.epoch, token: claim.token };
+      if (state === "completed") await owner.completeTask(lease);
+      else await owner.failTask({ ...lease, reason: "Fixture failure" });
+    }
+    await owner.postMessage({ channel: "dev", text: "Ordinary thread" });
+    const threads = page.getByRole("list", { name: "Latest threads" });
+    const tabs = page.getByRole("tablist", { name: "Channel views" });
+    for (const width of [1280, 375]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`${app.url}/acme/main?channel=dev`);
+      await expect(threads.getByRole("listitem")).toHaveText([/Ordinary thread/]);
+      await tabs.getByRole("tab", { name: "Tasks" }).click();
+      await page.getByRole("button", { name: "All", exact: true }).click();
+      await expect(page.getByRole("list", { name: "Open tasks" })).toContainText("Open work");
+      const done = page.getByRole("list", { name: "Completed tasks" });
+      await expect(done.getByRole("link")).toHaveText(["failed work", "completed work"]);
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+      await tabs.getByRole("tab", { name: "Messages" }).click();
+      await expect(threads.getByRole("listitem")).toHaveText([/Ordinary thread/]);
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+      await tabs.getByRole("tab", { name: "Activity" }).click();
+      await expect(page.getByRole("list", { name: "Live board events" })).toBeVisible();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    }
+  } finally {
+    await app.stop();
+  }
+});
