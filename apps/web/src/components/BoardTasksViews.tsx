@@ -21,6 +21,15 @@ const KANBAN_COLUMNS = [
   { key: "done", title: "Done", states: ["completed", "failed", "canceled"] },
 ] as const;
 
+const INITIAL_DONE = 8;
+const DONE_INCREMENT = 15;
+const QUEUE_PAGE_SIZE = 25;
+
+function newestTerminalFirst(a: ThreadSummary, b: ThreadSummary) {
+  // Settling a task sets the root version to the transition's board event ID.
+  return b.message.version - a.message.version;
+}
+
 function taskTitle(summary: ThreadSummary) {
   return markdownPreview(summary.message.text) || `Thread #${summary.message.id}`;
 }
@@ -247,12 +256,16 @@ export function TasksKanban({
   tasks: readonly ThreadSummary[];
   actors?: ReadonlyMap<string, TaskActor>;
 }) {
+  const [visibleDone, setVisibleDone] = useState(INITIAL_DONE);
   return (
     <section className="tasks-kanban" aria-label="Task board">
       {KANBAN_COLUMNS.map((col) => {
         const items = tasks.filter(
           (item) => item.message.task && (col.states as readonly string[]).includes(item.message.task.state),
         );
+        const done = col.key === "done";
+        const visible = done ? items.sort(newestTerminalFirst).slice(0, visibleDone) : items;
+        const remaining = items.length - visible.length;
         return (
           <section key={col.key} className="tasks-column" aria-label={col.title}>
             <div className="tasks-column-head">
@@ -260,7 +273,7 @@ export function TasksKanban({
               <span>{items.length}</span>
             </div>
             <ul className="tasks-column-list">
-              {items.map((item) => {
+              {visible.map((item) => {
                 const task = item.message.task;
                 if (!task) return null;
                 const holder = task.claim ? actors?.get(task.claim.actor) : undefined;
@@ -285,6 +298,20 @@ export function TasksKanban({
                 );
               })}
             </ul>
+            {remaining > 0 && (
+              <button
+                type="button"
+                className="tasks-column-more"
+                onClick={() => setVisibleDone((limit) => limit + DONE_INCREMENT)}
+              >
+                Show more ({remaining} more)
+              </button>
+            )}
+            {done && visibleDone > INITIAL_DONE && (
+              <button type="button" className="tasks-column-more" onClick={() => setVisibleDone(INITIAL_DONE)}>
+                Show less
+              </button>
+            )}
           </section>
         );
       })}
@@ -296,15 +323,22 @@ export function TasksQueue({
   board,
   tasks,
   actors,
+  stateFilter,
 }: {
   board: Board;
   tasks: readonly ThreadSummary[];
   actors?: ReadonlyMap<string, TaskActor>;
+  stateFilter: Task["state"] | "open" | "all";
 }) {
   const now = useRelativeTimeClock();
-  return (
+  const [limit, setLimit] = useState(QUEUE_PAGE_SIZE);
+  const terminal = stateFilter === "completed" || stateFilter === "failed" || stateFilter === "canceled";
+  const ordered = terminal ? [...tasks].sort(newestTerminalFirst) : tasks;
+  const visible = terminal || stateFilter === "all" ? ordered.slice(0, limit) : ordered;
+  const remaining = tasks.length - visible.length;
+  const list = (
     <ul className="tasks-queue-list" aria-label="Task queue">
-      {tasks.map((item) => {
+      {visible.map((item) => {
         const task = item.message.task;
         if (!task) return null;
         const { id, channel, labels, createdAt } = item.message;
@@ -341,5 +375,19 @@ export function TasksQueue({
         );
       })}
     </ul>
+  );
+  return (
+    <>
+      {list}
+      {remaining > 0 && (
+        <button
+          type="button"
+          className="tasks-load-more"
+          onClick={() => setLimit((current) => current + QUEUE_PAGE_SIZE)}
+        >
+          Show more ({remaining} remaining)
+        </button>
+      )}
+    </>
   );
 }
