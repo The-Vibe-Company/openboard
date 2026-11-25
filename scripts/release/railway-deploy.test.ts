@@ -70,7 +70,7 @@ function fakeRailway(
           },
         });
       case "PreviousStagingDeployment":
-        expect(variables).toEqual({ input: { ...ids, projectId: target.projectId, status: { successfulOnly: true } } });
+        expect(variables).toEqual({ input: { ...ids, projectId: target.projectId, status: { in: ["SUCCESS"] } } });
         return Response.json({ data: { deployments: { edges: [{ node: { id: "old-deployment" } }] } } });
       case "StagingRetirement":
         expect(variables).toEqual({ id: "old-deployment" });
