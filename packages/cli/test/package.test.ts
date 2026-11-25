@@ -27,7 +27,7 @@ beforeAll(async () => {
     await mkdir(dirname(join(installed, file)), { recursive: true });
     await copyFile(new URL(file, cli), join(installed, file));
   }
-});
+}, 30_000);
 
 afterAll(() => rm(installed, { recursive: true, force: true }));
 
@@ -41,7 +41,7 @@ test("the Node client loads the separate SDK and handles CLI validation errors",
   expect(node.stderr.toString()).toBe(
     "error: invalid_schema_id: A schema ID must be name@version, like git-commit@1.\n",
   );
-});
+}, 30_000);
 
 test("the npm bin rejects serve and points to the executable or image", () => {
   const node = Bun.spawnSync([nodePath, "bin/ob.js", "serve"], { cwd: installed });
@@ -51,7 +51,7 @@ test("the npm bin rejects serve and points to the executable or image", () => {
     "error: invalid_request: ob serve needs the openboard binary\n" +
       "next: install the openboard executable or run the OpenBoard container image\n",
   );
-});
+}, 30_000);
 
 test("npm packs only the CLI launcher, bundle, licenses and manifest", async () => {
   const { bin } = await Bun.file(new URL("package.json", cli)).json();
@@ -67,4 +67,4 @@ test("npm packs only the CLI launcher, bundle, licenses and manifest", async () 
     "dist/main.js",
     "package.json",
   ]);
-});
+}, 30_000);

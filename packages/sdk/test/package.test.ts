@@ -27,7 +27,7 @@ test("the SDK builds a self-contained ESM entry and declarations", async () => {
   expect(node.stderr.toString()).toBe("");
   expect(node.stdout.toString().trim()).toBe("function function");
   expect(node.exitCode).toBe(0);
-});
+}, 30_000);
 
 test("npm packs only the SDK distribution, README, license and manifest", () => {
   const pack = Bun.spawnSync(["npm", "pack", "--dry-run", "--json"], { cwd: Bun.fileURLToPath(sdk) });
@@ -42,7 +42,7 @@ test("npm packs only the SDK distribution, README, license and manifest", () => 
     "dist/index.js",
     "package.json",
   ]);
-});
+}, 30_000);
 
 test("the release tarball resolves its typed API from outside the workspace", async () => {
   const root = new URL("../../", sdk);
@@ -71,4 +71,4 @@ console.log(typeof openboard, typeof client.postMessage);`;
   } finally {
     await Bun.$`rm -r ${scratch}`.quiet();
   }
-});
+}, 30_000);

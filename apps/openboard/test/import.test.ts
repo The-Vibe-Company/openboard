@@ -230,7 +230,7 @@ test("rejects validly hashed bytes whose length disagrees with the event", () =>
     const result = await command(path, join(dir, "imported"));
     expect(result.code).toBe(1);
     expect(result.stderr).toEqual([`error: invalid_request: Incorrect attachment size in ${file}`]);
-    expect(await readdir(dir)).toEqual(["acme.tar.gz", "source"]);
+    expect((await readdir(dir)).sort()).toEqual(["acme.tar.gz", "source"]);
   }));
 
 test("imports an intact sparse archive and preserves its logical head", () =>

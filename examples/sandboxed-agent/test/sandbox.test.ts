@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { copyFile, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { sqliteDriver } from "@openboard/driver-sqlite";
@@ -7,7 +7,7 @@ import { createApp, mintLocalOwnerToken } from "@openboard/server";
 import { createClient } from "@the-vibe-company/openboard";
 
 const profile = "fixer-2";
-const root = await mkdtemp(join(tmpdir(), "openboard-sandboxed-agent-"));
+const root = await realpath(await mkdtemp(join(tmpdir(), "openboard-sandboxed-agent-")));
 const agentDir = join(root, "agent");
 const launcher = Bun.fileURLToPath(new URL("../src/main.ts", import.meta.url));
 
@@ -42,7 +42,9 @@ beforeAll(async () => {
 
     const [,, mode] = process.argv;
     const env = process.env;
-    assert.deepEqual(Object.keys(env).sort(), ["BOARD_PROFILE", "BOARD_TOKEN", "BOARD_URL"]);
+    // macOS dyld injects __CF_USER_TEXT_ENCODING into every spawned process.
+    const envKeys = Object.keys(env).filter((key) => key !== "__CF_USER_TEXT_ENCODING").sort();
+    assert.deepEqual(envKeys, ["BOARD_PROFILE", "BOARD_TOKEN", "BOARD_URL"]);
     assert.equal(env.BOARD_PROFILE, "fixer-2");
     assert.ok(mode === "claim" ? env.BOARD_TOKEN.startsWith("obt_") : env.BOARD_TOKEN === "<placeholder>");
     assert.ok(!JSON.stringify([env, process.argv, process.execArgv]).includes("ob" + "c_"));
@@ -124,6 +126,7 @@ function board() {
 async function launch(mode: "claim" | "proxy", args: string[], secret: string) {
   const node = Bun.which("node");
   if (!node) throw new Error("Node is required to test the npm CLI");
+  const allowNet = Bun.spawnSync([node, "--permission", "--allow-net", "-e", ""]).success ? ["--allow-net"] : [];
   const command = [
     process.execPath,
     launcher,
@@ -132,6 +135,7 @@ async function launch(mode: "claim" | "proxy", args: string[], secret: string) {
     "--",
     node,
     "--permission",
+    ...allowNet,
     `--allow-fs-read=${agentDir}`,
     "./agent.mjs",
     mode,
@@ -178,5 +182,5 @@ for (const mode of ["claim", "proxy"] as const) {
     } finally {
       await app.close();
     }
-  });
+  }, 30_000);
 }

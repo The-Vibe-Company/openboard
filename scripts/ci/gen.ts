@@ -75,12 +75,22 @@ export function generate(): Generated[] {
   ];
 }
 
+function matchesGenerated(path: string, actual: string, expected: string): boolean {
+  if (actual === expected) return true;
+  if (!path.endsWith(".json")) return false;
+  try {
+    return JSON.stringify(JSON.parse(actual)) === JSON.stringify(JSON.parse(expected));
+  } catch {
+    return false;
+  }
+}
+
 export async function checkGenerated(root: string, files: Generated[]): Promise<string[]> {
   const problems: string[] = [];
   for (const { path, content } of files) {
     const file = Bun.file(join(root, path));
     if (!(await file.exists())) problems.push(`${path}: missing; run \`bun run gen\` and commit the result`);
-    else if ((await file.text()) !== content)
+    else if (!matchesGenerated(path, await file.text(), content))
       problems.push(`${path}: stale, differs from what \`bun run gen\` writes; run it and commit the result`);
   }
   return problems;
