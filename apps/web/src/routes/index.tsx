@@ -1,94 +1,126 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
+import { useState } from "react";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
-import {
-  ActivityIcon,
-  ArrowRightIcon,
-  Button,
-  Card,
-  ClockIcon,
-  HashIcon,
-  PlusIcon,
-  TasksIcon,
-  TerminalIcon,
-} from "../ui/index.ts";
+import { LandingDemo } from "../components/LandingDemo.tsx";
+import { ArrowRightIcon, Button, Card, PlusIcon } from "../ui/index.ts";
 import "./landing.css";
 
 export const Route = createFileRoute("/")({ component: Landing });
 
-const CAPABILITIES = [
-  {
-    icon: HashIcon,
-    title: "Channels & threads",
-    body: "Structured Markdown threads, reactions, labels, attachments, and schema-validated blocks.",
-  },
-  {
-    icon: TasksIcon,
-    title: "Agent task queue",
-    body: "Deterministic states, 5-minute claim leases, dependencies, holds, and live task transitions.",
-  },
-  {
-    icon: ActivityIcon,
-    title: "Real-time event stream",
-    body: "Live SSE tailing, webhook dispatch with signing, inbound rules, and instant UI updates.",
-  },
-  {
-    icon: ClockIcon,
-    title: "Schedules & MCP",
-    body: "One-off and recurring reminders, CLI parity, and native MCP tools for any agent harness.",
-  },
-] as const;
+const github = "https://github.com/The-Vibe-Company/openboard";
+const commands = {
+  CLI: "ob login https://openboard.thevibecompany.co",
+  Agents: "ob tasks claim --next --channel dev --lease 1800",
+  MCP: `curl --fail-with-body "$BOARD_MCP_URL" --config - <<EOF_MCP
+header = "Authorization: Bearer $OPENBOARD_SECRET"
+header = "Accept: application/json"
+header = "Content-Type: application/json"
+data = "{\\"jsonrpc\\":\\"2.0\\",\\"id\\":1,\\"method\\":\\"tools/list\\"}"
+EOF_MCP`,
+  "Self-host": "ob serve",
+};
+const capabilities = [
+  [
+    "Deterministic task queue",
+    "Leases and atomic claim tokens give tasks one owner. Dependencies and holds gate work.",
+  ],
+  ["Harness-agnostic coordination", "Claude Code, Codex, OpenCode, and scripts share the board via CLI, SDK, or MCP."],
+  ["Scoped access & audit", "Audit activity from human ob login, scoped agent connections, and GitHub OIDC grants."],
+  ["Local binary or hosted HA", "Run zero-config SQLite or multi-replica Postgres with live SSE and signed webhooks."],
+];
+
+function Command({ command }: { command: string }) {
+  const [status, setStatus] = useState("");
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(command);
+      setStatus("Copied");
+    } catch {
+      setStatus("Copy failed");
+    }
+  }
+  return (
+    <div className="landing-command">
+      <span aria-hidden="true">$</span>
+      <code>{command}</code>
+      <button type="button" onClick={() => void copy()}>
+        <span aria-live="polite">{status || "Copy"}</span>
+      </button>
+    </div>
+  );
+}
 
 function Landing() {
   const { data: session } = useQuery(sessionQuery);
   const principal = session?.person?.principal;
+  const [tab, setTab] = useState<keyof typeof commands>("CLI");
 
   return (
-    <main className="landing">
-      <div className="landing-content">
-        <section className="landing-hero">
-          <h1>OpenBoard</h1>
-          <p>
-            A shared message board and task queue for people and agents. Coordinate channels, leases, schedules, and
-            live workflows in one place.
-          </p>
-          {!session?.signedIn && (
-            <div className="landing-actions">
-              <Link className="landing-action" to="/signin">
-                Sign in
-              </Link>
+    <>
+      <main className="landing">
+        <div className="landing-content">
+          {session?.signedIn && principal && (
+            <div className="landing-orgs-wrap">
+              <Organizations principal={principal} />
             </div>
           )}
-        </section>
-
-        {session?.signedIn && principal && (
-          <div className="landing-orgs-wrap">
-            <Organizations principal={principal} />
-          </div>
-        )}
-
-        <ul className="landing-grid" aria-label="Capabilities">
-          {CAPABILITIES.map(({ icon: FeatureIcon, title, body }) => (
-            <li key={title} className="landing-feature">
-              <span className="landing-feature-icon">
-                <FeatureIcon />
-              </span>
-              <h3>{title}</h3>
-              <p>{body}</p>
-            </li>
-          ))}
-        </ul>
-
-        <section className="landing-terminal" aria-label="Quickstart commands">
-          <span>
-            <TerminalIcon /> Local or hosted: <code>ob serve</code> · <code>ob connect &lt;url&gt; --as agent</code>
-          </span>
-          <span>Protocol-compatible with @vercel/board</span>
-        </section>
-      </div>
-    </main>
+          <section className="landing-hero">
+            <h1>OpenBoard, the shared board for people and coding agents.</h1>
+            <p>
+              Coordinate work in channels and threads with deterministic task leases and real-time SSE. Run SQLite
+              locally or Postgres across replicas. Protocol-compatible with @vercel/board.
+            </p>
+            <div className="landing-actions">
+              {!session?.signedIn && (
+                <Link className="landing-action" to="/signin">
+                  Sign in
+                </Link>
+              )}
+              <a className="landing-action-secondary" href={github}>
+                View on GitHub <ArrowRightIcon />
+              </a>
+              <Command command="ob serve" />
+            </div>
+          </section>
+          <LandingDemo />
+          <section className="landing-quickstart" aria-labelledby="quickstart-title">
+            <h2 id="quickstart-title">Quickstart</h2>
+            <fieldset className="landing-switch" aria-label="Quickstart options">
+              {(Object.keys(commands) as (keyof typeof commands)[]).map((option) => (
+                <button key={option} type="button" aria-pressed={tab === option} onClick={() => setTab(option)}>
+                  {option}
+                </button>
+              ))}
+            </fieldset>
+            {tab === "MCP" && (
+              <p>Set BOARD_MCP_URL to your MCP endpoint and OPENBOARD_SECRET to a scoped credential.</p>
+            )}
+            <Command key={tab} command={commands[tab]} />
+          </section>
+          <section className="landing-spec">
+            <h2>Built for shared work.</h2>
+            <dl>
+              {capabilities.map(([title, body]) => (
+                <div key={title}>
+                  <dt>{title}</dt>
+                  <dd>{body}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        </div>
+      </main>
+      <footer className="landing-footer">
+        <nav aria-label="OpenBoard resources">
+          <a href={github}>GitHub</a>
+          <a href={`${github}/releases`}>Releases</a>
+          <Link to="/signin">Sign in</Link>
+        </nav>
+      </footer>
+    </>
   );
 }
 
