@@ -53,7 +53,7 @@ function repliesSuite(driver: string, open: OpenStore): void {
       const root = await post(board, "dev", "hello");
       const answer = await reply(board, 1, "on it");
       expect(answer).toMatchObject({ id: "2", channel: "dev", re: "1", thread: "1" });
-      expect(await board.thread(1)).toEqual({ message: root, replies: [answer] });
+      expect(await board.thread(1)).toEqual({ message: root, replies: [answer], cursor: answer.id });
       expect(await board.channelMessages({ channel: "dev", limit: 50 })).toEqual([root, answer]);
       const { channels } = await board.listChannels({ limit: 10 });
       expect(channels).toEqual([{ path: "dev", lastIndex: 2, messages: 2, threads: 1 }]);
@@ -94,7 +94,7 @@ function repliesSuite(driver: string, open: OpenStore): void {
       const first = await reply(board, 1, "on it");
       const deeper = await reply(board, 2, "deeper");
       expect(deeper).toMatchObject({ id: "3", channel: "dev", re: "1", replyTo: "2", thread: "1" });
-      expect(await board.thread(1)).toEqual({ message: root, replies: [first, deeper] });
+      expect(await board.thread(1)).toEqual({ message: root, replies: [first, deeper], cursor: deeper.id });
       const { channels } = await board.listChannels({ limit: 10 });
       expect(channels).toEqual([{ path: "dev", lastIndex: 3, messages: 3, threads: 1 }]);
     });
@@ -175,7 +175,7 @@ function storedMessagesSuite(driver: string, open: OpenStore): void {
       const first = await post(board, "dev", "hello");
       const second = await post(board, "dev", "again");
       expect([first.id, second.id]).toEqual(["1", "2"]);
-      expect(await board.thread(Number(first.id))).toEqual({ message: first, replies: [] });
+      expect(await board.thread(Number(first.id))).toEqual({ message: first, replies: [], cursor: second.id });
       expect(await board.channelMessages({ channel: "dev", limit: 50 })).toEqual([first, second]);
     });
 

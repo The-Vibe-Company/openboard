@@ -42,6 +42,7 @@ export interface Command {
 
 export class Misuse extends Error {}
 
+export { downloadCommand } from "./attachments/attach.ts";
 export { connectCommand } from "./connect.ts";
 export { createConnectionCommand } from "./connections.ts";
 export { derivedCommands } from "./derived.ts";
@@ -53,13 +54,12 @@ export { messagesCommand } from "./messages.ts";
 export { downloadOrgExportCommand, exportOrgCommand } from "./org/export.ts";
 export { readCommand } from "./read.ts";
 export { replyCommand } from "./reply.ts";
-export { scheduleCommand } from "./schedule/index.ts";
 export { rotateConnectionCommand } from "./rotate.ts";
+export { scheduleCommand, schedulesCommand } from "./schedule/index.ts";
 export { createSchemaCommand } from "./schemas/create.ts";
 export { tailCommand } from "./tail.ts";
 export { useCommand } from "./use.ts";
 export { waitCommand } from "./wait.ts";
 export { createWebhookCommand } from "./webhooks/create.ts";
 export { disableWebhookCommand, enableWebhookCommand } from "./webhooks/state.ts";
-export { downloadCommand } from "./attachments/attach.ts";
 export { whoamiCommand } from "./whoami.ts";

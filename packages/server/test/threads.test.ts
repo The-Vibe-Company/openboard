@@ -14,11 +14,12 @@ describe("reading a thread by its ID", () => {
     app = makeApp();
     const posted = await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
     const { message } = (await posted.json()) as Thread;
-    await call(app, "POST", "/messages", { channel: "dev", text: "another thread" });
+    const other = await call(app, "POST", "/messages", { channel: "dev", text: "another thread" });
+    const { message: latest } = (await other.json()) as Thread;
     const read = await call(app, "GET", `/messages/${message.id}`);
     expect(read.status).toBe(200);
     expect(read.headers.get("content-type")).toStartWith("application/json");
-    expect(await read.json()).toEqual({ message, replies: [] });
+    expect(await read.json()).toEqual({ message, replies: [], cursor: latest.id, schedules: [] });
   });
 });
 

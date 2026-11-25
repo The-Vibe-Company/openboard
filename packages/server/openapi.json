@@ -4721,7 +4721,7 @@
       },
       "get": {
         "operationId": "schedules",
-        "summary": "List schedules. This route currently returns no_scheduler.",
+        "summary": "List pending schedules oldest first, or every state with all.",
         "parameters": [
           {
             "name": "re",
@@ -4913,7 +4913,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
-            "description": "not_found",
+            "description": "message_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "429": {
@@ -4928,10 +4928,6 @@
           },
           "500": {
             "description": "internal",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
-          },
-          "501": {
-            "description": "no_scheduler",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           }
         }
@@ -25842,7 +25838,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["message", "replies"],
+                  "required": ["message", "replies", "cursor", "schedules"],
                   "properties": {
                     "message": {
                       "type": "object",
@@ -26246,6 +26242,137 @@
                             ]
                           },
                           "blocks": { "type": "array", "items": {} }
+                        }
+                      }
+                    },
+                    "cursor": { "type": "string" },
+                    "schedules": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "channel",
+                          "re",
+                          "text",
+                          "labels",
+                          "noSync",
+                          "attachments",
+                          "first",
+                          "every",
+                          "until",
+                          "times",
+                          "sent",
+                          "next",
+                          "last",
+                          "state",
+                          "canceled",
+                          "by",
+                          "author",
+                          "createdAt"
+                        ],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "channel": { "type": "string" },
+                          "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "text": { "type": "string" },
+                          "labels": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "patternProperties": {
+                              "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                            }
+                          },
+                          "noSync": { "type": "boolean" },
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "name", "type", "size"],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                  "type": "string"
+                                },
+                                "name": { "type": "string" },
+                                "type": { "type": "string" },
+                                "size": { "type": "integer" }
+                              }
+                            }
+                          },
+                          "first": { "type": "string" },
+                          "every": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                          "until": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "times": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                          "sent": { "type": "integer" },
+                          "next": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "last": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "state": {
+                            "anyOf": [
+                              { "const": "pending", "type": "string" },
+                              { "const": "done", "type": "string" },
+                              { "const": "canceled", "type": "string" }
+                            ]
+                          },
+                          "canceled": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": ["by", "reason"],
+                                "properties": {
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      { "const": "canceled", "type": "string" },
+                                      { "const": "thread_deleted", "type": "string" },
+                                      { "const": "dropped", "type": "string" },
+                                      { "const": "revoked", "type": "string" }
+                                    ]
+                                  }
+                                }
+                              },
+                              { "type": "null" }
+                            ]
+                          },
+                          "by": {
+                            "type": "object",
+                            "required": ["actor", "principal", "profile"],
+                            "properties": {
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                            }
+                          },
+                          "author": {
+                            "type": "object",
+                            "required": ["kind", "handle", "name", "avatar"],
+                            "properties": {
+                              "kind": {
+                                "anyOf": [
+                                  { "const": "person", "type": "string" },
+                                  { "const": "workflow", "type": "string" },
+                                  { "const": "agent", "type": "string" }
+                                ]
+                              },
+                              "handle": { "type": "string" },
+                              "name": { "type": "string" },
+                              "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                              "via": {
+                                "type": "object",
+                                "required": ["name", "environment"],
+                                "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                              }
+                            }
+                          },
+                          "createdAt": { "type": "string" }
                         }
                       }
                     }

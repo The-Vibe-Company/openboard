@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import { ScheduleView } from "../entities/schedules/index.ts";
 import { Thread, ThreadSummary } from "../entities/threads.ts";
 import { defineOperation, Ref } from "../operation.ts";
 
@@ -28,7 +29,7 @@ export const readThread = defineOperation({
       { additionalProperties: false },
     ),
   },
-  output: Thread,
+  output: Type.Object({ ...Thread.properties, cursor: Type.String(), schedules: Type.Array(ScheduleView) }),
   errors: ["message_not_found", "invalid_request"],
   access: { permission: "read", channel: "fromMessage" },
   effects: { readOnly: true, idempotent: true, emits: [] },

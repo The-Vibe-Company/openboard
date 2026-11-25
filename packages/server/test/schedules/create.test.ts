@@ -44,7 +44,6 @@ test("creates schedules in order as the resolved creator and exposes only their 
       ["ob.schedule.created", { id: "s2" }],
     ]);
     expect(await (await call(app, "GET", `/events?after=${cursor}&all=1`)).json()).toMatchObject({ events: [] });
-    expect((await call(app, "GET", "/schedules")).status).toBe(501);
     for (const id of ["12", "s12"]) {
       const canceled = await call(app, "POST", `/schedules/${id}/cancel`);
       expect(canceled.status).toBe(501);

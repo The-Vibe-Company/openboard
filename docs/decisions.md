@@ -966,7 +966,7 @@ reconcile the timer with the queue, including any outstanding lease expiries.
   reads the message first, so a missing or unreadable one answers 404
   `message_not_found` before the stub's answer. Stubs are `cli: false` and
   `mcp: false`.
-- **Deferred schedules (issue #568).** The list and cancel stubs return 501
+- **Deferred schedules (issue #568).** The cancel stub returns 501
   `no_scheduler`. The twin check accepts statuses below 500 and 501 while
   retaining the status, body, and tenant data checks.
 - **Consequence.** No expected-failure list: a stub that answered with data, or

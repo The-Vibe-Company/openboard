@@ -29,6 +29,10 @@ type Cases<View> = { readonly [Method in keyof View]-?: Case };
  */
 const boardCases: Cases<BoardView> = {
   ...attachmentBoardCases,
+  listSchedules: async (a, b) => {
+    expect(await b.board.listSchedules({})).toHaveLength(1);
+    expect(await a.board.listSchedules({ all: true })).toEqual([]);
+  },
   inboundReceived: async (a, b) => {
     expect(await b.board.inboundReceived(inboundId, at, null, 1)).toEqual([
       { eventId: "delivery-fixture", at, result: "{}" },

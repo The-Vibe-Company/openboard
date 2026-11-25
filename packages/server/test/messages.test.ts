@@ -118,7 +118,12 @@ describe("replying in a thread", () => {
     expect(posted.status).toBe(201);
     expect(posted.body.message).toMatchObject({ id: "3", channel: "dev", text: "on it", re: "2", thread: "2" });
     const thread = await (await call(app, "GET", "/messages/2")).json();
-    expect(thread).toEqual({ message: root, replies: [posted.body.message] });
+    expect(thread).toEqual({
+      message: root,
+      replies: [posted.body.message],
+      cursor: posted.body.message.id,
+      schedules: [],
+    });
   });
 
   test("lists the reply in its root's channel, after the root", async () => {
@@ -152,7 +157,12 @@ describe("replying in a thread", () => {
     expect(deeper.status).toBe(201);
     expect(deeper.body.message).toMatchObject({ id: "4", channel: "dev", re: "2", replyTo: "3", thread: "2" });
     const thread = await (await call(app, "GET", "/messages/2")).json();
-    expect(thread).toEqual({ message: root, replies: [first, deeper.body.message] });
+    expect(thread).toEqual({
+      message: root,
+      replies: [first, deeper.body.message],
+      cursor: deeper.body.message.id,
+      schedules: [],
+    });
   });
 
   test("names the field a reply gets wrong, not the channel it leaves out", async () => {

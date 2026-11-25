@@ -19,8 +19,15 @@ export const readThreadHandler: Handler<typeof readThread> = async (ctx, input) 
   const thread = id === null ? null : await ctx.board.thread(id, { after, limit: input.limit });
   if (!thread) throw new BoardError("message_not_found", `Couldn't find message #${input.id}.`);
   const message = effectiveTask(thread.message, ctx.now());
-  if (canListMentionActors(ctx.by)) return { ...thread, message };
-  return { message: withoutMentionDetails(message), replies: thread.replies.map(withoutMentionDetails) };
+  const rows = await ctx.board.listSchedules({ thread: Number(message.id), channel: message.channel });
+  const schedules = rows.map(({ schedule }) => schedule);
+  if (canListMentionActors(ctx.by)) return { ...thread, message, schedules };
+  return {
+    message: withoutMentionDetails(message),
+    replies: thread.replies.map(withoutMentionDetails),
+    cursor: thread.cursor,
+    schedules,
+  };
 };
 
 /** A page's `older`, `"<active>.<root>"`, as a position; null when the text is not one. */
