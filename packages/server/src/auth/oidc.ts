@@ -2,7 +2,7 @@ import { BoardError, type GrantView } from "@openboard/contract";
 import { type OidcPrincipal, type RepositoryPrincipal, resolveRankedCan, subjectGrants } from "@openboard/core";
 import type { BoardGrantReads, PlatformView } from "@openboard/ports";
 import { callerCan, credentialExpiry, credentialKind, type Deps, type Principal, workloadOf } from "../deps.ts";
-import { publicHttps, resolvesPublicly } from "../public-host.ts";
+import { publicHttps, resolvePublicAddresses } from "../public-host.ts";
 import type { CredentialVerifier } from "./chain.ts";
 import { bearer } from "./secrets.ts";
 
@@ -20,7 +20,6 @@ const RELOAD_INTERVAL_MS = 30_000;
 const MAX_RESPONSE_BYTES = 65_536;
 const FETCH_TIMEOUT_MS = 5000;
 const JWT = /^[\w-]+\.[\w-]+\.[\w-]+$/;
-type Fetch = NonNullable<Deps["fetch"]>;
 type FetchObject = (url: URL) => Promise<Claims | null>;
 const RSA = { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" };
 
@@ -29,7 +28,11 @@ function record(value: unknown): Claims | null {
 }
 
 function decode(value: string): Claims | null {
-  return record(JSON.parse(Buffer.from(value, "base64url").toString("utf8")));
+  try {
+    return record(JSON.parse(Buffer.from(value, "base64url").toString("utf8")));
+  } catch {
+    return null;
+  }
 }
 
 async function responseObject(response: Response): Promise<Claims | null> {
@@ -54,7 +57,37 @@ async function responseObject(response: Response): Promise<Claims | null> {
   }
 }
 
-function oidcFetch(fetch: Fetch, resolve: NonNullable<Deps["resolveHost"]>, schedule: Deps["schedule"]): FetchObject {
+async function fetchPinned(
+  url: URL,
+  addresses: readonly string[],
+  signal: AbortSignal,
+  fetch: NonNullable<Deps["webhookFetch"]>,
+): Promise<Response | null> {
+  const endpoint = new URL(url);
+  for (const address of addresses) {
+    signal.throwIfAborted();
+    endpoint.hostname = address.includes(":") ? `[${address}]` : address;
+    const request = new Request(endpoint.href, {
+      headers: { host: url.host, "accept-encoding": "identity" },
+      redirect: "manual",
+      signal,
+    });
+    try {
+      return await fetch(request, {
+        proxy: false,
+        redirect: "manual",
+        keepalive: false,
+        decompress: false,
+        tls: { serverName: url.hostname, rejectUnauthorized: true },
+      });
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "ECONNREFUSED")) throw error;
+    }
+  }
+  return null;
+}
+
+function oidcFetch({ fetch, webhookFetch, schedule }: Deps, resolve: NonNullable<Deps["resolveHost"]>): FetchObject {
   return async (url) => {
     const abort = new AbortController();
     const deadline = Promise.withResolvers<null>();
@@ -63,14 +96,18 @@ function oidcFetch(fetch: Fetch, resolve: NonNullable<Deps["resolveHost"]>, sche
       deadline.resolve(null);
     });
     const read = async () => {
-      if (!(await resolvesPublicly(url, resolve)) || abort.signal.aborted) return null;
-      const response = await fetch(new Request(url.href, { redirect: "error", signal: abort.signal }));
-      return responseObject(response);
+      const addresses = await resolvePublicAddresses(url, resolve);
+      if (!addresses || abort.signal.aborted) return null;
+      const response = webhookFetch
+        ? await fetchPinned(url, addresses, abort.signal, webhookFetch)
+        : await fetch?.(new Request(url.href, { redirect: "error", signal: abort.signal }));
+      return response ? responseObject(response) : null;
     };
-    const inflight = read();
-    inflight.catch(() => {});
     try {
-      return await Promise.race([inflight, deadline.promise]);
+      return await Promise.race([read(), deadline.promise]);
+    } catch {
+      // Unavailable or malformed issuer responses cannot authenticate a token.
+      return null;
     } finally {
       cancel();
     }
@@ -78,8 +115,8 @@ function oidcFetch(fetch: Fetch, resolve: NonNullable<Deps["resolveHost"]>, sche
 }
 
 async function loadDocument(fetchObject: FetchObject, issuer: string): Promise<Claims | null> {
-  const base = new URL(issuer);
-  if (!publicHttps(base) || base.search || base.hash) return null;
+  const base = URL.parse(issuer);
+  if (!base || !publicHttps(base) || base.search || base.hash) return null;
   const discoveryUrl = new URL(base);
   discoveryUrl.pathname = `${base.pathname.replace(/\/$/, "")}/.well-known/openid-configuration`;
   const discovery = await fetchObject(discoveryUrl);
@@ -164,25 +201,25 @@ function matchesAudience(aud: unknown, expected: string): boolean {
 
 function issuerVerifier(now: Deps["now"]) {
   return async (token: string, audience: string, claims: Claims, keyFor: ReturnType<typeof keyCache>["keyFor"]) => {
+    const [head = "", payload = "", signature = ""] = token.split(".");
+    const header = decode(head);
+    if (
+      header?.alg !== "RS256" ||
+      typeof header.kid !== "string" ||
+      header.crit !== undefined ||
+      !matchesAudience(claims.aud, audience) ||
+      typeof claims.exp !== "number" ||
+      !Number.isFinite(claims.exp) ||
+      (claims.nbf !== undefined && (typeof claims.nbf !== "number" || !Number.isFinite(claims.nbf)))
+    )
+      return null;
+    const expiry = claims.exp * 1000;
+    const active = () =>
+      Number.isFinite(expiry) && now() < expiry && (typeof claims.nbf !== "number" || now() >= claims.nbf * 1000);
+    if (!active()) return null;
+    const key = await keyFor(header.kid);
+    if (!key) return null;
     try {
-      const [head = "", payload = "", signature = ""] = token.split(".");
-      const header = decode(head);
-      if (
-        header?.alg !== "RS256" ||
-        typeof header.kid !== "string" ||
-        header.crit !== undefined ||
-        !matchesAudience(claims.aud, audience) ||
-        typeof claims.exp !== "number" ||
-        !Number.isFinite(claims.exp) ||
-        (claims.nbf !== undefined && (typeof claims.nbf !== "number" || !Number.isFinite(claims.nbf)))
-      )
-        return null;
-      const expiry = claims.exp * 1000;
-      const active = () =>
-        Number.isFinite(expiry) && now() < expiry && (typeof claims.nbf !== "number" || now() >= claims.nbf * 1000);
-      if (!active()) return null;
-      const key = await keyFor(header.kid);
-      if (!key) return null;
       const signed = await crypto.subtle.verify(
         RSA,
         key,
@@ -215,14 +252,6 @@ export async function currentWorkload(
   return { ...by, [callerCan]: can ?? {} };
 }
 
-function tokenClaims(token: string): Claims | null {
-  try {
-    return decode(token.split(".")[1] ?? "");
-  } catch {
-    return null;
-  }
-}
-
 function oidcIdentity(issuer: string, claims: Claims): { id: string; principal: OidcPrincipal } | null {
   if (typeof claims.sub !== "string" || !claims.sub) return null;
   // Preserve the separator even when an issuer path or explicit port contains a colon.
@@ -233,8 +262,8 @@ function oidcIdentity(issuer: string, claims: Claims): { id: string; principal: 
 
 /** Verify a JWT before resolving its permissions against the request's scoped board. */
 export function oidcVerifier(deps: Deps, issuer: OidcIssuer, store: KeyStore): CredentialVerifier {
-  const { fetch, now, resolveHost } = deps;
-  const outbound = fetch && resolveHost && oidcFetch(fetch, resolveHost, deps.schedule);
+  const { fetch, webhookFetch, now, resolveHost } = deps;
+  const outbound = (fetch || webhookFetch) && resolveHost && oidcFetch(deps, resolveHost);
   const check = issuerVerifier(now);
   const caches = new Map<string, ReturnType<typeof keyCache>>();
   function cacheFor(url: string, fetchObject: FetchObject) {
@@ -256,7 +285,7 @@ export function oidcVerifier(deps: Deps, issuer: OidcIssuer, store: KeyStore): C
     async verify(request, board, _operation, audience) {
       if (!outbound || !audience) return null;
       const token = bearer(request) ?? "";
-      const claims = tokenClaims(token);
+      const claims = decode(token.split(".")[1] ?? "");
       const url = claims?.iss;
       if (!claims || typeof url !== "string") return null;
       const builtIn = url === issuer.url;

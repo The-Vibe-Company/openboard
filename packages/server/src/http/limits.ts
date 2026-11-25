@@ -6,6 +6,7 @@ import type { ServerConfig } from "../deps.ts";
 export interface RequestLimits {
   readonly rateLimits: RateLimits;
   readonly ip: string | undefined;
+  readonly signal?: AbortSignal;
 }
 
 function tokenBuckets(now: () => number, capacity: number, refillPerMs: number, cost: number) {
@@ -64,22 +65,13 @@ function inboundAdmission(): RateLimits["reserveInbound"] {
   };
 }
 
-export function requestRateLimits(
-  now: () => number,
-  platform: PlatformView,
-  { perPrincipal = 20, perOrganization = 500 }: NonNullable<ServerConfig["streamLimits"]> = {},
-  observeStream?: (delta: 1 | -1) => void,
-): RateLimits {
-  // Integer units: a write costs 1,000, failed authentication 3,000, and refresh 10,000.
-  const writes = tokenBuckets(now, 1_000_000, 200, 1_000);
+function authAdmission(now: () => number): RateLimits["admitAuth"] {
+  // A failed authentication costs 3,000 integer units.
   const failures = tokenBuckets(now, 60_000, 1, 3_000);
-  const refreshes = tokenBuckets(now, 60_000, 1, 10_000);
   type Admission = Awaited<ReturnType<RateLimits["admitAuth"]>>;
   type Waiter = (admission: Admission) => void;
   type Pending = { count: number; waiters: Set<Waiter> };
   const pending = new Map<string, Pending>();
-  const byOrg = new Map<string, number>();
-  const byPrincipal = new Map<string, number>();
 
   function admit(ip: string, active: Pending): Admission | undefined {
     const retryAfter = failures(ip, false);
@@ -96,9 +88,47 @@ export function requestRateLimits(
         active.waiters.delete(resolve);
         resolve(next);
       }
-      if (active.count === 0) pending.delete(ip);
+      if (active.count === 0 && active.waiters.size === 0) pending.delete(ip);
     };
   }
+
+  return async (ip, signal) => {
+    signal?.throwIfAborted();
+    const active = pending.get(ip) ?? { count: 0, waiters: new Set<Waiter>() };
+    const admission = admit(ip, active);
+    if (typeof admission === "number") return admission;
+    pending.set(ip, active);
+    return (
+      admission ??
+      new Promise<Admission>((resolve, reject) => {
+        const waiter: Waiter = (next) => {
+          signal?.removeEventListener("abort", abort);
+          resolve(next);
+        };
+        const abort = () => {
+          signal?.removeEventListener("abort", abort);
+          active.waiters.delete(waiter);
+          if (active.count === 0 && active.waiters.size === 0) pending.delete(ip);
+          reject(signal?.reason);
+        };
+        active.waiters.add(waiter);
+        signal?.addEventListener("abort", abort);
+      })
+    );
+  };
+}
+
+export function requestRateLimits(
+  now: () => number,
+  platform: PlatformView,
+  { perPrincipal = 20, perOrganization = 500 }: NonNullable<ServerConfig["streamLimits"]> = {},
+  observeStream?: (delta: 1 | -1) => void,
+): RateLimits {
+  // Integer units: a write costs 1,000 and a refresh costs 10,000.
+  const writes = tokenBuckets(now, 1_000_000, 200, 1_000);
+  const refreshes = tokenBuckets(now, 60_000, 1, 10_000);
+  const byOrg = new Map<string, number>();
+  const byPrincipal = new Map<string, number>();
 
   return {
     reserveInbound: inboundAdmission(),
@@ -123,13 +153,7 @@ export function requestRateLimits(
     takeSignIn: (ip) => platform.takeRate(`sign-in:${ip ?? "unknown"}`, 30, 60_000, now()),
     takeRefresh: (agent) => refreshes(agent, true),
     takeWrite: (org) => writes(org, true),
-    async admitAuth(ip) {
-      const active = pending.get(ip) ?? { count: 0, waiters: new Set<Waiter>() };
-      const admission = admit(ip, active);
-      if (typeof admission === "number") return admission;
-      pending.set(ip, active);
-      return admission ?? new Promise<Admission>((resolve) => active.waiters.add(resolve));
-    },
+    admitAuth: authAdmission(now),
   };
 }
 

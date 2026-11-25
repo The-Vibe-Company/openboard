@@ -23,9 +23,10 @@ const spec = {
 };
 
 function fixture(
-  network: Partial<Pick<Deps, "fetch" | "resolveHost" | "schedule">> = {},
+  network: Partial<Pick<Deps, "resolveHost" | "schedule">> & { oidcFetch?: Deps["webhookFetch"] } = {},
   beforeReceive?: (request: Request) => Promise<void>,
 ) {
+  const { oidcFetch, ...outbound } = network;
   const store = openStore(() => NOW);
   const sent: string[] = [];
   const wakes: Array<Parameters<Jobs["watch"]>[2]> = [];
@@ -34,12 +35,13 @@ function fixture(
     signup: "open",
     secretKey: new Uint8Array(32).fill(12),
     schedule: () => () => {},
-    ...network,
+    ...outbound,
     watchJobs: (kinds, _schedule, wake) => {
       if (kinds.includes(WEBHOOK_DELIVERY_JOB)) wakes.push(wake);
       return () => {};
     },
-    webhookFetch: async (request) => {
+    webhookFetch: async (request, options) => {
+      if (request.method === "GET" && oidcFetch) return oidcFetch(request, options);
       await beforeReceive?.(request);
       const body = (await request.json()) as { subject: { channel: string } };
       sent.push(body.subject.channel);
@@ -252,8 +254,9 @@ async function workloadToken() {
   const signature = await crypto.subtle.sign(algorithm, keys.privateKey, Buffer.from(input));
   return {
     token: `${input}.${Buffer.from(signature).toString("base64url")}`,
-    fetch: async ({ url }: Request) => {
-      if (url === jwksUrl) return Response.json({ keys: [{ ...jwk, kid: "test" }] });
+    oidcFetch: async ({ url }: Request) => {
+      if (new URL(url).pathname === new URL(jwksUrl).pathname)
+        return Response.json({ keys: [{ ...jwk, kid: "test" }] });
       return Response.json({ issuer, jwks_uri: jwksUrl });
     },
   };
@@ -276,8 +279,8 @@ function grantWorkload(app: ReturnType<typeof makeApp>) {
 }
 
 test("an OIDC webhook stores only matched claims and uses current workload grants", async () => {
-  const { token, fetch } = await workloadToken();
-  const { app, store, sent, send, run } = fixture({ fetch, resolveHost: async () => ["8.8.8.8"] });
+  const { token, oidcFetch } = await workloadToken();
+  const { app, store, sent, send, run } = fixture({ oidcFetch, resolveHost: async () => ["8.8.8.8"] });
   try {
     const { grant } = await grantWorkload(app);
     const { webhook } = await answer<OutputOf<typeof createWebhook>>(

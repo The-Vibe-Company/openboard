@@ -32,6 +32,7 @@ function publicV4(address: string): boolean {
 
 export function publicAddress(address: string): boolean {
   if (!address.includes(":")) return publicV4(address);
+  if (!/^[0-9a-f:.]+$/i.test(address)) return false;
   const canonical = URL.parse(`http://[${address}]`)?.hostname.slice(1, -1);
   if (!canonical) return false;
   const mapped = /^::ffff:([0-9a-f]+):([0-9a-f]+)$/.exec(canonical);
@@ -53,8 +54,11 @@ export function publicAddress(address: string): boolean {
   );
 }
 
-export async function resolvesPublicly(url: URL, resolve: NonNullable<Deps["resolveHost"]>): Promise<boolean> {
-  if (!publicHttps(url)) return false;
+export async function resolvePublicAddresses(
+  url: URL,
+  resolve: NonNullable<Deps["resolveHost"]>,
+): Promise<readonly string[] | null> {
+  if (!publicHttps(url)) return null;
   const addresses = await resolve(url.hostname);
-  return addresses.length > 0 && addresses.every(publicAddress);
+  return addresses.length > 0 && addresses.every(publicAddress) ? addresses : null;
 }
