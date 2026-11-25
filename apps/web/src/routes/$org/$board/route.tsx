@@ -34,9 +34,13 @@ import {
 } from "../../../ui/index.ts";
 import "./shell.css";
 
+type ChannelView = "all" | "messages" | "tasks" | "activity";
+
 export const Route = createFileRoute("/$org/$board")({
-  validateSearch: (search: Record<string, unknown>): { channel?: string } =>
-    typeof search.channel === "string" ? { channel: search.channel } : {},
+  validateSearch: ({ channel, view }: Record<string, unknown>): { channel?: string; view?: ChannelView } => ({
+    ...(typeof channel === "string" ? { channel } : {}),
+    ...(view === "all" || view === "messages" || view === "tasks" || view === "activity" ? { view } : {}),
+  }),
   component: BoardLayout,
 });
 

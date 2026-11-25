@@ -1,5 +1,5 @@
 .board-shell .shell-content:has(> .channel-view) {
-  padding: 0 12px;
+  padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
 }
 
 .board-shell:not([data-reconnecting]) .shell-content:has(> .channel-view) > .connection-banner {
@@ -10,7 +10,7 @@
   display: flex;
   flex-direction: column;
   --channel-dock: 0px;
-  min-block-size: calc(100dvh - 3.5rem);
+  min-block-size: calc(100dvh - var(--shell-header-h, 56px));
   min-inline-size: 0;
 }
 
@@ -25,10 +25,13 @@
   border-block-end: 1px solid var(--board-hairline);
 }
 
-.board-shell .channel-header h1 {
+.board-shell .channel-header h1,
+.channel-section-head h2 {
   margin: 0;
   font: inherit;
   font-weight: 600;
+  font-size: 15px;
+  overflow-wrap: anywhere;
 }
 
 .channel-header h1::before {
@@ -40,6 +43,14 @@
 .channel-live {
   color: var(--board-muted);
   white-space: nowrap;
+}
+
+.channel-live-dot {
+  display: inline-block;
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--success);
 }
 
 .board-shell[data-reconnecting] .channel-live {
@@ -106,8 +117,11 @@
   align-self: start;
 }
 
-.channel-view > .channel-compose-shortcut:not(:focus) {
+.channel-view > .channel-compose-shortcut {
   position: absolute;
+}
+
+.channel-compose-shortcut:not(:focus) {
   clip-path: inset(50%);
 }
 
@@ -128,13 +142,14 @@
 @media (max-width: 48rem) {
   .channel-view {
     --channel-dock: calc(54px + env(safe-area-inset-bottom));
-    min-block-size: calc(100dvh - 108px - var(--channel-dock));
+    min-block-size: calc(100dvh - 52px - var(--shell-header-h, 56px) - var(--channel-dock));
     margin-block-end: var(--channel-dock);
   }
 
   .channel-filter-bar {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    order: 1;
     inline-size: 100%;
     gap: calc(2 * var(--space));
   }
@@ -153,4 +168,16 @@
     min-inline-size: 0;
     font-size: 16px;
   }
+}
+
+.channel-tabs-bar,
+.channel-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.channel-tabs [aria-selected="true"] {
+  text-decoration: underline;
 }

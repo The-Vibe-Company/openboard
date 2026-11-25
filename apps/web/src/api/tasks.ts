@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import type { Client } from "@the-vibe-company/openboard";
+import type { ThreadFilters, ThreadSummary } from "./board.ts";
 import { browserClient } from "./client.ts";
 import type { ThreadMessage } from "./thread.ts";
 
@@ -22,6 +23,14 @@ export function tasksQuery(board: Board, channel: string) {
   });
 }
 
+export function channelAllTasksQuery(board: Board, channel: string) {
+  return queryOptions({
+    queryKey: [...tasksQuery(board, channel).queryKey, "all"],
+    queryFn: ({ signal }) =>
+      browserClient(window.location.origin, board).listTasks({ channel, state: "all", limit: 200 }, { signal }),
+  });
+}
+
 export function taskActorsQuery(board: Board, enabled: boolean) {
   return queryOptions({
     queryKey: ["board", board.org, board.board, "task-actors"],
@@ -31,4 +40,16 @@ export function taskActorsQuery(board: Board, enabled: boolean) {
       return new Map(actors.map((actor) => [actor.id, actor]));
     },
   });
+}
+
+export function matchesTask({ message }: ThreadSummary, filters: ThreadFilters) {
+  if (filters.text && !message.text.toLowerCase().includes(filters.text.toLowerCase())) return false;
+  for (const filter of filters.label ?? []) {
+    const equals = filter.indexOf("=");
+    const key = equals < 0 ? filter : filter.slice(0, equals);
+    const value = message.labels[key];
+    const allowed = filter.slice(equals + 1).split("|");
+    if (value === undefined || (equals >= 0 && !allowed.includes(value))) return false;
+  }
+  return true;
 }

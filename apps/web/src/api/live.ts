@@ -1,8 +1,9 @@
-import { type QueryClient, type QueryKey, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, type QueryKey, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BoardEvent, Client } from "@the-vibe-company/openboard";
 import { useEffect, useState } from "react";
 import { boardKeys, threadsQuery } from "./board.ts";
-import { taskActorsQuery, tasksQuery } from "./tasks.ts";
+import { browserClient } from "./client.ts";
+import { channelAllTasksQuery, taskActorsQuery, tasksQuery } from "./tasks.ts";
 import { threadKeys } from "./thread.ts";
 
 type Board = { org: string; board: string };
@@ -89,6 +90,7 @@ function recordBoardEvent(
   board: Board,
   add: (key: QueryKey) => void,
   threads: Set<string>,
+  addCached: (key: QueryKey) => void,
 ): boolean {
   if (event.type === "channel.created") {
     add(boardKeys.channels(board));
@@ -99,7 +101,10 @@ function recordBoardEvent(
   if (event.type.startsWith("task.")) {
     threads.add(thread);
     add(tasksQuery(board, channel).queryKey);
-    if (event.type === "task.claimed") add(taskActorsQuery(board, true).queryKey);
+    addCached(channelAllTasksQuery(board, channel).queryKey);
+    if (event.type === "task.claimed" || event.type === "task.assigned" || event.type === "task.created") {
+      add(taskActorsQuery(board, true).queryKey);
+    }
     add(threadsQuery(board, channel).queryKey);
     return true;
   }
@@ -113,14 +118,20 @@ function recordBoardEvent(
     case "message.posted":
       add(boardKeys.channels(board));
       if (re !== null) threads.add(thread);
+      if (re !== null) addCached(channelAllTasksQuery(board, channel).queryKey);
       break;
     case "message.edited":
       threads.add(thread);
+      if (re === null) {
+        addCached(tasksQuery(board, channel).queryKey);
+        addCached(channelAllTasksQuery(board, channel).queryKey);
+      }
       break;
     case "message.deleted":
     case "labels.changed":
       threads.add(thread);
       add(tasksQuery(board, channel).queryKey);
+      addCached(channelAllTasksQuery(board, channel).queryKey);
       break;
     default:
       return false;
@@ -140,6 +151,8 @@ function boardRefreshes(board: Board, queries: Queries, schedule: Schedule, acto
   function add(key: QueryKey) {
     pending.set(JSON.stringify(key), key);
   }
+
+  const addCached = (key: QueryKey) => queries.getQueryState(key) && add(key);
 
   function queue() {
     if (!stopped) cancel ??= schedule(flush, 25);
@@ -185,7 +198,7 @@ function boardRefreshes(board: Board, queries: Queries, schedule: Schedule, acto
       const event = parseBoardEvent(data);
       if (!event || (actorEventsOnly && event.type !== "actor.seen")) return;
       notifyLiveListeners(board, event, add);
-      if (recordBoardEvent(event, board, add, threads) || pending.size > 0) queue();
+      if (recordBoardEvent(event, board, add, threads, addCached) || pending.size > 0) queue();
     },
     stop() {
       stopped = true;
@@ -278,4 +291,21 @@ export function useBoardLive({ org, board }: Board, enabled: boolean) {
     };
   }, [org, board, enabled, queries]);
   return reconnecting;
+}
+
+export function useChannelEvents(board: Board, channel: string) {
+  const [streamed, setStreamed] = useState<BoardEvent[]>([]);
+  const initial = useQuery({
+    queryKey: [...boardKeys.activity(board), channel],
+    queryFn: ({ signal }) =>
+      browserClient(window.location.origin, board).readEvents({ channel, last: 80, all: "true" }, { signal }),
+  });
+  useEffect(() => {
+    return subscribeBoardEvents(board, (event) => {
+      const path =
+        "message" in event ? event.message.channel : event.type === "channel.created" && event.payload.channel;
+      if (path === channel) setStreamed((events) => [event, ...events].slice(0, 150));
+    });
+  }, [board, channel]);
+  return { initial, streamed, history: initial.data?.events ?? [] };
 }
