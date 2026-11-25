@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { BoardError, createClient } from "@the-vibe-company/openboard";
 import { browserClient } from "../../api/client.ts";
-import { Card, EmptyState } from "../../ui/index.ts";
+import { ArrowRightIcon, Card, EmptyState, PlusIcon, SettingsIcon } from "../../ui/index.ts";
 import "./org.css";
 
 export const Route = createFileRoute("/$org/")({
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/$org/")({
     if (params.org === "local") {
       // The implicit local board has no account membership. Only local mode serves the /api alias.
       await createClient({ url: new URL("/api", origin).href }).discoverBoard({}, { signal });
-      return { name: "Local", boards: [{ slug: "main", name: "Main" }] };
+      return { name: "Local", boards: [{ slug: "main", name: "Main" }], isLocal: true };
     }
     const client = browserClient(origin);
     const [{ memberships }, { boards }] = await Promise.all([
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/$org/")({
     ]);
     const membership = memberships.find(({ org }) => org.slug === params.org);
     if (!membership) throw notFound();
-    return { name: membership.org.name, boards };
+    return { name: membership.org.name, boards, isLocal: false };
   },
   component: Organization,
   pendingComponent: () => <p role="status">Loading boards…</p>,
@@ -35,10 +35,25 @@ export const Route = createFileRoute("/$org/")({
 
 function Organization() {
   const { org } = Route.useParams();
-  const { name, boards } = Route.useLoaderData();
+  const { name, boards, isLocal } = Route.useLoaderData();
   return (
     <main className="organization-overview">
-      <h1>{name}</h1>
+      <div className="org-header">
+        <div>
+          <h1>{name}</h1>
+          <span className="org-slug">/{org}</span>
+        </div>
+        {!isLocal && (
+          <div className="org-header-actions">
+            <Link className="org-action-link" to="/$org/settings/boards" params={{ org }}>
+              <PlusIcon /> Manage boards
+            </Link>
+            <Link className="org-action-link" to="/$org/settings" params={{ org }}>
+              <SettingsIcon /> Org settings
+            </Link>
+          </div>
+        )}
+      </div>
       <section aria-labelledby="organization-boards">
         <h2 id="organization-boards">Boards</h2>
         {boards.length === 0 ? (
@@ -48,9 +63,17 @@ function Organization() {
             {boards.map((board) => (
               <li key={board.slug}>
                 <Link to="/$org/$board" params={{ org, board: board.slug }}>
-                  <Card>
-                    <h3>{board.name}</h3>
-                    <code>{board.slug}</code>
+                  <Card className="org-board-card">
+                    <div>
+                      <h3>{board.name}</h3>
+                      <code>
+                        {org}/{board.slug}
+                      </code>
+                    </div>
+                    <div className="org-board-card-foot">
+                      <span>Open board</span>
+                      <ArrowRightIcon />
+                    </div>
                   </Card>
                 </Link>
               </li>

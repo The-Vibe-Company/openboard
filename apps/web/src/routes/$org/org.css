@@ -7,14 +7,74 @@
   padding: calc(8 * var(--space)) calc(4 * var(--space));
 }
 
+.org-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(3 * var(--space));
+  padding-bottom: calc(5 * var(--space));
+  margin-bottom: calc(6 * var(--space));
+  border-bottom: var(--stroke) solid var(--border);
+}
+
+.org-header h1 {
+  margin: 0;
+}
+
+.org-slug {
+  display: inline-block;
+  margin-top: var(--space);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+}
+
+.org-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(2 * var(--space));
+}
+
+.org-action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(1.5 * var(--space));
+  min-block-size: var(--control-small);
+  padding: var(--space) calc(3 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: var(--type-small);
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 140ms ease;
+}
+
+.org-action-link:hover {
+  border-color: var(--control-border);
+  text-decoration: none;
+}
+
+.organization-overview h2 {
+  margin: 0 0 calc(3 * var(--space));
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .organization-overview h3 {
   margin: 0 0 var(--space);
 }
 
 .organization-overview ul {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
   gap: calc(4 * var(--space));
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -23,4 +83,29 @@
   display: grid;
   height: 100%;
   border-radius: var(--radius-card);
+  text-decoration: none;
+}
+
+.organization-overview .org-board-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: calc(3 * var(--space));
+  background: var(--surface-raised);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.organization-overview li a:hover .org-board-card {
+  border-color: var(--control-border);
+  background: var(--surface);
+}
+
+.org-board-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: var(--type-small);
 }

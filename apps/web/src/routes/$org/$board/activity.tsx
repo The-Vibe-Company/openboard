@@ -1,0 +1,209 @@
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import type { BoardEvent } from "@the-vibe-company/openboard";
+import { useEffect, useMemo, useState } from "react";
+import { boardKeys } from "../../../api/board.ts";
+import { browserClient } from "../../../api/client.ts";
+import { subscribeBoardEvents } from "../../../api/live.ts";
+import { markdownPreview } from "../../../markdown.ts";
+import { Badge, Button, EmptyState, PauseIcon, PlayIcon } from "../../../ui/index.ts";
+import "./activity.css";
+import "./tasks.css";
+
+export const Route = createFileRoute("/$org/$board/activity")({
+  component: BoardActivityPage,
+});
+
+type Category = "all" | "messages" | "tasks" | "meta" | "system";
+type Board = { org: string; board: string };
+
+const CATEGORIES: readonly [Category, string][] = [
+  ["all", "All"],
+  ["messages", "Messages"],
+  ["tasks", "Tasks"],
+  ["meta", "Reactions & labels"],
+  ["system", "System"],
+];
+
+function eventKind(type: string): "message" | "task" | "meta" | "system" {
+  if (type.startsWith("task.")) return "task";
+  if (type.startsWith("message.")) return "message";
+  if (type.startsWith("reaction.") || type === "labels.changed") return "meta";
+  return "system";
+}
+
+function eventSummary(event: BoardEvent): { text: string; channel?: string; thread?: string; actor?: string } {
+  const anyEvent = event as Record<string, unknown>;
+  const payload = (anyEvent.payload ?? {}) as Record<string, unknown>;
+  const message = anyEvent.message as
+    | {
+        id?: string;
+        thread?: string;
+        channel?: string;
+        text?: string;
+        author?: { name?: string };
+        by?: { actor?: string };
+      }
+    | undefined;
+  const actor =
+    message?.author?.name ??
+    message?.by?.actor ??
+    (typeof payload.name === "string" ? payload.name : typeof anyEvent.actor === "string" ? anyEvent.actor : undefined);
+  if (message) {
+    const snippet = typeof message.text === "string" ? markdownPreview(message.text) : "";
+    return {
+      text: snippet || `Message #${message.id ?? ""}`,
+      channel: message.channel,
+      thread: message.thread ?? message.id,
+      actor,
+    };
+  }
+  if (event.type === "channel.created" && typeof payload.channel === "string") {
+    return { text: `Created channel #${payload.channel}`, channel: payload.channel, actor };
+  }
+  if (event.type === "actor.seen") {
+    const label =
+      typeof payload.name === "string" ? payload.name : typeof payload.handle === "string" ? payload.handle : "actor";
+    return { text: `Actor ${label} active on board`, actor: label };
+  }
+  if (event.type === "watch.failed" && typeof payload.error === "string") {
+    return {
+      text: `Watcher failed: ${payload.error}`,
+      thread: typeof payload.thread === "string" ? payload.thread : undefined,
+    };
+  }
+  return { text: event.type, actor };
+}
+
+function mergeBoardEvents(streamed: readonly BoardEvent[], initial: readonly BoardEvent[], category: Category) {
+  const merged = new Map<string, BoardEvent>();
+  for (const item of streamed) merged.set(item.cursor, item);
+  for (const item of [...initial].reverse()) {
+    if (!merged.has(item.cursor)) merged.set(item.cursor, item);
+  }
+  return [...merged.values()]
+    .sort((a, b) => Number(b.cursor) - Number(a.cursor))
+    .filter((item) => {
+      if (category === "all") return true;
+      const kind = eventKind(item.type);
+      return (
+        (category === "messages" && kind === "message") ||
+        (category === "tasks" && kind === "task") ||
+        (category === "meta" && kind === "meta") ||
+        (category === "system" && kind === "system")
+      );
+    });
+}
+
+function BoardActivityPage() {
+  const { org, board: boardSlug } = Route.useParams();
+  const board = useMemo(() => ({ org, board: boardSlug }), [org, boardSlug]);
+  const [category, setCategory] = useState<Category>("all");
+  const [paused, setPaused] = useState(false);
+  const [streamed, setStreamed] = useState<BoardEvent[]>([]);
+
+  const initial = useQuery({
+    queryKey: boardKeys.activity(board),
+    queryFn: ({ signal }) =>
+      browserClient(window.location.origin, board).readEvents({ last: 80, all: "true" }, { signal }),
+  });
+
+  useEffect(() => {
+    if (paused) return;
+    return subscribeBoardEvents(board, (event) => {
+      setStreamed((current) => {
+        if (current.some((item) => item.cursor === event.cursor)) return current;
+        return [event, ...current].slice(0, 150);
+      });
+    });
+  }, [board, paused]);
+
+  const events = useMemo(
+    () => mergeBoardEvents(streamed, initial.data?.events ?? [], category),
+    [streamed, initial.data, category],
+  );
+
+  return (
+    <section className="board-view" aria-labelledby="board-activity-heading">
+      <div className="board-view-head">
+        <div>
+          <h1 id="board-activity-heading">Activity</h1>
+          <p className="board-view-sub">
+            Live event stream (<code>ob tail</code>). Every post, task lease, reaction, and channel event appears here
+            in real time.
+          </p>
+        </div>
+        <div className="board-view-controls">
+          <Button size="small" variant="secondary" onClick={() => setPaused((current) => !current)}>
+            {paused ? (
+              <>
+                <PlayIcon width={14} height={14} /> Resume stream
+              </>
+            ) : (
+              <>
+                <PauseIcon width={14} height={14} /> Pause stream
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+      <fieldset className="tasks-pills" aria-label="Filter event types">
+        {CATEGORIES.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className="tasks-pill"
+            aria-pressed={category === key}
+            onClick={() => setCategory(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </fieldset>
+      {initial.isPending && events.length === 0 && <p role="status">Loading activity…</p>}
+      {initial.isError && <p role="alert">Could not load board activity.</p>}
+      {!initial.isPending && events.length === 0 && <EmptyState>No matching events recorded yet.</EmptyState>}
+      {events.length > 0 && <ActivityFeed board={board} events={events} />}
+    </section>
+  );
+}
+
+function ActivityFeed({ board, events }: { board: Board; events: readonly BoardEvent[] }) {
+  return (
+    <ol className="activity-feed" aria-label="Live board events">
+      {events.map((event) => {
+        const info = eventSummary(event);
+        const kind = eventKind(event.type);
+        return (
+          <li key={event.cursor} className="activity-row">
+            <span className="activity-cursor">#{event.cursor}</span>
+            <Badge className="activity-type" data-kind={kind}>
+              {event.type}
+            </Badge>
+            <div className="activity-main">
+              {info.thread ? (
+                <Link
+                  className="activity-summary"
+                  to="/$org/$board/t/$id"
+                  params={{ ...board, id: info.thread }}
+                  search={info.channel ? { channel: info.channel } : {}}
+                >
+                  {info.text}
+                </Link>
+              ) : (
+                <span className="activity-summary">{info.text}</span>
+              )}
+              <div className="activity-meta">
+                {info.channel && <span>#{info.channel}</span>}
+                {info.actor && <span>{info.actor}</span>}
+              </div>
+            </div>
+            <time className="activity-time" dateTime={event.createdAt} title={event.createdAt}>
+              {new Date(event.createdAt).toLocaleTimeString()}
+            </time>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}

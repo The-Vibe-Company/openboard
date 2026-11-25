@@ -1,14 +1,58 @@
+.task-state-badge {
+  font-weight: 500;
+  border-inline-start-width: 3px;
+}
+
+.task-state-badge[data-state="ready"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.task-state-badge[data-state="claimed"] {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.task-state-badge[data-state="waiting"] {
+  border-color: var(--muted);
+}
+
+.task-state-badge[data-state="blocked"] {
+  border-color: var(--purple);
+  background: var(--purple-soft);
+}
+
+.task-state-badge[data-state="completed"] {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+
+.task-state-badge[data-state="failed"] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.task-state-badge[data-state="canceled"] {
+  border-color: var(--control-border);
+  color: var(--muted);
+}
+
+.task-state-badge[data-state="expired"] {
+  border-color: var(--danger-label);
+  background: var(--danger-soft);
+}
+
 .task-details {
-  margin-block-end: calc(4 * var(--space));
-  padding: calc(3.5 * var(--space)) calc(4 * var(--space));
+  display: grid;
+  gap: calc(3 * var(--space));
+  padding: calc(4 * var(--space));
   border: var(--stroke) solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
-  overflow-wrap: anywhere;
 }
 
 .task-details h2 {
-  margin: 0 0 calc(2.5 * var(--space));
+  margin: 0;
   color: var(--muted);
   font-size: var(--type-small);
   font-weight: 600;
@@ -18,8 +62,7 @@
 
 .task-details dl {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  align-items: baseline;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: calc(2 * var(--space)) calc(4 * var(--space));
   margin: 0;
 }
@@ -39,59 +82,45 @@
   display: flex;
   flex-wrap: wrap;
   gap: calc(1.5 * var(--space));
+  font-family: var(--font-mono);
 }
 
 .task-details .task-needs a {
-  padding: calc(0.5 * var(--space)) calc(2 * var(--space));
+  padding: 1px calc(2 * var(--space));
   border: var(--stroke) solid var(--border);
   border-radius: var(--radius-control);
-  background: var(--background);
-  font-family: var(--font-mono);
+  background: var(--surface-raised);
   font-size: var(--type-small);
-  text-decoration: none;
 }
 
-.task-details .task-needs a:hover {
-  border-color: var(--control-border);
-}
-
-.task-state-badge.ui-badge {
-  display: inline-flex;
+.task-actions {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: calc(0.5 * var(--space)) calc(2.5 * var(--space));
-  border-color: color-mix(in srgb, var(--task-state-color, var(--control-border)) 35%, var(--border));
-  border-inline-start-color: var(--task-state-color, var(--control-border));
-  border-inline-start-width: calc(3 * var(--stroke));
-  background: color-mix(in srgb, var(--task-state-color, var(--control-border)) 10%, var(--background));
-  font-weight: 500;
-  line-height: 1.4;
+  gap: calc(2 * var(--space));
+  padding-top: calc(3 * var(--space));
+  border-top: var(--stroke) solid var(--border);
 }
 
-.task-state-badge[data-state="ready"] {
-  --task-state-color: var(--text);
+.task-action-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(1.5 * var(--space));
+  inline-size: 100%;
+  margin-top: var(--space);
 }
 
-.task-state-badge[data-state="claimed"] {
-  --task-state-color: var(--accent);
+.task-action-form input,
+.task-action-form select {
+  flex: 1;
+  min-inline-size: 12rem;
+  min-block-size: var(--control-small);
+  font-size: var(--type-small);
 }
 
-.task-state-badge[data-state="completed"] {
-  --task-state-color: var(--success);
-}
-
-.task-state-badge[data-state="failed"] {
-  --task-state-color: var(--danger);
-}
-
-.task-state-badge[data-state="canceled"] {
-  --task-state-color: var(--muted);
-}
-
-.task-state-badge[data-state="expired"],
-.task-state-badge[data-state="blocked"] {
-  --task-state-color: var(--warning);
-}
-
-.task-state-badge[data-state="waiting"] {
-  --task-state-color: var(--control-border);
+.task-action-error {
+  margin: 0;
+  color: var(--danger-label);
+  font-size: var(--type-small);
 }

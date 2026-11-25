@@ -18,8 +18,13 @@ export function TaskList({ board, channel }: { board: { org: string; board: stri
   return (
     <section className="channel-tasks" aria-label="Tasks">
       <div className="channel-tasks-header">
-        <h2>Tasks</h2>
-        {tasks.length > 0 && <span className="channel-tasks-count">{tasks.length}</span>}
+        <div className="channel-tasks-title">
+          <h2>Tasks</h2>
+          {tasks.length > 0 && <span className="channel-tasks-count">{tasks.length}</span>}
+        </div>
+        <Link className="channel-tasks-all" to="/$org/$board/tasks" params={board}>
+          All tasks →
+        </Link>
       </div>
       {tasks.length > 0 && (
         <ol aria-label="Open tasks">

@@ -9,6 +9,33 @@ type Board = { org: string; board: string };
 type Schedule = (run: () => void, delay: number) => () => void;
 type ReadThread = Awaited<ReturnType<Client["readThread"]>>;
 type Queries = Pick<QueryClient, "cancelQueries" | "invalidateQueries" | "getQueriesData" | "getQueryState">;
+type LiveListener = (event: BoardEvent) => void;
+
+const liveListeners = new Map<string, Set<LiveListener>>();
+
+function boardIdKey(board: Board) {
+  return `${board.org}/${board.board}`;
+}
+
+export function subscribeBoardEvents(board: Board, listener: LiveListener): () => void {
+  const key = boardIdKey(board);
+  let set = liveListeners.get(key);
+  if (!set) {
+    set = new Set();
+    liveListeners.set(key, set);
+  }
+  set.add(listener);
+  return () => {
+    set.delete(listener);
+    if (set.size === 0) liveListeners.delete(key);
+  };
+}
+
+function notifyLiveListeners(board: Board, event: BoardEvent) {
+  const listeners = liveListeners.get(boardIdKey(board));
+  if (!listeners) return;
+  for (const listener of listeners) listener(event);
+}
 
 function recordBoardEvent(
   event: BoardEvent,
@@ -16,22 +43,34 @@ function recordBoardEvent(
   add: (key: QueryKey) => void,
   threads: Set<string>,
 ): boolean {
+  notifyLiveListeners(board, event);
+  add(boardKeys.activity(board));
   if (event.type === "channel.created") {
     add(boardKeys.channels(board));
     return true;
   }
-  if (!("message" in event) || !event.message) return false;
+  if (event.type === "actor.seen") {
+    add(boardKeys.actors(board));
+    add(taskActorsQuery(board, true).queryKey);
+    return true;
+  }
+  if (!("message" in event) || !event.message) return true;
   const { channel, thread, re } = event.message;
   if (event.type.startsWith("task.")) {
     threads.add(thread);
     add(tasksQuery(board, channel).queryKey);
-    if (event.type === "task.claimed") add(taskActorsQuery(board, true).queryKey);
+    add(boardKeys.allTasks(board));
+    if (event.type === "task.claimed") {
+      add(taskActorsQuery(board, true).queryKey);
+      add(boardKeys.actors(board));
+    }
     add(threadsQuery(board, channel).queryKey);
     return true;
   }
   switch (event.type) {
     case "message.posted":
       add(boardKeys.channels(board));
+      add(boardKeys.schedules(board));
       if (re !== null) threads.add(thread);
       break;
     case "message.edited":
@@ -41,6 +80,7 @@ function recordBoardEvent(
     case "labels.changed":
       threads.add(thread);
       add(tasksQuery(board, channel).queryKey);
+      add(boardKeys.allTasks(board));
       break;
     default:
       return false;
@@ -67,7 +107,11 @@ function boardRefreshes(board: Board, queries: Queries, schedule: Schedule) {
 
   function refresh(id: string, queryKey: QueryKey) {
     running.add(id);
-    const filters = { queryKey, exact: true };
+    const exact =
+      queryKey !== boardKeys.allTasks(board) &&
+      queryKey !== boardKeys.schedules(board) &&
+      queryKey !== boardKeys.activity(board);
+    const filters = { queryKey, exact };
     // An initial fetch cannot be restarted by invalidateQueries alone.
     void queries.cancelQueries({ ...filters, predicate: ({ state }) => state.data === undefined });
     void queries.invalidateQueries(filters).finally(() => {

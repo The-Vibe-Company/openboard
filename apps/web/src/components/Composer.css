@@ -4,6 +4,14 @@
   margin-block-end: calc(4 * var(--space));
 }
 
+.composer-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(2 * var(--space));
+}
+
 .composer-label {
   display: block;
   margin-block-end: var(--space);
@@ -12,17 +20,125 @@
   font-weight: 500;
 }
 
+.composer-mode {
+  display: inline-flex;
+  margin: 0;
+  padding: 2px;
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.composer-mode button {
+  min-block-size: 26px;
+  padding: 2px calc(2.5 * var(--space));
+  border: 0;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 500;
+}
+
+.composer-mode button[aria-pressed="true"] {
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+}
+
 .composer textarea {
   display: block;
   inline-size: 100%;
   resize: vertical;
 }
 
+.composer-extras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: calc(2 * var(--space));
+  padding: calc(2.5 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.composer-extras label {
+  display: grid;
+  gap: var(--space);
+  font-size: var(--type-small);
+  color: var(--muted);
+}
+
+.composer-extras input {
+  min-block-size: var(--control-small);
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+}
+
+.composer-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(1.5 * var(--space));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.composer-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(1.5 * var(--space));
+  padding: var(--space) calc(2 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+}
+
+.composer-attachment-chip button {
+  min-block-size: 20px;
+  padding: 0 var(--space);
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.composer-attachment-chip button:hover {
+  color: var(--text);
+}
+
 .composer-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: calc(2 * var(--space));
+}
+
+.composer-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(1.5 * var(--space));
+}
+
+.composer-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space);
+  min-block-size: var(--control-small);
+  padding: var(--space) calc(2 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--type-small);
+}
+
+.composer-tool-btn:hover {
+  border-color: var(--control-border);
+  color: var(--text);
 }
 
 .composer-hint {
@@ -36,4 +152,8 @@
   border-radius: 4px;
   background: var(--surface);
   font-size: 11px;
+}
+
+.composer-file-input {
+  display: none;
 }
