@@ -19,6 +19,7 @@ import { invitationsSuite } from "./store/invitations.test-suite.ts";
 import { membershipsSuite } from "./store/memberships.test-suite.ts";
 import { messagesSuite } from "./store/messages.test-suite.ts";
 import { orgsSuite } from "./store/orgs.test-suite.ts";
+import { type ReprojectStore, reprojectSuite } from "./store/reproject.test-suite.ts";
 import { schemasSuite } from "./store/schemas.test-suite.ts";
 import { tasksSuite } from "./store/tasks.test-suite.ts";
 import { threadsSuite } from "./store/threads.test-suite.ts";
@@ -55,7 +56,8 @@ export function testOrgScope(orgId: number): OrgScope {
 }
 
 /** Every behaviour a `Store` driver must have, run against `open` (docs/codebase.md 6.1). */
-export function runStoreSuite(driver: string, open: OpenStore): void {
+export function runStoreSuite(driver: string, open: OpenStore, openReproject: () => Promise<ReprojectStore>): void {
+  reprojectSuite(driver, openReproject);
   accountsSuite(driver, open);
   actorsSuite(driver, open);
   auditSuite(driver, open);

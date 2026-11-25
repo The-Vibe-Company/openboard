@@ -116,6 +116,8 @@ const STARTING_GRANTS: readonly GrantView[] = Object.freeze([
   },
 ]);
 
+export const FIRST_ALLOCATED_GRANT = STARTING_GRANTS.length + 1;
+
 function grantView(row: Record<string, unknown>): GrantView {
   return {
     id: grants.formatGrantId(Number(row.id)),

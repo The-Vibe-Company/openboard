@@ -9,13 +9,14 @@ import {
 } from "@openboard/core";
 import type { BoardKeys, Broadcaster, OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
+import { PROJECTION_VERSION } from "../projection-version.ts";
 import { type Fragment, query, sql } from "../sql.ts";
 import { invitationStatements } from "./invitations.ts";
 import { exhaustedQuota, orgStatements } from "./orgs.ts";
 
 const notifyHead: Fragment = Object.freeze({ fragment: (dialect: Dialect) => dialect.notifyHeadSuffix });
 // Lock the organization before the board, in the same order as board deletion.
-const boardLock: Fragment = Object.freeze({
+export const boardLock: Fragment = Object.freeze({
   fragment: (dialect: Dialect) => (dialect.lockSuffix ? ` FOR SHARE OF orgs${dialect.lockSuffix} OF boards` : ""),
 });
 const notifyDeletion: Fragment = Object.freeze({
@@ -44,6 +45,12 @@ const eventTally: Fragment = Object.freeze({
   fragment: ({ name }: Dialect) =>
     name === "postgres" ? "CAST(boards.daily_event_tally AS JSON)" : "boards.daily_event_tally",
 });
+const boardRevision: Fragment = {
+  fragment: ({ name }) => (name === "postgres" ? "boards.xmin::text" : "CAST(boards.head AS TEXT)"),
+};
+const snapshotRevision: Fragment = {
+  fragment: ({ name }) => (name === "postgres" ? "snapshot.xmin::text" : "CAST(snapshot.head AS TEXT)"),
+};
 const eventDay: Fragment = Object.freeze({
   fragment: () =>
     "CASE WHEN boards.daily_event_day > quota_clock.day THEN boards.daily_event_day ELSE quota_clock.day END",
@@ -82,8 +89,9 @@ export const boardStatements = {
       SELECT COALESCE(SUM(${scheduleBytes}), 0) FROM schedules s
       WHERE s.org_id = ${"orgId"} AND s.board_id = ${"boardId"}
     ) END AS board_bytes,
-    (SELECT snapshot.head FROM boards snapshot
-      WHERE snapshot.org_id = ${"orgId"} AND snapshot.id = ${"boardId"}) AS snapshot_head,
+    ${boardRevision} AS board_revision,
+    (SELECT ${snapshotRevision} FROM boards snapshot
+      WHERE snapshot.org_id = ${"orgId"} AND snapshot.id = ${"boardId"}) AS snapshot_revision,
     EXISTS(SELECT 1 FROM boards sibling WHERE sibling.org_id = ${"orgId"} AND sibling.id <> ${"boardId"}
       AND COALESCE(sibling.stored_bytes_head, -1) <> sibling.head) AS stale_siblings,
     (SELECT COALESCE(SUM(CASE WHEN sibling.stored_bytes_head = sibling.head THEN sibling.stored_bytes ELSE (
@@ -174,9 +182,9 @@ export async function lockBoard(
   let actorLoaded = dialect.name === "sqlite" || taskId !== null;
   const acquire = () => query(tx, dialect, boardStatements.lockBoard, { ...params, actor: actorLoaded ? actor : null });
   let [row] = await (tx.measureBoardLock ? tx.measureBoardLock(acquire) : acquire());
-  // A waiting Postgres statement refreshes only the locked row. If another writer advanced it, get a
+  // A waiting Postgres statement refreshes only the locked row. If another transaction updated it, get a
   // fresh snapshot of sibling usage, the legacy own-board fallback, the actor and the task target together.
-  if (row?.snapshot_head != null && Number(row.snapshot_head) !== Number(row.head)) {
+  if (row && row.snapshot_revision !== row.board_revision) {
     [row] = await query(tx, dialect, boardStatements.lockBoard, { ...params, actor });
     actorLoaded = true;
   }
@@ -258,7 +266,12 @@ export function orgBoardsView(
         const [usage] = await query(tx, dialect, boardStatements.orgBoardCount, { orgId });
         const quota = exhaustedQuota("boards", admin.quotas, usage?.count);
         if (quota) return quota;
-        await query(tx, dialect, orgStatements.insertBoard, { orgId, ...board, at: event.at });
+        await query(tx, dialect, orgStatements.insertBoard, {
+          orgId,
+          ...board,
+          at: event.at,
+          projection: PROJECTION_VERSION,
+        });
         const [next] = await query(tx, dialect, invitationStatements.nextInvitationEvent, { orgId });
         const { type, at, actor } = event;
         const payload = JSON.stringify(event.payload);

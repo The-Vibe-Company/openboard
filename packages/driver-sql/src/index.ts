@@ -57,6 +57,8 @@ import scheduleThreadIndex from "../migrations/0055-schedule-thread-index.sql" w
 import deliveriesSendingIndex from "../migrations/0056-deliveries-sending-index.sql" with { type: "text" };
 import scheduleSendJobs from "../migrations/0057-schedule-send-jobs.sql" with { type: "text" };
 import scheduleSendBackfill from "../migrations/0058-schedule-send-backfill.sql" with { type: "text" };
+import importBoundary from "../migrations/0059-imported-head.sql" with { type: "text" };
+import projectionJobGuards from "../migrations/0060-reproject-job-guards.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -83,6 +85,7 @@ import { boardView } from "./views/messages.ts";
 import { operatorView } from "./views/operator/index.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
 import { rateView } from "./views/rates/index.ts";
+import { reprojectView } from "./views/reproject/index.ts";
 import { scheduleReads } from "./views/schedules/index.ts";
 import { schemaReads } from "./views/schemas/registry.ts";
 import { taskListReads } from "./views/tasks/list.ts";
@@ -96,6 +99,7 @@ export { splitStatements } from "./ddl.ts";
 export { localBroadcaster } from "./local-broadcaster.ts";
 export {
   databaseRows,
+  seedReprojectLog,
   seedScheduleState,
   seedTaskNeed,
   simulateLegacyDeletion,
@@ -175,6 +179,8 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 56, name: "0056-deliveries-sending-index", sql: deliveriesSendingIndex },
   { version: 57, name: "0057-schedule-send-jobs", sql: scheduleSendJobs },
   { version: 58, name: "0058-schedule-send-backfill", sql: scheduleSendBackfill },
+  { version: 59, name: "0059-imported-head", sql: importBoundary },
+  { version: 60, name: "0060-reproject-job-guards", sql: projectionJobGuards },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -192,6 +198,7 @@ export function createViews(
     schemaReady: () => checkSchema(db, dialect, migrations.at(-1)?.version ?? 0),
     platform: () => ({
       ...platformView(db, dialect),
+      ...reprojectView(db, dialect),
       ...sweepView(db, dialect),
       ...oidcKeysView(db, dialect),
       ...shippingPlatform(db, dialect),
@@ -248,3 +255,4 @@ export function createViews(
 }
 
 export { type ReadAttachmentBackup, replayBoard, restoreStatements } from "./views/restore/index.ts";
+export { isImportedFold, markImportedHead } from "./views/reproject/index.ts";

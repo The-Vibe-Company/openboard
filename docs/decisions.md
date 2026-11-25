@@ -632,6 +632,10 @@ it posts.
   from stdin, `--secret-file`, or `OPENBOARD_SECRET`. Environment variables
   use the `OPENBOARD_` prefix.
 
+- **Imported history during reprojection (#592).** An organization import records its last event in
+  `boards.imported_head`. Replay through that position applies the import filter so archived policy
+  and automation remain inactive. New events use the full dispatcher.
+
 ### D43. The conformance credential is a direct connection with `*=all`
 
 - **Context.** The kit changes grants, registers a schema and watchers; a

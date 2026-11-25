@@ -60,7 +60,13 @@ export async function appendEvent(
   if (fold) await foldEvent(tx, dialect, keys, event);
 }
 
-export async function foldEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: BoardEvent): Promise<void> {
+export async function foldEvent(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  event: BoardEvent,
+  reproject = false,
+): Promise<void> {
   if (event.type === "channel.created") await foldChannelCreated(tx, dialect, keys, event);
   else if (
     event.type === "ob.grant.created" ||
@@ -114,12 +120,12 @@ export async function foldEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event
     event.type === "ob.webhook.updated" ||
     event.type === "ob.webhook.disabled"
   )
-    await foldWebhook(tx, dialect, keys, event);
+    await foldWebhook(tx, dialect, keys, event, reproject);
   else if (
     event.type === "ob.inbound.created" ||
     event.type === "ob.inbound.updated" ||
     event.type === "ob.inbound.deleted"
   )
-    await foldInbound(tx, dialect, keys, event);
+    await foldInbound(tx, dialect, keys, event, reproject);
   else if (event.type !== "watch.failed") await foldTaskEvent(tx, dialect, keys, event);
 }

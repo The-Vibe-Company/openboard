@@ -2,6 +2,7 @@ import {
   type Db,
   databaseRows,
   postgresText,
+  seedReprojectLog,
   seedScheduleState,
   seedSweep,
   seedTaskNeed,
@@ -87,6 +88,8 @@ export function postgresPurgeFixture(url: () => Promise<string>) {
       withTestDb(await url(), async (db, sql) =>
         tenantRows(db, "$1", (await readCatalog(sql)).tables, orgId, [boardId, ...extraBoards]),
       ),
+    seedReprojectLog: async (keys: BoardKeys, count: number) =>
+      withTestDb(await url(), (db) => seedReprojectLog(db, postgresText, keys, count)),
     seedSweep: async (keys: BoardKeys, webhook: string, at: number) =>
       withTestDb(await url(), (db) => seedSweep(db, postgresText, keys, webhook, at)),
     sweepSnapshot: async () => withTestDb(await url(), sweepSnapshot),

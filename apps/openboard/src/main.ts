@@ -5,6 +5,7 @@ import { admin } from "./admin.ts";
 import { type Config, ConfigError, clientEnvironment, loadConfig } from "./config.ts";
 import { importOrganization } from "./import.ts";
 import { migrate } from "./migrate.ts";
+import { reproject } from "./reproject.ts";
 import { restore } from "./restore.ts";
 import { serve } from "./serve.ts";
 
@@ -21,6 +22,7 @@ const serverCommands: Readonly<Record<string, (config: Config, args: readonly st
   },
   admin: (config, args) => admin(config, args, output),
   migrate: (config) => migrate(config, output),
+  reproject: (config, args) => reproject(config, args, output),
   restore: (config, args) => restore(config, args, output),
   import: (_config, args) => importOrganization(args, output),
 };
@@ -32,7 +34,7 @@ async function main(argv: readonly string[]): Promise<void> {
     (name === undefined || (name === "--help" && argv.length === 1)) &&
     /^openboard(?:-bun-.+)?$/.test(basename(process.execPath))
   ) {
-    output.out("Usage: openboard <serve | migrate | admin | restore | import>");
+    output.out("Usage: openboard <serve | migrate | admin | restore | import | reproject>");
     output.out("For board client commands, run ob.");
     return;
   }

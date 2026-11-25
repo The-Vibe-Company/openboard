@@ -7,6 +7,7 @@ import {
   databaseRows,
   migrations,
   type Row,
+  seedReprojectLog,
   seedScheduleState,
   seedSweep,
   seedTaskNeed,
@@ -109,6 +110,8 @@ export function sqlitePurgeFixture(now: () => number) {
         withTestDb(file, (db, database) =>
           tenantRows(db, "?", readCatalog(database).tables, orgId, [boardId, ...extraBoards]),
         ),
+      seedReprojectLog: (keys: BoardKeys, count: number) =>
+        withTestDb(file, (db) => seedReprojectLog(db, sqliteDialect, keys, count)),
       seedSweep: (keys: BoardKeys, webhook: string, at: number) =>
         withTestDb(file, (db) => seedSweep(db, sqliteDialect, keys, webhook, at)),
       sweepSnapshot: () => withTestDb(file, sweepSnapshot),

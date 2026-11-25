@@ -591,3 +591,16 @@ attachment bytes preserve message attachment references. When the archive
 includes files, it uses the log-shipping entry names
 `attachments/<board-id>/<attachment-id>.json` and `blobs/sha256/<hash>`.
 The importer verifies the file hashes before publishing the database.
+
+#### Rebuild a board's projections
+
+Run `openboard reproject` for `local/main` in the configured data directory.
+Local startup also rebuilds a board whose projection version is older than
+the release. With `OPENBOARD_DATABASE_URL` set, run
+`openboard reproject <org>/<board>` to rebuild just that board. The command
+prints the event count, elapsed time and projection version. In hosted mode,
+run it after all instances have rolled out to the release.
+
+Replay holds the board's write lock until commit. A hosted write that exceeds
+the database's three-second lock timeout returns retryable
+`503 unavailable`. The event log, cursors and queued work are retained.

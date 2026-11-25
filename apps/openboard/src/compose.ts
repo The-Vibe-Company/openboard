@@ -2,7 +2,7 @@ import { lookup } from "node:dns/promises";
 import { join } from "node:path";
 import { migratePostgres, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
-import type { PlatformView } from "@openboard/ports";
+import type { PlatformView, Store } from "@openboard/ports";
 import { createApp, type Deps, jsonLogger, maintenanceJobs, usageJobs } from "@openboard/server";
 import { snapshotShipping } from "./backup.ts";
 import { backupBucket } from "./bucket.ts";
@@ -52,6 +52,18 @@ export async function withAdminStore<Result>(
   }
 }
 
+async function prepareLocalStore(store: Store) {
+  try {
+    const platform = store.platform();
+    const keys = await platform.findBoard("local", "main");
+    if (!keys) throw new Error("Local board is missing");
+    await platform.reprojectBoard(keys, true);
+  } catch (error) {
+    await store.close();
+    throw error;
+  }
+}
+
 /** The one place a driver is chosen: SQLite for local mode, Postgres for hosted mode. */
 export async function compose(
   config: Config,
@@ -94,6 +106,7 @@ export async function compose(
           },
           deps.now,
         );
+  if (mode === "local") await prepareLocalStore(store);
   const app = createApp(
     {
       mode,

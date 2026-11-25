@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import {
-  type OpenStore,
   ratesSuite,
   runBlobsSuite,
   runBroadcasterSuite,
@@ -10,6 +9,7 @@ import {
   type WithJobStores,
 } from "@openboard/ports/testkit";
 import { SQL } from "bun";
+import { postgresPurgeFixture } from "../src/catalog.ts";
 import { createTestDatabases, postgresDriver } from "../src/index.ts";
 import { migrate } from "../src/migrate.ts";
 import { postgresTestUrl } from "./support/env.ts";
@@ -23,7 +23,7 @@ if (url) {
   afterAll(() => databases?.close());
 
   // Every store case, each on its own database cloned from the migrated template.
-  const open: OpenStore = async () => {
+  const open = async () => {
     const database = await databases.create();
     try {
       const store = await postgresDriver({ url: database.url });
@@ -36,13 +36,13 @@ if (url) {
           await database.drop();
         }
       };
-      return { ...store, close: () => (closed ??= close()) };
+      return { ...store, ...postgresPurgeFixture(async () => database.url), close: () => (closed ??= close()) };
     } catch (error) {
       await database.drop();
       throw error;
     }
   };
-  runStoreSuite("postgres", open);
+  runStoreSuite("postgres", open, open);
   runBlobsSuite("postgres", open);
   runJobsSuite("postgres", open);
   runBroadcasterSuite("postgres", open);
