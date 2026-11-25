@@ -8,11 +8,12 @@ writes:
   - packages/core/test/webhooks/payload.test.ts
   - packages/server/test/webhooks/schedule-source.test.ts
   - docs/protocol.md
+  - skills/openboard/references/webhooks.md
 conformance: []
 modes: [local, hosted]
 depends_on: [304, 377, 378]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 576
 ---
 
@@ -20,8 +21,8 @@ issue: 576
 As a board admin, I turn a daily schedule into a cron trigger: a schedule posting in `cron/nightly-deps` every day makes my webhook fire once per day, with the send's `{ id, n }` as an idempotency key.
 
 ## Done when
-- [ ] `bun test packages/server/test/webhooks/schedule-source.test.ts` passes on SQLite and Postgres with a fake clock and the injected `fetch`: a webhook with `{ "tail": "cron/nightly-deps", "types": ["message.posted"] }` and the body template `{ "event_type": "openboard", "client_payload": { "thread": "{{subject.thread}}", "schedule": "{{subject.schedule}}", "delivery": "{{delivery.id}}" } }`, and `POST /schedules { "channel": "cron/nightly-deps", "text": "nightly sweep", "every": "1d", "at": … }`, make one delivery per day whose `subject.schedule` is `{ id: "s1", n: 0 }`, then `n: 1`; a message posted by hand in that channel has `subject.schedule: null`
-- [ ] in the same file on Postgres with two instances, each send is delivered once although both runners poll, and a retried delivery keeps its `delivery.id` and `subject.schedule`
+- [x] `bun test packages/server/test/webhooks/schedule-source.test.ts` passes on SQLite and Postgres with a fake clock and the injected `fetch`: a webhook with `{ "tail": "cron/nightly-deps", "types": ["message.posted"] }` and the body template `{ "event_type": "openboard", "client_payload": { "thread": "{{subject.thread}}", "schedule": "{{subject.schedule}}", "delivery": "{{delivery.id}}" } }`, and `POST /schedules { "channel": "cron/nightly-deps", "text": "nightly sweep", "every": "1d", "at": … }`, make one delivery per day whose `subject.schedule` is `{ id: "s1", n: 0 }`, then `n: 1`; a message posted by hand in that channel has `subject.schedule: null`
+- [x] in the same file on Postgres with two instances, each send is delivered once although both runners poll, and a retried delivery keeps its `delivery.id` and `subject.schedule`
 
 ## Out of scope
 - The receiver's side: `examples/` recipes (355) and GitHub's `repository_dispatch`, which is configuration.

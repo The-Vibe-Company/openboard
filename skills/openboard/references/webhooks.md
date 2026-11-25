@@ -34,6 +34,11 @@ The template may be an object or array up to 16 KB. A standalone placeholder
 keeps its JSON type. If a template path is unknown, the server returns
 `invalid_request` with the path and a suggested correction. Verify the signature against the rendered body you receive.
 
+To trigger a runner from a recurring schedule, subscribe to `message.posted`
+on the schedule's channel. Use `{{subject.schedule}}` as a standalone
+placeholder to pass the send's `{ id, n }` slot to the receiver. The first
+send has `n: 0`, and a post made by hand renders `null`.
+
 For a receiver that verifies GitHub-style signatures, set
 `"signing": { "preset": "github" }` in the CLI subscription spec and point
 `--secret-file` to the existing receiver secret file. The CLI preserves its whitespace. The

@@ -50,3 +50,26 @@ test("reserves space for attempt 10 without changing the delivery text", () => {
   expect(last).toBe(first.replace('"attempt":1', '"attempt":10'));
   expect(Buffer.byteLength(last)).toBe(256 * 1024);
 });
+
+test("webhook subject uses the event message's schedule even when it differs from the thread root", () => {
+  const { events } = messages.decidePost(
+    { head: 0 },
+    { channel: "dev", text: "fixture" },
+    { now: 0, by: { actor: "owner", principal: "owner", profile: null } },
+  );
+  const posted = events.find((event) => event.type === "message.posted");
+  if (posted?.type !== "message.posted") throw new Error("missing post");
+  const root = { ...messages.messageView(posted), schedule: { id: "s1", n: 0 } };
+  const delivery = { id: "dl_example", attempt: 1, webhook: "wh_example", name: "test" };
+  const slot = { id: "s2", n: 1 };
+  for (const schedule of [slot, undefined]) {
+    const message = { ...root, id: "3", re: root.id, schedule };
+    const body = webhookPayload("http://localhost", "local", "main", delivery, { message, payload: {} }, root);
+    if (!body) throw new Error("missing encoded body");
+    expect(JSON.parse(body).subject).toMatchObject({
+      thread: root.id,
+      message: message.id,
+      schedule: schedule ?? null,
+    });
+  }
+});
