@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/The-Vibe-Company/openboard/compare/v0.3.0...v0.4.0) (2026-11-25)
+
+
+### Features
+
+* **web:** paginate completed task history ([#947](https://github.com/The-Vibe-Company/openboard/issues/947)) ([78bbdb6](https://github.com/The-Vibe-Company/openboard/commit/78bbdb6055739fe38de56a1a15f2828550087342))
+
+
+### Bug Fixes
+
+* **web:** style channel tabs and task controls ([#946](https://github.com/The-Vibe-Company/openboard/issues/946)) ([f4bccba](https://github.com/The-Vibe-Company/openboard/commit/f4bccbabbac573f2c83ef589b1e0833f3674ae40))
+
 ## [0.3.0](https://github.com/The-Vibe-Company/openboard/compare/v0.2.0...v0.3.0) (2026-11-25)
 
 
