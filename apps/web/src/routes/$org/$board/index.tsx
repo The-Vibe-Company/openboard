@@ -126,7 +126,7 @@ function ChannelHeader({
         </form>
         <span className="channel-live">
           <span className="channel-live-dot" aria-hidden="true" />
-          {" live"}
+          live
         </span>
       </div>
       {tabs}
@@ -338,9 +338,9 @@ function ChannelMessages(props: {
       )}
       {threads.isFetchingNextPage && <p role="status">Loading older threads…</p>}
       {threads.isFetchNextPageError && (
-        <button type="button" onClick={fetchOlder}>
+        <Button size="small" variant="secondary" onClick={fetchOlder}>
           Retry loading older threads
-        </button>
+        </Button>
       )}
     </>
   );
@@ -353,11 +353,13 @@ function ChannelActivity({ board, channel }: { board: Board; channel: string }) 
   const events = mergeBoardEvents(snapshot ?? streamed, snapshot ? [] : history, category);
   const toggle = () => setSnapshot(snapshot ? null : mergeBoardEvents(streamed, history, "all"));
   return (
-    <section aria-label="Channel activity">
-      <Button size="small" variant="secondary" onClick={toggle}>
-        {snapshot ? "Resume stream" : "Pause stream"}
-      </Button>
-      {channelPills("Filter event types", CATEGORIES, category, setCategory)}
+    <section className="channel-activity" aria-label="Channel activity">
+      <div className="channel-activity-bar">
+        {channelPills("Filter event types", CATEGORIES, category, setCategory)}
+        <Button size="small" variant="secondary" onClick={toggle}>
+          {snapshot ? "Resume stream" : "Pause stream"}
+        </Button>
+      </div>
       {events.length > 0 && <ActivityFeed board={board} events={events} />}
       {initial.error && <p role="alert">{boardErrorText(initial.error)}</p>}
       {!events.length && initial.isSuccess && <p role="status">No matching events recorded yet.</p>}

@@ -1,24 +1,34 @@
 .channel-tasks {
+  margin-block: 10px 4px;
   border: 1px solid var(--board-hairline);
+  border-radius: var(--radius-card);
+  background: var(--board-surface);
+  overflow: hidden;
 }
 
 .channel-tasks-header,
 .channel-tasks-title,
+.channel-task-history,
 .channel-tasks li {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.channel-tasks-header,
 .channel-tasks li {
   min-block-size: 34px;
-  padding-inline: 8px;
 }
 
-.channel-tasks-header {
+.channel-tasks-header,
+.channel-task-history {
   justify-content: space-between;
   color: var(--board-muted);
+  font-size: 12px;
+}
+.channel-tasks-header {
+  min-block-size: 36px;
+  padding: 4px 10px;
+  font-weight: 500;
 }
 
 .channel-tasks-header h2 {
@@ -32,12 +42,32 @@
   list-style: none;
 }
 
+.channel-task-history,
 .channel-tasks li {
   flex-wrap: wrap;
+  padding: 6px 10px;
   border-block-start: 1px solid var(--board-hairline);
 }
 
+:is(.channel-tasks-header button, .channel-task-history button, .channel-tasks > button) {
+  min-block-size: 28px;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--board-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.channel-tasks > button:focus-visible {
+  outline-offset: calc(-1 * var(--focus-width));
+}
 @media (hover: hover) and (pointer: fine) {
+  :is(.channel-tasks-header button, .channel-task-history button, .channel-tasks > button):hover {
+    background: var(--board-shade);
+    color: var(--board-text);
+  }
+
   .channel-tasks li:hover {
     background: var(--board-shade);
   }
@@ -80,6 +110,7 @@
   display: block;
   max-inline-size: 42%;
   border-radius: 2px;
+  font-family: var(--font-mono);
 }
 
 @media (max-width: 48rem) {
@@ -89,12 +120,25 @@
 }
 
 .channel-tasks-count {
-  padding-inline: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  min-block-size: 18px;
   border-radius: 999px;
   background: var(--board-shade);
+  color: var(--board-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .channel-task-detail {
   color: var(--board-muted);
   flex-basis: 100%;
+}
+@media (max-width: 48rem), (pointer: coarse) {
+  :is(.channel-tasks-header button, .channel-task-history button, .channel-tasks > button) {
+    min-block-size: 36px;
+  }
 }

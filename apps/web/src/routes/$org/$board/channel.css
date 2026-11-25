@@ -40,8 +40,18 @@
   color: var(--board-faint);
 }
 
+.channel-live,
+.channel-tabs button,
+.channel-view .tasks-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .channel-live {
   color: var(--board-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -171,13 +181,107 @@
 }
 
 .channel-tabs-bar,
-.channel-tabs {
+.channel-activity-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  border-block-end: 1px solid var(--board-hairline);
 }
 
-.channel-tabs [aria-selected="true"] {
-  text-decoration: underline;
+.channel-tabs-bar {
+  padding-inline: 8px;
+}
+.channel-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-block-end: -1px;
+}
+.channel-tabs button,
+.channel-view .tasks-pill {
+  background: transparent;
+  color: var(--board-muted);
+  font-weight: 500;
+}
+.channel-tabs button {
+  min-block-size: 36px;
+  padding: 6px 10px;
+  border: 0;
+  border-block-end: 2px solid transparent;
+  border-radius: 0;
+  font-size: 13px;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
+}
+.channel-tabs button[aria-selected="true"] {
+  border-block-end-color: var(--board-text);
+  color: var(--board-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.channel-tasks-board-link {
+  color: var(--board-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.channel-view .tasks-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 8px;
+  border: 0;
+}
+.channel-view > .tasks-pills {
+  border-block-end: 1px solid var(--board-hairline);
+}
+.channel-view .tasks-pill {
+  min-block-size: 28px;
+  padding: 2px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+}
+.channel-view .tasks-pill[aria-pressed="true"] {
+  background: var(--board-shade);
+  border-color: var(--board-hairline);
+  color: var(--board-text);
+  font-weight: 600;
+}
+.channel-activity-bar {
+  padding-inline-end: 8px;
+}
+.channel-section-head {
+  padding: 12px 8px 4px;
+}
+.channel-section-head h2 {
+  color: var(--board-muted);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.channel-empty-note {
+  padding: 16px 8px;
+  color: var(--board-muted);
+  font-size: 13px;
+}
+@media (hover: hover) and (pointer: fine) {
+  :is(.channel-tabs button, .channel-tasks-board-link, .channel-view .tasks-pill):hover {
+    color: var(--board-text);
+  }
+  .channel-view .tasks-pill:hover {
+    background: var(--board-shade);
+  }
+}
+@media (max-width: 48rem), (pointer: coarse) {
+  .channel-tabs button {
+    min-block-size: 40px;
+  }
+  .channel-view .tasks-pill {
+    min-block-size: 36px;
+  }
 }
