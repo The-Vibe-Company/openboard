@@ -37,7 +37,7 @@ for (const mode of selected) {
   });
   failures.push(...modeFailures);
   if (values.json !== undefined) {
-    writeFileSync(values.json, JSON.stringify({ report, quick: values.quick, failures: modeFailures }) + "\n");
+    writeFileSync(values.json, `${JSON.stringify({ report, quick: values.quick, failures: modeFailures })}\n`);
   }
 }
 writeSync(process.stdout.fd, `${tables.join("\n\n")}\n`);

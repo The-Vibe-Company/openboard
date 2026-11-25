@@ -15,8 +15,8 @@ function outsideBlocks(text: string) {
   let index = 0;
   return (offset: number) => {
     blocks ??= findBlocks(text);
-    while (blocks[index] && blocks[index]!.end <= offset) index++;
-    const block = blocks[index];
+    let block = blocks[index];
+    while (block && block.end <= offset) block = blocks[++index];
     return !block || offset < block.start;
   };
 }

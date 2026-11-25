@@ -332,7 +332,7 @@ function optionsOf(command: AnyCommand, used: readonly Contracted[], given: Read
   return flags.map((flag) => {
     const name = flag.slice(2);
     const schema = fieldOf(name, used);
-    const absent = used.some((operation) => operation.cli && operation.cli.nullEntryOptions?.[name]);
+    const absent = used.some(({ cli }) => (cli ? cli.nullEntryOptions?.[name] : false));
     const meaning =
       given[name] ?? (absent ? "A label key that must be absent; repeatable." : schema && meaningOf(schema));
     if (!meaning) throw new Error(`ob ${command.words.join(" ")}: ${flag} has no meaning; describe it in usage.ts`);
@@ -351,8 +351,9 @@ function referenceOf(command: AnyCommand): CommandReference {
   const used = derived
     ? operations.filter((operation) => operation.cli && operation.cli.command.join(" ") === words)
     : operations.filter((operation) => handwritten?.operations.includes(operation.name));
-  const args = derived && derived.cli ? derived.cli.args : [];
-  const alternative = (derived && derived.cli && derived.cli.alternative) || [];
+  const cli = derived?.cli;
+  const args = cli ? cli.args : [];
+  const alternative = (cli ? cli.alternative : undefined) || [];
   const fields = derived ? fieldsOf(derived) : new Map<string, Schema>();
   const shown = command.usage.slice(`ob ${words}`.length).trim();
   // The leading `<arg>` words of the usage line are the required arguments.

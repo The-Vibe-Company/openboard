@@ -170,8 +170,8 @@ export function createWakeLauncher(board: Board, spawn: Spawn, urlTemplate?: str
     }
 
     if (active?.run === current && !active.linked) throw new Error("the runner link is pending");
-    const claim = message.task?.state === "claimed" && message.task.claim;
-    if (!claim || !claim.actor.endsWith(`+run-${thread}`)) return;
+    const claim = message.task?.state === "claimed" ? message.task.claim : undefined;
+    if (!claim?.actor.endsWith(`+run-${thread}`)) return;
     // The exit report supplies the original connection claim key only for a successful, unfinished turn.
     const waiting = message.labels?.["run-waiting"];
     const [finished, claimKey, actor] = waiting?.split("|") ?? [];

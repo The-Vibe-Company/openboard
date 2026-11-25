@@ -2,7 +2,7 @@ import type { createClient } from "@the-vibe-company/openboard";
 
 export function createLinkedLauncher<Wake = never>(
   routine: Pick<ReturnType<typeof createClient>, "postMessage" | "labelMessage">,
-  launch: (thread: string, deliveryId: string, options?: Wake) => Promise<(() => void) | void>,
+  launch: (thread: string, deliveryId: string, options?: Wake) => Promise<(() => void) | undefined>,
   urlTemplate?: string,
   finishLabel = (thread: string, run: string) => routine.labelMessage({ id: thread, set: { run } }),
 ) {

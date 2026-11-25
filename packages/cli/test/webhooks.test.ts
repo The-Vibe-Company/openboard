@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -41,7 +42,8 @@ for (const existing of [false, true]) {
     if (existing) writeFileSync(path, `${secret}\n`, { mode: 0o600 });
     const capture = fixture({ webhook, secret }, 201);
     expect(await capture.run(["create", "--file", config, "--secret-file", path])).toBe(0);
-    const request = capture.requests[0]!;
+    const [request] = capture.requests;
+    assert.ok(request, "expected a webhook creation request");
     expect(request.url).toBe(`${env.BOARD_URL}/x/webhooks`);
     expect(request.method).toBe("POST");
     expect(await request.json()).toEqual(existing ? { ...spec, signing: { secret } } : spec);

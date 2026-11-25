@@ -33,8 +33,8 @@ function ipv6(value: string, allowPaddedIpv4 = false) {
   const sides = value.split("::");
   if (sides.length > 2) return false;
   const groups = sides.flatMap((side) => (side === "" ? [] : side.split(":")));
-  const tail = groups.at(-1);
-  const embedded = tail !== undefined && tail.includes(".");
+  const tail = groups.at(-1) ?? "";
+  const embedded = tail.includes(".");
   if (embedded && (!value.endsWith(tail) || !ipv4(tail, allowPaddedIpv4))) return false;
   if (embedded) groups.pop();
   if (!groups.every((group) => /^[0-9a-f]{1,4}$/i.test(group))) return false;
@@ -55,8 +55,8 @@ function uri(value: string) {
   const [, location = "", query = "", fragment = ""] = match;
   if (![query, fragment].every((part) => /^[a-z0-9._~!$&'()*+,;=:@%/?-]*$/i.test(part))) return false;
   const path = /^[a-z0-9._~!$&'()*+,;=:@%/-]*$/i;
-  const host = /^\/\/?([^/]*)(.*)$/.exec(location);
-  if (host && authority(host[1]!) && path.test(host[2]!)) return true;
+  const [, host, rest] = /^\/\/?([^/]*)(.*)$/.exec(location) ?? [];
+  if (host !== undefined && rest !== undefined && authority(host) && path.test(rest)) return true;
   // The format also accepts one slash with an empty authority and then an ordinary path.
   return location.length > 0 && path.test(location);
 }
@@ -69,7 +69,8 @@ export function matchesFormat(format: string, value: string): boolean {
       return time(value);
     case "date-time": {
       const parts = value.split(/[t\s]/i);
-      return parts.length === 2 && date(parts[0]!) && time(parts[1]!);
+      const [day, clock] = parts;
+      return parts.length === 2 && day !== undefined && clock !== undefined && date(day) && time(clock);
     }
     case "email":
       return /^[a-z0-9!#$%&'*+/=?^_\x60{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_\x60{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(
