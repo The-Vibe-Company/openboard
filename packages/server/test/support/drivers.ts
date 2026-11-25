@@ -7,7 +7,7 @@ import {
 } from "@openboard/driver-postgres";
 import { type Catalog, postgresCatalog, postgresPurgeFixture } from "@openboard/driver-postgres/catalog";
 import { sqliteDriver } from "@openboard/driver-sqlite";
-import { sqliteCatalog, sqlitePurgeFixture } from "@openboard/driver-sqlite/catalog";
+import { sqliteCatalog, sqlitePurgeFixture, sqliteRestartFixture } from "@openboard/driver-sqlite/catalog";
 import type { Store, StoreMetrics } from "@openboard/ports";
 import { postgresTestUrl } from "./env.ts";
 
@@ -52,6 +52,13 @@ export function openStore(now: () => number): TestStore {
   return url ? postgresStore(url, now) : sqliteDriver({ memory: true }, now);
 }
 
+export function restartableStore(now: () => number): { open(): TestStore; cleanup(): void } {
+  const url = postgresTestUrl();
+  if (!url) return sqliteRestartFixture(now);
+  const { sibling } = postgresStore(url, now);
+  return { open: () => ({ ...sibling(), sibling }), cleanup: () => {} };
+}
+
 export function openSnapshotStore(now: () => number) {
   const url = postgresTestUrl();
   if (url) return { ...postgresStore(url, now), blobFiles: undefined };
@@ -60,7 +67,10 @@ export function openSnapshotStore(now: () => number) {
   return { ...store, sibling: undefined };
 }
 
-function postgresStore(url: string, now: () => number): TestStore & ReturnType<typeof postgresPurgeFixture> {
+function postgresStore(
+  url: string,
+  now: () => number,
+): TestStore & ReturnType<typeof postgresPurgeFixture> & { sibling(): Store } {
   // Without a run's template, the store migrates its own and drops it with its database.
   const shared = run;
   let own: Promise<TestDatabases> | undefined;

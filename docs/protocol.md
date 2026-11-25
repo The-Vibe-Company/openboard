@@ -353,6 +353,10 @@ interval from now. An optional `until`,
 gives `every` in milliseconds, `until` as an ISO time, and `times` as a send
 count. The first send, absolute stop, and interval are each bounded to a year.
 
+After a restart, an overdue schedule sends once. A repeat resumes on its first
+original slot strictly after the current time, and only actual sends count
+toward `times`. A repeat whose stop time has passed ends without another send.
+
 Use `ob schedules` to list pending schedules,
 `ob schedules 812` to filter by thread, and `--all` to include completed and
 canceled schedules. A caller without read access can list and cancel its own

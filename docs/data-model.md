@@ -400,9 +400,11 @@ CREATE INDEX events_connection ON events (board_id, principal, id) WHERE princip
   hard-delete job.
 - Upstream event types keep upstream payloads; server-only fields (the claim
   token hash, a schedule creator's facts) are stripped by views.
-- `ob.*` events (`visibility = 2`) record board configuration: grants,
+- Audit events (`visibility = 2`) record board configuration: grants,
   schemas, schedules, connections, agents, webhooks, inbound endpoints,
   watcher registrations. Never served on `/events`.
+- `ob.schedule.expired` is internal bookkeeping (`visibility = 1`). It ends
+  a repeat without a send and is omitted from the feed and audit.
 
 ### Board state (folds)
 

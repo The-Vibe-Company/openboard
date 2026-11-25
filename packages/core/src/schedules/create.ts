@@ -50,6 +50,12 @@ export interface ScheduleCanceled extends ScheduleEvent {
   readonly payload: { readonly id: string; readonly canceled: ScheduleCancellation };
 }
 
+export interface ScheduleExpired extends Omit<ScheduleEvent, "visibility"> {
+  readonly type: "ob.schedule.expired";
+  readonly visibility: 1;
+  readonly payload: { readonly id: string; readonly n: number };
+}
+
 export function parseScheduleId(id: string): number | null {
   return parseId(id.replace(/^s/, "")) || null;
 }

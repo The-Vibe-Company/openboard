@@ -63,15 +63,22 @@ export { decideReopenTask } from "./tasks/reopen.ts";
 export { decideCompleteTask, decideSettlement } from "./tasks/settle.ts";
 export type { ChannelCreated };
 
-import type { ScheduleCanceled, ScheduleCreated } from "./schedules/create.ts";
+import type { ScheduleCanceled, ScheduleCreated, ScheduleExpired } from "./schedules/create.ts";
 
-export { decideSchedule, parseScheduleId, type ScheduleCanceled, type ScheduleCreated } from "./schedules/create.ts";
-export { decideScheduledPost, type ScheduledPost } from "./schedules/send.ts";
+export {
+  decideSchedule,
+  parseScheduleId,
+  type ScheduleCanceled,
+  type ScheduleCreated,
+  type ScheduleExpired,
+} from "./schedules/create.ts";
+export { decideScheduledPost, decideScheduleExpiry, type ScheduledPost } from "./schedules/send.ts";
 export { checkScheduleTiming, nextScheduleTime, resolveScheduleTiming } from "./schedules/timing.ts";
 
 export type BoardEvent =
   | ScheduleCreated
   | ScheduleCanceled
+  | ScheduleExpired
   | ActorSeen
   | AgentClaimed
   | AgentRefreshed

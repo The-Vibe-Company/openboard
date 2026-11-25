@@ -2,6 +2,7 @@ import { BoardError, postMessage, type ScheduleCancellation } from "@openboard/c
 import {
   decideCancelSchedule,
   decideScheduledPost,
+  decideScheduleExpiry,
   grants,
   narrowCan,
   parseId,
@@ -76,6 +77,12 @@ export const scheduleSendJob: JobHandler = async (writer, { id, n }, now) => {
   // Lease consumption, slot re-check, posting and scheduling the next wakeup share the board write.
   const post = await writer.scheduledPost(position);
   if (!post || post.schedule.sent !== n || post.nextAt > now) return;
+
+  const expired = decideScheduleExpiry(post, writer.head, now);
+  if (expired) {
+    await writer.append([expired]);
+    return;
+  }
 
   const rootId = post.schedule.re === null ? null : parseId(post.schedule.re);
   const root = rootId === null ? null : await writer.message(rootId);
