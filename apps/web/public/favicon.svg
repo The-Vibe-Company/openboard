@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>OpenBoard</title>
+  <style>
+    path { fill: #000; }
+    @media (prefers-color-scheme: dark) { path { fill: #fff; } }
+  </style>
+  <path fill-rule="evenodd" d="M3 3h26v26H3zm4 4v18h18V7zm3 4 2-2 6 6-6 6-2-2 4-4zm8 8h4v2h-4z"/>
+</svg>
