@@ -4,7 +4,7 @@ import {
   decideCancelSchedule,
   decideSchedule,
   grantMatchingClaims,
-  messages,
+  ownsAuthoredResource,
   parseId,
   parseScheduleId,
   resolveScheduleTiming,
@@ -73,17 +73,16 @@ export const listSchedulesHandler: Handler<typeof listSchedules> = async (ctx, {
   }
   const author = by === "me" ? ctx.by.actor : by?.replace(/^@/, "");
   const rows = await ctx.board.listSchedules({ thread, channel, all });
-  const schedules = rows.flatMap(({ schedule, blind }) => {
+  const schedules = rows.flatMap(({ schedule }) => {
     const matches =
       author === undefined ||
       schedule.by.actor === author ||
       (by !== "me" && schedule.author.handle.toLowerCase() === author.toLowerCase());
     if (!matches) return [];
     if (canReadChannel(ctx.by, schedule.channel)) return [schedule];
-    // A narrowed request can share an actor with a more privileged request.
     const can = agents.allowedAt(ctx.by[callerCan] ?? {}, schedule.channel);
-    if (!blind || schedule.by.actor !== ctx.by.actor || !can.includes("post")) return [];
-    return [{ ...schedule, text: messages.redactActorMentions(schedule.text, ctx.by.actor) }];
+    if (!can.includes("post") || !ownsAuthoredResource(schedule.by, ctx.by)) return [];
+    return [{ ...schedule, text: "" }];
   });
   return { schedules };
 };
@@ -92,15 +91,12 @@ export const cancelScheduleHandler: Handler<typeof cancelSchedule> = (ctx, { id 
   ctx.board.write(async (writer) => {
     const position = parseScheduleId(id);
     const schedule = position === null ? null : await writer.schedule(position);
-    if (!schedule || !canReadChannel(ctx.by, schedule.channel)) {
-      throw new BoardError("schedule_not_found", "Schedule not found.");
-    }
+    if (!schedule) throw new BoardError("schedule_not_found", "Schedule not found.");
     const can = agents.allowedAt(ctx.by[callerCan] ?? {}, schedule.channel);
-    if (
-      !unrestrictedLocalOwner(ctx.by) &&
-      !can.includes("manage") &&
-      (ctx.by.actor !== schedule.by.actor || !can.includes("post"))
-    ) {
+    const readable = canReadChannel(ctx.by, schedule.channel);
+    const creatorCanPost = can.includes("post") && ownsAuthoredResource(schedule.by, ctx.by);
+    if (!readable && !creatorCanPost) throw new BoardError("schedule_not_found", "Schedule not found.");
+    if (!unrestrictedLocalOwner(ctx.by) && !can.includes("manage") && !creatorCanPost) {
       throw new BoardError(
         "forbidden",
         "Only the schedule creator with post access or a channel manager may cancel it.",
@@ -114,5 +110,8 @@ export const cancelScheduleHandler: Handler<typeof cancelSchedule> = (ctx, { id 
       by: { actor, principal, profile },
     });
     if (decision.event) await writer.append([decision.event]);
-    return { schedule: decision.schedule, canceled: decision.event !== null };
+    return {
+      schedule: readable ? decision.schedule : { ...decision.schedule, text: "" },
+      canceled: decision.event !== null,
+    };
   });

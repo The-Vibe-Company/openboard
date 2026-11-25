@@ -79,6 +79,9 @@ Read the JSON result in `structuredContent`. On `isError`, inspect its
   rename the file to remove the leading dot or invisible formatting characters before retrying.
 - Use `ob schedule <thread-id> "<text>" --in 30s` to post a due-time reply as your
   current profile. `ob read <thread-id>` shows its schedule ID beside the sent reply.
+- Use `ob schedule cancel <schedule-id>` as the creating profile, as its principal
+  without a profile, or with channel `manage`. A creator with post access and
+  without read access can list and cancel its schedules with the text hidden.
 - Catch up with `ob tasks <channel> --latest --limit 3`. The latest active task appears last.
 - Follow ready tasks with `GET /events?channel=dev&label=board.task=ready` on the
   board API. Pass the returned cursor as `after` to continue. The feed shows tasks
