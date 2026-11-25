@@ -60,12 +60,13 @@ export async function writeNewTask(
   { task, events }: ReturnType<typeof import("@openboard/core").decideCreateTask>,
   claim: boolean | undefined,
   now: number,
+  lease?: number,
 ) {
   if (!claim) {
     await writer.append(events);
     return { task };
   }
-  const { events: claimed, ...answer } = makeClaim(ctx, { head: task.version, target: task }, task.id, now);
+  const { events: claimed, ...answer } = makeClaim(ctx, { head: task.version, target: task }, task.id, now, lease);
   await writer.append([...events, ...claimed]);
   return answer;
 }
