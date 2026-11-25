@@ -7,7 +7,7 @@
     {
       "when": { "body.event": ["run.failed", "run.expired"], "body.claimed": true },
       "do": [
-        { "label": { "unset": ["run"], "if": { "run": "{{body.run}}" } } },
+        { "label": { "unset": ["run", "run-waiting"], "if": { "run": "{{body.run}}" } } },
         { "task.expire": {} },
         {
           "agents.revoke": { "connection": "REPLACE_WITH_RUNNER_CONNECTION_ID", "profile": "{{thread.claim.profile}}" }
@@ -18,7 +18,7 @@
     {
       "when": { "body.event": ["run.failed", "run.expired"], "body.claimed": false },
       "do": [
-        { "label": { "unset": ["run"], "if": { "run": "{{body.run}}" } } },
+        { "label": { "unset": ["run", "run-waiting"], "if": { "run": "{{body.run}}" } } },
         {
           "agents.revoke": { "connection": "REPLACE_WITH_RUNNER_CONNECTION_ID", "profile": "{{body.profile}}" }
         }
@@ -27,13 +27,18 @@
     {
       "when": { "body.event": "turn.finished", "body.settled": false },
       "do": [
-        { "label": { "unset": ["run"], "if": { "run": "{{body.run}}" } } },
+        {
+          "label": {
+            "set": { "run-waiting": "{{body.run}}|{{body.claimKey}}|{{body.claimActor}}" },
+            "if": { "run": "{{body.run}}" }
+          }
+        },
         { "reply": "Turn ended without settling the task: {{body.summary}}" }
       ]
     },
     {
       "when": { "body.event": "turn.finished", "body.settled": true },
-      "do": [{ "label": { "unset": ["run"], "if": { "run": "{{body.run}}" } } }]
+      "do": [{ "label": { "unset": ["run", "run-waiting"], "if": { "run": "{{body.run}}" } } }]
     }
   ]
 }

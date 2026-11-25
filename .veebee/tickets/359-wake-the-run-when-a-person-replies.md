@@ -5,6 +5,14 @@ milestone: M12-mcp-sdk-skill
 package: tools
 writes:
   - examples/remote-routine/src/main.ts
+  - examples/remote-routine/src/launch.ts
+  - examples/remote-routine/src/link.ts
+  - examples/remote-routine/src/report.ts
+  - examples/remote-routine/tsconfig.json
+  - examples/remote-routine/inbound.json
+  - examples/remote-routine/test/report.test.ts
+  - examples/remote-routine/test/fixtures/agent.ts
+  - docs/decisions.md
   - examples/remote-routine/src/wake.ts
   - examples/remote-routine/wake-webhook.json
   - examples/remote-routine/test/wake.test.ts
@@ -12,8 +20,8 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [358]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 544
 ---
 
@@ -21,7 +29,7 @@ issue: 544
 As a person, I answer an agent's question in the task's thread and the agent picks up my answer, whether it is still running or its turn had ended.
 
 ## Done when
-- [ ] `bun test examples/remote-routine/test/wake.test.ts` passes: a second webhook from `wake-webhook.json` (`{ "tail": "work/fix/ --label run", "types": ["message.posted"] }`) delivers a person's reply to the routine; if the thread's run is live, the reply's ID is appended to that run's wake file (`OPENBOARD_WAKE_FILE`) and no new run starts; if the run ended with the task still claimed, a new run starts for the thread with `OPENBOARD_WAKE=<message id>` and the same profile; replies written by the run's own profile, by `routine` or by `ob:hook:…` wake nothing
+- [x] `bun test examples/remote-routine/test/wake.test.ts` passes: a second webhook from `wake-webhook.json` (`{ "tail": "work/fix/ --label run", "types": ["message.posted"] }`) delivers a person's reply to the routine; if the thread's run is live, the reply's ID is appended to that run's wake file (`OPENBOARD_WAKE_FILE`) and no new run starts; if the run ended with the task still claimed, a new run starts for the thread with `OPENBOARD_WAKE=<message id>` and the same profile; replies written by the run's own profile, by `routine` or by `ob:hook:…` wake nothing
 
 ## Out of scope
 - Waking on mentions outside the thread, or on reactions (configuration of the same webhook).

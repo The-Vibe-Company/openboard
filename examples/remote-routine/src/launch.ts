@@ -14,6 +14,12 @@ export function runnerCommand(value: string | undefined): [string, ...string[]] 
   return [command[0], ...command.slice(1)];
 }
 
+export type LaunchOptions = {
+  claimKey: string;
+  env: Record<string, string>;
+  prepare: (actor: string) => Promise<void>;
+};
+
 export function createLauncher(
   boardUrl: string,
   secret: string,
@@ -21,10 +27,14 @@ export function createLauncher(
   stdout: "inherit" | "pipe" = "inherit",
 ) {
   const board = createClient({ url: boardUrl, token: secret });
-  return async (thread: string, deliveryId: string) => {
-    const { agent, env } = await board.claimConnection({ profile: `run-${thread}`, idempotencyKey: deliveryId });
+  return async (thread: string, deliveryId: string, options?: LaunchOptions) => {
+    const { agent, env } = await board.claimConnection({
+      profile: `run-${thread}`,
+      idempotencyKey: options?.claimKey ?? deliveryId,
+    });
+    await options?.prepare(agent.actor);
     const child = Bun.spawn(command, {
-      env: { ...env, OPENBOARD_TASK: thread, OPENBOARD_RUN: deliveryId },
+      env: { ...options?.env, ...env, OPENBOARD_TASK: thread, OPENBOARD_RUN: deliveryId },
       detached: process.platform !== "win32",
       stdin: "ignore",
       stdout,

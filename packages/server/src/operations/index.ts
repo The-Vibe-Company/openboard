@@ -1,11 +1,11 @@
 import type {
+  getMetrics,
   InputOf,
   Operation,
   OutputOf,
   operations,
   pollDeviceSignIn,
   previewInvitation,
-  getMetrics,
   receiveInboundEvent,
   SignInProvider,
   startDeviceSignIn,
@@ -79,7 +79,7 @@ import {
 import { getMetricsHandler, type MetricsContext } from "./metrics/index.ts";
 import { downloadOrgExportHandler, getOrgExportHandler, requestOrgExportHandler } from "./org/exports.ts";
 import { createOrgHandler, deleteOrgHandler } from "./orgs.ts";
-import { createScheduleHandler, noScheduler } from "./schedules/index.ts";
+import { createScheduleHandler, listSchedulesHandler, noScheduler } from "./schedules/index.ts";
 import { createSchemaHandler, listSchemasHandler, readSchemaHandler } from "./schemas/registry.ts";
 import {
   ackInboxHandler,
@@ -102,11 +102,11 @@ import {
 import { assignTaskHandler } from "./tasks/assign.ts";
 import { createTaskBatchHandler, getTaskBatchHandler } from "./tasks/batch.ts";
 import { cancelTaskHandler } from "./tasks/cancel.ts";
-import { claimNextTaskHandler } from "./tasks/queue.ts";
 import { claimTaskHandler } from "./tasks/claim.ts";
 import { completeTaskHandler, failTaskHandler } from "./tasks/complete.ts";
 import { blockTaskHandler, unblockTaskHandler } from "./tasks/hold.ts";
 import { setTaskNeedsHandler } from "./tasks/needs.ts";
+import { claimNextTaskHandler } from "./tasks/queue.ts";
 import { releaseTaskHandler } from "./tasks/release.ts";
 import { renewTaskHandler } from "./tasks/renew.ts";
 import { reopenTaskHandler } from "./tasks/reopen.ts";
@@ -293,7 +293,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listMembers: listMembersHandler,
   listMessages: listMessagesHandler,
   listPersonalTokens: listPersonalTokensHandler,
-  listSchedules: noScheduler,
+  listSchedules: listSchedulesHandler,
   listSchemas: listSchemasHandler,
   listSyncCopies: listSyncCopiesHandler,
   listSyncTargets: listSyncTargetsHandler,

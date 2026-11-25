@@ -56,3 +56,19 @@ export function simulateLegacyDeletion(db: Db, dialect: Dialect, orgId: number) 
 export function seedTaskNeed(db: Db, dialect: Dialect, keys: BoardKeys, task: number, needs: number) {
   return query(db, dialect, taskNeed, { ...keys, task, needs });
 }
+
+const scheduleState = sql`UPDATE schedules
+  SET state = ${"state"}, next_at = NULL, last_message = ${"lastMessage"}, sent = ${"sent"}
+  WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`;
+
+/** Seeds a historical schedule for list tests without running the sender or cancel handler. */
+export function seedScheduleState(
+  db: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  id: number,
+  state: "done" | "canceled",
+  lastMessage: number | null,
+) {
+  return query(db, dialect, scheduleState, { ...keys, id, state, lastMessage, sent: lastMessage === null ? 0 : 1 });
+}

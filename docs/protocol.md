@@ -217,7 +217,7 @@ and `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'`.
 | --- | --- | --- | --- |
 | GET | `/messages` | U | |
 | GET | `/threads` | U | all filters, `before`/`older`, `after`; not `before` with `after` (400 `invalid_request`) |
-| GET | `/messages/:id` | U | Root and replies, oldest first. `after` must name a message in the same thread (400 `invalid_request` otherwise). `limit` (1–500) selects the first replies after it, or the newest replies when no `after` is given. |
+| GET | `/messages/:id` | U | Answers `{ message, replies, cursor, schedules }`. Replies are oldest first. The cursor is the board position at the message read. Pending schedules appear in creation order. `after` must name a message in the same thread (400 `invalid_request` otherwise). `limit` (1–500) selects the first replies after it, or the newest replies when no `after` is given. |
 | GET | `/posts/:id` | U | `{ message }` as it landed, by the caller's client ID; 404 `post_not_found` for missing or foreign IDs |
 | POST | `/messages` | U | A new thread with sync targets answers 400 `invalid_target`. See [Sync (deferred)](#sync-deferred). |
 | POST | `/messages/:id/edit` | U | `ob edit <id> <text>` replaces the text and advances the message revision. Pass `--if-revision <n>` to edit only at the observed revision. |
@@ -337,15 +337,27 @@ for a new thread. Use `-` for text on stdin. The board saves the message as a
 pending schedule with the creator's identity and resolves mentions at creation.
 The command prints the next send time and author. With `--json` it adds
 `outcome: "scheduled"` to the API response. Schedule creation appears as
-`ob.schedule.created` in the board audit. Automatic sending is pending.
+`ob.schedule.created` in the board audit. Automatic sending is pending. A repeat
+accepts `every` of at least one minute and defaults its first send to one
+interval from now. An optional `until`,
+`for` (relative to the first send), or `times` stops the repeat. The response
+gives `every` in milliseconds, `until` as an ISO time, and `times` as a send
+count. The first send, absolute stop, and interval are each bounded to a year.
+
+Use `ob schedules` to list pending schedules,
+`ob schedules 812` to filter by thread, and `--all` to include completed and
+canceled schedules. Lists include readable channels and the caller’s own
+schedules created without read access in channels where it can still post. `ob read 812` prints the thread’s
+pending schedules below its replies.
 
 | Method | Path | | Notes |
 | --- | --- | --- | --- |
 | POST | `/attachments` | U | ≤ 4 MB |
 | GET | `/attachments/:id` | U | streamed, never redirected |
 | POST | `/attachments/uploads`, `/attachments/uploads/:id` | U-stub | 501 `no_direct_uploads` |
-| POST | `/schedules` | U | 201 with `{ schedule, mentions? }`. Use one of `in` or `at`, within a year. Repeat fields return 400 `invalid_request`. |
-| GET | `/schedules`; POST `/schedules/:id/cancel` | U-stub | 501 `no_scheduler` |
+| POST | `/schedules` | U | 201 with `{ schedule, mentions? }`. Set the first send with `in` or `at`, or use the default from `every` on a repeat. A repeat allows at most one stop. Invalid timing returns 400 `invalid_request`. |
+| GET | `/schedules` | U | `{ schedules }` in creation order, pending unless `all=true`. Filter by `re` (any readable message in a thread), `channel` or `by` (actor ID, handle, or `me`). An unknown or unreadable thread reference returns 404 `message_not_found`. |
+| POST | `/schedules/:id/cancel` | U-stub | 501 `no_scheduler` |
 | POST, GET | `/tasks`; POST `/tasks/batch`; GET `/tasks/batch/:id` | U | Batch roots in request order. Use a caller-scoped batch ID to retry or read current roots. A proxy can pass its upstream `request` digest in the POST body or GET query. A changed request under the same ID returns 409 `duplicate_id`. A missing batch returns 404 `batch_not_found`. |
 | POST | `/tasks/claim` | U | Channel or subtree and optional lease. |
 | POST | `/tasks/:id/{claim,renew,release,complete,fail,block,unblock,reopen,assign,needs,cancel}` | U | |

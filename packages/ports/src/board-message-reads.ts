@@ -33,10 +33,13 @@ export interface BoardMessageReads {
     )[];
   }>;
   /**
-   * The root and selected replies in ascending order, or null when no message has the requested ID.
+   * The root and selected replies in ascending order with the snapshot cursor, or null when no message has the ID.
    * A zero limit reads the root alone.
    */
-  thread(id: number, options?: { readonly after?: number; readonly limit?: number }): Promise<Thread | null>;
+  thread(
+    id: number,
+    options?: { readonly after?: number; readonly limit?: number },
+  ): Promise<(Thread & { cursor: string }) | null>;
   /**
    * The channel's latest `limit` (50 by default) threads last active before `before`, or the latest overall, in
    * ascending activity order, with the same snapshot's board head. `older` is the position of the page's oldest

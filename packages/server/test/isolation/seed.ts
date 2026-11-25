@@ -230,7 +230,7 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
     "test delivery",
   );
   const { schedule } = await ok<{ schedule: { id: string } }>(
-    send("POST", `/api/${org}/main/schedules`, session, { channel: "dev", text: marker, in: "1d" }),
+    send("POST", `/api/${org}/main/schedules`, session, { re: firstThread, text: marker, in: "1d" }),
     "schedule",
   );
   const { inbound } = await ok<{ inbound: { id: string } }>(

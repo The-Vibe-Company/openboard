@@ -4,7 +4,7 @@ import { ChannelPath, Labels, MESSAGE_TEXT_MAX } from "../../entities/messages.t
 import { defineOperation, Ref } from "../../operation.ts";
 
 import { TaskAssignee } from "./assign.ts";
-import { TaskClaim, TaskRoot } from "./claim.ts";
+import { TaskClaim, TaskLease, TaskRoot } from "./claim.ts";
 
 export const createTask = defineOperation({
   name: "createTask",
@@ -25,6 +25,7 @@ export const createTask = defineOperation({
         labels: Type.Optional(Labels),
         attachments: Type.Optional(AttachmentIds),
         claim: Type.Optional(Type.Boolean({ description: "Claim the task in the same write." })),
+        lease: TaskLease,
         noSync: Type.Optional(Type.Boolean()),
         id: Type.Optional(
           Type.String({ minLength: 1, maxLength: 200, description: "An idempotency key for a new task thread." }),

@@ -966,7 +966,7 @@ reconcile the timer with the queue, including any outstanding lease expiries.
   reads the message first, so a missing or unreadable one answers 404
   `message_not_found` before the stub's answer. Stubs are `cli: false` and
   `mcp: false`.
-- **Deferred schedules (issue #568).** The list and cancel stubs return 501
+- **Deferred schedules (issue #568).** The cancel stub returns 501
   `no_scheduler`. The twin check accepts statuses below 500 and 501 while
   retaining the status, body, and tenant data checks.
 - **Consequence.** No expected-failure list: a stub that answered with data, or
@@ -1289,3 +1289,11 @@ are counted after the transaction that records the delivery state commits.
   other eligible jobs. Pending deliveries keep their state and attempt count
   and become eligible again at the next minute boundary, subject to their
   normal due time and lane order.
+
+### Keep the routine's run label while an unfinished task stays claimed
+
+A successful turn that leaves its task claimed posts a summary and retains
+the current `run` label. The reply webhook uses that label to deliver a
+person's answer after the turn exits. Settled turns, failed runners, and
+expired runners still clear the matching label.
+([Issue #544](https://github.com/The-Vibe-Company/openboard/issues/544))

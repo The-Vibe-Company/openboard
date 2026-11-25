@@ -68,3 +68,32 @@ test.each([
   expect(result).toBe(2);
   expect(errors[0]).toContain("pass exactly one of --in or --at");
 });
+
+test("schedules sends its thread and optional filters and prints each schedule on one line", async () => {
+  const second = { ...schedule, id: "s2", text: "Second\nmore" };
+  const out: string[] = [];
+  const result = await runCli(
+    ["schedules", "#812", "--by", "mina", "--channel", "dev", "--all"],
+    { BOARD_URL: url },
+    {
+      fetch: async (request) => {
+        const query = new URL(request.url);
+        expect(query.pathname).toBe("/api/local/main/schedules");
+        expect(Object.fromEntries(query.searchParams)).toEqual({ re: "812", channel: "dev", by: "mina", all: "true" });
+        return Response.json({ schedules: [schedule, second] });
+      },
+      output: {
+        out: (line) => out.push(line),
+        err: (line) => {
+          throw new Error(line);
+        },
+      },
+      now: () => Date.parse(now),
+    },
+  );
+  expect(result).toBe(0);
+  expect(out).toEqual([
+    `s1  #812 · once · next in 1d (${next}) · by Mina  ${text}`,
+    `s2  #812 · once · next in 1d (${next}) · by Mina  Second …`,
+  ]);
+});

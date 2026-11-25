@@ -79,7 +79,7 @@ export const createTaskHandler: Handler<typeof createTask> = async (ctx, input) 
         },
         mentions,
       );
-      return { ...(await writeNewTask(ctx, writer, decided, input.claim, context.now)), replay: false };
+      return { ...(await writeNewTask(ctx, writer, decided, input.claim, context.now, input.lease)), replay: false };
     },
     ctx.by.actor,
   );
@@ -116,7 +116,7 @@ async function makeTask(ctx: BoardContext, re: string, input: InputOf<typeof cre
         for: input.for,
       });
       ctx.debitWrite();
-      return writeNewTask(ctx, writer, decided, input.claim, now);
+      return writeNewTask(ctx, writer, decided, input.claim, now, input.lease);
     },
     ctx.by.actor,
     position,

@@ -28,6 +28,7 @@ function threadPage(order: "ASC" | "DESC") {
   const direction: Fragment = { fragment: () => order };
   return sql`WITH root AS (
       SELECT root.board_id, root.id, root.view,
+        (SELECT head FROM boards WHERE org_id = ${"orgId"} AND id = ${"boardId"}) AS head,
         (CAST(${"after"} AS BIGINT) IS NULL OR EXISTS (
           SELECT 1 FROM messages AS anchor WHERE anchor.board_id = ${"boardId"} AND anchor.id = ${"after"}
             AND COALESCE(anchor.re, anchor.id) = root.id
@@ -41,8 +42,8 @@ function threadPage(order: "ASC" | "DESC") {
         AND id > COALESCE(CAST(${"after"} AS BIGINT), 0)
       ORDER BY id ${direction} LIMIT COALESCE(CAST(${"limit"} AS BIGINT), 9223372036854775807)
     )
-    SELECT id, view, valid_after FROM root WHERE board_id = ${"boardId"}
-    UNION ALL SELECT id, view, NULL FROM page WHERE board_id = ${"boardId"}
+    SELECT id, view, valid_after, head FROM root WHERE board_id = ${"boardId"}
+    UNION ALL SELECT id, view, NULL, NULL FROM page WHERE board_id = ${"boardId"}
     ORDER BY id`;
 }
 
@@ -198,6 +199,7 @@ export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<B
       const statement = after === undefined ? threadStatements.thread : threadStatements.threadAfter;
       const [root, ...replies] = await query(db, dialect, statement, {
         boardId: scope.boardId,
+        orgId: scope.orgId,
         id,
         after: after ?? null,
         limit: limit ?? null,
@@ -205,6 +207,7 @@ export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<B
       if (!root) return null;
       if (!root.valid_after) throw new BoardError("invalid_request", "after: that ID isn't a message of this thread");
       return {
+        cursor: String(root.head),
         message: JSON.parse(String(root.view)) as Message,
         replies: replies.map(({ view }) => JSON.parse(String(view)) as Message),
       };

@@ -1,0 +1,6 @@
+{
+  "name": "fix-replies-to-routine",
+  "url": "http://127.0.0.1:9100/wake",
+  "filter": { "tail": "work/fix/ --label run", "types": ["message.posted"] },
+  "signing": { "preset": "standard-webhooks" }
+}

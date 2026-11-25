@@ -1,5 +1,3 @@
-import { scheduleReference } from "./schedule/index.ts";
-import type { Handwritten, Schema } from "./reference/types.ts";
 import { type ErrorCode, operations } from "@openboard/contract";
 import {
   type Command,
@@ -20,14 +18,17 @@ import {
   messagesCommand,
   readCommand,
   replyCommand,
-  scheduleCommand,
   rotateConnectionCommand,
+  scheduleCommand,
+  schedulesCommand,
   tailCommand,
   updateGrantCommand,
   useCommand,
   waitCommand,
   whoamiCommand,
 } from "./index.ts";
+import type { Handwritten, Schema } from "./reference/types.ts";
+import { scheduleReference, schedulesReference } from "./schedule/index.ts";
 
 export type AnyCommand = Command | typeof connectCommand | typeof loginCommand | typeof useCommand;
 
@@ -53,6 +54,7 @@ export const commands: readonly AnyCommand[] = [
   messagesCommand,
   replyCommand,
   scheduleCommand,
+  schedulesCommand,
   waitCommand,
   tailCommand,
   whoamiCommand,
@@ -65,6 +67,7 @@ const SECRET_FILE = "Where the new secret is written, created with mode 0600; th
 
 const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
   schedule: scheduleReference,
+  schedules: schedulesReference,
   download: {
     summary: "Download a file from a message you can read.",
     operations: ["download"],

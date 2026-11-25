@@ -3,10 +3,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
-  databaseRows,
   type Db,
+  databaseRows,
   migrations,
   type Row,
+  seedScheduleState,
   seedSweep,
   seedTaskNeed,
   simulateLegacyDeletion,
@@ -102,6 +103,8 @@ export function sqlitePurgeFixture(now: () => number) {
       seedSweep: (keys: BoardKeys, webhook: string, at: number) =>
         withTestDb(file, (db) => seedSweep(db, sqliteDialect, keys, webhook, at)),
       sweepSnapshot: () => withTestDb(file, sweepSnapshot),
+      seedScheduleState: (keys: BoardKeys, id: number, state: "done" | "canceled", lastMessage: number | null) =>
+        withTestDb(file, (db) => seedScheduleState(db, sqliteDialect, keys, id, state, lastMessage)),
       seedTaskNeed: (keys: BoardKeys, task: number, needs: number) =>
         withTestDb(file, (db) => seedTaskNeed(db, sqliteDialect, keys, task, needs)),
       simulateLegacyDeletion: (orgId: number) =>

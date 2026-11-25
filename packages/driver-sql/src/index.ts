@@ -53,6 +53,7 @@ import attachmentGcBackfillDdl from "../migrations/0051-attachment-gc-backfill.s
 import scheduleDdl from "../migrations/0052-schedules.sql" with { type: "text" };
 import attachmentShippingDdl from "../migrations/0053-attachment-shipping.sql" with { type: "text" };
 import attachmentShippingIndexDdl from "../migrations/0054-attachment-shipping-index.sql" with { type: "text" };
+import scheduleThreadIndex from "../migrations/0055-schedule-thread-index.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -79,6 +80,7 @@ import { boardView } from "./views/messages.ts";
 import { operatorView } from "./views/operator/index.ts";
 import { orgReads, orgView } from "./views/orgs.ts";
 import { rateView } from "./views/rates/index.ts";
+import { scheduleReads } from "./views/schedules/index.ts";
 import { schemaReads } from "./views/schemas/registry.ts";
 import { taskListReads } from "./views/tasks/list.ts";
 import { threadReads } from "./views/threads.ts";
@@ -89,7 +91,13 @@ export type { Db, Dialect, Row, SqlValue } from "./db.ts";
 export { postgresText, withWebhookMetrics } from "./db.ts";
 export { splitStatements } from "./ddl.ts";
 export { localBroadcaster } from "./local-broadcaster.ts";
-export { databaseRows, seedTaskNeed, simulateLegacyDeletion, tenantRows } from "./purge-test-data.ts";
+export {
+  databaseRows,
+  seedScheduleState,
+  seedTaskNeed,
+  simulateLegacyDeletion,
+  tenantRows,
+} from "./purge-test-data.ts";
 export { query } from "./sql.ts";
 export { platformStatements, type RenderedStatement, renderStatements, statements } from "./statements.ts";
 export { seedSweep, sweepSnapshot } from "./sweep-test-data.ts";
@@ -160,6 +168,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 52, name: "0052-schedules", sql: scheduleDdl },
   { version: 53, name: "0053-attachment-shipping", sql: attachmentShippingDdl },
   { version: 54, name: "0054-attachment-shipping-index", sql: attachmentShippingIndexDdl },
+  { version: 55, name: "0055-schedule-thread-index", sql: scheduleThreadIndex },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -215,6 +224,7 @@ export function createViews(
       ...agentReads(db, dialect, scope),
       ...auditReads(db, dialect, scope),
       ...threadReads(db, dialect, scope),
+      ...scheduleReads(db, dialect, scope),
       ...attachmentReads(db, dialect, scope),
       ...attachmentWrites(db, dialect, scope, blobs, jobs),
       ...watcherReads(db, dialect, scope),

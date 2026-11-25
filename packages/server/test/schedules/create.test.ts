@@ -44,7 +44,6 @@ test("creates schedules in order as the resolved creator and exposes only their 
       ["ob.schedule.created", { id: "s2" }],
     ]);
     expect(await (await call(app, "GET", `/events?after=${cursor}&all=1`)).json()).toMatchObject({ events: [] });
-    expect((await call(app, "GET", "/schedules")).status).toBe(501);
     for (const id of ["12", "s12"]) {
       const canceled = await call(app, "POST", `/schedules/${id}/cancel`);
       expect(canceled.status).toBe(501);
@@ -70,7 +69,7 @@ test("invalid schedule requests leave the audit and sequence untouched", async (
       { in: "367d" },
       { re: "2" },
       { text: "~~~json#note@1\n{}\n~~~" },
-      { every: "30m" },
+      { every: "30s" },
       { until: "2023-11-15T00:00:00Z" },
       { for: "1d" },
       { times: 2 },
@@ -79,7 +78,7 @@ test("invalid schedule requests leave the audit and sequence untouched", async (
       const response = await call(app, "POST", "/schedules", { ...post, ...input });
       expect(response.status).toBe(400);
       const code = index === 4 ? "invalid_block" : "invalid_request";
-      const message = index >= 5 ? expect.stringContaining("repeats are not available yet") : expect.any(String);
+      const message = index >= 6 ? expect.stringContaining("require every") : expect.any(String);
       expect(await response.json()).toMatchObject({ error: { code, message } });
     }
     const audit = (await (await call(app, "GET", "/x/audit")).json()) as OutputOf<typeof readBoardAudit>;
@@ -106,10 +105,10 @@ test("scheduling enforces post, reply read and label grants and accepts a file b
     const conflict = await send("dev=post", { ...post, re: "999999" });
     expect(conflict.status).toBe(400);
     expect(await conflict.json()).toMatchObject({ error: { code: "invalid_request" } });
-    const repeat = await send("dev=post", { text: post.text, re: "999999", every: "1d" });
+    const repeat = await send("dev=post", { text: post.text, re: "999999", every: "1d", for: "1d", times: 2 });
     expect(repeat.status).toBe(400);
     expect(await repeat.json()).toMatchObject({
-      error: { code: "invalid_request", message: expect.stringContaining("repeats are not available yet") },
+      error: { code: "invalid_request", message: expect.stringContaining("pick one stop") },
     });
     expect((await send("dev=read", post)).status).toBe(403);
     expect((await send("dev=post", { ...post, channel: undefined, re: message.id })).status).toBe(404);

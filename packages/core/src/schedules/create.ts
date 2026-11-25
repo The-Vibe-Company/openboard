@@ -11,6 +11,8 @@ import { formatId, isoTime, parseId } from "../ids.ts";
 import type { SettledMentions } from "../messages/mentions.ts";
 import { decidePost, type PostContext, type ReplyTarget } from "../messages/post.ts";
 
+import type { ScheduleTiming } from "./timing.ts";
+
 interface ScheduleEvent {
   readonly id: number;
   readonly at: number;
@@ -55,12 +57,18 @@ export function parseScheduleId(id: string): number | null {
 export function decideSchedule(
   state: { head: number; nextSchedule: number; target: ReplyTarget | null },
   input: InputOf<typeof createSchedule> & { text: string },
-  context: PostContext & { author: ScheduleView["author"]; firstAt: number; blind: boolean; creator: ScheduleCreator },
+  context: PostContext & {
+    author: ScheduleView["author"];
+    timing: ScheduleTiming;
+    blind: boolean;
+    creator: ScheduleCreator;
+  },
   settled?: SettledMentions,
 ): ScheduleCreated {
   const { message } = decidePost(state, input, context, settled);
   const { channel, re, text, labels, noSync, attachments, mentions } = message;
-  const { by, author, now, firstAt, blind, creator } = context;
+  const { by, author, now, timing, blind, creator } = context;
+  const { firstAt, every, untilAt, times } = timing;
   const first = isoTime(firstAt);
   const schedule: ScheduleView = {
     id: `s${formatId(state.nextSchedule)}`,
@@ -71,9 +79,9 @@ export function decideSchedule(
     noSync,
     attachments,
     first,
-    every: null,
-    until: null,
-    times: null,
+    every,
+    until: untilAt === null ? null : isoTime(untilAt),
+    times,
     sent: 0,
     next: first,
     last: null,

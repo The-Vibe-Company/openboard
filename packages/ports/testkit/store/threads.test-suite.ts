@@ -146,13 +146,19 @@ async function checkReplyPages(board: BoardView): Promise<void> {
   expect(await board.thread(Number(first.id), { after: rootId, limit: 1 })).toEqual({
     message: root,
     replies: [first],
+    cursor: last.id,
   });
   expect(await board.thread(rootId, { after: Number(first.id), limit: 2 })).toEqual({
     message: root,
     replies: [second, third],
+    cursor: last.id,
   });
-  expect(await board.thread(rootId, { limit: 2 })).toEqual({ message: root, replies: [third, last] });
-  expect(await board.thread(rootId, { after: Number(last.id) })).toEqual({ message: root, replies: [] });
+  expect(await board.thread(rootId, { limit: 2 })).toEqual({ message: root, replies: [third, last], cursor: last.id });
+  expect(await board.thread(rootId, { after: Number(last.id) })).toEqual({
+    message: root,
+    replies: [],
+    cursor: last.id,
+  });
 }
 
 /** Five threads, the first bumped to the newest by a reply, read two at a time from the newest page back. */
@@ -243,8 +249,8 @@ export function threadsSuite(driver: string, open: OpenStore): void {
       const board = await localBoard();
       const first = await post(board, "dev", "hello");
       const second = await post(board, "dev", "again");
-      expect(await board.thread(1)).toEqual({ message: first, replies: [] });
-      expect(await board.thread(2)).toEqual({ message: second, replies: [] });
+      expect(await board.thread(1)).toEqual({ message: first, replies: [], cursor: second.id });
+      expect(await board.thread(2)).toEqual({ message: second, replies: [], cursor: second.id });
     });
 
     test("selects replies in either direction while keeping the root and chronological order", async () => {
