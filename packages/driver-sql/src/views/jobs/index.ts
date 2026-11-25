@@ -15,8 +15,9 @@ import {
 import type { Db, Dialect } from "../../db.ts";
 import { type Fragment, forUpdate, query, sql } from "../../sql.ts";
 import { rateView } from "../rates/index.ts";
-import { earlierDelivery } from "../webhooks/deliveries.ts";
 import { backfillBoardOrgIds, backfillPlatformStatements, backfillStatements } from "./backfill-board-org.ts";
+import { dispatchAt, readyDeliveryLane, webhookJobKinds } from "./dispatch-deliveries.ts";
+import { dueMetricDeliveries, metricDeliveryId } from "./due-metrics.ts";
 import { claimLegacyPurge, unqueued } from "./legacy-purge.ts";
 
 const contentionRetryMs = 100;
@@ -37,7 +38,6 @@ const activeExpiryBoard: Fragment = {
 ))`,
 };
 
-const webhookJobKinds = `('${WEBHOOK_DELIVERY_JOB}', '${WEBHOOK_RESEND_JOB}')`;
 const webhookWindowMs = 60_000;
 const webhookWindowLimit = 600;
 const webhookRateKey = "webhook-delivery";
@@ -73,42 +73,6 @@ function dispatchParams(kinds: readonly string[], now: number) {
   return { kinds: JSON.stringify(kinds), now, windowEnd: windowStart + webhookWindowMs };
 }
 
-// Resolve the globally unique delivery ID before joining tenant data or checking its lane.
-const jobDelivery: Fragment = {
-  fragment: ({ name }) => `FROM (
-    SELECT org_id, board_id, id, webhook, thread, event, created_at FROM webhook_deliveries
-    WHERE id = ${name === "postgres" ? "jobs.payload::jsonb ->> 'id'" : "json_extract(jobs.payload, '$.id')"}
-    LIMIT 1
-  ) d
-  WHERE d.org_id = jobs.org_id AND d.board_id = jobs.board_id
-    AND (SELECT w.enabled FROM webhooks w WHERE w.id = d.webhook
-      AND w.org_id = d.org_id AND w.board_id = d.board_id) = 1`,
-};
-
-// A blocked follower must not keep the timer awake while its lane head waits.
-// A scalar lookup keeps Postgres from precomputing blocked lanes for the whole outbox.
-const readyDeliveryLane: Fragment = {
-  fragment: (dialect) => `(jobs.kind NOT IN ${webhookJobKinds} OR (
-    SELECT 1 ${jobDelivery.fragment(dialect)} AND ${earlierDelivery.fragment(dialect)} LIMIT 1
-  ) IS NULL)`,
-};
-
-// A finishing runner immediately picks again. A waiting peer can sleep until
-// the first slot could expire, unless newly enqueued work wakes it sooner.
-const dispatchAt: Fragment = {
-  fragment: (dialect) => `CASE WHEN jobs.kind IN ${webhookJobKinds} THEN
-    ${dialect.name === "postgres" ? "GREATEST" : "MAX"}(jobs.available_at, COALESCE((
-      SELECT (
-        SELECT CASE WHEN COUNT(*) >= 4 OR COUNT(CASE WHEN active.thread IS NOT DISTINCT FROM d.thread THEN 1 END) > 0
-          THEN MIN(active.lease_until) END
-        FROM webhook_deliveries active
-        WHERE active.org_id = d.org_id AND active.board_id = d.board_id AND active.webhook = d.webhook
-          AND active.id <> d.id AND active.state = 'sending' AND active.lease_until > (SELECT at FROM input)
-      ) ${jobDelivery.fragment(dialect)}
-    ), jobs.available_at))
-    ELSE jobs.available_at END`,
-};
-
 function dispatchLookup(body: (dialect: Dialect, filter: string) => string): Fragment {
   return {
     fragment: (dialect) => `CASE WHEN scopes.org_id IS NULL THEN (${body(dialect, "")})
@@ -142,15 +106,25 @@ export const jobPlatformStatements = {
   dueJobMetrics: sql`WITH RECURSIVE input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds, CAST(${"now"} AS BIGINT) AS at,
       CAST(${"windowEnd"} AS BIGINT) AS window_end),
     ${dispatchScopes},
-    eligible_jobs AS (
+    scoped_jobs AS (
       SELECT jobs.* FROM scopes JOIN jobs ON jobs.kind = scopes.kind WHERE scopes.org_id IS NULL
       UNION ALL
       SELECT jobs.* FROM scopes JOIN jobs ON jobs.kind = scopes.kind AND jobs.org_id = scopes.org_id
       WHERE scopes.window_full = 0
-    )
-    SELECT jobs.kind, COUNT(*) AS count, MIN(jobs.available_at) AS oldest
-    FROM eligible_jobs jobs WHERE jobs.available_at <= ${"now"} AND ${activeExpiryBoard}
-      AND ${readyDeliveryLane} AND (${dispatchAt}) <= ${"now"} GROUP BY jobs.kind`,
+    ),
+    eligible_jobs AS MATERIALIZED (
+      SELECT jobs.kind, jobs.available_at, jobs.org_id, jobs.board_id,
+        ${metricDeliveryId} AS delivery_id
+      FROM scoped_jobs jobs WHERE jobs.available_at <= (SELECT at FROM input) AND ${activeExpiryBoard}
+    ),
+    ${dueMetricDeliveries}
+    SELECT kind, COUNT(*) AS count, MIN(available_at) AS oldest
+    FROM metric_deliveries
+    WHERE kind IS NOT NULL AND (webhook IS NULL OR (
+      webhook_active - own_lease < 4 AND lane_active - own_lease = 0
+      AND (first_event IS NULL OR event IS NULL OR first_event >= event)
+      AND (thread IS NOT NULL OR event IS NOT NULL OR COALESCE(earlier_pings, 0) = 0)
+    )) GROUP BY kind`,
   // Materialize picks so choosing the oldest candidate does not re-run the locking subqueries.
   claimJob: sql`WITH RECURSIVE input AS (SELECT CAST(${"kinds"} AS TEXT) AS kinds, CAST(${"now"} AS BIGINT) AS at,
       CAST(${"windowEnd"} AS BIGINT) AS window_end),
