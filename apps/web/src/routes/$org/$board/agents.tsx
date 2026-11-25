@@ -1,9 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { Client } from "@the-vibe-company/openboard";
-import { useMemo, useState } from "react";
-import { boardKeys } from "../../../api/board.ts";
+import { useEffect, useMemo, useState } from "react";
+import { boardErrorText, boardKeys } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
+import { followBoardActors, subscribeBoardEvents } from "../../../api/live.ts";
 import { Avatar, Badge, EmptyState, Table } from "../../../ui/index.ts";
 import "./tasks.css";
 
@@ -14,22 +15,34 @@ export const Route = createFileRoute("/$org/$board/agents")({
 type Actor = Awaited<ReturnType<Client["listActors"]>>["actors"][number];
 type ClaimRef = { id: string; channel: string };
 
-function BoardAgentsPage() {
-  const board = Route.useParams();
-  const [kindFilter, setKindFilter] = useState<"all" | "agent" | "person">("all");
-
+function useBoardAgents(org: string, boardSlug: string) {
+  const board = useMemo(() => ({ org, board: boardSlug }), [org, boardSlug]);
+  const queryClient = useQueryClient();
+  const claimedKey = useMemo(() => [...boardKeys.allTasks(board), "claimed-agents"], [board]);
   const actorsQuery = useQuery({
     queryKey: boardKeys.actors(board),
     queryFn: ({ signal }) => browserClient(window.location.origin, board).listActors({}, { signal }),
   });
 
   const claimedQuery = useQuery({
-    queryKey: [...boardKeys.allTasks(board), "claimed-agents"],
+    queryKey: claimedKey,
     queryFn: ({ signal }) =>
       browserClient(window.location.origin, board).listTasks({ state: "claimed", limit: 100 }, { signal }),
   });
 
-  const actors = actorsQuery.data?.actors ?? [];
+  useEffect(() => {
+    const unsubscribe = subscribeBoardEvents(board, (event, invalidate) => {
+      if (event.type === "actor.seen" || event.type.startsWith("task.")) {
+        invalidate(boardKeys.actors(board));
+        invalidate(claimedKey);
+      }
+    });
+    const stopActors = followBoardActors(board, queryClient);
+    return () => {
+      unsubscribe();
+      stopActors();
+    };
+  }, [board, claimedKey, queryClient]);
   const claimedByActor = useMemo(() => {
     const map = new Map<string, ClaimRef[]>();
     for (const item of claimedQuery.data?.tasks ?? []) {
@@ -42,6 +55,14 @@ function BoardAgentsPage() {
     return map;
   }, [claimedQuery.data]);
 
+  return { actorsQuery, claimedQuery, claimedByActor };
+}
+
+function BoardAgentsPage() {
+  const board = Route.useParams();
+  const [kindFilter, setKindFilter] = useState<"all" | "agent" | "person">("all");
+  const { actorsQuery, claimedQuery, claimedByActor } = useBoardAgents(board.org, board.board);
+  const actors = actorsQuery.data?.actors ?? [];
   const filtered = actors.filter((actor) => {
     if (kindFilter === "all") return true;
     return kindFilter === "person" ? actor.kind === "person" : actor.kind !== "person";
@@ -75,8 +96,8 @@ function BoardAgentsPage() {
       </div>
 
       {actorsQuery.isPending && <p role="status">Loading actors…</p>}
-      {actorsQuery.isError && <p role="alert">Could not load actors.</p>}
-      {!actorsQuery.isPending && filtered.length === 0 && (
+      {actorsQuery.isError && <p role="alert">{boardErrorText(actorsQuery.error)}</p>}
+      {!actorsQuery.isPending && !actorsQuery.isError && filtered.length === 0 && (
         <EmptyState>
           No actors recorded yet. Connect an agent in{" "}
           <Link to="/$org/$board/settings/connections" params={board}>
@@ -84,6 +105,9 @@ function BoardAgentsPage() {
           </Link>
           .
         </EmptyState>
+      )}
+      {filtered.length > 0 && claimedQuery.isError && (
+        <p role="alert">Could not load active leases. {boardErrorText(claimedQuery.error)}</p>
       )}
       {filtered.length > 0 && <ActorsTable board={board} actors={filtered} claimedByActor={claimedByActor} />}
     </section>

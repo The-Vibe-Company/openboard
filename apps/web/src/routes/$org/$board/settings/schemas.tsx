@@ -28,6 +28,10 @@ const DEFAULT_SCHEMA = JSON.stringify(
 
 function SchemasRoute() {
   const { org, board } = Route.useParams();
+  return <SchemasPanel key={`${org}/${board}`} org={org} board={board} />;
+}
+
+function SchemasPanel({ org, board }: { org: string; board: string }) {
   const session = useQuery(sessionQuery);
   const client = browserClient(window.location.origin, { org, board, csrf: session.data?.csrf ?? undefined });
   const cache = useQueryClient();
@@ -62,7 +66,9 @@ function SchemasRoute() {
       )}
       {query.isPending && <p role="status">Loading schemas…</p>}
       {query.isError && <p role="alert">Could not load schemas.</p>}
-      {!query.isPending && schemas.length === 0 && <EmptyState>No schemas registered on this board.</EmptyState>}
+      {!query.isPending && !query.isError && schemas.length === 0 && (
+        <EmptyState>No schemas registered on this board.</EmptyState>
+      )}
       {schemas.length > 0 && (
         <SchemasTable
           schemas={schemas}
@@ -131,6 +137,14 @@ function SchemasTable({
   );
 }
 
+function parseSchemaDefinition(definition: string): Record<string, unknown> {
+  const schema: unknown = JSON.parse(definition);
+  if (typeof schema !== "object" || schema === null || Array.isArray(schema)) {
+    throw new Error("Schema definition must be a JSON object.");
+  }
+  return schema as Record<string, unknown>;
+}
+
 function CreateSchemaForm({ client, onCreated }: { client: Client; onCreated: () => void }) {
   const id = useId();
   const [name, setName] = useState("");
@@ -150,7 +164,7 @@ function CreateSchemaForm({ client, onCreated }: { client: Client; onCreated: ()
         name: name.trim(),
         version: Number.parseInt(version, 10) || 1,
         ...(description.trim() ? { description: description.trim() } : {}),
-        schema: JSON.parse(definition) as Record<string, unknown>,
+        schema: parseSchemaDefinition(definition),
       });
       onCreated();
     } catch (cause) {

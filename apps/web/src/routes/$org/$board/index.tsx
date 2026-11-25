@@ -1,9 +1,11 @@
-import { type QueryClient, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useElementScrollRestoration } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
-import { type FormEvent, type RefObject, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { boardErrorText, boardKeys, type ThreadSummary, threadsQuery } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
+import { subscribeBoardEvents } from "../../../api/live.ts";
+import { sessionQuery } from "../../../api/session.ts";
 import { tasksQuery } from "../../../api/tasks.ts";
 import { Composer, type ComposerDraft, type TaskComposerDraft } from "../../../components/Composer.tsx";
 import { TaskList } from "../../../components/TaskList.tsx";
@@ -36,7 +38,7 @@ function BoardThreads() {
 
 async function postToChannel(
   queryClient: QueryClient,
-  board: Board,
+  board: Board & { csrf?: string },
   channel: string,
   selectedChannel: string,
   draft: ComposerDraft,
@@ -184,12 +186,27 @@ function useChannelFilters() {
   };
 }
 
+function useChannelThreads(board: Board, channel: string, filters: ReturnType<typeof useChannelFilters>["filters"]) {
+  const options = useMemo(() => threadsQuery(board, channel, filters), [board, channel, filters]);
+  const { queryKey } = options;
+  useEffect(() => {
+    if (!filters) return;
+    return subscribeBoardEvents(board, (event, invalidate) => {
+      if ("message" in event && event.message.channel === channel) {
+        invalidate(queryKey);
+      }
+    });
+  }, [board, channel, filters, queryKey]);
+  return { threads: useInfiniteQuery(options), queryKey };
+}
+
 function ChannelView({ board, selectedChannel }: { board: Board; selectedChannel: string }) {
   const channel = selectedChannel || "general";
   const queryClient = useQueryClient();
   const f = useChannelFilters();
-  const options = threadsQuery(board, channel, f.filters);
-  const threads = useInfiniteQuery(options);
+  const { threads, queryKey } = useChannelThreads(board, channel, f.filters);
+  const { data: session } = useQuery(sessionQuery);
+  const writeScope = { ...board, csrf: session?.csrf ?? undefined };
   const rows = useMemo(() => threads.data && uniqueThreads(threads.data.pages), [threads.data]);
   const scroll = useElementScrollRestoration({ getElement: () => window });
   const hasRows = rows !== undefined && !threadReadDenied(threads.error);
@@ -202,7 +219,7 @@ function ChannelView({ board, selectedChannel }: { board: Board; selectedChannel
   const composer = useRef<HTMLFormElement>(null);
 
   async function handleCreateTask(draft: TaskComposerDraft) {
-    await browserClient(window.location.origin, board).createTask({ channel, ...draft });
+    await browserClient(window.location.origin, writeScope).createTask({ channel, ...draft });
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: tasksQuery(board, channel).queryKey, exact: true }),
       queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) }),
@@ -248,15 +265,7 @@ function ChannelView({ board, selectedChannel }: { board: Board; selectedChannel
         board={board}
         allowTask={true}
         onPost={(draft) =>
-          postToChannel(
-            queryClient,
-            board,
-            channel,
-            selectedChannel,
-            draft,
-            f.filters ? options.queryKey : null,
-            heading,
-          )
+          postToChannel(queryClient, writeScope, channel, selectedChannel, draft, f.filters ? queryKey : null, heading)
         }
         onCreateTask={handleCreateTask}
       />

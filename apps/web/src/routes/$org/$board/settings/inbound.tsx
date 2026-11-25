@@ -283,12 +283,14 @@ function InboundForm({ client, onCreated }: { client: Client; onCreated: (secret
     setBusy(true);
     setError("");
     try {
+      const rules: unknown = JSON.parse(draft.rulesJson);
+      if (!Array.isArray(rules)) throw new Error("Inbound rules must be a JSON array.");
       const created = await client.createInbound({
         name: draft.name.trim(),
         can: { [draft.channel.trim() || "*"]: ["read", "post"] },
         thread: { from: draft.threadFrom.trim(), pattern: draft.threadPattern.trim() },
         verify: { preset: draft.preset },
-        rules: JSON.parse(draft.rulesJson),
+        rules,
       });
       onCreated(created.secret);
     } catch (cause) {
@@ -334,7 +336,7 @@ function InboundReceivedDrawer({ item, client, onClose }: { item: InboundItem; c
       </div>
       {query.isPending && <p role="status">Loading receipts…</p>}
       {query.isError && <p role="alert">{formatError(query.error, "Could not load received events.")}</p>}
-      {!query.isPending && events.length === 0 && <p>No received events in the last 7 days.</p>}
+      {!query.isPending && !query.isError && events.length === 0 && <p>No received events in the last 7 days.</p>}
       {events.length > 0 && (
         <div className="settings-table">
           <Table aria-label="Inbound receipts">
