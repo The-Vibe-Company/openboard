@@ -46,13 +46,13 @@ test("rejects a 500-line skill", () => {
 test("rejects broken relative links including multiline destinations and fragments", () => {
   expect(
     check(
-      header + "\n[missing](\nmissing.md\n) [used][ref] [fragment](#missing)\n\n[ref]: references/commands.md#missing",
+      `${header}\n[missing](\nmissing.md\n) [used][ref] [fragment](#missing)\n\n[ref]: references/commands.md#missing`,
     ),
   ).toEqual(Array.from({ length: 3 }, () => "SKILL.md: relative link target does not exist inside the skill"));
 });
 
 test("rejects unknown commands and subcommands of commands without positional arguments", () => {
-  expect(check(header + "\n`ob grants bogus`\n\n```sh\nob typo\n```")).toEqual(
+  expect(check(`${header}\n\`ob grants bogus\`\n\n\`\`\`sh\nob typo\n\`\`\``)).toEqual(
     Array.from({ length: 2 }, () => "SKILL.md: ob command is missing from references/commands.md"),
   );
 });

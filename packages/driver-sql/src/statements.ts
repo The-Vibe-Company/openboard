@@ -233,8 +233,7 @@ function collapse(text: string): { flat: string; groups: string[] } | null {
 /** Every query inside the group (a subquery, a CTE body) is itself scoped. */
 function groupIsScoped(group: string): boolean {
   if (QUERY_HEAD.test(group)) return queryIsScoped(group);
-  const parts = collapse(group);
-  return parts !== null && parts.groups.every(groupIsScoped);
+  return collapse(group)?.groups.every(groupIsScoped) ?? false;
 }
 
 /**

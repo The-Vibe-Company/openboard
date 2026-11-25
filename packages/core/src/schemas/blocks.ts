@@ -48,8 +48,8 @@ const MAX_DATA_DEPTH = 996;
 /** Check that decoded JSON can be stored and queried on both database engines. */
 function storable(data: Record<string, unknown>): boolean {
   const pending: { value: unknown; depth: number }[] = [{ value: data, depth: 1 }];
-  while (pending.length) {
-    const { value, depth } = pending.pop()!;
+  for (let entry = pending.pop(); entry !== undefined; entry = pending.pop()) {
+    const { value, depth } = entry;
     if (typeof value === "string" && (value.includes("\0") || !value.isWellFormed())) return false;
     if (typeof value === "number" && !Number.isFinite(value)) return false;
     if (value && typeof value === "object") {

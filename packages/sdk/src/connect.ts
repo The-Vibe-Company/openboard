@@ -1,4 +1,4 @@
-import { BoardError, claimConnection, type InputOf, type OutputOf } from "@openboard/contract";
+import { BoardError, type claimConnection, type InputOf, type OutputOf } from "@openboard/contract";
 import { type Client, type ClientOptions, createClient } from "./client.ts";
 
 type ClaimOptions = Omit<InputOf<typeof claimConnection>, "profile"> & {

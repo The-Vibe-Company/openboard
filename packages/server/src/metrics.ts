@@ -15,14 +15,14 @@ function histogram() {
     observe(ms: number) {
       const seconds = Math.max(0, ms) / 1000;
       const first = bounds.findIndex((bound) => seconds <= bound);
-      if (first !== -1) buckets[first]!++;
+      if (first !== -1) buckets[first] = (buckets[first] ?? 0) + 1;
       count++;
       sum += seconds;
     },
     append(sample: Sample, name: string, labels: Labels) {
       let cumulative = 0;
       bounds.forEach((bound, index) => {
-        cumulative += buckets[index]!;
+        cumulative += buckets[index] ?? 0;
         sample(`${name}_bucket`, cumulative, { ...labels, le: String(bound) });
       });
       sample(`${name}_bucket`, count, { ...labels, le: "+Inf" });

@@ -20,7 +20,7 @@ function hasType(value: unknown, type: unknown) {
 
 function shown(value: unknown) {
   const text = JSON.stringify(value) ?? String(value);
-  return text.length > 40 ? text.slice(0, 39) + "…" : text;
+  return text.length > 40 ? `${text.slice(0, 39)}…` : text;
 }
 
 function alternatives(values: unknown[]) {
@@ -100,7 +100,7 @@ function combinationProblem(schema: Record<string, unknown>, value: unknown, at:
     const problems = choices.map((child) => visit(child, value, at));
     const matched = problems.filter((problem) => problem === null).length;
     if (matched === 0) {
-      if (problems.length === 1) return problems[0]!;
+      if (problems.length === 1) return problems[0] as string;
       return `${subject} matches none of the ${choices.length} it can be: ${[...new Set(problems)].slice(0, 4).join("; ")}`;
     }
     if (keyword === "oneOf" && matched > 1)

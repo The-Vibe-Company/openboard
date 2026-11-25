@@ -219,7 +219,7 @@ function validateDeployment(args: readonly string[], token: string | undefined, 
   if (!token?.trim()) throw new Error(`Set RAILWAY_TOKEN to a ${environment} Railway project token`);
   if (environment === "staging") return { environment, tag, token, origin: STAGING_ORIGIN };
   const url = URL.parse(productionOrigin ?? "");
-  if (!url || url.protocol !== "https:" || (productionOrigin !== url.origin && productionOrigin !== `${url.origin}/`)) {
+  if (url?.protocol !== "https:" || (productionOrigin !== url.origin && productionOrigin !== `${url.origin}/`)) {
     throw new Error("Set PRODUCTION_URL to the HTTPS origin of the production service");
   }
   return { environment, tag, token, origin: url.origin };

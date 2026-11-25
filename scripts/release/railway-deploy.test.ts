@@ -169,7 +169,7 @@ test("reports sanitized GraphQL messages without starting a deployment", async (
 });
 
 test("truncates GraphQL diagnostics on a Unicode code point boundary", async () => {
-  const fake = fakeRailway([], { updateErrors: [{ message: "x ".repeat(119) + "😀😀😀" }] });
+  const fake = fakeRailway([], { updateErrors: [{ message: `${"x ".repeat(119)}😀😀😀` }] });
   await expect(deployRailway(args, credential, fake.runtime)).rejects.toThrow(
     `Railway UpdateStaging returned a GraphQL error: ${"x ".repeat(119)}😀…`,
   );
