@@ -58,6 +58,9 @@ if (postgresTestUrl()) {
         async *list(prefix) {
           for (const { key } of writes) if (key.startsWith(prefix)) yield key;
         },
+        async exists() {
+          return false;
+        },
         async read() {
           return null;
         },
