@@ -1,5 +1,24 @@
 import { expect, test } from "bun:test";
-import { deployRailway, STAGING_DEPLOY_SETTINGS } from "./railway-deploy.ts";
+import { deployRailway, rollingBoardPath, STAGING_DEPLOY_SETTINGS } from "./railway-deploy.ts";
+
+test("uses the default rolling board when no value is supplied", () => {
+  expect(rollingBoardPath()).toBe("conformance-ci/main");
+});
+
+test("accepts a custom rolling board", () => {
+  expect(rollingBoardPath("tvc/main")).toBe("tvc/main");
+});
+
+test("trims whitespace around the rolling board", () => {
+  expect(rollingBoardPath("  tvc/main\n")).toBe("tvc/main");
+});
+
+test.each(["../x", "a/b/c", "tvc/main?x=1", "tvc/main#fragment", "TVC/main", ""])(
+  "rejects invalid rolling board %j",
+  (value) => {
+    expect(() => rollingBoardPath(value)).toThrow("STAGING_ROLLING_BOARD must be <org>/<board>");
+  },
+);
 
 const tag = "main-012abcd";
 const args = ["staging", tag];

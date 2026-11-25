@@ -287,6 +287,14 @@ export async function deployRailway(
   return waitForReplicas(api, deploymentId, previousId, tag, runtime, origin, expectedReplicas);
 }
 
+export function rollingBoardPath(value = "conformance-ci/main"): string {
+  const board = value.trim();
+  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(board)) {
+    throw new Error("STAGING_ROLLING_BOARD must be <org>/<board>");
+  }
+  return board;
+}
+
 if (import.meta.main) {
   try {
     const args = process.argv.slice(2);
@@ -305,8 +313,9 @@ if (import.meta.main) {
       console.log(`Verified ${tag} on ${environment} replicas: ${replicas.join(", ")}`);
     };
     if (checked) {
+      const board = rollingBoardPath(process.env.STAGING_ROLLING_BOARD);
       const secret = await readRollingSecret();
-      reportRollingCheck(await rollingCheck(`${origin}/api/conformance-ci/main`, secret, deploy));
+      reportRollingCheck(await rollingCheck(`${origin}/api/${board}`, secret, deploy));
     } else {
       await deploy();
     }
