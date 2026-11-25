@@ -27,7 +27,8 @@
                       "required": ["kind", "argv"],
                       "properties": {
                         "kind": { "const": "run", "type": "string" },
-                        "argv": { "type": "array", "items": { "type": "string" } }
+                        "argv": { "type": "array", "items": { "type": "string" } },
+                        "description": { "type": "string" }
                       }
                     },
                     {
@@ -10104,6 +10105,82 @@
           },
           "500": {
             "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/attachments/uploads/{id}": {
+      "post": {
+        "operationId": "uploadFinish",
+        "summary": "Finish a direct upload. This board answers 501.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "file", "type": "string" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["attachment"],
+                  "properties": {
+                    "attachment": {
+                      "type": "object",
+                      "required": ["id", "name", "type", "size"],
+                      "properties": {
+                        "id": {
+                          "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                          "type": "string"
+                        },
+                        "name": { "type": "string" },
+                        "type": { "type": "string" },
+                        "size": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "501": {
+            "description": "no_direct_uploads",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           }
         }
@@ -28371,6 +28448,82 @@
           },
           "500": {
             "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/attachments/uploads": {
+      "post": {
+        "operationId": "uploadStart",
+        "summary": "Start a direct upload. This board answers 501.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["size"],
+                "properties": {
+                  "name": { "anyOf": [{ "maxLength": 1024, "type": "string" }, { "type": "null" }] },
+                  "type": { "anyOf": [{ "maxLength": 1024, "type": "string" }, { "type": "null" }] },
+                  "size": { "minimum": 1, "maximum": 104857600, "type": "integer" },
+                  "sha256": { "pattern": "^[A-Za-z0-9+/]{43}=$", "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id", "url", "headers", "expiresAt"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "url": { "type": "string" },
+                    "headers": { "type": "object", "patternProperties": { "^(.*)$": { "type": "string" } } },
+                    "expiresAt": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "501": {
+            "description": "no_direct_uploads",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           }
         }

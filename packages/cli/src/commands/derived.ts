@@ -194,6 +194,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   const derived: Command = {
     words: command,
     ...(operation.name === "listWebhookDeliveries" && { help: operation.summary }),
+    ...(post && { help: "Use --attach with a local file of at most 4 MB. Repeat for up to ten files." }),
     usage: post
       ? [
           `ob post <channel> <text> ${options.join(" ")}`,

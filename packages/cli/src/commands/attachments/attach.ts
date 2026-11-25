@@ -27,7 +27,11 @@ async function fileBytes(path: string) {
       const stat = await file.stat();
       if (!stat.isFile()) throw new BoardError("invalid_request", `${path} is not a regular file`);
       if (!stat.size) throw new BoardError("invalid_request", `${path} is empty`);
-      if (stat.size > ATTACHMENT_BYTES) throw new BoardError("too_large", "attachments are at most 4 MB");
+      if (stat.size > ATTACHMENT_BYTES) {
+        throw new BoardError("too_large", "attachments are at most 4 MB", {
+          next: [{ kind: "run", argv: ["ob", "post", "--help"] }],
+        });
+      }
       const data = new Uint8Array(stat.size + 1);
       let size = 0;
       while (size < data.length) {

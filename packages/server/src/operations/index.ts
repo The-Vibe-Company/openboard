@@ -28,7 +28,7 @@ import {
   startDeviceSignInHandler,
 } from "./accounts.ts";
 import { getMeHandler, listActorsHandler } from "./actors.ts";
-import { downloadHandler, uploadHandler } from "./attachments/index.ts";
+import { downloadHandler, rejectDirectUpload, uploadHandler } from "./attachments/index.ts";
 import { readBoardAuditHandler, readOrgAuditHandler } from "./audit.ts";
 import { getAvatarHandler } from "./avatars/get.ts";
 import { createBoardHandler, deleteBoardHandler, listBoardsHandler } from "./boards.ts";
@@ -309,6 +309,8 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   postMessage: postMessageHandler,
   upload: uploadHandler,
   download: downloadHandler,
+  startUpload: rejectDirectUpload,
+  finishUpload: rejectDirectUpload,
   previewDeviceSignIn: previewDeviceSignInHandler,
   previewInvitation: previewInvitationHandler,
   getMetrics: getMetricsHandler,

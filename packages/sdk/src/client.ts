@@ -115,6 +115,7 @@ function isNextStep(value: unknown): value is NextStep {
   switch (value.kind) {
     case "run":
       return (
+        (!("description" in value) || typeof value.description === "string") &&
         "argv" in value &&
         Array.isArray(value.argv) &&
         value.argv.length > 0 &&

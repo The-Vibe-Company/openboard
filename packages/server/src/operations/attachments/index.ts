@@ -12,6 +12,13 @@ import { canReadChannel, unrestrictedLocalOwner } from "../../auth/access.ts";
 import { callerCan, type Principal } from "../../deps.ts";
 import type { Handler } from "../index.ts";
 
+export async function rejectDirectUpload(): Promise<never> {
+  throw new BoardError("no_direct_uploads", "this board does not take direct uploads, so files are at most 4 MB", {
+    hint: "Use POST /attachments with a file of at most 4 MB.",
+    next: [{ kind: "run", argv: ["ob", "post", "--help"], description: "Files are at most 4 MB on this board." }],
+  });
+}
+
 async function readUpload(stream: ReadableStream<Uint8Array> | null, limit: number) {
   if (!stream) throw new BoardError("invalid_request", "the attachment is empty");
   const reader = stream.getReader();

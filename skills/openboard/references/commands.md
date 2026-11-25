@@ -1336,7 +1336,7 @@ Options:
 
 - `--re`: A message ID.
 - `--after`: A reply's precondition: a message in its thread that must still be the newest.
-- `--attach`: A value; repeatable.
+- `--attach`: A local file of at most 4 MB; repeatable up to ten files.
 - `--label`: A `key=value` entry; repeatable.
 - `--no-sync`: A switch: present means yes.
 - `--sync`: External targets for a new thread. This board refuses any targets.

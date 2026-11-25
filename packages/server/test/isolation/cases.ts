@@ -23,6 +23,7 @@ export const authenticated: readonly Operation[] = operations.filter((operation)
  * validation. An operation missing here sends no query and no body; `callOf` throws if validation refuses that.
  */
 const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; query?: Fields; body?: Fields }>> = {
+  startUpload: () => ({ body: { size: 5 * 1024 * 1024 } }),
   createGrant: (tenant) => ({ body: grantDraft(tenant) }),
   createGrants: (tenant) => ({ body: { grants: [grantDraft(tenant)] } }),
   cancelTask: () => ({ body: { reason: "test" } }),
