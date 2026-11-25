@@ -6,13 +6,24 @@ package: core
 writes:
   - packages/core/src/schedules/send.ts
   - packages/core/src/schedules/timing.ts
-  - packages/core/test/schedules/send.test.ts
   - packages/server/test/ha/schedules-downtime.test.ts
+  - docs/data-model.md
+  - docs/decisions.md
+  - docs/protocol.md
+  - packages/core/src/index.ts
+  - packages/core/src/schedules/create.ts
+  - packages/core/test/schedules/timing.test.ts
+  - packages/driver-sqlite/src/catalog.ts
+  - packages/driver-sql/src/views/messages/fold.ts
+  - packages/driver-sql/src/views/schedules/index.ts
+  - packages/server/src/jobs/schedules.ts
+  - packages/server/test/support/drivers.ts
+  - skills/openboard/SKILL.md
 conformance: []
 modes: [local, hosted]
 depends_on: [378]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 574
 ---
 

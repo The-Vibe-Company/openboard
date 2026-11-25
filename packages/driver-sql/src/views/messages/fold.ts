@@ -13,7 +13,7 @@ import {
 } from "../connections.ts";
 import { foldGrantEvent } from "../grants.ts";
 import { foldInbound } from "../inbound/index.ts";
-import { foldSchedule } from "../schedules/index.ts";
+import { foldSchedule, isScheduleEvent } from "../schedules/index.ts";
 import { foldSchemaRegistered } from "../schemas/registry.ts";
 import { foldTaskEvent } from "../tasks/task-folds.ts";
 import { foldWatchersRegistered } from "../watchers/index.ts";
@@ -99,8 +99,7 @@ export async function foldEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event
       view: JSON.stringify(view),
     });
   } else if (event.type === "message.posted") await foldMessagePosted(tx, dialect, keys, event);
-  else if (event.type === "ob.schedule.created" || event.type === "ob.schedule.canceled")
-    await foldSchedule(tx, dialect, keys, event);
+  else if (isScheduleEvent(event)) await foldSchedule(tx, dialect, keys, event);
   else if (event.type === "ob.schema.registered") await foldSchemaRegistered(tx, dialect, keys, event);
   else if (event.type === "ob.watchers.registered") await foldWatchersRegistered(tx, dialect, keys, event);
   else if (

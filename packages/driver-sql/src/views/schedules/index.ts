@@ -1,5 +1,13 @@
 import type { ScheduleView } from "@openboard/contract";
-import { formatId, isoTime, parseScheduleId, type ScheduleCanceled, type ScheduleCreated } from "@openboard/core";
+import {
+  type BoardEvent,
+  formatId,
+  isoTime,
+  parseScheduleId,
+  type ScheduleCanceled,
+  type ScheduleCreated,
+  type ScheduleExpired,
+} from "@openboard/core";
 import type { BoardKeys, BoardView, BoardWriter } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
@@ -46,6 +54,9 @@ export const scheduleStatements = {
     ${"attachments"}, ${"first"}, ${"every"}, ${"until"}, ${"times"}, ${"first"}, 'pending', ${"actor"}, ${"principal"}, ${"profile"},
     ${"creator"}, ${"blind"}, ${"createdAt"}, ${"author"}, ${"mentions"}, ${"blocks"}
   )`,
+  expireSchedule: sql`UPDATE schedules SET state = 'done', next_at = NULL
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
+      AND state = 'pending' AND sent = ${"n"}`,
   cancelSchedule: sql`UPDATE schedules SET state = 'canceled', next_at = NULL, canceled = ${"canceled"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
 };
@@ -128,12 +139,22 @@ async function nextSchedule(tx: Db, dialect: Dialect, keys: BoardKeys): Promise<
   return Number(row.next_schedule);
 }
 
-export async function foldSchedule(
-  tx: Db,
-  dialect: Dialect,
-  keys: BoardKeys,
-  event: ScheduleCreated | ScheduleCanceled,
-) {
+type ScheduleEvent = ScheduleCreated | ScheduleCanceled | ScheduleExpired;
+
+export function isScheduleEvent(event: BoardEvent): event is ScheduleEvent {
+  return (
+    event.type === "ob.schedule.created" ||
+    event.type === "ob.schedule.canceled" ||
+    event.type === "ob.schedule.expired"
+  );
+}
+
+export async function foldSchedule(tx: Db, dialect: Dialect, keys: BoardKeys, event: ScheduleEvent) {
+  if (event.type === "ob.schedule.expired") {
+    const { id, n } = event.payload;
+    await query(tx, dialect, scheduleStatements.expireSchedule, { ...keys, id: parseScheduleId(id), n });
+    return;
+  }
   if (event.type === "ob.schedule.canceled") {
     const { id, canceled } = event.payload;
     await query(tx, dialect, scheduleStatements.cancelSchedule, {

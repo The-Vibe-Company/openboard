@@ -24,11 +24,11 @@ test("a three-send repeat advances one slot at a time and a one-off ends", () =>
   const repeat = resolveScheduleTiming({ every: "1m", at: "2023-11-14T22:13:20Z", times: 3 }, now);
   const { firstAt } = repeat;
   expect(firstAt).toBe(now);
-  expect(nextScheduleTime(repeat, firstAt, 1)).toBe(now + minute);
-  expect(nextScheduleTime(repeat, firstAt + minute, 2)).toBe(now + 2 * minute);
-  expect(nextScheduleTime(repeat, firstAt + 2 * minute, 3)).toBeNull();
+  expect(nextScheduleTime(repeat, firstAt, 1, firstAt)).toBe(now + minute);
+  expect(nextScheduleTime(repeat, firstAt + minute, 2, firstAt + minute)).toBe(now + 2 * minute);
+  expect(nextScheduleTime(repeat, firstAt + 2 * minute, 3, firstAt + 2 * minute)).toBeNull();
   const once = resolveScheduleTiming({ in: "1m" }, now);
-  expect(nextScheduleTime(once, once.firstAt, 1)).toBeNull();
+  expect(nextScheduleTime(once, once.firstAt, 1, once.firstAt)).toBeNull();
 });
 
 test("time-limited repeats include the last slot on or before the stop", () => {
@@ -36,11 +36,11 @@ test("time-limited repeats include the last slot on or before the stop", () => {
     const repeat = resolveScheduleTiming({ every: "1m", ...stop }, now);
     const { firstAt } = repeat;
     expect(firstAt).toBe(now + minute);
-    expect(nextScheduleTime(repeat, firstAt + minute, 2)).toBe(firstAt + 2 * minute);
-    expect(nextScheduleTime(repeat, firstAt + 2 * minute, 3)).toBeNull();
+    expect(nextScheduleTime(repeat, firstAt + minute, 2, firstAt + minute)).toBe(firstAt + 2 * minute);
+    expect(nextScheduleTime(repeat, firstAt + 2 * minute, 3, firstAt + 2 * minute)).toBeNull();
   }
   const justBeforeSecond = resolveScheduleTiming({ every: "1m", for: "59.9999s" }, now);
-  expect(nextScheduleTime(justBeforeSecond, justBeforeSecond.firstAt, 1)).toBeNull();
+  expect(nextScheduleTime(justBeforeSecond, justBeforeSecond.firstAt, 1, justBeforeSecond.firstAt)).toBeNull();
 
   expect(() => resolveScheduleTiming({ every: "1m", until: "2023-11-14T22:13:20Z" }, now)).toThrow(
     "stops before its first send",
@@ -57,4 +57,11 @@ test("repeat interval, first send, and time-based stop may reach at most a year 
   expect(() => resolveScheduleTiming({ every: "1m", until: "2024-11-15T22:13:21Z" }, now)).toThrow(
     "at most a year out",
   );
+});
+
+test("overdue repeats keep their cadence and skip the slot at the current time", () => {
+  const repeat = resolveScheduleTiming({ every: "1m", times: 3 }, now);
+  const { firstAt } = repeat;
+  expect(nextScheduleTime(repeat, firstAt, 1, firstAt + 120 * minute)).toBe(firstAt + 121 * minute);
+  expect(nextScheduleTime(repeat, firstAt, 1, firstAt + 120 * minute + 1)).toBe(firstAt + 121 * minute);
 });

@@ -102,9 +102,10 @@ export function resolveScheduleTiming(timing: Timing, now: number): ScheduleTimi
   return { firstAt, every, untilAt, times: timing.times ?? null };
 }
 
-/** Uses the slot just sent and the number of sends including that slot. */
-export function nextScheduleTime(repeat: ScheduleRepeat, slot: number, sent: number): number | null {
+/** Keep the original cadence and skip slots at or before the current send time. */
+export function nextScheduleTime(repeat: ScheduleRepeat, slot: number, sent: number, now: number): number | null {
   if (repeat.every === null || (repeat.times !== null && sent >= repeat.times)) return null;
-  const next = slot + repeat.every;
+  const elapsedIntervals = Math.floor((now - slot) / repeat.every);
+  const next = slot + Math.max(1, elapsedIntervals + 1) * repeat.every;
   return repeat.untilAt !== null && next > repeat.untilAt ? null : next;
 }

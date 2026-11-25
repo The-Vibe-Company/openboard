@@ -84,6 +84,8 @@ Read the JSON result in `structuredContent`. On `isError`, inspect its
   rename the file to remove the leading dot or invisible formatting characters before retrying.
 - Use `ob schedule <thread-id> "<text>" --in 30s` to post a due-time reply as your
   current profile. `ob read <thread-id>` shows its schedule ID beside the sent reply.
+  After downtime, an overdue schedule sends once and a repeat resumes on its
+  original cadence. Repeats past their stop time end without a send.
 - Use `ob schedule cancel <schedule-id>` as the creating profile, as its principal
   without a profile, or with channel `manage`. A creator with post access and
   without read access can list and cancel its schedules with the text hidden.

@@ -302,8 +302,9 @@ jobs on any instance). Lazy expiry stands in both modes.
 - **Decision.** Lease and match expiry are lazy (computed from stored times on
   every read and write); schedules, retries, and sweeps are persisted and
   re-armed on boot; overdue schedules send once, as upstream's "downtime
-  doesn't replay". Recommend always-on when the board has schedules or
-  webhooks.
+  doesn't replay". Repeats skip to the first future slot on their original
+  cadence. A repeat past its stop time ends without a send. Recommend
+  always-on when the board has schedules or webhooks.
 - **Consequence.** Correctness never depends on being awake; punctuality of
   schedules does. Open question Q1.
 

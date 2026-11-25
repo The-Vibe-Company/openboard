@@ -82,6 +82,15 @@ async function withTestDb<T>(file: string, work: (db: Db, database: Database) =>
   }
 }
 
+/** Opens fresh drivers on the same file to exercise process restart. */
+export function sqliteRestartFixture(now: () => number) {
+  const dir = mkdtempSync("openboard-restart-");
+  return {
+    open: () => sqliteDriver({ dir, scheduleSnapshot: () => () => {} }, now),
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  };
+}
+
 /** A file-backed SQLite fixture so a separate read connection can inspect the persisted rows. */
 export function sqlitePurgeFixture(now: () => number) {
   const dir = mkdtempSync("openboard-purge-");
