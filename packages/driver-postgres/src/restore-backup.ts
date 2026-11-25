@@ -83,15 +83,22 @@ export async function* shippedEvents<T extends { id: number; at: number }>(
       return { key, first, last };
     })
     .sort((a, b) => a.first - b.first || b.last - a.last);
+  const initialHead = head;
   for (const { key, first, last } of ranges) {
+    // A timeline change can leave shorter objects covered by a replacement range.
     if (last <= head) continue;
+    if (head > initialHead && first <= head) invalid(`Overlapping backup segment ${key}`);
     if (first > head + 1) invalid(`Missing backup segment covering event ${head + 1} before ${key}`);
-    const bytes = await new Response(await objects(bucket, key)).arrayBuffer();
+    const body = await objects(bucket, key);
     let previous = first - 1;
     const events: T[] = [];
     try {
-      const content = new TextDecoder("utf-8", { fatal: true }).decode(Bun.gunzipSync(bytes));
-      for (const line of content.trimEnd().split("\n")) {
+      const compressed = await new Response(body).blob();
+      const bytes = await new Response(compressed.stream().pipeThrough(new DecompressionStream("gzip"))).bytes();
+      const content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      if (content && !content.endsWith("\n")) throw new Error("Incomplete NDJSON line");
+      const lines = content === "" ? [] : content.slice(0, -1).split("\n");
+      for (const line of lines) {
         const event = JSON.parse(line) as T & {
           org_id?: number;
           board_id?: number;
@@ -123,8 +130,8 @@ export async function* shippedEvents<T extends { id: number; at: number }>(
       invalid(`Invalid event in backup segment ${key}`);
     }
     // Compaction and timeline changes can leave holes inside a shipped board range.
-    if (previous !== last) invalid(`Incomplete backup segment ${key}`);
-    yield events;
+    if (boardId === 0 && previous !== last) invalid(`Incomplete backup segment ${key}`);
+    yield { events, through: last };
     head = last;
   }
 }

@@ -259,15 +259,6 @@ async function shipManifest(
 }
 
 export function shippingView(db: Db, dialect: Dialect, { orgId }: OrgScope): Pick<OrgView, "shipLogs"> {
-  const log = (tx: Db, boardId: number, shipped: number, end: number) =>
-    query(tx, dialect, boardId === 0 ? s.shippingOrgLog : s.shippingBoardLog, {
-      orgId,
-      boardId,
-      shipped,
-      end,
-      limit: pageSize,
-    });
-
   async function leaseTime(tx: Db, now: () => number) {
     const [org] = await query(tx, dialect, s.shippingLock, { orgId });
     if (!org) return;
@@ -285,16 +276,23 @@ export function shippingView(db: Db, dialect: Dialect, { orgId }: OrgScope): Pic
       const shipped = Number(cursor?.shipped ?? 0);
       if (Number(cursor?.upload_until ?? 0) > at || head <= shipped) return;
       const pending = Number(cursor?.pending ?? 0);
-      const rows = await log(tx, boardId, shipped, pending > shipped ? pending : head);
+      const rows = await query(tx, dialect, boardId === 0 ? s.shippingOrgLog : s.shippingBoardLog, {
+        ...keys,
+        shipped,
+        end: pending > shipped ? pending : head,
+        limit: pageSize,
+      });
       const last = pending > shipped ? pending : Number(rows.at(-1)?.id ?? head);
       const deadline = at + uploadLeaseMs;
+      // Board ranges remain contiguous even if all of a reserved range was compacted.
+      const publish = boardId !== 0 || rows.length > 0;
       await query(tx, dialect, s.shippingReserve, {
         ...keys,
-        shipped: rows.length ? shipped : last,
+        shipped: publish ? shipped : last,
         pending: last,
-        deadline: rows.length ? deadline : 0,
+        deadline: publish ? deadline : 0,
       });
-      if (rows.length) return { rows, deadline, first: shipped + 1, last };
+      if (publish) return { rows, deadline, first: shipped + 1, last };
     });
   }
 

@@ -275,3 +275,23 @@ test("ships a new history after point-in-time recovery into a bucket seeded with
     expect((await command({ ...board, bucket: resumed.bucket }, restored)).code).toBe(0);
     await checkBoard(board, restored, ["first", "new history"]);
   }));
+
+test("restores an intact sparse range and keeps its logical head", () =>
+  fixture(async (board) => {
+    const dir = join(board.dir, "sparse");
+    // Keep the last post at position 4 and represent compacted positions 5 and 6.
+    const key = `${prefix}board/1/4-4.ndjson.gz`;
+    const segment = board.objects.get(key);
+    if (!segment) throw new Error("missing fixture segment");
+    board.objects.delete(key);
+    board.objects.set(`${prefix}board/1/4-6.ndjson.gz`, segment);
+    expect((await command(board, dir)).code).toBe(0);
+    await checkBoard(board, dir, ["first", "second", "third"]);
+    const app = await compose(loadConfig({ OPENBOARD_DATA_DIR: dir }), board.owner.hash);
+    try {
+      const response = await request(app, board.config.publicUrl, board.owner.token, "events?all=true&after=4");
+      expect(await response.json()).toEqual({ cursor: "6", events: [] });
+    } finally {
+      await app.close();
+    }
+  }));

@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { decodeEventSegment } from "./event-segment.ts";
 
 const block = 512;
 const decoder = new TextDecoder("utf-8", { fatal: true });
@@ -83,19 +84,9 @@ export async function* readBoardEvents(entries: ArchiveEntries, board: { id: num
         throw new Error("Unexpected event range");
       const entry = entries.get(path);
       if (!entry) throw new Error("Missing segment");
-      const text = decoder.decode(Bun.gunzipSync(await entry.bytes()));
-      if (!text.endsWith("\n")) throw new Error("Incomplete NDJSON line");
-      const events = text
-        .slice(0, -1)
-        .split("\n")
-        .map((line) => JSON.parse(line));
-      if (
-        events.length !== last - first + 1 ||
-        events.some((event, index) => event?.id !== first + index || event.v !== 1 || !Number.isSafeInteger(event.at))
-      )
-        throw new Error("Unexpected event sequence or version");
+      const events = decodeEventSegment(await entry.arrayBuffer(), first, last);
       head = last;
-      yield { path, events };
+      yield { path, events, through: last };
     } catch (cause) {
       throw new Error(`Invalid or truncated event segment ${path}`, { cause });
     }
