@@ -117,7 +117,9 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           STAGING_CONFORMANCE_SECRET: ${{ secrets.STAGING_CONFORMANCE_SECRET }}
+          STAGING_ROLLING_BOARD: ${{ vars.STAGING_ROLLING_BOARD }}
         run: |
+          if [[ -z "$STAGING_ROLLING_BOARD" ]]; then unset STAGING_ROLLING_BOARD; fi
           printf '%s\n' "$STAGING_CONFORMANCE_SECRET" |
             bun scripts/release/railway-deploy.ts staging "$DEPLOYMENT_TAG" --rolling-check
 
