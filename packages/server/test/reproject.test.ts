@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { messages } from "@openboard/core";
 import type { BoardKeys, BoardScope } from "@openboard/ports";
-import { type App } from "../src/index.ts";
+import type { App } from "../src/index.ts";
 import { NOW, call, makeApp } from "./support/app.ts";
 import { openSnapshotStore } from "./support/drivers.ts";
 

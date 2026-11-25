@@ -30,7 +30,8 @@ function failDeliveryCommit(store: TestStore): TestStore {
       },
     });
   };
-  return { ...store, board: wrap, sibling: store.sibling && (() => failDeliveryCommit(store.sibling!())) };
+  const sibling = store.sibling?.bind(store);
+  return { ...store, board: wrap, sibling: sibling && (() => failDeliveryCommit(sibling())) };
 }
 
 async function fixture(run: (input: Awaited<ReturnType<typeof setup>>) => Promise<void>, fail = false) {
@@ -106,7 +107,9 @@ test("records each unresolved thread result without applying actions", () =>
       expect(response.status).toBe(422);
       const body = await response.text();
       expect(JSON.parse(body)).toEqual({ error: { code: "thread_not_found", message } });
-      expect(JSON.parse((await seen(id))!)).toEqual({ ...JSON.parse(body), matched: [0] });
+      const delivery = await seen(id);
+      if (delivery == null) throw new Error("Expected a stored delivery");
+      expect(JSON.parse(delivery)).toEqual({ ...JSON.parse(body), matched: [0] });
     }
     expect(await events()).toEqual(before);
   }));
@@ -121,8 +124,11 @@ test("unreadable and absent roots return byte-identical 422 responses", () =>
     const body = await unreadable.text();
     expect(body).toBe(await absent.text());
     const stored = { ...JSON.parse(body), matched: [0] };
-    expect(JSON.parse((await seen("unreadable"))!)).toEqual(stored);
-    expect(JSON.parse((await seen("absent"))!)).toEqual(stored);
+    for (const id of ["unreadable", "absent"]) {
+      const delivery = await seen(id);
+      if (delivery == null) throw new Error("Expected a stored delivery");
+      expect(JSON.parse(delivery)).toEqual(stored);
+    }
     expect(await events()).toEqual(before);
   }));
 

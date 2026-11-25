@@ -41,7 +41,8 @@ async function openStream(app: ReturnType<typeof makeApp>, query: string, token 
     }),
   );
   expect(response.status).toBe(200);
-  const reader = response.body!.getReader();
+  if (response.body == null) throw new Error("Expected a stream response body");
+  const reader = response.body.getReader();
   const decoder = new TextDecoder();
   const next = async () => decoder.decode((await reader.read()).value);
   expect(await next()).toBe(": connected\n\n");
@@ -51,7 +52,10 @@ async function openStream(app: ReturnType<typeof makeApp>, query: string, token 
 
 /** The `id:` lines of one page, each tagged with whether it carries an event or only a cursor. */
 function ids(page: string): string[] {
-  return Array.from(page.matchAll(/^id: (\d+)\n(event: board)?/gm), ([, id, event]) => (event ? id! : `cursor ${id}`));
+  return Array.from(page.matchAll(/^id: (\d+)\n(event: board)?/gm), ([, id, event]) => {
+    if (id == null) throw new Error("Expected an SSE cursor");
+    return event ? id : `cursor ${id}`;
+  });
 }
 
 const post = async (app: ReturnType<typeof makeApp>, channel: string, text: string) => {
@@ -91,8 +95,9 @@ test("a slow tail never delays the others: it keeps one queued page, then catche
     counted.reads = 0;
     const posted: string[] = [];
     for (const text of ["one", "two", "three", "four"]) {
-      posted.push(await post(app, "dev", text));
-      expect(ids(await fast.next())).toEqual([posted.at(-1)!]);
+      const cursor = await post(app, "dev", text);
+      posted.push(cursor);
+      expect(ids(await fast.next())).toEqual([cursor]);
     }
     const reads = counted.reads;
     const pages = [ids(await pending)];
@@ -101,7 +106,9 @@ test("a slow tail never delays the others: it keeps one queued page, then catche
     expect(reads).toBe(0);
     // The first post filled the waiting read and the second the stream's one queued frame. The tail queued the third
     // page; the fourth found that queue full, so both were dropped and the slow tail reads them from the store.
-    expect(pages).toEqual([[posted[0]!], [posted[1]!], posted.slice(2)]);
+    const [first, second] = posted;
+    if (first == null || second == null) throw new Error("Expected at least two posted cursors");
+    expect(pages).toEqual([[first], [second], posted.slice(2)]);
     expect(counted.reads).toBe(1);
   } finally {
     await Promise.all([fast.close(), slow.close()]);
@@ -217,7 +224,12 @@ test("a page served from memory carries the same events a store read returns", a
     const collect = async () => {
       for (const [i, stream] of streams.entries()) {
         const page = await stream.next();
-        streamed[i]!.push(...Array.from(page.matchAll(/^data: (.+)$/gm), ([, data]) => JSON.parse(data!)));
+        const events = streamed[i];
+        if (events == null) throw new Error("Expected an event buffer for the stream");
+        for (const [, data] of page.matchAll(/^data: (.+)$/gm)) {
+          if (data == null) throw new Error("Expected event data");
+          events.push(JSON.parse(data));
+        }
       }
     };
     await collect();
@@ -230,7 +242,9 @@ test("a page served from memory carries the same events a store read returns", a
       const stored = (await (await call(app, "GET", `/events?after=0${query}`)).json()) as { events: unknown[] };
       expect(streamed[i]).toEqual(stored.events);
     }
-    expect(streamed[0]!.map((event) => (event as { type: string }).type)).toEqual([
+    const [unfiltered] = streamed;
+    if (unfiltered == null) throw new Error("Expected an unfiltered event buffer");
+    expect(unfiltered.map((event) => (event as { type: string }).type)).toEqual([
       "message.posted",
       "message.edited",
       "labels.changed",

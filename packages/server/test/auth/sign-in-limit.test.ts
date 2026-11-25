@@ -9,11 +9,13 @@ test("browser sign-in shares a 30-attempt budget per IP across starts, callbacks
   const ip = "192.0.2.1";
   const other = "192.0.2.2";
   let next = 0;
-  const get = (path: string, address: string, cookie?: string) =>
-    cluster.instances[next++ % cluster.instances.length]!.fetch(
-      new Request(`${PUBLIC_URL}/auth/github/${path}`, { headers: cookie ? { cookie } : {} }),
-      { ip: address },
-    );
+  const get = (path: string, address: string, cookie?: string) => {
+    const instance = cluster.instances[next++ % cluster.instances.length];
+    if (instance == null) throw new Error("Expected a sign-in instance");
+    return instance.fetch(new Request(`${PUBLIC_URL}/auth/github/${path}`, { headers: cookie ? { cookie } : {} }), {
+      ip: address,
+    });
+  };
 
   async function start(address: string) {
     const response = await get("start", address);

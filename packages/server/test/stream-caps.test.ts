@@ -31,7 +31,8 @@ async function createReader(app: Parameters<typeof call>[0], name: string): Prom
 function opened(response: Response): ReadableStream<Uint8Array> {
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toBe("text/event-stream");
-  return response.body!;
+  if (response.body == null) throw new Error("Expected a stream response body");
+  return response.body;
 }
 
 async function refused(response: Response) {
@@ -51,35 +52,38 @@ test("caps the principal across profiles and frees slots after cancellation, abo
   });
   try {
     const [app, sibling] = cluster.instances;
-    const other = await createReader(app!, "other-reader");
-    const first = opened(await subscribe(app!));
-    const expire = [...deadlines][0]!;
+    if (app == null) throw new Error("Expected a streaming app instance");
+    const other = await createReader(app, "other-reader");
+    const first = opened(await subscribe(app));
+    const expire = [...deadlines][0];
+    if (expire == null) throw new Error("Expected an initial stream deadline");
     const abort = new AbortController();
-    opened(await subscribe(app!, OWNER.token, { signal: abort.signal }));
-    for (let i = 0; i < 18; i++) opened(await subscribe(app!, OWNER.token, { profile: `reader-${i}` }));
+    opened(await subscribe(app, OWNER.token, { signal: abort.signal }));
+    for (let i = 0; i < 18; i++) opened(await subscribe(app, OWNER.token, { profile: `reader-${i}` }));
 
-    await refused(await subscribe(app!, OWNER.token, { profile: "overflow" }));
-    await opened(await subscribe(app!, other)).cancel();
+    await refused(await subscribe(app, OWNER.token, { profile: "overflow" }));
+    await opened(await subscribe(app, other)).cancel();
     if (sibling) await opened(await subscribe(sibling)).cancel();
 
     abort.abort();
-    opened(await subscribe(app!));
+    opened(await subscribe(app));
     expire();
-    opened(await subscribe(app!));
-    await refused(await subscribe(app!));
+    opened(await subscribe(app));
+    await refused(await subscribe(app));
 
     // Close one fresh tail and verify a failed initial read does not hold its slot.
-    const freshDeadline = [...deadlines].at(-1)!;
+    const freshDeadline = [...deadlines].at(-1);
+    if (freshDeadline == null) throw new Error("Expected a fresh stream deadline");
     freshDeadline();
-    const invalid = await subscribe(app!, OWNER.token, { query: "?after=99999" });
+    const invalid = await subscribe(app, OWNER.token, { query: "?after=99999" });
     expect(invalid.status).toBe(400);
     await invalid.body?.cancel();
-    const replacement = opened(await subscribe(app!));
+    const replacement = opened(await subscribe(app));
     await replacement.cancel();
-    opened(await subscribe(app!));
-    await refused(await subscribe(app!));
+    opened(await subscribe(app));
+    await refused(await subscribe(app));
     await first.cancel();
-    await refused(await subscribe(app!));
+    await refused(await subscribe(app));
   } finally {
     await cluster.close();
   }
@@ -88,10 +92,12 @@ test("caps the principal across profiles and frees slots after cancellation, abo
 test("caps the organization at 500 streams across its principals", async () => {
   const cluster = makeApp({ schedule: () => () => {} });
   try {
-    const app = cluster.instances[0]!;
+    const app = cluster.instances[0];
+    if (app == null) throw new Error("Expected a streaming app instance");
     const tokens = [OWNER.token];
     for (let i = 0; i < 25; i++) tokens.push(await createReader(app, `reader-${i}`));
-    const extra = tokens.pop()!;
+    const extra = tokens.pop();
+    if (extra == null) throw new Error("Expected an extra reader token");
     const first = opened(await subscribe(app));
     for (let i = 1; i < 500; i++) opened(await subscribe(app, tokens[i % tokens.length]));
     await refused(await subscribe(app, extra));
@@ -132,7 +138,8 @@ test("an aborted opening stream releases its slot before the initial read return
   });
   let pending: Promise<Response> | undefined;
   try {
-    const app = cluster.instances[0]!;
+    const app = cluster.instances[0];
+    if (app == null) throw new Error("Expected a streaming app instance");
     for (let i = 0; i < 19; i++) opened(await subscribe(app));
 
     const abort = new AbortController();

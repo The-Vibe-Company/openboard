@@ -183,7 +183,7 @@ test("an agent with manage in its pin cannot create durable grants", async () =>
     const connection = await call(app, "POST", "/x/connections", { name: "agent", can: { "*": "all" } });
     const { secret } = (await connection.json()) as OutputOf<typeof createConnection>;
     const claim = await app.fetch(
-      new Request(BOARD_URL + "/x/connections/claim", {
+      new Request(`${BOARD_URL}/x/connections/claim`, {
         method: "POST",
         headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
         body: JSON.stringify({ profile: "fixer" }),
@@ -192,7 +192,7 @@ test("an agent with manage in its pin cannot create durable grants", async () =>
     expect(claim.status).toBe(200);
     const { token } = (await claim.json()) as { token: string };
     const response = await app.fetch(
-      new Request(BOARD_URL + "/grants", {
+      new Request(`${BOARD_URL}/grants`, {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
         body: JSON.stringify({ principals: [{ kind: "all-connections" }], can: { "*": "all" } }),

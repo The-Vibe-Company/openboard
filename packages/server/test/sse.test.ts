@@ -30,6 +30,11 @@ function streamingApp(options: Parameters<typeof makeApp>[0] = {}) {
   return makeApp({ schedule: manualTimers().schedule, ...options });
 }
 
+function streamReader(response: Response) {
+  if (response.body == null) throw new Error("Expected a stream response body");
+  return response.body.getReader();
+}
+
 function subscribe(
   app: ReturnType<typeof makeApp>,
   query = "?channel=dev",
@@ -53,7 +58,7 @@ test("streams new matching posts in order and sends a bare cursor for filtered e
   const response = await subscribe(app);
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toBe("text/event-stream");
-  const reader = response.body!.getReader();
+  const reader = streamReader(response);
   const decoder = new TextDecoder();
   const frame = async () => decoder.decode((await reader.read()).value);
   try {
@@ -71,7 +76,8 @@ test("streams new matching posts in order and sends a bare cursor for filtered e
       const [id, name, data] = (await frame()).split("\n");
       expect(id).toBe(`id: ${cursor}`);
       expect(name).toBe("event: board");
-      expect(JSON.parse(data!.slice("data: ".length))).toMatchObject({
+      if (data == null) throw new Error("Expected an SSE data line");
+      expect(JSON.parse(data.slice("data: ".length))).toMatchObject({
         cursor,
         type: "message.posted",
         message: { id: cursor, channel: "dev", text },
@@ -95,7 +101,7 @@ test.each([
     }
     const response = await subscribe(app, query, undefined, lastEventId);
     expect(response.status).toBe(200);
-    const reader = response.body!.getReader();
+    const reader = streamReader(response);
     try {
       const decoder = new TextDecoder();
       expect(decoder.decode((await reader.read()).value)).toBe(": connected\n\n");
@@ -129,7 +135,7 @@ test("ends a pending stream read when the request aborts", async () => {
   const app = streamingApp();
   const abort = new AbortController();
   const response = await subscribe(app, "", abort.signal);
-  const reader = response.body!.getReader();
+  const reader = streamReader(response);
   try {
     await reader.read();
     await reader.read();
@@ -186,7 +192,7 @@ test("rechecks an author registered during the first newest-page scan", async ()
     continueRead.resolve();
     const response = await pending;
     expect(response.status).toBe(200);
-    const reader = response.body!.getReader();
+    const reader = streamReader(response);
     try {
       await reader.read();
       expect(new TextDecoder().decode((await reader.read()).value)).toStartWith("id: 2\nevent: board\n");
@@ -203,7 +209,7 @@ test("pings a quiet stream every 15 seconds", async () => {
   const timers = manualTimers();
   const app = makeApp({ schedule: timers.schedule });
   const response = await subscribe(app);
-  const reader = response.body!.getReader();
+  const reader = streamReader(response);
   const decoder = new TextDecoder();
   const frame = async () => decoder.decode((await reader.read()).value);
   try {
@@ -227,7 +233,7 @@ test("skips a ping while the client has a frame left to read", async () => {
   const timers = manualTimers();
   const app = makeApp({ schedule: timers.schedule });
   const response = await subscribe(app);
-  const reader = response.body!.getReader();
+  const reader = streamReader(response);
   const decoder = new TextDecoder();
   try {
     timers.fire();
@@ -247,7 +253,7 @@ test("stops pinging when the request aborts", async () => {
   const app = makeApp({ schedule: timers.schedule });
   const abort = new AbortController();
   const response = await subscribe(app, "", abort.signal);
-  const reader = response.body!.getReader();
+  const reader = streamReader(response);
   try {
     await reader.read();
     await reader.read();
@@ -285,7 +291,7 @@ test("stops pinging when a stream read fails", async () => {
   });
   // A text filter matches earlier versions, which only the store holds: the post makes the stream read it.
   const response = await subscribe(app, "?channel=dev&text=hi");
-  const reader = response.body!.getReader();
+  const reader = streamReader(response);
   try {
     await reader.read();
     await reader.read();
@@ -304,7 +310,7 @@ test("ends a stream after about 280 seconds and resumes from its last id without
   const app = makeApp({ schedule: timers.schedule });
   const decoder = new TextDecoder();
   try {
-    const reader = (await subscribe(app)).body!.getReader();
+    const reader = streamReader(await subscribe(app));
     const frame = async () => decoder.decode((await reader.read()).value);
     expect(await frame()).toBe(": connected\n\n");
     expect(await frame()).toBe("id: 0\n\n");
@@ -318,12 +324,14 @@ test("ends a stream after about 280 seconds and resumes from its last id without
     expect(timers.pending.size).toBe(0);
 
     expect((await call(app, "POST", "/messages", { channel: "dev", text: "while away" })).status).toBe(201);
-    const resumed = (await subscribe(app, "?channel=dev", undefined, "2")).body!.getReader();
+    const resumed = streamReader(await subscribe(app, "?channel=dev", undefined, "2"));
     try {
       expect(decoder.decode((await resumed.read()).value)).toBe(": connected\n\n");
       const page = decoder.decode((await resumed.read()).value);
       expect(page).toStartWith("id: 3\nevent: board\n");
-      expect(JSON.parse(page.split("\n")[2]!.slice("data: ".length))).toMatchObject({
+      const [, , data] = page.split("\n");
+      if (data == null) throw new Error("Expected an SSE data line");
+      expect(JSON.parse(data.slice("data: ".length))).toMatchObject({
         message: { text: "while away" },
       });
     } finally {
@@ -338,9 +346,13 @@ test("misses nothing when a post races the deadline", async () => {
   const timers = manualTimers();
   const app = makeApp({ schedule: timers.schedule });
   const decoder = new TextDecoder();
-  const ids = (text: string) => Array.from(text.matchAll(/^id: (.+)$/gm), ([, id]) => id!);
+  const ids = (text: string) =>
+    Array.from(text.matchAll(/^id: (.+)$/gm), ([, id]) => {
+      if (id == null) throw new Error("Expected an SSE cursor");
+      return id;
+    });
   try {
-    const reader = (await subscribe(app)).body!.getReader();
+    const reader = streamReader(await subscribe(app));
     let before = decoder.decode((await reader.read()).value) + decoder.decode((await reader.read()).value);
     // A read is in flight when the post wakes it and the deadline fires: its page is either sent or dropped unsent.
     const inFlight = reader.read();
@@ -350,8 +362,9 @@ test("misses nothing when a post races the deadline", async () => {
     if (!raced.done) before += decoder.decode(raced.value);
     for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read())
       before += decoder.decode(chunk.value);
-    const last = ids(before).at(-1)!;
-    const resumed = (await subscribe(app, "?channel=dev", undefined, last)).body!.getReader();
+    const last = ids(before).at(-1);
+    if (last == null) throw new Error("Expected a replay cursor");
+    const resumed = streamReader(await subscribe(app, "?channel=dev", undefined, last));
     try {
       await resumed.read();
       const after = decoder.decode((await resumed.read()).value);

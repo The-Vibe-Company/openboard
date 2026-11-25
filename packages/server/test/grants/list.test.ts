@@ -6,7 +6,7 @@ import { BOARD_URL, call, makeApp } from "../support/app.ts";
 type Made = OutputOf<typeof createConnection>;
 
 function get(app: { fetch(request: Request): Promise<Response> }, token: string) {
-  return app.fetch(new Request(BOARD_URL + "/grants", { headers: { authorization: `Bearer ${token}` } }));
+  return app.fetch(new Request(`${BOARD_URL}/grants`, { headers: { authorization: `Bearer ${token}` } }));
 }
 
 test("GET /grants lists the starting grants and every unrevoked grant, oldest first, in the upstream view", async () => {
@@ -66,7 +66,7 @@ test("GET /grants needs manage at *: a narrower connection and any claimed token
     expect(refused.status).toBe(403);
     expect(await refused.json()).toMatchObject({ error: { code: "forbidden" } });
     const claim = await app.fetch(
-      new Request(BOARD_URL + "/x/connections/claim", {
+      new Request(`${BOARD_URL}/x/connections/claim`, {
         method: "POST",
         headers: { authorization: `Bearer ${wide.secret}`, "content-type": "application/json" },
         body: JSON.stringify({ profile: "fixer" }),

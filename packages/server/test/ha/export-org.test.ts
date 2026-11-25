@@ -111,7 +111,7 @@ async function seedLogs(f: ReturnType<typeof fixture>, owner: Headers, personal:
   await f.store.org(testOrgScope(main.orgId)).shipLogs(
     async ({ boardId, first, last, events, deadline }) => {
       const stream = boardId === null ? "log" : `board/${boardId}`;
-      const bytes = Bun.gzipSync(new TextEncoder().encode(events.map((e) => JSON.stringify(e) + "\n").join("")));
+      const bytes = Bun.gzipSync(new TextEncoder().encode(events.map((e) => `${JSON.stringify(e)}\n`).join("")));
       await bucket.put(`org/${main.orgId}/${stream}/${first}-${last}.ndjson.gz`, bytes, deadline);
     },
     () => false,
@@ -235,7 +235,9 @@ if (postgresTestUrl()) {
         exportAudit: { cursor: "2", events: [{ type: "ob.export.downloaded" }] },
       });
       await f.tick(NOW + 86_400_000);
-      expect(objects.has(writes[0]!)).toBe(false);
+      const [firstWrite] = writes;
+      if (firstWrite == null) throw new Error("Expected an export write");
+      expect(objects.has(firstWrite)).toBe(false);
       const expired = await f.send(download, personal);
       expect(expired.status).toBe(404);
       expect(await expired.json()).toMatchObject({ error: { code: "not_found" } });

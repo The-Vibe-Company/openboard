@@ -6,7 +6,7 @@ test("explain and live access agree on pattern, closest principal, ties and the 
   const { app, store, a, send } = await seed();
   try {
     const base = "/api/alpha/main";
-    const me = await send("GET", base + "/me", a.session);
+    const me = await send("GET", `${base}/me`, a.session);
     const { principal } = (await me.json()) as { principal: string };
     const owner = principal.slice("ob:user:".length);
     const member = await signIn(store, "reader", "f");
@@ -19,14 +19,14 @@ test("explain and live access agree on pattern, closest principal, ties and the 
 
     const person = (userId: string): GrantPrincipalInput => ({ kind: "user", userId });
     const add = async (principals: GrantPrincipalInput[], can: Record<string, string[]>) => {
-      const response = await send("POST", base + "/grants", a.session, { principals, can });
+      const response = await send("POST", `${base}/grants`, a.session, { principals, can });
       expect(response.status).toBe(200);
       const { grant } = (await response.json()) as { grant: { id: string } };
       return grant.id;
     };
     const channel = "dev/web";
-    const path = base + "/grants/explain?channel=" + channel;
-    const forMember = path + "&user=" + member.personId;
+    const path = `${base}/grants/explain?channel=${channel}`;
+    const forMember = `${path}&user=${member.personId}`;
     const capped = await send("GET", forMember, a.connection);
     expect(await capped.json()).toMatchObject({
       pattern: "*",
@@ -34,7 +34,7 @@ test("explain and live access agree on pattern, closest principal, ties and the 
       capped: "member",
       can: ["read", "post", "react", "label"],
     });
-    expect((await send("GET", path + "&user=" + owner, member.headers)).status).toBe(403);
+    expect((await send("GET", `${path}&user=${owner}`, member.headers)).status).toBe(403);
 
     await add([person(member.personId)], { "*": ["post"] });
     await add([{ kind: "all-users" }], { "dev/": ["read", "react"] });
@@ -48,7 +48,7 @@ test("explain and live access agree on pattern, closest principal, ties and the 
       capped: null,
       can: ["read", "react"],
     });
-    expect((await send("POST", base + "/messages", member.headers, { channel, text: "blocked" })).status).toBe(403);
+    expect((await send("POST", `${base}/messages`, member.headers, { channel, text: "blocked" })).status).toBe(403);
 
     const read = await add([person(member.personId)], { "dev/": ["read"] });
     const post = await add([person(member.personId)], { "dev/": ["post"] });
@@ -61,8 +61,8 @@ test("explain and live access agree on pattern, closest principal, ties and the 
       grants: [{ id: read }, { id: post }],
       can: ["read", "post"],
     });
-    expect((await send("POST", base + "/messages", member.headers, { channel, text: "allowed" })).status).toBe(201);
-    expect((await send("GET", path + "&user=" + owner, a.agent)).status).toBe(403);
+    expect((await send("POST", `${base}/messages`, member.headers, { channel, text: "allowed" })).status).toBe(201);
+    expect((await send("GET", `${path}&user=${owner}`, a.agent)).status).toBe(403);
     expect(await (await send("GET", path, a.agent)).json()).toMatchObject({
       pattern: "*",
       grants: [],
@@ -83,8 +83,8 @@ test("a hypothetical project sees the more specific denial", async () => {
       [project, { "*": ["read"] }],
       [{ kind: "everyone" }, { "dev/": [] }],
     ])
-      expect((await send("POST", base + "/grants", a.session, { principals: [principal], can })).status).toBe(200);
-    const path = base + "/grants/explain?channel=dev/web&project=prj_demo&environment=production";
+      expect((await send("POST", `${base}/grants`, a.session, { principals: [principal], can })).status).toBe(200);
+    const path = `${base}/grants/explain?channel=dev/web&project=prj_demo&environment=production`;
     expect(await (await send("GET", path, a.session)).json()).toMatchObject({
       pattern: "dev/",
       over: ["*"],
