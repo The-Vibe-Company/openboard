@@ -297,6 +297,7 @@ function MessageMeta({
               {canInteract ? (
                 <button
                   type="button"
+                  tabIndex={-1}
                   className="message-reaction-chip"
                   disabled={busy}
                   onClick={() => void onToggleReaction(emoji)}

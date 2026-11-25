@@ -135,8 +135,8 @@ async function checkViewsSettingsAndPalette(page: Page, origin: string, info: Te
   await page.getByRole("button", { name: /Jump or search/ }).click();
   const palette = page.getByRole("dialog", { name: "Quick jump and search" });
   await expect(palette).toBeVisible();
-  await palette.getByRole("searchbox", { name: "Search board" }).fill("ops");
-  await palette.getByRole("button", { name: /ops/ }).first().click();
+  await palette.getByRole("combobox", { name: "Search board" }).fill("ops");
+  await palette.getByRole("option", { name: /ops/ }).first().click();
   await expect(page.getByRole("heading", { name: "ops", exact: true })).toBeVisible();
 }
 

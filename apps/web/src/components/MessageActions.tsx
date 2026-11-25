@@ -26,6 +26,7 @@ export function MessageToolbar({
     <div className="message-toolbar" data-active={tool !== null}>
       <button
         type="button"
+        tabIndex={-1}
         className="message-tool-btn"
         title="Add reaction"
         aria-label="Add reaction"
@@ -35,6 +36,7 @@ export function MessageToolbar({
       </button>
       <button
         type="button"
+        tabIndex={-1}
         className="message-tool-btn"
         title="Manage labels"
         aria-label="Manage labels"
@@ -44,6 +46,7 @@ export function MessageToolbar({
       </button>
       <button
         type="button"
+        tabIndex={-1}
         className="message-tool-btn"
         title="Edit message"
         aria-label="Edit message"
@@ -53,6 +56,7 @@ export function MessageToolbar({
       </button>
       <button
         type="button"
+        tabIndex={-1}
         className="message-tool-btn"
         data-danger="true"
         title="Delete message"
