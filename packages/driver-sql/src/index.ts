@@ -54,6 +54,7 @@ import scheduleDdl from "../migrations/0052-schedules.sql" with { type: "text" }
 import attachmentShippingDdl from "../migrations/0053-attachment-shipping.sql" with { type: "text" };
 import attachmentShippingIndexDdl from "../migrations/0054-attachment-shipping-index.sql" with { type: "text" };
 import scheduleThreadIndex from "../migrations/0055-schedule-thread-index.sql" with { type: "text" };
+import deliveriesSendingIndex from "../migrations/0056-deliveries-sending-index.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -169,6 +170,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 53, name: "0053-attachment-shipping", sql: attachmentShippingDdl },
   { version: 54, name: "0054-attachment-shipping-index", sql: attachmentShippingIndexDdl },
   { version: 55, name: "0055-schedule-thread-index", sql: scheduleThreadIndex },
+  { version: 56, name: "0056-deliveries-sending-index", sql: deliveriesSendingIndex },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
