@@ -74,7 +74,10 @@ export async function compose(
   const deps: Deps = {
     now,
     residentBytes: () => process.memoryUsage.rss(),
-    log: jsonLogger({ now }),
+    log: jsonLogger({
+      now,
+      ...(config.mode === "local" && { write: (line) => process.stderr.write(`${line}\n`) }),
+    }),
     requestId: () => crypto.randomUUID(),
     schedule: (delayMs, run) => {
       const timer = setTimeout(run, delayMs);
