@@ -45,6 +45,8 @@ test("storage quota counts UTF-8 bytes across boards, rolls back refusals, and c
     expect(before.status).toBe(200);
     const snapshot = await before.json();
     await refused(await send(other, post));
+    const schedule = "/api/acme/other/schedules";
+    await refused(await send(schedule, { channel: "general", text: "x", in: "1d" }));
     await refused(await send("/api/acme/other/tasks", { channel: "general", text: "x" }));
     await refused(await send(`${other}/${secondId}/edit`, { text: "x".repeat(397) }));
     expect(await (await send(messages)).json()).toEqual(snapshot);
@@ -61,6 +63,11 @@ test("storage quota counts UTF-8 bytes across boards, rolls back refusals, and c
     const [accepted, rejected] = a.status === 201 ? [a, b] : [b, a];
     expect(accepted.status).toBe(201);
     await refused(rejected);
+    expect((await send(`${other}/${secondId}/delete`, {})).status).toBe(200);
+    const scheduled = await send(schedule, { channel: "general", text: "é".repeat(250), in: "1d" });
+    expect(scheduled.status).toBe(201);
+    expect(await scheduled.json()).toMatchObject({ schedule: { id: "s1" } });
+    await refused(await send(main, { channel: "general", text: "x" }));
   } finally {
     await app.close();
   }

@@ -45,6 +45,7 @@ const SAMPLES: Readonly<Record<string, (tenant: Tenant) => { params?: Fields; qu
   renewTask: () => ({ body: { epoch: 1, token: "unused" } }),
   createTaskBatch: (tenant) => ({ body: { channel: "dev", tasks: [{ text: `${tenant.marker} task` }] } }),
   createTask: (tenant) => ({ body: { channel: "dev", text: `${tenant.marker} task` } }),
+  createSchedule: (tenant) => ({ body: { re: tenant.ids.message, text: tenant.marker, in: "1d" } }),
   postMessage: (tenant) => ({ body: { re: tenant.ids.message, text: `${tenant.marker} reply` } }),
   editMessage: (tenant) => ({ body: { text: `${tenant.marker} edit` } }),
   reactToMessage: () => ({ body: { emoji: "eyes" } }),
@@ -289,6 +290,7 @@ export interface IdCase {
 /** An ID of the same shape as `id` that no board holds. */
 function nowhereLike(id: string, kind: RefKind): string {
   if (kind === "schema") return "missing@99999";
+  if (kind === "schedule") return "s999999";
   if (/^\d+$/.test(id)) return "999999";
   return id.slice(0, -1) + (id.endsWith("a") ? "b" : "a");
 }

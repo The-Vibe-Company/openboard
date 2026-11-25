@@ -31,6 +31,8 @@ export const AuditEvent = Type.Union([
   entry("ob.webhook.updated", { id: Type.String(), name: Type.String(), enabled: Type.Boolean() }),
   entry("ob.webhook.created", { id: Type.String(), name: Type.String() }),
   entry("ob.webhook.deleted", { id: Type.String() }),
+  entry("ob.schedule.created", { id: Type.String() }),
+  entry("ob.schedule.canceled", { id: Type.String() }),
   entry("ob.schema.registered", { id: Type.String() }),
   entry("ob.watchers.registered", { owner: Type.String() }),
   entry("ob.grant.created", { grant: GrantView }),

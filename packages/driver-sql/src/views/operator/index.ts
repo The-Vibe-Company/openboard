@@ -3,7 +3,7 @@ import type { OperatorOrgSummary, OperatorReads, OperatorWrites } from "@openboa
 import type { Db, Dialect, Row } from "../../db.ts";
 import { type Fragment, forUpdate, query, sql } from "../../sql.ts";
 import { auditStatements } from "../audit.ts";
-import { messageBytes } from "../boards.ts";
+import { messageBytes, scheduleBytes } from "../boards.ts";
 import type { JobWrites } from "../jobs/index.ts";
 import { orgStatements } from "../orgs.ts";
 import { setOrgDeletion } from "./org-deletion.ts";
@@ -18,6 +18,9 @@ const storedBytes: Fragment = {
   fragment: (dialect) => `(SELECT COALESCE(SUM(CASE WHEN b.stored_bytes_head = b.head THEN b.stored_bytes ELSE (
     SELECT COALESCE(SUM(${messageBytes.fragment(dialect)}), 0)
     FROM messages m WHERE m.org_id = b.org_id AND m.board_id = b.id AND m.deleted = 0
+  ) + (
+    SELECT COALESCE(SUM(${scheduleBytes.fragment(dialect)}), 0) FROM schedules s
+    WHERE s.org_id = b.org_id AND s.board_id = b.id
   ) END), 0) FROM boards b WHERE b.org_id = o.id) + COALESCE(o.attachment_bytes, 0) AS stored_bytes`,
 };
 

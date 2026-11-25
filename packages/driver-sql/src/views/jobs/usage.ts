@@ -2,7 +2,7 @@ import { dailyEventWindow } from "@openboard/core";
 import { type OrgScope, type OrgView, USAGE_ROLLUP_JOB } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
 import { query, sql } from "../../sql.ts";
-import { messageBytes } from "../boards.ts";
+import { messageBytes, scheduleBytes } from "../boards.ts";
 import { type JobWrites, jobWriter } from "./index.ts";
 import { purgeStatements } from "./purge.ts";
 
@@ -15,6 +15,9 @@ export const usageStatements = {
       (SELECT COALESCE(SUM(CASE WHEN b.stored_bytes_head = b.head THEN b.stored_bytes ELSE (
         SELECT COALESCE(SUM(${messageBytes}), 0) FROM messages m
         WHERE m.org_id = ${"orgId"} AND m.board_id = b.id AND m.deleted = 0
+      ) + (
+        SELECT COALESCE(SUM(${scheduleBytes}), 0) FROM schedules s
+        WHERE s.org_id = ${"orgId"} AND s.board_id = b.id
       ) END), 0) FROM boards b WHERE b.org_id = ${"orgId"}) + COALESCE((SELECT o.attachment_bytes FROM orgs o JOIN boards owner_board ON owner_board.org_id = o.id
         WHERE owner_board.org_id = ${"orgId"} LIMIT 1), 0),
       (SELECT COUNT(*) FROM webhook_deliveries d WHERE d.org_id = ${"orgId"}

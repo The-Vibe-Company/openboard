@@ -58,6 +58,7 @@ import {
 } from "./messages.ts";
 import { downloadOrgExport, getOrgExport, requestOrgExport } from "./org/exports.ts";
 import { createOrg, deleteOrg } from "./orgs.ts";
+import { cancelSchedule, createSchedule, listSchedules } from "./schedules/index.ts";
 import { createSchema, listSchemas, readSchema } from "./schemas/registry.ts";
 import {
   attachSync,
@@ -112,6 +113,7 @@ export const operations = [
   ackWatcherMatch,
   approveDeviceSignIn,
   attachSync,
+  cancelSchedule,
   cancelTask,
   blockTask,
   changeMemberRole,
@@ -127,6 +129,7 @@ export const operations = [
   createGrants,
   createInvitation,
   createOrg,
+  createSchedule,
   createSchema,
   createTask,
   createTaskBatch,
@@ -170,6 +173,7 @@ export const operations = [
   listMembers,
   listMessages,
   listPersonalTokens,
+  listSchedules,
   listSchemas,
   listSyncCopies,
   listSyncTargets,
@@ -232,6 +236,7 @@ export {
   assignTask,
   attachSync,
   blockTask,
+  cancelSchedule,
   cancelTask,
   changeMemberRole,
   claimConnection,
@@ -246,6 +251,7 @@ export {
   createInbound,
   createInvitation,
   createOrg,
+  createSchedule,
   createSchema,
   createTask,
   createTaskBatch,
@@ -288,6 +294,7 @@ export {
   listMembers,
   listMessages,
   listPersonalTokens,
+  listSchedules,
   listSchemas,
   listSyncCopies,
   listSyncTargets,

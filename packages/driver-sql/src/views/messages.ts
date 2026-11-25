@@ -11,6 +11,7 @@ import {
 import type { BoardGrantReads, BoardKeys, BoardScope, BoardView, BoardWriter, Broadcaster } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { query } from "../sql.ts";
+import { foldSchedule, nextSchedule } from "./schedules/index.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
 import { findAgent, findAgentByClaimKey, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
 import { attachmentReads, foldAttachments } from "./attachments/index.ts";
@@ -78,7 +79,6 @@ async function foldMessagePosted(tx: Db, dialect: Dialect, keys: BoardKeys, even
     threads: reply ? 0 : 1,
   });
 }
-
 async function foldMessageDeleted(tx: Db, dialect: Dialect, keys: BoardKeys, event: MessageDeleted): Promise<void> {
   const { view } = event.payload;
   await query(tx, dialect, messageStatements.deleteMessage, {
@@ -153,6 +153,8 @@ async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: Boa
       view: JSON.stringify(view),
     });
   } else if (event.type === "message.posted") await foldMessagePosted(tx, dialect, keys, event);
+  else if (event.type === "ob.schedule.created" || event.type === "ob.schedule.canceled")
+    await foldSchedule(tx, dialect, keys, event);
   else if (event.type === "ob.schema.registered") await foldSchemaRegistered(tx, dialect, keys, event);
   else if (event.type === "ob.watchers.registered") await foldWatchersRegistered(tx, dialect, keys, event);
   else if (
@@ -235,7 +237,6 @@ function writer(
   taskId: number | null,
   enqueued: JobWrites["committed"],
 ): BoardWriter {
-  // Once a callback appends events, later reads must see its folds.
   const preloaded = (id: number) => (id === taskId && committed.length === 0 ? locked.row : undefined);
   const usage = messageStorage(tx, dialect, keys, locked.storage, preloaded);
   const events = eventWriter(tx, dialect, keys, locked, committed, usage, now, jobs, enqueued);
@@ -289,6 +290,7 @@ function writer(
     },
     listGrants: grantReads(tx, dialect, keys).listGrants,
     otherGrantIssuers: (replacing) => otherGrantIssuers(tx, dialect, keys, replacing),
+    nextSchedule: () => nextSchedule(tx, dialect, keys),
     nextGrant: () => nextGrant(tx, dialect, keys),
     activeGrant: (id) => activeGrant(tx, dialect, keys, id),
     async grantMember(personId) {

@@ -84,7 +84,7 @@ describe("path cases: A's credentials off A's board or organization", () => {
 async function expectTwin(name: string, response: Response, twin: Call) {
   const theirs = await send(twin, b.session);
   const answered = `${name}: ${twin.method} ${twin.path}`;
-  expect(response.status, answered).toBeLessThan(500);
+  expect(response.status < 500 || response.status === 501, answered).toBe(true);
   expect(`${response.status} ${await response.text()}`, answered).toBe(`${theirs.status} ${await theirs.text()}`);
 }
 

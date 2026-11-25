@@ -32,6 +32,12 @@ export function messageStorage(
       return boardBytes;
     },
     async account(event: BoardEvent) {
+      if (event.type === "ob.schedule.created") {
+        const delta = contentBytes({ text: event.payload.schedule.text, blocks: event.payload.blocks });
+        checkStoredBytes(boardBytes + storage.otherBytes, delta, storage.limit);
+        boardBytes += delta;
+        return;
+      }
       if (event.type !== "message.posted" && event.type !== "message.edited" && event.type !== "message.deleted")
         return;
       const id = event.message;

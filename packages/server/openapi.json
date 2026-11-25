@@ -530,6 +530,201 @@
         }
       }
     },
+    "/schedules/{id}/cancel": {
+      "post": {
+        "operationId": "cancelSchedule",
+        "summary": "Cancel a schedule. This route currently returns no_scheduler.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^s?[1-9][0-9]{0,14}$",
+              "x-ref": "schedule",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["schedule", "canceled"],
+                  "properties": {
+                    "schedule": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "channel",
+                        "re",
+                        "text",
+                        "labels",
+                        "noSync",
+                        "attachments",
+                        "first",
+                        "every",
+                        "until",
+                        "times",
+                        "sent",
+                        "next",
+                        "last",
+                        "state",
+                        "canceled",
+                        "by",
+                        "author",
+                        "createdAt"
+                      ],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "channel": { "type": "string" },
+                        "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "text": { "type": "string" },
+                        "labels": {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
+                        },
+                        "noSync": { "type": "boolean" },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
+                        "first": { "type": "string" },
+                        "every": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                        "until": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "times": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                        "sent": { "type": "integer" },
+                        "next": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "last": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "state": {
+                          "anyOf": [
+                            { "const": "pending", "type": "string" },
+                            { "const": "done", "type": "string" },
+                            { "const": "canceled", "type": "string" }
+                          ]
+                        },
+                        "canceled": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": ["by", "reason"],
+                              "properties": {
+                                "by": {
+                                  "type": "object",
+                                  "required": ["actor", "principal", "profile"],
+                                  "properties": {
+                                    "actor": { "type": "string" },
+                                    "principal": { "type": "string" },
+                                    "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                  }
+                                },
+                                "reason": {
+                                  "anyOf": [
+                                    { "const": "canceled", "type": "string" },
+                                    { "const": "thread_deleted", "type": "string" },
+                                    { "const": "dropped", "type": "string" },
+                                    { "const": "revoked", "type": "string" }
+                                  ]
+                                }
+                              }
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "by": {
+                          "type": "object",
+                          "required": ["actor", "principal", "profile"],
+                          "properties": {
+                            "actor": { "type": "string" },
+                            "principal": { "type": "string" },
+                            "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                          }
+                        },
+                        "author": {
+                          "type": "object",
+                          "required": ["kind", "handle", "name", "avatar"],
+                          "properties": {
+                            "kind": {
+                              "anyOf": [
+                                { "const": "person", "type": "string" },
+                                { "const": "workflow", "type": "string" },
+                                { "const": "agent", "type": "string" }
+                              ]
+                            },
+                            "handle": { "type": "string" },
+                            "name": { "type": "string" },
+                            "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                            "via": {
+                              "type": "object",
+                              "required": ["name", "environment"],
+                              "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                            }
+                          }
+                        },
+                        "createdAt": { "type": "string" }
+                      }
+                    },
+                    "canceled": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "quota_exceeded, rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "501": {
+            "description": "no_scheduler",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
     "/tasks/{id}/cancel": {
       "post": {
         "operationId": "cancelTask",
@@ -4264,6 +4459,478 @@
           },
           "500": {
             "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/schedules": {
+      "post": {
+        "operationId": "schedule",
+        "summary": "Schedule a message or reply to be sent as its creator.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "maxLength": 2048,
+                    "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+                    "type": "string"
+                  },
+                  "re": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" },
+                  "text": { "maxLength": 10000, "default": "", "type": "string" },
+                  "labels": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
+                  },
+                  "noSync": { "type": "boolean" },
+                  "attachments": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                      "x-ref": "file",
+                      "type": "string"
+                    }
+                  },
+                  "in": { "type": "string" },
+                  "at": { "type": "string" },
+                  "every": { "type": "string" },
+                  "until": { "type": "string" },
+                  "for": { "type": "string" },
+                  "times": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["schedule"],
+                  "properties": {
+                    "schedule": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "channel",
+                        "re",
+                        "text",
+                        "labels",
+                        "noSync",
+                        "attachments",
+                        "first",
+                        "every",
+                        "until",
+                        "times",
+                        "sent",
+                        "next",
+                        "last",
+                        "state",
+                        "canceled",
+                        "by",
+                        "author",
+                        "createdAt"
+                      ],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "channel": { "type": "string" },
+                        "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "text": { "type": "string" },
+                        "labels": {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "patternProperties": { "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" } }
+                        },
+                        "noSync": { "type": "boolean" },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["id", "name", "type", "size"],
+                            "properties": {
+                              "id": {
+                                "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                "type": "string"
+                              },
+                              "name": { "type": "string" },
+                              "type": { "type": "string" },
+                              "size": { "type": "integer" }
+                            }
+                          }
+                        },
+                        "first": { "type": "string" },
+                        "every": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                        "until": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "times": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                        "sent": { "type": "integer" },
+                        "next": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "last": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                        "state": {
+                          "anyOf": [
+                            { "const": "pending", "type": "string" },
+                            { "const": "done", "type": "string" },
+                            { "const": "canceled", "type": "string" }
+                          ]
+                        },
+                        "canceled": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": ["by", "reason"],
+                              "properties": {
+                                "by": {
+                                  "type": "object",
+                                  "required": ["actor", "principal", "profile"],
+                                  "properties": {
+                                    "actor": { "type": "string" },
+                                    "principal": { "type": "string" },
+                                    "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                  }
+                                },
+                                "reason": {
+                                  "anyOf": [
+                                    { "const": "canceled", "type": "string" },
+                                    { "const": "thread_deleted", "type": "string" },
+                                    { "const": "dropped", "type": "string" },
+                                    { "const": "revoked", "type": "string" }
+                                  ]
+                                }
+                              }
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "by": {
+                          "type": "object",
+                          "required": ["actor", "principal", "profile"],
+                          "properties": {
+                            "actor": { "type": "string" },
+                            "principal": { "type": "string" },
+                            "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                          }
+                        },
+                        "author": {
+                          "type": "object",
+                          "required": ["kind", "handle", "name", "avatar"],
+                          "properties": {
+                            "kind": {
+                              "anyOf": [
+                                { "const": "person", "type": "string" },
+                                { "const": "workflow", "type": "string" },
+                                { "const": "agent", "type": "string" }
+                              ]
+                            },
+                            "handle": { "type": "string" },
+                            "name": { "type": "string" },
+                            "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                            "via": {
+                              "type": "object",
+                              "required": ["name", "environment"],
+                              "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                            }
+                          }
+                        },
+                        "createdAt": { "type": "string" }
+                      }
+                    },
+                    "mentions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["written", "actor", "candidates"],
+                        "properties": {
+                          "written": { "type": "string" },
+                          "actor": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": ["id", "handle", "name"],
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "handle": { "type": "string" },
+                                  "name": { "type": "string" }
+                                }
+                              },
+                              { "type": "null" }
+                            ]
+                          },
+                          "candidates": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "handle", "name"],
+                              "properties": {
+                                "id": { "type": "string" },
+                                "handle": { "type": "string" },
+                                "name": { "type": "string" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_block, schema_not_found, reserved_label, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "schema_not_found, attachment_not_found, message_not_found, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "quota_exceeded, rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      },
+      "get": {
+        "operationId": "schedules",
+        "summary": "List schedules. This route currently returns no_scheduler.",
+        "parameters": [
+          {
+            "name": "re",
+            "in": "query",
+            "required": false,
+            "schema": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxLength": 2048,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+              "type": "string"
+            }
+          },
+          { "name": "by", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "all", "in": "query", "required": false, "schema": { "type": "boolean" } }
+        ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "re": { "minLength": 1, "maxLength": 128, "x-ref": "message", "type": "string" },
+            "channel": {
+              "maxLength": 2048,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*$",
+              "type": "string"
+            },
+            "by": { "type": "string" },
+            "all": { "type": "boolean" }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["schedules"],
+                  "properties": {
+                    "schedules": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "channel",
+                          "re",
+                          "text",
+                          "labels",
+                          "noSync",
+                          "attachments",
+                          "first",
+                          "every",
+                          "until",
+                          "times",
+                          "sent",
+                          "next",
+                          "last",
+                          "state",
+                          "canceled",
+                          "by",
+                          "author",
+                          "createdAt"
+                        ],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "channel": { "type": "string" },
+                          "re": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "text": { "type": "string" },
+                          "labels": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "patternProperties": {
+                              "^[a-z0-9][a-z0-9_.-]{0,63}$": { "maxLength": 256, "type": "string" }
+                            }
+                          },
+                          "noSync": { "type": "boolean" },
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "name", "type", "size"],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^(?:[A-Za-z0-9_-]{22}|att_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                                  "type": "string"
+                                },
+                                "name": { "type": "string" },
+                                "type": { "type": "string" },
+                                "size": { "type": "integer" }
+                              }
+                            }
+                          },
+                          "first": { "type": "string" },
+                          "every": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                          "until": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "times": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+                          "sent": { "type": "integer" },
+                          "next": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "last": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                          "state": {
+                            "anyOf": [
+                              { "const": "pending", "type": "string" },
+                              { "const": "done", "type": "string" },
+                              { "const": "canceled", "type": "string" }
+                            ]
+                          },
+                          "canceled": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": ["by", "reason"],
+                                "properties": {
+                                  "by": {
+                                    "type": "object",
+                                    "required": ["actor", "principal", "profile"],
+                                    "properties": {
+                                      "actor": { "type": "string" },
+                                      "principal": { "type": "string" },
+                                      "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                                    }
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      { "const": "canceled", "type": "string" },
+                                      { "const": "thread_deleted", "type": "string" },
+                                      { "const": "dropped", "type": "string" },
+                                      { "const": "revoked", "type": "string" }
+                                    ]
+                                  }
+                                }
+                              },
+                              { "type": "null" }
+                            ]
+                          },
+                          "by": {
+                            "type": "object",
+                            "required": ["actor", "principal", "profile"],
+                            "properties": {
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "profile": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                            }
+                          },
+                          "author": {
+                            "type": "object",
+                            "required": ["kind", "handle", "name", "avatar"],
+                            "properties": {
+                              "kind": {
+                                "anyOf": [
+                                  { "const": "person", "type": "string" },
+                                  { "const": "workflow", "type": "string" },
+                                  { "const": "agent", "type": "string" }
+                                ]
+                              },
+                              "handle": { "type": "string" },
+                              "name": { "type": "string" },
+                              "avatar": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                              "via": {
+                                "type": "object",
+                                "required": ["name", "environment"],
+                                "properties": { "name": { "type": "string" }, "environment": { "type": "null" } }
+                              }
+                            }
+                          },
+                          "createdAt": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": { "type": "integer" }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          },
+          "501": {
+            "description": "no_scheduler",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           }
         }
@@ -18826,6 +19493,38 @@
                             "properties": {
                               "cursor": { "type": "string" },
                               "type": { "const": "ob.webhook.deleted", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id"],
+                                "properties": { "id": { "type": "string" } }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.schedule.created", "type": "string" },
+                              "createdAt": { "type": "string" },
+                              "actor": { "type": "string" },
+                              "principal": { "type": "string" },
+                              "payload": {
+                                "type": "object",
+                                "required": ["id"],
+                                "properties": { "id": { "type": "string" } }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": ["cursor", "type", "createdAt", "actor", "principal", "payload"],
+                            "properties": {
+                              "cursor": { "type": "string" },
+                              "type": { "const": "ob.schedule.canceled", "type": "string" },
                               "createdAt": { "type": "string" },
                               "actor": { "type": "string" },
                               "principal": { "type": "string" },

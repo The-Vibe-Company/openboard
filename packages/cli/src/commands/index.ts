@@ -53,6 +53,7 @@ export { messagesCommand } from "./messages.ts";
 export { downloadOrgExportCommand, exportOrgCommand } from "./org/export.ts";
 export { readCommand } from "./read.ts";
 export { replyCommand } from "./reply.ts";
+export { scheduleCommand } from "./schedule/index.ts";
 export { rotateConnectionCommand } from "./rotate.ts";
 export { createSchemaCommand } from "./schemas/create.ts";
 export { tailCommand } from "./tail.ts";
