@@ -72,7 +72,7 @@ export function MessageView({ message, board }: { message: ThreadMessage; board:
   return (
     <article className="thread-message">
       <header>
-        <Avatar name={author} src={message.author?.avatar ?? undefined} />
+        <Avatar name={author} />
         <strong>{author}</strong>
         <time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleString()}</time>
         {message.editedAt && (
