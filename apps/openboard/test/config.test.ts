@@ -329,3 +329,35 @@ test("metrics accept a dedicated token or file, and keep only its digest", () =>
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+describe("invitation email", () => {
+  const key = { OPENBOARD_RESEND_API_KEY: "example-key" };
+  const sender = { OPENBOARD_EMAIL_FROM: "OpenBoard <invites@example.com>" };
+
+  test("defaults to link-only and configures Resend when both settings are present", () => {
+    expect(load({}).resend).toBeUndefined();
+    expect(load({ ...key, ...sender }).resend).toEqual({
+      apiKey: "example-key",
+      from: sender.OPENBOARD_EMAIL_FROM,
+    });
+  });
+
+  test("rejects partial or blank settings", () => {
+    for (const env of [key, sender, { ...sender, OPENBOARD_RESEND_API_KEY: " " }]) {
+      expect(() => load(env)).toThrow(/OPENBOARD_RESEND_API_KEY and OPENBOARD_EMAIL_FROM: set both/);
+    }
+  });
+
+  test("reads the API key from a file and rejects dual configuration", () => {
+    const dir = mkdtempSync(join(tmpdir(), "openboard-resend-"));
+    try {
+      const file = join(dir, "api-key");
+      writeFileSync(file, "example-key\n");
+      const env = { ...sender, OPENBOARD_RESEND_API_KEY_FILE: file };
+      expect(load(env).resend?.apiKey).toBe("example-key");
+      expect(() => load({ ...env, ...key })).toThrow(/OPENBOARD_RESEND_API_KEY and OPENBOARD_RESEND_API_KEY_FILE/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

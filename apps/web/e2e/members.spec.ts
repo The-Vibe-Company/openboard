@@ -5,9 +5,13 @@ import { signIn } from "./support/sign-in.ts";
 const invitations = "/api/x/orgs/acme/invitations";
 const members = "/acme/settings/members";
 
-const test = base.extend<{ origin: string }>({
-  origin: async ({ page }, use) => {
-    const app = await serve({ signup: "open" });
+const test = base.extend<{ origin: string; sendInvitationEmail: boolean }>({
+  sendInvitationEmail: [false, { option: true }],
+  origin: async ({ page, sendInvitationEmail }, use) => {
+    const app = await serve({
+      signup: "open",
+      ...(sendInvitationEmail && { invitationMailer: async () => {} }),
+    });
     try {
       await signIn(page, app.url, "ada");
       await post(page, app.url, "/api/x/orgs", { slug: "acme", name: "Acme" }, 201);
@@ -140,4 +144,24 @@ test("an admin can dismiss the dialog while creation is pending", async ({ page,
   } finally {
     release.resolve();
   }
+});
+
+test.describe("email delivery enabled", () => {
+  test.use({ sendInvitationEmail: true, viewport: { width: 320, height: 640 } });
+
+  test("confirms email delivery and still offers the link", async ({ page, origin }) => {
+    await page.goto(`${origin}${members}`);
+    await page.getByRole("button", { name: "Invite", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    const email = `${"g".repeat(64)}@example.com`;
+    await dialog.getByLabel("Email (optional)").fill(email);
+    await dialog.getByRole("button", { name: "Create invitation" }).click();
+    await expect(dialog.getByRole("textbox", { name: "Invitation link" })).toHaveAccessibleDescription(
+      `Invitation email sent to ${email}. You can also copy the one-time link below.`,
+    );
+    expect(await dialog.evaluate((el) => el.scrollWidth)).toBe(await dialog.evaluate((el) => el.clientWidth));
+    await expect(dialog.getByRole("textbox", { name: "Invitation link" })).toHaveValue(
+      /^http:\/\/localhost:\d+\/invite\/[A-Za-z0-9_-]{43}$/,
+    );
+  });
 });

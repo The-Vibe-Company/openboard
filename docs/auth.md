@@ -134,7 +134,8 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
 
 - In organization settings, **Members** lists the organization’s members and their roles.
   Owners and admins can choose **Invite**, select a role and optionally bind the link to a
-  verified email address. Copy the link before closing the dialog.
+  verified email address. When email delivery is configured, OpenBoard sends the invitation to that address.
+  Copy the link before closing the dialog if you also want to share it directly.
 
 - Open the invitation link to see the organization, role and expiry. If
   signed in, choose **Join** followed by the organization's name to join and
@@ -153,15 +154,19 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
   case. A bound email requires a matching verified address.
 
 - `POST /api/x/orgs/:org/invitations { role, email? , send? }` (admin+) →
-  `{ invitation, url: "<origin>/invite/<token>" }`. Token: 256 bits, stored
+  `{ invitation, url: "<origin>/invite/<token>", emailSent? }`. Token: 256 bits, stored
   hashed, single use, 7 days, revocable.
 - `GET /api/x/invitations/:token` needs no credential. It returns only
   `{ orgName, role, expiresAt }`; unknown links return 404 and expired,
   revoked or used links return 410 `invitation_used`.
 - **Link invitation:** the admin shares the URL. If `email` is set, only a
   person whose verified email (from the provider) matches may accept.
-- **Email invitation:** `send: true` sends the URL through the mail port
-  (provider not chosen: Q4). The email carries no secret other than the link.
+- **Email invitation:** set `OPENBOARD_RESEND_API_KEY` (or `OPENBOARD_RESEND_API_KEY_FILE`) and
+  `OPENBOARD_EMAIL_FROM` (for example, `OpenBoard <invites@thevibecompany.co>` using a verified
+  Resend sending domain). Both settings are required to enable delivery. When they are unset,
+  invitations are link-only. With a recipient and a configured mailer, delivery is attempted by
+  default. Use `send: false` to create a link without sending. The response includes `emailSent`
+  when delivery is attempted, and the URL stays available if the provider rejects the email.
 - **Accepting:** `POST /api/x/invitations/accept { token }` (signed in) →
   membership with the invited role, `ob.member.added`, invitation marked
   accepted, all in one transaction.

@@ -141,7 +141,7 @@ async function runOrg(
     : operation.access?.permission === "read"
       ? pipeline.tenants.memberOrg
       : pipeline.tenants.adminOrg;
-  const org = await resolve(slug, by.id);
+  const scope = await resolve(slug, by.id);
   if (live) await proveSession(request, live, platform, at, config.publicUrl);
   const input = validate(operation, {
     params,
@@ -152,7 +152,9 @@ async function runOrg(
   const { now, randomBytes } = deps;
   const output = await handlerOf(operation)(
     {
-      org,
+      ...scope,
+      invitationMailer: deps.invitationMailer,
+      log: deps.log,
       debitWrite,
       bucket: pipeline.bucket,
       person: by,

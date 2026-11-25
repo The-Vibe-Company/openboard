@@ -1,6 +1,7 @@
 .organization-members dialog {
   width: min(28rem, calc(100% - 8 * var(--space)));
   padding: 0;
+  overflow-wrap: anywhere;
   border: 0;
   border-radius: var(--radius-card);
   color: var(--text);

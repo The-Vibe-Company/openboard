@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import type { createInvitation, OutputOf } from "@openboard/contract";
 import { orgs } from "@openboard/core";
 import type { Store } from "@openboard/ports";
+import type { Deps } from "../src/deps.ts";
+import { resendInvitationMailer } from "../src/email/resend.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL, unexpectedTimer } from "./support/app.ts";
 import { browserSession, makeBrowserApp } from "./support/browser-session.ts";
 import { createCluster } from "./support/cluster.ts";
@@ -36,7 +38,7 @@ async function person(store: Store, slug: string, digit: number) {
   return headers;
 }
 
-async function setup() {
+async function setup(invitationMailer?: Deps["invitationMailer"]) {
   let now = NOW;
   const store = openStore(() => now);
   const log: Readonly<Record<string, unknown>>[] = [];
@@ -46,6 +48,7 @@ async function setup() {
     { store },
     {
       now: () => now,
+      ...(invitationMailer && { invitationMailer }),
       requestId: () => "req-1",
       schedule: unexpectedTimer,
       randomBytes: (length) => new Uint8Array(length).fill(++drawn),
@@ -54,12 +57,17 @@ async function setup() {
   );
   const acme = await person(store, "acme", 20);
   const other = await person(store, "other", 21);
-  const create = (headers?: Record<string, string>, role = "member") =>
+  const create = (
+    headers?: Record<string, string>,
+    role = "member",
+    send?: boolean,
+    email: string | null = "Ada@Example.com",
+  ) =>
     app.fetch(
       new Request(`${PUBLIC_URL}/api/x/orgs/acme/invitations`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ role, email: "Ada@Example.com" }),
+        body: JSON.stringify({ role, email: email ?? undefined, send }),
       }),
     );
   const preview = (token: string, method = "GET") =>
@@ -109,6 +117,48 @@ test("an administrator creates a link that previews anonymously without exposing
     await app.close();
   }
 });
+
+test.each([
+  { send: undefined, email: "Ada@Example.com", status: 200, sent: true },
+  { send: true, email: "Ada@Example.com", status: 200, sent: true },
+  { send: false, email: "Ada@Example.com", status: 200, sent: undefined },
+  { send: true, email: null, status: 200, sent: undefined },
+  { send: undefined, email: "Ada@Example.com", status: 500, sent: false },
+])(
+  "email delivery follows $send with recipient $email and Resend HTTP $status",
+  async ({ send, email, status, sent }) => {
+    const messages: unknown[] = [];
+    const mailer = resendInvitationMailer({ apiKey: "example", from: "invites@example.com" }, async (request) => {
+      messages.push(await request.json());
+      return new Response(null, { status });
+    });
+    const { app, acme, create, preview, log } = await setup(mailer);
+    try {
+      const result = await create(acme, "admin", send, email);
+      expect(result.status).toBe(201);
+      const { url, emailSent } = (await result.json()) as OutputOf<typeof createInvitation>;
+      expect(emailSent).toBe(sent);
+      expect((await preview(new URL(url).pathname.split("/").at(-1) ?? "")).status).toBe(200);
+      if (sent === undefined) {
+        expect(messages).toHaveLength(0);
+      } else {
+        expect(messages).toEqual([
+          {
+            to: ["ada@example.com"],
+            subject: "You're invited to Acme on OpenBoard",
+            text: expect.stringContaining(url),
+            from: "invites@example.com",
+            html: expect.stringContaining("acme invited you to join Acme."),
+          },
+        ]);
+      }
+      expect(JSON.stringify(log)).not.toContain(url);
+      expect(JSON.stringify(log)).not.toContain("ada@example.com");
+    } finally {
+      await app.close();
+    }
+  },
+);
 
 test("creation requires the organization's administrator and CSRF proof, and cannot invite an owner", async () => {
   const { app, acme, other, create, preview } = await setup();

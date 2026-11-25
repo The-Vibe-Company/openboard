@@ -44,6 +44,9 @@ export async function serve(config: Config): Promise<void> {
           server.timeout(request, 0);
         // MCP tools can wait for up to 25 seconds on the shared board pipeline (D28).
         if (request.method === "POST" && /^\/mcp(?:\/|$)/.test(pathname)) server.timeout(request, 30);
+        // Leave time for the database write and the response around Resend's ten-second deadline.
+        if (config.resend && request.method === "POST" && /^\/api\/x\/orgs\/[^/]+\/invitations\/*$/.test(pathname))
+          server.timeout(request, 20);
         return app.fetch(request, {
           ip: clientIp(request.headers, server.requestIP(request)?.address, config.trustedProxies),
         });

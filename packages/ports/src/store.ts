@@ -189,7 +189,7 @@ export interface PlatformView extends RateView, OidcKeyStore, OperatorReads, Ope
   /** The person's memberships of organizations that are not deleted, by organization slug. */
   memberships(personId: string): Promise<MembershipRecord[]>;
   /** The tenant resolver checks the signed-in person's membership before minting an organization scope. */
-  orgMembership(slug: string, personId: string): Promise<{ orgId: number; role: Role } | null>;
+  orgMembership(slug: string, personId: string): Promise<{ orgId: number; orgName: string; role: Role } | null>;
   /**
    * Redeems the exact token hash and records the membership and audit event in one transaction. An exhausted member
    * quota leaves the invitation unconsumed.

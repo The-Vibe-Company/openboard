@@ -1,6 +1,8 @@
 import type { Author, Can, Named, Role } from "@openboard/contract";
 import type { OidcPrincipal, RepositoryPrincipal } from "@openboard/core";
 
+import type { InvitationMailer } from "./email/resend.ts";
+
 /** What the server is told at startup; the composition root parses it from the environment. */
 export interface ServerConfig {
   readonly webhookCustomSigning?: boolean;
@@ -56,6 +58,7 @@ export interface Deps {
   readonly randomBytes: (length: number) => Uint8Array;
   /** Outbound HTTP, for sign-in providers; absent, no provider is offered. */
   readonly fetch?: (request: Request) => Promise<Response>;
+  readonly invitationMailer?: InvitationMailer;
   /** Webhook HTTP transport, given a checked numeric URL and the original TLS identity. */
   readonly webhookFetch?: (request: Request, options: WebhookFetchOptions) => Promise<Response>;
   /** Resolve all addresses for the public outbound HTTP guard. */

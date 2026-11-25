@@ -174,6 +174,9 @@ export interface OrgContext extends RequestLimits {
   readonly bucket: Bucket | undefined;
   readonly debitWrite: () => void;
   readonly org: OrgView;
+  readonly orgName: string;
+  readonly invitationMailer?: Deps["invitationMailer"];
+  readonly log: Deps["log"];
   readonly person: Pick<PersonRecord, "id" | "handle" | "name" | "avatar">;
   readonly now: () => number;
   readonly publicUrl: string;
