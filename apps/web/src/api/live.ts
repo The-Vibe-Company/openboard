@@ -2,6 +2,7 @@ import { type QueryClient, type QueryKey, useQueryClient } from "@tanstack/react
 import type { BoardEvent, Client } from "@the-vibe-company/openboard";
 import { useEffect, useState } from "react";
 import { boardKeys, threadsQuery } from "./board.ts";
+import { taskActorsQuery, tasksQuery } from "./tasks.ts";
 import { threadKeys } from "./thread.ts";
 
 type Board = { org: string; board: string };
@@ -63,20 +64,38 @@ function boardRefreshes(board: Board, queries: Queries, schedule: Schedule) {
     },
     onEvent({ data }: MessageEvent<string>) {
       const event = JSON.parse(data) as BoardEvent;
+      if (event.type === "channel.created") {
+        add(boardKeys.channels(board));
+        queue();
+        return;
+      }
+      if (!("message" in event) || !event.message) return;
+      const { channel, thread, re } = event.message;
+      if (event.type.startsWith("task.")) {
+        threads.add(thread);
+        add(tasksQuery(board, channel).queryKey);
+        if (event.type === "task.claimed") add(taskActorsQuery(board, true).queryKey);
+        add(threadsQuery(board, channel).queryKey);
+        queue();
+        return;
+      }
       switch (event.type) {
         case "message.posted":
           add(boardKeys.channels(board));
-          if (event.message.re !== null) threads.add(event.message.thread);
+          if (re !== null) threads.add(thread);
           break;
         case "message.edited":
+          threads.add(thread);
+          break;
         case "message.deleted":
         case "labels.changed":
-          threads.add(event.message.thread);
+          threads.add(thread);
+          add(tasksQuery(board, channel).queryKey);
           break;
         default:
           return;
       }
-      add(threadsQuery(board, event.message.channel).queryKey);
+      add(threadsQuery(board, channel).queryKey);
       queue();
     },
     stop() {

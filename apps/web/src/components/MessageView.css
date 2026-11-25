@@ -34,3 +34,65 @@
   border-radius: var(--radius-control);
   background: var(--surface);
 }
+
+.thread-message-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(2 * var(--space));
+  margin: calc(3 * var(--space)) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thread-message-attachments .attachment-item {
+  display: flex;
+  flex-direction: column;
+  gap: calc(1.5 * var(--space));
+  max-inline-size: 100%;
+}
+
+.thread-message-attachments .attachment-preview {
+  display: block;
+  overflow: hidden;
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.thread-message-attachments .attachment-preview img {
+  display: block;
+  max-inline-size: min(100%, 24rem);
+  max-block-size: 16rem;
+  object-fit: contain;
+}
+
+.thread-message-attachments .attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(2 * var(--space));
+  max-inline-size: 100%;
+  padding: calc(1.5 * var(--space)) calc(3 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--type-small);
+  text-decoration: none;
+}
+
+.thread-message-attachments .attachment-chip:hover {
+  border-color: var(--control-border);
+}
+
+.thread-message-attachments .attachment-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+.thread-message-attachments .attachment-size {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
