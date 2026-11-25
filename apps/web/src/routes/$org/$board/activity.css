@@ -1,108 +1,50 @@
 .activity-feed {
-  display: grid;
-  gap: calc(1.5 * var(--space));
   margin: 0;
-  padding: 0;
+  padding: 4px 0;
   list-style: none;
 }
 
 .activity-row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: calc(2.5 * var(--space));
-  padding: calc(2.5 * var(--space)) calc(3 * var(--space));
-  border: var(--stroke) solid var(--border);
-  border-radius: var(--radius-control);
-  background: var(--surface-raised);
-  font-size: var(--type-small);
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 6px;
+  padding: 7px 8px;
+  overflow-wrap: anywhere;
 }
 
-.activity-cursor {
-  color: var(--muted);
-  font-family: var(--font-mono);
+.activity-row:hover {
+  background: var(--surface-hover);
 }
 
-.activity-type {
-  justify-self: start;
-  font-family: var(--font-mono);
-  font-weight: 500;
-}
-
-.activity-type[data-kind="task"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.activity-type[data-kind="message"] {
-  border-color: var(--success);
-  background: var(--success-soft);
-}
-
-.activity-type[data-kind="meta"] {
-  border-color: var(--purple);
-  background: var(--purple-soft);
+.activity-avatar {
+  display: grid;
+  place-items: center;
+  inline-size: 26px;
+  block-size: 26px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .activity-main {
   display: grid;
   gap: 2px;
-  min-inline-size: 0;
-}
-
-.activity-summary {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text);
-  font-weight: 500;
 }
 
 .activity-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: calc(2 * var(--space));
+  align-items: baseline;
+  gap: 2px 8px;
   color: var(--muted);
-  font-family: var(--font-mono);
 }
 
-.activity-time {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  white-space: nowrap;
+.activity-meta strong,
+.activity-summary {
+  color: var(--text);
 }
 
-@media (max-width: 48rem) {
-  .activity-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      "cursor type time"
-      "main main main";
-    row-gap: calc(1.5 * var(--space));
-    column-gap: calc(2 * var(--space));
-    padding: calc(3 * var(--space));
-  }
-
-  .activity-cursor {
-    grid-area: cursor;
-  }
-
-  .activity-type {
-    grid-area: type;
-  }
-
-  .activity-time {
-    grid-area: time;
-    font-size: 11px;
-  }
-
-  .activity-main {
-    grid-area: main;
-    gap: var(--space);
-  }
-
-  .activity-summary {
-    white-space: normal;
-    line-height: 1.35;
-  }
+a.activity-summary:hover {
+  text-decoration: underline;
 }

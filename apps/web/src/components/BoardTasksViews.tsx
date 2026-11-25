@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useState } from "react";
 import type { ThreadSummary } from "../api/board.ts";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
-import type { TaskActor } from "../api/tasks.ts";
+import type { Task, TaskActor } from "../api/tasks.ts";
 import { markdownPreview } from "../markdown.ts";
-import { Badge, Button, Input, Textarea } from "../ui/index.ts";
+import { Button, Input, Textarea } from "../ui/index.ts";
 import { parseLabelInput } from "./Composer.tsx";
-import { TaskStateBadge } from "./TaskState.tsx";
+import { claimHolderText, TaskStateBadge } from "./TaskState.tsx";
 
 type Board = { org: string; board: string };
 type NewTaskDraft = { channel: string; text: string; labels: string; needs: string };
@@ -182,6 +182,62 @@ export function NewTaskForm({
   );
 }
 
+export function useRelativeTimeClock() {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return now;
+}
+
+export function RelativeAge({ date, now }: { date: string; now: number }) {
+  const seconds = Math.max(0, Math.floor((now - Date.parse(date)) / 1000));
+  const age =
+    seconds < 60
+      ? `${seconds}s`
+      : seconds < 3600
+        ? `${Math.floor(seconds / 60)}m`
+        : seconds < 86400
+          ? `${Math.floor(seconds / 3600)}h`
+          : `${Math.floor(seconds / 86400)}d`;
+  return (
+    <time dateTime={date} title={date}>
+      {age}
+    </time>
+  );
+}
+
+function TaskLabels({ labels }: { labels: ThreadSummary["message"]["labels"] }) {
+  return Object.entries(labels)
+    .filter(([key]) => key !== "board.task")
+    .map(([key, value]) => (
+      <span key={key} className="board-ledger-chip" title={`${key}=${value}`}>
+        {key}={value}
+      </span>
+    ));
+}
+
+const STATE_MARKS: Partial<Record<Task["state"], string>> = {
+  completed: "m4 6.5 1.5 1.5 3.5-3.5",
+  blocked: "M5 4.5v4m3-4v4",
+  canceled: "m4 9 5-5",
+  failed: "m4.5 4.5 4 4m0-4-4 4",
+};
+
+function QueueState({ state, recordedState }: { state: Task["state"]; recordedState?: string }) {
+  return (
+    <span className="tasks-queue-state">
+      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor">
+        <circle cx="6.5" cy="6.5" r="5.5" strokeDasharray={state === "waiting" ? "2 1.5" : undefined} />
+        {state === "claimed" && <circle cx="6.5" cy="6.5" r="1.5" fill="currentColor" />}
+        {STATE_MARKS[state] && <path d={STATE_MARKS[state]} />}
+      </svg>
+      {state === "ready" && recordedState === "claimed" ? "expired" : state}
+    </span>
+  );
+}
+
 export function TasksKanban({
   board,
   tasks,
@@ -201,7 +257,7 @@ export function TasksKanban({
           <section key={col.key} className="tasks-column" aria-label={col.title}>
             <div className="tasks-column-head">
               <h2>{col.title}</h2>
-              <Badge>{items.length}</Badge>
+              <span>{items.length}</span>
             </div>
             <ul className="tasks-column-list">
               {items.map((item) => {
@@ -222,6 +278,7 @@ export function TasksKanban({
                         <span>#{item.message.channel}</span>
                         {item.replies > 0 && <span>{item.replies} replies</span>}
                       </div>
+                      <TaskLabels labels={item.message.labels} />
                       <TaskStateBadge task={task} holder={holder} recordedState={item.message.labels["board.task"]} />
                     </Link>
                   </li>
@@ -244,12 +301,18 @@ export function TasksQueue({
   tasks: readonly ThreadSummary[];
   actors?: ReadonlyMap<string, TaskActor>;
 }) {
+  const now = useRelativeTimeClock();
   return (
     <ul className="tasks-queue-list" aria-label="Task queue">
       {tasks.map((item) => {
         const task = item.message.task;
         if (!task) return null;
-        const holder = task.claim ? actors?.get(task.claim.actor) : undefined;
+        const { id, channel, labels, createdAt } = item.message;
+        const status = task.claim
+          ? `by ${claimHolderText(task.claim.actor, actors?.get(task.claim.actor))}`
+          : task.needs.length
+            ? `needs ${task.needs.map((need) => `#${need}`).join(", ")}`
+            : "";
         return (
           <li key={item.message.id}>
             <Link
@@ -258,17 +321,21 @@ export function TasksQueue({
               params={{ ...board, id: item.message.id }}
               search={{ channel: item.message.channel }}
             >
+              <QueueState state={task.state} recordedState={labels["board.task"]} />
               <div className="tasks-queue-main">
-                <span className="tasks-card-title">{taskTitle(item)}</span>
-                <div className="tasks-card-meta">
-                  <span>#{item.message.id}</span>
-                  <span>#{item.message.channel}</span>
-                  {task.needs.length > 0 && <span>needs {task.needs.map((n) => `#${n}`).join(", ")}</span>}
-                </div>
+                <span className="tasks-queue-id">#{id}</span>
+                <span className="tasks-card-title" title={taskTitle(item)}>
+                  {taskTitle(item)}
+                </span>
+                <TaskLabels labels={labels} />
               </div>
-              <div className="tasks-queue-right">
-                <TaskStateBadge task={task} holder={holder} recordedState={item.message.labels["board.task"]} />
-              </div>
+              <span className="tasks-queue-status" title={status}>
+                {status}
+              </span>
+              <span className="tasks-queue-channel" title={`#${channel}`}>
+                #{channel}
+              </span>
+              <RelativeAge date={createdAt} now={now} />
             </Link>
           </li>
         );

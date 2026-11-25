@@ -5,8 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { boardErrorText, boardKeys } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
 import { subscribeBoardEvents } from "../../../api/live.ts";
+import { RelativeAge, useRelativeTimeClock } from "../../../components/BoardTasksViews.tsx";
 import { markdownPreview } from "../../../markdown.ts";
-import { Badge, Button, EmptyState, PauseIcon, PlayIcon } from "../../../ui/index.ts";
+import { Button, EmptyState, PauseIcon, PlayIcon } from "../../../ui/index.ts";
 import "./activity.css";
 import "./tasks.css";
 
@@ -35,12 +36,14 @@ function eventKind(type: string): "message" | "task" | "meta" | "system" {
 function eventSummary(event: BoardEvent): { text: string; channel?: string; thread?: string; actor?: string } {
   const { type } = event;
   if ("message" in event) {
-    const { message } = event;
+    const { message, payload } = event;
+    const actor = payload && typeof payload === "object" && "by" in payload ? payload.by?.actor : undefined;
+    const author = message.author?.name ?? message.by?.actor;
     return {
       text: markdownPreview(message.text) || `Message #${message.id}`,
       channel: message.channel,
       thread: message.thread,
-      actor: message.author?.name ?? message.by?.actor,
+      actor: typeof actor === "string" && actor !== message.by?.actor ? actor : author,
     };
   }
   if (event.type === "channel.created") {
@@ -116,13 +119,11 @@ function BoardActivity({ org, boardSlug }: { org: string; boardSlug: string }) {
   );
 
   return (
-    <section className="board-view" aria-labelledby="board-activity-heading">
+    <section className="board-view board-ledger" aria-labelledby="board-activity-heading">
       <div className="board-view-head">
         <div>
           <h1 id="board-activity-heading">Activity</h1>
-          <p className="board-view-sub">
-            Live event stream (<code>ob tail</code>). Posts and task updates appear here in real time.
-          </p>
+          <p className="board-view-sub">the latest across every channel</p>
         </div>
         <div className="board-view-controls">
           <Button size="small" variant="secondary" onClick={() => setPaused((current) => !current)}>
@@ -162,18 +163,24 @@ function BoardActivity({ org, boardSlug }: { org: string; boardSlug: string }) {
 }
 
 function ActivityFeed({ board, events }: { board: Board; events: readonly BoardEvent[] }) {
+  const now = useRelativeTimeClock();
   return (
     <ol className="activity-feed" aria-label="Live board events">
       {events.map((event) => {
         const info = eventSummary(event);
-        const kind = eventKind(event.type);
+        const actor = info.actor || "System";
         return (
           <li key={event.cursor} className="activity-row">
-            <span className="activity-cursor">#{event.cursor}</span>
-            <Badge className="activity-type" data-kind={kind}>
-              {event.type}
-            </Badge>
+            <span className="activity-avatar" aria-hidden="true">
+              {Array.from(actor.trim())[0]?.toLocaleUpperCase() || "·"}
+            </span>
             <div className="activity-main">
+              <div className="activity-meta">
+                <strong>{actor}</strong>
+                {info.channel && <span>in #{info.channel}</span>}
+                <span className="board-ledger-chip">{event.type}</span>
+                <RelativeAge date={event.createdAt} now={now} />
+              </div>
               {info.thread ? (
                 <Link
                   className="activity-summary"
@@ -186,14 +193,7 @@ function ActivityFeed({ board, events }: { board: Board; events: readonly BoardE
               ) : (
                 <span className="activity-summary">{info.text}</span>
               )}
-              <div className="activity-meta">
-                {info.channel && <span>#{info.channel}</span>}
-                {info.actor && <span>{info.actor}</span>}
-              </div>
             </div>
-            <time className="activity-time" dateTime={event.createdAt} title={event.createdAt}>
-              {new Date(event.createdAt).toLocaleTimeString()}
-            </time>
           </li>
         );
       })}
