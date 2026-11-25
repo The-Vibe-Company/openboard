@@ -1,6 +1,6 @@
 import type { ScheduleView } from "@openboard/contract";
 import { formatId, isoTime, parseScheduleId, type ScheduleCanceled, type ScheduleCreated } from "@openboard/core";
-import type { BoardKeys, BoardView } from "@openboard/ports";
+import type { BoardKeys, BoardView, BoardWriter } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
 import { splice } from "../threads.ts";
@@ -27,6 +27,7 @@ const scheduleList = sql`SELECT ${scheduleColumns}, CASE WHEN s.attachments <> '
 
 export const scheduleStatements = {
   listSchedules: scheduleList,
+  scheduleById: splice(scheduleList, threadFilter, sql` AND s.id = ${"id"}`),
   listThreadSchedules: splice(scheduleList, threadFilter, sql` AND s.re = ${"thread"}`),
   nextSchedule: sql`SELECT next_schedule FROM boards WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
   advanceSchedule: sql`UPDATE boards SET next_schedule = ${"next"} WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
@@ -53,6 +54,22 @@ export function scheduleReads(db: Db, dialect: Dialect, keys: BoardKeys): Pick<B
       return rows.map((row) => ({ schedule: readSchedule(row), blind: Number(row.blind) === 1 }));
     },
   };
+}
+
+export function scheduleWriter(
+  db: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+): Pick<BoardWriter, "nextSchedule" | "schedule"> {
+  return {
+    nextSchedule: () => nextSchedule(db, dialect, keys),
+    schedule: (id) => scheduleById(db, dialect, keys, id),
+  };
+}
+
+async function scheduleById(tx: Db, dialect: Dialect, keys: BoardKeys, id: number) {
+  const [row] = await query(tx, dialect, scheduleStatements.scheduleById, { ...keys, id, channel: null, all: 1 });
+  return row ? readSchedule(row) : null;
 }
 
 function readSchedule(row: Row): ScheduleView {
@@ -83,7 +100,7 @@ function readSchedule(row: Row): ScheduleView {
   };
 }
 
-export async function nextSchedule(tx: Db, dialect: Dialect, keys: BoardKeys): Promise<number> {
+async function nextSchedule(tx: Db, dialect: Dialect, keys: BoardKeys): Promise<number> {
   const [row] = await query(tx, dialect, scheduleStatements.nextSchedule, { ...keys });
   if (!row) throw new Error("schedule sequence has no board");
   return Number(row.next_schedule);

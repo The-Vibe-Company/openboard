@@ -219,6 +219,8 @@ export interface BoardWriter
   schema(id: string): Promise<SchemaView | null>;
   schemaCount(): Promise<number>;
   nextSchedule(): Promise<number>;
+  /** Read the schedule at this board-local ID under the write lock. */
+  schedule(id: number): Promise<ScheduleView | null>;
   /** The actors available to resolve handles under the write lock. */
   mentionActors(handles: ReadonlySet<string>): Promise<MentionActor[]>;
   /** Check the selected message versions that established candidate visibility before the lock. */

@@ -11,7 +11,7 @@ import {
 import type { BoardGrantReads, BoardKeys, BoardScope, BoardView, BoardWriter, Broadcaster } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { query } from "../sql.ts";
-import { foldSchedule, nextSchedule } from "./schedules/index.ts";
+import { foldSchedule, scheduleWriter } from "./schedules/index.ts";
 import { foldActorSeen, lockBoardAs } from "./actors.ts";
 import { findAgent, findAgentByClaimKey, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
 import { attachmentReads, foldAttachments } from "./attachments/index.ts";
@@ -290,7 +290,7 @@ function writer(
     },
     listGrants: grantReads(tx, dialect, keys).listGrants,
     otherGrantIssuers: (replacing) => otherGrantIssuers(tx, dialect, keys, replacing),
-    nextSchedule: () => nextSchedule(tx, dialect, keys),
+    ...scheduleWriter(tx, dialect, keys),
     nextGrant: () => nextGrant(tx, dialect, keys),
     activeGrant: (id) => activeGrant(tx, dialect, keys, id),
     async grantMember(personId) {

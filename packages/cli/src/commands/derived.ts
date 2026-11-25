@@ -3,6 +3,7 @@ import { BoardError, type CliSpec, claimNextTask, createTaskBatch, operations } 
 import { formats } from "../output.ts";
 import { uploadFiles } from "./attachments/attach.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
+import { runCancelSchedule } from "./schedule/index.ts";
 import { profileActor, taskAssignCommand } from "./tasks/assign.ts";
 import { runCancelTask } from "./tasks/cancel.ts";
 import { runClaimNext, runTaskCommand } from "./tasks/claim.ts";
@@ -245,6 +246,7 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
     input.profile = ctx.profile;
   }
   if (name === "blockTask") return runBlockTask(ctx, input as { id: string; reason: string; kind?: string });
+  if (name === "cancelSchedule") return runCancelSchedule(ctx, String(input.id));
   if (name === "cancelTask") return runCancelTask(ctx, input as { id: string; reason: string });
   if (name === "renewTask") return runRenewTask(ctx, input as { id: string; lease?: number });
   if (name === "failTask") {

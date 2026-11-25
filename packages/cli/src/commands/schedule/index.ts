@@ -89,7 +89,10 @@ function scheduleHeader(schedule: ScheduleView, now: number): string {
   const relative = delta <= 0 ? "due" : `in ${span(Math.ceil(delta / unit) * unit)}`;
   const when = schedule.next === null ? schedule.state : `next ${relative} (${schedule.next})`;
   const author = schedule.author.via ? `${schedule.author.name} via ${schedule.author.via.name}` : schedule.author.name;
-  return `${schedule.id}  ${where} · ${repeat} · ${when} · by ${author}`;
+  const cancellation = schedule.canceled
+    ? ` · canceled by ${schedule.canceled.by.actor} (${schedule.canceled.reason})`
+    : "";
+  return `${schedule.id}  ${where} · ${repeat} · ${when} · by ${author}${cancellation}`;
 }
 
 export function scheduleLine(schedule: ScheduleView, now: number): string {
@@ -102,6 +105,17 @@ function summary(schedule: ScheduleView, now: number): string {
     .map((line) => `    ${line}`)
     .join("\n");
   return `${scheduleHeader(schedule, now)}\n${text}`;
+}
+
+export async function runCancelSchedule(ctx: CommandContext, id: string): Promise<number> {
+  const { schedule, canceled } = await ctx.client.cancelSchedule({ id });
+  const outcome = canceled ? "canceled" : "unchanged";
+  ctx.output.out(
+    ctx.json
+      ? JSON.stringify({ schedule, outcome }, null, 2)
+      : `${summary(schedule, ctx.now())}\nstate: ${schedule.state}\noutcome: ${outcome}`,
+  );
+  return 0;
 }
 
 export const scheduleCommand: Command = {

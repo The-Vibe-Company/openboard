@@ -229,6 +229,12 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
     send("POST", `/api/${org}/main/x/webhooks/${webhook.id}/test`, session),
     "test delivery",
   );
+  if (org === "bravo") {
+    await ok(
+      send("POST", `/api/${org}/main/schedules`, session, { re: firstThread, text: marker, in: "1d" }),
+      "first schedule",
+    );
+  }
   const { schedule } = await ok<{ schedule: { id: string } }>(
     send("POST", `/api/${org}/main/schedules`, session, { re: firstThread, text: marker, in: "1d" }),
     "schedule",

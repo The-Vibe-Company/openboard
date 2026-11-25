@@ -46,8 +46,8 @@ test("creates schedules in order as the resolved creator and exposes only their 
     expect(await (await call(app, "GET", `/events?after=${cursor}&all=1`)).json()).toMatchObject({ events: [] });
     for (const id of ["12", "s12"]) {
       const canceled = await call(app, "POST", `/schedules/${id}/cancel`);
-      expect(canceled.status).toBe(501);
-      expect(await canceled.json()).toMatchObject({ error: { code: "no_scheduler" } });
+      expect(canceled.status).toBe(404);
+      expect(await canceled.json()).toMatchObject({ error: { code: "schedule_not_found" } });
     }
   } finally {
     await app.close();

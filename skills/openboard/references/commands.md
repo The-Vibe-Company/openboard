@@ -579,6 +579,28 @@ Example:
 ob whoami
 ```
 
+## `ob schedule cancel`
+
+Cancel a pending schedule.
+
+```sh
+ob schedule cancel <id>
+```
+
+Arguments:
+
+- `id`: A schedule ID.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: quota_exceeded`, `error: rate_limited`, `error: remote_error`, `error: schedule_not_found`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `cancel_schedule`.
+
+Example:
+
+```sh
+ob schedule cancel id
+```
+
 ## `ob tasks cancel`
 
 Cancel an unfinished task and record the reason.

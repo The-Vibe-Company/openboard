@@ -79,7 +79,7 @@ import {
 import { getMetricsHandler, type MetricsContext } from "./metrics/index.ts";
 import { downloadOrgExportHandler, getOrgExportHandler, requestOrgExportHandler } from "./org/exports.ts";
 import { createOrgHandler, deleteOrgHandler } from "./orgs.ts";
-import { createScheduleHandler, listSchedulesHandler, noScheduler } from "./schedules/index.ts";
+import { cancelScheduleHandler, createScheduleHandler, listSchedulesHandler } from "./schedules/index.ts";
 import { createSchemaHandler, listSchemasHandler, readSchemaHandler } from "./schemas/registry.ts";
 import {
   ackInboxHandler,
@@ -233,7 +233,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   ackWatcherMatch: ackWatcherMatchHandler,
   approveDeviceSignIn: approveDeviceSignInHandler,
   attachSync: attachSyncHandler,
-  cancelSchedule: noScheduler,
+  cancelSchedule: cancelScheduleHandler,
   cancelTask: cancelTaskHandler,
   blockTask: blockTaskHandler,
   setTaskNeeds: setTaskNeedsHandler,
