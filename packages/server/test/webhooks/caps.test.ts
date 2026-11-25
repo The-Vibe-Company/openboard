@@ -114,6 +114,9 @@ beforeAll(() => bravo.queue(10), 30_000);
 afterAll(() => f.app.close());
 
 test("two tenants share dispatch capacity while a capped tenant waits for the next minute", async () => {
+  expect(await f.store.jobs.dueMetrics([WEBHOOK_DELIVERY_JOB], NOW)).toEqual([
+    { kind: WEBHOOK_DELIVERY_JOB, count: 5_010, oldest: NOW },
+  ]);
   // Wake both hosted instances together, so their separate database connections compete for the last slots.
   await f.run();
   expect(f.sent.filter((org) => org === "alpha")).toHaveLength(600);

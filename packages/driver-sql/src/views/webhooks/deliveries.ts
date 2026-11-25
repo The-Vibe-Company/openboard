@@ -28,21 +28,26 @@ const earlierThreaded: Fragment = {
   fragment: () => "prior.thread = d.thread AND prior.event < d.event",
 };
 const earlierThreadless: Fragment = {
-  fragment: () => `prior.thread IS NULL AND (prior.event < d.event
-    OR (d.event IS NULL AND prior.event IS NULL AND (prior.created_at, prior.id) < (d.created_at, d.id)
-      AND (prior.state = 'pending' OR prior.instance IS NOT NULL)))`,
+  fragment: () => "prior.thread IS NULL AND prior.event < d.event",
+};
+const earlierPing: Fragment = {
+  fragment: () => `prior.thread IS NULL AND prior.event IS NULL
+    AND (prior.created_at, prior.id) < (d.created_at, d.id)
+    AND (prior.state = 'pending' OR prior.instance IS NOT NULL)`,
 };
 const unfinishedDelivery: Fragment = {
   fragment: () => "prior.webhook = d.webhook AND prior.state IN ('pending', 'sending')",
 };
 export const earlierDelivery: Fragment = {
   fragment: (dialect) => {
-    const exists = (lane: Fragment) => `EXISTS (
-      SELECT 1 FROM webhook_deliveries prior
+    // An ordered, bounded probe favors the lane index even before fresh statistics are available.
+    const exists = (lane: Fragment, order: string) => `(SELECT 1 FROM webhook_deliveries prior
       WHERE prior.org_id = d.org_id AND prior.board_id = d.board_id AND ${unfinishedDelivery.fragment(dialect)}
         AND ${lane.fragment(dialect)}
-    )`;
-    return `(CASE WHEN d.thread IS NULL THEN ${exists(earlierThreadless)} ELSE ${exists(earlierThreaded)} END)`;
+      ORDER BY ${order} LIMIT 1) IS NOT NULL`;
+    return `(CASE WHEN d.thread IS NOT NULL THEN ${exists(earlierThreaded, "prior.event DESC")}
+      WHEN d.event IS NOT NULL THEN ${exists(earlierThreadless, "prior.event DESC")}
+      ELSE ${exists(earlierPing, "prior.created_at DESC, prior.id DESC")} END)`;
   },
 };
 
@@ -71,14 +76,18 @@ export const deliveryStatements = {
       SELECT 1 FROM webhooks w
       WHERE w.org_id = ${"orgId"} AND w.board_id = ${"boardId"} AND w.id = d.webhook
     ) OR (
-      NOT (CASE WHEN d.thread IS NULL THEN EXISTS (
+      NOT (CASE WHEN d.thread IS NOT NULL THEN EXISTS (
+        SELECT 1 FROM webhook_deliveries prior
+        WHERE prior.org_id = ${"orgId"} AND prior.board_id = ${"boardId"} AND ${unfinishedDelivery}
+          AND ${earlierThreaded}
+      ) WHEN d.event IS NOT NULL THEN EXISTS (
         SELECT 1 FROM webhook_deliveries prior
         WHERE prior.org_id = ${"orgId"} AND prior.board_id = ${"boardId"} AND ${unfinishedDelivery}
           AND ${earlierThreadless}
       ) ELSE EXISTS (
         SELECT 1 FROM webhook_deliveries prior
         WHERE prior.org_id = ${"orgId"} AND prior.board_id = ${"boardId"} AND ${unfinishedDelivery}
-          AND ${earlierThreaded}
+          AND ${earlierPing}
       ) END)
       AND (
         SELECT COUNT(*) < 4 AND COUNT(CASE WHEN prior.thread IS NOT DISTINCT FROM d.thread THEN 1 END) = 0
