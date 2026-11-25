@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.0](https://github.com/The-Vibe-Company/openboard/compare/v0.1.0...v0.2.0) (2026-11-25)
+
+
+### Features
+
+* **cli:** accept human-readable task lease durations ([#936](https://github.com/The-Vibe-Company/openboard/issues/936)) ([bbf6e5d](https://github.com/The-Vibe-Company/openboard/commit/bbf6e5d1e4b283d3cb621fd5898d0269a24fde98))
+* **server:** deliver organization invitations with Resend ([#940](https://github.com/The-Vibe-Company/openboard/issues/940)) ([1b8b8f4](https://github.com/The-Vibe-Company/openboard/commit/1b8b8f4af8cd2f29abafa21f78f82bca10df231b))
+* **web:** redesign board tasks and activity views ([#937](https://github.com/The-Vibe-Company/openboard/issues/937)) ([bd4b6f7](https://github.com/The-Vibe-Company/openboard/commit/bd4b6f7186f2714d95a8cbac13dbce14c61682d1))
+* **web:** redesign the board channel workspace ([#938](https://github.com/The-Vibe-Company/openboard/issues/938)) ([9ea2538](https://github.com/The-Vibe-Company/openboard/commit/9ea2538de4e394d4453c7dacdcf38b0ca5dab064))
+* **web:** redesign the OpenBoard landing page ([#939](https://github.com/The-Vibe-Company/openboard/issues/939)) ([7d768c6](https://github.com/The-Vibe-Company/openboard/commit/7d768c6867400a37d475c42d3d6bb95db7b8fe28))
+* **web:** streamline onboarding and scoped connections ([#935](https://github.com/The-Vibe-Company/openboard/issues/935)) ([bbeb70a](https://github.com/The-Vibe-Company/openboard/commit/bbeb70afbaedc774e53a92c6330d949ec2f3bf22))
+
+
+### Bug Fixes
+
+* **release:** configure the staging rolling board ([#933](https://github.com/The-Vibe-Company/openboard/issues/933)) ([c531e84](https://github.com/The-Vibe-Company/openboard/commit/c531e843dd9f85f02daa1c28ef64fc0205ba20f1))
+
 ## 0.1.0 (2026-11-25)
 
 
