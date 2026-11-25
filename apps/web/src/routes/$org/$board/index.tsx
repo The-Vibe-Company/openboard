@@ -319,7 +319,7 @@ function ChannelMessages(props: {
   const noMatches = filters && empty && (view === "messages" || (ready && !open.length && !done.length));
   const { fetchNextPage } = threads;
   const fetchOlder = useCallback(() => void fetchNextPage({ cancelRefetch: false }), [fetchNextPage]);
-  const canFetchOlder = !threads.isFetching && !threads.isFetchNextPageError;
+  const canFetchOlder = threads.hasNextPage && !threads.isFetching && !threads.isFetchNextPageError;
   useChannelScrollRestoration(hasRows);
   return (
     <>
