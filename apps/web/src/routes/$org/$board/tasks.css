@@ -248,3 +248,59 @@
   font-family: var(--font-mono);
   font-size: var(--type-small);
 }
+
+@media (max-width: 48rem) {
+  .board-view-controls {
+    inline-size: 100%;
+  }
+
+  .board-view-controls .ui-select {
+    flex: 1 1 100%;
+  }
+
+  .tasks-pills {
+    flex-wrap: nowrap;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    overflow-x: auto;
+    padding-block-end: var(--space);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+
+  .tasks-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tasks-pill {
+    flex: none;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+
+  .tasks-kanban {
+    display: flex;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-block-end: calc(2 * var(--space));
+    scrollbar-width: none;
+  }
+
+  .tasks-kanban::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tasks-column {
+    flex: 0 0 84%;
+    scroll-snap-align: start;
+    min-block-size: 9rem;
+  }
+
+  .tasks-queue-row {
+    padding: calc(3 * var(--space));
+  }
+}

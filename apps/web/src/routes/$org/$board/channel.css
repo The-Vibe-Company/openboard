@@ -105,3 +105,35 @@
 .channel-view:has(> :not(.composer, .channel-compose-shortcut):focus-visible) > .composer {
   position: static;
 }
+
+@media (max-width: 48rem) {
+  .channel-header {
+    align-items: stretch;
+  }
+
+  .channel-filter-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    inline-size: 100%;
+    gap: calc(2 * var(--space));
+  }
+
+  .channel-filter-bar > button {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+
+  .channel-filter-input {
+    min-inline-size: 0;
+  }
+
+  .channel-filter-input input {
+    inline-size: 100%;
+    min-inline-size: 0;
+  }
+
+  .channel-view > .composer {
+    position: static;
+    padding-block-start: calc(3 * var(--space));
+  }
+}

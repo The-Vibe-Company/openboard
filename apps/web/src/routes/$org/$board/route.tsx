@@ -13,11 +13,13 @@ import {
   BotIcon,
   Button,
   ClockIcon,
+  HashIcon,
   Input,
   PlusIcon,
   SearchIcon,
   SettingsIcon,
   TasksIcon,
+  XIcon,
 } from "../../../ui/index.ts";
 import "./shell.css";
 
@@ -139,48 +141,118 @@ function BoardSidebar({
   onCreatedChannel: (path: string) => void;
 }) {
   return (
-    <aside className="shell-sidebar" id={sidebarId} data-expanded={sidebarOpen}>
-      <button type="button" className="shell-search-trigger" onClick={onOpenPalette}>
-        <span className="shell-search-trigger-label">
-          <SearchIcon /> Jump or search…
-        </span>
-        <kbd>⌘K</kbd>
-      </button>
-      <nav aria-label="Board views" className="shell-views">
-        <Link to="/$org/$board/tasks" params={params} onClick={onCloseSidebar}>
-          <TasksIcon /> Tasks
+    <>
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="shell-drawer-backdrop"
+          aria-label="Close board menu"
+          onClick={onCloseSidebar}
+        />
+      )}
+      <aside className="shell-sidebar" id={sidebarId} data-expanded={sidebarOpen}>
+        <div className="shell-drawer-head">
+          <span className="shell-drawer-title">{params.board}</span>
+          <button type="button" className="shell-drawer-close" aria-label="Close menu" onClick={onCloseSidebar}>
+            <XIcon width={16} height={16} />
+          </button>
+        </div>
+        <button
+          type="button"
+          className="shell-search-trigger"
+          onClick={() => {
+            onCloseSidebar();
+            onOpenPalette();
+          }}
+        >
+          <span className="shell-search-trigger-label">
+            <SearchIcon /> Jump or search…
+          </span>
+          <kbd>⌘K</kbd>
+        </button>
+        <nav aria-label="Board views" className="shell-views">
+          <Link to="/$org/$board/tasks" params={params} onClick={onCloseSidebar}>
+            <TasksIcon /> Tasks
+          </Link>
+          <Link to="/$org/$board/activity" params={params} onClick={onCloseSidebar}>
+            <ActivityIcon /> Activity
+          </Link>
+          <Link to="/$org/$board/schedules" params={params} onClick={onCloseSidebar}>
+            <ClockIcon /> Schedules
+          </Link>
+          <Link to="/$org/$board/agents" params={params} onClick={onCloseSidebar}>
+            <BotIcon /> Agents
+          </Link>
+        </nav>
+        <ChannelList params={params} channels={channels} selected={selected} onNavigate={onCloseSidebar} />
+        <NewChannelControl params={params} onCreated={onCreatedChannel} />
+        <Link
+          className="shell-settings"
+          to="/$org/$board/settings/connections"
+          params={params}
+          onClick={onCloseSidebar}
+        >
+          <SettingsIcon />
+          Settings
         </Link>
-        <Link to="/$org/$board/activity" params={params} onClick={onCloseSidebar}>
-          <ActivityIcon /> Activity
-        </Link>
-        <Link to="/$org/$board/schedules" params={params} onClick={onCloseSidebar}>
-          <ClockIcon /> Schedules
-        </Link>
-        <Link to="/$org/$board/agents" params={params} onClick={onCloseSidebar}>
-          <BotIcon /> Agents
-        </Link>
-      </nav>
-      <ChannelList params={params} channels={channels} selected={selected} onNavigate={onCloseSidebar} />
-      <NewChannelControl params={params} onCreated={onCreatedChannel} />
-      <Link className="shell-settings" to="/$org/$board/settings/connections" params={params} onClick={onCloseSidebar}>
-        <SettingsIcon />
-        Settings
-      </Link>
-    </aside>
+      </aside>
+    </>
   );
 }
 
-function usePaletteShortcut(toggle: () => void) {
+function MobileBottomNav({
+  params,
+  selected,
+  isChannelRoute,
+}: {
+  params: { org: string; board: string };
+  selected: string;
+  isChannelRoute: boolean;
+}) {
+  return (
+    <nav aria-label="Mobile navigation" className="shell-mobile-tabs">
+      <Link
+        to="/$org/$board"
+        params={params}
+        search={selected ? { channel: selected } : {}}
+        aria-current={isChannelRoute ? "page" : undefined}
+      >
+        <HashIcon width={18} height={18} />
+        <span>Feed</span>
+      </Link>
+      <Link to="/$org/$board/tasks" params={params}>
+        <TasksIcon width={18} height={18} />
+        <span>Tasks</span>
+      </Link>
+      <Link to="/$org/$board/activity" params={params}>
+        <ActivityIcon width={18} height={18} />
+        <span>Activity</span>
+      </Link>
+      <Link to="/$org/$board/schedules" params={params}>
+        <ClockIcon width={18} height={18} />
+        <span>Schedules</span>
+      </Link>
+      <Link to="/$org/$board/agents" params={params}>
+        <BotIcon width={18} height={18} />
+        <span>Agents</span>
+      </Link>
+    </nav>
+  );
+}
+
+function useBoardShortcuts(onTogglePalette: () => void, sidebarOpen: boolean, onCloseSidebar: () => void) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        toggle();
+        onTogglePalette();
+      } else if (event.key === "Escape" && sidebarOpen) {
+        onCloseSidebar();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggle]);
+  }, [onTogglePalette, sidebarOpen, onCloseSidebar]);
 }
 
 function useIsChannelRoute(params: { org: string; board: string }) {
@@ -207,7 +279,7 @@ function BoardLayout() {
   const reconnecting = useBoardLive(params, channels.data !== undefined && !fatalError);
   const selected = useChannelFromUrl(channels.data ?? []);
   const isChannelRoute = useIsChannelRoute(params);
-  usePaletteShortcut(() => setPaletteOpen((current) => !current));
+  useBoardShortcuts(() => setPaletteOpen((c) => !c), sidebarOpen, closeSidebar);
 
   if (fatalError)
     return (
@@ -235,6 +307,9 @@ function BoardLayout() {
         >
           Board menu
         </Button>
+        <button type="button" className="shell-mobile-search-btn" onClick={() => setPaletteOpen(true)}>
+          <SearchIcon width={14} height={14} /> Search
+        </button>
       </div>
       <BoardSidebar
         sidebarId={sidebarId}
@@ -255,6 +330,7 @@ function BoardLayout() {
           <Outlet />
         </SelectedChannel.Provider>
       </section>
+      <MobileBottomNav params={params} selected={selected} isChannelRoute={isChannelRoute} />
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}

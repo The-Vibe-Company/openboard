@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { browserClient } from "../api/client.ts";
 import { markdownPreview } from "../markdown.ts";
-import { ActivityIcon, BotIcon, ClockIcon, HashIcon, SearchIcon, SettingsIcon, TasksIcon } from "../ui/index.ts";
+import { ActivityIcon, BotIcon, ClockIcon, HashIcon, SearchIcon, SettingsIcon, TasksIcon, XIcon } from "../ui/index.ts";
 import "./CommandPalette.css";
 
 type Board = { org: string; board: string };
@@ -100,6 +100,9 @@ export function CommandPalette({
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
         />
+        <button type="button" className="command-palette-close" aria-label="Close search" onClick={onClose}>
+          <XIcon width={16} height={16} />
+        </button>
       </div>
       <PaletteBody
         needle={query.trim().toLowerCase()}

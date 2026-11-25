@@ -135,3 +135,35 @@
   background: var(--surface);
   font-size: var(--type-small);
 }
+
+@media (max-width: 48rem) {
+  .board-settings nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+
+  .board-settings nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .board-settings nav a {
+    flex: none;
+    white-space: nowrap;
+    min-block-size: 40px;
+    display: inline-flex;
+    align-items: center;
+    scroll-snap-align: start;
+  }
+
+  .board-settings .settings-table {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .settings-drawer,
+  .settings-form-card {
+    padding: calc(3 * var(--space));
+  }
+}

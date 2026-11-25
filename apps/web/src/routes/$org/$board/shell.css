@@ -12,7 +12,10 @@
   background: var(--surface);
 }
 
-.board-shell .shell-sidebar-controls {
+.board-shell .shell-sidebar-controls,
+.shell-drawer-head,
+.shell-drawer-backdrop,
+.shell-mobile-tabs {
   display: none;
 }
 
@@ -158,29 +161,142 @@
   margin: 0 0 calc(4 * var(--space));
 }
 
-@media (max-width: 40rem) {
+@media (max-width: 48rem) {
   .board-shell {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto 1fr;
   }
 
   .board-shell .shell-sidebar-controls {
-    display: block;
-    padding: calc(2 * var(--space)) calc(4 * var(--space));
+    position: sticky;
+    inset-block-start: calc(13 * var(--space));
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(2 * var(--space));
+    padding: calc(2 * var(--space)) max(calc(3 * var(--space)), env(safe-area-inset-right)) calc(2 * var(--space))
+      max(calc(3 * var(--space)), env(safe-area-inset-left));
     border-bottom: var(--stroke) solid var(--border);
+    background: var(--surface);
+  }
+
+  .shell-mobile-search-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(1.5 * var(--space));
+    min-block-size: var(--control-small);
+    padding: 0 calc(3 * var(--space));
+    border: var(--stroke) solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--surface-raised);
+    color: var(--muted);
+    font-size: var(--type-small);
+    font-weight: 500;
+  }
+
+  .shell-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    border: 0;
+    padding: 0;
+    background: rgb(0 0 0 / 48%);
   }
 
   .board-shell .shell-sidebar {
-    grid-row: 2;
-    border-inline-end: 0;
-    border-bottom: var(--stroke) solid var(--border);
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 50;
+    inline-size: min(85vw, 20rem);
+    max-block-size: 100dvh;
+    padding: max(calc(4 * var(--space)), env(safe-area-inset-top)) calc(3.5 * var(--space))
+      max(calc(4 * var(--space)), env(safe-area-inset-bottom));
+    border-inline-end: var(--stroke) solid var(--border);
+    box-shadow: var(--overlay-shadow);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .board-shell .shell-sidebar[data-expanded="false"] {
     display: none;
   }
 
+  .shell-drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(2 * var(--space));
+    padding-block-end: calc(2 * var(--space));
+    border-bottom: var(--stroke) solid var(--border);
+  }
+
+  .shell-drawer-title {
+    font-weight: 600;
+    font-size: var(--type-base);
+  }
+
+  .shell-drawer-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-block-size: 36px;
+    min-inline-size: 36px;
+    border: var(--stroke) solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--surface-raised);
+    color: var(--muted);
+  }
+
+  .shell-views a {
+    min-block-size: 42px;
+    padding: calc(2 * var(--space)) calc(3 * var(--space));
+  }
+
+  .shell-search-trigger kbd {
+    display: none;
+  }
+
   .board-shell .shell-content {
-    grid-row: 3;
+    grid-row: 2;
+    padding: calc(3.5 * var(--space)) max(calc(3.5 * var(--space)), env(safe-area-inset-right))
+      calc(20 * var(--space) + env(safe-area-inset-bottom)) max(calc(3.5 * var(--space)), env(safe-area-inset-left));
+  }
+
+  .shell-mobile-tabs {
+    position: fixed;
+    inset-block-end: 0;
+    inset-inline: 0;
+    z-index: 35;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border-top: var(--stroke) solid var(--border);
+    background: var(--background);
+    padding-block-end: env(safe-area-inset-bottom);
+  }
+
+  .shell-mobile-tabs a,
+  .shell-mobile-tabs a:hover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-block-size: calc(13.5 * var(--space));
+    padding: calc(1.5 * var(--space)) var(--space);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    text-decoration: none;
+    border-top: 2px solid transparent;
+  }
+
+  .shell-mobile-tabs a[aria-current="page"] {
+    border-top-color: var(--text);
+    color: var(--text);
+    font-weight: 600;
   }
 }

@@ -1,11 +1,28 @@
 .shell-header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: calc(2 * var(--space));
   min-block-size: calc(14 * var(--space));
-  padding: calc(2 * var(--space)) calc(4 * var(--space));
+  padding: calc(2 * var(--space)) max(calc(4 * var(--space)), env(safe-area-inset-right)) calc(2 * var(--space))
+    max(calc(4 * var(--space)), env(safe-area-inset-left));
   background: var(--background);
   border-bottom: var(--stroke) solid var(--border);
+}
+
+@media (max-width: 48rem) {
+  .shell-header {
+    gap: calc(1.5 * var(--space));
+    min-block-size: calc(13 * var(--space));
+    padding: calc(1.5 * var(--space)) max(calc(3 * var(--space)), env(safe-area-inset-right)) calc(1.5 * var(--space))
+      max(calc(3 * var(--space)), env(safe-area-inset-left));
+  }
+
+  .shell-header .shell-location {
+    overflow: hidden;
+  }
 }
 
 .shell-header .shell-brand {
