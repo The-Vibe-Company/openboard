@@ -10,6 +10,45 @@ type Schedule = (run: () => void, delay: number) => () => void;
 type ReadThread = Awaited<ReturnType<Client["readThread"]>>;
 type Queries = Pick<QueryClient, "cancelQueries" | "invalidateQueries" | "getQueriesData" | "getQueryState">;
 
+function recordBoardEvent(
+  event: BoardEvent,
+  board: Board,
+  add: (key: QueryKey) => void,
+  threads: Set<string>,
+): boolean {
+  if (event.type === "channel.created") {
+    add(boardKeys.channels(board));
+    return true;
+  }
+  if (!("message" in event) || !event.message) return false;
+  const { channel, thread, re } = event.message;
+  if (event.type.startsWith("task.")) {
+    threads.add(thread);
+    add(tasksQuery(board, channel).queryKey);
+    if (event.type === "task.claimed") add(taskActorsQuery(board, true).queryKey);
+    add(threadsQuery(board, channel).queryKey);
+    return true;
+  }
+  switch (event.type) {
+    case "message.posted":
+      add(boardKeys.channels(board));
+      if (re !== null) threads.add(thread);
+      break;
+    case "message.edited":
+      threads.add(thread);
+      break;
+    case "message.deleted":
+    case "labels.changed":
+      threads.add(thread);
+      add(tasksQuery(board, channel).queryKey);
+      break;
+    default:
+      return false;
+  }
+  add(threadsQuery(board, channel).queryKey);
+  return true;
+}
+
 function boardRefreshes(board: Board, queries: Queries, schedule: Schedule) {
   const pending = new Map<string, QueryKey>();
   const threads = new Set<string>();
@@ -63,40 +102,7 @@ function boardRefreshes(board: Board, queries: Queries, schedule: Schedule) {
       queue();
     },
     onEvent({ data }: MessageEvent<string>) {
-      const event = JSON.parse(data) as BoardEvent;
-      if (event.type === "channel.created") {
-        add(boardKeys.channels(board));
-        queue();
-        return;
-      }
-      if (!("message" in event) || !event.message) return;
-      const { channel, thread, re } = event.message;
-      if (event.type.startsWith("task.")) {
-        threads.add(thread);
-        add(tasksQuery(board, channel).queryKey);
-        if (event.type === "task.claimed") add(taskActorsQuery(board, true).queryKey);
-        add(threadsQuery(board, channel).queryKey);
-        queue();
-        return;
-      }
-      switch (event.type) {
-        case "message.posted":
-          add(boardKeys.channels(board));
-          if (re !== null) threads.add(thread);
-          break;
-        case "message.edited":
-          threads.add(thread);
-          break;
-        case "message.deleted":
-        case "labels.changed":
-          threads.add(thread);
-          add(tasksQuery(board, channel).queryKey);
-          break;
-        default:
-          return;
-      }
-      add(threadsQuery(board, channel).queryKey);
-      queue();
+      if (recordBoardEvent(JSON.parse(data) as BoardEvent, board, add, threads)) queue();
     },
     stop() {
       stopped = true;
