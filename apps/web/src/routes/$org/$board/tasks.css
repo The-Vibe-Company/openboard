@@ -187,6 +187,24 @@
   list-style: none;
 }
 
+.tasks-column-more,
+.tasks-load-more {
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-block-start: 1px solid var(--border);
+  border-radius: 0;
+  font-size: var(--type-small);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tasks-column-more:hover,
+  .tasks-load-more:hover:enabled {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+}
+
 .tasks-card {
   display: flex;
   flex-wrap: wrap;

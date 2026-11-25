@@ -203,3 +203,40 @@ test("channel tabs keep terminal tasks out of messages at desktop and mobile wid
     await app.stop();
   }
 });
+
+test("Done history expands and collapses on the board and in the channel", async ({ page }) => {
+  const app = await serve();
+  try {
+    await signIn(page, app.url, "ada");
+    const owner = sessionClient(page, app.url);
+    await owner.createOrg({ slug: "acme", name: "Acme" });
+    const { task: first } = await owner.createTask({ channel: "dev", text: "First created, last settled" });
+    for (let index = 1; index <= 8; index++) {
+      const { task } = await owner.createTask({ channel: "dev", text: `Previous task ${index}` });
+      await owner.cancelTask({ id: task.id, reason: "Finished fixture" });
+    }
+    await owner.cancelTask({ id: first.id, reason: "Finished fixture" });
+
+    await page.goto(`${app.url}/acme/main/tasks`);
+    const done = page.getByRole("region", { name: "Done", exact: true });
+    const cards = done.getByRole("listitem");
+    await expect(cards).toHaveCount(8);
+    await expect(cards.first()).toContainText("First created, last settled");
+    await done.getByRole("button", { name: "Show more (1 more)" }).click();
+    await expect(cards).toHaveCount(9);
+    await done.getByRole("button", { name: "Show less" }).click();
+    await expect(cards).toHaveCount(8);
+
+    await page.goto(`${app.url}/acme/main?channel=dev`);
+    await page.getByRole("tab", { name: "Tasks" }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    const rows = page.getByRole("list", { name: "Completed tasks" }).getByRole("listitem");
+    await expect(rows).toHaveCount(8);
+    await page.getByRole("button", { name: "Show more (1 remaining)" }).click();
+    await expect(rows).toHaveCount(9);
+    await page.getByRole("button", { name: "Show less" }).click();
+    await expect(rows).toHaveCount(8);
+  } finally {
+    await app.stop();
+  }
+});

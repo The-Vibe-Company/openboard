@@ -1,11 +1,15 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import type { ThreadFilters, ThreadSummary } from "../api/board.ts";
-import { channelAllTasksQuery, matchesTask, taskActorsQuery, tasksQuery } from "../api/tasks.ts";
+import { channelAllTasksQuery, matchesTask, type TaskActor, taskActorsQuery, tasksQuery } from "../api/tasks.ts";
 import { markdownPreview } from "../markdown.ts";
 import { TaskStateBadge } from "./TaskState.tsx";
 import "./TaskList.css";
+import "../routes/$org/$board/tasks.css";
+
+const INITIAL_DONE = 8;
+const DONE_INCREMENT = 15;
 
 type Board = { org: string; board: string };
 
@@ -34,7 +38,51 @@ type TaskListProps = {
   children?: ReactNode;
 };
 
+function TaskRow({
+  board,
+  item: { message, replies },
+  done,
+  actors,
+}: {
+  board: Board;
+  item: ThreadSummary;
+  done?: boolean;
+  actors?: ReadonlyMap<string, TaskActor>;
+}) {
+  const task = message.task;
+  if (!task) return null;
+  const title = markdownPreview(message.text, message.mentions) || `Thread #${message.id}`;
+  const detail = done && markdownPreview(task.result || task.reason || "");
+  const replyCount = `${replies} ${replies === 1 ? "reply" : "replies"}`;
+  return (
+    <li>
+      <span className="channel-task-id">#{message.id}</span>
+      <Link className="channel-task-link" to="/$org/$board/t/$id" params={{ ...board, id: message.id }} search={true}>
+        {title}
+      </Link>
+      {Object.entries(message.labels)
+        .filter(([key]) => !key.startsWith("board."))
+        .slice(0, 2)
+        .map(([key, value]) => (
+          <span className="channel-task-label" key={key}>
+            {key}={value}
+          </span>
+        ))}
+      <TaskStateBadge
+        task={task}
+        holder={task.claim ? actors?.get(task.claim.actor) : undefined}
+        recordedState={message.labels["board.task"]}
+      />
+      {done && <small>{replyCount}</small>}
+      {detail && <span className="channel-task-detail">{detail}</span>}
+    </li>
+  );
+}
+
 function TaskList({ board, query, tasks, done, manage, children }: TaskListProps) {
+  const [limit, setLimit] = useState(INITIAL_DONE);
+  const visible = done ? tasks.slice(0, limit) : tasks;
+  const remaining = tasks.length - visible.length;
   const count = query?.hasNextPage ? `${tasks.length}+` : tasks.length;
   const title = done ? "Completed tasks" : "Open tasks";
   const claims = tasks.some(({ message }) => message.task?.claim);
@@ -55,42 +103,28 @@ function TaskList({ board, query, tasks, done, manage, children }: TaskListProps
       </div>
       {tasks.length > 0 && (
         <ol aria-label={title}>
-          {tasks.map(({ message, replies }) => {
-            const task = message.task;
-            if (!task) return null;
-            const title = markdownPreview(message.text, message.mentions) || `Thread #${message.id}`;
-            const detail = done && markdownPreview(task.result || task.reason || "");
-            const replyCount = `${replies} ${replies === 1 ? "reply" : "replies"}`;
-            return (
-              <li key={message.id}>
-                <span className="channel-task-id">#{message.id}</span>
-                <Link
-                  className="channel-task-link"
-                  to="/$org/$board/t/$id"
-                  params={{ ...board, id: message.id }}
-                  search={true}
-                >
-                  {title}
-                </Link>
-                {Object.entries(message.labels)
-                  .filter(([key]) => !key.startsWith("board."))
-                  .slice(0, 2)
-                  .map(([key, value]) => (
-                    <span className="channel-task-label" key={key}>
-                      {key}={value}
-                    </span>
-                  ))}
-                <TaskStateBadge
-                  task={task}
-                  holder={task.claim ? actors?.get(task.claim.actor) : undefined}
-                  recordedState={message.labels["board.task"]}
-                />
-                {done && <small>{replyCount}</small>}
-                {detail && <span className="channel-task-detail">{detail}</span>}
-              </li>
-            );
-          })}
+          {visible.map((item) => (
+            <TaskRow key={item.message.id} board={board} item={item} done={done} actors={actors} />
+          ))}
         </ol>
+      )}
+      {done && (remaining > 0 || limit > INITIAL_DONE) && (
+        <div className="channel-task-history">
+          {remaining > 0 && (
+            <button
+              type="button"
+              className="tasks-column-more"
+              onClick={() => setLimit((current) => current + DONE_INCREMENT)}
+            >
+              Show more ({remaining} remaining)
+            </button>
+          )}
+          {limit > INITIAL_DONE && (
+            <button type="button" className="tasks-column-more" onClick={() => setLimit(INITIAL_DONE)}>
+              Show less
+            </button>
+          )}
+        </div>
       )}
       {query?.isError && <p role="alert">Could not load tasks.</p>}
       {query?.hasNextPage && (
@@ -138,7 +172,9 @@ export function channelTaskLists(
           {history}
         </TaskList>
       )}
-      {filter && filter !== "Open" && <TaskList board={board} tasks={done} done />}
+      {filter && filter !== "Open" && (
+        <TaskList key={JSON.stringify([board.org, board.board, channel])} board={board} tasks={done} done />
+      )}
     </>
   );
 }
