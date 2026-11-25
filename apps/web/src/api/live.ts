@@ -44,33 +44,22 @@ function recordBoardEvent(
   threads: Set<string>,
 ): boolean {
   notifyLiveListeners(board, event);
-  add(boardKeys.activity(board));
   if (event.type === "channel.created") {
     add(boardKeys.channels(board));
     return true;
   }
-  if (event.type === "actor.seen") {
-    add(boardKeys.actors(board));
-    add(taskActorsQuery(board, true).queryKey);
-    return true;
-  }
-  if (!("message" in event) || !event.message) return true;
+  if (!("message" in event) || !event.message) return false;
   const { channel, thread, re } = event.message;
   if (event.type.startsWith("task.")) {
     threads.add(thread);
     add(tasksQuery(board, channel).queryKey);
-    add(boardKeys.allTasks(board));
-    if (event.type === "task.claimed") {
-      add(taskActorsQuery(board, true).queryKey);
-      add(boardKeys.actors(board));
-    }
+    if (event.type === "task.claimed") add(taskActorsQuery(board, true).queryKey);
     add(threadsQuery(board, channel).queryKey);
     return true;
   }
   switch (event.type) {
     case "message.posted":
       add(boardKeys.channels(board));
-      add(boardKeys.schedules(board));
       if (re !== null) threads.add(thread);
       break;
     case "message.edited":
@@ -80,7 +69,6 @@ function recordBoardEvent(
     case "labels.changed":
       threads.add(thread);
       add(tasksQuery(board, channel).queryKey);
-      add(boardKeys.allTasks(board));
       break;
     default:
       return false;
@@ -107,11 +95,7 @@ function boardRefreshes(board: Board, queries: Queries, schedule: Schedule) {
 
   function refresh(id: string, queryKey: QueryKey) {
     running.add(id);
-    const exact =
-      queryKey !== boardKeys.allTasks(board) &&
-      queryKey !== boardKeys.schedules(board) &&
-      queryKey !== boardKeys.activity(board);
-    const filters = { queryKey, exact };
+    const filters = { queryKey, exact: true };
     // An initial fetch cannot be restarted by invalidateQueries alone.
     void queries.cancelQueries({ ...filters, predicate: ({ state }) => state.data === undefined });
     void queries.invalidateQueries(filters).finally(() => {

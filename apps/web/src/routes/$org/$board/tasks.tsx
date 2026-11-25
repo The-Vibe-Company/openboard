@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { boardKeys, channelsQuery, type ThreadSummary } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
+import { subscribeBoardEvents } from "../../../api/live.ts";
 import { sessionQuery } from "../../../api/session.ts";
 import { taskActorsQuery } from "../../../api/tasks.ts";
 import { NewTaskForm, TasksKanban, TasksQueue } from "../../../components/BoardTasksViews.tsx";
@@ -102,9 +103,22 @@ function TasksHeader({
   );
 }
 
-function BoardTasksPage() {
-  const board = Route.useParams();
+function useBoardTasksLive(board: { org: string; board: string }) {
   const queryClient = useQueryClient();
+  useEffect(() => {
+    return subscribeBoardEvents(board, (event) => {
+      if (event.type.startsWith("task.") || event.type === "labels.changed" || event.type === "message.deleted") {
+        void queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) });
+      }
+    });
+  }, [board, queryClient]);
+  return queryClient;
+}
+
+function BoardTasksPage() {
+  const { org, board: boardSlug } = Route.useParams();
+  const board = useMemo(() => ({ org, board: boardSlug }), [org, boardSlug]);
+  const queryClient = useBoardTasksLive(board);
   const { data: session } = useQuery(sessionQuery);
   const { data: channels = [] } = useQuery(channelsQuery(board));
   const [stateFilter, setStateFilter] = useState<StateFilter>("open");

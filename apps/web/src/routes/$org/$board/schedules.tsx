@@ -1,9 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { Client } from "@the-vibe-company/openboard";
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
 import { boardKeys, channelsQuery } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
+import { subscribeBoardEvents } from "../../../api/live.ts";
 import { sessionQuery } from "../../../api/session.ts";
 import { Badge, Button, EmptyState, Input, PlusIcon, Table, Textarea } from "../../../ui/index.ts";
 import "./tasks.css";
@@ -62,7 +63,8 @@ function SchedulesHeader({
 }
 
 function BoardSchedulesPage() {
-  const board = Route.useParams();
+  const { org, board: boardSlug } = Route.useParams();
+  const board = useMemo(() => ({ org, board: boardSlug }), [org, boardSlug]);
   const queryClient = useQueryClient();
   const { data: session } = useQuery(sessionQuery);
   const { data: channels = [] } = useQuery(channelsQuery(board));
@@ -70,6 +72,14 @@ function BoardSchedulesPage() {
   const [creating, setCreating] = useState(false);
   const [canceling, setCanceling] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    return subscribeBoardEvents(board, (event) => {
+      if (event.type === "message.posted") {
+        void queryClient.invalidateQueries({ queryKey: boardKeys.schedules(board) });
+      }
+    });
+  }, [board, queryClient]);
 
   const query = useQuery({
     queryKey: [...boardKeys.schedules(board), showAll ? "all" : "pending"],
