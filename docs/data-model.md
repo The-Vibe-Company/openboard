@@ -368,6 +368,7 @@ CREATE TABLE boards (
   next_schedule BIGINT  NOT NULL DEFAULT 1,
   next_grant    BIGINT  NOT NULL DEFAULT 4,     -- g1..g3 seeded
   timeline      BIGINT  NOT NULL DEFAULT 0,     -- failover guard
+  imported_head BIGINT  NOT NULL DEFAULT 0,     -- last archived event from an organization import
   projection    BIGINT  NOT NULL DEFAULT 0,     -- projection version of this board's folds
   created_at    BIGINT  NOT NULL,
   deleted_at    BIGINT,
@@ -690,8 +691,12 @@ decide and may append several events; folds never append.
 
 **Reprojection.** Each board records the projection version its folds were
 built with (`boards.projection`). In local mode a changed version rebuilds the
-board's derived tables at boot by replay (target ≥ 50,000 events/s). In
-hosted mode a job rebuilds boards one at a time under each board's lock,
+board's derived tables at boot by replay (target ≥ 50,000 events/s).
+The operator command replays the selected board in one transaction under its
+write lock. On imported boards, administrative and automation events through
+`boards.imported_head` remain history only. Newer events fold normally.
+
+The online hosted design rebuilds boards one at a time under each board's lock,
 batch by batch, into new tables or columns added by an expand migration, then
 switches reads; boards not yet rebuilt keep serving from the old version. A
 test replays the conformance run's log and compares `view` columns byte for

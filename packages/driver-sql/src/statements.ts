@@ -29,6 +29,7 @@ import { operatorPlatform, operatorScoped } from "./views/operator/index.ts";
 import { orgDeletionStatements } from "./views/operator/org-deletion.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
 import { rateStatements } from "./views/rates/index.ts";
+import { reprojectStatements } from "./views/reproject/index.ts";
 import { restoreStatements } from "./views/restore/index.ts";
 import { scheduleStatements } from "./views/schedules/index.ts";
 import { schemaStatements } from "./views/schemas/registry.ts";
@@ -71,6 +72,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...rateStatements,
   ...readinessStatements,
   ...restoreStatements,
+  ...reprojectStatements,
   ...purgeStatements,
   ...attachmentStatements,
   ...scheduleStatements,

@@ -1,0 +1,1 @@
+ALTER TABLE boards ADD COLUMN imported_head BIGINT NOT NULL DEFAULT 0;

@@ -94,7 +94,7 @@ export function inboundWriter(db: Db, dialect: Dialect, keys: BoardKeys): BoardI
   };
 }
 
-export async function foldInbound(db: Db, dialect: Dialect, keys: BoardKeys, event: InboundEvent) {
+export async function foldInbound(db: Db, dialect: Dialect, keys: BoardKeys, event: InboundEvent, reproject: boolean) {
   if (event.type === "ob.inbound.created") {
     const { inbound, grantId } = event.payload;
     await query(db, dialect, inboundStatements.insertInbound, {
@@ -115,7 +115,7 @@ export async function foldInbound(db: Db, dialect: Dialect, keys: BoardKeys, eve
     });
   } else {
     const scope = { ...keys, id: event.payload.id };
-    await query(db, dialect, inboundStatements.deleteInboundSecret, scope);
+    if (!reproject) await query(db, dialect, inboundStatements.deleteInboundSecret, scope);
     await query(db, dialect, inboundStatements.deleteInbound, scope);
   }
 }

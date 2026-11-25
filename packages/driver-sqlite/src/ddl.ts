@@ -24,6 +24,15 @@ export function renderDdl(postgres: string): string {
 
 /** Rebuild the table for system SQLite versions without ALTER COLUMN DROP NOT NULL. */
 export function renderMigration(migration: Migration): string {
+  if (migration.name === "0060-reproject-job-guards") {
+    const triggers = migrations
+      .filter(({ version }) => version === 30 || version === 57)
+      .flatMap(({ sql }) => splitStatements(sql))
+      .filter((statement) => /^CREATE TRIGGER sync_(task_expiry|schedule_send)_job/.test(statement));
+    const drops = triggers.map((trigger) => `DROP TRIGGER ${trigger.split(" ")[2]}`).join(";\n");
+    const functions = migration.sql.replaceAll("CREATE OR REPLACE FUNCTION", "CREATE FUNCTION");
+    return renderDdl([drops, functions, ...triggers].join(";\n").replaceAll(";;", ";"));
+  }
   if (migration.name !== "0034-webhook-pings") return renderDdl(migration.sql);
   const original = migrations.find(({ name }) => name === "0032-webhooks");
   const schema = splitStatements(original?.sql ?? "");

@@ -43,14 +43,35 @@ test("on SQLite, reads the head and the writer's record in one statement", async
   expect(ran[0]).toStartWith("SELECT boards.head, boards.timeline,");
 });
 
-test("refreshes sibling usage and the actor together when Postgres waited for an advancing writer", async () => {
+test("refreshes sibling usage and the actor together when Postgres waited for a board update without a new event", async () => {
   let first = true;
   const { db, ran } = recording(() => {
     if (first) {
       first = false;
-      return [{ head: 8, snapshot_head: 7, board_bytes: 100, other_bytes: 0, event_day: 0, event_count: 1 }];
+      return [
+        {
+          head: 8,
+          board_revision: "8",
+          snapshot_revision: "7",
+          board_bytes: 100,
+          other_bytes: 0,
+          event_day: 0,
+          event_count: 1,
+        },
+      ];
     }
-    return [{ ...ada, head: 8, snapshot_head: 8, board_bytes: 100, other_bytes: 890, event_day: 0, event_count: 2 }];
+    return [
+      {
+        ...ada,
+        head: 8,
+        board_revision: "8",
+        snapshot_revision: "8",
+        board_bytes: 100,
+        other_bytes: 890,
+        event_day: 0,
+        event_count: 2,
+      },
+    ];
   });
   expect(await lockBoardAs(db, postgresText, keys, ada.id, window)).toMatchObject({
     head: 8,

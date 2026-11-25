@@ -190,6 +190,7 @@ export async function foldWebhook(
   dialect: Dialect,
   keys: BoardKeys,
   event: WebhookCreated | WebhookDeleted | WebhookUpdated,
+  reproject: boolean,
 ) {
   if (event.type === "ob.webhook.deleted") {
     await query(db, dialect, webhookStatements.deleteWebhook, { ...keys, id: event.payload.id });
@@ -206,7 +207,7 @@ export async function foldWebhook(
   };
   if (event.type !== "ob.webhook.created") {
     await query(db, dialect, webhookStatements.updateWebhook, config);
-    if (!webhook.enabled) {
+    if (!webhook.enabled && !reproject) {
       const jobs = { ...keys, id: webhook.id, deliveryJob: WEBHOOK_DELIVERY_JOB, resendJob: WEBHOOK_RESEND_JOB };
       // A resumed send must wait for the original attempt's lease to end.
       await query(db, dialect, webhookStatements.deferSendingWebhookDeliveries, jobs);

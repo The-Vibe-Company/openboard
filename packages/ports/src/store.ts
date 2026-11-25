@@ -145,6 +145,8 @@ export interface OrgView extends RateView, OrgLogMaintenance, OrgExports {
 
 /** Reads and writes that belong to no tenant: resolving the board a path names, people and their sessions. */
 export interface PlatformView extends RateView, OidcKeyStore, OperatorReads, OperatorWrites, DeviceView {
+  /** Atomically rebuild a board’s folds. Startup can skip boards already at the release version. */
+  reprojectBoard(keys: BoardKeys, onlyIfStale?: boolean): Promise<{ events: number; projection: number } | null>;
   /** Reclaim one bounded batch of expired rows per retention predicate across the installation. */
   sweepExpired(now: number): Promise<void>;
   /** At startup, enqueue board-scoped work for any rows still missing their organization. */

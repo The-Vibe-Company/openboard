@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { ratesSuite, runBlobsSuite, runJobsSuite, runJobWakeSuite, runStoreSuite } from "@openboard/ports/testkit";
+import { sqlitePurgeFixture } from "../src/catalog.ts";
 import { renderDdl } from "../src/ddl.ts";
 import { sqliteDriver } from "../src/index.ts";
 
 const open = async () => sqliteDriver({ memory: true }, () => 0);
-runStoreSuite("sqlite", open);
+runStoreSuite("sqlite", open, async () => sqlitePurgeFixture(() => 0));
 runBlobsSuite("sqlite", open);
 runJobsSuite("sqlite", open);
 runJobWakeSuite("sqlite", async (now, run) => {

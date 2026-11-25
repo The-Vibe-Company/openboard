@@ -2,7 +2,15 @@ import { Database } from "bun:sqlite";
 import { chmod, rename } from "node:fs/promises";
 import { BoardError } from "@openboard/contract";
 import { type BoardEvent, exportEvent } from "@openboard/core";
-import { migrations, query, type ReadAttachmentBackup, replayBoard, restoreStatements } from "@openboard/driver-sql";
+import {
+  isImportedFold,
+  markImportedHead,
+  migrations,
+  query,
+  type ReadAttachmentBackup,
+  replayBoard,
+  restoreStatements,
+} from "@openboard/driver-sql";
 import { sqliteDialect } from "./dialect.ts";
 import { migrate } from "./migrate.ts";
 import { connection } from "./open.ts";
@@ -16,19 +24,6 @@ interface ImportSource {
 }
 
 const keys = { orgId: 1, boardId: 1 };
-
-/** Keep administrative history without activating the archived policy or automation. */
-function fold(event: BoardEvent) {
-  return (
-    event.type === "actor.seen" ||
-    event.type === "channel.created" ||
-    event.type === "labels.changed" ||
-    event.type === "ob.schema.registered" ||
-    event.type.startsWith("message.") ||
-    event.type.startsWith("reaction.") ||
-    event.type.startsWith("task.")
-  );
-}
 
 async function publishImport(staged: string, destination: string) {
   try {
@@ -59,7 +54,7 @@ export function importSqlite(destination: string, source: ImportSource, now: () 
           // The normal append and folds bind every stored row to the local keys.
           const sanitized = batch.events.map((event) => exportEvent(event as BoardEvent)) as BoardEvent[];
           await replayBoard(db, sqliteDialect, keys, sanitized, source.attachment, {
-            fold,
+            fold: isImportedFold,
             allowMissingAttachments: source.allowMissingAttachments,
           });
         } catch (cause) {
@@ -68,6 +63,7 @@ export function importSqlite(destination: string, source: ImportSource, now: () 
         }
         events += batch.events.length;
       }
+      await query(db, sqliteDialect, markImportedHead, keys);
       const rows = await query(db, sqliteDialect, restoreStatements.restoreBlobs, keys);
       for (const { sha256, min_size, max_size } of rows) {
         if (min_size !== max_size) throw new Error(`Conflicting attachment sizes for blobs/sha256/${sha256}`);

@@ -2,6 +2,7 @@ import { BoardError, type Role } from "@openboard/contract";
 import { type CountQuota, type CountQuotas, countQuotas } from "@openboard/core";
 import type { BoardMemberRecord, BoardScope, BoardView, CreateOrgRecord, PlatformView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../db.ts";
+import { PROJECTION_VERSION } from "../projection-version.ts";
 import { forUpdate, query, sql } from "../sql.ts";
 
 /** Organizations, their memberships and their events. */
@@ -12,7 +13,8 @@ export const orgStatements = {
     VALUES (${"slug"}, ${"name"}, ${"userId"}, ${"at"}) ON CONFLICT (slug) DO NOTHING RETURNING id`,
   insertMembership: sql`INSERT INTO memberships (org_id, user_id, role, created_at)
     VALUES (${"orgId"}, ${"userId"}, ${"role"}, ${"at"})`,
-  insertBoard: sql`INSERT INTO boards (org_id, slug, name, created_at) VALUES (${"orgId"}, ${"slug"}, ${"name"}, ${"at"})`,
+  insertBoard: sql`INSERT INTO boards (org_id, slug, name, created_at, projection)
+    VALUES (${"orgId"}, ${"slug"}, ${"name"}, ${"at"}, ${"projection"})`,
   insertOrgEvent: sql`INSERT INTO org_events (org_id, id, type, at, actor, payload)
     VALUES (${"orgId"}, ${"id"}, ${"type"}, ${"at"}, ${"actor"}, ${"payload"})`,
   personMemberships: sql`SELECT o.slug, o.name, m.role FROM memberships m
@@ -64,7 +66,12 @@ export function orgView(db: Db, dialect: Dialect): Pick<PlatformView, "createOrg
         }
         const orgId = Number(org.id);
         await query(tx, dialect, orgStatements.insertMembership, { orgId, userId, role: record.role, at });
-        await query(tx, dialect, orgStatements.insertBoard, { orgId, ...record.board, at });
+        await query(tx, dialect, orgStatements.insertBoard, {
+          orgId,
+          ...record.board,
+          at,
+          projection: PROJECTION_VERSION,
+        });
         for (const event of record.events) {
           const { id, type, actor } = event;
           const payload = JSON.stringify(event.payload);

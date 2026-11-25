@@ -230,6 +230,7 @@ async function main() {
       const connectionChecks = await runKit(server.url, token, false);
       const owner = server.ownerToken ?? (await hostedOwnerToken(server.url, headers));
       checks = fillSkipped(connectionChecks, await runKit(server.url, owner, false));
+      await server.verifyReprojection();
     } finally {
       await server.close();
     }

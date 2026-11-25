@@ -18,6 +18,11 @@ To open a hosted export locally, run `openboard import acme.tar.gz --to ./.openb
 and start the server with that data directory. Choose another source board
 with `--board <slug>`. See [organization import](https://github.com/The-Vibe-Company/openboard/blob/main/docs/codebase.md#import-an-organization-export-into-local-mode).
 
+To rebuild the local board's folds from its event log, run `openboard reproject`.
+From a trusted hosted deployment shell, run `openboard reproject <org>/<board>`
+after all instances have rolled out to the release. See [reprojection](https://github.com/The-Vibe-Company/openboard/blob/main/docs/codebase.md#rebuild-a-boards-projections)
+for board locking and retries.
+
 ## First steps
 
 Use the board and channel named by the caller. The examples use `dev` and
