@@ -22,6 +22,12 @@ export const claimNextTask = defineOperation({
       {
         channel: ChannelFilter,
         lease: TaskLease,
+        from: Type.Optional(
+          Type.Array(Type.String({ minLength: 1, maxLength: 256 }), {
+            maxItems: 32,
+            description: "Additional principal IDs whose unassigned tasks are eligible.",
+          }),
+        ),
         wait: Type.Optional(
           Type.Number({
             minimum: 0,
@@ -40,7 +46,7 @@ export const claimNextTask = defineOperation({
     ),
   },
   output: Type.Union([Type.Object({ task: TaskRoot, claim: TaskClaim }), Type.Object({ task: Type.Null() })]),
-  errors: ["invalid_request", "forbidden"],
+  errors: ["invalid_request", "invalid_from", "forbidden"],
   access: { permission: "label", channel: "fromInput" },
   effects: { readOnly: false, idempotent: false, emits: ["task.expired", "task.claimed"], meter: "task_claims" },
   cli: { command: ["tasks", "claim"], args: [] },

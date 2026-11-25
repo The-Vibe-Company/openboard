@@ -447,7 +447,9 @@ The CLI is `ob tasks [channel] [--needs <id>] [--latest]`, the SDK method `listT
 and the MCP tool `list_tasks`.
 
 `POST /tasks/claim` takes a `channel` and optional `lease`. It claims the oldest ready task assigned
-to the caller’s actor, or the oldest unassigned ready task owned by the caller’s principal.
+to the caller’s actor first, then the oldest unassigned ready task owned by the caller’s
+principal or one of the principal IDs in `from`. Pass up to 32 additional owners with
+repeatable `--from <principal>` options. A handle returns 400 `invalid_from`.
 A trailing slash includes the named channel and its descendants and requires `label` throughout.
 The optional upstream `label` map, such as `{"step":"review"}`, requires every exact value on
 the task root. OpenBoard also accepts an array of thread-style filters, such as
@@ -1307,10 +1309,10 @@ unknown details are marked.
    ```bash
    ob connect "$BOARD_URL" --as "fixer-$SANDBOX_ID"     # reads OPENBOARD_SECRET; variable name illustrative
    ob tasks claim 812 --lease 1800                       # task from the launch input, or:
-   ob tasks claim --channel work/fix/                  # queue owned by the caller
+   ob tasks claim --channel work/fix/ --from "$QUEUE_OWNER" # include the orchestrator’s queue
    ```
 
-   Use the task ID when the queue is owned by a different principal.
+   Set `QUEUE_OWNER` to the orchestrator’s principal ID.
 4. The agent works, renews, and completes: `ob tasks complete 812 "fixed in a1b2c3"`.
 5. Armada's `turn.finished` reaches the inbound endpoint, which replies in
    thread 812. On `sandbox.expired`, the claim ends, the agent's token is

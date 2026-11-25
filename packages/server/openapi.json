@@ -1651,6 +1651,12 @@
                     "description": "Lease in seconds, default 900.",
                     "type": "integer"
                   },
+                  "from": {
+                    "maxItems": 32,
+                    "description": "Additional principal IDs whose unassigned tasks are eligible.",
+                    "type": "array",
+                    "items": { "minLength": 1, "maxLength": 256, "type": "string" }
+                  },
                   "wait": {
                     "minimum": 0,
                     "maximum": 300,
@@ -1914,7 +1920,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, invalid_profile",
+            "description": "invalid_request, invalid_from, invalid_profile",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "401": {

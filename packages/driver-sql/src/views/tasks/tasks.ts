@@ -12,12 +12,19 @@ export const needIds = {
 
 const CHANNELS: Fragment = { fragment: () => "" };
 const readyTask = splice(
-  sql`SELECT root.view FROM tasks t
+  sql<
+    "owners" | "orgId" | "boardId" | "now" | "principal" | "actor"
+  >`WITH input AS (SELECT CAST(${"owners"} AS TEXT) AS ids)
+  SELECT root.view FROM tasks t
   JOIN messages AS root ON root.org_id = t.org_id AND root.board_id = t.board_id AND root.id = t.id
   WHERE t.org_id = ${"orgId"} AND t.board_id = ${"boardId"} AND root.deleted = 0 AND ${TASK_LABELS}
     AND ${CHANNELS} AND t.state IN ('ready', 'claimed')
     AND (t.state = 'ready' OR (t.claim_until <= CAST(${"now"} AS BIGINT) AND t.blocked_reason IS NULL))
-    AND t.owner = ${"principal"} AND (t.for_actor = ${"actor"} OR t.for_actor IS NULL)
+    AND ((t.owner = ${"principal"} AND t.for_actor = ${"actor"})
+      OR (t.for_actor IS NULL AND (t.owner = ${"principal"} OR t.owner IN (
+        SELECT owner.value FROM input CROSS JOIN ${needIds} AS owner
+        WHERE t.board_id = ${"boardId"}
+      ))))
   ORDER BY CASE WHEN t.for_actor IS NULL THEN 1 ELSE 0 END, t.id LIMIT 1`,
   TASK_LABELS,
   matchesTaskLabels,
@@ -91,7 +98,7 @@ export function taskWriter(
 ): BoardTaskWriter {
   return {
     ...taskReads(db, dialect, keys),
-    async nextReadyTask({ under, labels = [], ...input }) {
+    async nextReadyTask({ under, labels = [], from = [], ...input }) {
       const statement =
         under === undefined ? taskReadStatements.nextReadyTask : taskReadStatements.nextReadySubtreeTask;
       const [row] = await query(db, dialect, statement, {
@@ -99,6 +106,7 @@ export function taskWriter(
         ...input,
         under: under ?? null,
         labels: JSON.stringify(labels),
+        owners: JSON.stringify(from),
       });
       return row ? (JSON.parse(String(row.view)) as Message) : null;
     },
