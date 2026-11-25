@@ -4,6 +4,7 @@ import { render, type Statement } from "./sql.ts";
 import { accountPlatformStatements, accountStatements } from "./views/accounts.ts";
 import { actorStatements } from "./views/actors.ts";
 import { agentStatements } from "./views/agents.ts";
+import { attachmentStatements } from "./views/attachments/index.ts";
 import { auditStatements } from "./views/audit.ts";
 import { oidcStatements } from "./views/auth/oidc.ts";
 import { boardPlatformStatements, boardStatements } from "./views/boards.ts";
@@ -18,8 +19,6 @@ import { backfillPlatformStatements, backfillStatements } from "./views/jobs/bac
 import { exportStatements } from "./views/jobs/exports.ts";
 import { jobPlatformStatements, jobStatements } from "./views/jobs/index.ts";
 import { legacyPurgePlatform, legacyPurgeScoped } from "./views/jobs/legacy-purge.ts";
-import { scheduleStatements } from "./views/schedules/index.ts";
-import { attachmentStatements } from "./views/attachments/index.ts";
 import { purgeStatements } from "./views/jobs/purge.ts";
 import { shippingStatements } from "./views/jobs/shipping.ts";
 import { sweepStatements } from "./views/jobs/sweep.ts";
@@ -30,6 +29,8 @@ import { operatorPlatform, operatorScoped } from "./views/operator/index.ts";
 import { orgDeletionStatements } from "./views/operator/org-deletion.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
 import { rateStatements } from "./views/rates/index.ts";
+import { restoreStatements } from "./views/restore/index.ts";
+import { scheduleStatements } from "./views/schedules/index.ts";
 import { schemaStatements } from "./views/schemas/registry.ts";
 import { taskListStatements } from "./views/tasks/list.ts";
 import { taskFoldStatements } from "./views/tasks/task-folds.ts";
@@ -69,6 +70,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...orgDeletionStatements,
   ...rateStatements,
   ...readinessStatements,
+  ...restoreStatements,
   ...purgeStatements,
   ...attachmentStatements,
   ...scheduleStatements,

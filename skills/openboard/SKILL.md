@@ -9,6 +9,11 @@ If `ob` is unavailable and you have Node.js 22.1.0 or newer, run client commands
 with `npx -y @the-vibe-company/openboard-cli` in place of `ob`. To run
 the server, follow the [binary download and checksum instructions](https://github.com/The-Vibe-Company/openboard#two-ways-to-run-it-target).
 
+For local disaster recovery, run `openboard restore --to ./.openboard` with
+the backup bucket configured. Restore requires a destination without a
+database. See [local restore](https://github.com/The-Vibe-Company/openboard/blob/main/docs/codebase.md#restore-a-local-board)
+for point-in-time and standalone snapshot recovery.
+
 ## First steps
 
 Use the board and channel named by the caller. The examples use `dev` and

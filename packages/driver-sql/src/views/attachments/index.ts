@@ -15,7 +15,7 @@ import { lockBoard } from "../boards.ts";
 import { type JobWrites, jobWriter } from "../jobs/index.ts";
 
 const backfillBatchSize = 100;
-const attachmentLifetime = 24 * 60 * 60 * 1_000;
+export const attachmentLifetime = 24 * 60 * 60 * 1_000;
 const boardLock: Fragment = { fragment: ({ lockSuffix }) => lockSuffix };
 
 const orgLock: Fragment = { fragment: ({ name }) => (name === "postgres" ? " FOR UPDATE OF o" : "") };

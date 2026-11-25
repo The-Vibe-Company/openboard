@@ -18,7 +18,7 @@ function upload(bucket: Bucket, orgId: number, { boardId, first, last, events, d
 }
 
 async function uploadAttachment(bucket: Bucket, blobs: Blobs, attachment: BackupAttachment, deadline: number) {
-  const { orgId, boardId, id, sha256 } = attachment;
+  const { orgId, boardId, id, sha256, uploader, at, gcEnqueued, shippedAt } = attachment;
   const prefix = orgPrefix(orgId);
   const path = `${prefix}blobs/sha256/${sha256}`;
   if (!(await bucket.exists(path, deadline))) {
@@ -28,10 +28,9 @@ async function uploadAttachment(bucket: Bucket, blobs: Blobs, attachment: Backup
   }
 
   const mapping = `${prefix}attachments/${boardId}/${id}.json`;
-  if (!(await bucket.exists(mapping, deadline))) {
-    const metadata = new TextEncoder().encode(JSON.stringify({ sha256 }));
-    await bucket.put(mapping, metadata, deadline, "application/json");
-  }
+  const metadata = new TextEncoder().encode(JSON.stringify({ sha256, uploader, at, gcEnqueued, shippedAt }));
+  // A retry may follow a successful PUT whose response was lost; publish the metadata for this attempt.
+  await bucket.put(mapping, metadata, deadline, "application/json");
 }
 
 export function logShippingJobs(

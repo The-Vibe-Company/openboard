@@ -16,6 +16,10 @@ export interface Bucket {
 export interface BackupAttachment extends BlobKey {
   readonly boardId: number;
   readonly id: string;
+  readonly uploader: string;
+  readonly at: number;
+  readonly gcEnqueued: number | null;
+  readonly shippedAt: number;
 }
 
 export interface LogSegment {

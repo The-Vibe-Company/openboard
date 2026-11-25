@@ -127,3 +127,11 @@ export async function compose(
     },
   };
 }
+
+export {
+  ensureRestoreTarget,
+  localSnapshot,
+  MissingBackupBlob,
+  restoreSqlite,
+  SnapshotAfterCutoff,
+} from "@openboard/driver-sqlite";

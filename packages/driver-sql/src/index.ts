@@ -246,3 +246,5 @@ export function createViews(
     }),
   };
 }
+
+export { type ReadAttachmentBackup, replayBoard, restoreStatements } from "./views/restore/index.ts";
