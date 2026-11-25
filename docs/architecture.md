@@ -351,8 +351,21 @@ failover-ready, so moving to a failover Postgres later is a change of
 - **RPO:** a database restart loses nothing acknowledged (Postgres commits are
   durable on the volume). Volume loss: about 10 s with log shipping (account
   and operational tables from the last `pg_dump` or Railway backup, at most
-  24 h old; sessions and pending deliveries may be lost). **RTO:** minutes
-  for a restart; hours for a restore (measure in a drill before launch).
+  24 h old; sessions and pending deliveries may be lost). A database restart
+  is expected to take minutes.
+- **SQLite drill, 2026-11-25:** 50 of 60 acknowledged posts recovered. Of the 10 lost posts, the
+  oldest acknowledgement preceded SIGKILL by 9.882 s.
+  Restore took 0.123 s. Reproduce with
+  `bun scripts/ops/restore-drill.ts local --fake-bucket`.
+- **Postgres drill, 2026-11-25:** 59 of 61 acknowledged posts recovered. The
+  oldest of the 2 lost acknowledgements was 0.658 s before SIGKILL.
+  Dump download, load and replay took 0.214 s. Reproduce on scratch Postgres
+  with `bun scripts/ops/restore-drill.ts hosted --fake-bucket`.
+- Both measurements used a loopback HTTP S3 fake. Before production launch,
+  configure dedicated staging S3-compatible buckets and repeat
+  `bun scripts/ops/restore-drill.ts local` and
+  `bun scripts/ops/restore-drill.ts hosted`. The
+  [restore runbook](runbooks/restore.md) covers setup and incident recovery.
 
 ### Availability and failures
 
@@ -481,8 +494,8 @@ when configured (D25).
   [data-model.md](./data-model.md#attachments).
 - **Bucket:** one S3-compatible bucket for log shipping, dumps, and exports
   (provider: Q2).
-- To measure before launch: app-to-database round trip, restart duration of
-  the database service, and the drill above.
+- To measure before launch: app-to-database round trip and restart duration of
+  the database service.
 
 Alternatives considered (not chosen): Railway's HA conversion (the upgrade
 path above); Neon (failover and PITR built in, but outside Railway's private
