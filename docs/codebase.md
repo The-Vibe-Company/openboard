@@ -554,3 +554,20 @@ One image for both modes. Build stage `oven/bun:<pinned>`; runtime stage `debian
 - **Self-hosted server**: the same image as one container with one volume at `/data`, no Postgres. The image uses `/data` as the account home, so the local owner token is on the volume at `/data/.config/openboard/local/<port>.json`. For webhook or inbound verification credentials, supply a key from a Docker secret mounted separately from `/data` as shown in the [Docker setup](../README.md#docker-secrets). Without a configured key, credential creation returns `not_supported`. The in-container CLI defaults to `BOARD_URL=http://127.0.0.1:8787/api/local/main`. Set `BOARD_URL` for an in-container CLI command if you change the listener port. Deploys restart it in place with a few seconds of unavailability that clients absorb by reconnecting with their cursor. Snapshots are written under `/data/backups` (`VACUUM INTO`, D25) and `openboard restore` reads them back.
 - **Self-hosted HA**: the same image with `OPENBOARD_DATABASE_URL` and two or more containers, exactly like the hosted service; `OPENBOARD_SIGNUP` decides whether sign-up is open.
 - Moving from local to Postgres is an organization export and import (seam in 4.5), not a database copy.
+
+#### Restore a local board
+
+With the source bucket configured, run `openboard restore --to ./.openboard`
+and start the server on that data directory. Restore identifies the snapshot
+and reports the number of events replayed. It checks segment continuity and
+attachment checksums before publishing the database. The destination must
+have no existing database.
+
+Use `--at <ISO time>` to replay up to, but excluding, that instant. To start
+a new history from that point, retain the source backup and configure a
+different bucket before resuming writes. Copy the source bucket's
+`org/1/blobs/sha256/` and `org/1/attachments/` objects to the new bucket so
+the restored board's first snapshot has access to already-shipped files. Use
+`openboard restore --from .openboard/backups/<snapshot> --to .openboard` to
+restore a local snapshot without a bucket. Keep the original sibling
+`blobs/` directory if you need downloads from a standalone SQLite snapshot.

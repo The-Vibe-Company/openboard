@@ -4,7 +4,10 @@ import type { BlobKey, Blobs } from "@openboard/ports";
 
 const absent = (error: unknown) => error instanceof Error && "code" in error && error.code === "ENOENT";
 
-export function sqliteBlobs(dir?: string): Blobs & { close(): Promise<void>; purgeOrg(orgId: number): Promise<void> } {
+export function sqliteBlobs(
+  dir?: string,
+  replaceExisting = false,
+): Blobs & { close(): Promise<void>; purgeOrg(orgId: number): Promise<void> } {
   let temporary: Promise<string> | undefined;
   function temporaryDirectory() {
     temporary ??= mkdtemp("openboard-blobs-");
@@ -18,11 +21,13 @@ export function sqliteBlobs(dir?: string): Blobs & { close(): Promise<void>; pur
   return {
     async put(key, bytes) {
       const file = await path(key);
-      try {
-        await stat(file);
-        return;
-      } catch (error) {
-        if (!absent(error)) throw error;
+      if (!replaceExisting) {
+        try {
+          await stat(file);
+          return;
+        } catch (error) {
+          if (!absent(error)) throw error;
+        }
       }
       const parent = dirname(file);
       await mkdir(parent, { recursive: true, mode: 0o700 });

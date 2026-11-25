@@ -17,6 +17,7 @@ export function messageStorage(
   keys: BoardKeys,
   storage: BoardStorage,
   preloaded: (id: number) => Row | undefined,
+  enforceQuota = true,
 ) {
   let { boardBytes } = storage;
   const sizes = new Map<number, number>();
@@ -34,7 +35,7 @@ export function messageStorage(
     async account(event: BoardEvent) {
       if (event.type === "ob.schedule.created") {
         const delta = contentBytes({ text: event.payload.schedule.text, blocks: event.payload.blocks });
-        checkStoredBytes(boardBytes + storage.otherBytes, delta, storage.limit);
+        if (enforceQuota) checkStoredBytes(boardBytes + storage.otherBytes, delta, storage.limit);
         boardBytes += delta;
         return;
       }
@@ -47,7 +48,7 @@ export function messageStorage(
           ? 0
           : contentBytes(event.type === "message.posted" ? messages.messageView(event) : event.payload.view);
       const delta = next - (sizes.get(id) ?? 0);
-      checkStoredBytes(boardBytes + storage.otherBytes, delta, storage.limit);
+      if (enforceQuota) checkStoredBytes(boardBytes + storage.otherBytes, delta, storage.limit);
       boardBytes += delta;
       sizes.set(id, next);
     },

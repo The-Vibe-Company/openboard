@@ -1,134 +1,30 @@
 import type { Message } from "@openboard/contract";
-import { type BoardEvent, checkDailyEvents, dailyEventWindow, type MessageDeleted } from "@openboard/core";
+import { type BoardEvent, checkDailyEvents, dailyEventWindow } from "@openboard/core";
 import type { BoardGrantReads, BoardKeys, BoardScope, BoardView, BoardWriter, Broadcaster } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { query } from "../sql.ts";
-import { foldActorSeen, lockBoardAs } from "./actors.ts";
-import { findAgent, findAgentByClaimKey, foldAgentClaimed, foldAgentRefreshed } from "./agents.ts";
+import { lockBoardAs } from "./actors.ts";
+import { findAgent, findAgentByClaimKey } from "./agents.ts";
 import { attachmentReads } from "./attachments/index.ts";
 import { boardIdentity, repairStoredBytes, setHead } from "./boards.ts";
-import { findChannel, foldChannelCreated } from "./channels.ts";
-import {
-  connectionNamed,
-  connectionQuota,
-  findConnection,
-  foldAgentRevoked,
-  foldConnectionCreated,
-  foldConnectionRevoked,
-  foldConnectionRotated,
-  nextGrant,
-  profileHolder,
-} from "./connections.ts";
-import { activeGrant, foldGrantEvent, grantReads, otherGrantIssuers } from "./grants.ts";
-import { foldInbound, inboundWriter } from "./inbound/index.ts";
+import { findChannel } from "./channels.ts";
+import { connectionNamed, connectionQuota, findConnection, nextGrant, profileHolder } from "./connections.ts";
+import { activeGrant, grantReads, otherGrantIssuers } from "./grants.ts";
+import { inboundWriter } from "./inbound/index.ts";
 import { type JobWrites, jobWriter } from "./jobs/index.ts";
 import { notifyUsageDay } from "./jobs/usage.ts";
-import { foldMessagePosted } from "./messages/post-fold.ts";
+import { appendEvent } from "./messages/fold.ts";
 import { messageStatements } from "./messages/statements.ts";
 import { messageStorage } from "./messages/storage.ts";
 import { orgReads } from "./orgs.ts";
-import { foldSchedule, scheduleWriter } from "./schedules/index.ts";
+import { scheduleWriter } from "./schedules/index.ts";
 import { notifyScheduleSend } from "./schedules/send.ts";
-import { foldSchemaRegistered, schemaWriter } from "./schemas/registry.ts";
-import { foldTaskEvent, notifyTaskExpiry } from "./tasks/task-folds.ts";
+import { schemaWriter } from "./schemas/registry.ts";
+import { notifyTaskExpiry } from "./tasks/task-folds.ts";
 import { taskReads, taskWriter } from "./tasks/tasks.ts";
-import { foldWatchersRegistered, matchWatchers, watcherWriter } from "./watchers/index.ts";
+import { matchWatchers, watcherWriter } from "./watchers/index.ts";
 import { deliveryWriter, matchWebhooks } from "./webhooks/deliveries.ts";
-import { foldWebhook, webhookWriter } from "./webhooks/webhooks.ts";
-
-async function foldMessageDeleted(tx: Db, dialect: Dialect, keys: BoardKeys, event: MessageDeleted): Promise<void> {
-  const { view } = event.payload;
-  await query(tx, dialect, messageStatements.deleteMessage, {
-    ...keys,
-    id: event.message,
-    labels: JSON.stringify(view.labels),
-    revision: view.revision,
-    version: view.version,
-    view: JSON.stringify(view),
-  });
-  if (event.thread !== event.message) {
-    await query(tx, dialect, messageStatements.dropRootReply, { ...keys, root: event.thread });
-  }
-}
-
-/** Appends one event to the log and folds it, in the caller's transaction. */
-async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: BoardEvent): Promise<void> {
-  await query(tx, dialect, messageStatements.insertEvent, {
-    ...keys,
-    id: event.id,
-    type: event.type,
-    at: event.at,
-    thread: event.thread,
-    message: event.message,
-    channel: event.channel,
-    actor: event.actor,
-    principal: event.principal,
-    visibility: event.visibility,
-    payload: JSON.stringify(event.payload),
-  });
-  if (event.type === "channel.created") await foldChannelCreated(tx, dialect, keys, event);
-  else if (
-    event.type === "ob.grant.created" ||
-    event.type === "ob.grant.revoked" ||
-    event.type === "ob.grant.updated"
-  ) {
-    await foldGrantEvent(tx, dialect, keys, event);
-  } else if (event.type === "ob.connection.created") await foldConnectionCreated(tx, dialect, keys, event);
-  else if (event.type === "ob.connection.revoked") await foldConnectionRevoked(tx, dialect, keys, event);
-  else if (event.type === "actor.seen") await foldActorSeen(tx, dialect, keys, event);
-  else if (event.type === "ob.agent.claimed") await foldAgentClaimed(tx, dialect, keys, event);
-  else if (event.type === "ob.agent.refreshed") await foldAgentRefreshed(tx, dialect, keys, event);
-  else if (event.type === "ob.agent.revoked") await foldAgentRevoked(tx, dialect, keys, event);
-  else if (event.type === "ob.connection.rotated") await foldConnectionRotated(tx, dialect, keys, event);
-  else if (event.type === "message.edited") {
-    const { text, view } = event.payload;
-    await query(tx, dialect, messageStatements.editMessage, {
-      ...keys,
-      id: event.message,
-      text,
-      textLower: text.toLowerCase(),
-      revision: view.revision,
-      version: view.version,
-      view: JSON.stringify(view),
-    });
-  } else if (event.type === "message.deleted") await foldMessageDeleted(tx, dialect, keys, event);
-  else if (event.type === "reaction.added" || event.type === "reaction.removed") {
-    const { view } = event.payload;
-    await query(tx, dialect, messageStatements.reactToMessage, {
-      ...keys,
-      id: event.message,
-      version: view.version,
-      view: JSON.stringify(view),
-    });
-  } else if (event.type === "labels.changed") {
-    const { view } = event.payload;
-    await query(tx, dialect, messageStatements.labelMessage, {
-      ...keys,
-      id: event.message,
-      labels: JSON.stringify(view.labels),
-      version: view.version,
-      view: JSON.stringify(view),
-    });
-  } else if (event.type === "message.posted") await foldMessagePosted(tx, dialect, keys, event);
-  else if (event.type === "ob.schedule.created" || event.type === "ob.schedule.canceled")
-    await foldSchedule(tx, dialect, keys, event);
-  else if (event.type === "ob.schema.registered") await foldSchemaRegistered(tx, dialect, keys, event);
-  else if (event.type === "ob.watchers.registered") await foldWatchersRegistered(tx, dialect, keys, event);
-  else if (
-    event.type === "ob.webhook.created" ||
-    event.type === "ob.webhook.deleted" ||
-    event.type === "ob.webhook.updated" ||
-    event.type === "ob.webhook.disabled"
-  )
-    await foldWebhook(tx, dialect, keys, event);
-  else if (
-    event.type === "ob.inbound.created" ||
-    event.type === "ob.inbound.updated" ||
-    event.type === "ob.inbound.deleted"
-  )
-    await foldInbound(tx, dialect, keys, event);
-  else if (event.type !== "watch.failed") await foldTaskEvent(tx, dialect, keys, event);
-}
+import { webhookWriter } from "./webhooks/webhooks.ts";
 
 /** `committed` collects the appended events, which the broadcaster hands to live tails once the write commits. */
 function eventWriter(

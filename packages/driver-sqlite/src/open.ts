@@ -68,7 +68,7 @@ function unavailable(error: unknown): never {
  * One connection, and one queue in front of it: a write transaction holds the queue from `BEGIN IMMEDIATE` to
  * `COMMIT`, so no other statement interleaves with it between awaits (the process write mutex of D33).
  */
-function connection(
+export function connection(
   database: Database,
   counter: StatementCounter | undefined,
   boardLockObserver: () => ((ms: number) => void) | undefined,

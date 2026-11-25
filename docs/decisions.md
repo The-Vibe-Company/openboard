@@ -1302,3 +1302,12 @@ the current `run` label. The reply webhook uses that label to deliver a
 person's answer after the turn exits. Settled turns, failed runners, and
 expired runners still clear the matching label.
 ([Issue #544](https://github.com/The-Vibe-Company/openboard/issues/544))
+
+### Local attachment backup metadata (D25)
+
+Attachment backup mappings include the content hash, uploader principal,
+upload time, garbage-collection marker, and successful shipment timestamp.
+Replay uses the post or schedule event for the attachment's name, media type
+and size.
+A legacy hash-only mapping takes the uploader principal and time from the
+first replayed event that references it.

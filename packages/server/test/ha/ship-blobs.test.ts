@@ -97,6 +97,16 @@ async function purgeAlpha(
   expect([...objects.keys()].some((key) => key.startsWith(prefix))).toBe(false);
 }
 
+function checkMapping(mapping: Uint8Array | undefined, sha256: string, at: number, shippedAt: number) {
+  expect(JSON.parse(new TextDecoder().decode(mapping))).toEqual({
+    sha256,
+    uploader: expect.any(String),
+    at,
+    gcEnqueued: 1,
+    shippedAt,
+  });
+}
+
 if (postgresTestUrl() !== undefined) {
   const clock = fakeClock();
   const store = openSnapshotStore(clock.now);
@@ -141,7 +151,7 @@ if (postgresTestUrl() !== undefined) {
       expect(objects.get(alphaPrefix + distinctPath)).toEqual(secondBytes);
       expect(objects.get(bravoPrefix + sharedPath)).toEqual(firstBytes);
       const mapping = objects.get(`${alphaPrefix}attachments/${alpha.boardId}/${alphaFirst.id}.json`);
-      expect(JSON.parse(new TextDecoder().decode(mapping))).toEqual({ sha256: firstHash });
+      checkMapping(mapping, firstHash, NOW, NOW + 10_000);
       const blobWrites = writes.filter((key) => key.includes("/blobs/"));
       expect(blobWrites.sort()).toEqual(
         [alphaPrefix + sharedPath, alphaPrefix + distinctPath, bravoPrefix + sharedPath].sort(),
@@ -174,7 +184,7 @@ if (postgresTestUrl() !== undefined) {
         [...blobWrites, orphanPath, laterPath].sort(),
       );
       const orphanMapping = objects.get(`${alphaPrefix}attachments/${alpha.boardId}/${orphan.id}.json`);
-      expect(JSON.parse(new TextDecoder().decode(orphanMapping))).toEqual({ sha256: orphanHash });
+      checkMapping(orphanMapping, orphanHash, NOW + 20_000, NOW + 40_000);
 
       await checkBoardFailure(fixture, clock, store, bucket, writes, alpha);
 

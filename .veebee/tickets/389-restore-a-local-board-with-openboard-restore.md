@@ -4,20 +4,37 @@ title: Restore a local board with openboard restore
 milestone: M15-operations
 package: app
 writes:
-  - apps/openboard/src/restore.ts
+  - apps/openboard/src/compose.ts
   - apps/openboard/src/main.ts
+  - apps/openboard/src/restore.ts
   - apps/openboard/test/restore.test.ts
-  - packages/driver-sqlite/src/restore.ts
-  - packages/driver-sqlite/src/index.ts
-  - packages/driver-sql/src/views/restore.ts
-  - packages/driver-sql/src/views/fold.ts
-  - packages/driver-sql/src/views/messages.ts
+  - apps/openboard/test/support/local-backup.ts
+  - bun.lock
+  - docs/codebase.md
+  - docs/decisions.md
+  - packages/driver-sql/src/index.ts
   - packages/driver-sql/src/statements.ts
+  - packages/driver-sql/src/views/messages/fold.ts
+  - packages/driver-sql/src/views/attachments/index.ts
+  - packages/driver-sql/src/views/jobs/shipping.ts
+  - packages/driver-sql/src/views/messages.ts
+  - packages/driver-sql/src/views/messages/storage.ts
+  - packages/driver-sql/src/views/restore/index.ts
+  - packages/driver-sqlite/package.json
+  - packages/driver-sqlite/src/blobs.ts
+  - packages/driver-sqlite/src/index.ts
+  - packages/driver-sqlite/src/open.ts
+  - packages/driver-sqlite/src/restore.ts
+  - packages/driver-sqlite/test/restore.test.ts
+  - packages/ports/src/bucket.ts
+  - packages/server/src/jobs/ship-log.ts
+  - packages/server/test/ha/ship-blobs.test.ts
+  - skills/openboard/SKILL.md
 conformance: []
 modes: [local]
 depends_on: [378, 388]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 584
 ---
 
@@ -33,7 +50,7 @@ As someone whose machine died, I run `openboard restore --to ./.openboard` on a 
 
 ## Notes
 - D25 ("Restore = snapshot + replay", using the normal fold), docs/codebase.md 2.2 and 7.6 (`apps/openboard/src/restore.ts`; "`openboard restore` reads them back"), D42 (server commands; secrets from the environment or files only).
-- A restore writes a fresh database (temp file, then rename): copy the snapshot, then append each shipped event after the snapshot's last position and fold it, in `packages/driver-sql/src/views/restore.ts`, board by board in order, under the board lock. Never through HTTP, never re-deciding a command: the events are already decided.
+- A restore writes a fresh database (temp file, then rename): copy the snapshot, then append each shipped event after the snapshot's last position and fold it, in `packages/driver-sql/src/views/restore/index.ts`, board by board in order, under the board lock. Never through HTTP, never re-deciding a command: the events are already decided.
 - `restore` is a server command handled in `apps/openboard/src/main.ts` before `runCli`, like `migrate` (167) and `admin` (214).
-- Today `appendEvent` (`packages/driver-sql/src/views/messages.ts`) both appends an event and dispatches its folds; split the dispatch into `packages/driver-sql/src/views/fold.ts` so a replay folds a stored event without deciding it again. 390, 393 and 397 reuse it.
+- Today `appendEvent` (`packages/driver-sql/src/views/messages.ts`) both appends an event and dispatches its folds; split the dispatch into `packages/driver-sql/src/views/messages/fold.ts` so a replay folds a stored event without deciding it again. 390, 393 and 397 reuse it.
 - Depends on 378, the last ticket before it to change `packages/driver-sql/src/views/messages.ts`.

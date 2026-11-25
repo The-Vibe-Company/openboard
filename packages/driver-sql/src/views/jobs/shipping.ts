@@ -1,4 +1,4 @@
-import { type MessagePosted, ORG_PURGE_RETENTION_MS } from "@openboard/core";
+import { type MessagePosted, ORG_PURGE_RETENTION_MS, type ScheduleCreated } from "@openboard/core";
 import type { BackupAttachment, OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
@@ -46,11 +46,11 @@ const s = {
   shippingBoardLog: sql`SELECT id, type, v, at, thread, message, channel, actor, principal, visibility, payload FROM events
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id > ${"shipped"} AND id <= ${"end"}
     ORDER BY id LIMIT ${"limit"}`,
-  shippingPendingBlobs: sql`SELECT board_id, id, sha256 FROM attachments
+  shippingPendingBlobs: sql`SELECT board_id, id, sha256, uploader, at, gc_enqueued FROM attachments
     WHERE org_id = ${"orgId"} AND backup_shipped_at IS NULL
     AND (backup_retry_at IS NULL OR backup_retry_at <= ${"now"})
     ORDER BY at, board_id, id LIMIT ${"limit"}`,
-  shippingLogBlobs: sql`SELECT a.board_id, a.id, a.sha256, a.backup_retry_at FROM (SELECT CAST(${"ids"} AS TEXT) AS data) input
+  shippingLogBlobs: sql`SELECT a.board_id, a.id, a.sha256, a.uploader, a.at, a.gc_enqueued, a.backup_retry_at FROM (SELECT CAST(${"ids"} AS TEXT) AS data) input
     JOIN ${attachmentIds} wanted ON TRUE JOIN attachments a ON a.id = wanted.value
     WHERE a.org_id = ${"orgId"} AND a.board_id = ${"boardId"} AND a.backup_shipped_at IS NULL`,
   shippingMarkBlob: sql`UPDATE attachments SET backup_shipped_at = ${"at"}, backup_retry_at = NULL
@@ -86,6 +86,31 @@ export function logEvent(row: Row) {
   };
 }
 
+function attachmentBackup(row: Row, orgId: number, shippedAt: number): BackupAttachment {
+  return {
+    orgId,
+    boardId: Number(row.board_id),
+    id: String(row.id),
+    sha256: String(row.sha256),
+    uploader: String(row.uploader),
+    at: Number(row.at),
+    gcEnqueued: row.gc_enqueued === null ? null : Number(row.gc_enqueued),
+    shippedAt,
+  };
+}
+
+function referencedAttachments(events: ReturnType<typeof logEvent>[]) {
+  const ids = new Set<string>();
+  for (const event of events) {
+    if (!("type" in event)) continue;
+    if (event.type === "message.posted")
+      for (const { id } of (event.payload as MessagePosted["payload"]).attachments ?? []) ids.add(id);
+    if (event.type === "ob.schedule.created")
+      for (const id of (event.payload as ScheduleCreated["payload"]).attachments ?? []) ids.add(id);
+  }
+  return ids;
+}
+
 function blobShipper(
   db: Db,
   dialect: Dialect,
@@ -111,14 +136,16 @@ function blobShipper(
 
   type Upload = (attachment: BackupAttachment, deadline: number) => Promise<void>;
   async function shipRow(row: Row, deadline: number, upload: Upload, now: () => number) {
-    const keys = { orgId, boardId: Number(row.board_id), id: String(row.id) };
+    const backup = attachmentBackup(row, orgId, now());
+    const { boardId, id, shippedAt } = backup;
+    const keys = { orgId, boardId, id };
     try {
-      await upload({ ...keys, sha256: String(row.sha256) }, deadline);
+      await upload(backup, deadline);
     } catch {
       await query(db, dialect, s.shippingRetryBlob, { ...keys, at: now() + blobRetryMs });
       return false;
     }
-    await query(db, dialect, s.shippingMarkBlob, { ...keys, at: now() });
+    await query(db, dialect, s.shippingMarkBlob, { ...keys, at: shippedAt });
     return true;
   }
 
@@ -144,11 +171,7 @@ function blobShipper(
     stopped: () => boolean,
     now: () => number,
   ) {
-    const ids = new Set<string>();
-    for (const event of events) {
-      if (!("type" in event) || event.type !== "message.posted") continue;
-      for (const { id } of (event.payload as MessagePosted["payload"]).attachments ?? []) ids.add(id);
-    }
+    const ids = referencedAttachments(events);
     if (!ids.size) return true;
     const rows = await query(db, dialect, s.shippingLogBlobs, { orgId, boardId, ids: JSON.stringify([...ids]) });
     for (const row of rows) {
