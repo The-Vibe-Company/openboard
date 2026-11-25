@@ -247,7 +247,14 @@ export function projectEvent(event: FeedEvent, everywhere: boolean, byWords: boo
     ];
   }
   // `author` (shown on `message`) and mention details belong to the message view. The client key is internal.
-  const { author: _author, clientId: _clientId, mentions: _mentions, blocks: _blocks, ...payload } = event.payload;
+  const {
+    author: _author,
+    clientId: _clientId,
+    mentions: _mentions,
+    blocks: _blocks,
+    scheduleNextAt: _scheduleNextAt,
+    ...payload
+  } = event.payload;
   return [
     {
       cursor: formatId(event.id),

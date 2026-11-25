@@ -489,7 +489,7 @@ CREATE TABLE schedules (
   author TEXT NOT NULL, mentions TEXT NOT NULL, blocks TEXT NOT NULL,
   PRIMARY KEY (board_id, id)
 );
-CREATE INDEX schedules_due ON schedules (next_at) WHERE state = 'pending';          -- global: job picker
+CREATE INDEX schedules_due ON schedules (next_at) WHERE state = 'pending';          -- pending schedule lookup
 
 CREATE TABLE attachments (
   org_id BIGINT NOT NULL, board_id BIGINT NOT NULL, id TEXT NOT NULL,

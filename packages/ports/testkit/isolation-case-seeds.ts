@@ -8,7 +8,8 @@ import { seedWatcher } from "./store/watchers.test-suite.ts";
 import { seedWebhook } from "./store/webhooks.test-suite.ts";
 
 export async function seedCase(method: string, a: StoreTenant, b: StoreTenant) {
-  if (method === "listSchedules" || method === "schedule") await checkScheduleIsolation(b, a);
+  if (method === "listSchedules" || method === "schedule" || method === "scheduledPost")
+    await checkScheduleIsolation(b, a);
   if (method === "taskNeedEdges") {
     await b.board.write(async (writer) => {
       const by = { actor: b.actor, principal: b.actor, profile: null };

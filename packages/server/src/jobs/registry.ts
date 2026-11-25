@@ -8,11 +8,13 @@ import {
   type JobPayload,
   type Jobs,
   type OrgView,
+  SCHEDULE_SEND_JOB,
   TASK_EXPIRY_JOB,
 } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
 import type { Tenants } from "../http/scope.ts";
 import { blobGcJob } from "./blob-gc.ts";
+import { scheduleSendJob } from "./schedules.ts";
 import { taskExpiryJob } from "./task-expiry.ts";
 
 export interface OrgJobHandler {
@@ -42,7 +44,7 @@ export function startBoardJobs(
     tenants,
     deps,
     instance,
-    { ...handlers, [TASK_EXPIRY_JOB]: taskExpiryJob, [BLOB_GC_JOB]: blobGcJob },
+    { ...handlers, [TASK_EXPIRY_JOB]: taskExpiryJob, [SCHEDULE_SEND_JOB]: scheduleSendJob, [BLOB_GC_JOB]: blobGcJob },
     bucket,
     onActivity,
   );

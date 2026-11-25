@@ -40,6 +40,11 @@ function actorView(row: Row): Actor | null {
   };
 }
 
+export async function findActor(db: Db, dialect: Dialect, keys: BoardKeys, actor: string): Promise<Actor | null> {
+  const [row] = await query(db, dialect, actorStatements.findActor, { ...keys, actor });
+  return row ? actorView(row) : null;
+}
+
 /** Takes the board's lock and reads its head with the board's record of `actor`: the start of the write. */
 export async function lockBoardAs(
   tx: Db,
@@ -57,9 +62,8 @@ export async function lockBoardAs(
     window,
     taskId,
   );
-  const [found] =
-    actor !== null && !actorLoaded ? await query(tx, dialect, actorStatements.findActor, { ...keys, actor }) : [row];
-  return { head, storage, dailyEvents, hasWatchers, hasWebhooks, actor: found ? actorView(found) : null, row };
+  const known = actor !== null && !actorLoaded ? await findActor(tx, dialect, keys, actor) : actorView(row);
+  return { head, storage, dailyEvents, hasWatchers, hasWebhooks, actor: known, row };
 }
 
 /** The fold of `actor.seen`: the actor's row, its first sighting kept and its details and last sighting replaced. */

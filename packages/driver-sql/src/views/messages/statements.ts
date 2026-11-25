@@ -18,10 +18,10 @@ export const messageStatements = {
     visibility, payload) VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"type"}, ${"at"}, ${"thread"}, ${"message"},
     ${"channel"}, ${"actor"}, ${"principal"}, ${"visibility"}, ${"payload"})`,
   insertMessage: sql`INSERT INTO messages (org_id, board_id, id, channel, re, reply_to, actor, principal, profile,
-    client_id, text, text_lower, labels, no_sync, version, created_at, active, view) VALUES (${"orgId"}, ${"boardId"},
+    client_id, text, text_lower, labels, no_sync, version, created_at, active, view, schedule_id, schedule_n) VALUES (${"orgId"}, ${"boardId"},
     ${"id"}, ${"channel"}, ${"re"}, ${"replyTo"}, ${"actor"}, ${"principal"}, ${"profile"}, ${"clientId"}, ${"text"},
     ${"textLower"},
-    ${"labels"}, ${"noSync"}, ${"id"}, ${"at"}, ${"active"}, ${"view"})`,
+    ${"labels"}, ${"noSync"}, ${"id"}, ${"at"}, ${"active"}, ${"view"}, ${"scheduleId"}, ${"scheduleN"})`,
   bumpRoot: sql`UPDATE messages SET replies = replies + 1, last_reply = ${"id"}, active = ${"id"}, version = ${"id"}
     WHERE board_id = ${"boardId"} AND id = ${"root"}`,
   upsertChannel: sql`INSERT INTO channels (org_id, board_id, path, created_at, last_index, messages, threads)

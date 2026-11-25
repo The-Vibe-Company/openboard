@@ -5,7 +5,7 @@ import { sqliteDialect } from "./dialect.ts";
 export function sqliteJobs(
   db: Db,
   now: () => number,
-): Jobs & { committed(kind: string, dueAt: number): void; close(): void } {
+): Jobs & { committed(kind: string, dueAt: number): void; refresh(kind: string): void; close(): void } {
   const watchers = new Map<ReturnType<typeof jobWake>, readonly string[]>();
   function committed(kind: string, dueAt: number) {
     for (const [watcher, kinds] of watchers) {
@@ -17,6 +17,11 @@ export function sqliteJobs(
     claim: claimJob(db, sqliteDialect),
     release: releaseJobs(db, sqliteDialect, committed),
     committed,
+    refresh(kind) {
+      for (const [watcher, kinds] of watchers) {
+        if (kinds.includes(kind)) watcher.refresh();
+      }
+    },
     close() {
       for (const watcher of watchers.keys()) watcher.stop();
       watchers.clear();

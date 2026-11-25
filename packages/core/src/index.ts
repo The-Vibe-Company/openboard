@@ -45,6 +45,7 @@ export type { GrantCreated, GrantRevoked, GrantUpdated };
 
 import type { TaskEvent } from "./tasks/events.ts";
 
+export { decideCancelSchedule } from "./schedules/cancel.ts";
 export { decideAssignTask, taskAssignee } from "./tasks/assignment/assign.ts";
 export { batchNeedPositions, decideTaskBatch } from "./tasks/batches/create.ts";
 export { decideCancelTask } from "./tasks/cancel.ts";
@@ -60,9 +61,11 @@ export { decideRenewTask } from "./tasks/renew.ts";
 export { decideReopenTask } from "./tasks/reopen.ts";
 export { decideCompleteTask, decideSettlement } from "./tasks/settle.ts";
 export type { ChannelCreated };
-export { decideCancelSchedule } from "./schedules/cancel.ts";
+
 import type { ScheduleCanceled, ScheduleCreated } from "./schedules/create.ts";
+
 export { decideSchedule, parseScheduleId, type ScheduleCanceled, type ScheduleCreated } from "./schedules/create.ts";
+export { decideScheduledPost, type ScheduledPost } from "./schedules/send.ts";
 export { checkScheduleTiming, nextScheduleTime, resolveScheduleTiming } from "./schedules/timing.ts";
 
 export type BoardEvent =
@@ -95,6 +98,7 @@ export type BoardEvent =
   | WebhookDeleted;
 
 export { grantMatchingClaims, matchesOidcClaims, type OidcPrincipal } from "./access/oidc-claims.ts";
+export * from "./attachments/upload.ts";
 export { channelInputError, correctedChannel, InvalidGrantPattern } from "./channels/path.ts";
 export { isTailMessage, isTailMessageEvent, matchesTailEvent, parseTail, type TailMessage } from "./events/tail.ts";
 export { base32, formatId, isoTime, parseId } from "./ids.ts";
@@ -196,4 +200,3 @@ export { webhookPayload, webhookPing } from "./webhooks/payload.ts";
 export { validateWebhookSigningPreset } from "./webhooks/signing.ts";
 export { validateWebhook, validateWebhookContent } from "./webhooks/validate.ts";
 export type { InboundEvent, WebhookCreated, WebhookDeleted, WebhookUpdated };
-export * from "./attachments/upload.ts";

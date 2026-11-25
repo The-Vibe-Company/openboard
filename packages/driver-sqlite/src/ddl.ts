@@ -11,7 +11,7 @@ export function renderDdl(postgres: string): string {
   return statements
     .filter(
       (statement) =>
-        (/^CREATE TRIGGER (?:sync_task_expiry_job|queue_usage_|adjust_late_usage_|keep_unrolled_usage_|clear_purged_org_usage)/i.test(
+        (/^CREATE TRIGGER (?:sync_task_expiry_job|sync_schedule_send_job|queue_usage_|adjust_late_usage_|keep_unrolled_usage_|clear_purged_org_usage)/i.test(
           statement,
         ) ||
           !/^CREATE (?:EXTENSION|FUNCTION|TRIGGER)\b/i.test(statement)) &&

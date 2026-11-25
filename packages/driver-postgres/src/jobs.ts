@@ -48,7 +48,8 @@ function notify(payload: string, kinds: readonly string[], watcher: ReturnType<t
     if (!Array.isArray(job)) return;
     const [kind, at, origin] = job;
     if (kinds.includes(kind) && Number.isSafeInteger(at)) {
-      watcher.notify(origin === "tombstone" ? at + ORG_PURGE_RETENTION_MS : at);
+      if (origin === "refresh") watcher.refresh();
+      else watcher.notify(origin === "tombstone" ? at + ORG_PURGE_RETENTION_MS : at);
     }
   } catch {
     // An invalid notification cannot identify a due job.

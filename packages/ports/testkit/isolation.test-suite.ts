@@ -17,7 +17,7 @@ import { seedCase } from "./isolation-case-seeds.ts";
 import { at, boardCreation, type StoreTenant, seedPersonGrant, storeTenant } from "./isolation-seed.ts";
 import { webhookWriterCases } from "./isolation-webhooks.ts";
 import { inboundCipher, inboundId } from "./store/inbound.test-suite.ts";
-import { checkScheduleIsolation, checkScheduleLookupIsolation } from "./store/schedules.test-suite.ts";
+import { scheduleWriterCases } from "./store/schedules.test-suite.ts";
 import { pull, seedWatcher } from "./store/watchers.test-suite.ts";
 
 type Case = (a: StoreTenant, b: StoreTenant, store: Store) => Promise<unknown>;
@@ -161,8 +161,7 @@ const boardCases: Cases<BoardView> = {
 /** One case per `BoardWriter` member, inside A's write with B's IDs. */
 const writerCases: Cases<BoardWriter> = {
   ...attachmentWriterCases,
-  nextSchedule: checkScheduleIsolation,
-  schedule: checkScheduleLookupIsolation,
+  ...scheduleWriterCases,
   inboundReceived: async (a) =>
     expect(await inWrite(a, (writer) => writer.inboundReceived(inboundId, at, null, 1))).toEqual([]),
   inboundEndpoints: async (a) => expect(await inWrite(a, (writer) => writer.inboundEndpoints())).toEqual([]),
