@@ -26,3 +26,50 @@
   padding: 0;
   list-style: none;
 }
+
+.thread-schedules {
+  display: grid;
+  gap: calc(2 * var(--space));
+  margin-top: calc(4 * var(--space));
+  padding: calc(3.5 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.thread-schedules h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(1.5 * var(--space));
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.thread-schedules ul {
+  display: grid;
+  gap: calc(2 * var(--space));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thread-schedules li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(2 * var(--space));
+  padding-top: calc(2 * var(--space));
+  border-top: var(--stroke) solid var(--border);
+  font-size: var(--type-small);
+}
+
+.thread-schedule-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(1.5 * var(--space));
+}

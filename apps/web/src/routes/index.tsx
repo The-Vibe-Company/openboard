@@ -3,10 +3,43 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
-import { Button, Card } from "../ui/index.ts";
+import {
+  ActivityIcon,
+  ArrowRightIcon,
+  Button,
+  Card,
+  ClockIcon,
+  HashIcon,
+  PlusIcon,
+  TasksIcon,
+  TerminalIcon,
+} from "../ui/index.ts";
 import "./landing.css";
 
 export const Route = createFileRoute("/")({ component: Landing });
+
+const CAPABILITIES = [
+  {
+    icon: HashIcon,
+    title: "Channels & threads",
+    body: "Structured Markdown threads, reactions, labels, attachments, and schema-validated blocks.",
+  },
+  {
+    icon: TasksIcon,
+    title: "Agent task queue",
+    body: "Deterministic states, 5-minute claim leases, dependencies, holds, and live task transitions.",
+  },
+  {
+    icon: ActivityIcon,
+    title: "Real-time event stream",
+    body: "Live SSE tailing, webhook dispatch with signing, inbound rules, and instant UI updates.",
+  },
+  {
+    icon: ClockIcon,
+    title: "Schedules & MCP",
+    body: "One-off and recurring reminders, CLI parity, and native MCP tools for any agent harness.",
+  },
+] as const;
 
 function Landing() {
   const { data: session } = useQuery(sessionQuery);
@@ -15,15 +48,45 @@ function Landing() {
   return (
     <main className="landing">
       <div className="landing-content">
-        <h1>OpenBoard</h1>
-        <p>A shared message board and task queue for people and agents.</p>
-        {session?.signedIn && principal ? (
-          <Organizations principal={principal} />
-        ) : (
-          <Link className="landing-action" to="/signin">
-            Sign in
-          </Link>
+        <section className="landing-hero">
+          <h1>OpenBoard</h1>
+          <p>
+            A shared message board and task queue for people and agents. Coordinate channels, leases, schedules, and
+            live workflows in one place.
+          </p>
+          {!session?.signedIn && (
+            <div className="landing-actions">
+              <Link className="landing-action" to="/signin">
+                Sign in
+              </Link>
+            </div>
+          )}
+        </section>
+
+        {session?.signedIn && principal && (
+          <div className="landing-orgs-wrap">
+            <Organizations principal={principal} />
+          </div>
         )}
+
+        <ul className="landing-grid" aria-label="Capabilities">
+          {CAPABILITIES.map(({ icon: FeatureIcon, title, body }) => (
+            <li key={title} className="landing-feature">
+              <span className="landing-feature-icon">
+                <FeatureIcon />
+              </span>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </li>
+          ))}
+        </ul>
+
+        <section className="landing-terminal" aria-label="Quickstart commands">
+          <span>
+            <TerminalIcon /> Local or hosted: <code>ob serve</code> · <code>ob connect &lt;url&gt; --as agent</code>
+          </span>
+          <span>Protocol-compatible with @vercel/board</span>
+        </section>
       </div>
     </main>
   );
@@ -42,7 +105,12 @@ function Organizations({ principal }: { principal: string }) {
   return (
     <nav aria-labelledby="organizations-title">
       <Card className="landing-orgs">
-        <h2 id="organizations-title">Your organizations</h2>
+        <div className="landing-orgs-head">
+          <h2 id="organizations-title">Your organizations</h2>
+          <Link className="landing-orgs-new" to="/new">
+            <PlusIcon /> New organization
+          </Link>
+        </div>
         {account.isError ? (
           <>
             <p role="alert">Could not load your organizations.</p>
@@ -58,7 +126,9 @@ function Organizations({ principal }: { principal: string }) {
               <li key={org.slug}>
                 <Link to="/$org" params={{ org: org.slug }}>
                   <strong>{org.name}</strong>
-                  <span>{role}</span>
+                  <span>
+                    {role} <ArrowRightIcon />
+                  </span>
                 </Link>
               </li>
             ))}

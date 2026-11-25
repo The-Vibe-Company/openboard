@@ -1,10 +1,13 @@
 .board-shell {
-  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
+  grid-template-columns: minmax(13.5rem, 16.5rem) minmax(0, 1fr);
   place-items: stretch;
 }
 
 .board-shell .shell-sidebar {
-  padding: calc(4 * var(--space));
+  display: flex;
+  flex-direction: column;
+  gap: calc(4 * var(--space));
+  padding: calc(3.5 * var(--space));
   border-inline-end: var(--stroke) solid var(--border);
   background: var(--surface);
 }
@@ -13,16 +16,142 @@
   display: none;
 }
 
-.board-shell .shell-settings {
-  display: block;
-  margin-block-start: calc(4 * var(--space));
+.shell-search-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(2 * var(--space));
+  inline-size: 100%;
+  min-block-size: var(--control-small);
+  padding: var(--space) calc(2.5 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--muted);
+  font-size: var(--type-small);
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.shell-search-trigger:hover {
+  border-color: var(--control-border);
+  color: var(--text);
+}
+
+.shell-search-trigger-label {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(1.5 * var(--space));
+}
+
+.shell-search-trigger kbd {
+  padding: 1px 5px;
+  border: var(--stroke) solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 11px;
+}
+
+.shell-views {
+  display: grid;
+  gap: calc(0.5 * var(--space));
+}
+
+.shell-views a {
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--space));
+  padding: calc(1.5 * var(--space)) calc(2.5 * var(--space));
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  font-size: var(--type-base);
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.shell-views a:hover,
+.shell-views a[aria-current="page"] {
+  background: var(--border);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.shell-views a[aria-current="page"] {
+  font-weight: 600;
+}
+
+.shell-new-channel {
+  margin-top: calc(-2 * var(--space));
+}
+
+.shell-new-channel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(1.5 * var(--space));
+  inline-size: 100%;
+  min-block-size: var(--control-small);
+  padding: var(--space) calc(2.5 * var(--space));
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--type-small);
+  text-align: start;
+}
+
+.shell-new-channel-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.shell-new-channel-form {
+  display: grid;
+  gap: calc(1.5 * var(--space));
   padding: calc(2 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}
+
+.shell-new-channel-form input {
+  min-block-size: var(--control-small);
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+}
+
+.shell-new-channel-actions {
+  display: flex;
+  gap: calc(1.5 * var(--space));
+}
+
+.shell-new-channel-error {
+  margin: 0;
+  color: var(--danger-label);
+  font-size: var(--type-small);
+}
+
+.board-shell .shell-settings {
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--space));
+  margin-block-start: auto;
+  padding: calc(2.5 * var(--space)) calc(2.5 * var(--space));
   border-top: var(--stroke) solid var(--border);
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.board-shell .shell-settings:hover {
+  color: var(--text);
+  text-decoration: none;
 }
 
 .board-shell .shell-content {
   min-inline-size: 0;
-  padding: calc(6 * var(--space)) clamp(calc(4 * var(--space)), 4vw, calc(12 * var(--space)));
+  padding: calc(5 * var(--space)) clamp(calc(4 * var(--space)), 4vw, calc(10 * var(--space)));
 }
 
 .board-shell .shell-content h1 {

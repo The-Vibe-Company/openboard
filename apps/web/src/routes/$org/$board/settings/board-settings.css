@@ -1,16 +1,27 @@
 .board-settings nav {
   display: flex;
   flex-wrap: wrap;
-  margin-block-end: calc(4 * var(--space));
+  gap: var(--space);
+  margin-block-end: calc(5 * var(--space));
+  border-block-end: var(--stroke) solid var(--border);
 }
 
 .board-settings nav a {
-  padding: calc(2 * var(--space));
+  padding: calc(2 * var(--space)) calc(3 * var(--space));
   border-block-end: var(--focus-width) solid transparent;
+  margin-block-end: calc(-1 * var(--stroke));
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 500;
+}
+
+.board-settings nav a:hover {
+  color: var(--text);
 }
 
 .board-settings nav a[aria-current] {
   border-block-end-color: var(--accent);
+  color: var(--text);
 }
 
 .board-settings .settings-table {
@@ -43,4 +54,84 @@
 
 .board-settings td > button {
   margin: 0 var(--space) var(--space) 0;
+}
+
+.settings-panel-sub {
+  margin: var(--space) 0 calc(4 * var(--space));
+  color: var(--muted);
+  font-size: var(--type-small);
+}
+
+.settings-drawer {
+  margin-block-start: calc(4 * var(--space));
+  padding: calc(4 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  display: grid;
+  gap: calc(3 * var(--space));
+}
+
+.settings-drawer-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(2 * var(--space));
+}
+
+.settings-drawer-head h2 {
+  margin: 0;
+  font-size: var(--type-body);
+}
+
+.settings-json {
+  margin: 0;
+  padding: calc(3 * var(--space));
+  border: var(--stroke) solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  font-family: var(--font-mono);
+  font-size: var(--type-small);
+  overflow-x: auto;
+  max-block-size: 20rem;
+}
+
+.settings-form-card {
+  display: grid;
+  gap: calc(3 * var(--space));
+  padding: calc(4 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  margin-block-end: calc(4 * var(--space));
+}
+
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: calc(2.5 * var(--space));
+}
+
+.settings-form-card label {
+  display: grid;
+  gap: var(--space);
+  color: var(--muted);
+  font-size: var(--type-small);
+}
+
+.settings-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(1.5 * var(--space));
+}
+
+.settings-ping-status {
+  margin: calc(2 * var(--space)) 0 0;
+  padding: calc(2 * var(--space)) calc(3 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  font-size: var(--type-small);
 }

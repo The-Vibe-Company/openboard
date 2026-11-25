@@ -9,6 +9,33 @@ type Board = { org: string; board: string };
 type Schedule = (run: () => void, delay: number) => () => void;
 type ReadThread = Awaited<ReturnType<Client["readThread"]>>;
 type Queries = Pick<QueryClient, "cancelQueries" | "invalidateQueries" | "getQueriesData" | "getQueryState">;
+type LiveListener = (event: BoardEvent) => void;
+
+const liveListeners = new Map<string, Set<LiveListener>>();
+
+function boardIdKey(board: Board) {
+  return `${board.org}/${board.board}`;
+}
+
+export function subscribeBoardEvents(board: Board, listener: LiveListener): () => void {
+  const key = boardIdKey(board);
+  let set = liveListeners.get(key);
+  if (!set) {
+    set = new Set();
+    liveListeners.set(key, set);
+  }
+  set.add(listener);
+  return () => {
+    set.delete(listener);
+    if (set.size === 0) liveListeners.delete(key);
+  };
+}
+
+function notifyLiveListeners(board: Board, event: BoardEvent) {
+  const listeners = liveListeners.get(boardIdKey(board));
+  if (!listeners) return;
+  for (const listener of listeners) listener(event);
+}
 
 function recordBoardEvent(
   event: BoardEvent,
@@ -16,6 +43,7 @@ function recordBoardEvent(
   add: (key: QueryKey) => void,
   threads: Set<string>,
 ): boolean {
+  notifyLiveListeners(board, event);
   if (event.type === "channel.created") {
     add(boardKeys.channels(board));
     return true;

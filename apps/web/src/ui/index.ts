@@ -4,6 +4,7 @@ export { Button } from "./Button.tsx";
 export { Card } from "./Card.tsx";
 export { EmptyState } from "./EmptyState.tsx";
 export { Field } from "./Field.tsx";
+export * from "./Icons.tsx";
 export { Input } from "./Input.tsx";
 export { Select } from "./Select.tsx";
 export { Table } from "./Table.tsx";
