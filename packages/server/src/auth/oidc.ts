@@ -103,8 +103,10 @@ function oidcFetch({ fetch, webhookFetch, schedule }: Deps, resolve: NonNullable
         : await fetch?.(new Request(url.href, { redirect: "error", signal: abort.signal }));
       return response ? responseObject(response) : null;
     };
+    const inflight = read();
+    inflight.catch(() => {});
     try {
-      return await Promise.race([read(), deadline.promise]);
+      return await Promise.race([inflight, deadline.promise]);
     } catch {
       // Unavailable or malformed issuer responses cannot authenticate a token.
       return null;
