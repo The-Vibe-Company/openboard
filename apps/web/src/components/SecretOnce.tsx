@@ -18,7 +18,11 @@ export function SecretOnce({ title, secret, instructions, onClose }: SecretOnceP
   const [copyStatus, setCopyStatus] = useState("");
 
   useEffect(() => {
-    dialog.current?.showModal();
+    const el = dialog.current;
+    if (el && !el.open) el.showModal();
+    return () => {
+      if (el?.open) el.close();
+    };
   }, []);
 
   async function copy() {
@@ -36,7 +40,9 @@ export function SecretOnce({ title, secret, instructions, onClose }: SecretOnceP
       ref={dialog}
       aria-labelledby={titleId}
       aria-describedby={description}
-      onClose={onClose}
+      onClose={(event) => {
+        if (!event.currentTarget.open) onClose();
+      }}
     >
       <h2 id={titleId}>{title}</h2>
       <p id={description} className="secret-warning">
