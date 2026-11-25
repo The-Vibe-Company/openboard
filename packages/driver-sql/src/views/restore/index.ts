@@ -15,7 +15,7 @@ export const restoreStatements = {
     WHERE b.org_id = ${"orgId"} AND b.id = ${"boardId"} AND o.slug = 'local' AND b.slug = 'main'`,
   restoreLatestEventTime: sql`SELECT MAX(at) AS at FROM events WHERE org_id = ${"orgId"} AND board_id = ${"boardId"}`,
   restoreAttachment: sql`SELECT sha256 FROM attachments WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
-  restoreBlobs: sql`SELECT DISTINCT sha256 FROM attachments WHERE org_id = ${"orgId"} AND board_id = ${"boardId"}`,
+  restoreBlobs: sql`SELECT sha256, COUNT(*) AS files, MIN(size) AS min_size, MAX(size) AS max_size FROM attachments WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} GROUP BY sha256`,
   restoreAttachmentMetadata: sql`UPDATE attachments SET gc_enqueued = ${"gcEnqueued"}, backup_shipped_at = ${"shippedAt"}
     WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}`,
 };
@@ -37,13 +37,14 @@ async function restoreAttachment(
   attachment: Attachment,
   event: Extract<BoardEvent, { type: "message.posted" | "ob.schedule.created" }>,
   read: ReadAttachmentBackup,
+  allowMissing: boolean,
 ) {
   const params = { ...keys, id: attachment.id };
   if ((await query(tx, dialect, restoreStatements.restoreAttachment, params)).length) return;
   const backup = await read(attachment.id);
   if (!backup) {
     // Old writers could ship a schedule before its unattached upload reached the bucket.
-    if (event.type === "ob.schedule.created") return;
+    if (allowMissing || event.type === "ob.schedule.created") return;
     throw new BoardError("invalid_request", `Missing backup attachment mapping ${attachment.id}`);
   }
   const { sha256, uploader = event.principal, at = event.at, gcEnqueued = 1, shippedAt = null } = backup;
@@ -69,6 +70,7 @@ export async function replayBoard(
   keys: BoardKeys,
   events: readonly BoardEvent[],
   read: ReadAttachmentBackup,
+  options?: { fold: (event: BoardEvent) => boolean; allowMissingAttachments: boolean },
 ) {
   const first = events[0];
   if (!first) return;
@@ -79,13 +81,23 @@ export async function replayBoard(
     let { day, count } = locked.dailyEvents;
     for (const event of events) {
       if (event.id !== head + 1) throw new Error(`Missing event ${head + 1}`);
-      if (event.type === "message.posted" || event.type === "ob.schedule.created") {
+      const fold = options?.fold(event) ?? true;
+      if (fold && (event.type === "message.posted" || event.type === "ob.schedule.created")) {
         const attachments =
           event.type === "message.posted" ? event.payload.attachments : event.payload.schedule.attachments;
-        for (const attachment of attachments) await restoreAttachment(tx, dialect, keys, attachment, event, read);
+        for (const attachment of attachments)
+          await restoreAttachment(
+            tx,
+            dialect,
+            keys,
+            attachment,
+            event,
+            read,
+            options?.allowMissingAttachments ?? false,
+          );
       }
-      await usage.account(event);
-      await appendEvent(tx, dialect, keys, event);
+      if (fold) await usage.account(event);
+      await appendEvent(tx, dialect, keys, event, fold);
       head = event.id;
       const window = dailyEventWindow(event.at);
       if (window.day > day) {
@@ -95,11 +107,12 @@ export async function replayBoard(
       if (event.type !== "ob.webhook.disabled") count++;
     }
     await setHead(tx, dialect, keys, head, usage.boardBytes, { day, count });
-    await query(tx, dialect, shippingStatements.shippingReserve, {
-      ...keys,
-      shipped: head,
-      pending: head,
-      deadline: 0,
-    });
+    if (!options)
+      await query(tx, dialect, shippingStatements.shippingReserve, {
+        ...keys,
+        shipped: head,
+        pending: head,
+        deadline: 0,
+      });
   });
 }

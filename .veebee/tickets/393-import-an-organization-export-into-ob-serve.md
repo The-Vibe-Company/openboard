@@ -6,15 +6,23 @@ package: app
 writes:
   - apps/openboard/src/import.ts
   - apps/openboard/src/main.ts
+  - apps/openboard/src/compose.ts
   - apps/openboard/test/import.test.ts
   - packages/driver-sqlite/src/import.ts
+  - packages/driver-sqlite/test/import.test.ts
   - packages/driver-sqlite/src/index.ts
+  - packages/driver-sqlite/src/restore.ts
+  - packages/driver-sql/src/views/messages/fold.ts
+  - packages/driver-sql/src/views/tasks/task-folds.ts
+  - packages/driver-sql/src/views/restore/index.ts
+  - apps/openboard/src/import-archive.ts
+  - skills/openboard/SKILL.md
   - docs/codebase.md
 conformance: []
 modes: [local]
 depends_on: [389, 392]
-status: draft
-claimed_by: null
+status: done
+claimed_by: codex
 issue: 588
 ---
 

@@ -3,6 +3,7 @@ import process from "node:process";
 import { runCli } from "@the-vibe-company/openboard-cli";
 import { admin } from "./admin.ts";
 import { type Config, ConfigError, clientEnvironment, loadConfig } from "./config.ts";
+import { importOrganization } from "./import.ts";
 import { migrate } from "./migrate.ts";
 import { restore } from "./restore.ts";
 import { serve } from "./serve.ts";
@@ -21,6 +22,7 @@ const serverCommands: Readonly<Record<string, (config: Config, args: readonly st
   admin: (config, args) => admin(config, args, output),
   migrate: (config) => migrate(config, output),
   restore: (config, args) => restore(config, args, output),
+  import: (_config, args) => importOrganization(args, output),
 };
 
 /** The `openboard` / `ob` executable: server commands here, every other command to the client CLI. */
@@ -30,7 +32,7 @@ async function main(argv: readonly string[]): Promise<void> {
     (name === undefined || (name === "--help" && argv.length === 1)) &&
     /^openboard(?:-bun-.+)?$/.test(basename(process.execPath))
   ) {
-    output.out("Usage: openboard <serve | migrate | admin | restore>");
+    output.out("Usage: openboard <serve | migrate | admin | restore | import>");
     output.out("For board client commands, run ob.");
     return;
   }

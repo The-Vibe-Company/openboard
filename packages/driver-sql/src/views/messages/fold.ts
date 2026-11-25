@@ -37,7 +37,13 @@ async function foldMessageDeleted(tx: Db, dialect: Dialect, keys: BoardKeys, eve
 }
 
 /** Appends one event to the log and folds it, in the caller's transaction. */
-export async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: BoardEvent): Promise<void> {
+export async function appendEvent(
+  tx: Db,
+  dialect: Dialect,
+  keys: BoardKeys,
+  event: BoardEvent,
+  fold = true,
+): Promise<void> {
   await query(tx, dialect, messageStatements.insertEvent, {
     ...keys,
     id: event.id,
@@ -51,7 +57,7 @@ export async function appendEvent(tx: Db, dialect: Dialect, keys: BoardKeys, eve
     visibility: event.visibility,
     payload: JSON.stringify(event.payload),
   });
-  await foldEvent(tx, dialect, keys, event);
+  if (fold) await foldEvent(tx, dialect, keys, event);
 }
 
 export async function foldEvent(tx: Db, dialect: Dialect, keys: BoardKeys, event: BoardEvent): Promise<void> {
