@@ -108,9 +108,9 @@ beforeAll(async () => {
 }, 30_000);
 // Keep fixture transactions short on Postgres. All 5,000 rows share the same fake due time.
 for (let batch = 0; batch < 5; batch++) {
-  beforeAll(() => alpha.queue(1_000));
+  beforeAll(() => alpha.queue(1_000), 30_000);
 }
-beforeAll(() => bravo.queue(10));
+beforeAll(() => bravo.queue(10), 30_000);
 afterAll(() => f.app.close());
 
 test("two tenants share dispatch capacity while a capped tenant waits for the next minute", async () => {

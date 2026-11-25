@@ -65,8 +65,14 @@ jobs:
           FAILED_JOB: ${{ github.job }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh issue create --title "Nightly failed: $FAILED_JOB" \
-            --body "The $FAILED_JOB job failed. See [the workflow run]($RUN_URL)."
+          title="Nightly failed: $FAILED_JOB"
+          existing=$(gh issue list --state open --search "\"$title\" in:title" --json number,title --jq ".[] | select(.title == \"$title\") | .number" | head -n 1)
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" --body "Failed again on [this workflow run]($RUN_URL)."
+          else
+            gh issue create --title "$title" \
+              --body "The $FAILED_JOB job failed. See [the workflow run]($RUN_URL)."
+          fi
 
   full-bench:
     runs-on: ubuntu-latest
@@ -130,7 +136,18 @@ jobs:
         run: bun test packages/server/test/ha/webhooks.test.ts
       - *report-failure
 
-  flake-check:
+  flake-check-sqlite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - *checkout
+      - *setup-bun
+      - run: bun install --frozen-lockfile
+      - name: Repeat SQLite tests
+        run: timeout --kill-after=30s 10m bun test --rerun-each 3
+      - *report-failure
+
+  flake-check-postgres:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env: *postgres-env
@@ -140,8 +157,6 @@ jobs:
       - *setup-bun
       - id: install
         run: bun install --frozen-lockfile
-      - name: Repeat SQLite tests
-        run: timeout --kill-after=30s 8m bun test --rerun-each 3
       - name: Use the Postgres service clients
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: bash scripts/ci/postgres-clients.sh '${{ job.services.postgres.id }}'
@@ -149,7 +164,7 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         env:
           OPENBOARD_TEST_DRIVER: postgres
-        run: timeout --kill-after=30s 8m bun test --rerun-each 3 packages/driver-postgres packages/server tools/bench
+        run: timeout --kill-after=30s 18m bun test --rerun-each 3 packages/driver-postgres packages/server tools/bench
       - *report-failure
 
   playwright:

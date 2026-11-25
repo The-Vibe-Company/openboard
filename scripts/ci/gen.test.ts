@@ -37,6 +37,20 @@ test("accepts a generated file that matches what gen writes", () =>
     expect(await checkGenerated(root, [{ path, content: "{}\n" }])).toEqual([]);
   }));
 
+test("accepts semantically identical JSON with different whitespace", () =>
+  inTempRoot(async (root) => {
+    await Bun.write(join(root, path), '{\n  "info": {\n    "version": "0.1.0"\n  }\n}\n');
+    expect(await checkGenerated(root, [{ path, content: '{ "info": { "version": "0.1.0" } }\n' }])).toEqual([]);
+  }));
+
+test("rejects malformed JSON in a generated JSON file", () =>
+  inTempRoot(async (root) => {
+    await Bun.write(join(root, path), "{ invalid\n");
+    expect(await checkGenerated(root, [{ path, content: "{}\n" }])).toEqual([
+      `${path}: stale, differs from what \`bun run gen\` writes; run it and commit the result`,
+    ]);
+  }));
+
 const post: CommandReference = {
   command: "ob post",
   usage: "ob post <channel> <text> [--no-sync]",
