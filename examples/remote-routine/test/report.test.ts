@@ -96,12 +96,17 @@ test.each(["claimed", "completed", "failed"] as const)(
         externalRef: `ob:${id}`,
         summary,
         run: "launch-fixture",
+        claimKey: "launch-fixture",
+        ...(state === "claimed" ? { claimActor: "ob:user:local-test" } : {}),
       });
       expect(status).toBe(200);
 
       const thread = await board.readThread({ id });
       expect(thread.message.task?.state).toBe(state);
-      expect(thread.message.labels?.run).toBeUndefined();
+      expect(thread.message.labels?.run).toBe(state === "claimed" ? "launch-fixture" : undefined);
+      expect(thread.message.labels?.["run-waiting"]).toBe(
+        state === "claimed" ? "launch-fixture|launch-fixture|ob:user:local-test" : undefined,
+      );
       expect(thread.replies).toHaveLength(state === "claimed" ? 2 : 1);
       if (state === "claimed") {
         expect(thread.replies[1]).toMatchObject({
@@ -191,16 +196,37 @@ test("retries a lost receipt with the same signed event and uses a fresh ID for 
     expect(deliveries).toHaveLength(2);
     expect(deliveries[1]).toEqual(deliveries[0]);
     const first = await board.readThread({ id });
-    expect(first.message.labels?.run).toBeUndefined();
+    expect(first.message.labels?.run).toBe("launch-fixture");
     expect(first.replies.map(({ text }) => text)).toEqual([
       `Turn ended without settling the task: a�${"a".repeat(9_897)}�`,
     ]);
 
-    await board.labelMessage({ id, set: { run: "launch-fixture" } });
     await report(id, "launch-fixture", "Second turn");
     expect(deliveries).toHaveLength(3);
     expect(deliveries[2]?.id).not.toBe(deliveries[0]?.id);
     const second = await board.readThread({ id });
-    expect(second.message.labels?.run).toBeUndefined();
+    expect(second.message.labels?.run).toBe("launch-fixture");
     expect(second.replies).toHaveLength(2);
   }));
+
+test("reports the last line when a descendant keeps stdout open after the runner exits", async () => {
+  const exit = Promise.withResolvers<number>();
+  const startedReading = Promise.withResolvers<void>();
+  const stdout = new ReadableStream<Uint8Array>({
+    start: (controller) => controller.enqueue(new TextEncoder().encode("Waiting for an answer\n")),
+    pull: () => startedReading.resolve(),
+  });
+  const lines: string[] = [];
+  const finish = captureTurn(
+    { pid: 0, stdout, exited: exit.promise, kill() {} },
+    async (summary) => {
+      lines.push(summary);
+    },
+    undefined,
+    () => AbortSignal.abort(),
+  );
+  await startedReading.promise;
+  exit.resolve(0);
+  await finish();
+  expect(lines).toEqual(["Waiting for an answer"]);
+});
