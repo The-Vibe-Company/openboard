@@ -294,7 +294,7 @@ function WebhookDeliveriesDrawer({
       {retryError && <p role="alert">{retryError}</p>}
       {query.isPending && <p role="status">Loading deliveries…</p>}
       {query.isError && <p role="alert">{webhookError(query.error, "Could not load deliveries.")}</p>}
-      {!query.isPending && deliveries.length === 0 && <p>No deliveries recorded yet.</p>}
+      {!query.isPending && !query.isError && deliveries.length === 0 && <p>No deliveries recorded yet.</p>}
       {deliveries.length > 0 && (
         <DeliveriesTable deliveries={deliveries} retrying={retrying} onRetry={(dl) => void retry(dl)} />
       )}

@@ -183,7 +183,7 @@ function BoardTasksPage() {
       )}
       {query.isPending && <p role="status">Loading tasks…</p>}
       {query.isError && <p role="alert">Could not load board tasks.</p>}
-      {!query.isPending && allTasks.length === 0 && (
+      {!query.isPending && !query.isError && allTasks.length === 0 && (
         <EmptyState>
           No tasks on this board yet. Create one above or switch any channel composer to Task mode.
         </EmptyState>

@@ -67,6 +67,7 @@ function BoardSchedulesPage() {
   const board = useMemo(() => ({ org, board: boardSlug }), [org, boardSlug]);
   const queryClient = useQueryClient();
   const { data: session } = useQuery(sessionQuery);
+  const writeScope = { ...board, csrf: session?.csrf ?? undefined };
   const { data: channels = [] } = useQuery(channelsQuery(board));
   const [showAll, setShowAll] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -93,7 +94,7 @@ function BoardSchedulesPage() {
     setCanceling(id);
     setError("");
     try {
-      await browserClient(window.location.origin, board).cancelSchedule({ id });
+      await browserClient(window.location.origin, writeScope).cancelSchedule({ id });
       await queryClient.invalidateQueries({ queryKey: boardKeys.schedules(board) });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not cancel schedule.");
@@ -112,7 +113,7 @@ function BoardSchedulesPage() {
       />
       {creating && (
         <NewScheduleForm
-          board={board}
+          board={writeScope}
           defaultChannel={channels[0]?.path || "general"}
           onCancel={() => setCreating(false)}
           onCreated={async () => {
@@ -124,7 +125,7 @@ function BoardSchedulesPage() {
       {error && <p role="alert">{error}</p>}
       {query.isPending && <p role="status">Loading schedules…</p>}
       {query.isError && <p role="alert">Could not load schedules.</p>}
-      {!query.isPending && schedules.length === 0 && (
+      {!query.isPending && !query.isError && schedules.length === 0 && (
         <EmptyState>
           {showAll ? "No schedules recorded on this board yet." : "No pending schedules right now."}
         </EmptyState>
@@ -151,7 +152,7 @@ type ScheduleDraft = {
   times: string;
 };
 
-async function saveSchedule(board: Board, defaultChannel: string, draft: ScheduleDraft) {
+async function saveSchedule(board: Board & { csrf?: string }, defaultChannel: string, draft: ScheduleDraft) {
   const targetReply = draft.replyTo.replace(/^#/, "").trim();
   const parsedTimes = draft.times.trim() ? Number.parseInt(draft.times.trim(), 10) : undefined;
   await browserClient(window.location.origin, board).createSchedule({
@@ -270,7 +271,7 @@ function NewScheduleForm({
   onCancel,
   onCreated,
 }: {
-  board: Board;
+  board: Board & { csrf?: string };
   defaultChannel: string;
   onCancel: () => void;
   onCreated: () => Promise<void>;

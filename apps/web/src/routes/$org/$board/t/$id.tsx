@@ -2,10 +2,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { useLayoutEffect, useRef, useState } from "react";
-import { boardKeys, threadsQuery } from "../../../../api/board.ts";
+import { boardErrorText, boardKeys, threadsQuery } from "../../../../api/board.ts";
 import { browserClient } from "../../../../api/client.ts";
 import { sessionQuery } from "../../../../api/session.ts";
-import { threadErrorText, type ThreadMessage, threadQuery } from "../../../../api/thread.ts";
+import { type ThreadMessage, threadErrorText, threadQuery } from "../../../../api/thread.ts";
 import { Composer, type ComposerDraft } from "../../../../components/Composer.tsx";
 import { MessageView } from "../../../../components/MessageView.tsx";
 import { TaskState } from "../../../../components/TaskState.tsx";
@@ -118,6 +118,7 @@ function ThreadPage() {
             />
           )}
           <ThreadSchedules
+            key={JSON.stringify([params.org, params.board, params.id])}
             params={params}
             schedules={data.schedules}
             csrf={csrf ?? undefined}
@@ -146,15 +147,19 @@ function ThreadSchedules({
   onCanceled: () => Promise<void>;
 }) {
   const [canceling, setCanceling] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const pending = schedules.filter((item) => item.state === "pending");
   if (pending.length === 0) return null;
 
   async function cancel(scheduleId: string) {
     if (!csrf || canceling) return;
     setCanceling(scheduleId);
+    setError("");
     try {
       await browserClient(window.location.origin, { ...params, csrf }).cancelSchedule({ id: scheduleId });
       await onCanceled();
+    } catch (cause) {
+      setError(cause instanceof Error ? boardErrorText(cause) : "Could not cancel schedule.");
     } finally {
       setCanceling(null);
     }
@@ -165,6 +170,7 @@ function ThreadSchedules({
       <h2>
         <ClockIcon width={14} height={14} /> Scheduled replies ({pending.length})
       </h2>
+      {error && <p role="alert">{error}</p>}
       <ul>
         {pending.map((schedule) => (
           <li key={schedule.id}>

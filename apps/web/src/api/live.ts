@@ -9,7 +9,7 @@ type Board = { org: string; board: string };
 type Schedule = (run: () => void, delay: number) => () => void;
 type ReadThread = Awaited<ReturnType<Client["readThread"]>>;
 type Queries = Pick<QueryClient, "cancelQueries" | "invalidateQueries" | "getQueriesData" | "getQueryState">;
-type LiveListener = (event: BoardEvent) => void;
+type LiveListener = (event: BoardEvent, invalidate: (key: QueryKey) => void) => void;
 
 const liveListeners = new Map<string, Set<LiveListener>>();
 
@@ -31,10 +31,57 @@ export function subscribeBoardEvents(board: Board, listener: LiveListener): () =
   };
 }
 
-function notifyLiveListeners(board: Board, event: BoardEvent) {
+function boardEventsPath(board: Board) {
+  return `/api/${encodeURIComponent(board.org)}/${encodeURIComponent(board.board)}/events`;
+}
+
+function parseBoardEvent(data: string): BoardEvent | undefined {
+  try {
+    const event = JSON.parse(data) as BoardEvent | null;
+    if (!event || typeof event.type !== "string" || typeof event.cursor !== "string" || !/^\d+$/.test(event.cursor)) {
+      return undefined;
+    }
+    if (typeof event.createdAt !== "string") return undefined;
+    return hasDisplayFields(event) ? event : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function hasDisplayFields(event: BoardEvent) {
+  if ("message" in event) {
+    const { message } = event;
+    const actor = message?.author?.name ?? message?.by?.actor;
+    return (
+      typeof message?.id === "string" &&
+      typeof message.thread === "string" &&
+      typeof message.channel === "string" &&
+      typeof message.text === "string" &&
+      (actor === undefined || typeof actor === "string")
+    );
+  }
+  if (event.type === "channel.created") {
+    return typeof event.payload?.channel === "string" && typeof event.payload.by?.actor === "string";
+  }
+  if (event.type === "actor.seen") {
+    return typeof event.payload?.name === "string" && typeof event.payload.handle === "string";
+  }
+  if (event.type === "watch.failed") {
+    return typeof event.payload?.error === "string" && typeof event.payload.thread === "string";
+  }
+  return true;
+}
+
+function notifyLiveListeners(board: Board, event: BoardEvent, invalidate: (key: QueryKey) => void) {
   const listeners = liveListeners.get(boardIdKey(board));
   if (!listeners) return;
-  for (const listener of listeners) listener(event);
+  for (const listener of listeners) {
+    try {
+      listener(event, invalidate);
+    } catch {
+      // A broken subscriber must not interrupt delivery or cache refreshes.
+    }
+  }
 }
 
 function recordBoardEvent(
@@ -43,7 +90,6 @@ function recordBoardEvent(
   add: (key: QueryKey) => void,
   threads: Set<string>,
 ): boolean {
-  notifyLiveListeners(board, event);
   if (event.type === "channel.created") {
     add(boardKeys.channels(board));
     return true;
@@ -57,7 +103,13 @@ function recordBoardEvent(
     add(threadsQuery(board, channel).queryKey);
     return true;
   }
-  switch (event.type) {
+  // The SDK event union does not currently include reactions.
+  const type: string = event.type;
+  switch (type) {
+    case "reaction.added":
+    case "reaction.removed":
+      threads.add(thread);
+      return true;
     case "message.posted":
       add(boardKeys.channels(board));
       if (re !== null) threads.add(thread);
@@ -77,7 +129,7 @@ function recordBoardEvent(
   return true;
 }
 
-function boardRefreshes(board: Board, queries: Queries, schedule: Schedule) {
+function boardRefreshes(board: Board, queries: Queries, schedule: Schedule, actorEventsOnly: boolean) {
   const pending = new Map<string, QueryKey>();
   const threads = new Set<string>();
   let all = false;
@@ -130,7 +182,10 @@ function boardRefreshes(board: Board, queries: Queries, schedule: Schedule) {
       queue();
     },
     onEvent({ data }: MessageEvent<string>) {
-      if (recordBoardEvent(JSON.parse(data) as BoardEvent, board, add, threads)) queue();
+      const event = parseBoardEvent(data);
+      if (!event || (actorEventsOnly && event.type !== "actor.seen")) return;
+      notifyLiveListeners(board, event, add);
+      if (recordBoardEvent(event, board, add, threads) || pending.size > 0) queue();
     },
     stop() {
       stopped = true;
@@ -148,9 +203,10 @@ export function followBoard(
     return () => clearTimeout(timer);
   },
   onReconnecting?: (reconnecting: boolean) => void,
+  actorEventsOnly = false,
 ) {
-  const path = `/api/${encodeURIComponent(board.org)}/${encodeURIComponent(board.board)}/events`;
-  const refresh = boardRefreshes(board, queries, schedule);
+  const path = actorEventsOnly ? `${boardEventsPath(board)}?all=true` : boardEventsPath(board);
+  const refresh = boardRefreshes(board, queries, schedule, actorEventsOnly);
   let retryDelay = 1000;
   let disconnect = () => {};
   let cancelRetry: (() => void) | undefined;
@@ -203,6 +259,11 @@ export function followBoard(
     cancelGrace?.();
     refresh.stop();
   };
+}
+
+export function followBoardActors(board: Board, queries: Queries) {
+  // The default stream omits bookkeeping events such as actor.seen.
+  return followBoard(board, queries, undefined, undefined, undefined, true);
 }
 
 export function useBoardLive({ org, board }: Board, enabled: boolean) {

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { BoardEvent } from "@the-vibe-company/openboard";
 import { useEffect, useMemo, useState } from "react";
-import { boardKeys } from "../../../api/board.ts";
+import { boardErrorText, boardKeys } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
 import { subscribeBoardEvents } from "../../../api/live.ts";
 import { markdownPreview } from "../../../markdown.ts";
@@ -33,46 +33,30 @@ function eventKind(type: string): "message" | "task" | "meta" | "system" {
 }
 
 function eventSummary(event: BoardEvent): { text: string; channel?: string; thread?: string; actor?: string } {
-  const anyEvent = event as Record<string, unknown>;
-  const payload = (anyEvent.payload ?? {}) as Record<string, unknown>;
-  const message = anyEvent.message as
-    | {
-        id?: string;
-        thread?: string;
-        channel?: string;
-        text?: string;
-        author?: { name?: string };
-        by?: { actor?: string };
-      }
-    | undefined;
-  const actor =
-    message?.author?.name ??
-    message?.by?.actor ??
-    (typeof payload.name === "string" ? payload.name : typeof anyEvent.actor === "string" ? anyEvent.actor : undefined);
-  if (message) {
-    const snippet = typeof message.text === "string" ? markdownPreview(message.text) : "";
+  const { type } = event;
+  if ("message" in event) {
+    const { message } = event;
     return {
-      text: snippet || `Message #${message.id ?? ""}`,
+      text: markdownPreview(message.text) || `Message #${message.id}`,
       channel: message.channel,
-      thread: message.thread ?? message.id,
-      actor,
+      thread: message.thread,
+      actor: message.author?.name ?? message.by?.actor,
     };
   }
-  if (event.type === "channel.created" && typeof payload.channel === "string") {
-    return { text: `Created channel #${payload.channel}`, channel: payload.channel, actor };
+  if (event.type === "channel.created") {
+    const { channel, by } = event.payload;
+    return { text: `Created channel #${channel}`, channel, actor: by.actor };
   }
   if (event.type === "actor.seen") {
-    const label =
-      typeof payload.name === "string" ? payload.name : typeof payload.handle === "string" ? payload.handle : "actor";
+    const { name, handle } = event.payload;
+    const label = name || handle || "actor";
     return { text: `Actor ${label} active on board`, actor: label };
   }
-  if (event.type === "watch.failed" && typeof payload.error === "string") {
-    return {
-      text: `Watcher failed: ${payload.error}`,
-      thread: typeof payload.thread === "string" ? payload.thread : undefined,
-    };
+  if (event.type === "watch.failed") {
+    const { error, thread } = event.payload;
+    return { text: `Watcher failed: ${error}`, thread };
   }
-  return { text: event.type, actor };
+  return { text: type };
 }
 
 function mergeBoardEvents(streamed: readonly BoardEvent[], initial: readonly BoardEvent[], category: Category) {
@@ -82,7 +66,11 @@ function mergeBoardEvents(streamed: readonly BoardEvent[], initial: readonly Boa
     if (!merged.has(item.cursor)) merged.set(item.cursor, item);
   }
   return [...merged.values()]
-    .sort((a, b) => Number(b.cursor) - Number(a.cursor))
+    .sort((a, b) => {
+      const left = BigInt(a.cursor);
+      const right = BigInt(b.cursor);
+      return left < right ? 1 : left > right ? -1 : 0;
+    })
     .filter((item) => {
       if (category === "all") return true;
       const kind = eventKind(item.type);
@@ -97,6 +85,10 @@ function mergeBoardEvents(streamed: readonly BoardEvent[], initial: readonly Boa
 
 function BoardActivityPage() {
   const { org, board: boardSlug } = Route.useParams();
+  return <BoardActivity key={`${org}/${boardSlug}`} org={org} boardSlug={boardSlug} />;
+}
+
+function BoardActivity({ org, boardSlug }: { org: string; boardSlug: string }) {
   const board = useMemo(() => ({ org, board: boardSlug }), [org, boardSlug]);
   const [category, setCategory] = useState<Category>("all");
   const [paused, setPaused] = useState(false);
@@ -129,8 +121,7 @@ function BoardActivityPage() {
         <div>
           <h1 id="board-activity-heading">Activity</h1>
           <p className="board-view-sub">
-            Live event stream (<code>ob tail</code>). Every post, task lease, reaction, and channel event appears here
-            in real time.
+            Live event stream (<code>ob tail</code>). Posts and task updates appear here in real time.
           </p>
         </div>
         <div className="board-view-controls">
@@ -161,8 +152,10 @@ function BoardActivityPage() {
         ))}
       </fieldset>
       {initial.isPending && events.length === 0 && <p role="status">Loading activity…</p>}
-      {initial.isError && <p role="alert">Could not load board activity.</p>}
-      {!initial.isPending && events.length === 0 && <EmptyState>No matching events recorded yet.</EmptyState>}
+      {initial.isError && <p role="alert">{boardErrorText(initial.error)}</p>}
+      {!initial.isPending && !initial.isError && events.length === 0 && (
+        <EmptyState>No matching events recorded yet.</EmptyState>
+      )}
       {events.length > 0 && <ActivityFeed board={board} events={events} />}
     </section>
   );
