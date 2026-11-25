@@ -8,8 +8,8 @@ export function Avatar({ name, src }: { name: string; src?: string }) {
   const showImage = Boolean(src) && failedSrc !== src;
   const loaded = showImage && loadedSrc === src;
   return (
-    <span className="ui-avatar" role="img" aria-label={name} data-initial={initial}>
-      {showImage && (
+    <span className="ui-avatar" role="img" aria-label={name} data-initial={showImage ? initial : undefined}>
+      {showImage ? (
         <img
           src={src}
           alt=""
@@ -17,6 +17,8 @@ export function Avatar({ name, src }: { name: string; src?: string }) {
           onLoad={() => setLoadedSrc(src)}
           onError={() => setFailedSrc(src)}
         />
+      ) : (
+        <span aria-hidden="true">{initial}</span>
       )}
     </span>
   );

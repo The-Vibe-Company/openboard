@@ -13,7 +13,7 @@
   font-weight: 600;
 }
 
-.ui-avatar::before {
+.ui-avatar[data-initial]::before {
   content: attr(data-initial);
 }
 
