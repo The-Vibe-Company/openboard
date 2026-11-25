@@ -143,7 +143,7 @@ export function MessageView({ message, board }: { message: ThreadMessage; board:
   return (
     <article className="thread-message">
       <header>
-        <Avatar name={author} src={message.author?.avatar ?? undefined} />
+        <Avatar name={author} />
         <strong>{author}</strong>
         {(kind === "agent" || kind === "workflow") && <span className="thread-message-kind">{kind}</span>}
         <time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleString()}</time>
