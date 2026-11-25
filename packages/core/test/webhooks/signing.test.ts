@@ -83,7 +83,7 @@ test.each([
 });
 
 test.each([
-  ["signatureFormat", "must be at most 4096 bytes", "é".repeat(2048) + "{sig}"],
+  ["signatureFormat", "must be at most 4096 bytes", `${"é".repeat(2048)}{sig}`],
   ["signedPayload", "must be at most 4096 bytes", "a".repeat(4097)],
   ["signedPayload", "must contain at most 32 tokens", "{method}".repeat(33)],
   ["signedPayload", "could exceed the expanded size limit", "{body}".repeat(5)],

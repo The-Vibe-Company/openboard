@@ -173,7 +173,7 @@ test.each(["close", "fail"] as const)("tail resumes after stream %s and connecti
       return after.response;
     },
   });
-  before.push(frame(posted("3", "one")) + "id: 4\n\nid: 5\nevent: board\ndata: {");
+  before.push(`${frame(posted("3", "one"))}id: 4\n\nid: 5\nevent: board\ndata: {`);
   expect((await events.next()).value).toEqual(posted("3", "one"));
   // The complete checkpoint survives, but the interrupted event does not.
   before[end]();

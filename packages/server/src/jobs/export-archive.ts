@@ -17,7 +17,7 @@ function tarHeader(path: string, size: number) {
   write(156, "0");
   write(257, "ustar\0" + "00");
   const checksum = header.reduce((sum, byte) => sum + byte, 0);
-  write(148, checksum.toString(8).padStart(6, "0") + "\0 ");
+  write(148, `${checksum.toString(8).padStart(6, "0")}\0 `);
   return header;
 }
 
@@ -30,7 +30,7 @@ function* entry(path: string, contents: Uint8Array<ArrayBuffer>) {
 
 function* eventSegment(dir: string, first: number, last: number, events: readonly object[]) {
   if (first > last) return;
-  const lines = events.map((event) => JSON.stringify(exportEvent(event)) + "\n").join("");
+  const lines = events.map((event) => `${JSON.stringify(exportEvent(event))}\n`).join("");
   yield* entry(`${dir}/${first}-${last}.ndjson.gz`, Bun.gzipSync(encoder.encode(lines)));
 }
 
