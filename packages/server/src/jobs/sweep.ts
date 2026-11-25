@@ -1,5 +1,6 @@
 import type { PlatformView } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
+import { errorMessage } from "../log.ts";
 
 const sweepInterval = 60_000;
 
@@ -12,8 +13,8 @@ export function sweepOnActivity(platform: Pick<PlatformView, "sweepExpired">, de
     nextSweep = now + sweepInterval;
     try {
       await platform.sweepExpired(now);
-    } catch {
-      deps.log.error("operational retention sweep failed", {});
+    } catch (error) {
+      deps.log.error("operational retention sweep failed", { error: errorMessage(error) });
     }
   };
 }

@@ -86,6 +86,7 @@ async function waitForRefresh(refresh: Promise<ClaimResult>, signal?: AbortSigna
     if (signal.aborted) onAbort();
     else signal.addEventListener("abort", onAbort, { once: true });
   });
+  refresh.catch(() => {});
   try {
     return await Promise.race([refresh, aborted]);
   } finally {

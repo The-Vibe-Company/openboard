@@ -1,5 +1,6 @@
 import type { BoardKeys, CompactionCursor, PlatformView } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
+import { errorMessage } from "../log.ts";
 
 const retention = 30 * 86_400_000;
 const interval = 60_000;
@@ -31,8 +32,8 @@ export function compactOnActivity(platform: PlatformView, deps: Deps, requiresSh
           cursor = result.next;
           continue;
         }
-      } catch {
-        deps.log.error("board event log compaction failed", { boardId: keys.boardId });
+      } catch (error) {
+        deps.log.error("board event log compaction failed", { boardId: keys.boardId, error: errorMessage(error) });
       }
       afterBoard = keys.boardId;
       boards = boards.slice(1);
@@ -45,7 +46,9 @@ export function compactOnActivity(platform: PlatformView, deps: Deps, requiresSh
       const now = deps.now();
       if (running || now < next || stopped()) return;
       next = now + interval;
-      running = compact(now).catch(() => deps.log.error("event log compaction failed", {}));
+      running = compact(now).catch((error) =>
+        deps.log.error("event log compaction failed", { error: errorMessage(error) }),
+      );
       try {
         await running;
       } finally {

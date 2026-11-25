@@ -125,7 +125,9 @@ export async function sendWebhook(
       await drainResponse(response);
       return { status, error: null };
     };
-    const result = await Promise.race([send(), timeout.promise]);
+    const inflight = send();
+    inflight.catch(() => {});
+    const result = await Promise.race([inflight, timeout.promise]);
     return { ...result, retryAfter };
   } catch (error) {
     if (error instanceof BoardError && error.code === "invalid_url" && error.reason !== "dns")

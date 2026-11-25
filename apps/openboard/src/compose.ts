@@ -76,6 +76,7 @@ export async function compose(
     residentBytes: () => process.memoryUsage.rss(),
     log: jsonLogger({
       now,
+      level: config.logLevel,
       ...(config.mode === "local" && { write: (line) => process.stderr.write(`${line}\n`) }),
     }),
     requestId: () => crypto.randomUUID(),
@@ -133,13 +134,12 @@ export async function compose(
   snapshots.refresh();
   return {
     fetch: app.fetch,
-    drain() {
-      snapshots.stop();
-      return app.drain();
+    async drain() {
+      await Promise.all([snapshots.stop(), app.drain()]);
     },
-    close() {
-      snapshots.stop();
-      return app.close();
+    async close() {
+      await snapshots.stop();
+      await app.close();
     },
   };
 }

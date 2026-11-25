@@ -1,5 +1,6 @@
 import type { Bucket, DatabaseDump } from "@openboard/ports";
 import type { Deps } from "../deps.ts";
+import { errorMessage } from "../log.ts";
 
 const DAY = 86_400_000;
 const RETRY = 60_000;
@@ -23,8 +24,8 @@ export function startDumpJob(dump: DatabaseDump | undefined, bucket: Bucket | un
       if (await upload(destination, `dumps/${day}.dump`, signal)) {
         delay = Math.max(1, (Math.floor(now / DAY) + 1) * DAY - deps.now());
       }
-    } catch {
-      if (!shutdown.signal.aborted) deps.log.error("database dump failed", {});
+    } catch (error) {
+      if (!shutdown.signal.aborted) deps.log.error("database dump failed", { error: errorMessage(error) });
     } finally {
       cancelDeadline();
       if (!shutdown.signal.aborted) cancel = deps.schedule(delay, tick);

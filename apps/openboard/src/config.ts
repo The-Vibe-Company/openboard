@@ -5,6 +5,7 @@ import process from "node:process";
 
 /** The log levels `OPENBOARD_LOG_LEVEL` accepts (docs/codebase.md 5.4). */
 const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
+export type LogLevel = (typeof LOG_LEVELS)[number];
 /** `OPENBOARD_SIGNUP` (docs/auth.md "Sign-in providers"); local mode has no sign-up unless it is set. */
 const SIGNUP_MODES = ["open", "invite", "closed"] as const;
 type Signup = (typeof SIGNUP_MODES)[number];
@@ -27,6 +28,7 @@ interface CommonConfig {
   readonly publicUrl: string;
   readonly dataDir: string;
   readonly sync: "NORMAL" | "FULL";
+  readonly logLevel: LogLevel;
   /** Who writes until credentials arrive: `ob:user:local-<os user>` (docs/auth.md "Local mode"). */
   readonly localOwner: string;
   /** `OPENBOARD_SIGNUP`: whether a new sign-in identity makes a new person; default `closed`. */
@@ -241,6 +243,7 @@ export function loadConfig(env: Env = process.env): Config {
     publicUrl,
     dataDir,
     sync: sync === "FULL" ? "FULL" : "NORMAL",
+    logLevel: logLevel as LogLevel,
     localOwner: `ob:user:local-${user}`,
     signup: signup as Signup,
     ...(github && { github }),

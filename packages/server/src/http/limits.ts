@@ -46,6 +46,24 @@ function attachmentAdmission() {
   };
 }
 
+function inboundAdmission(): RateLimits["reserveInbound"] {
+  let inbound = 0;
+  const byIp = new Map<string, number>();
+  return (ip = "unknown") => {
+    const fromIp = byIp.get(ip) ?? 0;
+    if (inbound >= 20 || fromIp >= 4) return undefined;
+    inbound++;
+    byIp.set(ip, fromIp + 1);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      inbound--;
+      decrement(byIp, ip);
+    };
+  };
+}
+
 export function requestRateLimits(
   now: () => number,
   platform: PlatformView,
@@ -60,8 +78,6 @@ export function requestRateLimits(
   type Waiter = (admission: Admission) => void;
   type Pending = { count: number; waiters: Set<Waiter> };
   const pending = new Map<string, Pending>();
-  let inbound = 0;
-  const inboundByIp = new Map<string, number>();
   const byOrg = new Map<string, number>();
   const byPrincipal = new Map<string, number>();
 
@@ -85,16 +101,7 @@ export function requestRateLimits(
   }
 
   return {
-    reserveInbound(ip = "unknown") {
-      const fromIp = inboundByIp.get(ip) ?? 0;
-      if (inbound >= 20 || fromIp >= 4) return undefined;
-      inbound++;
-      inboundByIp.set(ip, fromIp + 1);
-      return () => {
-        inbound--;
-        decrement(inboundByIp, ip);
-      };
-    },
+    reserveInbound: inboundAdmission(),
     reserveUpload: attachmentAdmission(),
     reserveDownload: attachmentAdmission(),
     reserveStream(org, principal) {
@@ -137,8 +144,9 @@ export function limitWrite(limits: RateLimits, org: string, readOnly: boolean): 
 }
 
 function decrement(counts: Map<string, number>, key: string): void {
-  const count = counts.get(key)!;
-  if (count === 1) counts.delete(key);
+  const count = counts.get(key);
+  if (count === undefined) return;
+  if (count <= 1) counts.delete(key);
   else counts.set(key, count - 1);
 }
 

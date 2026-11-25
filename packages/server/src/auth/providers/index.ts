@@ -64,6 +64,7 @@ async function start(
   const response = await provider.start({ state, verifier, redirectUri });
   const pending = `${provider.id}.${state}.${verifier}`;
   const value = invitation && INVITATION_TOKEN.test(invitation) ? `${pending}.${invitation}` : pending;
+  response.headers.set("cache-control", "no-store");
   response.headers.append("set-cookie", hostCookie(SIGN_IN_COOKIE, value, SIGN_IN_SECONDS));
   return response;
 }
@@ -102,7 +103,10 @@ async function callback(provider: LoginProvider, ctx: SignInContext, request: Re
     );
   }
   const [membership] = next ? [] : await ctx.platform.memberships(person.id);
-  const headers = new Headers({ location: next ?? (membership ? `/${membership.org.slug}/main` : "/new") });
+  const headers = new Headers({
+    location: next ?? (membership ? `/${membership.org.slug}/main` : "/new"),
+    "cache-control": "no-store",
+  });
   headers.append("set-cookie", session.cookie);
   headers.append("set-cookie", hostCookie(SIGN_IN_COOKIE, "", 0));
   return new Response(null, { status: 302, headers });
