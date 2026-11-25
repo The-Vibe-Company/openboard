@@ -141,6 +141,7 @@ export async function compose(
   };
 }
 
+export { restorePostgres } from "@openboard/driver-postgres";
 export {
   ensureRestoreTarget,
   importSqlite,

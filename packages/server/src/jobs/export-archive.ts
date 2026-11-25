@@ -75,7 +75,10 @@ async function* logs(
     const events = text
       .trimEnd()
       .split("\n")
-      .map((line) => JSON.parse(line) as object);
+      .map((line) => {
+        const { org_id: _orgId, board_id: _boardId, ...event } = JSON.parse(line) as Record<string, unknown>;
+        return event;
+      });
     yield* database(first - 1);
     yield* eventSegment(dir, first, last, events);
     after = last;

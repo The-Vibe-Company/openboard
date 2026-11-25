@@ -254,5 +254,6 @@ export function createViews(
   };
 }
 
-export { type ReadAttachmentBackup, replayBoard, restoreStatements } from "./views/restore/index.ts";
 export { isImportedFold, markImportedHead } from "./views/reproject/index.ts";
+export * from "./views/restore/hosted.ts";
+export { type ReadAttachmentBackup, replayBoard, replayLockedBoard, restoreStatements } from "./views/restore/index.ts";

@@ -10,10 +10,20 @@ const concurrency = 8;
 
 export const orgPrefix = (orgId: number) => `org/${orgId}/`;
 
-function upload(bucket: Bucket, orgId: number, { boardId, first, last, events, deadline }: LogSegment) {
+function upload(
+  bucket: Bucket,
+  orgId: number,
+  { boardId, first, last, events, deadline }: LogSegment,
+  hosted: boolean,
+) {
   const stream = boardId === null ? "log" : `board/${boardId}`;
   const key = `${orgPrefix(orgId)}${stream}/${first}-${last}.ndjson.gz`;
-  const ndjson = events.map((event) => `${JSON.stringify(event)}\n`).join("");
+  const ndjson = events
+    .map((event) => {
+      const record = hosted ? { ...event, org_id: orgId, board_id: boardId ?? 0 } : event;
+      return `${JSON.stringify(record)}\n`;
+    })
+    .join("");
   return bucket.put(key, Bun.gzipSync(new TextEncoder().encode(ndjson)), deadline);
 }
 
@@ -40,15 +50,23 @@ export function logShippingJobs(
   tenants: Tenants,
   deps: Deps,
   signal: AbortSignal,
+  hosted: boolean,
 ) {
   async function shipOrg(orgId: number, stopped: () => boolean) {
     if (stopped()) return;
     try {
       await tenants.jobOrg({ orgId }).shipLogs(
-        (segment) => upload(bucket, orgId, segment),
+        (segment) => upload(bucket, orgId, segment, hosted),
         stopped,
         deps.now,
         (attachment, deadline) => uploadAttachment(bucket, blobs, attachment, deadline),
+        (revision, manifest, deadline) =>
+          bucket.put(
+            `${orgPrefix(orgId)}boards/${revision}.json`,
+            new TextEncoder().encode(JSON.stringify(manifest)),
+            deadline,
+            "application/json",
+          ),
       );
     } catch {
       deps.log.error("log shipping failed", { orgId });

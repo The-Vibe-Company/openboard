@@ -30,6 +30,7 @@ import { orgDeletionStatements } from "./views/operator/org-deletion.ts";
 import { orgPlatformStatements, orgStatements } from "./views/orgs.ts";
 import { rateStatements } from "./views/rates/index.ts";
 import { reprojectStatements } from "./views/reproject/index.ts";
+import { hostedRestoreStatements, restorePlatform } from "./views/restore/hosted.ts";
 import { restoreStatements } from "./views/restore/index.ts";
 import { scheduleStatements } from "./views/schedules/index.ts";
 import { schemaStatements } from "./views/schemas/registry.ts";
@@ -90,6 +91,8 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...deliveryStatements,
 });
 
+const postgresOnly = Object.freeze({ ...hostedRestoreStatements, ...restorePlatform });
+
 /** One registered statement rendered for an engine: its text and how many positional values it binds. */
 export interface RenderedStatement {
   readonly text: string;
@@ -98,9 +101,10 @@ export interface RenderedStatement {
 
 /** Every registered statement rendered for `dialect`, so each engine's test can `EXPLAIN` it with `NULL`s bound. */
 export function renderStatements(dialect: Dialect): Readonly<Record<string, RenderedStatement>> {
+  const source = dialect.name === "postgres" ? { ...registry, ...postgresOnly } : registry;
   return Object.freeze(
     Object.fromEntries(
-      Object.entries(registry).map(([name, statement]) => {
+      Object.entries(source).map(([name, statement]) => {
         const { text, names } = render(statement, dialect);
         return [name, Object.freeze({ text, params: names.length })];
       }),
@@ -125,6 +129,7 @@ export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...Object.keys(jobPlatformStatements),
   ...Object.keys(legacyPurgePlatform),
   ...orgPlatformStatements,
+  ...Object.keys(restorePlatform),
   ...Object.keys(operatorPlatform),
   ...Object.keys(oidcStatements),
   ...Object.keys(rateStatements),
@@ -147,7 +152,8 @@ const CTE_PREFIX = /^with (?:recursive )?(?:[a-z_][a-z0-9_]* (?:#\d+ )?as (?:not
 const WHERE_END =
   / (?:group by|order by|limit|offset|having|returning|window|for (?:update|share|no key update|key share)|on conflict)\b/;
 const ON_CONFLICT = / on conflict (?:#(\d+) )?do (?:nothing|update set (.*?))(?: where | returning |$)/;
-const INSERT_HEAD = /^insert into [a-z_][a-z0-9_.]*(?: as [a-z_][a-z0-9_]*)? #(\d+) (values|select) /;
+const INSERT_HEAD =
+  /^insert into [a-z_][a-z0-9_.]*(?: as [a-z_][a-z0-9_]*)? #(\d+) (?:overriding system value )?(values|select) /;
 const LEXEMES: readonly [RegExp, (match: RegExpExecArray) => string][] = [
   [/--[^\n]*/y, () => " "],
   [/\/\*(?:(?!\/\*)[\s\S])*?\*\//y, () => " "],

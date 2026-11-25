@@ -22,6 +22,27 @@ export interface BackupAttachment extends BlobKey {
   readonly shippedAt: number;
 }
 
+export interface BackupBoard {
+  readonly id: number;
+  readonly slug: string;
+  readonly name: string;
+  readonly createdAt: number;
+  readonly deletedAt: number | null;
+}
+
+export interface BackupMembership {
+  readonly principal: string;
+  readonly invitedBy: string;
+  readonly createdAt: number;
+}
+
+export interface BackupBoardManifest {
+  readonly orgId: number;
+  readonly slug: string;
+  readonly boards: readonly BackupBoard[];
+  readonly members: readonly BackupMembership[];
+}
+
 export interface LogSegment {
   /** Null for the organization log. */
   readonly boardId: number | null;
@@ -46,5 +67,6 @@ export interface OrgLogMaintenance {
     stopped: () => boolean,
     now: () => number,
     uploadAttachment?: (attachment: BackupAttachment, deadline: number) => Promise<void>,
+    uploadBoards?: (revision: number, manifest: BackupBoardManifest, deadline: number) => Promise<void>,
   ): Promise<void>;
 }

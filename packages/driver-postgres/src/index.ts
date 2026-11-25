@@ -66,3 +66,5 @@ export async function postgresDriver(
     throw error;
   }
 }
+
+export { restorePostgres } from "./restore.ts";

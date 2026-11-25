@@ -177,6 +177,7 @@ export async function lockBoard(
   actor: string | null,
   window: { readonly day: number; readonly nextDay: number },
   taskId: number | null,
+  restoring = false,
 ) {
   const params = { ...keys, ...window, taskId };
   let actorLoaded = dialect.name === "sqlite" || taskId !== null;
@@ -189,7 +190,7 @@ export async function lockBoard(
     actorLoaded = true;
   }
   if (!row) throw new Error(`board ${keys.boardId} of organization ${keys.orgId} is missing`);
-  if (row.deleted_at != null || row.board_deleted_at != null)
+  if (!restoring && (row.deleted_at != null || row.board_deleted_at != null))
     throw new BoardError("not_found", "no such board or route");
   const head = Number(row.head);
   const recorded = Number(row.timeline ?? 0);
@@ -200,7 +201,7 @@ export async function lockBoard(
     actorLoaded,
     hasWebhooks: Boolean(row.has_webhooks),
     hasWatchers: Boolean(row.has_watchers),
-    head: timeline === 0 || recorded === 0 || timeline === recorded ? head : head + TIMELINE_ADVANCE,
+    head: restoring || timeline === 0 || recorded === 0 || timeline === recorded ? head : head + TIMELINE_ADVANCE,
     dailyEvents: {
       day: Number(row.event_day),
       count: Number(row.event_count),

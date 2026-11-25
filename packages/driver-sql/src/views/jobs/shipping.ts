@@ -13,6 +13,16 @@ const pagesPerStream = 4;
 const blobPageSize = 16;
 // Positive board IDs and zero track event streams. This slot fences blob uploads against other runners.
 const blobStream = -1;
+const boardManifestStream = -2;
+const hostedManifestScan: Fragment = {
+  fragment: ({ name }) =>
+    name === "postgres"
+      ? `OR EXISTS (
+    SELECT 1 FROM boards b LEFT JOIN shipping manifest ON manifest.org_id = b.org_id AND manifest.board_id = -2
+    WHERE b.org_id = o.id AND (manifest.shipped IS NULL OR manifest.shipped = -1)
+  )`
+      : "",
+};
 const uploadLeaseMs = 10_000;
 const blobRetryMs = 10_000;
 // A persisted deletion stops new attempts before the purge job is eligible, even if a database connection dies.
@@ -27,12 +37,18 @@ const s = {
       WHERE e.org_id = o.id AND e.id > COALESCE(s.shipped, 0)
     ) OR EXISTS (
       SELECT 1 FROM attachments a WHERE a.org_id = o.id AND a.backup_shipped_at IS NULL
-    )) ORDER BY o.id LIMIT ${"limit"}`,
+    ) ${hostedManifestScan}) ORDER BY o.id LIMIT ${"limit"}`,
   shippingLock: sql`SELECT o.deleted_at FROM boards b JOIN orgs o ON o.id = b.org_id
     WHERE b.org_id = ${"orgId"} AND o.purged_at IS NULL ORDER BY b.id LIMIT 1${lockOrg}`,
   shippingBoards: sql`SELECT b.id, b.head FROM boards b
     LEFT JOIN shipping s ON s.org_id = b.org_id AND s.board_id = b.id
     WHERE b.org_id = ${"orgId"} AND b.head > COALESCE(s.shipped, 0) ORDER BY b.id`,
+  shippingManifestBoards: sql`SELECT b.id, b.slug, b.name, b.created_at, b.deleted_at, o.slug AS org_slug
+    FROM boards b JOIN orgs o ON o.id = b.org_id WHERE b.org_id = ${"orgId"} ORDER BY b.id`,
+  shippingManifestMembers: sql`SELECT u.public_id AS member, inviter.public_id AS inviter, m.created_at
+    FROM memberships m JOIN users u ON u.id = m.user_id JOIN users inviter ON inviter.id = m.invited_by
+    WHERE m.org_id = ${"orgId"} ORDER BY m.user_id`,
+  shippingManifestRevision: sql`SELECT COALESCE(MAX(id), 0) AS head FROM org_events WHERE org_id = ${"orgId"}`,
   shippingOrgHead: sql`SELECT e.id AS head FROM org_events e
     LEFT JOIN shipping s ON s.org_id = e.org_id AND s.board_id = 0
     WHERE e.org_id = ${"orgId"} AND e.id > COALESCE(s.shipped, 0) ORDER BY e.id DESC LIMIT 1`,
@@ -185,6 +201,63 @@ function blobShipper(
   return { shipPending, shipReferenced };
 }
 
+async function shipManifest(
+  db: Db,
+  dialect: Dialect,
+  orgId: number,
+  leaseTime: (tx: Db, now: () => number) => Promise<number | undefined>,
+  upload: NonNullable<Parameters<OrgView["shipLogs"]>[4]>,
+  now: () => number,
+) {
+  const keys = { orgId, boardId: boardManifestStream };
+  const attempt = await db.transaction(async (tx) => {
+    const at = await leaseTime(tx, now);
+    if (at === undefined) return;
+    const [cursor] = await query(tx, dialect, s.shippingCursor, keys);
+    const [top] = await query(tx, dialect, s.shippingManifestRevision, { orgId });
+    const revision = Number(top?.head ?? 0);
+    if (Number(cursor?.upload_until ?? 0) > at) return;
+    if (cursor && Number(cursor.shipped) === revision) return { current: true } as const;
+    const rows = await query(tx, dialect, s.shippingManifestBoards, { orgId });
+    const slug = rows[0]?.org_slug;
+    if (typeof slug !== "string") return;
+    const members = await query(tx, dialect, s.shippingManifestMembers, { orgId });
+    const deadline = at + uploadLeaseMs;
+    await query(tx, dialect, s.shippingReserve, {
+      ...keys,
+      shipped: Number(cursor?.shipped ?? -1),
+      pending: revision,
+      deadline,
+    });
+    return { current: false, revision, slug, rows, members, deadline } as const;
+  });
+  if (!attempt) return false;
+  if (attempt.current) return true;
+  const { revision, slug, rows, members, deadline } = attempt;
+  await upload(
+    revision,
+    {
+      orgId,
+      slug,
+      boards: rows.map((row) => ({
+        id: Number(row.id),
+        slug: String(row.slug),
+        name: String(row.name),
+        createdAt: Number(row.created_at),
+        deletedAt: row.deleted_at == null ? null : Number(row.deleted_at),
+      })),
+      members: members.map((row) => ({
+        principal: `ob:user:${row.member}`,
+        invitedBy: `ob:user:${row.inviter}`,
+        createdAt: Number(row.created_at),
+      })),
+    },
+    deadline,
+  );
+  await query(db, dialect, s.shippingAdvance, { ...keys, deadline });
+  return true;
+}
+
 export function shippingView(db: Db, dialect: Dialect, { orgId }: OrgScope): Pick<OrgView, "shipLogs"> {
   const log = (tx: Db, boardId: number, shipped: number, end: number) =>
     query(tx, dialect, boardId === 0 ? s.shippingOrgLog : s.shippingBoardLog, {
@@ -228,9 +301,15 @@ export function shippingView(db: Db, dialect: Dialect, { orgId }: OrgScope): Pic
   const blobs = blobShipper(db, dialect, orgId, leaseTime);
 
   return {
-    async shipLogs(upload, stopped, now, uploadAttachment) {
+    async shipLogs(upload, stopped, now, uploadAttachment, uploadBoards) {
       const [org] = await query(db, dialect, s.shippingOrgHead, { orgId });
       const boards = await query(db, dialect, s.shippingBoards, { orgId });
+      if (
+        dialect.name === "postgres" &&
+        uploadBoards &&
+        (stopped() || !(await shipManifest(db, dialect, orgId, leaseTime, uploadBoards, now)))
+      )
+        return;
       let attachmentFailed = false;
       for (const { id, head } of [...(org ? [{ id: 0, head: org.head }] : []), ...boards]) {
         const boardId = Number(id);

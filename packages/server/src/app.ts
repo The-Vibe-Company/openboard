@@ -136,7 +136,7 @@ function startBackground(ports: Ports, pipeline: Pipeline, handlers: JobHandlers
       pipeline.tenants,
       deps,
       config.instanceId,
-      logShippingJobs(ports.bucket, ports.blobs, platform, pipeline.tenants, deps, shutdown),
+      logShippingJobs(ports.bucket, ports.blobs, platform, pipeline.tenants, deps, shutdown, config.mode === "hosted"),
       undefined,
       sweep,
     );
