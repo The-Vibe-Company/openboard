@@ -2,11 +2,13 @@ import { decideCreateTask, messages } from "@openboard/core";
 import type { StoreTenant } from "./isolation-seed.ts";
 import { at } from "./isolation-seed.ts";
 import { seedInbound } from "./store/inbound.test-suite.ts";
+import { checkScheduleIsolation } from "./store/schedules.test-suite.ts";
 import { appendSchema } from "./store/schemas.test-suite.ts";
 import { seedWatcher } from "./store/watchers.test-suite.ts";
 import { seedWebhook } from "./store/webhooks.test-suite.ts";
 
 export async function seedCase(method: string, a: StoreTenant, b: StoreTenant) {
+  if (method === "listSchedules") await checkScheduleIsolation(b, a);
   if (method === "taskNeedEdges") {
     await b.board.write(async (writer) => {
       const by = { actor: b.actor, principal: b.actor, profile: null };

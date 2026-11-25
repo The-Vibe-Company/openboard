@@ -54,7 +54,7 @@ export const createSchedule = defineOperation({
 export const listSchedules = defineOperation({
   name: "listSchedules",
   operationId: "schedules",
-  summary: "List schedules. This route currently returns no_scheduler.",
+  summary: "List pending schedules oldest first, or every state with all.",
   route: { method: "GET", path: "/schedules" },
   scope: "board",
   input: {
@@ -69,14 +69,13 @@ export const listSchedules = defineOperation({
     ),
   },
   output: Type.Object({ schedules: Type.Array(ScheduleView) }),
-  errors: ["no_scheduler"],
+  errors: ["invalid_request", "message_not_found"],
   access: null,
   effects: { readOnly: true, idempotent: true, emits: [] },
   cli: false,
-  mcp: false,
-  why: "Listing is deferred.",
+  mcp: { tool: "list_schedules" },
+  why: "The handwritten schedules command accepts an optional message ID and formats each schedule.",
   upstream: true,
-  stub: true,
 });
 
 export const cancelSchedule = defineOperation({

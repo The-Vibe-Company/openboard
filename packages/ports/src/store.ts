@@ -19,6 +19,7 @@ import type {
   OutputOf,
   PersonalToken,
   Role,
+  ScheduleView,
   SchemaView,
 } from "@openboard/contract";
 import type {
@@ -311,6 +312,12 @@ export interface BoardView
     BoardWebhookReads,
     AttachmentReads,
     AttachmentWrites {
+  /** Schedules in creation order, optionally restricted to a channel or thread root. */
+  listSchedules(filter: {
+    channel?: string;
+    thread?: number;
+    all?: boolean;
+  }): Promise<{ schedule: ScheduleView; blind: boolean }[]>;
   /** Consume a live GC lease and remove the expired upload if it has never been attached. */
   collectAttachment(jobId: string, lease: JobLease): Promise<boolean>;
   /**

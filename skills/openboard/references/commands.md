@@ -492,6 +492,30 @@ Example:
 ob schedule 812 "@ada friendly ping: can you review?" --in 1d
 ```
 
+## `ob schedules`
+
+List pending schedules across the board or for one thread.
+
+```sh
+ob schedules [<id>] [--channel <channel>] [--by <actor|handle>] [--all]
+```
+
+Options:
+
+- `--channel`: Only schedules for this channel.
+- `--by`: Only schedules by this actor ID or handle.
+- `--all`: Include done and canceled schedules.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: message_not_found`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `list_schedules`.
+
+Example:
+
+```sh
+ob schedules 812
+```
+
 ## `ob wait`
 
 Block until something new lands in a channel or a thread, then print it.

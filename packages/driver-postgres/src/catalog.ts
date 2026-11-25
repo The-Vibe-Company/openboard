@@ -1,7 +1,8 @@
 import {
-  databaseRows,
   type Db,
+  databaseRows,
   postgresText,
+  seedScheduleState,
   seedSweep,
   seedTaskNeed,
   simulateLegacyDeletion,
@@ -89,6 +90,8 @@ export function postgresPurgeFixture(url: () => Promise<string>) {
     seedSweep: async (keys: BoardKeys, webhook: string, at: number) =>
       withTestDb(await url(), (db) => seedSweep(db, postgresText, keys, webhook, at)),
     sweepSnapshot: async () => withTestDb(await url(), sweepSnapshot),
+    seedScheduleState: async (keys: BoardKeys, id: number, state: "done" | "canceled", lastMessage: number | null) =>
+      withTestDb(await url(), (db) => seedScheduleState(db, postgresText, keys, id, state, lastMessage)),
     seedTaskNeed: async (keys: BoardKeys, task: number, needs: number) =>
       withTestDb(await url(), (db) => seedTaskNeed(db, postgresText, keys, task, needs)),
     simulateLegacyDeletion: async (orgId: number) =>

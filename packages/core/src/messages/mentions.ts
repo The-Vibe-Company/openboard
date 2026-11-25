@@ -36,6 +36,16 @@ export function referencesActor(text: string, actor: string): boolean {
   return false;
 }
 
+/** Hide explicit references to other actors when showing text to a blind writer. */
+export function redactActorMentions(text: string, own: string): string {
+  const outside = outsideBlocks(text);
+  return text.replace(
+    tokens,
+    (written: string, actor: string | undefined, _handle: string | undefined, offset: number) =>
+      actor !== undefined && actor !== own && outside(offset) ? "@…" : written,
+  );
+}
+
 function actorsByHandle(actors: readonly MentionActor[], handles: ReadonlySet<string>) {
   const exact = new Map<string, MentionActor[]>();
   const qualified = new Map<string, MentionActor[]>();

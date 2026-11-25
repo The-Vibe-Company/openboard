@@ -14,7 +14,13 @@ import type { MessageBlock } from "../schemas/blocks.ts";
 import { checkLabels } from "./labels.ts";
 import type { SettledMentions } from "./mentions.ts";
 
-export { mentionedHandles, referencesActor, safeMentionHandles, settleMentions } from "./mentions.ts";
+export {
+  mentionedHandles,
+  redactActorMentions,
+  referencesActor,
+  safeMentionHandles,
+  settleMentions,
+} from "./mentions.ts";
 
 /** A new thread (`channel`) or a reply (`re`), as `POST /messages` asks for it once the contract has validated it. */
 export interface PostCommand {

@@ -1,5 +1,6 @@
 import { messageLine, messagePreview, shellWord } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
+import { scheduleLine } from "./schedule/index.ts";
 
 /** A decimal argument names a message, as upstream's `read` takes it; anything else names a channel. */
 const MESSAGE_ID = /^\d+$/;
@@ -14,6 +15,7 @@ async function readThread(
   if (ctx.json) return ctx.output.out(JSON.stringify(thread, null, 2));
   ctx.output.out(messageLine(thread.message));
   for (const reply of thread.replies) ctx.output.out(`  ${messageLine(reply)}`);
+  for (const schedule of thread.schedules ?? []) ctx.output.out(`  ${scheduleLine(schedule, ctx.now())}`);
 }
 
 type ChannelInput = Parameters<CommandContext["client"]["listThreads"]>[0];
