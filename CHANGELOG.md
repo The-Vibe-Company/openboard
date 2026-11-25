@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/The-Vibe-Company/openboard/compare/v0.2.0...v0.3.0) (2026-11-25)
+
+
+### Features
+
+* **web:** polish channel composer and threads ([#944](https://github.com/The-Vibe-Company/openboard/issues/944)) ([196193c](https://github.com/The-Vibe-Company/openboard/commit/196193cf6640ed684add51de00436ea9a4810cc7))
+* **web:** polish responsive board shell and task queue ([#943](https://github.com/The-Vibe-Company/openboard/issues/943)) ([60fdc1c](https://github.com/The-Vibe-Company/openboard/commit/60fdc1cad0fc1700ee777eb0a4199e4d36695845))
+* **web:** separate channel messages, tasks, and activity ([#945](https://github.com/The-Vibe-Company/openboard/issues/945)) ([d40b33e](https://github.com/The-Vibe-Company/openboard/commit/d40b33eeb12c8437270526f78de74ba8927fc895))
+
+
+### Bug Fixes
+
+* **release:** query successful Railway deployments ([#941](https://github.com/The-Vibe-Company/openboard/issues/941)) ([af6cac3](https://github.com/The-Vibe-Company/openboard/commit/af6cac36d29800f68535ff41094ef0f1cb3f68aa))
+
 ## [0.2.0](https://github.com/The-Vibe-Company/openboard/compare/v0.1.0...v0.2.0) (2026-11-25)
 
 
