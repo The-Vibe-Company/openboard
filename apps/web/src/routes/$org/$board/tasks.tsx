@@ -105,7 +105,12 @@ function useBoardTasksLive(board: { org: string; board: string }) {
   const queryClient = useQueryClient();
   useEffect(() => {
     return subscribeBoardEvents(board, (event) => {
-      if (event.type.startsWith("task.") || event.type === "labels.changed" || event.type === "message.deleted") {
+      if (
+        event.type.startsWith("task.") ||
+        event.type === "labels.changed" ||
+        event.type === "message.deleted" ||
+        event.type === "message.edited"
+      ) {
         void queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) });
       }
     });
@@ -120,7 +125,8 @@ function BoardTasksPage() {
   const { data: session } = useQuery(sessionQuery);
   const { data: channels = [] } = useQuery(channelsQuery(board));
   const [stateFilter, setStateFilter] = useState<StateFilter>("open");
-  const [channelFilter, setChannelFilter] = useState("");
+  const { channel } = Route.useSearch();
+  const [channelFilter, setChannelFilter] = useState(channel ?? "");
   const [layout, setLayout] = useState<"board" | "list">("board");
   const [creating, setCreating] = useState(false);
 

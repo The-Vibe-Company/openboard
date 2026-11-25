@@ -5,8 +5,10 @@
   display: flex;
   align-items: center;
   gap: calc(2 * var(--space));
-  min-block-size: calc(14 * var(--space));
-  padding: calc(2 * var(--space)) max(calc(4 * var(--space)), env(safe-area-inset-right)) calc(2 * var(--space))
+  min-block-size: var(--shell-header-h);
+  max-inline-size: 100%;
+  overflow-x: clip;
+  padding: 6px max(calc(4 * var(--space)), env(safe-area-inset-right)) 6px
     max(calc(4 * var(--space)), env(safe-area-inset-left));
   background: var(--background);
   border-bottom: var(--stroke) solid var(--border);
@@ -15,13 +17,12 @@
 @media (max-width: 48rem) {
   .shell-header {
     gap: calc(1.5 * var(--space));
-    min-block-size: calc(13 * var(--space));
     padding: calc(1.5 * var(--space)) max(calc(3 * var(--space)), env(safe-area-inset-right)) calc(1.5 * var(--space))
       max(calc(3 * var(--space)), env(safe-area-inset-left));
   }
 
-  .shell-header .shell-location {
-    overflow: hidden;
+  .shell-header .shell-switcher > button {
+    min-block-size: var(--control-medium);
   }
 }
 
@@ -36,6 +37,14 @@
   align-items: center;
   min-inline-size: 0;
   gap: var(--space);
+}
+
+.shell-header .shell-location {
+  overflow: hidden;
+}
+
+.shell-location .shell-switcher > button:focus-visible {
+  outline-offset: calc(-1 * var(--focus-width));
 }
 
 .shell-header .shell-crumb > [aria-hidden] {
@@ -53,7 +62,6 @@
   flex: none;
   inline-size: calc(1.5 * var(--space));
   block-size: calc(1.5 * var(--space));
-  margin-inline: var(--space);
   border-inline-end: var(--stroke) solid currentColor;
   border-block-end: var(--stroke) solid currentColor;
   transform: translateY(calc(-0.5 * var(--space))) rotate(45deg);

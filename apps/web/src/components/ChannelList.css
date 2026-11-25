@@ -1,6 +1,6 @@
 .shell-channels h2 {
   margin: 0 0 calc(2 * var(--space));
-  padding-inline: calc(2 * var(--space));
+  padding-inline: 10px;
   color: var(--muted);
   font-size: var(--type-small);
   font-weight: 600;
@@ -35,17 +35,34 @@
   color: var(--board-faint);
 }
 
-.shell-channels a:hover {
-  background: var(--board-shade);
-}
-
-.shell-channels a:hover,
-.shell-channels a[aria-current="page"] {
-  color: var(--text);
-  text-decoration: none;
-}
-
 .shell-channels a[aria-current="page"] {
   background: var(--border);
+  color: var(--text);
   font-weight: 600;
+}
+
+.shell-channels a[aria-current="page"]::before {
+  color: inherit;
+}
+
+@media (max-width: 48rem), (pointer: coarse) {
+  .shell-channels a {
+    min-block-size: 44px;
+    align-content: center;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .shell-channels a:hover {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .shell-channels a:hover::before {
+    color: inherit;
+  }
+
+  .shell-channels a:not([aria-current="page"]):hover {
+    background: var(--board-shade);
+  }
 }

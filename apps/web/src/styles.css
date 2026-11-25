@@ -45,6 +45,7 @@
   --stroke: 1px;
   --focus-width: 2px;
   --space: 4px;
+  --shell-header-h: 56px;
   --control-small: 32px;
   --control-medium: 40px;
   --type-small: 12px;
@@ -73,6 +74,8 @@
     --muted: #a1a1a1;
     --accent: #3291ff;
     --accent-soft: rgb(50 145 255 / 14%);
+    --danger: #c43136;
+    --danger-text: #ededed;
     --danger-label: #ff8688;
     --danger-soft: rgb(229 72 77 / 16%);
     --success-soft: rgb(69 165 87 / 16%);
@@ -115,14 +118,14 @@ main {
 
 @media (max-width: 48rem) {
   :root {
-    --control-small: 38px;
-    --control-medium: 44px;
+    --shell-header-h: 57px;
   }
+}
 
-  input:not([type="checkbox"]):not([type="radio"]),
-  textarea,
-  select {
-    font-size: 16px;
+@media (max-width: 48rem), (pointer: coarse) {
+  :root {
+    --control-small: 40px;
+    --control-medium: 44px;
   }
 }
 
@@ -173,8 +176,10 @@ p a,
   font-size: var(--type-base);
 }
 
-a:hover {
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    text-decoration: underline;
+  }
 }
 
 button,
@@ -195,6 +200,13 @@ input,
 textarea,
 select {
   border-color: var(--control-border);
+}
+
+@media (max-width: 48rem), (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  :root body :is(textarea, select) {
+    font-size: 16px;
+  }
 }
 
 button {
