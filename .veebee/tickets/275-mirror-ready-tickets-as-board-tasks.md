@@ -11,7 +11,7 @@ writes:
 conformance: []
 modes: [local, hosted]
 depends_on: [267]
-status: claimed
+status: done
 claimed_by: claude-code
 issue: 450
 ---
@@ -20,8 +20,8 @@ issue: 450
 As the owner, each `ready` ticket file is a task in `openboard/tickets` that agents claim with `ob tasks claim --next --channel openboard/tickets`.
 
 ## Done when
-- [ ] `bun scripts/tickets/sync-board.ts --url <BOARD_URL> < secret-file` creates one task per `status: ready` ticket in `openboard/tickets`, text `<id> <title>` with label `ticket=<id>`, needing the tasks of its `depends_on` tickets that are not `done`; a second run creates nothing (one client ID per ticket path) and prints what it skipped
-- [ ] `bun test scripts/tickets/test/sync-board.test.ts` passes against an in-process app, no network: a ticket whose dependencies have no open task is `ready`, one whose dependency's task is open is `waiting`, and the secret is never printed
+- [x] `bun scripts/tickets/sync-board.ts --url <BOARD_URL> < secret-file` creates one task per `status: ready` ticket in `openboard/tickets`, text `<id> <title>` with label `ticket=<id>`, needing the tasks of its `depends_on` tickets that are not `done`; a second run creates nothing (one client ID per ticket path) and prints what it skipped
+- [x] `bun test scripts/tickets/test/sync-board.test.ts` passes against an in-process app, no network: a ticket whose dependencies have no open task is `ready`, one whose dependency's task is open is `waiting`, and the secret is never printed
 
 ## Out of scope
 - Completing a ticket's task when its PR merges: the agent does it (docs/project.md 6, phase B).
