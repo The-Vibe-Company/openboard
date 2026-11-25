@@ -22,6 +22,7 @@ type Schedule = (delay: number, run: () => Promise<void>) => () => void;
 
 export interface SnapshotOptions {
   readonly scheduleSnapshot?: Schedule;
+  readonly onSnapshot?: (path: string) => void;
   readonly onSnapshotError?: () => void;
 }
 
@@ -96,8 +97,6 @@ async function publishScheduledCopy(copy: string, dir: string, name: string): Pr
   await fs.rename(copy, join(dir, name));
   await syncDirectory(dir);
   await syncDirectory(dirname(dir));
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const expired of expiredSnapshots(entries)) await fs.rm(join(dir, expired), { force: true });
 }
 
 export function snapshotBeforeMigration(file: string, dir: string, version: number): void {
@@ -131,10 +130,12 @@ export function startSnapshots(file: string, dir: string, now: () => number, opt
 
   const started = now();
   try {
-    writeSnapshot(file, dir, backupName(started));
+    const name = backupName(started);
+    writeSnapshot(file, dir, name);
     for (const name of expiredSnapshots(readdirSync(dir, { withFileTypes: true }))) {
       rmSync(join(dir, name), { force: true });
     }
+    options.onSnapshot?.(join(dir, name));
   } catch {
     options.onSnapshotError?.();
   }
@@ -150,6 +151,9 @@ export function startSnapshots(file: string, dir: string, now: () => number, opt
       if (closed) return;
       if (!success) throw new Error("SQLite snapshot failed");
       await publishScheduledCopy(copy, dir, name);
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const expired of expiredSnapshots(entries)) await fs.rm(join(dir, expired), { force: true });
+      options.onSnapshot?.(join(dir, name));
     } finally {
       cancelCopy = undefined;
       await fs.rm(pending, { recursive: true, force: true });

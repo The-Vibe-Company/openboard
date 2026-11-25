@@ -29,6 +29,7 @@
         "@the-vibe-company/openboard-cli": "workspace:*",
       },
       "devDependencies": {
+        "@openboard/ports": "workspace:*",
         "@types/bun": "1.4.5",
       },
     },

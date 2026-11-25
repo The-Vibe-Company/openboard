@@ -9,12 +9,16 @@ writes:
   - apps/openboard/test/local-backup.test.ts
   - packages/driver-sqlite/src/snapshot.ts
   - packages/driver-sqlite/test/snapshot.test.ts
+  - packages/server/src/app.ts
+  - apps/openboard/package.json
+  - apps/openboard/tsconfig.json
+  - bun.lock
   - docs/codebase.md
 conformance: []
 modes: [local]
 depends_on: [210, 212, 371]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 583
 ---
 

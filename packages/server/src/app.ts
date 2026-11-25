@@ -60,7 +60,8 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
       ...new Set([
         ...Object.keys(handlers),
         TASK_EXPIRY_JOB,
-        ...(bucket ? [EXPORT_ORG_JOB, SHIP_LOG_JOB] : []),
+        ...(bucket ? [EXPORT_ORG_JOB] : []),
+        ...(ports.bucket ? [SHIP_LOG_JOB] : []),
         WEBHOOK_DELIVERY_JOB,
         WEBHOOK_RESEND_JOB,
       ]),
@@ -127,13 +128,13 @@ function startBackground(ports: Ports, pipeline: Pipeline, handlers: JobHandlers
   const stopDump = startDumpJob(ports.store.dumpIfMissing, bucket, deps);
   // Large bucket purges can outlive a lease. Give shipping its own runner so purges cannot occupy every poller.
   const stopShipping =
-    bucket &&
+    ports.bucket &&
     startJobs(
       ports.jobs,
       pipeline.tenants,
       deps,
       config.instanceId,
-      logShippingJobs(bucket, ports.blobs, platform, pipeline.tenants, deps, shutdown),
+      logShippingJobs(ports.bucket, ports.blobs, platform, pipeline.tenants, deps, shutdown),
       undefined,
       sweep,
     );
