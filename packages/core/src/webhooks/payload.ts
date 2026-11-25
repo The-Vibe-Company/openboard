@@ -5,15 +5,15 @@ import { renderWebhookTemplate } from "./template.ts";
 export const webhookBodyLimit = 256 * 1024;
 const encoder = new TextEncoder();
 
-function webhookSubject(root: Message, message: string, url: string) {
+function webhookSubject(root: Message, message: Message, url: string) {
   const task = root.task;
   return {
     channel: root.channel,
     thread: root.thread,
-    message,
+    message: message.id,
     task: task ? { id: root.thread, state: task.state, owner: task.owner, for: task.for, epoch: task.epoch } : null,
     labels: root.labels,
-    schedule: null,
+    schedule: message.schedule ?? null,
     url,
   };
 }
@@ -75,7 +75,7 @@ export function webhookPayload(
     version: 1,
     delivery,
     board: { url: `${origin}/api${path}`, org, board },
-    subject: webhookSubject(root, event.message.id, threadUrl),
+    subject: webhookSubject(root, event.message, threadUrl),
     event,
   };
   // Reserve the extra digit in attempt 10 so retries preserve the same event text.

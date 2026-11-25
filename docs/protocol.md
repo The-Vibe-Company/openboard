@@ -1008,8 +1008,9 @@ a dispatcher may finish.
   its own serialized body and includes that attempt's timestamp if the signing
   preset uses one.
 - `subject` carries what a receiver needs to act and correlate: `thread` (=
-  task ID), `channel`, root `labels`, `schedule` (`{ id, n }` for scheduled
-  messages, a natural idempotency key). A receiver passes `subject.thread` on
+  task ID), `channel`, root `labels`, and the event message’s `schedule`.
+  Scheduled messages carry `{ id, n }` as a natural idempotency key. Other
+  messages carry `null`. A receiver passes `subject.thread` on
   as its correlation key (Armada's `externalRef`); the launched agent finds its
   task with it.
 - `event` is exactly what `GET /events` serves for that event.
@@ -1379,7 +1380,10 @@ With a daily schedule on `cron/nightly-deps`, this is "board schedule →
 webhook → workflow run"; the workflow reports back with its OIDC token
 through a grant naming `acme/web`, no secret. A receiver of the default
 `standard-webhooks` preset verifies with any Standard Webhooks library and
-dedupes on `webhook-id`.
+dedupes on `webhook-id`. The template renders `client_payload.schedule` as
+an object, for example `{ "id": "s1", "n": 0 }` on the first send and
+`{ "id": "s1", "n": 1 }` on the next day. Posting by hand in that channel
+triggers the same webhook with `client_payload.schedule` set to `null`.
 
 ## Conformance groups
 
