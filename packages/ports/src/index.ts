@@ -24,6 +24,7 @@ export type {
 export * from "./org/exports.ts";
 export type { OrgAuditRecord } from "./org-audit-record.ts";
 export type { RateLimits } from "./seams.ts";
+export type { CompactionCursor } from "./store/compaction.ts";
 export type {
   AgentRecord,
   AuditRecord,

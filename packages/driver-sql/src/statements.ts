@@ -16,6 +16,7 @@ import { grantStatements } from "./views/grants.ts";
 import { inboundStatements } from "./views/inbound/index.ts";
 import { invitationStatements } from "./views/invitations.ts";
 import { backfillPlatformStatements, backfillStatements } from "./views/jobs/backfill-board-org.ts";
+import { compactionDiscovery, compactionStatements } from "./views/jobs/compaction.ts";
 import { exportStatements } from "./views/jobs/exports.ts";
 import { jobPlatformStatements, jobStatements } from "./views/jobs/index.ts";
 import { legacyPurgePlatform, legacyPurgeScoped } from "./views/jobs/legacy-purge.ts";
@@ -50,6 +51,8 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...auditStatements,
   ...boardStatements,
   ...channelStatements,
+  ...compactionDiscovery,
+  ...compactionStatements,
   ...connectionStatements,
   ...devicePlatform,
   ...deviceScoped,
@@ -135,6 +138,7 @@ export const platformStatements: ReadonlySet<string> = new Set<string>([
   ...Object.keys(rateStatements),
   ...Object.keys(readinessStatements),
   ...Object.keys(sweepStatements),
+  ...Object.keys(compactionDiscovery),
   "shippingOrgs",
   "orgMembership",
   "invitationByHash",

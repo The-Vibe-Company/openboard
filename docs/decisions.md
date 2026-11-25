@@ -1321,3 +1321,20 @@ Replay uses the post or schedule event for the attachment's name, media type
 and size.
 A legacy hash-only mapping takes the uploader principal and time from the
 first replayed event that references it.
+
+### D70. Event-log compaction prunes intermediate actor sightings (#593)
+
+- **Context.** Only an actor's first and latest sightings contribute to its
+  projection. Intermediate sightings can accumulate on active boards.
+- **Decision.** Delete `actor.seen` events with visibility 1 strictly older than
+  30 days, preserving the first and latest event IDs per actor per board. Remove
+  at most 1,000 events per board per batch without the board lock. Maintenance
+  scans bounded chronological windows on write and job activity. When a backup
+  bucket is configured, cap the batch at the board's committed shipping
+  watermark. Preserve sightings while their day has a pending usage rollup,
+  since the rollup includes them in its count.
+- **Consequence.** Reprojection produces the same folds and feed cursors remain
+  valid across gaps. Shipped and exported filenames retain contiguous logical
+  ranges. Replay validates the gzip checksum, NDJSON framing and strictly
+  increasing event IDs within each range, and rejects missing ranges.
+  Use this release or newer to read sparse backups and exports.

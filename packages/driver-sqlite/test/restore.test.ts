@@ -37,7 +37,7 @@ async function ship(dir: string) {
   };
   const bytes = Uint8Array.of(1, 2, 3);
   const sha256 = Bun.CryptoHasher.hash("sha256", bytes, "hex");
-  const parts: object[][] = [];
+  const parts: { events: readonly object[]; through: number }[] = [];
   try {
     const keys = await driver.platform().findBoard("local", "main");
     if (!keys) throw new Error("Missing board");
@@ -57,7 +57,7 @@ async function ship(dir: string) {
       });
       await driver.org(testOrgScope(keys.orgId)).shipLogs(
         async (segment) => {
-          parts.push([...segment.events]);
+          parts.push({ events: segment.events, through: segment.last });
         },
         () => false,
         () => at,

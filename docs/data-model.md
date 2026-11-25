@@ -395,10 +395,18 @@ CREATE INDEX events_thread  ON events (board_id, thread, id)  WHERE thread IS NO
 CREATE INDEX events_channel ON events (board_id, channel, id) WHERE channel IS NOT NULL;
 -- When each connection was last used (D51): only writes by connections and their agents pay for it.
 CREATE INDEX events_connection ON events (board_id, principal, id) WHERE principal LIKE 'ob:conn:%';
+CREATE INDEX events_actor_sightings ON events (board_id, actor, id) WHERE type = 'actor.seen' AND visibility = 1;
+CREATE INDEX events_actor_sightings_age ON events (board_id, at, id) WHERE type = 'actor.seen' AND visibility = 1;
 ```
 
 - Append only: no `UPDATE` or `DELETE` on `events` except the organization
-  hard-delete job.
+  hard-delete job and event-log compaction. Compaction deletes only `actor.seen`
+  bookkeeping (`visibility = 1`) strictly older than 30 days, keeping the first
+  and latest sighting per actor by event ID. It deletes bounded batches without
+  the board lock. With a backup bucket configured, it deletes only positions at
+  or below the board's durable shipping watermark. Pending daily usage rollups
+  retain their input rows. Positions and cursors stay
+  stable across gaps.
 - Upstream event types keep upstream payloads; server-only fields (the claim
   token hash, a schedule creator's facts) are stripped by views.
 - Audit events (`visibility = 2`) record board configuration: grants,

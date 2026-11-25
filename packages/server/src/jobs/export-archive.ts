@@ -29,7 +29,7 @@ function* entry(path: string, contents: Uint8Array<ArrayBuffer>) {
 }
 
 function* eventSegment(dir: string, first: number, last: number, events: readonly object[]) {
-  if (!events.length) return;
+  if (first > last) return;
   const lines = events.map((event) => JSON.stringify(exportEvent(event)) + "\n").join("");
   yield* entry(`${dir}/${first}-${last}.ndjson.gz`, Bun.gzipSync(encoder.encode(lines)));
 }
@@ -48,7 +48,10 @@ async function* logs(
     while (after < through) {
       const events = await source.events(board, after, through);
       const last = events.at(-1)?.id;
-      if (last === undefined) break;
+      if (last === undefined) {
+        if (board !== 0) yield* eventSegment(dir, after + 1, through, []);
+        break;
+      }
       yield* eventSegment(dir, after + 1, last, events);
       after = last;
     }
@@ -66,19 +69,24 @@ async function* logs(
       if (first <= last && last <= shipped && last <= head) segments.push({ key, first, last });
     }
   }
-  for (const { key, first, last } of segments.sort((a, b) => a.first - b.first)) {
+  for (const { key, first, last } of segments.sort((a, b) => a.first - b.first || b.last - a.last)) {
     if (first <= after) continue;
     const contents = await bucket.read(key);
     if (!contents) continue;
-    const bytes = await new Response(contents).arrayBuffer();
-    const text = new TextDecoder().decode(Bun.gunzipSync(new Uint8Array(bytes)));
-    const events = text
-      .trimEnd()
-      .split("\n")
-      .map((line) => {
-        const { org_id: _orgId, board_id: _boardId, ...event } = JSON.parse(line) as Record<string, unknown>;
-        return event;
-      });
+    const compressed = await new Response(contents).blob();
+    const decoded = await new Response(compressed.stream().pipeThrough(new DecompressionStream("gzip"))).bytes();
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(decoded);
+    if (text && !text.endsWith("\n")) throw new Error("Incomplete exported log segment");
+    const events =
+      text === ""
+        ? []
+        : text
+            .slice(0, -1)
+            .split("\n")
+            .map((line) => {
+              const { org_id: _orgId, board_id: _boardId, ...event } = JSON.parse(line) as Record<string, unknown>;
+              return event;
+            });
     yield* database(first - 1);
     yield* eventSegment(dir, first, last, events);
     after = last;

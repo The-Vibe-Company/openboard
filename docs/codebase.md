@@ -559,7 +559,8 @@ One image for both modes. Build stage `oven/bun:<pinned>`; runtime stage `debian
 
 With the source bucket configured, run `openboard restore --to ./.openboard`
 and start the server on that data directory. Restore identifies the snapshot
-and reports the number of events replayed. It checks segment continuity and
+and reports the number of events replayed. Compacted actor sightings can leave
+gaps within an otherwise intact segment. It checks segment range continuity, gzip checksums and
 attachment checksums before publishing the database. The destination must
 have no existing database.
 

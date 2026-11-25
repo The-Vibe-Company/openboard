@@ -14,7 +14,7 @@ const databaseName = "board.db";
 interface RestoreSource {
   snapshot: () => Promise<ReadableStream<Uint8Array>>;
   before?: number;
-  events?: (head: number) => AsyncIterable<readonly unknown[]>;
+  events?: (head: number) => AsyncIterable<{ events: readonly unknown[]; through: number }>;
   attachment?: ReadAttachmentBackup;
   blob: (sha256: string) => Promise<ReadableStream<Uint8Array> | null>;
 }
@@ -71,9 +71,11 @@ async function rebuild(path: string, source: RestoreSource) {
   migrate(database, migrations, Date.now());
   let replayed = 0;
   if (source.events && source.attachment) {
-    for await (const batch of source.events(Number(board.head))) {
-      await replayBoard(db, sqliteDialect, keys, batch as Parameters<typeof replayBoard>[3], source.attachment);
-      replayed += batch.length;
+    for await (const { events, through } of source.events(Number(board.head))) {
+      await replayBoard(db, sqliteDialect, keys, events as Parameters<typeof replayBoard>[3], source.attachment, {
+        through,
+      });
+      replayed += events.length;
     }
   }
   const rows = await query(db, sqliteDialect, restoreStatements.restoreBlobs, keys);

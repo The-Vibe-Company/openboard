@@ -67,8 +67,8 @@ function ship(store: Store, orgId: number, bucket: Bucket, bound = true) {
         `${prefix}${boardId ? `board/${boardId}` : "log"}/${first}-${last}.ndjson.gz`,
         Bun.gzipSync(
           events
-            .map((event) => JSON.stringify(bound ? { ...event, org_id: orgId, board_id: boardId ?? 0 } : event))
-            .join("\n"),
+            .map((event) => `${JSON.stringify(bound ? { ...event, org_id: orgId, board_id: boardId ?? 0 } : event)}\n`)
+            .join(""),
         ),
         deadline,
       ),
@@ -180,7 +180,7 @@ if (url) {
       const original = objects.get(path);
       if (!original) throw new Error("missing shipped fixture segment");
       const event = JSON.parse(new TextDecoder().decode(Bun.gunzipSync(Uint8Array.from(original))));
-      objects.set(path, Bun.gzipSync(JSON.stringify({ ...event, org_id: b.orgId })));
+      objects.set(path, Bun.gzipSync(`${JSON.stringify({ ...event, org_id: b.orgId })}\n`));
       await expect(restorePostgres(db.url, bucket, { org: "alpha" }, report)).rejects.toMatchObject({
         code: "invalid_request",
       });
@@ -189,6 +189,42 @@ if (url) {
       expect(reports).toEqual(["alpha: 4"]);
       expect(await digest(db.url, a, true)).toBe(expected);
       expect(await digest(db.url, b, false)).toBe(other);
+    } finally {
+      await store.close();
+      await db.drop();
+    }
+  });
+
+  test("hosted restore advances through contiguous sparse and empty board ranges", async () => {
+    const db = await databases.create();
+    const store = await postgresDriver({ url: db.url }, () => at);
+    const { bucket, objects } = fakeBucket();
+    try {
+      const keys = await seed(store, "alpha");
+      await post(store, keys, "Preserved");
+      await ship(store, keys.orgId, bucket);
+      await loseOrgData(db.url, keys.orgId);
+      const prefix = `org/${keys.orgId}/board/${keys.boardId}/`;
+      const first = objects.get(`${prefix}1-1.ndjson.gz`);
+      if (!first) throw new Error("missing fixture segment");
+      // A shorter segment can remain in the bucket after a timeline change.
+      objects.set(`${prefix}1-2.ndjson.gz`, first);
+      const empty = Bun.gzipSync("");
+      const restore = () => restorePostgres(db.url, bucket, { org: "alpha" }, () => {});
+      objects.set(`${prefix}4-4.ndjson.gz`, empty);
+      await expect(restore()).rejects.toMatchObject({
+        code: "invalid_request",
+        message: expect.stringContaining("Missing backup segment"),
+      });
+      objects.delete(`${prefix}4-4.ndjson.gz`);
+      objects.set(`${prefix}3-4.ndjson.gz`, empty);
+      await restore();
+      const board = store.board(testScope(keys));
+      const page = await board.readEvents(0);
+      expect(page.head).toBe(4);
+      expect(page.events.map(({ id }) => id)).toEqual([1]);
+      await post(store, keys, "Next");
+      expect((await board.readEvents(4)).events.map(({ id }) => id)).toEqual([5]);
     } finally {
       await store.close();
       await db.drop();

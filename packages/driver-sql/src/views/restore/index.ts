@@ -32,6 +32,7 @@ export type ReadAttachmentBackup = (id: string, size: number) => Promise<Attachm
 
 interface ReplayOptions {
   readonly hosted?: true;
+  readonly through?: number;
   readonly fold?: (event: BoardEvent) => boolean;
   readonly allowMissingAttachments?: boolean;
 }
@@ -98,13 +99,13 @@ export async function replayLockedBoard(
   options?: ReplayOptions,
 ) {
   const first = events[0];
-  if (!first) return;
-  const locked = await lockBoard(tx, dialect, keys, null, dailyEventWindow(first.at), null, options?.hosted);
+  if (!first && options?.through === undefined) return;
+  const locked = await lockBoard(tx, dialect, keys, null, dailyEventWindow(first?.at ?? 0), null, options?.hosted);
   const usage = messageStorage(tx, dialect, keys, locked.storage, () => undefined, false);
   let { head } = locked;
   let { day, count } = locked.dailyEvents;
   for (const event of events) {
-    if (!options?.hosted && event.id !== head + 1) throw new Error(`Missing event ${head + 1}`);
+    if (!Number.isSafeInteger(event.id) || event.id <= head) throw new Error(`Out-of-order event ${event.id}`);
     const fold = options?.fold?.(event) ?? true;
     if (fold && (event.type === "message.posted" || event.type === "ob.schedule.created")) {
       const attachments =
@@ -121,6 +122,10 @@ export async function replayLockedBoard(
       count = 0;
     }
     if (event.type !== "ob.webhook.disabled") count++;
+  }
+  if (options?.through !== undefined) {
+    if (!Number.isSafeInteger(options.through) || options.through < head) throw new Error("Invalid replay range");
+    head = options.through;
   }
   await setHead(tx, dialect, keys, head, usage.boardBytes, { day, count });
   if (!options?.fold)

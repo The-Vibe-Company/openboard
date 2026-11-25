@@ -25,7 +25,7 @@ const run = <K extends string>(tx: Db, stmt: Parameters<typeof query<K>>[2], par
 async function restoreBoardLog(tx: Db, bucket: Bucket, orgId: number, boardId: number, head: number, legacy: boolean) {
   const blobs = postgresBlobs(tx);
   let count = 0;
-  for await (const events of shippedEvents<BoardEvent>(bucket, orgId, boardId, head, legacy)) {
+  for await (const { events, through } of shippedEvents<BoardEvent>(bucket, orgId, boardId, head, legacy)) {
     await replayLockedBoard(
       tx,
       postgresText,
@@ -43,7 +43,7 @@ async function restoreBoardLog(tx: Db, bucket: Bucket, orgId: number, boardId: n
         await blobs.put({ orgId, sha256 }, bytes, at);
         return metadata;
       },
-      { hosted: true },
+      { hosted: true, through },
     );
     count += events.length;
   }
@@ -87,7 +87,7 @@ async function replayOrg(tx: Db, bucket: Bucket, orgId: number, onlyOrg: boolean
   const dumpBoards = legacy ? await run(tx, s.restoreBoards, { orgId }) : [];
   const stream = shippedEvents<RestoreOrgEvent>(bucket, orgId, 0, Number(top?.head ?? 0), legacy);
   const first = await stream.next();
-  const slug = row ? String(row.slug) : await restoreNewOrg(tx, orgId, first.value?.[0]);
+  const slug = row ? String(row.slug) : await restoreNewOrg(tx, orgId, first.value?.events[0]);
   if (backup && backup.slug !== slug) invalid(`Backup manifest does not match organization ${slug}`);
   const heads = await restoreBoardRows(tx, orgId, boards);
   const existing = await run(tx, s.restoreBoards, { orgId });
@@ -102,7 +102,7 @@ async function replayOrg(tx: Db, bucket: Bucket, orgId: number, onlyOrg: boolean
   for (const [boardId, head] of heads)
     replayed += await restoreBoardLog(tx, bucket, orgId, boardId, head, dumpBoardIds.has(boardId));
   for (let page = first; !page.done; page = await stream.next()) {
-    for (const event of page.value) {
+    for (const event of page.value.events) {
       if (event.type === "ob.org.created") {
         const organization = event.payload.org as { slug?: string } | undefined;
         if (organization?.slug !== slug) invalid(`Backup organization does not match ${slug}`);
@@ -115,8 +115,8 @@ async function replayOrg(tx: Db, bucket: Bucket, orgId: number, onlyOrg: boolean
       if (event.type === "ob.board.deleted")
         await run(tx, s.restoreBoardDeletion, { orgId, boardId: Number(known.id), deletedAt: event.at });
     }
-    await restoreOrgEvents(tx, orgId, page.value);
-    replayed += page.value.length;
+    await restoreOrgEvents(tx, orgId, page.value.events);
+    replayed += page.value.events.length;
   }
 
   if (backup) await restoreInviters(tx, orgId, backup.members);

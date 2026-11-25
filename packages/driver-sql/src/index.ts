@@ -59,6 +59,7 @@ import scheduleSendJobs from "../migrations/0057-schedule-send-jobs.sql" with { 
 import scheduleSendBackfill from "../migrations/0058-schedule-send-backfill.sql" with { type: "text" };
 import importBoundary from "../migrations/0059-imported-head.sql" with { type: "text" };
 import projectionJobGuards from "../migrations/0060-reproject-job-guards.sql" with { type: "text" };
+import actorSightingsIndex from "../migrations/0061-actor-sightings-index.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -74,6 +75,7 @@ import { deviceView, personalTokenView } from "./views/device.ts";
 import { committedEvents, eventReads } from "./views/events.ts";
 import { inboundReads } from "./views/inbound/index.ts";
 import { invitationPlatform, invitationView } from "./views/invitations.ts";
+import { compactionView } from "./views/jobs/compaction.ts";
 import { exportsView } from "./views/jobs/exports.ts";
 import { type JobWrites, queueBoardOrgBackfill, runBoardOrgBackfill } from "./views/jobs/index.ts";
 import { purgeOrgView } from "./views/jobs/purge.ts";
@@ -181,6 +183,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 58, name: "0058-schedule-send-backfill", sql: scheduleSendBackfill },
   { version: 59, name: "0059-imported-head", sql: importBoundary },
   { version: 60, name: "0060-reproject-job-guards", sql: projectionJobGuards },
+  { version: 61, name: "0061-actor-sightings-index", sql: actorSightingsIndex },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
@@ -200,6 +203,7 @@ export function createViews(
       ...platformView(db, dialect),
       ...reprojectView(db, dialect),
       ...sweepView(db, dialect),
+      ...compactionView(db, dialect),
       ...oidcKeysView(db, dialect),
       ...shippingPlatform(db, dialect),
       queueBoardOrgBackfill: (now, signal) => queueBoardOrgBackfill(db, dialect, jobs, now, signal),

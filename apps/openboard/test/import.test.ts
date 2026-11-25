@@ -232,3 +232,25 @@ test("rejects validly hashed bytes whose length disagrees with the event", () =>
     expect(result.stderr).toEqual([`error: invalid_request: Incorrect attachment size in ${file}`]);
     expect(await readdir(dir)).toEqual(["acme.tar.gz", "source"]);
   }));
+
+test("imports an intact sparse archive and preserves its logical head", () =>
+  fixture(async (dir) => {
+    const { board, files } = await seed(join(dir, "source"));
+    const name = Object.keys(files).find((key) => key.startsWith("board/23/"));
+    const segment = name === undefined ? undefined : files[name];
+    if (!name || !segment) throw new Error("missing fixture segment");
+    const head = Number(/-(\d+)\.ndjson\.gz$/.exec(name)?.[1]);
+    const sparse = { ...files };
+    delete sparse[name];
+    sparse[`board/23/1-${head + 2}.ndjson.gz`] = segment;
+    const path = await archive(dir, manifest(head + 2), sparse);
+    const to = join(dir, "imported");
+    expect((await command(path, to)).code).toBe(0);
+    const app = await compose(loadConfig({ OPENBOARD_DATA_DIR: to }), board.owner.hash);
+    try {
+      const response = await request(app, board.config.publicUrl, board.owner.token, `events?all=true&after=${head}`);
+      expect(await response.json()).toEqual({ cursor: String(head + 2), events: [] });
+    } finally {
+      await app.close();
+    }
+  }));

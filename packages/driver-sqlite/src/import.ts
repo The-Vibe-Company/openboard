@@ -17,7 +17,7 @@ import { connection } from "./open.ts";
 import { ensureRestoreTarget, stageSqlite } from "./restore.ts";
 
 interface ImportSource {
-  events: AsyncIterable<{ path: string; events: readonly unknown[] }>;
+  events: AsyncIterable<{ path: string; events: readonly unknown[]; through?: number }>;
   attachment: ReadAttachmentBackup;
   blob: (hash: string) => Blob | undefined;
   allowMissingAttachments: boolean;
@@ -55,6 +55,7 @@ export function importSqlite(destination: string, source: ImportSource, now: () 
           const sanitized = batch.events.map((event) => exportEvent(event as BoardEvent)) as BoardEvent[];
           await replayBoard(db, sqliteDialect, keys, sanitized, source.attachment, {
             fold: isImportedFold,
+            ...(batch.through === undefined ? {} : { through: batch.through }),
             allowMissingAttachments: source.allowMissingAttachments,
           });
         } catch (cause) {

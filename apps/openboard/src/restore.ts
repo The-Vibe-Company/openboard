@@ -12,6 +12,8 @@ import {
 } from "./compose.ts";
 import type { Config } from "./config.ts";
 
+import { decodeEventSegment } from "./event-segment.ts";
+
 const prefix = "org/1/";
 const snapshotTime = /^(\d{4}-\d{2}-\d{2}T\d{2})-(\d{2})-(\d{2}\.\d{3,9}Z)\.sqlite$/;
 const segmentName = /^(\d+)-(\d+)\.ndjson\.gz$/;
@@ -93,35 +95,27 @@ async function segments(bucket: Bucket) {
 async function eventsIn(bucket: Bucket, key: string, first: number, last: number) {
   const body = await object(bucket, key);
   try {
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(
-      Bun.gunzipSync(await new Response(body).arrayBuffer()),
-    );
-    const events = text
-      .trimEnd()
-      .split("\n")
-      .map((line) => JSON.parse(line) as { id: number; at: number; v: number });
-    if (
-      events.length !== last - first + 1 ||
-      events.some((event, index) => event?.id !== first + index || !Number.isSafeInteger(event.at) || event.v !== 1)
-    )
-      throw new Error("Unexpected event sequence or version");
-    return events;
+    return decodeEventSegment(await new Response(body).arrayBuffer(), first, last);
   } catch {
     return invalid(`Invalid or incomplete backup segment ${key}`);
   }
 }
 
 async function* replay(bucket: Bucket, head: number, before: number) {
+  const snapshotHead = head;
   for (const { first, last, key } of await segments(bucket)) {
     if (last <= head) continue;
+    if (head > snapshotHead && first <= head) invalid(`Overlapping backup segment ${key}`);
     if (first > head + 1) invalid(`Missing backup segment covering events ${head + 1}-${first - 1} before ${key}`);
     const events = (await eventsIn(bucket, key, first, last)).filter((event) => event.id > head);
     const stop = events.findIndex((event) => event.at >= before);
     if (stop >= 0) {
-      yield events.slice(0, stop);
+      const beforeCutoff = events.slice(0, stop);
+      const lastBeforeCutoff = beforeCutoff.at(-1);
+      if (lastBeforeCutoff) yield { events: beforeCutoff, through: lastBeforeCutoff.id };
       return;
     }
-    yield events;
+    yield { events, through: last };
     head = last;
   }
 }
