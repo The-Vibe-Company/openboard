@@ -1,5 +1,20 @@
 const stateLabels = ["ready", "claimed", "review", "blocked"];
 
+/** `depends_on: []`, `[23]` or `[83, 112]`; a leading zero is fine (`01` is ticket 1), and absent means none. */
+function parseDependsOn(path: string, value: string | undefined): number[] {
+  if (value === undefined) return [];
+  const match = /^\[[ \t]*(.*?)[ \t]*\]$/.exec(value);
+  if (!match) throw new Error(`${path}: depends_on must be a bracketed list of ticket numbers`);
+  const entries = (match[1] ?? "").split(",").map((entry) => entry.trim());
+  if (entries.length === 1 && entries[0] === "") return [];
+  return entries.map((entry) => {
+    if (!/^\d+$/.test(entry)) {
+      throw new Error(`${path}: depends_on entry ${JSON.stringify(entry)} is not a ticket number`);
+    }
+    return Number(entry);
+  });
+}
+
 export function parseTicket(path: string, source: string) {
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/.exec(source);
   if (!match?.[1] || match[2] === undefined) {
@@ -37,6 +52,7 @@ export function parseTicket(path: string, source: string) {
   const writes = /^writes:\r?\n((?:[ \t]+- .*\r?\n)*)/m.exec(frontMatter)?.[1] ?? "";
   const id = fields.get("id") ?? "";
   if (!/^\d+$/.test(id)) throw new Error(`${path}: invalid id field`);
+  const dependsOn = parseDependsOn(path, fields.get("depends_on"));
   if (
     /^[ \t]+- (?:packages\/server\/(?:src\/http\/scope\.ts|test\/isolation\/)|packages\/ports\/testkit\/isolation)/m.test(
       writes,
@@ -51,9 +67,12 @@ export function parseTicket(path: string, source: string) {
     path,
     source,
     id: Number(id),
+    // The ID as the file writes it, `01` as `01`: a mirror that names a ticket should name its file.
+    idText: id,
     title,
     status,
     claimedBy: fields.get("claimed_by") ?? "null",
+    dependsOn,
     writes: Array.from(writes.matchAll(/^[ \t]+- (.*)$/gm), ([, glob]) =>
       (glob ?? "").replace(/[ \t]+#.*$/, "").trim(),
     ),

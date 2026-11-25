@@ -7,11 +7,12 @@ writes:
   - scripts/tickets/sync-board.ts
   - scripts/tickets/lib.ts
   - scripts/tickets/test/sync-board.test.ts
+  - docs/project.md
 conformance: []
 modes: [local, hosted]
 depends_on: [267]
-status: draft
-claimed_by: null
+status: claimed
+claimed_by: claude-code
 issue: 450
 ---
 
