@@ -22,9 +22,10 @@ export function createLauncher(
 ) {
   const board = createClient({ url: boardUrl, token: secret });
   return async (thread: string, deliveryId: string) => {
-    const { env } = await board.claimConnection({ profile: `run-${thread}`, idempotencyKey: deliveryId });
+    const { agent, env } = await board.claimConnection({ profile: `run-${thread}`, idempotencyKey: deliveryId });
     const child = Bun.spawn(command, {
       env: { ...env, OPENBOARD_TASK: thread, OPENBOARD_RUN: deliveryId },
+      detached: process.platform !== "win32",
       stdin: "ignore",
       stdout,
       stderr: "inherit",
@@ -35,6 +36,6 @@ export function createLauncher(
       },
       () => process.stderr.write("error: runner_failed: could not wait for task runner\n"),
     );
-    return child;
+    return { child, actor: agent.actor };
   };
 }

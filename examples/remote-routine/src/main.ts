@@ -74,6 +74,10 @@ async function serve() {
   const boardUrl = process.env.BOARD_URL;
   if (!boardUrl) throw new Error("BOARD_URL is required");
   const command = runnerCommand(process.env.RUNNER_COMMAND);
+  const timeout = Number(process.env.RUN_TIMEOUT ?? 300_000);
+  if (!Number.isInteger(timeout) || timeout < 1 || timeout > 2_147_483_647) {
+    throw new Error("RUN_TIMEOUT must be a positive millisecond count no greater than 2147483647");
+  }
   const inboundUrl = process.env.INBOUND_URL;
   if (!inboundUrl) throw new Error("INBOUND_URL is required");
   const [webhookSecret, connectionSecret, routineSecret, inboundSecret] = await Promise.all([
@@ -93,8 +97,12 @@ async function serve() {
   const start = createLinkedLauncher(
     routine,
     async (thread, deliveryId) => {
-      const child = await launch(thread, deliveryId);
-      return captureTurn(child, (summary) => report(thread, deliveryId, summary));
+      const { child, actor } = await launch(thread, deliveryId);
+      return captureTurn(
+        child,
+        (summary, event) => report(thread, deliveryId, summary, event, actor),
+        AbortSignal.timeout(timeout),
+      );
     },
     process.env.RUN_URL_TEMPLATE,
   );
@@ -107,7 +115,9 @@ if (import.meta.main) {
   try {
     await serve();
   } catch {
-    process.stderr.write("error: routine_start_failed: check the port, board URL, runner command and secret files\n");
+    process.stderr.write(
+      "error: routine_start_failed: check the port, board URL, runner command, timeout and secret files\n",
+    );
     process.exitCode = 1;
   }
 }
