@@ -29,7 +29,6 @@
   border: 0;
   background: transparent;
   color: var(--text);
-  outline: none;
 }
 
 .command-palette-body {
@@ -40,12 +39,21 @@
   overflow-y: auto;
 }
 
+.command-palette-body [role="listbox"] {
+  display: grid;
+  gap: calc(2 * var(--space));
+}
+
 .command-palette-group {
   display: grid;
   gap: var(--space);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
-.command-palette-group h3 {
+.command-palette-group legend {
   margin: 0;
   padding: var(--space) calc(2 * var(--space));
   color: var(--muted);
@@ -71,6 +79,7 @@
 }
 
 .command-palette-item:hover,
+.command-palette-item[data-active="true"],
 .command-palette-item:focus-visible {
   background: var(--surface-hover);
   text-decoration: none;

@@ -26,7 +26,6 @@ export function MessageToolbar({
     <div className="message-toolbar" data-active={tool !== null}>
       <button
         type="button"
-        tabIndex={-1}
         className="message-tool-btn"
         title="Add reaction"
         aria-label="Add reaction"
@@ -36,7 +35,6 @@ export function MessageToolbar({
       </button>
       <button
         type="button"
-        tabIndex={-1}
         className="message-tool-btn"
         title="Manage labels"
         aria-label="Manage labels"
@@ -46,7 +44,6 @@ export function MessageToolbar({
       </button>
       <button
         type="button"
-        tabIndex={-1}
         className="message-tool-btn"
         title="Edit message"
         aria-label="Edit message"
@@ -56,7 +53,6 @@ export function MessageToolbar({
       </button>
       <button
         type="button"
-        tabIndex={-1}
         className="message-tool-btn"
         data-danger="true"
         title="Delete message"
@@ -70,7 +66,7 @@ export function MessageToolbar({
   );
 }
 
-export function MessageReactTool({ busy, onReact }: { busy: boolean; onReact: (emoji: string) => void }) {
+export function MessageReactTool({ busy, onReact }: { busy: boolean; onReact: (emoji: string) => Promise<boolean> }) {
   const [customEmoji, setCustomEmoji] = useState("");
   return (
     <div className="message-inline-panel">
@@ -82,7 +78,7 @@ export function MessageReactTool({ busy, onReact }: { busy: boolean; onReact: (e
           title={name}
           aria-label={`React with ${name}`}
           disabled={busy}
-          onClick={() => onReact(name)}
+          onClick={() => void onReact(name)}
         >
           {glyph}
         </button>
@@ -99,9 +95,8 @@ export function MessageReactTool({ busy, onReact }: { busy: boolean; onReact: (e
         size="small"
         pending={busy}
         disabled={!customEmoji.trim()}
-        onClick={() => {
-          onReact(customEmoji.trim().toLowerCase());
-          setCustomEmoji("");
+        onClick={async () => {
+          if (await onReact(customEmoji.trim().toLowerCase())) setCustomEmoji("");
         }}
       >
         Add
@@ -116,7 +111,7 @@ export function MessageLabelTool({
   onClose,
 }: {
   busy: boolean;
-  onLabel: (key: string, value: string) => void;
+  onLabel: (key: string, value: string) => Promise<boolean>;
   onClose: () => void;
 }) {
   const [labelKey, setLabelKey] = useState("");
@@ -124,10 +119,9 @@ export function MessageLabelTool({
   return (
     <form
       className="message-inline-panel"
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
-        if (!labelKey.trim()) return;
-        onLabel(labelKey.trim(), labelValue.trim());
+        if (busy || !labelKey.trim() || !(await onLabel(labelKey.trim(), labelValue.trim()))) return;
         setLabelKey("");
         setLabelValue("");
       }}

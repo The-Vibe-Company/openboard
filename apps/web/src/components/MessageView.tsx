@@ -4,7 +4,7 @@ import { type FormEvent, Fragment, useState } from "react";
 import { boardKeys } from "../api/board.ts";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
-import { threadKeys, type ThreadMessage } from "../api/thread.ts";
+import { type ThreadMessage, threadKeys } from "../api/thread.ts";
 import { markdownCodeRanges, renderMarkdown } from "../markdown.ts";
 import { Avatar, Button, Textarea } from "../ui/index.ts";
 import { BlockView } from "./BlockView.tsx";
@@ -78,8 +78,8 @@ function useMessageActions(board: Board, message: ThreadMessage) {
   const principal = session?.person?.principal;
   const client = () => browserClient(window.location.origin, { ...board, csrf: session?.csrf ?? undefined });
 
-  async function mutate(work: () => Promise<void>) {
-    if (!session?.csrf || busy) return;
+  async function mutate(work: () => Promise<void>): Promise<boolean> {
+    if (!session?.csrf || busy) return false;
     setBusy(true);
     setError("");
     try {
@@ -89,8 +89,10 @@ function useMessageActions(board: Board, message: ThreadMessage) {
         queryClient.invalidateQueries({ queryKey: threadKeys.all(board) }),
         queryClient.invalidateQueries({ queryKey: boardKeys.threads(board) }),
       ]);
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Action failed.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -106,12 +108,12 @@ function useMessageActions(board: Board, message: ThreadMessage) {
     canInteract,
     toggleReaction: (emoji: string) => {
       const remove = principal ? (message.reactions[emoji] ?? []).includes(principal) : false;
-      void mutate(async () => {
+      return mutate(async () => {
         await client().reactToMessage({ id: message.id, emoji, ...(remove ? { remove: true } : {}) });
       });
     },
     setLabel: (key: string, value: string) =>
-      void mutate(async () => {
+      mutate(async () => {
         await client().labelMessage({
           id: message.id,
           ...(value === "" ? { unset: [key] } : { set: { [key]: value } }),
@@ -275,7 +277,7 @@ function MessageMeta({
   reactions: [string, string[]][];
   canInteract: boolean;
   busy: boolean;
-  onToggleReaction: (emoji: string) => void;
+  onToggleReaction: (emoji: string) => Promise<boolean>;
 }) {
   return (
     <>
@@ -295,10 +297,9 @@ function MessageMeta({
               {canInteract ? (
                 <button
                   type="button"
-                  tabIndex={-1}
                   className="message-reaction-chip"
                   disabled={busy}
-                  onClick={() => onToggleReaction(emoji)}
+                  onClick={() => void onToggleReaction(emoji)}
                 >
                   {emoji} {actors.length}
                 </button>

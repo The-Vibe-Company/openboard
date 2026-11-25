@@ -76,8 +76,12 @@ function InviteDialog({ org, onClose }: { org: string; onClose: () => void }) {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    dialog.current?.showModal();
-    return () => request.current?.abort();
+    const el = dialog.current;
+    if (el && !el.open) el.showModal();
+    return () => {
+      if (el?.open) el.close();
+      request.current?.abort();
+    };
   }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -110,7 +114,13 @@ function InviteDialog({ org, onClose }: { org: string; onClose: () => void }) {
   }
 
   return (
-    <dialog ref={dialog} aria-labelledby="invite-title" onClose={onClose}>
+    <dialog
+      ref={dialog}
+      aria-labelledby="invite-title"
+      onClose={(event) => {
+        if (!event.currentTarget.open) onClose();
+      }}
+    >
       <Card>
         <h3 id="invite-title">{url ? "Invitation link" : "Invite a member"}</h3>
         {url ? (

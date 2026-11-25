@@ -1,6 +1,8 @@
-import { BoardError, createClient } from "@the-vibe-company/openboard";
-import { type ChangeEvent, type FormEvent, type Ref, useId, useRef, useState } from "react";
-import { boardUrl } from "../api/client.ts";
+import { useQuery } from "@tanstack/react-query";
+import { BoardError } from "@the-vibe-company/openboard";
+import { type ChangeEvent, type FormEvent, type Ref, type RefObject, useId, useRef, useState } from "react";
+import { browserClient } from "../api/client.ts";
+import { sessionQuery } from "../api/session.ts";
 import { Button, Input, PaperclipIcon, TagIcon, Textarea, XIcon } from "../ui/index.ts";
 import "./Composer.css";
 
@@ -51,30 +53,6 @@ function randomClientId() {
   return Array.from(crypto.getRandomValues(new Uint32Array(4)), (part) => part.toString(16).padStart(8, "0")).join("");
 }
 
-async function uploadBoardFile(board: Board, file: File): Promise<Uploaded> {
-  if (file.size > MAX_ATTACHMENT_BYTES) throw new Error(`"${file.name}" exceeds the 4 MB upload limit.`);
-  const session = await createClient({
-    url: boardUrl(window.location.origin, board),
-    fetch: (request) => fetch(request, { credentials: "same-origin", redirect: "error" }),
-  }).getSession({});
-  const headers: Record<string, string> = {
-    "content-type": file.type || "application/octet-stream",
-    "x-board-filename": file.name,
-  };
-  if (session.csrf) headers["x-ob-csrf"] = session.csrf;
-  const response = await fetch(`${boardUrl(window.location.origin, board)}/attachments`, {
-    method: "POST",
-    credentials: "same-origin",
-    headers,
-    body: await file.arrayBuffer(),
-  });
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
-    throw new Error(body?.error?.message ?? `Could not upload "${file.name}".`);
-  }
-  return ((await response.json()) as { attachment: Uploaded }).attachment;
-}
-
 async function dispatchComposerDraft(
   mode: "message" | "task",
   text: string,
@@ -96,27 +74,27 @@ async function dispatchComposerDraft(
   }
 }
 
-function useComposerState({ board, onPost, onCreateTask }: Pick<ComposerProps, "board" | "onPost" | "onCreateTask">) {
-  const [mode, setMode] = useState<"message" | "task">("message");
-  const [showLabels, setShowLabels] = useState(false);
-  const [text, setText] = useState("");
-  const [labelsText, setLabelsText] = useState("");
-  const [needsText, setNeedsText] = useState("");
+function useFileAttachments(
+  board: (Board & { csrf: string }) | undefined,
+  clientId: RefObject<string | null>,
+  setError: (error: Error | null) => void,
+) {
   const [files, setFiles] = useState<Uploaded[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const clientId = useRef<string | null>(null);
-  const submitting = useRef(false);
 
   async function onFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(event.currentTarget.files ?? []);
     event.currentTarget.value = "";
-    if (!board || selected.length === 0) return;
+    if (!board || uploading || selected.length === 0) return;
     setUploading(true);
     setError(null);
     try {
-      const uploaded = await Promise.all(selected.map((file) => uploadBoardFile(board, file)));
+      const oversized = selected.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+      if (oversized) throw new Error(`"${oversized.name}" exceeds the 4 MB upload limit.`);
+      const client = browserClient(window.location.origin, board);
+      const uploaded = await Promise.all(
+        selected.map((file) => client.upload(file, { name: file.name, type: file.type || "application/octet-stream" })),
+      );
       setFiles((current) => [...current, ...uploaded]);
       clientId.current = null;
     } catch (cause) {
@@ -126,9 +104,37 @@ function useComposerState({ board, onPost, onCreateTask }: Pick<ComposerProps, "
     }
   }
 
+  function removeFile(id: string) {
+    setFiles((current) => current.filter((file) => file.id !== id));
+    clientId.current = null;
+  }
+
+  return { files, setFiles, removeFile, uploading, onFilesSelected };
+}
+
+function useComposerState({ board, onPost, onCreateTask }: Pick<ComposerProps, "board" | "onPost" | "onCreateTask">) {
+  const [mode, setMode] = useState<"message" | "task">("message");
+  const [showLabels, setShowLabels] = useState(false);
+  const [text, setText] = useState("");
+  const [labelsText, setLabelsText] = useState("");
+  const [needsText, setNeedsText] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const clientId = useRef<string | null>(null);
+  const submitting = useRef(false);
+  const { data: session, error: sessionError } = useQuery({ ...sessionQuery, enabled: Boolean(board) });
+  // An explicit empty proof skips per-upload session lookups in tokenless sessions.
+  const uploadBoard = board && session ? { ...board, csrf: session.csrf ?? "" } : undefined;
+  const { files, setFiles, removeFile, uploading, onFilesSelected } = useFileAttachments(
+    uploadBoard,
+    clientId,
+    setError,
+  );
+  const canSubmit = Boolean(text.trim() || (mode === "message" && files.length > 0));
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current || uploading || !text.trim()) return;
+    if (submitting.current || uploading || !canSubmit) return;
     clientId.current ??= randomClientId();
     submitting.current = true;
     setPending(true);
@@ -154,7 +160,10 @@ function useComposerState({ board, onPost, onCreateTask }: Pick<ComposerProps, "
   };
   return {
     mode,
-    setMode,
+    setMode: (next: typeof mode) => {
+      if (next !== mode) clientId.current = null;
+      setMode(next);
+    },
     showLabels,
     setShowLabels,
     text,
@@ -164,10 +173,12 @@ function useComposerState({ board, onPost, onCreateTask }: Pick<ComposerProps, "
     needsText,
     setNeedsText: update(setNeedsText),
     files,
-    removeFile: (id: string) => setFiles((cur) => cur.filter((item) => item.id !== id)),
+    removeFile,
+    canSubmit,
+    canAttach: Boolean(uploadBoard),
     uploading,
     pending,
-    error,
+    error: error ?? (board && !session ? sessionError : null),
     onFilesSelected,
     submit,
   };
@@ -228,7 +239,8 @@ export function Composer({ ref, board, allowTask, onPost, onCreateTask }: Compos
         showLabels={s.showLabels}
         uploading={s.uploading}
         pending={s.pending}
-        canSubmit={Boolean(s.text.trim())}
+        canSubmit={s.canSubmit}
+        canAttach={s.canAttach}
         onFilesSelected={s.onFilesSelected}
         onToggleLabels={() => s.setShowLabels((cur) => !cur)}
       />
@@ -310,6 +322,7 @@ function ComposerFooter({
   uploading,
   pending,
   canSubmit,
+  canAttach,
   onFilesSelected,
   onToggleLabels,
 }: {
@@ -319,6 +332,7 @@ function ComposerFooter({
   uploading: boolean;
   pending: boolean;
   canSubmit: boolean;
+  canAttach: boolean;
   onFilesSelected: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   onToggleLabels: () => void;
 }) {
@@ -338,7 +352,7 @@ function ComposerFooter({
             <button
               type="button"
               className="composer-tool-btn"
-              disabled={pending || uploading}
+              disabled={pending || uploading || !canAttach}
               onClick={() => fileInput.current?.click()}
             >
               <PaperclipIcon width={14} height={14} /> {uploading ? "Uploading…" : "Attach"}
