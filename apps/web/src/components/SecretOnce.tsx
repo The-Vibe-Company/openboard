@@ -7,10 +7,12 @@ interface SecretOnceProps {
   title: string;
   secret: string;
   instructions: string;
+  connect?: string;
+  env?: string;
   onClose: () => void;
 }
 
-export function SecretOnce({ title, secret, instructions, onClose }: SecretOnceProps) {
+export function SecretOnce({ title, secret, instructions, connect, env, onClose }: SecretOnceProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const description = useId();
@@ -25,12 +27,12 @@ export function SecretOnce({ title, secret, instructions, onClose }: SecretOnceP
     };
   }, []);
 
-  async function copy() {
+  async function copy(text: string, label: string) {
     try {
-      await navigator.clipboard.writeText(secret);
-      setCopyStatus("Secret copied.");
+      await navigator.clipboard.writeText(text);
+      setCopyStatus(`${label} copied.`);
     } catch {
-      setCopyStatus("Copy failed. Select the secret and copy it manually.");
+      setCopyStatus("Copy failed. Select the value and copy it manually.");
     }
   }
 
@@ -49,12 +51,30 @@ export function SecretOnce({ title, secret, instructions, onClose }: SecretOnceP
         Save this secret now. You can only see it once.
       </p>
       <label htmlFor={secretId}>Secret</label>
-      <Input id={secretId} readOnly value={secret} />
-      <Button variant="secondary" onClick={copy}>
-        Copy
-      </Button>
-      <p role="status">{copyStatus}</p>
+      <div className="secret-value">
+        <Input id={secretId} readOnly value={secret} />
+        <Button variant="secondary" onClick={() => void copy(secret, "Secret")}>
+          Copy
+        </Button>
+      </div>
+      <div role="status">{copyStatus}</div>
       <pre>{instructions}</pre>
+      {connect && (
+        <section>
+          <pre>{connect}</pre>
+          <Button variant="secondary" size="small" onClick={() => void copy(connect, "Connect command")}>
+            Copy ob connect
+          </Button>
+        </section>
+      )}
+      {env && (
+        <section>
+          <pre>{env}</pre>
+          <Button variant="secondary" size="small" onClick={() => void copy(env, "Environment snippet")}>
+            Copy env
+          </Button>
+        </section>
+      )}
       <form method="dialog">
         <Button type="submit">Done</Button>
       </form>

@@ -4,23 +4,34 @@ import { BoardError, type Client } from "@the-vibe-company/openboard";
 import { type FormEvent, useState } from "react";
 import { browserClient } from "../../../../api/client.ts";
 import { sessionQuery } from "../../../../api/session.ts";
+import { AccessPresets } from "../../../../components/GrantForm.tsx";
 import { SecretOnce } from "../../../../components/SecretOnce.tsx";
-import { Button, Card, Field, Input, Table } from "../../../../ui/index.ts";
+import { Button, Card, Field, Input, Table, Textarea } from "../../../../ui/index.ts";
 
 export const Route = createFileRoute("/$org/$board/settings/connections")({
   component: ConnectionsRoute,
 });
 
 type Created = Awaited<ReturnType<Client["createConnection"]>>;
+type Rotated = Awaited<ReturnType<Client["rotateConnection"]>>;
 type Access = Parameters<Client["createConnection"]>[0]["can"][string];
 
 function parseAccess(text: string) {
-  const [pattern, permissions, extra] = text.split("=").map((part) => part.trim());
-  if (!pattern || !permissions || extra !== undefined) {
-    throw new Error("Enter access as pattern=permissions, for example dev/=read,post.");
+  const rules = new Map<string, Access>();
+  for (const rule of text
+    .split(/[;\n]/)
+    .map((rule) => rule.trim())
+    .filter(Boolean)) {
+    const [pattern, permissions, extra] = rule.split("=").map((part) => part.trim());
+    if (!pattern || !permissions || extra !== undefined) {
+      throw new Error("Enter access as pattern=permissions, for example dev/=read,post.");
+    }
+    if (rules.has(pattern)) throw new Error(`Enter access for ${pattern} only once.`);
+    // The create operation validates the channel pattern and permission names.
+    rules.set(pattern, permissions === "all" ? "all" : (permissions.split(",").map((part) => part.trim()) as Access));
   }
-  // The create operation validates the channel pattern and permission names.
-  return { [pattern]: permissions === "all" ? "all" : (permissions.split(",").map((part) => part.trim()) as Access) };
+  if (!rules.size) throw new Error("Enter at least one access rule.");
+  return Object.fromEntries(rules);
 }
 
 function errorMessage(error: unknown, fallback: string) {
@@ -43,11 +54,12 @@ function Connections({ org, board }: { org: string; board: string }) {
     queryFn: ({ signal }) => client.listConnections({}, { signal }),
     retry: false,
   });
-  const [created, setCreated] = useState<Created>();
+  const [created, setCreated] = useState<Created | Rotated>();
   const [busy, setBusy] = useState(false);
-  useBlocker({ shouldBlockFn: () => busy, enableBeforeUnload: false });
+  useBlocker({ shouldBlockFn: () => busy || Boolean(created), enableBeforeUnload: false });
   const [error, setError] = useState("");
-  const [revokeError, setRevokeError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [access, setAccess] = useState("");
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,6 +79,7 @@ function Connections({ org, board }: { org: string; board: string }) {
     try {
       setCreated(await client.createConnection({ name, can, direct: true }));
       form.reset();
+      setAccess("");
     } catch (error) {
       setError(errorMessage(error, "Could not create the connection."));
     } finally {
@@ -77,18 +90,25 @@ function Connections({ org, board }: { org: string; board: string }) {
   return (
     <section aria-labelledby="connections">
       <h1 id="connections">Connections</h1>
+      <p className="settings-access-intro">
+        For personal CLI access, run <code>ob login {window.location.origin}</code>. Connections give coding agents and
+        CI scoped, long-lived credentials.
+      </p>
       {list.isPending && <p role="status">Loading connections…</p>}
-      {revokeError && <p role="alert">{revokeError}</p>}
+      {actionError && <p role="alert">{actionError}</p>}
       {list.isError && <ListLoadError error={list.error} retry={list.refetch} retrying={list.isFetching} />}
       {list.isSuccess && (
         <>
-          <CreateConnectionForm onSubmit={create} busy={busy} />
+          <CreateConnectionForm onSubmit={create} busy={busy} access={access} setAccess={setAccess} />
           {error && <p role="alert">{error}</p>}
           <ConnectionList
             connections={list.data.connections}
             client={client}
             refresh={list.refetch}
-            reportError={setRevokeError}
+            reportError={setActionError}
+            busy={busy || Boolean(created)}
+            setBusy={setBusy}
+            showSecret={setCreated}
           />
         </>
       )}
@@ -108,19 +128,42 @@ function Connections({ org, board }: { org: string; board: string }) {
 function CreateConnectionForm({
   onSubmit,
   busy,
+  access,
+  setAccess,
 }: {
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   busy: boolean;
+  access: string;
+  setAccess: (value: string) => void;
 }) {
   return (
     <form onSubmit={onSubmit}>
-      <Card>
+      <Card className="settings-access-form">
         <fieldset disabled={busy}>
           <Field label="Name">
             {(field) => <Input {...field} name="name" required pattern={"[a-z0-9][a-z0-9\\-]{0,62}"} />}
           </Field>
-          <Field label="Access">
-            {(field) => <Input {...field} name="access" required placeholder="dev/=read,post" />}
+          <AccessPresets value={access} onSelect={setAccess} />
+          <Field
+            label="Access"
+            hint={
+              <>
+                <code>*</code> all channels · <code>dev/</code> prefix · <code>general</code> exact. Permissions: all,
+                read, post, react, label, sync, manage. Separate rules with a newline or semicolon.
+              </>
+            }
+          >
+            {(field) => (
+              <Textarea
+                {...field}
+                name="access"
+                required
+                rows={2}
+                placeholder="dev/=read,post"
+                value={access}
+                onChange={(event) => setAccess(event.target.value)}
+              />
+            )}
           </Field>
           <div>
             <Button type="submit" pending={busy}>
@@ -159,33 +202,18 @@ function ConnectionList({
   client,
   refresh,
   reportError,
+  busy,
+  setBusy,
+  showSecret,
 }: {
   connections: Listed;
   client: Client;
   refresh: () => Promise<unknown>;
   reportError: (message: string) => void;
+  busy: boolean;
+  setBusy: (busy: boolean) => void;
+  showSecret: (rotated: Rotated) => void;
 }) {
-  const [revoking, setRevoking] = useState(false);
-
-  async function revoke({ id, name }: Listed[number]) {
-    if (revoking || !window.confirm(`Revoke "${name}" and all its claimed agents?`)) return;
-    reportError("");
-    setRevoking(true);
-    try {
-      try {
-        await client.revokeConnection({ id });
-      } catch (error) {
-        if (!(error instanceof BoardError) || error.code !== "not_found") throw error;
-        reportError("This connection no longer exists");
-      }
-      await refresh();
-    } catch (error) {
-      reportError(errorMessage(error, "Could not revoke the connection."));
-    } finally {
-      setRevoking(false);
-    }
-  }
-
   if (connections.length === 0) return <p>No connections yet.</p>;
   return (
     <div className="settings-table">
@@ -206,22 +234,81 @@ function ConnectionList({
                 <code>{connection.secretHint}</code>
               </th>
               <ConnectionActivity connection={connection} />
-              <td>
-                <Button
-                  variant="danger"
-                  size="small"
-                  aria-label={`Revoke ${connection.name}`}
-                  disabled={revoking}
-                  onClick={() => void revoke(connection)}
-                >
-                  Revoke
-                </Button>
-              </td>
+              <ConnectionActions {...{ connection, client, refresh, reportError, busy, setBusy, showSecret }} />
             </tr>
           ))}
         </tbody>
       </Table>
     </div>
+  );
+}
+
+function ConnectionActions({
+  connection,
+  client,
+  refresh,
+  reportError,
+  busy,
+  setBusy,
+  showSecret,
+}: {
+  connection: Listed[number];
+  client: Client;
+  refresh: () => Promise<unknown>;
+  reportError: (message: string) => void;
+  busy: boolean;
+  setBusy: (busy: boolean) => void;
+  showSecret: (rotated: Rotated) => void;
+}) {
+  const { id, name } = connection;
+
+  async function rotate() {
+    if (busy) return;
+    reportError("");
+    setBusy(true);
+    try {
+      showSecret(await client.rotateConnection({ id }));
+    } catch (error) {
+      reportError(errorMessage(error, "Could not rotate the connection secret."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revoke() {
+    if (busy || !window.confirm(`Revoke "${name}" and all its claimed agents?`)) return;
+    reportError("");
+    setBusy(true);
+    try {
+      try {
+        await client.revokeConnection({ id });
+      } catch (error) {
+        if (!(error instanceof BoardError) || error.code !== "not_found") throw error;
+        reportError("This connection no longer exists");
+      }
+      await refresh();
+    } catch (error) {
+      reportError(errorMessage(error, "Could not revoke the connection."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <td>
+      <Button
+        variant="secondary"
+        size="small"
+        aria-label={`Rotate ${name}`}
+        disabled={busy}
+        onClick={() => void rotate()}
+      >
+        Rotate
+      </Button>
+      <Button variant="danger" size="small" aria-label={`Revoke ${name}`} disabled={busy} onClick={() => void revoke()}>
+        Revoke
+      </Button>
+    </td>
   );
 }
 
@@ -243,24 +330,34 @@ function ConnectionActivity({ connection }: { connection: Listed[number] }) {
   );
 }
 
-function CreatedSecret({ created, onClose }: { created: Created; onClose: () => void }) {
+function CreatedSecret({ created, onClose }: { created: Created | Rotated; onClose: () => void }) {
   const {
-    connection: { name },
+    connection: { name, direct, profiles },
     secret,
     env,
   } = created;
-  const profile = /^[a-z][a-z0-9-]{0,31}$/.test(name) ? name : "agent";
-  const instructions = [
-    `BOARD_URL=${env.BOARD_URL}`,
-    "",
-    `ob connect ${env.BOARD_URL} --as ${profile}`,
-    "Supply the secret on stdin.",
-    "",
-    "Environment variables for direct access",
+  const preferred = /^[a-z][a-z0-9-]{0,31}$/.test(name) ? name : "agent";
+  const profile = profiles.some((pattern) => {
+    const lower = pattern.toLowerCase();
+    return lower.endsWith("*") ? preferred.startsWith(lower.slice(0, -1)) : preferred === lower;
+  })
+    ? preferred
+    : (profiles[0]?.replace(/\*$/, "") ?? preferred);
+  const connect = `ob connect ${env.BOARD_URL} --as ${profile} --secret-file ~/.config/openboard/${name}.secret`;
+  const exports = [
     "# Load OPENBOARD_SECRET from your secret store before setting these variables.",
     `export BOARD_URL=${env.BOARD_URL}`,
     'export BOARD_TOKEN="$OPENBOARD_SECRET"',
     `export BOARD_PROFILE=${profile}`,
   ].join("\n");
-  return <SecretOnce title="Connection created" secret={secret} instructions={instructions} onClose={onClose} />;
+  return (
+    <SecretOnce
+      title={"previousUntil" in created ? "Connection rotated" : "Connection created"}
+      secret={secret}
+      instructions={`BOARD_URL=${env.BOARD_URL}`}
+      connect={connect}
+      env={direct ? exports : undefined}
+      onClose={onClose}
+    />
+  );
 }
