@@ -347,7 +347,7 @@ export async function handle(request: Request, pipeline: Pipeline, ip?: string):
     if (!probe && pipeline.shutdown.aborted) throw new BoardError("unavailable", "the instance is draining");
     response = await (probe ??
       pipeline.staticFiles(request, url.pathname) ??
-      run(request, url, { ...pipeline, ip }, logged, log));
+      run(request, url, { ...pipeline, ip, signal: request.signal }, logged, log));
   } catch (error) {
     response = errorResponse(error, log);
   }

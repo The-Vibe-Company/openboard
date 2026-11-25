@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { BOARD_URL, call, makeApp, NOW } from "../support/app.ts";
+import { openStore } from "../support/drivers.ts";
 
 const ISSUER = "https://gitlab.example.com";
 const SUBJECT = "project_path:acme/api:main";
@@ -204,6 +205,109 @@ test("OIDC bounds both responses and shares the issuer reload cooldown", async (
     now += 4_000;
     await refusal(await post(app, jwt), 401, "unauthorized");
     expect(fetches).toBe(3);
+  } finally {
+    await app.close();
+  }
+});
+
+test("OIDC pins discovery and JWKS to their validated addresses and retries a refused connection", async () => {
+  const host = new URL(ISSUER).host;
+  const lookups: string[] = [];
+  const requests: string[] = [];
+  const app = makeApp({
+    schedule,
+    resolveHost: async (hostname) => {
+      lookups.push(hostname);
+      return lookups.length === 1 ? ["8.8.8.8", "1.1.1.1"] : ["2606:4700::1111"];
+    },
+    webhookFetch: async (request, options) => {
+      requests.push(request.url);
+      expect(request.headers.get("host")).toBe(host);
+      expect(request.redirect).toBe("manual");
+      expect(options).toEqual({
+        redirect: "manual",
+        proxy: false,
+        keepalive: false,
+        decompress: false,
+        tls: { serverName: host, rejectUnauthorized: true },
+      });
+      if (requests.length === 1) throw Object.assign(new Error("refused"), { code: "ECONNREFUSED" });
+      return requests.length === 2 ? discovery() : jwks();
+    },
+  });
+  try {
+    expect((await grant(app, ISSUER)).status).toBe(200);
+    expect((await post(app, await token())).status).toBe(201);
+    expect(lookups).toEqual([host, host]);
+    expect(requests).toEqual([
+      DISCOVERY.replace(host, "8.8.8.8"),
+      DISCOVERY.replace(host, "1.1.1.1"),
+      JWKS.replace(host, "[2606:4700::1111]"),
+    ]);
+  } finally {
+    await app.close();
+  }
+});
+
+test.each(["private DNS", "discovery redirect", "JWKS redirect", "TLS failure"])(
+  "OIDC stops pinned egress on %s",
+  async (failure) => {
+    const reads: string[] = [];
+    const app = makeApp({
+      schedule,
+      resolveHost: async () => ["8.8.8.8", failure === "private DNS" ? "127.0.0.1" : "1.1.1.1"],
+      fetch: async () => discovery(),
+      webhookFetch: async (request) => {
+        reads.push(new URL(request.url).pathname);
+        if (failure === "TLS failure") throw Object.assign(new Error("TLS failed"), { code: "EPROTO" });
+        if (failure === "JWKS redirect" && reads.length === 1) return discovery();
+        return Response.redirect(JWKS, 307);
+      },
+    });
+    try {
+      expect((await grant(app, ISSUER)).status).toBe(200);
+      await refusal(await post(app, await token()), 401, "unauthorized");
+      const discoveryPath = new URL(DISCOVERY).pathname;
+      expect(reads).toEqual(
+        failure === "private DNS" ? [] : failure === "JWKS redirect" ? [discoveryPath, "/keys"] : [discoveryPath],
+      );
+    } finally {
+      await app.close();
+    }
+  },
+);
+
+test("OIDC key-store failures reach the server error handler", async () => {
+  const store = openStore(() => NOW);
+  const platform = store.platform();
+  const app = makeApp({
+    schedule,
+    resolveHost,
+    fetch: async ({ url }) => (url === DISCOVERY ? discovery() : jwks()),
+    store: {
+      ...store,
+      platform: () =>
+        new Proxy(platform, {
+          get(target, method, receiver) {
+            if (method !== "readOidcKeys") return Reflect.get(target, method, receiver);
+            return async () => {
+              throw new Error("fixture key store unavailable");
+            };
+          },
+        }),
+    },
+  });
+  try {
+    const [instance] = app.instances;
+    if (!instance) throw new Error("expected a server instance");
+    expect((await grant(instance, ISSUER)).status).toBe(200);
+    await refusal(await post(instance, await token()), 500, "internal");
+    expect(app.logged).toContainEqual(
+      expect.objectContaining({
+        message: "request failed",
+        stack: expect.stringContaining("fixture key store unavailable"),
+      }),
+    );
   } finally {
     await app.close();
   }

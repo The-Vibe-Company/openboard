@@ -69,9 +69,12 @@ function withProfile(request: Request, principal: Principal): Principal {
 }
 
 /** Admit an authentication attempt before it resolves the board or checks any credential. */
-export async function limitAuthentication<T>({ rateLimits, ip }: RequestLimits, verify: () => Promise<T>): Promise<T> {
+export async function limitAuthentication<T>(
+  { rateLimits, ip, signal }: RequestLimits,
+  verify: () => Promise<T>,
+): Promise<T> {
   if (ip === undefined) return verify();
-  const finish = await rateLimits.admitAuth(ip);
+  const finish = await rateLimits.admitAuth(ip, signal);
   if (typeof finish === "number") {
     throw new BoardError("rate_limited", "too many failed authentication attempts", {
       next: [{ kind: "wait", seconds: finish }],
@@ -79,6 +82,7 @@ export async function limitAuthentication<T>({ rateLimits, ip }: RequestLimits, 
   }
   let failed = false;
   try {
+    signal?.throwIfAborted();
     return await verify();
   } catch (error) {
     failed = error instanceof BoardError && (error.code === "unauthorized" || error.code === "bad_signature");
