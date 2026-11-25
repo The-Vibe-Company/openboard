@@ -6,11 +6,15 @@ const STAGING_ORIGIN = "https://openboard-staging.up.railway.app";
 const REGION = "europe-west4-drams3a";
 const IMAGE = "ghcr.io/the-vibe-company/openboard";
 
-export const STAGING_DEPLOY_SETTINGS = {
+const DEPLOY_SETTINGS = {
   healthcheckPath: "/readyz",
   healthcheckTimeout: 120,
   restartPolicyType: "ON_FAILURE",
   preDeployCommand: ["openboard migrate"],
+} as const;
+
+export const STAGING_DEPLOY_SETTINGS = {
+  ...DEPLOY_SETTINGS,
   multiRegionConfig: { [REGION]: { numReplicas: 2 } },
 } as const;
 
@@ -53,6 +57,32 @@ class RetryableReadError extends Error {
   }
 }
 
+function graphqlErrorSummary(errors: unknown[], token: string): string {
+  const credential = token.trim();
+  const encodedCredential = encodeURIComponent(credential.toWellFormed());
+  const safeMessages = errors.slice(0, 3).flatMap((error) => {
+    if (!error || typeof error !== "object" || !("message" in error) || typeof error.message !== "string") return [];
+    const message = error.message
+      .replaceAll(token, "[redacted]")
+      .replace(/\p{Cf}/gu, "")
+      .replaceAll(credential, "[redacted]")
+      .replaceAll(encodedCredential, "[redacted]")
+      .replace(/\b[a-z][a-z\d+.-]*:\/\/[^\s"'<>]+/gi, "[redacted URL]")
+      .replace(
+        /\b(?:authorization|api[-_ ]?key|credentials?|(?:[\w-]*[-_])?(?:cookie|password|secret|token))\b[\s\S]*/gi,
+        "[redacted]",
+      )
+      .replace(/\b(?:bearer|basic)\s+\S+/gi, "[redacted]")
+      .replace(/\b[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\b|[\w+/=.~-]{24,}/gi, "[redacted]")
+      .replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return message ? [message] : [];
+  });
+  const characters = Array.from(safeMessages.join("; "));
+  return characters.length > 240 ? `${characters.slice(0, 239).join("")}…` : characters.join("");
+}
+
 function railway(token: string, request: Runtime["fetch"]) {
   return async <T>(query: string, variables: Record<string, unknown> = {}): Promise<T> => {
     const operation = query.split(" ")[1]?.split("(")[0];
@@ -71,8 +101,12 @@ function railway(token: string, request: Runtime["fetch"]) {
         throw new RetryableReadError(message, response.headers.get("retry-after"));
       throw new Error(message);
     }
-    const payload = (await response.json().catch(() => null)) as { data?: T; errors?: unknown[] } | null;
-    if (!payload?.data || payload.errors?.length) throw new Error(`Railway ${operation} returned a GraphQL error`);
+    const payload = (await response.json().catch(() => null)) as { data?: T; errors?: unknown } | null;
+    const errors = Array.isArray(payload?.errors) ? payload.errors : [];
+    if (!payload?.data || errors.length || (payload.errors != null && !Array.isArray(payload.errors))) {
+      const summary = graphqlErrorSummary(errors, token);
+      throw new Error(`Railway ${operation} returned a GraphQL error${summary ? `: ${summary}` : ""}`);
+    }
     return payload.data;
   };
 }
@@ -112,6 +146,7 @@ async function waitForReplicas(
   tag: string,
   runtime: Runtime,
   origin: string,
+  expectedReplicas: number,
 ): Promise<string[]> {
   const deadline = runtime.now() + 300_000;
   const seen = new Set<string>();
@@ -144,11 +179,7 @@ async function waitForReplicas(
     // Railway keeps the replicas a deploy replaced in the list, marked REMOVED: they never answer, so they never count.
     const active = deployment.instances.filter(({ status }) => status !== "REMOVED");
     pending = active.filter(({ id }) => !seen.has(id));
-    if (
-      status === "SUCCESS" &&
-      active.length === STAGING_DEPLOY_SETTINGS.multiRegionConfig[REGION].numReplicas &&
-      !pending.length
-    ) {
+    if (status === "SUCCESS" && active.length === expectedReplicas && !pending.length) {
       if (!previousId) return active.map(({ id }) => id);
       try {
         const { deployment: previous } = await api<{ deployment: { status: string } | null }>(retirementQuery, {
@@ -194,14 +225,33 @@ function validateDeployment(args: readonly string[], token: string | undefined, 
   return { environment, tag, token, origin: url.origin };
 }
 
+type DeployOptions = {
+  waitForRetirement?: boolean;
+  productionOrigin?: string;
+  productionRegion?: string;
+  productionReplicas?: number | string;
+};
+
+function deployTopology(environment: string, options: DeployOptions) {
+  if (environment === "staging")
+    return { region: REGION, expectedReplicas: STAGING_DEPLOY_SETTINGS.multiRegionConfig[REGION].numReplicas };
+  const region = options.productionRegion?.trim() || REGION;
+  const replicas = options.productionReplicas ?? 2;
+  const expectedReplicas = typeof replicas === "string" && !/^\d+$/.test(replicas.trim()) ? NaN : Number(replicas);
+  if (!Number.isSafeInteger(expectedReplicas) || expectedReplicas < 2)
+    throw new Error("PRODUCTION_REPLICAS must be an integer >= 2");
+  return { region, expectedReplicas };
+}
+
 export async function deployRailway(
   args: readonly string[],
   token: string | undefined,
   runtime: Runtime = { fetch, now: Date.now, sleep: Bun.sleep },
-  options: { waitForRetirement?: boolean; productionOrigin?: string } = {},
+  options: DeployOptions = {},
 ): Promise<string[]> {
   const { environment, tag, token: credential, origin } = validateDeployment(args, token, options.productionOrigin);
 
+  const { region, expectedReplicas } = deployTopology(environment, options);
   const api = railway(credential, runtime.fetch);
   const { projectToken } = await api<{ projectToken: { projectId: string; environmentId: string } }>(targetQuery);
   if (projectToken?.projectId !== PROJECT)
@@ -225,7 +275,8 @@ export async function deployRailway(
   const { serviceInstanceUpdate } = await api<{ serviceInstanceUpdate: boolean }>(updateMutation, {
     ...ids,
     input: {
-      ...STAGING_DEPLOY_SETTINGS,
+      ...DEPLOY_SETTINGS,
+      multiRegionConfig: { [region]: { numReplicas: expectedReplicas } },
       source: { image: `${IMAGE}:${tag}` },
       startCommand: `/bin/sh -c "export OPENBOARD_INSTANCE_ID=$RAILWAY_REPLICA_ID OPENBOARD_DEPLOYMENT_TAG=${tag}; exec openboard serve"`,
     },
@@ -233,7 +284,7 @@ export async function deployRailway(
   if (!serviceInstanceUpdate) throw new Error(`Railway did not update the ${environment} service`);
   const { serviceInstanceDeployV2: deploymentId } = await api<{ serviceInstanceDeployV2: string }>(deployMutation, ids);
   if (!deploymentId) throw new Error("Railway did not return a deployment ID");
-  return waitForReplicas(api, deploymentId, previousId, tag, runtime, origin);
+  return waitForReplicas(api, deploymentId, previousId, tag, runtime, origin, expectedReplicas);
 }
 
 if (import.meta.main) {
@@ -245,7 +296,12 @@ if (import.meta.main) {
     const { environment, tag, token, origin } = validateDeployment(args, process.env.RAILWAY_TOKEN, productionOrigin);
     if (checked && environment !== "staging") throw new Error("Rolling verification is only available on staging");
     const deploy = async () => {
-      const replicas = await deployRailway(args, token, undefined, { waitForRetirement: checked, productionOrigin });
+      const replicas = await deployRailway(args, token, undefined, {
+        waitForRetirement: checked,
+        productionOrigin,
+        productionRegion: process.env.PRODUCTION_REGION,
+        productionReplicas: process.env.PRODUCTION_REPLICAS,
+      });
       console.log(`Verified ${tag} on ${environment} replicas: ${replicas.join(", ")}`);
     };
     if (checked) {

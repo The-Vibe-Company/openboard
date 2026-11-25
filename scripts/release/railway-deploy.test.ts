@@ -13,7 +13,8 @@ function fakeRailway(
   options: {
     environment?: string;
     origin?: string;
-    rejectUpdate?: boolean;
+    updateErrors?: unknown[];
+    replicas?: string[];
     interruptPoll?: boolean;
     replaced?: boolean;
     retirement?: string[];
@@ -58,8 +59,8 @@ function fakeRailway(
           data: { deployment: { status: options.retirement?.[retirementReads++] ?? "REMOVED" } },
         });
       case "UpdateStaging":
-        return options.rejectUpdate
-          ? Response.json({ errors: [{ message: credential }] })
+        return options.updateErrors
+          ? Response.json({ data: { serviceInstanceUpdate: true }, errors: options.updateErrors })
           : Response.json({ data: { serviceInstanceUpdate: true } });
       case "DeployStaging":
         expect(variables).toEqual(ids);
@@ -74,7 +75,7 @@ function fakeRailway(
               status: "SUCCESS",
               instances: [
                 ...(options.replaced ? [{ id: "replaced-replica", status: "REMOVED" }] : []),
-                ...["replica-a", "replica-b"].map((id) => ({ id, status: "RUNNING" })),
+                ...(options.replicas ?? ["replica-a", "replica-b"]).map((id) => ({ id, status: "RUNNING" })),
               ],
             },
           },
@@ -153,12 +154,25 @@ test("rejects a token scoped to another environment before updating the service"
   expect(fake.calls.map(({ operation }) => operation)).toEqual(["StagingTarget", "StagingEnvironment"]);
 });
 
-test("reports a GraphQL rejection without disclosing the response body or starting a deployment", async () => {
-  const fake = fakeRailway([], { rejectUpdate: true });
+test("reports sanitized GraphQL messages without starting a deployment", async () => {
+  const fake = fakeRailway([], {
+    updateErrors: [
+      { message: `Region is unavailable for ${credential}`, extensions: { detail: "private response data" } },
+      { message: 'Try another region.\nInvalid project token "sample-value"' },
+      { message: 123 },
+    ],
+  });
   await expect(deployRailway(args, credential, fake.runtime)).rejects.toThrow(
-    /^Railway UpdateStaging returned a GraphQL error$/,
+    /^Railway UpdateStaging returned a GraphQL error: Region is unavailable for \[redacted\]; Try another region\. Invalid project \[redacted\]$/,
   );
   expect(fake.calls.at(-1)?.operation).toBe("UpdateStaging");
+});
+
+test("truncates GraphQL diagnostics on a Unicode code point boundary", async () => {
+  const fake = fakeRailway([], { updateErrors: [{ message: "x ".repeat(119) + "😀😀😀" }] });
+  await expect(deployRailway(args, credential, fake.runtime)).rejects.toThrow(
+    `Railway UpdateStaging returned a GraphQL error: ${"x ".repeat(119)}😀…`,
+  );
 });
 
 test("honors Retry-After on an interrupted status poll and still verifies both replicas", async () => {
@@ -215,6 +229,44 @@ test("production deploys the version tag and probes the configured production or
     "replica-b",
   ]);
   expect(fake.calls.find(({ operation }) => operation === "UpdateStaging")?.variables).toMatchObject({
-    input: { source: { image: "ghcr.io/the-vibe-company/openboard:0.1.0" } },
+    input: {
+      source: { image: "ghcr.io/the-vibe-company/openboard:0.1.0" },
+      multiRegionConfig: { "europe-west4-drams3a": { numReplicas: 2 } },
+    },
   });
 });
+
+test("production updates the configured topology and verifies each of its replicas", async () => {
+  const productionOrigin = "https://production.example";
+  const version = "0.1.0";
+  const replicas = ["replica-a", "replica-b", "replica-c"];
+  const fake = fakeRailway(
+    replicas.map((instanceId) => ({ instanceId, deploymentTag: version })),
+    { environment: "production", origin: productionOrigin, replicas },
+  );
+  expect(
+    await deployRailway(["production", version], credential, fake.runtime, {
+      productionOrigin,
+      productionRegion: "us-west2",
+      productionReplicas: "3",
+    }),
+  ).toEqual(replicas);
+  expect(fake.probes()).toBe(3);
+  expect(fake.calls.find(({ operation }) => operation === "UpdateStaging")?.variables.input).toMatchObject({
+    multiRegionConfig: { "us-west2": { numReplicas: 3 } },
+  });
+});
+
+test.each([0, 1, 2.5, NaN, Infinity, "", "abc", "1", "2.5", "3e0"])(
+  "rejects invalid PRODUCTION_REPLICAS %p before calling Railway",
+  async (productionReplicas) => {
+    const fake = fakeRailway([]);
+    await expect(
+      deployRailway(["production", "0.1.0"], credential, fake.runtime, {
+        productionOrigin: "https://production.example",
+        productionReplicas,
+      }),
+    ).rejects.toThrow("PRODUCTION_REPLICAS must be an integer >= 2");
+    expect(fake.calls).toEqual([]);
+  },
+);
