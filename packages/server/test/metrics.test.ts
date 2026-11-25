@@ -27,7 +27,9 @@ test("metrics are absent by default", async () => {
 test("metrics refuse tenant credentials and accept the operator bearer", async () => {
   const app = makeBrowserApp(OWNER.hash, undefined, undefined, undefined, metricsConfig);
   try {
-    const first = await scrape(app.instances[0]!, bearer(operator));
+    const [instance] = app.instances;
+    if (instance == null) throw new Error("Expected a metrics instance");
+    const first = await scrape(instance, bearer(operator));
     expect(first.status).toBe(200);
     expect(await first.text()).toContain(
       'openboard_request_duration_seconds_count{instance="operator-test",route="/api/x/metrics",operation="getMetrics",status="200"} 0\n',
@@ -37,11 +39,11 @@ test("metrics refuse tenant credentials and accept the operator bearer", async (
     expect(created.status).toBe(201);
     const { secret } = (await created.json()) as CreatedConnection;
     for (const headers of [undefined, bearer(OWNER.token), session.headers, bearer(secret), bearer("wrong")]) {
-      const response = await scrape(app.instances[0]!, headers);
+      const response = await scrape(instance, headers);
       expect(response.status).toBe(401);
       expect(await response.json()).toMatchObject({ error: { code: "unauthorized" } });
     }
-    const response = await scrape(app.instances[0]!, bearer(operator));
+    const response = await scrape(instance, bearer(operator));
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("text/plain; version=0.0.4");
     expect(response.headers.get("cache-control")).toBe("no-store");
@@ -58,7 +60,8 @@ test("metrics refuse tenant credentials and accept the operator bearer", async (
 test("metrics use route templates and show actual lock, stream and due queue activity", async () => {
   const store = openStore(() => NOW);
   const cluster = makeBrowserApp(OWNER.hash, store, undefined, () => () => {}, metricsConfig);
-  const app = cluster.instances[0]!;
+  const app = cluster.instances[0];
+  if (app == null) throw new Error("Expected a metrics instance");
   try {
     const keys = await store.platform().findBoard("local", "main");
     if (!keys) throw new Error("missing local board");

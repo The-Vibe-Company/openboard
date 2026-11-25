@@ -25,7 +25,9 @@ export function cluster(store: TestStore, build: (store: Store) => App): Cluster
     fetch(request, connection) {
       const index = served.length % instances.length;
       served.push(index + 1);
-      return instances[index]!.fetch(request, connection);
+      const instance = instances[index];
+      if (!instance) throw new Error(`No test app instance at index ${index}`);
+      return instance.fetch(request, connection);
     },
     async drain() {
       await Promise.all(instances.map((instance) => instance.drain()));

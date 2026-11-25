@@ -28,7 +28,8 @@ test("concurrent registration folds once, preserves metadata, and appears only i
     ]);
     expect(pair.map(({ status }) => status).sort()).toEqual([200, 201]);
     const entries = (await Promise.all(pair.map((response) => response.json()))) as OutputOf<typeof createSchema>[];
-    const created = entries.find((entry) => entry.created)!;
+    const created = entries.find((entry) => entry.created);
+    if (created == null) throw new Error("Expected a created schema entry");
     expect(created.schema).toMatchObject({ id: "sandbox@1", by: "ob:user:local-test", at: "2023-11-14T22:13:20.000Z" });
     expect(entries.find((entry) => !entry.created)?.schema).toEqual(created.schema);
     await expectError(await write({ ...registration, description: "Changed." }), 409, "schema_immutable");

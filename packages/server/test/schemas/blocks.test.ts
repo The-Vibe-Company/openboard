@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import type { listMessages, OutputOf, postMessage, readEvents, readThread } from "@openboard/contract";
 import { call, makeApp } from "../support/app.ts";
 
-const fence = (id: string, json: string) => "```json#" + id + "\n" + json + "\n```";
+const fence = (id: string, json: string) => `\`\`\`json#${id}\n${json}\n\`\`\``;
 const schema = {
   name: "sandbox",
   version: 1,
@@ -68,11 +68,11 @@ test("nested structured fences and plain messages have no blocks", async () => {
       `\`\`\`\`markdown\n${unknown}\n\`\`\`\``,
       unknown
         .split("\n")
-        .map((line) => "> " + line)
+        .map((line) => `> ${line}`)
         .join("\n"),
       `- example\n${unknown
         .split("\n")
-        .map((line) => "  " + line)
+        .map((line) => `  ${line}`)
         .join("\n")}`,
       "No fence here.",
     ]) {

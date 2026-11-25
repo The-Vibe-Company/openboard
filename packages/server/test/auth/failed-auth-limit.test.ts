@@ -63,7 +63,7 @@ test("failed bearer checks exhaust only the calling IP's instance bucket", async
       },
     });
     expect(lookups - before).toBe(20);
-    const missing = await instance.fetch(new Request(BOARD_URL.replace("/local/main", "/unknown/main") + "/events"), {
+    const missing = await instance.fetch(new Request(`${BOARD_URL.replace("/local/main", "/unknown/main")}/events`), {
       ip: FIRST_IP,
     });
     expect(missing.status).toBe(429);

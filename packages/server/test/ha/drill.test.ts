@@ -37,7 +37,8 @@ async function openStream(app: App, signal: AbortSignal) {
     }),
   );
   expect(response.status).toBe(200);
-  const reader = response.body!.getReader();
+  if (response.body == null) throw new Error("Expected a stream response body");
+  const reader = response.body.getReader();
   const decoder = new TextDecoder();
   const next = async () => {
     const chunk = await reader.read();
@@ -54,7 +55,8 @@ async function readPosts(stream: Awaited<ReturnType<typeof openStream>>, count: 
   while (ids.length < count) {
     const frame = await stream.next();
     for (const [, data] of frame.matchAll(/^data: (.+)$/gm)) {
-      const event = JSON.parse(data!) as OutputOf<typeof readEvents>["events"][number];
+      if (data == null) throw new Error("Expected event data");
+      const event = JSON.parse(data) as OutputOf<typeof readEvents>["events"][number];
       if (event.type === "message.posted") ids.push(event.cursor);
     }
   }
@@ -158,7 +160,8 @@ if (postgresTestUrl()) {
         expect(await readPosts(stream, 1)).toEqual([id]);
       }
 
-      const cursor = before.at(-1)!;
+      const cursor = before.at(-1);
+      if (cursor == null) throw new Error("Expected a cursor from the initial posts");
       pollCursor = Number(cursor);
       const waiting = longPoll(b, cursor, signal);
       await Promise.race([

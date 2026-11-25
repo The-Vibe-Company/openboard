@@ -105,28 +105,31 @@ async function ok(response: Response) {
 
 test("returns the first result without writing again, even when the new body would not match", () =>
   fixture(async ({ send, instances: [app], events, thread }) => {
-    const first = await ok(await send(app!));
+    if (app == null) throw new Error("Expected an inbound app instance");
+    const first = await ok(await send(app));
     const [reply] = (await thread())?.replies ?? [];
     expect(first).toEqual({ ok: true, matched: [0], results: [{ reply: reply?.id }] });
     const before = await events();
-    expect(await ok(await send(app!, "turn.ignored"))).toEqual(first);
+    expect(await ok(await send(app, "turn.ignored"))).toEqual(first);
     expect(await events()).toEqual(before);
     expect((await thread())?.replies).toHaveLength(1);
   }));
 
 test("returns the first empty result when a previously unmatched delivery now matches", () =>
   fixture(async ({ send, instances: [app], thread }) => {
-    const first = await ok(await send(app!, "turn.ignored"));
+    if (app == null) throw new Error("Expected an inbound app instance");
+    const first = await ok(await send(app, "turn.ignored"));
     expect(first).toEqual({ ok: true, matched: [], results: [] });
-    expect(await ok(await send(app!))).toEqual(first);
+    expect(await ok(await send(app))).toEqual(first);
     expect((await thread())?.replies).toEqual([]);
   }));
 
 test("treats the same delivery ID on another endpoint as a different event", () =>
   fixture(async ({ endpoint, send, instances: [app], thread }) => {
+    if (app == null) throw new Error("Expected an inbound app instance");
     const other = await endpoint("other-runner");
-    const first = await ok(await send(app!));
-    const second = await ok(await send(app!, "turn.finished", other.url));
+    const first = await ok(await send(app));
+    const second = await ok(await send(app, "turn.finished", other.url));
     const replies = (await thread())?.replies ?? [];
     expect(replies).toHaveLength(2);
     expect([first, second]).toEqual(replies.map(({ id }) => ({ ok: true, matched: [0], results: [{ reply: id }] })));
@@ -134,13 +137,14 @@ test("treats the same delivery ID on another endpoint as a different event", () 
 
 test("rolls back a reply when saving the delivery result fails with 503, then processes the retry", () =>
   fixture(async ({ send, instances: [app], events, thread }) => {
+    if (app == null) throw new Error("Expected an inbound app instance");
     const before = await events();
-    const failed = await send(app!);
+    const failed = await send(app);
     expect(failed.status).toBe(503);
     expect(await failed.json()).toMatchObject({ error: { code: "unavailable" } });
     expect(await events()).toEqual(before);
     expect((await thread())?.replies).toEqual([]);
-    const retried = await ok(await send(app!));
+    const retried = await ok(await send(app));
     const [reply] = (await thread())?.replies ?? [];
     expect(reply?.text).toBe("Turn finished");
     expect(retried).toEqual({ ok: true, matched: [0], results: [{ reply: reply?.id }] });
@@ -148,8 +152,9 @@ test("rolls back a reply when saving the delivery result fails with 503, then pr
 
 test("rejects a signed request missing the delivery ID with invalid_request", () =>
   fixture(async ({ inbound, send, instances: [app], events }) => {
+    if (app == null) throw new Error("Expected an inbound app instance");
     const before = await events();
-    const response = await send(app!, "turn.finished", inbound.url, "");
+    const response = await send(app, "turn.finished", inbound.url, "");
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ error: { code: "invalid_request" } });
     expect(await events()).toEqual(before);
@@ -157,7 +162,8 @@ test("rejects a signed request missing the delivery ID with invalid_request", ()
 
 test("simultaneous deliveries return the same result and post one reply", () =>
   fixture(async ({ send, instances: [first, second], thread }) => {
-    const responses = await Promise.all([send(first!), send(second ?? first!)]);
+    if (first == null) throw new Error("Expected an inbound app instance");
+    const responses = await Promise.all([send(first), send(second ?? first)]);
     const replies = (await thread())?.replies ?? [];
     expect(replies).toHaveLength(1);
     const answer = { ok: true, matched: [0], results: [{ reply: replies[0]?.id }] };

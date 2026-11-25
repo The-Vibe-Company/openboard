@@ -96,10 +96,10 @@ test("a schedule ID from another organization answers schedule_not_found on the 
       201,
     );
     const route = `/schedules/${schedule.id}/cancel`;
-    expect(await json(await send("/api/alpha/main" + route, a.headers), 404)).toMatchObject({
+    expect(await json(await send(`/api/alpha/main${route}`, a.headers), 404)).toMatchObject({
       error: { code: "schedule_not_found" },
     });
-    expect(await json(await send("/api/bravo/main" + route, a.headers), 404)).toMatchObject({
+    expect(await json(await send(`/api/bravo/main${route}`, a.headers), 404)).toMatchObject({
       error: { code: "not_found" },
     });
     expect(await json(await send("/api/bravo/main/schedules", b.headers, undefined, "GET"))).toEqual({
