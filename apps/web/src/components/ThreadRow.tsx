@@ -48,17 +48,19 @@ export function ThreadRow({
           <Avatar name={author} src={avatar === failedAvatar ? undefined : avatar} />
         </span>
         <div>
-          <strong>
+          <div className="channel-thread-meta">
+            <strong>{author}</strong>
+            <time dateTime={date} title={date}>
+              {activity}
+            </time>
+            <span>
+              {replies} {replies === 1 ? "reply" : "replies"}
+            </span>
+          </div>
+          <div className="channel-thread-preview">
             {message.deleted ? "Message deleted" : markdownPreview(message.text) || `Thread #${message.id}`}
-          </strong>
-          <div>{author}</div>
+          </div>
         </div>
-        <span className="channel-thread-replies">
-          {replies} {replies === 1 ? "reply" : "replies"}
-        </span>
-        <time dateTime={date} title={date}>
-          {activity}
-        </time>
       </Link>
     </li>
   );

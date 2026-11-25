@@ -1,7 +1,6 @@
 import { defaultRangeExtractor, useWindowVirtualizer } from "@tanstack/react-virtual";
 import { type MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type ThreadSummary, threadPageSize } from "../api/board.ts";
-import { EmptyChannel } from "./EmptyChannel.tsx";
 import { ThreadRow } from "./ThreadRow.tsx";
 import "./ThreadList.css";
 
@@ -10,15 +9,6 @@ type PagedThreads = {
   fetchOlder?: () => void;
   hasOlder: boolean;
 };
-
-export function ThreadList({
-  board,
-  channel,
-  ...page
-}: PagedThreads & { board: { org: string; board: string }; channel: string }) {
-  if (page.threads.length === 0) return <EmptyChannel board={board} channel={channel} />;
-  return <ChannelThreads {...page} />;
-}
 
 function rememberOpenedRow(event: MouseEvent<HTMLAnchorElement>, id: string) {
   if (
@@ -34,7 +24,7 @@ function rememberOpenedRow(event: MouseEvent<HTMLAnchorElement>, id: string) {
   window.history.replaceState({ ...window.history.state, openboardThreadAnchor: id }, "");
 }
 
-function ChannelThreads({ threads, fetchOlder, hasOlder }: PagedThreads) {
+export function ThreadList({ threads, fetchOlder, hasOlder }: PagedThreads) {
   const virtual = hasOlder || threads.length > threadPageSize;
   const list = useRef<HTMLOListElement>(null);
   const [scrollMargin, setScrollMargin] = useState<number | null>(null);
@@ -56,7 +46,7 @@ function ChannelThreads({ threads, fetchOlder, hasOlder }: PagedThreads) {
   const virtualizer = useWindowVirtualizer({
     count: threads.length,
     getItemKey: (index) => threads[index]?.message.id ?? index,
-    // Match the fixed 16-space row in ThreadRow.css.
+    // Match the fixed 64px row in ThreadRow.css.
     estimateSize: () => 64,
     // Preserve the visible thread on a live prepend after the reader scrolls into the list.
     anchorTo: scrollMargin !== null && window.scrollY > scrollMargin ? "end" : "start",
@@ -81,7 +71,7 @@ function ChannelThreads({ threads, fetchOlder, hasOlder }: PagedThreads) {
   const lastIndex = items.at(-1)?.index;
   const anchorMissing = anchor !== undefined && anchorIndex < 0;
   useEffect(() => {
-    if (anchorMissing || lastIndex === threads.length - 1) fetchOlder?.();
+    if (anchorMissing || threads.length === 0 || lastIndex === threads.length - 1) fetchOlder?.();
   }, [anchorMissing, fetchOlder, lastIndex, threads.length]);
 
   const now = Date.now();
