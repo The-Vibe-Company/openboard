@@ -31,6 +31,8 @@ async function addGrantOnNarrowScreen(page: Page, url: string, connectionId: str
   await page.setViewportSize({ width: 320, height: 720 });
   await page.getByRole("button", { name: "Add grant" }).click();
   await page.getByLabel("Connection").selectOption({ label: "agents" });
+  await page.getByRole("button", { name: "Read & post" }).click();
+  await expect(page.getByLabel("Permissions", { exact: true })).toHaveValue("*=read,post");
   await page.getByLabel("Permissions", { exact: true }).fill("deploys/=read,post");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
 

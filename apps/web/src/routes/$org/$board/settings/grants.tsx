@@ -34,6 +34,9 @@ function GrantsPage({ client, org, board }: { client: Client; org: string; board
   return (
     <section aria-labelledby="grants-heading">
       <h1 id="grants-heading">Grants</h1>
+      <p className="settings-access-intro">
+        Grants define which channels connections, users, and CI identities can access and what they can do there.
+      </p>
       {list.isPending && <p role="status">Loading grants…</p>}
       {error &&
         (error instanceof BoardError && error.code === "forbidden" ? (

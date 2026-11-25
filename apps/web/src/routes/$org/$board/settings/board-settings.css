@@ -166,3 +166,21 @@
     padding: calc(3 * var(--space));
   }
 }
+
+.settings-access-intro {
+  max-inline-size: 70ch;
+  margin-block: 0 calc(4 * var(--space));
+  padding-inline-start: calc(3 * var(--space));
+  border-inline-start: var(--stroke) solid var(--control-border);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.board-settings :is(.settings-access-form, .grant-form) {
+  background: light-dark(#fff, #000);
+}
+
+.settings-access-form textarea,
+.grant-form textarea {
+  font-family: var(--font-mono);
+}

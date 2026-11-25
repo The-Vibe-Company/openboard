@@ -1,12 +1,32 @@
 .empty-channel {
   border: var(--stroke) solid var(--border);
   border-radius: var(--radius-card);
-  background: var(--surface);
+  background: light-dark(#fff, #000);
+  text-align: start;
 }
 
-.empty-channel h2 {
+.empty-channel h2,
+.empty-channel h3 {
   margin-block-start: 0;
   color: var(--text);
+  font-family: var(--font-mono);
+}
+
+.empty-channel h3 {
+  font-size: var(--type-base);
+}
+
+.empty-channel-paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: calc(3 * var(--space));
+}
+
+.empty-channel-paths section {
+  padding: calc(3 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  overflow-wrap: anywhere;
 }
 
 .empty-channel pre {
@@ -14,13 +34,17 @@
   white-space: pre-wrap;
 }
 
-.empty-channel .empty-channel-command {
+.empty-channel-command {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
   gap: calc(2 * var(--space));
+  margin-block-start: calc(2 * var(--space));
   color: var(--text);
+}
+
+.empty-channel-command code {
+  min-inline-size: 0;
 }
 
 .empty-channel [role="status"]:not(:empty) {

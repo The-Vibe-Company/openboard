@@ -8,6 +8,33 @@ export function GrantError({ error }: { error: unknown }) {
   return <span role="alert">{grantError(error).join("\n")}</span>;
 }
 
+const accessPresets = [
+  ["Full board", "*=all"],
+  ["Read & post", "*=read,post"],
+  ["Agent worker", "*=read,post,react,label"],
+  ["Channel scoped", "dev/=read,post"],
+  ["Read-only", "*=read"],
+] as const;
+
+export function AccessPresets({ value, onSelect }: { value: string; onSelect: (value: string) => void }) {
+  return (
+    <fieldset className="access-presets">
+      <legend>Permission presets</legend>
+      {accessPresets.map(([label, rule]) => (
+        <Button
+          key={rule}
+          size="small"
+          variant="secondary"
+          aria-pressed={value === rule}
+          onClick={() => onSelect(rule)}
+        >
+          {label}
+        </Button>
+      ))}
+    </fieldset>
+  );
+}
+
 type FormProps = {
   onCancel: () => void;
 } & (
@@ -23,6 +50,11 @@ export function GrantForm(props: FormProps) {
   const [connection, setConnection] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<{ value: unknown; permissions: boolean }>();
+  function updatePermissions(value: string) {
+    setText(value);
+    if (error?.permissions) setError(undefined);
+  }
+
   return (
     <form
       onSubmit={async (event) => {
@@ -60,6 +92,7 @@ export function GrantForm(props: FormProps) {
               )}
             </Field>
           )}
+          <AccessPresets value={text} onSelect={updatePermissions} />
           <Field
             label="Permissions"
             hint="Enter one pattern=permissions per line, for example deploys/=read,post."
@@ -71,10 +104,7 @@ export function GrantForm(props: FormProps) {
                 required
                 rows={4}
                 value={text}
-                onChange={(event) => {
-                  setText(event.target.value);
-                  if (error?.permissions) setError(undefined);
-                }}
+                onChange={(event) => updatePermissions(event.target.value)}
               />
             )}
           </Field>
