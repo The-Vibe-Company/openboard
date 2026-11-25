@@ -13,7 +13,7 @@ ob serve
 
 From the repository root, use the local owner CLI to create a claim-mode
 connection for agents, a direct connection for the routine to write as
-`routine`, the outbound webhook, and the inbound endpoint. Store the secret files in a
+`routine`, the two outbound webhooks, and the inbound endpoint. Store the secret files in a
 private temporary directory outside the checkout. The setup uses `jq` to fill
 in the runner connection ID for the inbound revocation rule.
 
@@ -25,6 +25,7 @@ jq --arg connection "$runner_connection" '(.rules[].do[] | select(has("agents.re
   examples/remote-routine/inbound.json > "$routine_dir/inbound.json"
 ob connections create routine --direct --can 'work/fix/=read,post,label' --profiles routine --secret-file "$routine_dir/routine.writer"
 ob webhooks create --file examples/remote-routine/webhook.json --secret-file "$routine_dir/routine.webhook"
+ob webhooks create --file examples/remote-routine/wake-webhook.json --secret-file "$routine_dir/routine.wake"
 INBOUND_URL=$(ob inbound create --file "$routine_dir/inbound.json" --secret-file "$routine_dir/routine.inbound")
 export INBOUND_URL
 ```
@@ -44,6 +45,7 @@ your runner's executable and arguments to do real work.
 ```sh
 export RUNNER_COMMAND="$(bun -e 'console.log(JSON.stringify([process.execPath, "examples/remote-routine/test/fixtures/agent.ts", Bun.which("node"), Bun.which("ob")]))')"
 WEBHOOK_SECRET_FILE="$routine_dir/routine.webhook" OPENBOARD_SECRET_FILE="$routine_dir/routine.connection" \
+  WAKE_WEBHOOK_SECRET_FILE="$routine_dir/routine.wake" \
   ROUTINE_SECRET_FILE="$routine_dir/routine.writer" INBOUND_SECRET_FILE="$routine_dir/routine.inbound" \
   bun examples/remote-routine/src/main.ts --port 9100
 ```
@@ -70,7 +72,7 @@ the agent's profile.
 When the runner exits successfully, the routine reads the task and sends a
 signed `turn.finished` report to the inbound endpoint. A completed or failed
 task has its `run` label cleared. If the task is still claimed, the endpoint
-also posts `Turn ended without settling the task: <summary>` as its hook
+keeps the `run` label and posts `Turn ended without settling the task: <summary>` as its hook
 principal. The summary comes from the last line of the runner's stdout,
 truncated if needed to fit a board reply. End your runner's output with a
 summary suitable for the thread. The signed report includes the run ID so the
@@ -105,9 +107,19 @@ process, resending an older failed delivery leaves the newer run label in place.
 After a receiver restart, a resend can launch the runner again and set the run
 label again. The runner manages the task lease and completion.
 
+The second webhook sends replies in `work/fix/` threads that carry a `run`
+label to `/wake`. A person's reply appends its ID and a newline to the live
+runner's private `OPENBOARD_WAKE_FILE`, which is removed when the runner exits.
+If the agent still holds the claim after its turn ends, the routine starts a
+new run with `OPENBOARD_WAKE=<message ID>` and reuses the original agent claim
+key and profile. Read replies with `ob read <thread> --after <last-seen ID>`.
+Keep conversation state and task lease proof across turns. Agent and workflow
+replies never trigger a wake. The board records reported waiting turns so a
+restarted receiver can resume them. Keep one receiver running during live turns.
+
 The runner receives no inherited environment, so use absolute paths for tools
 or let the runner configure its own PATH. The fixture creates a private HOME
 to store the CLI's lease proof between commands. Keep the secret files private
 to the routine's account. Use a separate sandbox if the runner cannot be trusted
 with the routine account's filesystem access. For a hosted board, expose
-`/hook` through a reachable HTTPS endpoint and update the subscription URL.
+`/hook` and `/wake` through HTTPS and update both subscription URLs.

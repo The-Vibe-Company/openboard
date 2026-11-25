@@ -6,7 +6,25 @@ import { signingKey } from "./verify.ts";
 // Leave room for the note prefix within the board's 10,000-character message limit.
 const summaryLimit = 9_900;
 
-async function lastLine(stdout: ReadableStream<Uint8Array>) {
+async function lastLine(
+  stdout: ReadableStream<Uint8Array>,
+  exited: Promise<unknown>,
+  drainDeadline: () => AbortSignal,
+) {
+  const reader = stdout.getReader();
+  const stopped = new AbortController();
+  const stop = () => {
+    stopped.abort();
+    void reader.cancel().catch(() => {});
+  };
+  let draining: AbortSignal | undefined;
+  let done = false;
+  void exited.then(() => {
+    if (done) return;
+    draining = drainDeadline();
+    if (draining.aborted) stop();
+    else draining.addEventListener("abort", stop, { once: true });
+  });
   const decoder = new TextDecoder();
   let line = "";
   let summary = "";
@@ -23,9 +41,19 @@ async function lastLine(stdout: ReadableStream<Uint8Array>) {
       line += part.slice(0, summaryLimit - line.length);
     }
   }
-  for await (const chunk of stdout) {
-    if (!process.stdout.write(chunk)) await once(process.stdout, "drain");
-    collect(decoder.decode(chunk, { stream: true }));
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      collect(decoder.decode(chunk.value, { stream: true }));
+      if (!process.stdout.write(chunk.value)) await once(process.stdout, "drain", { signal: stopped.signal });
+    }
+  } catch (error) {
+    if (!stopped.signal.aborted) throw error;
+  } finally {
+    done = true;
+    draining?.removeEventListener("abort", stop);
+    reader.releaseLock();
   }
   collect(decoder.decode());
   return endsWithNewline ? summary : line;
@@ -54,6 +82,7 @@ export function captureTurn(
   child: RunnerProcess,
   report: (summary: string, event: RunEvent) => Promise<void>,
   deadline?: AbortSignal,
+  drainDeadline = () => AbortSignal.timeout(1_000),
 ) {
   function reportError() {
     process.stderr.write("error: turn_report_failed: could not report the runner outcome\n");
@@ -79,18 +108,18 @@ export function captureTurn(
       return undefined;
     });
   // Drain stdout immediately, but wait until the caller has written the run link.
-  const summary = child.stdout ? lastLine(child.stdout).catch(reportError) : "";
-  return () =>
-    outcome
-      .then(async (event) => {
-        if (!event) return;
-        if (event !== "turn.finished") await report("", event);
-        else {
-          const line = await summary;
-          if (line !== undefined) await report(line, event);
-        }
+  const summary = child.stdout
+    ? lastLine(child.stdout, outcome, drainDeadline).catch(() => {
+        reportError();
+        return "";
       })
-      .catch(reportError);
+    : "";
+  return () =>
+    outcome.then(async (event) => {
+      if (!event) return;
+      if (event !== "turn.finished") await report("", event);
+      else await report(await summary, event);
+    });
 }
 
 async function retry<T>(attempt: () => Promise<T>, wait: (ms: number) => Promise<void>): Promise<T> {
@@ -126,6 +155,8 @@ export function createTurnReporter(
     summary: string,
     event: RunEvent = "turn.finished",
     actor?: string,
+    claimKey = deliveryId,
+    id = deps.eventId(),
   ) => {
     const { message } = await retry(
       () => board.readThread({ id: thread }, { signal: AbortSignal.timeout(5_000) }),
@@ -136,15 +167,20 @@ export function createTurnReporter(
     const claimed = state === "claimed";
     const settled = state === "completed" || state === "failed";
     const profile = `run-${thread}`;
-    if (event === "turn.finished" && !claimed && !settled) return;
-    const ownsClaim = claimed && actor !== undefined && message.task?.claim?.actor === actor;
+    const claimActor = claimed ? message.task?.claim?.actor : undefined;
+    const ownsClaim = actor !== undefined && claimActor === actor;
+    if (event === "turn.finished" && !settled && (!claimed || (actor !== undefined && !ownsClaim))) return;
 
-    const id = deps.eventId();
     const timestamp = String(Math.floor(deps.now() / 1000));
     const body = JSON.stringify({
       event,
       ...(event === "turn.finished"
-        ? { settled, summary: summary.slice(0, summaryLimit).toWellFormed().replaceAll("\0", "�") }
+        ? {
+            settled,
+            claimKey,
+            claimActor,
+            summary: summary.slice(0, summaryLimit).toWellFormed().replaceAll("\0", "�"),
+          }
         : { claimed: ownsClaim, profile }),
       externalRef: `ob:${thread}`,
       run: deliveryId,
