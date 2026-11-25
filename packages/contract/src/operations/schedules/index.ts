@@ -80,17 +80,15 @@ export const listSchedules = defineOperation({
 
 export const cancelSchedule = defineOperation({
   name: "cancelSchedule",
-  summary: "Cancel a schedule. This route currently returns no_scheduler.",
+  summary: "Cancel a pending schedule.",
   route: { method: "POST", path: "/schedules/:id/cancel" },
   scope: "board",
   input: { params: Type.Object({ id: Ref("schedule", { pattern: "^s?[1-9][0-9]{0,14}$" }) }) },
   output: Type.Object({ schedule: ScheduleView, canceled: Type.Boolean() }),
-  errors: ["no_scheduler"],
+  errors: ["schedule_not_found", "forbidden"],
   access: null,
   effects: { readOnly: false, idempotent: true, emits: ["ob.schedule.canceled"] },
-  cli: false,
-  mcp: false,
-  why: "Canceling is deferred.",
+  cli: { command: ["schedule", "cancel"], args: ["id"] },
+  mcp: { tool: "cancel_schedule" },
   upstream: true,
-  stub: true,
 });

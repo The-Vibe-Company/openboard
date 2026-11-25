@@ -1,6 +1,15 @@
-import { BoardError, type createSchedule, type listSchedules } from "@openboard/contract";
-import { agents, decideSchedule, grantMatchingClaims, messages, parseId, resolveScheduleTiming } from "@openboard/core";
-import { canReadChannel } from "../../auth/access.ts";
+import { BoardError, type cancelSchedule, type createSchedule, type listSchedules } from "@openboard/contract";
+import {
+  agents,
+  decideCancelSchedule,
+  decideSchedule,
+  grantMatchingClaims,
+  messages,
+  parseId,
+  parseScheduleId,
+  resolveScheduleTiming,
+} from "@openboard/core";
+import { canReadChannel, unrestrictedLocalOwner } from "../../auth/access.ts";
 import { authorOf } from "../../auth/author.ts";
 import { agentOf, callerCan, credentialKind, personalPin, requestScope, workloadOf } from "../../deps.ts";
 import { resolveAttachments } from "../attachments/index.ts";
@@ -79,6 +88,31 @@ export const listSchedulesHandler: Handler<typeof listSchedules> = async (ctx, {
   return { schedules };
 };
 
-export async function noScheduler(): Promise<never> {
-  throw new BoardError("no_scheduler", "this board has no scheduler");
-}
+export const cancelScheduleHandler: Handler<typeof cancelSchedule> = (ctx, { id }) =>
+  ctx.board.write(async (writer) => {
+    const position = parseScheduleId(id);
+    const schedule = position === null ? null : await writer.schedule(position);
+    if (!schedule || !canReadChannel(ctx.by, schedule.channel)) {
+      throw new BoardError("schedule_not_found", "Schedule not found.");
+    }
+    const can = agents.allowedAt(ctx.by[callerCan] ?? {}, schedule.channel);
+    if (
+      !unrestrictedLocalOwner(ctx.by) &&
+      !can.includes("manage") &&
+      (ctx.by.actor !== schedule.by.actor || !can.includes("post"))
+    ) {
+      throw new BoardError(
+        "forbidden",
+        "Only the schedule creator with post access or a channel manager may cancel it.",
+      );
+    }
+    ctx.debitWrite();
+    const { actor, principal, profile } = ctx.by;
+    const decision = decideCancelSchedule(schedule, {
+      head: writer.head,
+      now: ctx.now(),
+      by: { actor, principal, profile },
+    });
+    if (decision.event) await writer.append([decision.event]);
+    return { schedule: decision.schedule, canceled: decision.event !== null };
+  });

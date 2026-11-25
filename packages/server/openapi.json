@@ -534,7 +534,7 @@
     "/schedules/{id}/cancel": {
       "post": {
         "operationId": "cancelSchedule",
-        "summary": "Cancel a schedule. This route currently returns no_scheduler.",
+        "summary": "Cancel a pending schedule.",
         "parameters": [
           {
             "name": "id",
@@ -702,7 +702,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "404": {
-            "description": "not_found",
+            "description": "schedule_not_found, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           },
           "429": {
@@ -717,10 +717,6 @@
           },
           "500": {
             "description": "internal",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
-          },
-          "501": {
-            "description": "no_scheduler",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
           }
         }

@@ -350,6 +350,10 @@ canceled schedules. Lists include readable channels and the caller’s own
 schedules created without read access in channels where it can still post. `ob read 812` prints the thread’s
 pending schedules below its replies.
 
+Use `ob schedule cancel s1` to cancel a pending schedule. The board audit records
+`ob.schedule.canceled`, and `ob schedules --all` shows who canceled it and why.
+The CLI reports outcome `unchanged` when the schedule has already ended.
+
 | Method | Path | | Notes |
 | --- | --- | --- | --- |
 | POST | `/attachments` | U | ≤ 4 MB |
@@ -357,7 +361,7 @@ pending schedules below its replies.
 | POST | `/attachments/uploads`, `/attachments/uploads/:id` | U-stub | 501 `no_direct_uploads` |
 | POST | `/schedules` | U | 201 with `{ schedule, mentions? }`. Set the first send with `in` or `at`, or use the default from `every` on a repeat. A repeat allows at most one stop. Invalid timing returns 400 `invalid_request`. |
 | GET | `/schedules` | U | `{ schedules }` in creation order, pending unless `all=true`. Filter by `re` (any readable message in a thread), `channel` or `by` (actor ID, handle, or `me`). An unknown or unreadable thread reference returns 404 `message_not_found`. |
-| POST | `/schedules/:id/cancel` | U-stub | 501 `no_scheduler` |
+| POST | `/schedules/:id/cancel` | U | `{ schedule, canceled }`. The creator needs post access and a channel manager can also cancel. Unknown or unreadable IDs return 404 `schedule_not_found`; other disallowed callers get 403 `forbidden`. A schedule that is already done or canceled returns `canceled: false`. |
 | POST, GET | `/tasks`; POST `/tasks/batch`; GET `/tasks/batch/:id` | U | Batch roots in request order. Use a caller-scoped batch ID to retry or read current roots. A proxy can pass its upstream `request` digest in the POST body or GET query. A changed request under the same ID returns 409 `duplicate_id`. A missing batch returns 404 `batch_not_found`. |
 | POST | `/tasks/claim` | U | Channel or subtree and optional lease. |
 | POST | `/tasks/:id/{claim,renew,release,complete,fail,block,unblock,reopen,assign,needs,cancel}` | U | |

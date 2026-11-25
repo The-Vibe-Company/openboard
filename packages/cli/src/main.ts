@@ -1,7 +1,7 @@
 import process from "node:process";
 import { setTimeout } from "node:timers/promises";
 import { BoardError, type ClientOptions, createClient, tail } from "@the-vibe-company/openboard";
-import { Misuse, type StandaloneContext } from "./commands/index.ts";
+import { Misuse, scheduleCommand, type StandaloneContext } from "./commands/index.ts";
 import { type AnyCommand, commands } from "./commands/usage.ts";
 import { clientConfig } from "./config.ts";
 import { consoleOutput, type Output, printError } from "./output.ts";
@@ -20,6 +20,14 @@ export interface CliOptions {
 }
 
 function find(words: readonly string[]): AnyCommand | undefined {
+  // A schedule with timing flags may target the channel named "cancel".
+  if (
+    words[0] === "schedule" &&
+    words[1] === "cancel" &&
+    words.slice(2).some((word) => word === "--in" || word === "--at" || word === "--every")
+  ) {
+    return scheduleCommand;
+  }
   return commands
     .filter((command) => command.words.every((word, at) => words[at] === word))
     .sort((a, b) => b.words.length - a.words.length)[0];

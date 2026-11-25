@@ -97,3 +97,60 @@ test("schedules sends its thread and optional filters and prints each schedule o
     `s2  #812 · once · next in 1d (${next}) · by Mina  Second …`,
   ]);
 });
+
+test.each([true, false])("schedule cancel formats the outcome (canceled: %s)", async (canceled) => {
+  const out: string[] = [];
+  const ended = {
+    ...schedule,
+    state: "canceled",
+    next: null,
+    canceled: { by: { actor: "mina" }, reason: "canceled" },
+  };
+  const outcome = canceled ? "canceled" : "unchanged";
+  for (const json of [false, true]) {
+    const result = await runCli(
+      ["schedule", "cancel", "s1", ...(json ? ["--json"] : [])],
+      { BOARD_URL: url },
+      {
+        fetch: async (request) => {
+          expect(request.method).toBe("POST");
+          expect(request.url).toBe(`${url}/schedules/s1/cancel`);
+          return Response.json({ schedule: ended, canceled });
+        },
+        output: {
+          out: (line) => out.push(line),
+          err: (line) => {
+            throw new Error(line);
+          },
+        },
+      },
+    );
+    expect(result).toBe(0);
+  }
+  expect(out[0]).toBe(
+    `s1  #812 · once · canceled · by Mina · canceled by mina (canceled)\n    ${text}\nstate: canceled\noutcome: ${outcome}`,
+  );
+  expect(JSON.parse(out[1] ?? "")).toEqual({ schedule: ended, outcome });
+});
+
+test("schedule still accepts cancel as a channel when a send time is supplied", async () => {
+  const result = await runCli(
+    ["schedule", "cancel", "ping", "--every", "1h"],
+    { BOARD_URL: url },
+    {
+      fetch: async (request) => {
+        expect(request.method).toBe("POST");
+        expect(request.url).toBe(`${url}/schedules`);
+        expect(await request.json()).toMatchObject({ channel: "cancel", text: "ping", every: "1h" });
+        return Response.json({ schedule });
+      },
+      output: {
+        out: () => {},
+        err: (line) => {
+          throw new Error(line);
+        },
+      },
+    },
+  );
+  expect(result).toBe(0);
+});

@@ -60,6 +60,7 @@ export { decideRenewTask } from "./tasks/renew.ts";
 export { decideReopenTask } from "./tasks/reopen.ts";
 export { decideCompleteTask, decideSettlement } from "./tasks/settle.ts";
 export type { ChannelCreated };
+export { decideCancelSchedule } from "./schedules/cancel.ts";
 import type { ScheduleCanceled, ScheduleCreated } from "./schedules/create.ts";
 export { decideSchedule, parseScheduleId, type ScheduleCanceled, type ScheduleCreated } from "./schedules/create.ts";
 export { checkScheduleTiming, nextScheduleTime, resolveScheduleTiming } from "./schedules/timing.ts";
