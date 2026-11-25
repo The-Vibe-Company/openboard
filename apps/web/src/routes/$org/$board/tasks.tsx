@@ -16,14 +16,14 @@ export const Route = createFileRoute("/$org/$board/tasks")({
 
 const STATE_FILTERS = [
   "open",
-  "all",
+  "waiting",
   "ready",
   "claimed",
-  "waiting",
   "blocked",
   "completed",
   "failed",
   "canceled",
+  "all",
 ] as const;
 type StateFilter = (typeof STATE_FILTERS)[number];
 
@@ -68,9 +68,7 @@ function TasksHeader({
     <div className="board-view-head">
       <div>
         <h1 id="board-tasks-heading">Tasks</h1>
-        <p className="board-view-sub">
-          Queue and board view across {channelFilter ? `#${channelFilter}` : "all channels"}. Updates live over SSE.
-        </p>
+        <p className="board-view-sub">oldest first</p>
       </div>
       <div className="board-view-controls">
         <Select
@@ -141,7 +139,7 @@ function BoardTasksPage() {
   const filtered = useMemo(() => filterTasks(allTasks, stateFilter), [allTasks, stateFilter]);
 
   return (
-    <section className="board-view" aria-labelledby="board-tasks-heading">
+    <section className="board-view board-ledger" aria-labelledby="board-tasks-heading">
       <TasksHeader
         channelFilter={channelFilter}
         channels={channels}
@@ -151,20 +149,6 @@ function BoardTasksPage() {
         onLayout={setLayout}
         onToggleNew={() => setCreating((c) => !c)}
       />
-      {creating && (
-        <NewTaskForm
-          board={board}
-          defaultChannel={channelFilter || channels[0]?.path || "general"}
-          onCancel={() => setCreating(false)}
-          onCreated={async () => {
-            setCreating(false);
-            await Promise.all([
-              queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) }),
-              queryClient.invalidateQueries({ queryKey: boardKeys.channels(board), exact: true }),
-            ]);
-          }}
-        />
-      )}
       {layout === "list" && (
         <fieldset className="tasks-pills" aria-label="Filter by task state">
           {STATE_FILTERS.map((state) => (
@@ -180,6 +164,20 @@ function BoardTasksPage() {
             </button>
           ))}
         </fieldset>
+      )}
+      {creating && (
+        <NewTaskForm
+          board={board}
+          defaultChannel={channelFilter || channels[0]?.path || "general"}
+          onCancel={() => setCreating(false)}
+          onCreated={async () => {
+            setCreating(false);
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) }),
+              queryClient.invalidateQueries({ queryKey: boardKeys.channels(board), exact: true }),
+            ]);
+          }}
+        />
       )}
       {query.isPending && <p role="status">Loading tasks…</p>}
       {query.isError && <p role="alert">Could not load board tasks.</p>}
