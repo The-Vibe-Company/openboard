@@ -4,7 +4,6 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  border-block-start: var(--stroke) solid var(--border);
   overflow-anchor: none;
 }
 

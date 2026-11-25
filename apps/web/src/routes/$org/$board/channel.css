@@ -1,7 +1,16 @@
+.board-shell .shell-content:has(> .channel-view) {
+  padding: 0 12px;
+}
+
+.board-shell:not([data-reconnecting]) .shell-content:has(> .channel-view) > .connection-banner {
+  display: none;
+}
+
 .channel-view {
   display: flex;
   flex-direction: column;
-  gap: calc(4 * var(--space));
+  --channel-dock: 0px;
+  min-block-size: calc(100dvh - 3.5rem);
   min-inline-size: 0;
 }
 
@@ -10,14 +19,31 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: calc(2.5 * var(--space));
+  gap: 8px;
+  min-block-size: 46px;
+  padding: 4px 8px;
+  border-block-end: 1px solid var(--board-hairline);
 }
 
-.channel-header h1 {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(1.5 * var(--space));
+.board-shell .channel-header h1 {
   margin: 0;
+  font: inherit;
+  font-weight: 600;
+}
+
+.channel-header h1::before {
+  content: "#" / "";
+  margin-inline-end: 2px;
+  color: var(--board-faint);
+}
+
+.channel-live {
+  color: var(--board-muted);
+  white-space: nowrap;
+}
+
+.board-shell[data-reconnecting] .channel-live {
+  visibility: hidden;
 }
 
 .channel-filter-bar {
@@ -33,25 +59,25 @@
   gap: calc(1.5 * var(--space));
   min-block-size: var(--control-small);
   padding: 0 calc(2.5 * var(--space));
-  border: var(--stroke) solid var(--border);
+  border: var(--stroke) solid var(--board-hairline);
   border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--muted);
+  background: var(--board-surface);
+  color: var(--board-muted);
 }
 
 .channel-filter-input:focus-within {
   border-color: var(--control-border);
-  color: var(--text);
+  color: var(--board-text);
 }
 
 .channel-filter-input input {
-  inline-size: min(44vw, 13rem);
-  min-block-size: calc(var(--control-small) - 2px);
+  inline-size: 14ch;
+  min-block-size: 24px;
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--text);
-  font-size: var(--type-small);
+  color: var(--board-text);
+  font: inherit;
   outline: none;
 }
 
@@ -61,15 +87,15 @@
   align-items: center;
   gap: calc(2 * var(--space));
   padding: calc(1.5 * var(--space)) calc(3 * var(--space));
-  border: var(--stroke) solid var(--border);
+  border: var(--stroke) solid var(--board-hairline);
   border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--muted);
+  background: var(--board-surface);
+  color: var(--board-muted);
   font-size: var(--type-small);
 }
 
 .channel-filter-active code {
-  color: var(--text);
+  color: var(--board-text);
 }
 
 .channel-view > p {
@@ -87,12 +113,10 @@
 
 .channel-view > .composer {
   position: sticky;
-  inset-block-end: 0;
+  inset-block-end: var(--channel-dock);
   z-index: 1;
-  margin-block-end: 0;
-  padding-block: calc(2 * var(--space));
-  border-block-start: var(--stroke) solid var(--border);
-  background: var(--background);
+  flex-shrink: 0;
+  margin-block: auto 8px;
 }
 
 /* Keep keyboard focus visible when navigating the content above the composer. */
@@ -102,13 +126,15 @@
 }
 
 @media (max-width: 48rem) {
-  .channel-header {
-    align-items: stretch;
+  .channel-view {
+    --channel-dock: calc(54px + env(safe-area-inset-bottom));
+    min-block-size: calc(100dvh - 108px - var(--channel-dock));
+    margin-block-end: var(--channel-dock);
   }
 
   .channel-filter-bar {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
     inline-size: 100%;
     gap: calc(2 * var(--space));
   }
@@ -126,10 +152,5 @@
     inline-size: 100%;
     min-inline-size: 0;
     font-size: 16px;
-  }
-
-  .channel-view > .composer {
-    position: static;
-    padding-block-start: calc(3 * var(--space));
   }
 }

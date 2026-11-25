@@ -4,14 +4,6 @@
   margin-block-end: calc(4 * var(--space));
 }
 
-.composer-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(2 * var(--space));
-}
-
 .composer-label {
   display: block;
   margin-block-end: var(--space);
@@ -146,14 +138,6 @@
   font-size: var(--type-small);
 }
 
-.composer-hint kbd {
-  padding: 1px 4px;
-  border: var(--stroke) solid var(--border);
-  border-radius: 4px;
-  background: var(--surface);
-  font-size: 11px;
-}
-
 .composer-file-input {
   display: none;
 }
@@ -176,5 +160,62 @@
 
   .composer-tool-btn {
     padding: var(--space) calc(2.5 * var(--space));
+  }
+}
+
+.channel-view > .composer {
+  padding: 8px;
+  outline: 2px dotted var(--board-hairline);
+  outline-offset: -1px;
+  background: var(--board-bg);
+}
+
+.channel-view .composer textarea,
+.channel-view .composer-mode,
+.channel-view .composer-tool-btn {
+  border: 0;
+  background: transparent;
+}
+
+.channel-view .composer textarea {
+  min-block-size: 60px;
+  padding: 4px;
+  color: var(--board-text);
+  font-family: inherit;
+}
+
+.channel-view .composer-mode button[aria-pressed="true"],
+.channel-view .composer-tool-btn:hover {
+  background: var(--board-shade);
+  box-shadow: none;
+}
+
+.channel-view .composer-hint {
+  margin-inline-start: auto;
+  color: var(--board-faint);
+}
+
+.channel-view .composer-footer > .ui-button {
+  min-block-size: 30px;
+  background: var(--board-text);
+  color: var(--board-surface);
+}
+
+@media (max-width: 48rem) {
+  .channel-view .composer textarea {
+    font-size: 16px;
+  }
+
+  .channel-view .composer-tools {
+    gap: 2px;
+  }
+
+  .channel-view .composer-mode button,
+  .channel-view .composer-tool-btn {
+    padding-inline: 5px;
+  }
+
+  .channel-view .composer-footer > .ui-button {
+    margin-inline-start: auto;
   }
 }

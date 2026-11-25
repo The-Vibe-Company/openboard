@@ -1,6 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { BoardError } from "@the-vibe-company/openboard";
-import { type ChangeEvent, type FormEvent, type Ref, type RefObject, useId, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
 import { Button, Input, PaperclipIcon, TagIcon, Textarea, XIcon } from "../ui/index.ts";
@@ -191,21 +200,9 @@ export function Composer({ ref, board, allowTask, onPost, onCreateTask }: Compos
 
   return (
     <form ref={ref} className="composer" onSubmit={s.submit}>
-      <div className="composer-head">
-        <label htmlFor={messageId} className="composer-label">
-          Message
-        </label>
-        {allowTask && onCreateTask && (
-          <fieldset className="composer-mode" aria-label="Post type">
-            <button type="button" aria-pressed={s.mode === "message"} onClick={() => s.setMode("message")}>
-              Message
-            </button>
-            <button type="button" aria-pressed={s.mode === "task"} onClick={() => s.setMode("task")}>
-              Task
-            </button>
-          </fieldset>
-        )}
-      </div>
+      <label htmlFor={messageId} className={allowTask ? "sr-only" : "composer-label"}>
+        Message
+      </label>
       <Textarea
         id={messageId}
         rows={3}
@@ -243,7 +240,18 @@ export function Composer({ ref, board, allowTask, onPost, onCreateTask }: Compos
         canAttach={s.canAttach}
         onFilesSelected={s.onFilesSelected}
         onToggleLabels={() => s.setShowLabels((cur) => !cur)}
-      />
+      >
+        {allowTask && onCreateTask && (
+          <fieldset className="composer-mode" aria-label="Post type">
+            <button type="button" aria-pressed={s.mode === "message"} onClick={() => s.setMode("message")}>
+              Message
+            </button>
+            <button type="button" aria-pressed={s.mode === "task"} onClick={() => s.setMode("task")}>
+              Task
+            </button>
+          </fieldset>
+        )}
+      </ComposerFooter>
       {s.error && (
         <div role="alert">
           <div>{s.error.message}</div>
@@ -316,6 +324,7 @@ function ComposerAttachments({ files, onRemove }: { files: readonly Uploaded[]; 
 }
 
 function ComposerFooter({
+  children,
   hasBoard,
   isTask,
   showLabels,
@@ -326,6 +335,7 @@ function ComposerFooter({
   onFilesSelected,
   onToggleLabels,
 }: {
+  children: ReactNode;
   hasBoard: boolean;
   isTask: boolean;
   showLabels: boolean;
@@ -362,10 +372,9 @@ function ComposerFooter({
         <button type="button" className="composer-tool-btn" aria-pressed={showLabels} onClick={onToggleLabels}>
           <TagIcon width={14} height={14} /> Labels
         </button>
-        <span className="composer-hint">
-          <kbd>⌘</kbd>+<kbd>↵</kbd> to {isTask ? "create" : "post"}
-        </span>
+        {children}
       </div>
+      <span className="composer-hint">⌘↵ to {isTask ? "create" : "post"}</span>
       <Button type="submit" pending={pending} disabled={uploading || !canSubmit}>
         {pending ? (isTask ? "Creating…" : "Posting…") : isTask ? "Create task" : "Post"}
       </Button>
