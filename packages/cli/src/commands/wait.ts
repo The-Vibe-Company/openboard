@@ -1,15 +1,12 @@
 import { BoardError } from "@the-vibe-company/openboard";
+import { durationPart } from "../duration.ts";
 import { messageLine, shellWord } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 
 const MAX_POLL_SECONDS = 120;
 const MAX_TIMEOUT_MS = 2_147_483_647; // Largest delay supported by Node timers.
-const DURATION_UNIT_MS = { "": 1_000, s: 1_000, m: 60_000, h: 3_600_000 } as const;
-
 function timeoutMs(value: string): number {
-  const duration = /^(\d+(?:\.\d+)?)([smh]?)$/.exec(value);
-  const unit = (duration?.[2] ?? "") as keyof typeof DURATION_UNIT_MS;
-  const ms = Math.ceil(Number(duration?.[1]) * DURATION_UNIT_MS[unit]);
+  const ms = value.endsWith("d") ? NaN : Math.ceil(durationPart(value, 1000));
   if (!Number.isFinite(ms) || ms <= 0 || ms > MAX_TIMEOUT_MS) {
     throw new Misuse("--timeout takes a positive duration in seconds, minutes or hours");
   }

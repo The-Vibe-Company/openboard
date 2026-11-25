@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { BoardError, type CliSpec, claimNextTask, createTaskBatch, operations } from "@openboard/contract";
+import { leaseSeconds } from "../duration.ts";
 import { formats } from "../output.ts";
 import { uploadFiles } from "./attachments/attach.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
@@ -102,7 +103,7 @@ function inputOf(
     if (nullEntries.has(flag)) putEntry(input, name, value, null);
     else if (field.type === "object") addEntry(input, name, word, value, [...nullEntries.values()].includes(name));
     else if (field.type === "array") input[name] = [...((input[name] as string[] | undefined) ?? []), value];
-    else input[name] = optionValue(field, value);
+    else input[name] = name === "lease" && field.type === "integer" ? leaseSeconds(value) : optionValue(field, value);
     at += 1;
   }
   if (alternative !== undefined) {
