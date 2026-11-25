@@ -14,6 +14,10 @@ the backup bucket configured. Restore requires a destination without a
 database. See [local restore](https://github.com/The-Vibe-Company/openboard/blob/main/docs/codebase.md#restore-a-local-board)
 for point-in-time and standalone snapshot recovery.
 
+To open a hosted export locally, run `openboard import acme.tar.gz --to ./.openboard`
+and start the server with that data directory. Choose another source board
+with `--board <slug>`. See [organization import](https://github.com/The-Vibe-Company/openboard/blob/main/docs/codebase.md#import-an-organization-export-into-local-mode).
+
 ## First steps
 
 Use the board and channel named by the caller. The examples use `dev` and

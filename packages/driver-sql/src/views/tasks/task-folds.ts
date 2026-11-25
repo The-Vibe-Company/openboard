@@ -173,7 +173,8 @@ async function foldTaskRow(tx: Db, dialect: Dialect, keys: BoardKeys, event: Tas
     epoch,
     actor: by.actor,
     until: untilMs,
-    hash: Uint8Array.from(Buffer.from(tokenHash, "hex")),
+    // Organization exports keep the claim state but redact its proof.
+    hash: typeof tokenHash === "string" ? Uint8Array.from(Buffer.from(tokenHash, "hex")) : null,
   });
 }
 

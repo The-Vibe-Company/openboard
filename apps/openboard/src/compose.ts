@@ -130,8 +130,10 @@ export async function compose(
 
 export {
   ensureRestoreTarget,
+  importSqlite,
   localSnapshot,
   MissingBackupBlob,
+  RestoreDestinationExists,
   restoreSqlite,
   SnapshotAfterCutoff,
 } from "@openboard/driver-sqlite";

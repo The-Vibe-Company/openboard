@@ -32,6 +32,12 @@ export function localSnapshot(path: string): RestoreSource {
 
 export class SnapshotAfterCutoff extends Error {}
 
+export class RestoreDestinationExists extends BoardError {
+  constructor() {
+    super("invalid_request", "Restore destination already contains a database");
+  }
+}
+
 export class MissingBackupBlob extends BoardError {
   constructor(sha256: string) {
     super("invalid_request", `Missing attachment blob ${sha256}`);
@@ -74,14 +80,14 @@ async function rebuild(path: string, source: RestoreSource) {
   return { replayed, hashes: rows.map((row) => String(row.sha256)) };
 }
 
-async function fetchBlobs(dir: string, hashes: readonly string[], source: RestoreSource) {
+async function fetchBlobs(dir: string, hashes: readonly string[], blob: RestoreSource["blob"], requireBlobs: boolean) {
   const blobs = sqliteBlobs(dir);
   for (const sha256 of hashes) {
     if (!/^[0-9a-f]{64}$/.test(sha256)) throw new Error("Invalid snapshot attachment hash");
-    const body = await source.blob(sha256);
+    const body = await blob(sha256);
     if (!body) {
       // A standalone SQLite snapshot contains metadata only. Its sibling blob store is optional.
-      if (!source.events) continue;
+      if (!requireBlobs) continue;
       throw new MissingBackupBlob(sha256);
     }
     const bytes = await new Response(body).bytes();
@@ -103,8 +109,7 @@ async function exists(path: string) {
 
 export async function ensureRestoreTarget(dir: string) {
   for (const suffix of ["", "-wal", "-shm", "-journal"]) {
-    if (await exists(join(dir, databaseName + suffix)))
-      throw new BoardError("invalid_request", "Restore destination already contains a database");
+    if (await exists(join(dir, databaseName + suffix))) throw new RestoreDestinationExists();
   }
 }
 
@@ -125,24 +130,34 @@ async function publish(staged: string, dir: string, hashes: readonly string[]) {
   try {
     await link(join(staged, databaseName), join(dir, databaseName));
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "EEXIST")
-      throw new BoardError("invalid_request", "Restore destination already contains a database");
+    if (error instanceof Error && "code" in error && error.code === "EEXIST") throw new RestoreDestinationExists();
     throw error;
   }
 }
 
-export async function restoreSqlite(destination: string, source: RestoreSource) {
+export async function stageSqlite<T extends { hashes: string[] }>(
+  destination: string,
+  rebuild: (path: string) => Promise<T>,
+  blob: RestoreSource["blob"],
+  requireBlobs: boolean,
+  publishStaged = publish,
+) {
   const dir = resolve(destination);
   await ensureRestoreTarget(dir);
   const parent = dirname(dir);
   await mkdir(parent, { recursive: true, mode: 0o700 });
   const staged = await mkdtemp(join(parent, ".openboard-restore-"));
   try {
-    const { replayed, hashes } = await rebuild(join(staged, databaseName), source);
-    await fetchBlobs(staged, hashes, source);
-    await publish(staged, dir, hashes);
-    return replayed;
+    const result = await rebuild(join(staged, databaseName));
+    await fetchBlobs(staged, result.hashes, blob, requireBlobs);
+    await publishStaged(staged, dir, result.hashes);
+    return result;
   } finally {
     await rm(staged, { recursive: true, force: true });
   }
+}
+
+export async function restoreSqlite(destination: string, source: RestoreSource) {
+  const { replayed } = await stageSqlite(destination, (path) => rebuild(path, source), source.blob, !!source.events);
+  return replayed;
 }

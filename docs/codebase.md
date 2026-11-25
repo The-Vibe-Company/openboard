@@ -149,7 +149,7 @@ packages/server/src/
   web/        assets.ts
 
 apps/openboard/src/
-  main.ts  config.ts  compose.ts  serve.ts  migrate.ts  restore.ts  reproject.ts
+  main.ts  config.ts  compose.ts  serve.ts  migrate.ts  restore.ts  import.ts  reproject.ts
 ```
 
 One write is one transaction (decide, append events, fold, insert outbox and job rows, commit, D10); on Postgres every board write starts by locking the board's row, so log positions are gap-free and commit in order within a board (D33).
@@ -306,7 +306,7 @@ What enforces isolation, in v1 (D33): only step 3 can create a scope; every view
 | Count and size quotas per organization | `Quotas` port, pipeline step 6; error `quota_exceeded` with `next` | enforced (M7) |
 | Rate limits per organization and credential | `RateLimits` port, pipeline step 4; error `rate_limited` with `Retry-After` | enforced (M7); cheap per-request throttles are per instance; counters that must hold across instances use Postgres |
 | Usage metering | `Meter` port, pipeline step 8, keyed by `effects.meter`, daily rollups as a job | designed; rollups after v1 |
-| Organization export | the log-shipping format, importable into `ob serve` | designed; built with backups (M15) |
+| Organization export | the log-shipping format, importable into `ob serve` | available (M15) |
 | Organization deletion | soft delete, hard delete by a job after 30 days | enforced (M7) |
 | Audit of administrative actions | `ob.*` events in the log, read at `{BOARD_URL}/x/audit` and `/api/x/orgs/:org/audit` (D23) | enforced (M4) |
 | SSRF guard on webhook targets, no tenant override | webhook dispatcher | enforced (M11) |
@@ -571,3 +571,23 @@ the restored board's first snapshot has access to already-shipped files. Use
 `openboard restore --from .openboard/backups/<snapshot> --to .openboard` to
 restore a local snapshot without a bucket. Keep the original sibling
 `blobs/` directory if you need downloads from a standalone SQLite snapshot.
+
+#### Import an organization export into local mode
+
+Run `openboard import acme.tar.gz --to ./.openboard`, then start
+`ob serve` with `OPENBOARD_DATA_DIR=./.openboard`. The destination must
+be empty or absent so the database and blobs can be published together.
+Local mode serves one organization and board,
+so the import maps one board onto `local/main`. It selects the only board
+in a single-board export and defaults to `main` in a multi-board export.
+Use `--board ops` to select a different board. The command reports the
+selected board, event and file counts, and any omitted boards.
+
+The importer preserves event positions and authors. It keeps administrative
+events as history and leaves accounts, access policies, credentials and
+automation inactive. Use the printed `ob connections create` commands to
+recreate connections with permissions you choose. Exports that declare no
+attachment bytes preserve message attachment references. When the archive
+includes files, it uses the log-shipping entry names
+`attachments/<board-id>/<attachment-id>.json` and `blobs/sha256/<hash>`.
+The importer verifies the file hashes before publishing the database.
