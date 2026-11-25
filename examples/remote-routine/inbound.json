@@ -1,9 +1,29 @@
 {
   "name": "remote-routine-status",
-  "can": { "work/fix/": ["read", "post", "label"] },
+  "can": { "work/fix/": ["read", "post", "label", "manage"] },
   "verify": { "preset": "standard-webhooks" },
   "thread": { "from": "{{body.externalRef}}", "pattern": "^ob:(\\d+)$" },
   "rules": [
+    {
+      "when": { "body.event": ["run.failed", "run.expired"], "body.claimed": true },
+      "do": [
+        { "label": { "unset": ["run"], "if": { "run": "{{body.run}}" } } },
+        { "task.expire": {} },
+        {
+          "agents.revoke": { "connection": "REPLACE_WITH_RUNNER_CONNECTION_ID", "profile": "{{thread.claim.profile}}" }
+        },
+        { "reply": "Run {{body.run}} failed; the task is claimable again." }
+      ]
+    },
+    {
+      "when": { "body.event": ["run.failed", "run.expired"], "body.claimed": false },
+      "do": [
+        { "label": { "unset": ["run"], "if": { "run": "{{body.run}}" } } },
+        {
+          "agents.revoke": { "connection": "REPLACE_WITH_RUNNER_CONNECTION_ID", "profile": "{{body.profile}}" }
+        }
+      ]
+    },
     {
       "when": { "body.event": "turn.finished", "body.settled": false },
       "do": [

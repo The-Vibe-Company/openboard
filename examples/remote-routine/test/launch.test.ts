@@ -123,7 +123,9 @@ test("rejects bad signatures, deduplicates deliveries, and completes two ready t
     if (!secret) throw new Error("board did not issue a signing secret");
     const launch = createLauncher(app.url, connectionSecret, [process.execPath, agent, node, launcher]);
     receive = createRoutine(secret, now, async (thread, id) => {
-      const { exited } = await launch(thread, id);
+      const {
+        child: { exited },
+      } = await launch(thread, id);
       children.push({ thread, exited });
     });
     const first = await app.owner.createTask({ channel: "work/fix/web", text: "fix the build" });

@@ -2,10 +2,10 @@ import { expect, test } from "bun:test";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import { createApp, mintLocalOwnerToken } from "@openboard/server";
 import { createClient } from "@the-vibe-company/openboard";
-import inboundSpec from "../inbound.json" with { type: "json" };
 import { createLauncher } from "../src/launch.ts";
 import { createLinkedLauncher } from "../src/link.ts";
 import { captureTurn, createTurnReporter } from "../src/report.ts";
+import { createRunnerConnection, installInbound } from "./support.ts";
 
 const now = () => 1_700_000_000_000;
 
@@ -50,15 +50,8 @@ test.each(["claimed", "completed", "failed"] as const)(
     const app = setup();
     try {
       const { board } = app;
-      const { inbound, secret } = await board.createInbound(inboundSpec as Parameters<typeof board.createInbound>[0]);
-      if (!secret) throw new Error("board did not generate an inbound signing secret");
-
-      const { secret: connectionSecret } = await board.createConnection({
-        name: "remote-routine",
-        can: { "work/fix/": ["read", "post", "label"] },
-        profiles: ["run-*"],
-        direct: false,
-      });
+      const { connection, secret: connectionSecret } = await createRunnerConnection(board);
+      const { inbound, secret } = await installInbound(board, connection.id);
       const { task } = await board.createTask({ channel: "work/fix/web", text: "fix the build" });
       const id = task.id;
       const { claim } = await board.claimTask({ id });
@@ -86,7 +79,7 @@ test.each(["claimed", "completed", "failed"] as const)(
       });
       const finished = Promise.withResolvers<void>();
       const run = createLinkedLauncher(board, async (thread, deliveryId) => {
-        const child = await launch(thread, deliveryId);
+        const { child } = await launch(thread, deliveryId);
         const afterLink = captureTurn(child, (line) => report(thread, deliveryId, line));
         return () => void afterLink().then(finished.resolve, finished.reject);
       });
@@ -147,8 +140,8 @@ async function withClaimedTask(run: (fixture: Awaited<ReturnType<typeof claimedT
 
 async function claimedTask(app: ReturnType<typeof setup>) {
   const { board } = app;
-  const { inbound, secret } = await board.createInbound(inboundSpec as Parameters<typeof board.createInbound>[0]);
-  if (!secret) throw new Error("board did not generate an inbound signing secret");
+  const { connection } = await createRunnerConnection(board);
+  const { inbound, secret } = await installInbound(board, connection.id);
   const { task } = await board.createTask({ channel: "work/fix/web", text: "fix the build" });
   const id = task.id;
   await board.claimTask({ id });

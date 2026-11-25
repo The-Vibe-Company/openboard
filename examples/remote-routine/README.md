@@ -14,17 +14,27 @@ ob serve
 From the repository root, use the local owner CLI to create a claim-mode
 connection for agents, a direct connection for the routine to write as
 `routine`, the outbound webhook, and the inbound endpoint. Store the secret files in a
-private temporary directory outside the checkout.
+private temporary directory outside the checkout. The setup uses `jq` to fill
+in the runner connection ID for the inbound revocation rule.
 
 ```sh
 export BOARD_URL=http://127.0.0.1:8787/api/local/main
 routine_dir=$(mktemp -d)
-ob connections create remote-routine --can 'work/fix/=read,post,label' --profiles 'run-*' --secret-file "$routine_dir/routine.connection"
+runner_connection=$(ob connections create remote-routine --can 'work/fix/=read,post,label' --profiles 'run-*' --secret-file "$routine_dir/routine.connection" --json | jq -er '.connection.id')
+jq --arg connection "$runner_connection" '(.rules[].do[] | select(has("agents.revoke")) | .["agents.revoke"].connection) = $connection' \
+  examples/remote-routine/inbound.json > "$routine_dir/inbound.json"
 ob connections create routine --direct --can 'work/fix/=read,post,label' --profiles routine --secret-file "$routine_dir/routine.writer"
 ob webhooks create --file examples/remote-routine/webhook.json --secret-file "$routine_dir/routine.webhook"
-INBOUND_URL=$(ob inbound create --file examples/remote-routine/inbound.json --secret-file "$routine_dir/routine.inbound")
+INBOUND_URL=$(ob inbound create --file "$routine_dir/inbound.json" --secret-file "$routine_dir/routine.inbound")
 export INBOUND_URL
 ```
+
+For an existing installation, let active runs finish reporting before stopping
+the routine to switch endpoints. Use `ob connections --json` to find
+the existing runner connection ID and render the spec with the same `jq`
+command. Give the new endpoint a distinct name in that spec and create it with
+a fresh secret file. Restart the routine with the new `INBOUND_URL` and
+`INBOUND_SECRET_FILE`, then remove the old endpoint with `ob inbound delete <id>`.
 
 With Bun, Node and the npm `ob` CLI on your PATH, set `RUNNER_COMMAND` to a JSON
 argv array. Use an absolute executable path. The routine invokes it directly.
@@ -67,6 +77,21 @@ summary suitable for the thread. The signed report includes the run ID so the
 endpoint can check the label before making changes. The routine retries
 transient delivery failures with the same event ID, which the endpoint uses
 to deduplicate reports.
+
+Set `RUN_TIMEOUT` to the maximum runner lifetime in milliseconds (default
+300000, or five minutes). If the runner exits nonzero while it holds the claim,
+the routine sends `run.failed`. At the deadline it kills the runner with
+`SIGKILL` and reports `run.expired`. On POSIX the signal goes to the
+runner’s process group, including subprocesses that stay in that group. The inbound
+rule clears the matching run label, expires the claim, revokes the claimant's
+token, and replies `Run <id> failed; the task is claimable again.` The ready
+webhook starts a new run with a fresh token. A repeated failure keeps the cycle
+going until a person holds the task or a run settles it. If the runner never
+claimed the task or the lease has already elapsed, the rule clears the run
+label and revokes the token so a later launch can reuse the profile. If the
+ready delivery already tried to launch while the old token held the profile,
+it resumes on the next webhook retry. Keep `RUN_TIMEOUT` below the runner's
+task lease or renew the lease to avoid that delay.
 
 The service verifies the Standard Webhooks signature over the raw body and
 checks that the signed timestamp is within five minutes. It uses the signed
