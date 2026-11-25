@@ -18,7 +18,10 @@
 
 .shell-channels a {
   display: block;
-  padding: calc(1.5 * var(--space)) calc(2.5 * var(--space));
+  padding: 4px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border-radius: var(--radius-control);
   color: var(--muted);
   transition:
@@ -26,13 +29,23 @@
     color 120ms ease;
 }
 
+.shell-channels a::before {
+  content: "#" / "";
+  margin-inline-end: 2px;
+  color: var(--board-faint);
+}
+
+.shell-channels a:hover {
+  background: var(--board-shade);
+}
+
 .shell-channels a:hover,
 .shell-channels a[aria-current="page"] {
-  background: var(--border);
   color: var(--text);
   text-decoration: none;
 }
 
 .shell-channels a[aria-current="page"] {
+  background: var(--border);
   font-weight: 600;
 }

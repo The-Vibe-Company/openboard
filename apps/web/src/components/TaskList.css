@@ -1,55 +1,30 @@
 .channel-tasks {
-  border: var(--stroke) solid var(--border);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  overflow: hidden;
+  border-block-end: 1px solid var(--board-hairline);
+}
+
+.channel-tasks-header,
+.channel-tasks-title,
+.channel-tasks li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.channel-tasks-header,
+.channel-tasks li {
+  min-block-size: 34px;
+  padding-inline: 8px;
 }
 
 .channel-tasks-header {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: calc(2 * var(--space));
-  padding: calc(2.5 * var(--space)) calc(3.5 * var(--space));
-}
-
-.channel-tasks-title {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(2 * var(--space));
-}
-
-.channel-tasks-all {
-  color: var(--muted);
-  font-size: var(--type-small);
-  font-weight: 500;
-}
-
-.channel-tasks-all:hover {
-  color: var(--text);
-  text-decoration: none;
+  color: var(--board-muted);
 }
 
 .channel-tasks-header h2 {
   margin: 0;
-  color: var(--muted);
-  font-size: var(--type-small);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.channel-tasks-count {
-  display: inline-grid;
-  place-items: center;
-  min-inline-size: calc(5 * var(--space));
-  padding-inline: calc(1.5 * var(--space));
-  border-radius: var(--radius-pill);
-  background: var(--border);
-  color: var(--muted);
-  font-size: var(--type-small);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font: inherit;
+  text-transform: lowercase;
 }
 
 .channel-tasks ol {
@@ -59,36 +34,50 @@
 }
 
 .channel-tasks li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(2 * var(--space)) calc(3 * var(--space));
-  padding: calc(2.5 * var(--space)) calc(3.5 * var(--space));
-  border-block-start: var(--stroke) solid var(--border);
-  background: var(--background);
-  overflow-wrap: anywhere;
+  block-size: 34px;
+  border-block-start: 1px solid var(--board-hairline);
 }
 
 .channel-tasks li:hover {
-  background: var(--surface);
+  background: var(--board-shade);
+}
+
+.channel-task-id,
+.channel-task-label,
+.channel-tasks .channel-task-link,
+.channel-tasks .task-state-badge {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-task-id {
+  max-inline-size: 9ch;
+  color: var(--board-faint);
 }
 
 .channel-tasks .channel-task-link {
-  flex: 1 1 12rem;
+  flex: 1 0 20%;
   min-inline-size: 0;
-  font-weight: 500;
 }
 
-.channel-tasks .channel-task-link:hover {
-  text-decoration: none;
+.channel-task-label {
+  max-inline-size: 18ch;
+  padding-inline: 4px;
+  border: 1px solid var(--board-hairline);
+  color: var(--board-muted);
+  font-size: 11px;
 }
 
 .channel-tasks .task-state-badge {
-  flex-shrink: 0;
-  max-inline-size: 100%;
+  display: block;
+  max-inline-size: 42%;
+  border-radius: 2px;
+  background: var(--board-surface);
 }
 
-.channel-tasks > button {
-  margin: calc(2 * var(--space)) calc(3.5 * var(--space));
+@media (max-width: 48rem) {
+  .channel-task-label ~ .channel-task-label {
+    display: none;
+  }
 }

@@ -4,8 +4,17 @@ import { taskActorsQuery, tasksQuery } from "../api/tasks.ts";
 import { TaskStateBadge } from "./TaskState.tsx";
 import "./TaskList.css";
 
-export function TaskList({ board, channel }: { board: { org: string; board: string }; channel: string }) {
-  const query = useInfiniteQuery(tasksQuery(board, channel));
+export function useChannelTasks(board: { org: string; board: string }, channel: string) {
+  return useInfiniteQuery(tasksQuery(board, channel));
+}
+
+export function TaskList({
+  board,
+  query,
+}: {
+  board: { org: string; board: string };
+  query: ReturnType<typeof useChannelTasks>;
+}) {
   const tasks = query.data?.pages.flatMap((page) => page.tasks) ?? [];
   const { data: actors } = useQuery(
     taskActorsQuery(
@@ -19,7 +28,7 @@ export function TaskList({ board, channel }: { board: { org: string; board: stri
     <section className="channel-tasks" aria-label="Tasks">
       <div className="channel-tasks-header">
         <div className="channel-tasks-title">
-          <h2>Tasks</h2>
+          <h2>Open tasks</h2>
           {tasks.length > 0 && <span className="channel-tasks-count">{tasks.length}</span>}
         </div>
         <Link className="channel-tasks-all" to="/$org/$board/tasks" params={board}>
@@ -34,6 +43,9 @@ export function TaskList({ board, channel }: { board: { org: string; board: stri
             const title = message.text.split(/\r?\n/, 1)[0]?.trim() || `Thread #${message.id}`;
             return (
               <li key={message.id}>
+                <span className="channel-task-id" aria-hidden="true">
+                  #{message.id}
+                </span>
                 <Link
                   className="channel-task-link"
                   to="/$org/$board/t/$id"
@@ -42,6 +54,14 @@ export function TaskList({ board, channel }: { board: { org: string; board: stri
                 >
                   {title}
                 </Link>
+                {Object.entries(message.labels)
+                  .filter(([key]) => !key.startsWith("board."))
+                  .slice(0, 2)
+                  .map(([key, value]) => (
+                    <span className="channel-task-label" key={key}>
+                      {key}={value}
+                    </span>
+                  ))}
                 <TaskStateBadge
                   task={task}
                   holder={task.claim ? actors?.get(task.claim.actor) : undefined}

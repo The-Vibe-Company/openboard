@@ -342,7 +342,7 @@ function BoardLayout() {
     );
 
   return (
-    <main className="board-shell">
+    <main className="board-shell" data-reconnecting={reconnecting || undefined}>
       <div className="shell-sidebar-controls">
         <Button
           variant="secondary"

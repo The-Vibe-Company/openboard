@@ -8,7 +8,8 @@ import { subscribeBoardEvents } from "../../../api/live.ts";
 import { sessionQuery } from "../../../api/session.ts";
 import { tasksQuery } from "../../../api/tasks.ts";
 import { Composer, type ComposerDraft, type TaskComposerDraft } from "../../../components/Composer.tsx";
-import { TaskList } from "../../../components/TaskList.tsx";
+import { EmptyChannel } from "../../../components/EmptyChannel.tsx";
+import { TaskList, useChannelTasks } from "../../../components/TaskList.tsx";
 import { ThreadList } from "../../../components/ThreadList.tsx";
 import { Button, FilterIcon, SearchIcon, XIcon } from "../../../ui/index.ts";
 import { useSelectedChannel } from "./route.tsx";
@@ -79,15 +80,7 @@ function ChannelHeader({
 }: {
   channel: string;
   heading: RefObject<HTMLHeadingElement | null>;
-  searchDraft: string;
-  labelDraft: string;
-  activeSearch: string;
-  activeLabel: string;
-  onSearchDraft: (value: string) => void;
-  onLabelDraft: (value: string) => void;
-  onApply: (event: FormEvent) => void;
-  onClear: () => void;
-}) {
+} & ReturnType<typeof useChannelFilters>) {
   return (
     <>
       <div className="channel-header">
@@ -118,6 +111,7 @@ function ChannelHeader({
               Filter
             </Button>
           )}
+          <span className="channel-live">● live</span>
         </form>
       </div>
       {(activeSearch || activeLabel) && (
@@ -200,6 +194,15 @@ function useChannelThreads(board: Board, channel: string, filters: ReturnType<ty
   return { threads: useInfiniteQuery(options), queryKey };
 }
 
+function useChannelScrollRestoration(hasRows: boolean) {
+  const scroll = useElementScrollRestoration({ getElement: () => window });
+  useLayoutEffect(() => {
+    if (hasRows && scroll && typeof window.history.state?.openboardThreadAnchor !== "string") {
+      window.scrollTo(scroll.scrollX, scroll.scrollY);
+    }
+  }, [scroll, hasRows]);
+}
+
 function ChannelView({ board, selectedChannel }: { board: Board; selectedChannel: string }) {
   const channel = selectedChannel || "general";
   const queryClient = useQueryClient();
@@ -207,14 +210,14 @@ function ChannelView({ board, selectedChannel }: { board: Board; selectedChannel
   const { threads, queryKey } = useChannelThreads(board, channel, f.filters);
   const { data: session } = useQuery(sessionQuery);
   const writeScope = { ...board, csrf: session?.csrf ?? undefined };
-  const rows = useMemo(() => threads.data && uniqueThreads(threads.data.pages), [threads.data]);
-  const scroll = useElementScrollRestoration({ getElement: () => window });
+  const openTasks = useChannelTasks(board, channel);
+  const rows = useMemo(() => {
+    const taskIds = new Set(openTasks.data?.pages.flatMap((page) => page.tasks.map(({ message }) => message.id)));
+    return threads.data && uniqueThreads(threads.data.pages).filter(({ message }) => !taskIds.has(message.id));
+  }, [threads.data, openTasks.data]);
   const hasRows = rows !== undefined && !threadReadDenied(threads.error);
-  useLayoutEffect(() => {
-    if (hasRows && scroll && typeof window.history.state?.openboardThreadAnchor !== "string") {
-      window.scrollTo(scroll.scrollX, scroll.scrollY);
-    }
-  }, [scroll, hasRows]);
+  const noMatches = f.filters && !threads.hasNextPage && threads.data?.pages.every((page) => !page.threads.length);
+  useChannelScrollRestoration(hasRows);
   const heading = useRef<HTMLHeadingElement>(null);
   const composer = useRef<HTMLFormElement>(null);
 
@@ -238,14 +241,19 @@ function ChannelView({ board, selectedChannel }: { board: Board; selectedChannel
       >
         Skip to composer
       </Button>
-      <TaskList board={board} channel={channel} />
+      <TaskList board={board} query={openTasks} />
       {threads.isPending && <p role="status">Loading threads…</p>}
       {threads.isError && <p role="alert">{boardErrorText(threads.error)}</p>}
-      {hasRows && rows && (
+      {hasRows &&
+        rows?.length === 0 &&
+        !threads.hasNextPage &&
+        openTasks.isSuccess &&
+        !openTasks.data.pages.some((page) => page.tasks.length) &&
+        !f.filters && <EmptyChannel board={board} channel={channel} />}
+      {hasRows && noMatches && <p role="status">No matching threads.</p>}
+      {hasRows && rows && (rows.length > 0 || threads.hasNextPage) && (
         <ThreadList
           threads={rows}
-          board={board}
-          channel={channel}
           hasOlder={threads.hasNextPage}
           fetchOlder={
             threads.hasNextPage && !threads.isFetching && !threads.isFetchNextPageError
