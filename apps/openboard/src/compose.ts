@@ -3,7 +3,14 @@ import { join } from "node:path";
 import { migratePostgres, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
 import type { PlatformView, Store } from "@openboard/ports";
-import { createApp, type Deps, jsonLogger, maintenanceJobs, usageJobs } from "@openboard/server";
+import {
+  createApp,
+  type Deps,
+  jsonLogger,
+  maintenanceJobs,
+  resendInvitationMailer,
+  usageJobs,
+} from "@openboard/server";
 import { snapshotShipping } from "./backup.ts";
 import { backupBucket } from "./bucket.ts";
 import type { Config } from "./config.ts";
@@ -86,6 +93,7 @@ export async function compose(
     },
     randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
     fetch: (request) => fetch(request, { redirect: request.redirect === "manual" ? "manual" : "error" }),
+    ...(config.resend && { invitationMailer: resendInvitationMailer(config.resend, (request) => fetch(request)) }),
     webhookFetch: (request, options) => fetch(request, options),
     resolveHost: async (hostname) => (await lookup(hostname, { all: true })).map(({ address }) => address),
     ...overrides?.deps,

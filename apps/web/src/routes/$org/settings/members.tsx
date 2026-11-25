@@ -71,7 +71,7 @@ function Members({ org, mayInvite }: { org: string; mayInvite: boolean }) {
 function InviteDialog({ org, onClose }: { org: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const request = useRef<AbortController | null>(null);
-  const [url, setUrl] = useState("");
+  const [invitation, setInvitation] = useState<{ url: string; sentTo?: string }>();
   const [error, setError] = useState<BoardError | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -100,7 +100,9 @@ function InviteDialog({ org, onClose }: { org: string; onClose: () => void }) {
         { org, role, ...(email && { email }) },
         { signal: controller.signal },
       );
-      if (!controller.signal.aborted) setUrl(result.url);
+      if (!controller.signal.aborted) {
+        setInvitation({ url: result.url, ...(result.emailSent && { sentTo: result.invitation.email ?? email }) });
+      }
     } catch (failure) {
       if (!controller.signal.aborted) {
         setError(
@@ -122,9 +124,9 @@ function InviteDialog({ org, onClose }: { org: string; onClose: () => void }) {
       }}
     >
       <Card>
-        <h3 id="invite-title">{url ? "Invitation link" : "Invite a member"}</h3>
-        {url ? (
-          <InvitationLink url={url} />
+        <h3 id="invite-title">{invitation ? "Invitation link" : "Invite a member"}</h3>
+        {invitation ? (
+          <InvitationLink {...invitation} />
         ) : (
           <InviteForm pending={pending} error={error} onSubmit={submit} onCancel={() => dialog.current?.close()} />
         )}
@@ -133,7 +135,7 @@ function InviteDialog({ org, onClose }: { org: string; onClose: () => void }) {
   );
 }
 
-function InvitationLink({ url }: { url: string }) {
+function InvitationLink({ url, sentTo }: { url: string; sentTo?: string }) {
   const link = useRef<HTMLInputElement>(null);
   const [copyStatus, setCopyStatus] = useState("");
 
@@ -150,8 +152,14 @@ function InvitationLink({ url }: { url: string }) {
 
   return (
     <>
-      <p>Copy this link now. It is shown only once.</p>
-      <Field label="Invitation link">{(props) => <Input {...props} ref={link} readOnly value={url} />}</Field>
+      <p id="invitation-link-help">
+        {sentTo
+          ? `Invitation email sent to ${sentTo}. You can also copy the one-time link below.`
+          : "Copy this link now. It is shown only once."}
+      </p>
+      <Field label="Invitation link">
+        {(props) => <Input {...props} aria-describedby="invitation-link-help" ref={link} readOnly value={url} />}
+      </Field>
       <p role="status">{copyStatus}</p>
       <form method="dialog">
         <footer className="settings-card-footer">

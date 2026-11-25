@@ -9064,7 +9064,7 @@
     "/api/x/orgs/{org}/invitations": {
       "post": {
         "operationId": "createInvitation",
-        "summary": "Create an organization invitation link.",
+        "summary": "Create an organization invitation link and optionally send it by email.",
         "servers": [
           {
             "url": "/"
@@ -9124,7 +9124,7 @@
                     "type": "string"
                   },
                   "send": {
-                    "const": false,
+                    "description": "Send an email when a recipient and mailer are available. Defaults to true.",
                     "type": "boolean"
                   }
                 }
@@ -9186,6 +9186,10 @@
                     },
                     "url": {
                       "type": "string"
+                    },
+                    "emailSent": {
+                      "description": "Whether the mail provider accepted an attempted send.",
+                      "type": "boolean"
                     }
                   }
                 }

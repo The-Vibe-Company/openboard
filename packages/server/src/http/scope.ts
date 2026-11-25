@@ -104,6 +104,11 @@ async function membership(store: Store, slug: string, personId: string) {
   return member;
 }
 
+interface ScopedOrg {
+  readonly org: OrgView;
+  readonly orgName: string;
+}
+
 /** The tenant resolver: the one holder of the `Store`, handing out views of minted scopes only. */
 export interface Tenants {
   /** The view of the board a path names, or 404 `not_found`. */
@@ -112,10 +117,10 @@ export interface Tenants {
   jobBoard(job: Job): BoardView;
   jobOrg(job: Pick<Job, "orgId">): OrgView;
   /** The view of an organization the person administers; 404 for a non-member, 403 `forbidden` for a member. */
-  adminOrg(slug: string, personId: string): Promise<OrgView>;
+  adminOrg(slug: string, personId: string): Promise<ScopedOrg>;
   /** The view of an organization the person belongs to, with any role; 404 for anyone else. */
-  ownerOrg(slug: string, personId: string): Promise<OrgView>;
-  memberOrg(slug: string, personId: string): Promise<OrgView>;
+  ownerOrg(slug: string, personId: string): Promise<ScopedOrg>;
+  memberOrg(slug: string, personId: string): Promise<ScopedOrg>;
 }
 
 export function tenants(store: Store): Tenants {
@@ -125,16 +130,16 @@ export function tenants(store: Store): Tenants {
     async adminOrg(slug, personId) {
       const member = await membership(store, slug, personId);
       if (member.role === "member") throw new BoardError("forbidden", "this organization needs an administrator");
-      return store.org({ orgId: member.orgId } as OrgScope);
+      return { org: store.org({ orgId: member.orgId } as OrgScope), orgName: member.orgName };
     },
     async ownerOrg(slug, personId) {
       const member = await membership(store, slug, personId);
       if (member.role !== "owner") throw new BoardError("forbidden", "this organization needs an owner");
-      return store.org({ orgId: member.orgId } as OrgScope);
+      return { org: store.org({ orgId: member.orgId } as OrgScope), orgName: member.orgName };
     },
     async memberOrg(slug, personId) {
       const member = await membership(store, slug, personId);
-      return store.org({ orgId: member.orgId } as OrgScope);
+      return { org: store.org({ orgId: member.orgId } as OrgScope), orgName: member.orgName };
     },
     async board(path, provesOwnership) {
       const keys = await store.platform().findBoard(path.org, path.board, true);

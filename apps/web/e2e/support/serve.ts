@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createTestDatabases, postgresDriver } from "@openboard/driver-postgres";
 import { sqliteDriver } from "@openboard/driver-sqlite";
-import { type App, createApp, type ServerConfig } from "@openboard/server";
+import { type App, createApp, type Deps, type ServerConfig } from "@openboard/server";
 import { test } from "@playwright/test";
 import { hostedDatabaseUrl } from "../../playwright.config.ts";
 
@@ -58,6 +58,7 @@ export async function temporaryDataDir() {
 }
 
 interface ServeOptions {
+  invitationMailer?: Deps["invitationMailer"];
   receiveWebhook?: (request: Request) => Promise<Response>;
   signup?: NonNullable<ServerConfig["signup"]>;
   dataDir?: string;
@@ -94,6 +95,7 @@ async function bootApp(url: string, path: string, mode: ServerConfig["mode"], op
         log: { info() {}, error() {} },
         randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
         fetch: fakeProvider,
+        ...(options.invitationMailer && { invitationMailer: options.invitationMailer }),
         ...(receiveWebhook && { webhookFetch: fetch }),
       },
     );

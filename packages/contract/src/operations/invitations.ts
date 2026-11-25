@@ -6,7 +6,7 @@ import { defineOperation, Ref } from "../operation.ts";
 
 export const createInvitation = defineOperation({
   name: "createInvitation",
-  summary: "Create an organization invitation link.",
+  summary: "Create an organization invitation link and optionally send it by email.",
   route: { method: "POST", path: "/orgs/:org/invitations" },
   scope: "org",
   status: 201,
@@ -16,12 +16,18 @@ export const createInvitation = defineOperation({
       {
         role: InvitationRole,
         email: Type.Optional(Type.String({ maxLength: 254, pattern: "^[^\\s@]+@[^\\s@]+$" })),
-        send: Type.Optional(Type.Literal(false)),
+        send: Type.Optional(
+          Type.Boolean({ description: "Send an email when a recipient and mailer are available. Defaults to true." }),
+        ),
       },
       { additionalProperties: false },
     ),
   },
-  output: Type.Object({ invitation: Invitation, url: Type.String() }),
+  output: Type.Object({
+    invitation: Invitation,
+    url: Type.String(),
+    emailSent: Type.Optional(Type.Boolean({ description: "Whether the mail provider accepted an attempted send." })),
+  }),
   errors: ["invalid_request", "not_found", "unauthorized", "forbidden", "rate_limited"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: ["ob.invitation.created"] },

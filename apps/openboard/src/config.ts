@@ -34,6 +34,7 @@ interface CommonConfig {
   /** `OPENBOARD_SIGNUP`: whether a new sign-in identity makes a new person; default `closed`. */
   readonly signup: Signup;
   readonly backup?: BackupConfig;
+  readonly resend?: { readonly apiKey: string; readonly from: string };
   /** `OPENBOARD_GITHUB_CLIENT_ID` and `OPENBOARD_GITHUB_CLIENT_SECRET`: GitHub sign-in, when both are set. */
   readonly github?: { readonly clientId: string; readonly clientSecret: string };
 }
@@ -114,6 +115,19 @@ function githubOf(env: Env, problems: string[]): Config["github"] {
     problems.push("OPENBOARD_GITHUB_CLIENT_ID and OPENBOARD_GITHUB_CLIENT_SECRET: set both, or neither");
   }
   return undefined;
+}
+
+function resendOf(env: Env, problems: string[]): Config["resend"] {
+  const name = "OPENBOARD_RESEND_API_KEY";
+  const apiKey = secretOf(env, name, problems)?.trim();
+  const from = env.OPENBOARD_EMAIL_FROM?.trim();
+  if (env[name] === undefined && env.OPENBOARD_RESEND_API_KEY_FILE === undefined && from === undefined)
+    return undefined;
+  if (!apiKey || !from) {
+    problems.push(`${name} and OPENBOARD_EMAIL_FROM: set both to non-empty values, or neither`);
+    return undefined;
+  }
+  return Object.freeze({ apiKey, from });
 }
 
 function backupOf(env: Env, problems: string[]): BackupConfig | undefined {
@@ -223,6 +237,7 @@ export function loadConfig(env: Env = process.env): Config {
   if (!(SIGNUP_MODES as readonly string[]).includes(signup))
     problems.push(`OPENBOARD_SIGNUP: expected ${SIGNUP_MODES.join(", ")}, got ${signup}`);
   const backup = backupOf(env, problems);
+  const resend = resendOf(env, problems);
   const github = githubOf(env, problems);
   const metricsTokenHash = metricsTokenHashOf(env, problems);
   const user = (env.USER ?? env.USERNAME ?? "owner").toLowerCase().replace(/[^a-z0-9-]/g, "-");
@@ -248,6 +263,7 @@ export function loadConfig(env: Env = process.env): Config {
     signup: signup as Signup,
     ...(github && { github }),
     ...(backup && { backup }),
+    ...(resend && { resend }),
   });
 }
 

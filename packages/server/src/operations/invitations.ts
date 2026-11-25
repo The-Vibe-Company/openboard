@@ -37,7 +37,24 @@ export const createInvitationHandler: Handler<typeof createInvitation> = async (
     admit: ctx.debitWrite,
   });
   if (!created) throw new BoardError("not_found", "no such organization or route");
-  return { invitation: record.invitation, url: `${ctx.publicUrl}/invite/${token}` };
+  const { invitation } = record;
+  const url = `${ctx.publicUrl}/invite/${token}`;
+  if (!invitation.email || input.send === false || !ctx.invitationMailer) return { invitation, url };
+  try {
+    await ctx.invitationMailer({
+      id,
+      url,
+      email: invitation.email,
+      orgName: ctx.orgName,
+      inviter: ctx.person.name || `@${ctx.person.handle}`,
+      role: invitation.role,
+      expiresAt: record.expiresAt,
+    });
+    return { invitation, url, emailSent: true };
+  } catch {
+    ctx.log.error("Invitation email delivery failed", { invitationId: id });
+    return { invitation, url, emailSent: false };
+  }
 };
 
 export const previewInvitationHandler: Handler<typeof previewInvitation> = async (ctx, { token }) => {

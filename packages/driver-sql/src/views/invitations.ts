@@ -5,7 +5,7 @@ import { forUpdate, query, sql } from "../sql.ts";
 import { exhaustedQuota, orgStatements } from "./orgs.ts";
 
 export const invitationStatements = {
-  orgMembership: sql`SELECT m.org_id, m.role FROM memberships m
+  orgMembership: sql`SELECT m.org_id, m.role, o.name AS org_name FROM memberships m
     JOIN orgs o ON o.id = m.org_id JOIN users u ON u.id = m.user_id
     WHERE o.slug = ${"slug"} AND u.public_id = ${"personId"} AND o.deleted_at IS NULL AND u.disabled_at IS NULL`,
   lockInvitationOrg: sql`SELECT m.user_id, m.role, o.quotas FROM orgs o
@@ -89,7 +89,7 @@ export function invitationPlatform(
   return {
     async orgMembership(slug, personId) {
       const [row] = await query(db, dialect, invitationStatements.orgMembership, { slug, personId });
-      return row ? { orgId: Number(row.org_id), role: String(row.role) as Role } : null;
+      return row ? { orgId: Number(row.org_id), orgName: String(row.org_name), role: String(row.role) as Role } : null;
     },
     acceptInvitation: (tokenHash, personId, at) =>
       db.transaction((tx) => redeemInvitation(tx, dialect, tokenHash, personId, at)),
