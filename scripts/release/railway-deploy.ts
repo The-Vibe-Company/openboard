@@ -266,7 +266,7 @@ export async function deployRailway(
   let previousId: string | undefined;
   if (options.waitForRetirement) {
     const { deployments } = await api<{ deployments: { edges: { node: { id: string } }[] } }>(previousQuery, {
-      input: { ...ids, projectId: PROJECT, status: { successfulOnly: true } },
+      input: { ...ids, projectId: PROJECT, status: { in: ["SUCCESS"] } },
     });
     previousId = deployments.edges[0]?.node.id;
     if (!previousId) throw new Error("No active staging deployment to replace");
