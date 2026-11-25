@@ -11,6 +11,15 @@
   gap: calc(2 * var(--space));
 }
 
+.thread-message-kind {
+  padding-inline: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .thread-message header time,
 .thread-message .message-edited {
   color: var(--muted);
@@ -27,7 +36,6 @@
   transition: opacity 140ms ease;
 }
 
-.thread-message:hover .message-toolbar,
 .thread-message:focus-within .message-toolbar,
 .message-toolbar[data-active="true"] {
   opacity: 1;
@@ -45,16 +53,6 @@
   background: transparent;
   color: var(--muted);
   font-size: var(--type-small);
-}
-
-.message-tool-btn:hover {
-  border-color: var(--border);
-  background: var(--surface);
-  color: var(--text);
-}
-
-.message-tool-btn[data-danger="true"]:hover {
-  color: var(--danger-label);
 }
 
 .thread-message .thread-message-text {
@@ -94,10 +92,6 @@
   background: var(--surface-raised);
   color: var(--text);
   font-size: var(--type-small);
-}
-
-.message-emoji-btn:hover {
-  border-color: var(--control-border);
 }
 
 .message-action-error {
@@ -184,10 +178,6 @@
   text-decoration: none;
 }
 
-.thread-message-attachments .attachment-chip:hover {
-  border-color: var(--control-border);
-}
-
 .thread-message-attachments .attachment-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -199,6 +189,30 @@
   flex: none;
   color: var(--muted);
   font-family: var(--font-mono);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .thread-message:hover .message-toolbar {
+    opacity: 1;
+  }
+
+  .message-tool-btn:hover {
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .message-tool-btn[data-danger="true"]:hover {
+    color: var(--danger-label);
+  }
+
+  .message-emoji-btn:hover {
+    border-color: var(--control-border);
+  }
+
+  .thread-message-attachments .attachment-chip:hover {
+    border-color: var(--control-border);
+  }
 }
 
 @media (max-width: 48rem), (hover: none) {

@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Client } from "@the-vibe-company/openboard";
-import { type FormEvent, useState } from "react";
-import { boardKeys } from "../api/board.ts";
+import { type FormEvent, useRef, useState } from "react";
+import { boardKeys, threadsQuery } from "../api/board.ts";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
 import { type Task, type TaskActor, tasksQuery } from "../api/tasks.ts";
@@ -53,11 +53,13 @@ async function runPromptAction(
 
 function useTaskActionRunner(board: Board, channel?: string) {
   const queryClient = useQueryClient();
+  const running = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function run(action: () => Promise<void>, onDone: () => void) {
-    if (busy) return;
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError("");
     try {
@@ -67,12 +69,16 @@ function useTaskActionRunner(board: Board, channel?: string) {
         queryClient.invalidateQueries({ queryKey: threadKeys.all(board) }),
         queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) }),
         ...(channel
-          ? [queryClient.invalidateQueries({ queryKey: tasksQuery(board, channel).queryKey, exact: true })]
+          ? [
+              queryClient.invalidateQueries({ queryKey: tasksQuery(board, channel).queryKey, exact: true }),
+              queryClient.invalidateQueries({ queryKey: threadsQuery(board, channel).queryKey }),
+            ]
           : []),
       ]);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not update task.");
     } finally {
+      running.current = false;
       setBusy(false);
     }
   }

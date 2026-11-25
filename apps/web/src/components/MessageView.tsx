@@ -137,13 +137,15 @@ function useMessageActions(board: Board, message: ThreadMessage) {
 
 export function MessageView({ message, board }: { message: ThreadMessage; board: Board }) {
   const actions = useMessageActions(board, message);
+  const kind = message.author?.kind;
   const author = message.author?.name ?? message.from ?? message.by.profile ?? message.by.actor;
 
   return (
     <article className="thread-message">
       <header>
-        <Avatar name={author} />
+        <Avatar name={author} src={message.author?.avatar ?? undefined} />
         <strong>{author}</strong>
+        {(kind === "agent" || kind === "workflow") && <span className="thread-message-kind">{kind}</span>}
         <time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleString()}</time>
         {message.editedAt && (
           <span className="message-edited" title={new Date(message.editedAt).toLocaleString()}>

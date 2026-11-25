@@ -1,45 +1,43 @@
 .task-state-badge {
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--control-border);
+  background: var(--surface-raised);
   font-weight: 500;
-  border-inline-start-width: 3px;
+  line-height: 1.4;
 }
 
 .task-state-badge[data-state="ready"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  border-inline-start-color: var(--accent);
 }
 
 .task-state-badge[data-state="claimed"] {
-  border-color: var(--warning);
-  background: var(--warning-soft);
+  border-inline-start-color: var(--warning);
 }
 
 .task-state-badge[data-state="waiting"] {
-  border-color: var(--muted);
+  border-inline-start-color: var(--muted);
 }
 
 .task-state-badge[data-state="blocked"] {
-  border-color: var(--purple);
-  background: var(--purple-soft);
+  border-inline-start-color: var(--purple);
 }
 
 .task-state-badge[data-state="completed"] {
-  border-color: var(--success);
-  background: var(--success-soft);
+  border-inline-start-color: var(--success);
 }
 
 .task-state-badge[data-state="failed"] {
-  border-color: var(--danger);
-  background: var(--danger-soft);
+  border-inline-start-color: var(--danger);
 }
 
 .task-state-badge[data-state="canceled"] {
-  border-color: var(--control-border);
+  border-inline-start-color: var(--control-border);
   color: var(--muted);
 }
 
 .task-state-badge[data-state="expired"] {
-  border-color: var(--danger-label);
-  background: var(--danger-soft);
+  border-inline-start-color: var(--danger-label);
 }
 
 .task-details {
