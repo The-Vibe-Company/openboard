@@ -109,3 +109,19 @@
   color: var(--muted);
   font-size: var(--type-small);
 }
+
+@media (max-width: 48rem) {
+  .organization-overview {
+    padding: calc(5 * var(--space)) max(calc(3.5 * var(--space)), env(safe-area-inset-right)) calc(8 * var(--space))
+      max(calc(3.5 * var(--space)), env(safe-area-inset-left));
+  }
+
+  .org-header-actions {
+    inline-size: 100%;
+  }
+
+  .org-action-link {
+    flex: 1;
+    justify-content: center;
+  }
+}

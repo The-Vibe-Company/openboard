@@ -157,3 +157,18 @@
 .composer-file-input {
   display: none;
 }
+
+@media (max-width: 48rem), (hover: none) {
+  .composer-hint {
+    display: none;
+  }
+
+  .composer-mode button {
+    min-block-size: 32px;
+    padding: 2px calc(3 * var(--space));
+  }
+
+  .composer-tool-btn {
+    padding: var(--space) calc(2.5 * var(--space));
+  }
+}

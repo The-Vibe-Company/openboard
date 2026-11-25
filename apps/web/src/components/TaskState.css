@@ -124,3 +124,19 @@
   color: var(--danger-label);
   font-size: var(--type-small);
 }
+
+@media (max-width: 48rem) {
+  .task-details {
+    padding: calc(3 * var(--space));
+  }
+
+  .task-details dl {
+    gap: calc(2 * var(--space)) calc(3 * var(--space));
+  }
+
+  .task-action-form input,
+  .task-action-form select {
+    min-inline-size: 100%;
+    font-size: 16px;
+  }
+}

@@ -154,7 +154,47 @@ test("workspace views, task lifecycle, message actions, schedules, and settings 
   }
 });
 
-for (const width of [1280, 375]) {
+test("mobile shell provides bottom navigation, slide-over drawer, and quick search at 390px", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: "dark" });
+  const app = await serve();
+  try {
+    await seedWorkspace(page, app.url);
+    await page.goto(`${app.url}${board}?channel=general`);
+    const bottomNav = page.getByRole("navigation", { name: "Mobile navigation" });
+    await expect(bottomNav).toBeVisible();
+    await page.screenshot({ path: info.outputPath("screenshots", "mobile-channel-390-dark.png"), fullPage: true });
+
+    await bottomNav.getByRole("link", { name: "Tasks" }).click();
+    await expect(page.getByRole("heading", { name: "Tasks", exact: true })).toBeVisible();
+    await page.screenshot({ path: info.outputPath("screenshots", "mobile-tasks-390-dark.png"), fullPage: true });
+
+    await bottomNav.getByRole("link", { name: "Activity" }).click();
+    await expect(page.getByRole("heading", { name: "Activity", exact: true })).toBeVisible();
+    await page.screenshot({ path: info.outputPath("screenshots", "mobile-activity-390-dark.png"), fullPage: true });
+
+    await page.getByRole("button", { name: "Board menu" }).click();
+    await expect(page.getByRole("navigation", { name: "Channels" })).toBeVisible();
+    await page.screenshot({ path: info.outputPath("screenshots", "mobile-drawer-390-dark.png"), fullPage: false });
+    await page.getByRole("button", { name: "Close menu" }).click();
+    await expect(page.getByRole("navigation", { name: "Channels" })).toBeHidden();
+
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    const palette = page.getByRole("dialog", { name: "Quick jump and search" });
+    await expect(palette).toBeVisible();
+    await palette.getByRole("button", { name: "Close search" }).click();
+    await expect(palette).toBeHidden();
+
+    const width = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(width).toBeLessThanOrEqual(390);
+  } finally {
+    await app.stop();
+  }
+});
+
+for (const width of [1280, 768, 375]) {
   for (const theme of ["light", "dark"] as const) {
     test(`new board views fit ${width}px ${theme} with zero horizontal overflow`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });

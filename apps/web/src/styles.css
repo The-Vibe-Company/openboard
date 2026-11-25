@@ -86,15 +86,42 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
 body {
   margin: 0;
   overflow-wrap: anywhere;
 }
 
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 main {
   display: grid;
-  min-height: calc(100vh - 4rem);
+  min-height: calc(100dvh - 4rem);
   place-items: center;
+}
+
+@media (max-width: 48rem) {
+  :root {
+    --control-small: 38px;
+    --control-medium: 44px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 h1,

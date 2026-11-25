@@ -122,3 +122,43 @@
   background: var(--background);
   font-size: 11px;
 }
+
+.command-palette-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-block-size: 32px;
+  min-inline-size: 32px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.command-palette-close:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+@media (max-width: 48rem) {
+  .command-palette {
+    margin-block: max(calc(3 * var(--space)), env(safe-area-inset-top)) auto;
+    inline-size: calc(100vw - 16px);
+    max-inline-size: none;
+    max-block-size: 76dvh;
+  }
+
+  .command-palette-body {
+    max-block-size: calc(76dvh - 108px);
+  }
+
+  .command-palette-item {
+    min-block-size: 44px;
+  }
+
+  .command-palette-foot {
+    display: none;
+  }
+}

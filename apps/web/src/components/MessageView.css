@@ -200,3 +200,34 @@
   color: var(--muted);
   font-family: var(--font-mono);
 }
+
+@media (max-width: 48rem), (hover: none) {
+  .message-toolbar {
+    opacity: 0.85;
+    gap: calc(1.5 * var(--space));
+  }
+
+  .message-tool-btn {
+    min-block-size: 36px;
+    min-inline-size: 36px;
+    border-color: var(--border-subtle);
+    background: var(--surface);
+  }
+
+  .message-emoji-btn {
+    min-block-size: 38px;
+    min-inline-size: 38px;
+    font-size: 16px;
+  }
+
+  .message-reaction-chip {
+    min-block-size: 28px;
+    padding: 0 var(--space);
+  }
+
+  .message-inline-panel input,
+  .message-inline-panel textarea {
+    min-inline-size: 100%;
+    font-size: 16px;
+  }
+}

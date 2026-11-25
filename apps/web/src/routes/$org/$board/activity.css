@@ -24,6 +24,7 @@
 }
 
 .activity-type {
+  justify-self: start;
   font-family: var(--font-mono);
   font-weight: 500;
 }
@@ -73,6 +74,35 @@
 
 @media (max-width: 48rem) {
   .activity-row {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "cursor type time"
+      "main main main";
+    row-gap: calc(1.5 * var(--space));
+    column-gap: calc(2 * var(--space));
+    padding: calc(3 * var(--space));
+  }
+
+  .activity-cursor {
+    grid-area: cursor;
+  }
+
+  .activity-type {
+    grid-area: type;
+  }
+
+  .activity-time {
+    grid-area: time;
+    font-size: 11px;
+  }
+
+  .activity-main {
+    grid-area: main;
+    gap: var(--space);
+  }
+
+  .activity-summary {
+    white-space: normal;
+    line-height: 1.35;
   }
 }
