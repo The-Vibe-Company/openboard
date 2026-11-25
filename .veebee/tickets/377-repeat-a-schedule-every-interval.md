@@ -7,11 +7,20 @@ writes:
   - packages/core/src/schedules/timing.ts
   - packages/core/test/schedules/timing.test.ts
   - packages/server/test/schedules/repeat.test.ts
+  - packages/core/src/schedules/create.ts
+  - packages/core/src/index.ts
+  - packages/server/src/operations/schedules/index.ts
+  - packages/server/test/schedules/create.test.ts
+  - packages/ports/testkit/store/schedules.test-suite.ts
+  - packages/driver-sql/src/views/schedules/index.ts
+  - packages/cli/src/commands/schedule/index.ts
+  - docs/protocol.md
+  - skills/openboard/references/commands.md
 conformance: []
 modes: [local, hosted]
 depends_on: [373]
-status: draft
-claimed_by: null
+status: done
+claimed_by: Codex
 issue: 572
 ---
 

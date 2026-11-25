@@ -5,11 +5,12 @@ const maxAhead = 366 * units.d;
 const instant =
   /^(\d{4})-(\d\d)-(\d\d)T([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d)(?:\.(\d+))?)?(?:Z|([+-])([01]\d|2[0-3]):?([0-5]\d))$/i;
 
-function parseDuration(value: string): number {
+function parseDuration(value: string, field: "in" | "every" | "for"): number {
   const match = /^(\d+(?:\.\d+)?)(ms|[smhd])?$/.exec(value.trim());
-  const ms = match ? Math.ceil(Number(match[1]) * units[(match[2] ?? "ms") as keyof typeof units]) : NaN;
-  if (!(ms > 0))
-    throw new BoardError("invalid_request", "in: expected a positive duration such as 30s, 30m, 12h or 1d");
+  const ms = match ? Number(match[1]) * units[(match[2] ?? "ms") as keyof typeof units] : NaN;
+  if (!Number.isFinite(ms) || ms <= 0)
+    throw new BoardError("invalid_request", `${field}: expected a positive duration such as 30s, 30m, 12h or 1d`);
+  if (field === "every" && ms < units.m) throw new BoardError("invalid_request", "every: minimum interval is 1m");
   return ms;
 }
 
@@ -19,13 +20,13 @@ function daysBeforeYear(year: number): number {
   return 365 * previous + Math.floor(previous / 4) - Math.floor(previous / 100) + Math.floor(previous / 400);
 }
 
-function parseInstant(value: string): number {
+function parseInstant(value: string, field: "at" | "until"): number {
   const match = instant.exec(value);
   const [year, month, day, hour, minute] = (match?.slice(1, 6) ?? []).map(Number);
   const leap = year !== undefined && year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   if (!match || year === undefined || !month || !day || day > (days[month - 1] ?? 0)) {
-    throw new BoardError("invalid_request", "at: expected an ISO time with a UTC offset");
+    throw new BoardError("invalid_request", `${field}: expected an ISO time with a UTC offset`);
   }
   const daysBeforeMonth = days.slice(0, month - 1).reduce((total, n) => total + n, 0);
   const daysSinceEpoch = daysBeforeYear(year) - daysBeforeYear(1970) + daysBeforeMonth + day - 1;
@@ -48,19 +49,62 @@ interface Timing {
 }
 
 export function checkScheduleTiming(timing: Timing): void {
-  if ([timing.every, timing.until, timing.for, timing.times].some((value) => value !== undefined)) {
-    throw new BoardError("invalid_request", "schedule repeats are not available yet");
+  const stops = [timing.until, timing.for, timing.times].filter((value) => value !== undefined);
+  if (stops.length > 1) {
+    throw new BoardError("invalid_request", "pick one stop: until, for, or times");
   }
-  if ((timing.in === undefined) === (timing.at === undefined)) {
-    throw new BoardError("invalid_request", "pass exactly one of in or at");
+  if (timing.every === undefined && stops.length) {
+    throw new BoardError("invalid_request", "until, for, and times require every");
+  }
+  if (
+    (timing.in !== undefined && timing.at !== undefined) ||
+    (timing.in === undefined && timing.at === undefined && timing.every === undefined)
+  ) {
+    throw new BoardError("invalid_request", "pass one of in or at, or let every set the first send");
+  }
+  if (timing.times !== undefined && (!Number.isSafeInteger(timing.times) || timing.times < 1)) {
+    throw new BoardError("invalid_request", "times: expected a positive integer");
   }
 }
 
-export function firstScheduleTime(timing: Timing, now: number): number {
+interface ScheduleRepeat {
+  readonly every: number | null;
+  readonly untilAt: number | null;
+  readonly times: number | null;
+}
+
+export interface ScheduleTiming extends ScheduleRepeat {
+  readonly firstAt: number;
+}
+
+export function resolveScheduleTiming(timing: Timing, now: number): ScheduleTiming {
   checkScheduleTiming(timing);
-  const first = timing.in === undefined ? parseInstant(timing.at ?? "") : now + parseDuration(timing.in);
-  if (!Number.isFinite(first)) throw new BoardError("invalid_request", "invalid schedule time");
-  if (first < now - units.m) throw new BoardError("invalid_request", "at: the schedule is in the past");
-  if (first > now + maxAhead) throw new BoardError("invalid_request", "a schedule reaches at most a year out");
-  return first;
+  const every = timing.every === undefined ? null : Math.ceil(parseDuration(timing.every, "every"));
+  if (every !== null && every > maxAhead) throw new BoardError("invalid_request", "every: at most a year");
+
+  const firstAt =
+    timing.at === undefined
+      ? now + (timing.in === undefined ? (every ?? 0) : Math.ceil(parseDuration(timing.in, "in")))
+      : parseInstant(timing.at, "at");
+  if (firstAt < now - units.m) throw new BoardError("invalid_request", "at: the schedule is in the past");
+  const untilAt =
+    timing.until !== undefined
+      ? parseInstant(timing.until, "until")
+      : timing.for !== undefined
+        ? firstAt + Math.floor(parseDuration(timing.for, "for"))
+        : null;
+  if (untilAt !== null && untilAt < firstAt) {
+    throw new BoardError("invalid_request", "the schedule stops before its first send");
+  }
+  if (firstAt > now + maxAhead || (untilAt !== null && untilAt > now + maxAhead)) {
+    throw new BoardError("invalid_request", "a schedule reaches at most a year out");
+  }
+  return { firstAt, every, untilAt, times: timing.times ?? null };
+}
+
+/** Uses the slot just sent and the number of sends including that slot. */
+export function nextScheduleTime(repeat: ScheduleRepeat, slot: number, sent: number): number | null {
+  if (repeat.every === null || (repeat.times !== null && sent >= repeat.times)) return null;
+  const next = slot + repeat.every;
+  return repeat.untilAt !== null && next > repeat.untilAt ? null : next;
 }

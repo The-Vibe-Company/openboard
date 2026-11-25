@@ -7,11 +7,11 @@ export const scheduleStatements = {
   nextSchedule: sql`SELECT next_schedule FROM boards WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
   advanceSchedule: sql`UPDATE boards SET next_schedule = ${"next"} WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
   insertSchedule: sql`INSERT INTO schedules (
-    org_id, board_id, id, channel, re, text, labels, no_sync, attachments, first_at, next_at,
+    org_id, board_id, id, channel, re, text, labels, no_sync, attachments, first_at, every_ms, until_at, times, next_at,
     state, by_actor, by_principal, by_profile, creator, blind, created_at, author, mentions, blocks
   ) VALUES (
     ${"orgId"}, ${"boardId"}, ${"id"}, ${"channel"}, ${"re"}, ${"text"}, ${"labels"}, ${"noSync"},
-    ${"attachments"}, ${"first"}, ${"first"}, 'pending', ${"actor"}, ${"principal"}, ${"profile"},
+    ${"attachments"}, ${"first"}, ${"every"}, ${"until"}, ${"times"}, ${"first"}, 'pending', ${"actor"}, ${"principal"}, ${"profile"},
     ${"creator"}, ${"blind"}, ${"createdAt"}, ${"author"}, ${"mentions"}, ${"blocks"}
   )`,
   cancelSchedule: sql`UPDATE schedules SET state = 'canceled', next_at = NULL, canceled = ${"canceled"}
@@ -52,6 +52,9 @@ export async function foldSchedule(
     noSync: schedule.noSync ? 1 : 0,
     attachments: JSON.stringify(attachments),
     first: firstAt,
+    every: schedule.every,
+    until: schedule.until === null ? null : Date.parse(schedule.until),
+    times: schedule.times,
     ...schedule.by,
     creator: JSON.stringify(creator),
     blind: blind ? 1 : 0,

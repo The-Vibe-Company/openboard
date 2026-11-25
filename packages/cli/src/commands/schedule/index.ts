@@ -82,7 +82,7 @@ function summary(schedule: ScheduleView, now: number): string {
         ? "until canceled"
         : `until ${schedule.until}`
       : `${schedule.times} times`;
-  const repeat = schedule.every === null ? "once" : `every ${span(schedule.every)} · ${ending}`;
+  const repeat = schedule.every === null ? "once" : `every ${span(schedule.every)} ${ending}`;
   const delta = schedule.next === null ? 0 : Date.parse(schedule.next) - now;
   const unit = delta < 60_000 ? 1000 : 60_000;
   const relative = delta <= 0 ? "due" : `in ${span(Math.ceil(delta / unit) * unit)}`;
@@ -98,7 +98,7 @@ function summary(schedule: ScheduleView, now: number): string {
 export const scheduleCommand: Command = {
   words: ["schedule"],
   usage:
-    "ob schedule <channel|id> [<text>|-] (--in <duration> | --at <ISO time>) [--no-sync] [--label <k=v>]... [--attach <file>]...",
+    "ob schedule <channel|id> [<text>|-] [--in <duration> | --at <ISO time>] [--every <duration> [--until <ISO time> | --for <duration> | --times <count>]] [--no-sync] [--label <k=v>]... [--attach <file>]...",
   async run(ctx) {
     const { files, input } = parse(ctx);
     const attachments = files.length ? await uploadFiles(ctx, files) : undefined;
@@ -117,6 +117,10 @@ export const scheduleReference = {
   options: {
     in: "Relative delay, such as 30s, 30m, 12h, or 1d.",
     at: "ISO time with a UTC offset.",
+    every: "Repeat at this interval, at least 1m. The first send defaults to one interval from now.",
+    until: "Stop a repeat after this ISO time.",
+    for: "Stop a repeat after this duration from its first send.",
+    times: "Stop a repeat after this many sends.",
     label: "Set a label with key=value. Repeatable.",
     attach: "Upload and attach a file. Repeatable.",
     "no-sync": "Keep the scheduled message on this board.",
