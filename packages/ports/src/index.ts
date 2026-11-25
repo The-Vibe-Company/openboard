@@ -10,6 +10,7 @@ export {
   BLOB_GC_JOB,
   JOB_LEASE_MS,
   PURGE_ORG_JOB,
+  SCHEDULE_SEND_JOB,
   TASK_EXPIRY_JOB,
   USAGE_ROLLUP_JOB,
 } from "./jobs.ts";

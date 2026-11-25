@@ -3,6 +3,7 @@ import { formatId, isoTime, parseScheduleId, type ScheduleCanceled, type Schedul
 import type { BoardKeys, BoardView, BoardWriter } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
+import { findActor } from "../actors.ts";
 import { splice } from "../threads.ts";
 
 const creationPayload: Fragment = {
@@ -28,6 +29,12 @@ const scheduleList = sql`SELECT ${scheduleColumns}, CASE WHEN s.attachments <> '
 export const scheduleStatements = {
   listSchedules: scheduleList,
   scheduleById: splice(scheduleList, threadFilter, sql` AND s.id = ${"id"}`),
+  scheduleContent: sql`SELECT creator, blocks, mentions, next_at, until_at FROM schedules
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"} AND state = 'pending'`,
+  advanceScheduleSend: sql`UPDATE schedules SET sent = sent + 1, next_at = ${"nextAt"},
+    last_message = ${"message"}, state = ${"state"}
+    WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND id = ${"id"}
+      AND state = 'pending' AND sent = ${"n"}`,
   listThreadSchedules: splice(scheduleList, threadFilter, sql` AND s.re = ${"thread"}`),
   nextSchedule: sql`SELECT next_schedule FROM boards WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
   advanceSchedule: sql`UPDATE boards SET next_schedule = ${"next"} WHERE org_id = ${"orgId"} AND id = ${"boardId"}`,
@@ -60,10 +67,25 @@ export function scheduleWriter(
   db: Db,
   dialect: Dialect,
   keys: BoardKeys,
-): Pick<BoardWriter, "nextSchedule" | "schedule"> {
+): Pick<BoardWriter, "nextSchedule" | "schedule" | "scheduledPost"> {
   return {
     nextSchedule: () => nextSchedule(db, dialect, keys),
     schedule: (id) => scheduleById(db, dialect, keys, id),
+    async scheduledPost(id) {
+      const schedule = await scheduleById(db, dialect, keys, id);
+      if (schedule?.state !== "pending") return null;
+      const [row] = await query(db, dialect, scheduleStatements.scheduleContent, { ...keys, id });
+      if (!row) return null;
+      return {
+        schedule,
+        actor: await findActor(db, dialect, keys, schedule.by.actor),
+        nextAt: Number(row.next_at),
+        untilAt: row.until_at == null ? null : Number(row.until_at),
+        creator: JSON.parse(String(row.creator)),
+        blocks: JSON.parse(String(row.blocks)),
+        mentions: JSON.parse(String(row.mentions)),
+      };
+    },
   };
 }
 

@@ -53,6 +53,9 @@ export interface MessagePostedPayload {
   readonly blocks?: MessageBlock[];
   readonly labels: Readonly<Record<string, string>>;
   readonly noSync: boolean;
+  readonly schedule?: NonNullable<Message["schedule"]>;
+  /** Next due time for the schedule fold, kept out of the public event. */
+  readonly scheduleNextAt?: number | null;
   readonly by: Author;
   /** Who wrote it, for people to read; the server resolves it from the credential. Not part of upstream's payload. */
   readonly author?: MessageAuthor;
@@ -134,6 +137,7 @@ export interface PostContext {
   /** How the writer shows; with `state.actor` read, the post records it with `actor.seen` unless that matches it. */
   readonly author?: MessageAuthor;
   readonly now: number;
+  readonly scheduled?: { readonly slot: NonNullable<Message["schedule"]>; readonly nextAt: number | null };
   readonly blocks?: MessageBlock[];
   readonly attachments?: readonly Attachment[];
 }
@@ -201,6 +205,7 @@ export function messageView(event: MessagePosted): Message {
     reactions: {},
     by: payload.by,
     noSync: payload.noSync,
+    ...(payload.schedule && { schedule: payload.schedule }),
     origin: null,
     from: null,
     createdAt: isoTime(event.at),
@@ -276,6 +281,7 @@ export function decidePost(state: PostState, command: PostCommand, context: Post
       thread: formatId(root),
       labels: { ...command.labels },
       noSync: command.noSync ?? false,
+      ...(context.scheduled && { schedule: context.scheduled.slot, scheduleNextAt: context.scheduled.nextAt }),
       by: context.by,
       ...(context.author === undefined ? {} : { author: context.author }),
       ...(command.id === undefined ? {} : { clientId: command.id }),

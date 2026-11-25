@@ -1,6 +1,6 @@
-import { Attachment } from "./attachments/index.ts";
 import { Type } from "@sinclair/typebox";
-import { Author, ChannelPath, Labels, Message, MessageAuthor } from "./messages.ts";
+import { Attachment } from "./attachments/index.ts";
+import { Author, ChannelPath, Labels, Message, MessageAuthor, ScheduleSlot } from "./messages.ts";
 
 import {
   TaskAssignedEvent,
@@ -27,6 +27,7 @@ const MessagePostedPayload = Type.Object({
   thread: Type.String(),
   labels: Labels,
   noSync: Type.Boolean(),
+  schedule: Type.Optional(ScheduleSlot),
   by: Author,
   origin: Type.Null(),
   from: Type.Null(),

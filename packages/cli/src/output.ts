@@ -63,6 +63,7 @@ export function printError(output: Output, error: BoardError): void {
 type Written = {
   readonly id: string;
   readonly text: string;
+  readonly schedule?: { readonly id: string };
   readonly author?: { readonly name: string; readonly via?: { readonly name: string } } | null;
 };
 
@@ -80,7 +81,8 @@ export function messagePreview(text: string): string {
 /** A message on one line: its ID, who wrote it when the board says, then the first line of its text. */
 export function messageLine(message: Written): string {
   const by = message.author ? `${authorText(message.author)}: ` : "";
-  return `#${message.id}  ${by}${messagePreview(message.text)}`;
+  const scheduled = message.schedule ? ` · scheduled ${message.schedule.id}` : "";
+  return `#${message.id}  ${by}${messagePreview(message.text)}${scheduled}`;
 }
 
 /** A word as a shell reads it back: quoted unless it is plain. */

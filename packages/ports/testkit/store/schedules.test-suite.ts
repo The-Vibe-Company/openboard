@@ -25,7 +25,18 @@ export async function checkScheduleIsolation(a: StoreTenant, b: StoreTenant) {
   expect(await b.board.write((writer) => writer.nextSchedule())).toBe(1);
 }
 
-export async function checkScheduleLookupIsolation(a: StoreTenant, b: StoreTenant) {
+async function checkScheduleLookupIsolation(a: StoreTenant, b: StoreTenant) {
   expect(await b.board.write((writer) => writer.schedule(1))).toMatchObject({ channel: b.channel });
   expect(await a.board.write((writer) => writer.schedule(1))).toBeNull();
 }
+
+export const scheduleWriterCases = {
+  nextSchedule: checkScheduleIsolation,
+  schedule: checkScheduleLookupIsolation,
+  async scheduledPost(a: StoreTenant, b: StoreTenant) {
+    expect(await b.board.write((writer) => writer.scheduledPost(1))).toMatchObject({
+      schedule: { channel: b.channel },
+    });
+    expect(await a.board.write((writer) => writer.scheduledPost(1))).toBeNull();
+  },
+};

@@ -77,6 +77,8 @@ Read the JSON result in `structuredContent`. On `isError`, inspect its
   existing thread with `ob reply <id> "<text>"`.
 - Attach a file of at most 4 MB with `ob post <channel> "<text>" --attach <path>`. If the upload returns `invalid_attachment`,
   rename the file to remove the leading dot or invisible formatting characters before retrying.
+- Use `ob schedule <thread-id> "<text>" --in 30s` to post a due-time reply as your
+  current profile. `ob read <thread-id>` shows its schedule ID beside the sent reply.
 - Catch up with `ob tasks <channel> --latest --limit 3`. The latest active task appears last.
 - Follow ready tasks with `GET /events?channel=dev&label=board.task=ready` on the
   board API. Pass the returned cursor as `after` to continue. The feed shows tasks

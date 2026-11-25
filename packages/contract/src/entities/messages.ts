@@ -1,7 +1,7 @@
-import { Attachment } from "./attachments/index.ts";
 import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import { channelString } from "../channel-input.ts";
+import { Attachment } from "./attachments/index.ts";
 import { Task } from "./tasks.ts";
 
 export const CHANNEL_PATH_MAX = 2048;
@@ -54,6 +54,8 @@ export const Mention = Type.Object({
 });
 export type Mention = Static<typeof Mention>;
 
+export const ScheduleSlot = Type.Object({ id: Type.String(), n: Type.Integer({ minimum: 0 }) });
+
 /** A message as the board answers it (upstream `MessageView`); IDs are decimal strings. */
 export const Message = Type.Object({
   id: Type.String(),
@@ -67,6 +69,7 @@ export const Message = Type.Object({
   reactions: Type.Record(Type.String(), Type.Array(Type.String())),
   by: Author,
   noSync: Type.Boolean(),
+  schedule: Type.Optional(ScheduleSlot),
   origin: Type.Null(),
   from: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),

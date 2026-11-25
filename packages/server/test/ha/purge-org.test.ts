@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { type BoardKeys, PURGE_ORG_JOB, type Store } from "@openboard/ports";
+import { type BoardKeys, PURGE_ORG_JOB, SCHEDULE_SEND_JOB, type Store } from "@openboard/ports";
 import { testOrgScope, testScope } from "@openboard/ports/testkit";
 import { createApp, maintenanceJobs } from "../../src/index.ts";
 import { type Seeded, seed, signIn, type Tenant } from "../isolation/seed.ts";
@@ -133,6 +133,7 @@ function expectSeeded(rows: Record<string, Record<string, unknown>[]>, legacy: b
     expect(rows[table]?.length, table).toBeGreaterThan(0);
   }
   expect(rows.boards).toHaveLength(2);
+  expect(rows.jobs?.filter(({ kind }) => kind === SCHEDULE_SEND_JOB)).toHaveLength(1);
   expect(rows.jobs?.filter(({ kind }) => kind === PURGE_ORG_JOB)).toHaveLength(legacy ? 0 : 1);
 }
 
@@ -142,9 +143,13 @@ for (const legacy of [false, true]) {
     const clock = clockFor(hosted ? 2 : 1);
     const store = openSnapshotStore(clock.now);
     const siblings: number[] = [];
-    const { app, b, deleted, deletedKeys, send } = await seed(store, async (send, tenant) => {
-      siblings.push((await seedSibling(store, send, tenant)).boardId);
-    });
+    const { app, b, deleted, deletedKeys, send } = await seed(
+      store,
+      async (send, tenant) => {
+        siblings.push((await seedSibling(store, send, tenant)).boardId);
+      },
+      "32d",
+    );
     if (legacy) await store.simulateLegacyDeletion(deletedKeys.orgId);
     const other = await store.platform().findBoard(b.org, b.board);
     if (!other) throw new Error("missing surviving board");

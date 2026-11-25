@@ -198,7 +198,14 @@ function seedWebhook(send: Send, base: string, session: Headers, marker: string)
   return ok<{ webhook: { id: string } }>(send("POST", `${base}/x/webhooks`, session, spec), "webhook");
 }
 
-async function tenant(send: Send, store: Store, org: string, digit: string, replies: number): Promise<Tenant> {
+async function tenant(
+  send: Send,
+  store: Store,
+  org: string,
+  digit: string,
+  replies: number,
+  scheduleDelay = "1d",
+): Promise<Tenant> {
   const marker = `${org}-only`;
   const { headers: session, personId } = await signIn(store, `${org}-owner`, digit);
   await ok(send("POST", "/api/x/orgs", session, { slug: org, name: marker }), "organization");
@@ -231,12 +238,12 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
   );
   if (org === "bravo") {
     await ok(
-      send("POST", `/api/${org}/main/schedules`, session, { re: firstThread, text: marker, in: "1d" }),
+      send("POST", `/api/${org}/main/schedules`, session, { re: firstThread, text: marker, in: scheduleDelay }),
       "first schedule",
     );
   }
   const { schedule } = await ok<{ schedule: { id: string } }>(
-    send("POST", `/api/${org}/main/schedules`, session, { re: firstThread, text: marker, in: "1d" }),
+    send("POST", `/api/${org}/main/schedules`, session, { re: firstThread, text: marker, in: scheduleDelay }),
     "schedule",
   );
   const { inbound } = await ok<{ inbound: { id: string } }>(
@@ -271,6 +278,7 @@ async function tenant(send: Send, store: Store, org: string, digit: string, repl
 export async function seed(
   store = openStore(() => NOW),
   beforeArchive?: (send: Send, tenant: Tenant) => Promise<void>,
+  survivingScheduleDelay = "1d",
 ): Promise<Seeded> {
   let drawn = 0;
   const randomBytes = (length: number) => {
@@ -305,7 +313,7 @@ export async function seed(
   const a = await tenant(send, store, "alpha", "a", 1);
   const aOther = "other";
   await ok(send("POST", "/api/x/orgs/alpha/boards", a.session, { slug: aOther, name: aOther }), "board");
-  const b = await tenant(send, store, "bravo", "b", 16);
+  const b = await tenant(send, store, "bravo", "b", 16, survivingScheduleDelay);
   const events = await ok<{ cursor: string }>(send("GET", "/api/alpha/main/events", a.session), "events");
   if (Number(b.ids.message) <= Number(events.cursor)) throw new Error("seed: B's last message must be past A's head");
   const deleted = await tenant(send, store, "archived", "c", 0);

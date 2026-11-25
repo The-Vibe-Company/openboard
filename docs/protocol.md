@@ -335,10 +335,19 @@ Use `ob schedule 812 "@ada friendly ping: can you review?" --in 1d`
 to schedule a reply, or `ob schedule dev "standup?" --at <ISO time with offset>`
 for a new thread. Use `-` for text on stdin. The board saves the message as a
 pending schedule with the creator's identity and resolves mentions at creation.
+Saved attachment metadata remains on the schedule. Unattached uploads retain
+their normal expiration, so a later send can reference a file that has expired.
 The command prints the next send time and author. With `--json` it adds
 `outcome: "scheduled"` to the API response. Schedule creation appears as
-`ob.schedule.created` in the board audit. Automatic sending is pending. A repeat
-accepts `every` of at least one minute and defaults its first send to one
+`ob.schedule.created` in the board audit. At the due time a running instance
+posts as the stored creator and profile, using the creator's current channel
+permissions. The message and its posted event carry `schedule: { id, n }`,
+where `n` starts at zero. The schedule increments `sent`, records the message
+ID in `last`, and becomes `done` when there is no next send. A deleted thread
+root or lost posting access cancels the schedule with reason `thread_deleted`
+or `revoked`, respectively.
+
+A repeat accepts `every` of at least one minute and defaults its first send to one
 interval from now. An optional `until`,
 `for` (relative to the first send), or `times` stops the repeat. The response
 gives `every` in milliseconds, `until` as an ISO time, and `times` as a send
@@ -348,7 +357,7 @@ Use `ob schedules` to list pending schedules,
 `ob schedules 812` to filter by thread, and `--all` to include completed and
 canceled schedules. Lists include readable channels and the caller’s own
 schedules created without read access in channels where it can still post. `ob read 812` prints the thread’s
-pending schedules below its replies.
+pending schedules below its replies and marks each scheduled reply with `scheduled s1` (its schedule ID).
 
 Use `ob schedule cancel s1` to cancel a pending schedule. The board audit records
 `ob.schedule.canceled`, and `ob schedules --all` shows who canceled it and why.

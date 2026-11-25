@@ -1,6 +1,6 @@
 import { BoardError, CAN_HEADER, type Can, type Message, type Operation, type Role } from "@openboard/contract";
 import { agents, grants, narrowCan, parseCanHeader, parseId, resolveRankedCan } from "@openboard/core";
-import type { BoardView, PersonGrant } from "@openboard/ports";
+import type { BoardView, BoardWriter, PersonGrant } from "@openboard/ports";
 import { callerCan, credentialKind, memberOf, type Principal, requestNarrowed, requestScope } from "../deps.ts";
 
 /** Only the local owner has implicit unrestricted access. */
@@ -30,6 +30,8 @@ export function isNarrowedCaller(by: Principal): boolean {
 export function isNarrowedPersonal(by: Principal): boolean {
   return by[credentialKind] === "personal" && by[requestNarrowed] === true;
 }
+
+type MessageAccess = Pick<BoardView, "thread"> | Pick<BoardWriter, "message">;
 
 type Permission = NonNullable<Operation["access"]>["permission"] | "label";
 type Access = { readonly permission: Permission; readonly channel: NonNullable<Operation["access"]>["channel"] };
@@ -72,10 +74,12 @@ function outsideCan(by: Principal, permission: Permission, where: string): Board
  * `message_not_found`, docs/auth.md rule 9), so the caller learns nothing of it; readable without `permission` is 403
  * `forbidden`. A message the board lacks answers the same 404 here, so a later one cannot slip past the check.
  */
-async function checkMessage(by: Principal, can: Can, permission: Permission, board: BoardView, id: unknown) {
+async function checkMessage(by: Principal, can: Can, permission: Permission, board: MessageAccess, id: unknown) {
   const position = typeof id === "string" ? parseId(id) : null;
   if (position === null) return;
-  const channel = (await board.thread(position, { limit: 0 }))?.message.channel;
+  const message =
+    "message" in board ? await board.message(position) : (await board.thread(position, { limit: 0 }))?.message;
+  const channel = message?.channel;
   const allowed = channel === undefined ? [] : agents.allowedAt(can, channel);
   if (!allowed.includes("read")) throw new BoardError("message_not_found", `Couldn't find message #${id}.`);
   if (!allowed.includes(permission)) throw outsideCan(by, permission, `in ${channel}`);
@@ -93,7 +97,7 @@ export async function keepInsideCan(
   operation: Pick<Operation, "access">,
   input: unknown,
   by: Principal,
-  board: BoardView,
+  board: MessageAccess,
 ): Promise<void> {
   const { access } = operation;
   if (access === null || unrestrictedLocalOwner(by)) return;
@@ -140,7 +144,7 @@ export function withoutMentionDetails(message: Message): Message {
   return visible;
 }
 
-async function checkPermission(by: Principal, can: Can, access: Access, input: unknown, board: BoardView) {
+async function checkPermission(by: Principal, can: Can, access: Access, input: unknown, board: MessageAccess) {
   const { permission } = access;
   const named = input as { channel?: unknown; path?: unknown; re?: unknown; id?: unknown };
   if (access.channel === "fromMessage") return checkMessage(by, can, permission, board, named.id);

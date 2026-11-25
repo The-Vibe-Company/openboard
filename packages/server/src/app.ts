@@ -1,12 +1,13 @@
 import { operations } from "@openboard/contract";
 import {
   BACKFILL_BOARD_ORG_JOB,
-  EXPORT_ORG_JOB,
-  TASK_EXPIRY_JOB,
   type Blobs,
   type Bucket,
+  EXPORT_ORG_JOB,
   type Jobs,
+  SCHEDULE_SEND_JOB,
   type Store,
+  TASK_EXPIRY_JOB,
   WEBHOOK_DELIVERY_JOB,
   WEBHOOK_RESEND_JOB,
 } from "@openboard/ports";
@@ -25,8 +26,8 @@ import { startExportJobs } from "./jobs/export-org.ts";
 import { type JobHandlers, startBoardJobs, startJobs } from "./jobs/registry.ts";
 import { logShippingJobs, SHIP_LOG_JOB } from "./jobs/ship-log.ts";
 import { sweepOnActivity } from "./jobs/sweep.ts";
-import { instanceMetrics } from "./metrics.ts";
 import { webhookJob } from "./jobs/webhooks.ts";
+import { instanceMetrics } from "./metrics.ts";
 
 export const DRAIN_TIMEOUT_MS = 10_000;
 
@@ -59,6 +60,7 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     jobKinds: [
       ...new Set([
         ...Object.keys(handlers),
+        SCHEDULE_SEND_JOB,
         TASK_EXPIRY_JOB,
         ...(bucket ? [EXPORT_ORG_JOB] : []),
         ...(ports.bucket ? [SHIP_LOG_JOB] : []),

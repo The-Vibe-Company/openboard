@@ -504,6 +504,11 @@ the job's due time through an insert trigger so older writers notify as well.
 Each runner keeps one timer for its earliest due job. Startup and re-LISTEN
 reconcile the timer with the queue, including any outstanding lease expiries.
 
+Issue #573 applies this to schedule sends. Schedule creation and each repeat
+advance enqueue the next slot in the same board transaction. Cancellation
+removes the queued send. A runner checks the slot under the board lock before
+it posts.
+
 ### D37. Failover must not reuse cursors
 
 - **Context.** With asynchronous replication, a failover can lose the last

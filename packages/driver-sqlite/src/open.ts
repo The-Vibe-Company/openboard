@@ -146,7 +146,7 @@ export function sqliteDriver(options: SqliteOptions, now: () => number = Date.no
       db,
       sqliteDialect,
       sqliteBroadcaster(),
-      { now, committed: jobs.committed },
+      { now, committed: jobs.committed, refresh: jobs.refresh },
       () => blobs,
       blobs.purgeOrg,
     ),

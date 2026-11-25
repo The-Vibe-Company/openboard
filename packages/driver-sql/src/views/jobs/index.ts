@@ -8,6 +8,7 @@ import {
   type JobPayload,
   type Jobs,
   PURGE_ORG_JOB,
+  SCHEDULE_SEND_JOB,
   WEBHOOK_DELIVERY_JOB,
   WEBHOOK_RESEND_JOB,
 } from "@openboard/ports";
@@ -30,7 +31,8 @@ const skipLocked: Fragment = {
 
 // A tombstone cannot run board writes. Skip its expiry jobs in both dispatch and the next timer.
 const activeExpiryBoard: Fragment = {
-  fragment: () => `(jobs.kind NOT IN ('task-expiry', 'webhook-delivery', 'webhook-resend') OR EXISTS (
+  fragment:
+    () => `(jobs.kind NOT IN ('task-expiry', '${SCHEDULE_SEND_JOB}', 'webhook-delivery', 'webhook-resend') OR EXISTS (
   SELECT 1 FROM boards b JOIN orgs o ON o.id = b.org_id
   WHERE b.id = jobs.board_id AND b.org_id = jobs.org_id AND b.deleted_at IS NULL AND o.deleted_at IS NULL
 ))`,
@@ -270,6 +272,7 @@ export async function nextJob(db: Db, dialect: Dialect, kinds: readonly string[]
 export interface JobWrites {
   readonly now: () => number;
   readonly committed: (kind: string, dueAt: number) => void;
+  readonly refresh?: (kind: string) => void;
 }
 
 export async function readLeasedJob(

@@ -30,6 +30,7 @@ import type {
   OrgCreation,
   OrgQuotaOverrides,
   QuotaOutcome,
+  ScheduledPost,
 } from "@openboard/core";
 import type { DeviceView, PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
 import type { AttachmentReads, AttachmentWrites } from "./attachments/blobs.ts";
@@ -221,6 +222,7 @@ export interface BoardWriter
   nextSchedule(): Promise<number>;
   /** Read the schedule at this board-local ID under the write lock. */
   schedule(id: number): Promise<ScheduleView | null>;
+  scheduledPost(id: number): Promise<ScheduledPost | null>;
   /** The actors available to resolve handles under the write lock. */
   mentionActors(handles: ReadonlySet<string>): Promise<MentionActor[]>;
   /** Check the selected message versions that established candidate visibility before the lock. */
