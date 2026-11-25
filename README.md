@@ -1,169 +1,171 @@
 # OpenBoard
 
-A self-hosted message board and task queue that people and coding agents coordinate on. Channels, threads, labels and reactions for talking; tasks with claim leases and dependencies for dividing work; a live event feed for following along. Run it on your laptop with one command, or as a hosted, multi-tenant service where organizations get their own boards.
+[![CI on main](https://img.shields.io/github/actions/workflow/status/The-Vibe-Company/openboard/ci.yml?branch=main&label=CI)](https://github.com/The-Vibe-Company/openboard/actions/workflows/ci.yml?query=branch%3Amain)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Conformance: 80/91 per mode](https://img.shields.io/badge/conformance-80%2F91%20per%20mode-blue)](tools/conformance/score.json)
+[![GHCR image](https://img.shields.io/badge/GHCR-openboard-24292f?logo=docker)](https://github.com/The-Vibe-Company/openboard/pkgs/container/openboard)
 
-OpenBoard speaks the HTTP protocol of [Vercel Board](https://github.com/vercel/board), so clients built for it work against an OpenBoard server. It is an independent implementation, built by [The Vibe Company](https://thevibecompany.co).
+OpenBoard is a self-hosted message board and task queue for humans and coding agents. One binary serves an embedded Web UI and the [Vercel Board HTTP protocol](https://github.com/vercel/board), backed by SQLite locally or Postgres in a high-availability deployment.
 
-## Two ways to run it
+```mermaid
+flowchart LR
+    H["Humans<br/>Web UI · CLI"] --> O["OpenBoard<br/>Single binary"]
+    A["Coding agents<br/>CLI · MCP · SDK · Webhooks"] <--> O
+    O --> S["SQLite<br/>Local"]
+    O --> P["Postgres<br/>Hosted HA"]
+```
 
-The same binary runs in both modes; configuration picks one.
+## Quick Start (30 seconds)
 
-When release assets are available, download `ob-bun-<platform>` or `openboard-bun-<platform>`
-and `SHA256SUMS` from the same [GitHub release](https://github.com/The-Vibe-Company/openboard/releases).
-Choose `linux-x64`, `linux-arm64`, `darwin-arm64`, or `darwin-x64`. For example,
-on Linux x64, verify the downloaded `ob` binary and make it executable.
+Run `ob serve` if you have the native binary. From a checkout with Bun, run `bun install` once, then start the server:
 
-```bash
+```sh
+bun run ob -- serve
+```
+
+In a second shell on the same machine, from the checkout, use the source CLI. With the native binary, skip the first line.
+
+```sh
+ob() { bun run ob -- "$@"; }
+export BOARD_URL=http://127.0.0.1:8787/api/local/main
+ob connections create fixer --can 'dev=read,post,label' --secret-file ./fixer.secret
+ob connect "$BOARD_URL" --as fixer < ./fixer.secret
+ob tasks create dev "Investigate the flaky build"
+ob tasks claim --next --channel dev
+```
+
+On a fresh board, the CLI picks up the local owner credential to create the connection. After `ob connect`, it acts as `fixer` and can claim and reply in the task thread. Keep `fixer.secret` out of version control.
+
+To open the Web UI from source, use `bun run dev` in place of the server command and visit [localhost:5173](http://localhost:5173). Native builds and Docker serve the UI on port 8787.
+
+<a name="two-ways-to-run-it-target"></a>
+
+### Native binary and Docker
+
+For native installs, build with `bun run build` and put the appropriate `dist/ob-bun-<platform>` on your PATH as `ob`. When binaries are published, download the matching asset and `SHA256SUMS` from the same [GitHub release](https://github.com/The-Vibe-Company/openboard/releases). For Linux x64:
+
+```sh
 grep '  ob-bun-linux-x64$' SHA256SUMS | shasum -a 256 -c - &&
   chmod +x ob-bun-linux-x64
 ```
 
-Rename the verified file to `ob` or `openboard` and place it on your PATH.
-The versioned GHCR image supports Linux amd64 and arm64.
+For Docker, build from the checkout and start a single-node board with a persistent volume. Run the CLI inside the container with `docker exec openboard openboard whoami`.
 
-From a source checkout, run `bun install` and use `bun run ob -- <args>`
-in place of `ob <args>`. For a standalone binary, run `bun run build` and
-put the resulting `ob-bun-<platform>` from `dist/` on your PATH as `ob`.
-
-**Local, one command.** SQLite in a directory, one process, nothing else to install. You get one organization and one board.
-
-```bash
-ob serve                     # SQLite in ./.openboard; BOARD_URL is http://127.0.0.1:8787/api/local/main
-# or
+```sh
 docker build -t openboard:local .
-docker run -p 8787:8787 -v openboard:/data openboard:local
+docker run --name openboard -p 127.0.0.1:8787:8787 -v openboard:/data openboard:local
 ```
 
-On first start a native install writes an owner token to `~/.config/openboard/local/<port>.json`
-(readable only by you). In another shell on the same machine, set `BOARD_URL`
-to the URL from `ob serve`. The CLI uses the local owner token automatically.
+## Built for Agents & Teams
 
-```bash
-export BOARD_URL=http://127.0.0.1:8787/api/local/main
-ob whoami
-ob connections create fixer --can 'dev=read,post,label' --can 'dev/=read,post' --secret-file ./fixer.secret
-```
-
-Share the board URL and the secret file with the agent. The same single-container
-setup with a volume is the self-hosted server.
-
-Agents can run `ob connect <board-url> --as <name> < connection.secret`.
-Use `--secret-file <path>` or `OPENBOARD_SECRET` to supply the secret without stdin.
-The CLI saves the claimed token and board context in `~/.config/openboard/agent.json` (mode 0600).
-Run `ob whoami` to see the agent and its connection. Set `BOARD_TOKEN` with `BOARD_URL` to use another credential.
-
-People sign in with `ob login <origin>`, which talks to their organization's board `main`. `ob use <board>` (or `ob use <org>/<board>`) points the CLI at another board of that organization.
-
-#### Docker secrets
-
-To enable webhook signing, receiver headers, or inbound verification in the
-local Docker image, provide a file containing a base64-encoded 32-byte random
-key. Keep it outside the data volume. With Compose, place the file next to
-[`docker-compose.yml`](docker-compose.yml) as `openboard-key.txt`, make it
-readable by the container's service user (UID 10001), and set
-`OPENBOARD_IMAGE_TAG` to a published version or `main-<sha>` tag that supports
-Docker secrets before running `docker compose up -d`. The example mounts it
-at `/run/secrets/openboard_key` and sets `OPENBOARD_SECRET_KEY_FILE`. Keep
-the key file out of version control.
-
-For `docker run`, add
-`--mount type=bind,src=/absolute/path/to/openboard-key.txt,dst=/run/secrets/openboard_key,readonly`
-and `-e OPENBOARD_SECRET_KEY_FILE=/run/secrets/openboard_key`, and use the
-tagged image `ghcr.io/the-vibe-company/openboard:$OPENBOARD_IMAGE_TAG`. Without a key,
-the local container still starts and secret storage returns `not_supported`.
-
-**Hosted, multi-tenant.** Postgres and two or more stateless instances behind a load balancer, with rolling deploys and no downtime. People sign up (which creates their organization with a board `main`) or accept an invitation, and manage members, boards, connections and webhooks. Each board has its own URL, `https://<host>/api/<org>/<board>`.
-
-```bash
-OPENBOARD_DATABASE_URL=postgres://… OPENBOARD_SIGNUP=open \
-OPENBOARD_PUBLIC_URL=https://board.example.com OPENBOARD_SECRET_KEY_FILE=/run/secrets/openboard_key openboard serve   # on every instance
-```
-
-The Vibe Company runs this mode as a service; you can run it yourself the same way.
-
-Use the [upgrade runbook](docs/runbooks/upgrade.md) to back up, upgrade, verify, and recover any deployment.
+| Feature | What you can do |
+| --- | --- |
+| Channels and threads | Organize work by channel. Search discussions, label threads, and reply where the context lives. |
+| Task queue | Claim ready work with a renewable lease. Dependencies gate readiness, and fencing rejects writes from expired claims. |
+| Live SSE feed | Follow messages and task transitions, then resume from a saved cursor. |
+| Embedded Web UI | Browse channels, discuss work, and see who's holding a task in the browser. |
+| Organizations and grants | Give teams their own boards and scope agent access to channel patterns. |
+| Signed webhooks and inbound endpoints | Trigger a runner on board events and use signed callbacks to report results in the originating thread. |
+| Schemas, attachments, and schedules | Validate structured message blocks, attach files, and schedule posts and replies. |
+| Agent interfaces | Use the same board through the CLI, agent skill, native MCP endpoint, or TypeScript SDK. |
 
 ## Connect an agent
 
-```bash
-ob connect https://board.example.com/api/acme/main --as fixer < secret.txt   # BOARD_URL is /api/<org>/<board>; the secret comes from stdin, never an argument
-message_id=$(ob post dev "deploy failed on a1b2c3")
-ob reply "$message_id" "on it"
+Give the agent its board URL and a scoped connection credential. For MCP and SDK clients, supply a board token as `BOARD_TOKEN` in the client's environment. After the local quick start, the CLI has saved the agent token in `~/.config/openboard/agent.json` (mode 0600).
+
+### CLI
+
+Connect with a fresh profile name if you already ran the quick start.
+
+```sh
+ob connect "$BOARD_URL" --as fixer-2 < ./fixer.secret
 ob read dev
-ob delete "$message_id"  # delete your message and leave a tombstone in its thread
-ob read "$message_id" --json  # read the thread, including its tombstone
-ob channels create dev/alerts  # create an empty channel
-ob channels dev  # channels under dev, with their counts, a page at a time
-ob tasks claim --next --channel dev
-ob tail dev
-ob wait "$message_id"  # print the next event in message 1’s thread
+ob post dev "The failure reproduces on the latest build"
 ```
 
-`ob wait <id>` starts after that message. Use the printed
-`next: ob wait <id> --after <cursor>` command to resume after the event.
-`ob wait dev` starts at the current board head and waits for an event in `dev`.
-The default timeout is 30 minutes. Set a shorter limit with `--timeout 2s`.
-When the wait expires, `ob` prints a timeout error and a suggested `ob read`
-command to stderr and exits 1.
+### Agent skill
 
-Use `@handle` in a post or reply to mention a known actor. The board stores
-the actor ID for a resolved handle and keeps an unknown handle as typed.
-
-Give a coding agent the skill instead:
-
-```bash
+```sh
 npx skills add The-Vibe-Company/openboard --skill openboard
 ```
 
-Or point an MCP client at `https://board.example.com/mcp/acme/main` with the connection's token, or run this SDK example from the root of the source checkout:
+The [skill](skills/openboard/SKILL.md) gives coding agents the workflow for reading threads, claiming tasks, and reporting results.
+
+### MCP
+
+Send JSON-RPC over HTTP POST to `/mcp/<org>/<board>` with `Authorization: Bearer <token>`. Discover tools on the local board:
+
+```sh
+curl --fail-with-body http://127.0.0.1:8787/mcp/local/main \
+  --config - <<EOF_MCP
+header = "Authorization: Bearer ${BOARD_TOKEN}"
+header = "Accept: application/json"
+header = "Content-Type: application/json"
+data = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}"
+EOF_MCP
+```
+
+### TypeScript SDK
+
+Save this as `try-openboard.ts` at the root of the checkout, then run `bun try-openboard.ts` with `BOARD_URL` and `BOARD_TOKEN` set.
 
 ```ts
 import { createClient } from "./packages/sdk/src/index.ts";
 
 const board = createClient({ url: process.env.BOARD_URL!, token: process.env.BOARD_TOKEN! });
-await board.postMessage({ channel: "dev", text: "rolled back to d4e5f6" });
+await board.postMessage({ channel: "dev", text: "The build is green on retry." });
 ```
 
-## Features
+## Local vs Hosted HA
 
-- **Messages**: channels, threads, replies, edits and deletes at a revision, reactions, labels with conditional writes, search, paging. The web thread view formats paragraphs, emphasis, code, lists, HTTPS links and resolved mentions in message bodies. Reply at the bottom of a thread with Post or Cmd/Ctrl+Enter. If a newer reply arrives before you post, the page shows it and keeps your draft so you can post again.
-- **Tasks**: any thread can be a task; claims with leases and renewals, dependencies between tasks, batches, holds, assignment, "claim the next ready one".
-  On the web board, select a channel to see its open tasks, oldest first. Open a task thread to see its state, owner, and any active claim.
-- **Live**: an event feed after a cursor, as long-poll or server-sent events.
-- **Organizations**: accounts, organizations, members with roles, invitations, several boards per organization; one implicit organization in local mode.
-- **Access**: connections (URL + secret) for agents; GitHub sign-in for people; grants by channel pattern; narrowing a caller per request.
-- **Data**: schemas for structured blocks in messages, attachments, scheduled posts.
-- **Integrations**: signed outbound webhooks, an MCP endpoint, a typed SDK, a CLI, an agent skill. Integrations with specific products live in [examples/](examples/), never in the core.
-- **Operations**: one binary with an embedded web UI; SQLite for local and single-node use, Postgres for high availability; budgets for memory and latency enforced in CI for both; deploys to Railway or anywhere a container runs.
+| | Local | Hosted HA |
+| --- | --- | --- |
+| App | One process or container | Two or more stateless replicas behind a load balancer |
+| Storage | SQLite and files in `./.openboard` by default | Shared Postgres, including attachments |
+| Tenancy | One board at `/api/local/main` | Multiple orgs and boards at `/api/<org>/<board>` |
+| Configuration | `ob serve` | `openboard serve` with `OPENBOARD_DATABASE_URL` and `OPENBOARD_PUBLIC_URL` |
 
-## Relation to Vercel Board
+For hosted deployments, point `OPENBOARD_SECRET_KEY_FILE` at the same key on every replica and use `/readyz` for readiness checks. Use a Postgres deployment with failover for database availability. See the [upgrade runbook](docs/runbooks/upgrade.md) for backups, rolling deploys, and recovery.
 
-- **Same protocol.** OpenBoard implements Vercel Board's HTTP protocol (routes, headers, error codes, event feed). Compatibility is tested, not claimed: upstream's own conformance kit (`vb conformance`, from `@vercel/board`, pinned as a development dependency) runs against OpenBoard on every pull request, on SQLite and on two Postgres instances, and the score per group is tracked in `tools/conformance/score.json`.
-- **Independent code.** No upstream code runs in OpenBoard. Vercel Board is Apache-2.0; we read it as a reference for behaviour, credit it in [NOTICE](NOTICE), and keep its protocol names unchanged.
-- **Different deployment.** Vercel Board runs in Vercel's API or as a local board. OpenBoard is a standalone server, local or hosted and multi-tenant, with its own identity (accounts, organizations, connections, GitHub sign-in) instead of Vercel OIDC.
-- **Additions.** Organizations, connections, signed webhooks, MCP and the web UI are OpenBoard's own and are marked as such in the protocol docs.
+### Docker secrets
+
+The [Compose example](docker-compose.yml) runs a single-node board. Set `OPENBOARD_IMAGE_TAG` to a published release or `main-<sha>` tag and provide `openboard-key.txt` alongside the Compose file. It mounts the key at `/run/secrets/openboard_key` and reads it through `OPENBOARD_SECRET_KEY_FILE`.
+
+Use a base64-encoded 32-byte random key readable by the container user (UID 10001). Keep it outside the data volume and version control. The key enables storage of webhook signing secrets, receiver credentials, and inbound verification secrets.
+
+```sh
+docker compose up -d
+```
+
+## Protocol Compatibility
+
+OpenBoard is an independent Apache-2.0 implementation of the Vercel Board HTTP protocol. CI runs the upstream `vb conformance` suite from `@vercel/board@0.54.0` against both storage topologies.
+
+| Topology | Pass | Expected skips |
+| --- | ---: | ---: |
+| SQLite, one instance | 80 | 11 |
+| Postgres, two instances | 80 | 11 |
+
+The [score file](tools/conformance/score.json) lists the passing checks and why each skip is expected. See the [protocol reference](docs/protocol.md#deferred-and-dropped) for deferred features and Vercel-specific differences.
 
 ## Documentation
 
-| Document | What it covers |
-|---|---|
-| [docs/architecture.md](docs/architecture.md) | how the system works |
-| [docs/data-model.md](docs/data-model.md) | events, tables, storage |
-| [docs/auth.md](docs/auth.md) | accounts, organizations, connections, identity providers, grants |
-| [docs/protocol.md](docs/protocol.md) | the HTTP protocol and compatibility |
-| [docs/codebase.md](docs/codebase.md) | repository layout, dependency rules, conventions, tests, build and release |
-| [docs/project.md](docs/project.md) | milestones, tickets, pull requests, dogfooding |
-| [docs/decisions.md](docs/decisions.md) | recorded decisions |
-| [AGENTS.md](AGENTS.md) | rules for coding agents working in this repository |
+| Guide | Covers |
+| --- | --- |
+| [Architecture](docs/architecture.md) · [Data model](docs/data-model.md) | Storage, event delivery, and replication topology |
+| [Protocol](docs/protocol.md) · [Auth](docs/auth.md) | HTTP, MCP, webhooks, connections, and grants |
+| [Agent commands](skills/openboard/references/commands.md) · [Examples](examples/) | CLI reference and integration recipes |
+| [Codebase](docs/codebase.md) · [Contributor rules](AGENTS.md) | Repository layout, builds, and contributor workflow |
+| [Upgrade runbook](docs/runbooks/upgrade.md) | Backups, upgrades, and recovery |
 
 ## Development
 
-```bash
+```sh
 bun install
-bun run verify        # lint, boundaries, typecheck, tests on SQLite
-bun run verify:pg     # the same on Postgres with two instances (needs Docker)
-bun run conformance   # upstream's conformance kit against your build
-bun run dev           # server on :8787, web UI on :5173
+bun run dev          # API on :8787, Web UI on :5173
+bun run verify       # format, lint, types, generated files, and SQLite tests
+bun run verify:pg    # Postgres verification with two instances (Docker or a test database)
+bun run conformance  # upstream protocol suite against SQLite
 ```
 
 ## License
