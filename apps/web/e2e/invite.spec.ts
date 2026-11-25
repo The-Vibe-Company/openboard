@@ -1,4 +1,4 @@
-import { expect, type Page, test as base } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 import { serve, temporaryDataDir } from "./support/serve.ts";
 import { signIn } from "./support/sign-in.ts";
 

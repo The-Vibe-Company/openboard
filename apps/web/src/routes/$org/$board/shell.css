@@ -14,7 +14,6 @@
 
 .board-shell .shell-sidebar-controls,
 .shell-drawer-head,
-.shell-drawer-backdrop,
 .shell-mobile-tabs {
   display: none;
 }
@@ -162,6 +161,10 @@
 }
 
 @media (max-width: 48rem) {
+  .shell-new-channel-form input {
+    font-size: 16px;
+  }
+
   .board-shell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr;
@@ -195,21 +198,18 @@
     font-weight: 500;
   }
 
-  .shell-drawer-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 45;
-    border: 0;
-    padding: 0;
+  .shell-sidebar::backdrop {
     background: rgb(0 0 0 / 48%);
   }
 
   .board-shell .shell-sidebar {
     position: fixed;
     inset-block: 0;
-    inset-inline-start: 0;
-    z-index: 50;
+    inset-inline: 0 auto;
+    margin: 0;
+    border: 0;
+    block-size: 100dvh;
+    color: inherit;
     inline-size: min(85vw, 20rem);
     max-block-size: 100dvh;
     padding: max(calc(4 * var(--space)), env(safe-area-inset-top)) calc(3.5 * var(--space))
@@ -221,7 +221,7 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .board-shell .shell-sidebar[data-expanded="false"] {
+  .board-shell .shell-sidebar:not([open]) {
     display: none;
   }
 

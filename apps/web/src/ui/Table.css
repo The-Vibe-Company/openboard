@@ -1,3 +1,8 @@
+.settings-table {
+  overflow-x: auto;
+  max-inline-size: 100%;
+}
+
 .ui-table {
   inline-size: 100%;
   border-collapse: collapse;

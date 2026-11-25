@@ -165,6 +165,10 @@ test("mobile shell provides bottom navigation, slide-over drawer, and quick sear
     await page.goto(`${app.url}${board}?channel=general`);
     const bottomNav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(bottomNav).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search threads" })).toHaveCSS("font-size", "16px");
+    await page.getByRole("button", { name: "Labels", exact: true }).click();
+    await expect(page.getByLabel("Labels (comma-separated key=value)")).toHaveCSS("font-size", "16px");
+    await page.getByRole("button", { name: "Labels", exact: true }).click();
     await page.screenshot({ path: info.outputPath("screenshots", "mobile-channel-390-dark.png"), fullPage: true });
 
     await bottomNav.getByRole("link", { name: "Tasks" }).click();
@@ -176,10 +180,17 @@ test("mobile shell provides bottom navigation, slide-over drawer, and quick sear
     await page.screenshot({ path: info.outputPath("screenshots", "mobile-activity-390-dark.png"), fullPage: true });
 
     await page.getByRole("button", { name: "Board menu" }).click();
-    await expect(page.getByRole("navigation", { name: "Channels" })).toBeVisible();
+    const drawer = page.getByRole("dialog", { name: "Board navigation" });
+    await expect(drawer.getByRole("navigation", { name: "Channels" })).toBeVisible();
+    await expect(drawer.getByRole("button", { name: "Close menu" })).toBeFocused();
+    await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
     await page.screenshot({ path: info.outputPath("screenshots", "mobile-drawer-390-dark.png"), fullPage: false });
-    await page.getByRole("button", { name: "Close menu" }).click();
-    await expect(page.getByRole("navigation", { name: "Channels" })).toBeHidden();
+    await drawer.getByRole("button", { name: "New channel" }).click();
+    await expect(drawer.getByLabel("New channel path")).toHaveCSS("font-size", "16px");
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeHidden();
+    await expect(page.getByRole("button", { name: "Board menu" })).toBeFocused();
+    expect(await page.locator("body").evaluate((body) => body.style.overflow)).toBe("");
 
     await page.getByRole("button", { name: "Search", exact: true }).click();
     const palette = page.getByRole("dialog", { name: "Quick jump and search" });
@@ -202,24 +213,30 @@ for (const width of [1280, 768, 375]) {
       const app = await serve();
       try {
         await seedWorkspace(page, app.url);
-        for (const [name, path] of [
-          ["tasks", `${board}/tasks`],
-          ["activity", `${board}/activity`],
-          ["schedules", `${board}/schedules`],
-          ["agents", `${board}/agents`],
-          ["settings-inbound", `${board}/settings/inbound`],
-          ["settings-schemas", `${board}/settings/schemas`],
-          ["settings-watchers", `${board}/settings/watchers`],
-          ["settings-audit", `${board}/settings/audit`],
+        await post(page, app.url, `${api}/schedules`, {
+          channel: "ops",
+          text: "Verify the staging deployment across all replicas before releasing",
+          in: "1h",
+        });
+        for (const [name, path, ready] of [
+          ["tasks", `${board}/tasks`, page.getByRole("link", { name: /Verify staging health/ })],
+          ["activity", `${board}/activity`, page.getByRole("list", { name: "Live board events" })],
+          ["schedules", `${board}/schedules`, page.getByRole("table", { name: "Board schedules" })],
+          ["agents", `${board}/agents`, page.getByRole("table", { name: "Board actors" })],
+          ["settings-inbound", `${board}/settings/inbound`, page.getByText("No inbound endpoints configured yet.")],
+          ["settings-schemas", `${board}/settings/schemas`, page.getByRole("table", { name: "Board schemas" })],
+          ["settings-watchers", `${board}/settings/watchers`, page.getByText(/No watcher registrations/)],
+          ["settings-audit", `${board}/settings/audit`, page.getByRole("table", { name: "Board audit log" })],
+          ["settings-webhooks", `${board}/settings/webhooks`, page.getByText("No webhooks yet.")],
         ] as const) {
           const response = await page.goto(app.url + path);
           expect(response?.ok()).toBe(true);
-          await expect(page.getByRole("heading").first()).toBeVisible();
+          await expect(ready).toBeVisible();
           const layout = await page.evaluate(() => ({
             viewport: window.innerWidth,
             content: document.documentElement.scrollWidth,
           }));
-          expect.soft(layout.content, `${name} (${width}px ${theme}) scrollWidth`).toBeLessThanOrEqual(width);
+          expect.soft(layout.content, `${name} (${width}px ${theme}) scrollWidth`).toBeLessThanOrEqual(layout.viewport);
           if (name === "tasks" || name === "activity") {
             await page.screenshot({
               path: info.outputPath("screenshots", `${name}-${width}-${theme}.png`),

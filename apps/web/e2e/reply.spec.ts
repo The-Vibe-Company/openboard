@@ -1,4 +1,4 @@
-import { expect, type Page, test as base } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 import { browserClient } from "../src/api/client.ts";
 import { openLiveBoard } from "./support/board-live.ts";
 import { serve } from "./support/serve.ts";
@@ -78,6 +78,7 @@ test("Cmd+Enter posts a member's reply last and increments the channel reply cou
   await row.click();
   await expect(page).toHaveURL(`${release.url}/t/${release.root}?channel=dev`);
 
+  await expect(threadMessages(page)).toHaveCount(1);
   const draft = page.getByRole("textbox", { name: "Message" });
   await draft.fill("Ready to ship");
   await draft.press("Meta+Enter");

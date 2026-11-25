@@ -4,6 +4,7 @@ import { BoardError, type Client, principalFlags } from "@the-vibe-company/openb
 import { useState } from "react";
 import { browserClient } from "../../../../api/client.ts";
 import { addConnectionGrant, type Can, formatCan, type Grant, grantList } from "../../../../api/grants.ts";
+import { sessionQuery } from "../../../../api/session.ts";
 import { GrantError, GrantForm } from "../../../../components/GrantForm.tsx";
 import { Button, Table } from "../../../../ui/index.ts";
 
@@ -13,7 +14,8 @@ export const Route = createFileRoute("/$org/$board/settings/grants")({
 
 function GrantsRoute() {
   const { org, board } = Route.useParams();
-  const client = browserClient(window.location.origin, { org, board });
+  const { data: session } = useQuery(sessionQuery);
+  const client = browserClient(window.location.origin, { org, board, csrf: session?.csrf ?? undefined });
   return <GrantsPage key={JSON.stringify([org, board])} client={client} org={org} board={board} />;
 }
 

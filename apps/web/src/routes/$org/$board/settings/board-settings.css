@@ -26,7 +26,6 @@
 
 .board-settings .settings-table {
   margin-block-start: calc(4 * var(--space));
-  overflow-x: auto;
 }
 
 .board-settings .ui-table :is(td, th) {
@@ -82,7 +81,7 @@
 
 .settings-drawer-head h2 {
   margin: 0;
-  font-size: var(--type-body);
+  font-size: var(--type-base);
 }
 
 .settings-json {

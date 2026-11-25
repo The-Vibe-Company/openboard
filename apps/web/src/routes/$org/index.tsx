@@ -1,8 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { BoardError, createClient } from "@the-vibe-company/openboard";
+import { BoardError } from "@the-vibe-company/openboard";
 import { browserClient } from "../../api/client.ts";
 import { ArrowRightIcon, Card, EmptyState, PlusIcon, SettingsIcon } from "../../ui/index.ts";
-import "./org.css";
 
 export const Route = createFileRoute("/$org/")({
   beforeLoad: ({ params }) => {
@@ -14,7 +13,10 @@ export const Route = createFileRoute("/$org/")({
     const signal = abortController.signal;
     if (params.org === "local") {
       // The implicit local board has no account membership. Only local mode serves the /api alias.
-      await createClient({ url: new URL("/api", origin).href }).discoverBoard({}, { signal });
+      const local = browserClient(origin, {}, (request, init) =>
+        fetch(new Request(new URL("/api", origin), request), init),
+      );
+      await local.discoverBoard({}, { signal });
       return { name: "Local", boards: [{ slug: "main", name: "Main" }], isLocal: true };
     }
     const client = browserClient(origin);

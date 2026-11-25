@@ -1,3 +1,5 @@
+@import "./routes/$org/org.css";
+
 @font-face {
   font-family: Geist;
   src: url("./assets/geist-sans.woff2") format("woff2");
@@ -167,6 +169,10 @@ p a,
   font-weight: 600;
 }
 
+.thread-message header .ui-avatar {
+  font-size: var(--type-base);
+}
+
 a:hover {
   text-decoration: underline;
 }
@@ -212,189 +218,4 @@ textarea::placeholder {
 :focus-visible {
   outline: var(--focus-width) solid var(--accent);
   outline-offset: var(--focus-width);
-}
-
-/* Existing layouts for tickets 412–418 to move into scoped stylesheets. */
-.site-header,
-.session-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(3 * var(--space));
-}
-
-.site-header {
-  justify-content: space-between;
-  padding: calc(3 * var(--space)) calc(4 * var(--space));
-  border-bottom: var(--stroke) solid var(--border);
-}
-
-.site-header img {
-  border-radius: var(--radius-pill);
-  object-fit: cover;
-}
-
-.sign-in {
-  min-height: auto;
-  padding: calc(12 * var(--space)) calc(4 * var(--space));
-  text-align: center;
-}
-
-.provider-buttons {
-  display: grid;
-  gap: calc(3 * var(--space));
-}
-
-.new-org-form {
-  display: grid;
-  gap: calc(2 * var(--space));
-  max-width: 24rem;
-  margin-inline: auto;
-  text-align: left;
-}
-
-.new-org-form [role="alert"] {
-  margin: 0;
-  color: var(--danger-label);
-}
-
-.board-layout {
-  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
-  place-items: stretch;
-}
-
-.board-channels {
-  padding: calc(6 * var(--space));
-  background: var(--surface);
-}
-
-.board-channels h2 {
-  margin: 0 0 calc(4 * var(--space));
-  font-size: var(--type-base);
-}
-
-.board-channels ul,
-.board-threads {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.board-channels a {
-  display: block;
-  padding: calc(2 * var(--space)) calc(3 * var(--space));
-  border-radius: var(--radius-control);
-}
-
-.board-channels a:hover,
-.board-channels a[aria-current] {
-  background: var(--border);
-}
-
-.board-channels a[aria-current] {
-  font-weight: 650;
-}
-
-.board-content {
-  padding: calc(6 * var(--space)) clamp(calc(4 * var(--space)), 4vw, calc(12 * var(--space)));
-}
-
-.board-content h1 {
-  margin: 0 0 calc(4 * var(--space));
-}
-
-.board-thread {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: calc(3 * var(--space));
-  padding: calc(4 * var(--space)) 0;
-  border-top: var(--stroke) solid var(--border);
-  font-size: var(--type-base);
-}
-
-.board-thread strong {
-  font-size: var(--type-base);
-}
-
-.board-thread time,
-.board-thread > span {
-  color: var(--muted);
-}
-
-.thread-message {
-  padding: calc(4 * var(--space)) 0;
-  border-top: var(--stroke) solid var(--border);
-}
-
-.thread-message header,
-.thread-message-metadata {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(2 * var(--space)) calc(4 * var(--space));
-}
-
-.thread-message time,
-.thread-message header span {
-  color: var(--muted);
-  font-size: var(--type-base);
-}
-
-.thread-message-text {
-  white-space: pre-wrap;
-}
-
-.thread-message-metadata {
-  margin: calc(2 * var(--space)) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.thread-message-metadata li {
-  padding: var(--focus-width) calc(2 * var(--space));
-  border-radius: var(--radius-control);
-  background: var(--surface);
-}
-
-.board-avatar {
-  display: grid;
-  position: relative;
-  width: calc(9 * var(--space));
-  aspect-ratio: 1;
-  place-items: center;
-  overflow: hidden;
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-}
-
-.board-avatar img {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-@media (max-width: 40rem) {
-  .board-layout {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
-  }
-
-  .board-channels ul {
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  .board-thread {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-
-  .board-thread time {
-    grid-column: 2;
-  }
-}
-
-.invitation section {
-  min-inline-size: 0;
-  max-inline-size: 100%;
 }

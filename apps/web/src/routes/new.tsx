@@ -44,8 +44,9 @@ function OrganizationAccount({ principal }: { principal: string }) {
 
   useEffect(() => {
     if (expired) window.location.replace("/signin");
-    else if (slug) window.location.replace(boardHref(slug, "main"));
-  }, [expired, slug]);
+  }, [expired]);
+
+  if (slug && !expired) return <Navigate to="/$org/$board" params={{ org: slug, board: "main" }} replace />;
 
   if (expired || slug || !account.data) {
     return <AccountStatus failed={account.isError} retry={() => void account.refetch()} />;
@@ -75,12 +76,14 @@ function proposeSlug(name: string) {
 const slugFormat = "Use 2–39 lowercase letters, numbers, or hyphens. Start with a letter or number.";
 
 function OrganizationForm({ refreshAccount }: { refreshAccount: () => Promise<void> }) {
+  const { data: session } = useQuery(sessionQuery);
   const [name, setName] = useState("");
   const [editedSlug, setEditedSlug] = useState<string | null>(null);
   const [slugValidationError, setSlugValidationError] = useState<string | null>(null);
   const slug = editedSlug ?? proposeSlug(name);
   const create = useMutation({
-    mutationFn: (input: { name: string; slug: string }) => browserClient(window.location.origin).createOrg(input),
+    mutationFn: (input: { name: string; slug: string }) =>
+      browserClient(window.location.origin, { csrf: session?.csrf ?? undefined }).createOrg(input),
     onSuccess: ({ org, board }) => window.location.assign(boardHref(org.slug, board.slug)),
     onError: async (error) => {
       if (!(error instanceof BoardError)) return;
