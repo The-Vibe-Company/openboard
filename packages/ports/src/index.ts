@@ -1,7 +1,7 @@
 export type { IdentityRecord, PersonRecord, SessionRecord, SignedInPerson, SignInRecord } from "./account-records.ts";
 export type { AttachmentReads, AttachmentRecord, AttachmentWrites, BlobKey, Blobs } from "./attachments/blobs.ts";
 export type { Broadcaster, CommittedEvents, CommittedPage } from "./broadcaster.ts";
-export type { BackupAttachment, Bucket, LogSegment } from "./bucket.ts";
+export type { BackupAttachment, BackupBoard, BackupMembership, Bucket, LogSegment } from "./bucket.ts";
 export type { BoardGrantReads, BoardGrantWriter, PersonGrant } from "./grants.ts";
 export * from "./inbound/index.ts";
 export type { BoardJobWriter, Job, JobClaim, JobLease, JobPayload, JobSchedule, Jobs } from "./jobs.ts";

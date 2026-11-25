@@ -12,7 +12,10 @@ the server, follow the [binary download and checksum instructions](https://githu
 For local disaster recovery, run `openboard restore --to ./.openboard` with
 the backup bucket configured. Restore requires a destination without a
 database. See [local restore](https://github.com/The-Vibe-Company/openboard/blob/main/docs/codebase.md#restore-a-local-board)
-for point-in-time and standalone snapshot recovery.
+for point-in-time and standalone snapshot recovery. Hosted operators can use
+`openboard restore --org <slug>` for database-only tenant loss or
+`openboard restore --after-dump` after running `pg_restore`. See
+[hosted restore](https://github.com/The-Vibe-Company/openboard/blob/main/docs/codebase.md#restore-hosted-data).
 
 To open a hosted export locally, run `openboard import acme.tar.gz --to ./.openboard`
 and start the server with that data directory. Choose another source board

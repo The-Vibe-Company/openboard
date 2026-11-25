@@ -8,7 +8,7 @@ import { fakeClock, fixtureFor, keysFor, runner } from "./ship-fixture.ts";
 
 function decode(objects: Map<string, Uint8Array>, prefix: string) {
   return [...objects]
-    .filter(([key]) => key.startsWith(prefix))
+    .filter(([key]) => key.startsWith(prefix) && key.endsWith(".ndjson.gz"))
     .flatMap(([, bytes]) =>
       new TextDecoder()
         .decode(Bun.gunzipSync(Uint8Array.from(bytes)))
@@ -16,6 +16,37 @@ function decode(objects: Map<string, Uint8Array>, prefix: string) {
         .split("\n")
         .map((line) => JSON.parse(line) as unknown),
     );
+}
+
+function expectManifest(manifest: Uint8Array | undefined, main: BoardKeys, other: BoardKeys) {
+  expect(manifest).toBeDefined();
+  expect(JSON.parse(new TextDecoder().decode(manifest))).toMatchObject({
+    orgId: main.orgId,
+    slug: "alpha",
+    boards: [{ id: main.boardId, slug: "main" }, { id: other.boardId, slug: "other" }, { slug: "extra" }],
+  });
+}
+
+async function expectBoardLog(
+  store: ReturnType<typeof openSnapshotStore>,
+  objects: Map<string, Uint8Array>,
+  keys: BoardKeys,
+) {
+  const { rows } = await store.tenantRows(keys);
+  const expected = (rows.events ?? [])
+    .filter((row) => Number(row.board_id) === keys.boardId)
+    .map(({ org_id: _orgId, board_id: _boardId, id, at, thread, message, payload, ...row }) => ({
+      ...row,
+      org_id: keys.orgId,
+      board_id: keys.boardId,
+      id: Number(id),
+      at: Number(at),
+      thread: thread == null ? null : Number(thread),
+      message: message == null ? null : Number(message),
+      payload: JSON.parse(String(payload)) as unknown,
+    }))
+    .sort((a, b) => a.id - b.id);
+  expect(decode(objects, `org/${keys.orgId}/board/${keys.boardId}/`)).toEqual(expected);
 }
 
 if (postgresTestUrl() !== undefined) {
@@ -35,22 +66,6 @@ if (postgresTestUrl() !== undefined) {
     const sibling = store.sibling?.();
     if (!sibling) throw new Error("missing Postgres sibling");
 
-    async function expectBoardLog(keys: BoardKeys) {
-      const { rows } = await store.tenantRows(keys);
-      const expected = (rows.events ?? [])
-        .filter((row) => Number(row.board_id) === keys.boardId)
-        .map(({ org_id: _orgId, board_id: _boardId, id, at, thread, message, payload, ...row }) => ({
-          ...row,
-          id: Number(id),
-          at: Number(at),
-          thread: thread == null ? null : Number(thread),
-          message: message == null ? null : Number(message),
-          payload: JSON.parse(String(payload)) as unknown,
-        }))
-        .sort((a, b) => a.id - b.id);
-      expect(decode(objects, `${prefix}board/${keys.boardId}/`)).toEqual(expected);
-    }
-
     const first = runner(store, bucket, clock, "one", polls);
     const second = runner(sibling, bucket, clock, "two", polls);
     try {
@@ -68,12 +83,14 @@ if (postgresTestUrl() !== undefined) {
       await clock.armed;
       await clock.advance(NOW + 10_000);
       expect(new Set(polls)).toEqual(new Set(["one", "two"]));
-      await expectBoardLog(main);
-      await expectBoardLog(other);
+      await expectBoardLog(store, objects, main);
+      await expectBoardLog(store, objects, other);
       const expectedOrg = (await store.tenantRows(main)).rows.org_events ?? [];
       expect(expectedOrg.length).toBe(orgEvents.length + 1);
       expect(decode(objects, `${prefix}log/`)).toEqual(
         expectedOrg.map(({ id, type, at, actor, payload }) => ({
+          org_id: main.orgId,
+          board_id: 0,
           id: Number(id),
           type,
           at: Number(at),
@@ -83,6 +100,7 @@ if (postgresTestUrl() !== undefined) {
       );
       expect([...objects.keys()].some((key) => key.startsWith(bravoPrefix))).toBe(true);
       expect(JSON.stringify(decode(objects, prefix))).not.toContain("Bravo only");
+      expectManifest(objects.get(`${prefix}boards/${expectedOrg.length}.json`), main, other);
       expect(writes.length).toBe(objects.size);
       const initial = [...writes];
       await clock.advance(NOW + 20_000);

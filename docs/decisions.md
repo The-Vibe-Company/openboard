@@ -547,6 +547,11 @@ it posts.
   `OPENBOARD_DATABASE_URL` only. Backups: Railway's scheduled volume backups
   (daily kept 6 days, weekly 27, monthly 89; no PITR described) plus our
   per-organization log shipping to a bucket every 10 s and a daily `pg_dump`.
+  Hosted shipping publishes a versioned board manifest mapping IDs to slugs,
+  including empty boards. Tenant recovery requires the retained backup prefix
+  and an empty database scope. Hard purge removes that prefix. Pre-manifest
+  segments require board mappings supplied by a restored Postgres dump
+  ([#585](https://github.com/The-Vibe-Company/openboard/issues/585)).
 - **Evidence (vendor pages, 2026-11-23).** Railway backups docs (schedules,
   retention, restore into a new volume, "Wiping a volume deletes all
   backups"); Railway HA docs (Patroni, etcd, HAProxy; failover "within

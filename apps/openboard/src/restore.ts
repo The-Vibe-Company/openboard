@@ -6,6 +6,7 @@ import {
   ensureRestoreTarget,
   localSnapshot,
   MissingBackupBlob,
+  restorePostgres,
   restoreSqlite,
   SnapshotAfterCutoff,
 } from "./compose.ts";
@@ -20,14 +21,29 @@ function invalid(message: string): never {
   throw new BoardError("invalid_request", message);
 }
 
+const restoreUsage = [
+  "Usage: openboard restore [--to <directory>] [--from <snapshot> | --at <ISO time>]",
+  "       openboard restore --org <slug> | --after-dump",
+  "Hosted restore reads OPENBOARD_DATABASE_URL and the OPENBOARD_BACKUP_S3_* settings.",
+  "Use --after-dump after pg_restore of dumps/<YYYY-MM-DD>.dump. Replay starts at the log positions",
+  "in that restored database and includes later shipped segments. Stop serving traffic during recovery.",
+].join("\n");
+
 function options(args: readonly string[]) {
   try {
     return parseArgs({
       args: [...args],
-      options: { to: { type: "string" }, from: { type: "string" }, at: { type: "string" } },
+      options: {
+        to: { type: "string" },
+        from: { type: "string" },
+        at: { type: "string" },
+        org: { type: "string" },
+        "after-dump": { type: "boolean" },
+        help: { type: "boolean" },
+      },
     }).values;
   } catch {
-    return invalid("Usage: openboard restore [--to <directory>] [--from <snapshot> | --at <ISO time>]");
+    return invalid("Run openboard restore --help for usage");
   }
 }
 
@@ -163,10 +179,34 @@ export async function restore(
   args: readonly string[],
   output: { out(line: string): void; err(line: string): void },
   openBucket = backupBucket,
+  restoreHosted = restorePostgres,
 ): Promise<number> {
   try {
-    if (config.mode !== "local") invalid("Restore requires local mode");
-    const { to = config.dataDir, from, at } = options(args);
+    const parsed = options(args);
+    const { to = config.dataDir, from, at, org, "after-dump": afterDump, help } = parsed;
+    if (help) {
+      output.out(restoreUsage);
+      return 0;
+    }
+    if (config.mode === "hosted") {
+      if (
+        parsed.to !== undefined ||
+        from !== undefined ||
+        at !== undefined ||
+        (org !== undefined) === Boolean(afterDump) ||
+        org === ""
+      )
+        invalid("Hosted restore requires exactly one of --org <slug> or --after-dump");
+      const settings = config.backup ?? invalid("Configure a backup bucket with OPENBOARD_BACKUP_S3_*");
+      await restoreHosted(
+        config.databaseUrl,
+        openBucket(settings, Date.now),
+        org !== undefined ? { org } : { afterDump: true },
+        (slug, replayed) => output.out(`Restored ${slug}; replayed ${replayed} events`),
+      );
+      return 0;
+    }
+    if (org !== undefined || afterDump) invalid("Hosted restore requires OPENBOARD_DATABASE_URL");
     const atMatch = at === undefined ? null : isoTime.exec(at);
     if (at !== undefined && (!atMatch || from !== undefined))
       invalid("--at requires an ISO timestamp and a configured bucket");
@@ -188,7 +228,7 @@ export async function restore(
       output.err(`error: ${error.code}: ${error.message}`);
       return error.code === "invalid_request" ? 2 : 1;
     }
-    output.err("error: internal: Could not restore the SQLite database");
+    output.err(`error: internal: Could not restore the ${config.mode === "hosted" ? "Postgres" : "SQLite"} database`);
     return 1;
   }
 }

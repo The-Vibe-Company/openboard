@@ -604,3 +604,24 @@ run it after all instances have rolled out to the release.
 Replay holds the board's write lock until commit. A hosted write that exceeds
 the database's three-second lock timeout returns retryable
 `503 unavailable`. The event log, cursors and queued work are retained.
+
+#### Restore hosted data
+
+Stop the hosted service during recovery and use its `OPENBOARD_DATABASE_URL`
+and `OPENBOARD_BACKUP_S3_*` settings. Run `openboard restore --org <slug>`
+when only that organization's database rows were lost and its slug and bucket
+prefix survived. The command refuses an organization that still contains data.
+A hosted hard purge continues to remove its backup prefix. Restore refuses a
+hard-purged organization even when a stale backup prefix survives.
+
+For volume loss, restore `dumps/<YYYY-MM-DD>.dump` with `pg_restore` first, then
+run `openboard restore --after-dump`. The restored organization log positions
+and board heads determine where replay begins. Running the command again
+reports zero replayed events when the bucket has no newer segments. Accounts
+come from the dump, so replay grants membership only to accounts present in
+that database.
+
+Hosted log shipping stores board mappings, including empty boards, in
+`org/<id>/boards/<org-log-position>.json`. For a legacy backup without a
+manifest or tenant and board IDs on every event, replay requires the relevant
+organization and board mappings in the restored dump.
