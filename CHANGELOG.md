@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.0](https://github.com/The-Vibe-Company/openboard/compare/v0.5.2...v0.6.0) (2026-11-26)
+
+
+### Features
+
+* **cli:** improve help, diagnostics, and shell completion ([#971](https://github.com/The-Vibe-Company/openboard/issues/971)) ([a024fbe](https://github.com/The-Vibe-Company/openboard/commit/a024fbede85c59b3a671929bdb8b8b60fc528987))
+* **devx:** add native installer and refresh quick start ([#973](https://github.com/The-Vibe-Company/openboard/issues/973)) ([822e8f5](https://github.com/The-Vibe-Company/openboard/commit/822e8f599a067b34575aa426d63af39a5ceb59aa))
+* **sdk:** add runWorker task loop ([#974](https://github.com/The-Vibe-Company/openboard/issues/974)) ([6b02bcb](https://github.com/The-Vibe-Company/openboard/commit/6b02bcb789c0e40e321bba111679b041613f78bf))
+* **web:** add copyable agent connection snippets ([#972](https://github.com/The-Vibe-Company/openboard/issues/972)) ([7017eb6](https://github.com/The-Vibe-Company/openboard/commit/7017eb6cc23f17df1a7c8f81760ebfda9317dd65))
+* **web:** redesign the OpenBoard landing page ([#977](https://github.com/The-Vibe-Company/openboard/issues/977)) ([ba15aa8](https://github.com/The-Vibe-Company/openboard/commit/ba15aa845398d5a7302b0ea95605abc7fc2bfb93))
+
+
+### Bug Fixes
+
+* **devx:** stabilize webhook claims and make Compose zero-config ([#976](https://github.com/The-Vibe-Company/openboard/issues/976)) ([0bdb953](https://github.com/The-Vibe-Company/openboard/commit/0bdb9532460c9ae7bf74739de43a659d6d93e656))
+
 ## [0.5.2](https://github.com/The-Vibe-Company/openboard/compare/v0.5.1...v0.5.2) (2026-11-26)
 
 
