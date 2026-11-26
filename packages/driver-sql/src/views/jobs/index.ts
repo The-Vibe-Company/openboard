@@ -25,9 +25,6 @@ const kinds: Fragment = {
   fragment: ({ name }) =>
     name === "postgres" ? "jsonb_array_elements_text(input.kinds::jsonb)" : "json_each(input.kinds)",
 };
-const skipLocked: Fragment = {
-  fragment: ({ name }) => (name === "postgres" ? " FOR UPDATE SKIP LOCKED" : ""),
-};
 
 // A tombstone cannot run board writes. Skip its expiry jobs in both dispatch and the next timer.
 const activeExpiryBoard: Fragment = {
@@ -84,12 +81,28 @@ function scopeFilter(dialect: Dialect, filter: string) {
   return `jobs.kind = scopes.kind ${filter} AND ${activeExpiryBoard.fragment(dialect)}`;
 }
 
-const scopePick = dispatchLookup(
-  (dialect, filter) => `SELECT id FROM jobs
-    WHERE ${scopeFilter(dialect, filter)} AND available_at <= (SELECT at FROM input)
-      AND ${readyDeliveryLane.fragment(dialect)} AND (${dispatchAt.fragment(dialect)}) <= (SELECT at FROM input)
-    ORDER BY available_at, id LIMIT 1${skipLocked.fragment(dialect)}`,
-);
+const scopePick = dispatchLookup((dialect, filter) => {
+  const due = "available_at <= (SELECT at FROM input)";
+  const eligible = `${readyDeliveryLane.fragment(dialect)} AND (${dispatchAt.fragment(dialect)}) <= (SELECT at FROM input)`;
+  if (dialect.name === "sqlite") {
+    return `SELECT id FROM jobs WHERE ${scopeFilter(dialect, filter)} AND ${due} AND ${eligible}
+      ORDER BY available_at, id LIMIT 1`;
+  }
+
+  // If Postgres picks a scan and sort, order the cheap candidates before probing webhook lanes.
+  // OFFSET 0 keeps the probes above the sort. Lock only an eligible candidate, and skip it if
+  // another worker has locked it or changed its due time since the scan.
+  return `SELECT claimed.id FROM (
+    SELECT jobs.* FROM jobs WHERE ${scopeFilter(dialect, filter)} AND ${due}
+    ORDER BY available_at, id OFFSET 0
+  ) jobs
+  CROSS JOIN LATERAL (
+    SELECT target.id FROM jobs target WHERE target.id = jobs.id AND target.available_at = jobs.available_at
+    FOR UPDATE SKIP LOCKED
+  ) claimed
+  WHERE ${eligible}
+  ORDER BY jobs.available_at, jobs.id LIMIT 1`;
+});
 const scopeDue = dispatchLookup(
   (dialect, filter) => `SELECT MIN(${dispatchAt.fragment(dialect)}) FROM jobs
     WHERE ${scopeFilter(dialect, filter)} AND ${readyDeliveryLane.fragment(dialect)}`,
