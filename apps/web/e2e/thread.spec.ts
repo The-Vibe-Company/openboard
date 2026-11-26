@@ -114,3 +114,65 @@ test("a member opens a thread from its row and returns to the same channel scrol
     await server.stop();
   }
 });
+
+test("long threads bound live reads, memoize reply Markdown, and expose older replies", async ({ page }) => {
+  const server = await serve();
+  try {
+    await signIn(page, server.url, "ada");
+    const owner = sessionClient(page, server.url);
+    await owner.createOrg({ slug: "acme", name: "Acme" });
+    const { message: root } = await owner.postMessage({ channel: "dev", text: "Long discussion" });
+    const { message: oldest } = await owner.postMessage({ re: root.id, text: "Oldest reply" });
+    for (let index = 1; index < 51; index++) {
+      await owner.postMessage({ re: root.id, text: `Reply ${index}` });
+    }
+    const text = "**Watch Markdown parsing**";
+    await owner.postMessage({ re: root.id, text });
+    await page.addInitScript((sample) => {
+      const original = String.prototype.matchAll;
+      let parses = 0;
+      Object.defineProperty(window, "markdownParses", { get: () => parses });
+      String.prototype.matchAll = function (pattern) {
+        if (String(this) === sample) parses++;
+        return original.call(this, pattern);
+      };
+    }, text);
+
+    const reads: (string | null)[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === `/api/acme/main/messages/${root.id}` && request.method() === "GET") {
+        reads.push(url.searchParams.get("limit"));
+      }
+    });
+    const boardUrl = `${server.url}/acme/main`;
+    await page.goto(`${boardUrl}/t/${root.id}`);
+    const messages = page.getByRole("list", { name: "Thread messages" }).getByRole("article");
+    await expect(messages).toHaveCount(51);
+    await expect(page.getByText("Oldest reply", { exact: true })).toHaveCount(0);
+    const parses = () => page.evaluate(() => Reflect.get(window, "markdownParses") as number);
+    const initialParses = await parses();
+    expect(initialParses).toBeGreaterThan(0);
+
+    await owner.postMessage({ re: root.id, text: "New live reply" });
+    await expect(messages.last()).toContainText("New live reply");
+    await expect(messages).toHaveCount(51);
+    const watched = messages.filter({ hasText: "Watch Markdown parsing" });
+    await watched.hover();
+    await watched.getByRole("button", { name: "Add reaction" }).click();
+    await watched.getByRole("button", { name: "React with eyes" }).click();
+    await expect(page.getByRole("button", { name: "eyes 1" })).toBeVisible();
+    expect(await parses()).toBe(initialParses);
+    expect(reads.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(reads)).toEqual(new Set(["51"]));
+
+    await page.getByRole("button", { name: "Load older replies" }).click();
+    await expect(messages).toHaveCount(54);
+    await expect(messages.nth(1)).toContainText("Oldest reply");
+    await page.goto(`${boardUrl}/t/${oldest.id}`);
+    await expect(page.getByText("Oldest reply", { exact: true })).toBeInViewport();
+    await expect(messages.last()).toContainText("New live reply");
+  } finally {
+    await server.stop();
+  }
+});
