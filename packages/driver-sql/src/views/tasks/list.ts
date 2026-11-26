@@ -4,6 +4,16 @@ import type { BoardScope, BoardTaskReads } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
 import { type Fragment, query, type Statement, sql } from "../../sql.ts";
 import { splice } from "../threads.ts";
+import {
+  everyChannel,
+  EXPIRED_TASK_CLAIM,
+  expiredTaskClaim,
+  oneChannel,
+  subtreeChannels,
+  taskChannelScope,
+  VISIBLE_TASK_ROOT,
+  visibleTaskRoot,
+} from "./filters.ts";
 
 const filterRows: Fragment = {
   fragment: ({ name }) => (name === "sqlite" ? "json_each(filters.data)" : "jsonb_array_elements(filters.data::jsonb)"),
@@ -47,10 +57,6 @@ function bindStates(states: readonly string[]) {
 /** Where a task list names its channels; `splice` puts one of the predicates below in its place. */
 const CHANNELS: Fragment = { fragment: () => "" };
 const PREREQUISITE: Fragment = { fragment: () => "" };
-const everyChannel = sql`t.board_id = ${"boardId"}`;
-const oneChannel = sql`t.channel = ${"channel"}`;
-const subtreeChannels = sql`(t.channel = ${"channel"} OR t.channel LIKE ${"under"} ESCAPE '\\')`;
-
 // Keep the prerequisite predicate optional at statement construction so the reverse index can drive filtered lists.
 const needsTask = sql`AND t.id IN (
   SELECT task FROM task_needs
@@ -79,14 +85,14 @@ function taskList(
       FROM tasks AS t ${joinRoot} messages AS root ON root.board_id = t.board_id AND root.id = t.id
       WHERE t.board_id = ${"boardId"} AND ${CHANNELS} AND t.id > CAST(${"after"} AS BIGINT)
         ${PREREQUISITE}
-        AND (root.deleted = 0 OR t.state IN ('canceled', 'completed'))
+        AND ${VISIBLE_TASK_ROOT}
         AND t.state IN (
           ${"waiting"}, ${"ready"}, ${"blocked"}, ${"completed"}, ${"failed"}, ${"canceled"}, ${"storedClaimed"}
         )
         AND (t.state <> 'claimed' OR (
           (t.claim_until IS NULL OR t.claim_until > CAST(${"now"} AS BIGINT)) AND CAST(${"claimed"} AS TEXT) IS NOT NULL
         ) OR (
-          t.claim_until <= CAST(${"now"} AS BIGINT) AND (
+          ${EXPIRED_TASK_CLAIM} AND (
             (t.blocked_reason IS NULL AND CAST(${"ready"} AS TEXT) IS NOT NULL)
             OR (t.blocked_reason IS NOT NULL AND CAST(${"blocked"} AS TEXT) IS NOT NULL)
           )
@@ -110,7 +116,12 @@ function taskList(
     LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = root.last_reply
     WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"}
     ORDER BY ${resultOrder}`;
-  return splice(splice(splice(list, CHANNELS, channels), PREREQUISITE, prerequisite), TASK_LABELS, matchesTaskLabels);
+  const filtered = splice(splice(list, VISIBLE_TASK_ROOT, visibleTaskRoot), EXPIRED_TASK_CLAIM, expiredTaskClaim);
+  return splice(
+    splice(splice(filtered, CHANNELS, channels), PREREQUISITE, prerequisite),
+    TASK_LABELS,
+    matchesTaskLabels,
+  );
 }
 
 export const taskListStatements = {
@@ -171,7 +182,7 @@ export function taskListReads(
       limit,
     }) {
       const now = clock();
-      const scopeName = channel === undefined ? "board" : under === undefined ? "channel" : "subtree";
+      const scopeName = taskChannelScope(channel, under);
       const lists = latest ? latestTaskListsByScope : taskListsByScope;
       // Let the planner choose for broad lists, ready tasks, and prerequisite lookups.
       const seekState = latest && needs === undefined && states.length === 1 && states[0] !== "ready";

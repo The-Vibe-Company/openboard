@@ -91,6 +91,7 @@ import { rateView } from "./views/rates/index.ts";
 import { reprojectView } from "./views/reproject/index.ts";
 import { scheduleReads } from "./views/schedules/index.ts";
 import { schemaReads } from "./views/schemas/registry.ts";
+import { taskCountReads } from "./views/tasks/counts.ts";
 import { taskListReads } from "./views/tasks/list.ts";
 import { threadReads } from "./views/threads.ts";
 import { watcherReads } from "./views/watchers/index.ts";
@@ -250,6 +251,7 @@ export function createViews(
       ...inboundReads(db, dialect, scope),
       ...webhookReads(db, dialect, scope),
       ...schemaReads(db, dialect, scope),
+      ...taskCountReads(db, dialect, scope, jobs.now),
       ...taskListReads(db, dialect, scope, jobs.now),
       ...channelReads(db, dialect, scope),
       ...connectionReads(db, dialect, scope),

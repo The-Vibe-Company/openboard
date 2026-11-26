@@ -25947,6 +25947,174 @@
         }
       }
     },
+    "/tasks/counts": {
+      "get": {
+        "operationId": "countTasks",
+        "summary": "Count tasks by state in a channel, subtree, or the whole board.",
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxLength": 2049,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*/?$",
+              "description": "A channel by its whole name, or `dev/` for `dev` and every channel under it.",
+              "type": "string"
+            }
+          }
+        ],
+        "x-query-schema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "channel": {
+              "maxLength": 2049,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*/?$",
+              "description": "A channel by its whole name, or `dev/` for `dev` and every channel under it.",
+              "type": "string"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "counts"
+                  ],
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "required": [
+                        "open",
+                        "waiting",
+                        "ready",
+                        "claimed",
+                        "blocked",
+                        "completed",
+                        "failed",
+                        "canceled",
+                        "all"
+                      ],
+                      "properties": {
+                        "open": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "waiting": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "ready": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "claimed": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "blocked": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "completed": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "failed": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "canceled": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "all": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request, invalid_profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/threads": {
       "get": {
         "operationId": "threads",

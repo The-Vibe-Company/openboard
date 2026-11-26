@@ -1,4 +1,4 @@
-import { BoardError, type createTask, type InputOf, type listTasks } from "@openboard/contract";
+import { BoardError, type countTasks, type createTask, type InputOf, type listTasks } from "@openboard/contract";
 import {
   channelFilter,
   checkNeeds,
@@ -175,3 +175,7 @@ export const listTasksHandler: Handler<typeof listTasks> = async ({ board, by },
       );
   return { tasks, cursor: formatId(cursor) };
 };
+
+export const countTasksHandler: Handler<typeof countTasks> = async ({ board }, { channel }) => ({
+  counts: await board.countTasks(channel === undefined ? {} : channelFilter(channel)),
+});

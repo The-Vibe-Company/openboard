@@ -111,7 +111,7 @@ import { claimNextTaskHandler } from "./tasks/queue.ts";
 import { releaseTaskHandler } from "./tasks/release.ts";
 import { renewTaskHandler } from "./tasks/renew.ts";
 import { reopenTaskHandler } from "./tasks/reopen.ts";
-import { createTaskHandler, listTasksHandler } from "./tasks.ts";
+import { countTasksHandler, createTaskHandler, listTasksHandler } from "./tasks.ts";
 import { listThreadsHandler, readThreadHandler } from "./threads.ts";
 import {
   ackWatcherMatchHandler,
@@ -303,6 +303,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   listSyncCopies: listSyncCopiesHandler,
   listSyncTargets: listSyncTargetsHandler,
   getTaskBatch: getTaskBatchHandler,
+  countTasks: countTasksHandler,
   listTasks: listTasksHandler,
   listThreads: listThreadsHandler,
   listWatchers: listWatchersHandler,

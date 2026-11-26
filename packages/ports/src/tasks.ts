@@ -1,4 +1,4 @@
-import type { Message, ThreadSummary } from "@openboard/contract";
+import type { countTasks, Message, OutputOf, ThreadSummary } from "@openboard/contract";
 
 /** What a task list asks for: the store matches, the server resolves `me` and parses cursors first. */
 export interface TaskListQuery {
@@ -28,6 +28,8 @@ export interface BoardTaskReads {
   /** The root of a task on this board, or null when this board has no such task. */
   taskRoot(id: number): Promise<Message | null>;
   taskBatch(principal: string, id: string): Promise<{ digest: string; roots: Message[] } | null>;
+  /** Exact counts of the visible tasks by effective state. */
+  countTasks(query: Pick<TaskListQuery, "channel" | "under">): Promise<OutputOf<typeof countTasks>["counts"]>;
   /** A page of matching tasks as thread summaries, with the snapshot's head. */
   listTasks(query: TaskListQuery): Promise<{ tasks: ThreadSummary[]; head: number }>;
 }

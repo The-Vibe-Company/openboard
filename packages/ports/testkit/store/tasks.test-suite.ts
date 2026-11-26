@@ -42,6 +42,50 @@ function post(board: BoardView, as: Actor, command: { channel: string } | { re: 
   }, as.id);
 }
 
+function taskVisibilityTests(openBoard: () => Promise<BoardView>) {
+  test("leaves a deleted task out of the open list", async () => {
+    const board = await openBoard();
+    const ada = person("ada");
+    const gone = await createTask(board, ada, "dev", "gone");
+    const kept = await createTask(board, ada, "dev", "kept");
+    await board.write(async (writer) => {
+      const target = await writer.message(gone);
+      const by = { actor: ada.id, principal: ada.id, profile: null };
+      const events = decideDelete({ head: writer.head, target }, { id: String(gone) }, { by, now: at });
+      await writer.append(events);
+    }, ada.id);
+    const { tasks } = await board.listTasks({ channel: "dev", states: OPEN_TASK_STATES, limit: 50 });
+    expect(tasks.map(({ message }) => message.id)).toEqual([String(kept)]);
+  });
+
+  test("counts all matching tasks independently of pagination and excludes ordinary threads", async () => {
+    const board = await openBoard();
+    const ada = person("ada");
+    const prerequisite = await createTask(board, ada, "dev", "prerequisite");
+    await createTask(board, ada, "dev/web", "ready");
+    await createTask(board, ada, "dev/web", "another ready task");
+    await createTask(board, ada, "dev-other", "outside subtree");
+    await post(board, ada, { channel: "dev/web" }, "ordinary thread");
+    await board.write(async (writer) => {
+      const target = await writer.message(prerequisite);
+      const by = { actor: ada.id, principal: ada.id, profile: null };
+      await writer.append(decideDelete({ head: writer.head, target }, { id: String(prerequisite) }, { by, now: at }));
+    }, ada.id);
+    expect(await board.countTasks(channelFilter("dev/"))).toEqual({
+      open: 2,
+      ready: 2,
+      waiting: 0,
+      claimed: 0,
+      blocked: 0,
+      completed: 0,
+      failed: 0,
+      canceled: 1,
+      all: 3,
+    });
+    expect(await board.countTasks({})).toMatchObject({ all: 4, open: 3 });
+  });
+}
+
 function taskListSuite(driver: string, open: OpenStore): void {
   describe(`${driver}: tasks`, () => {
     let store: Store | undefined;
@@ -76,19 +120,7 @@ function taskListSuite(driver: string, open: OpenStore): void {
       expect(await ids(board, { channel: "dev", states: ["completed"] })).toEqual([]);
     });
 
-    test("leaves a deleted task out of the open list", async () => {
-      const board = await localBoard();
-      const ada = person("ada");
-      const gone = await createTask(board, ada, "dev", "gone");
-      const kept = await createTask(board, ada, "dev", "kept");
-      await board.write(async (writer) => {
-        const target = await writer.message(gone);
-        const by = { actor: ada.id, principal: ada.id, profile: null };
-        const events = decideDelete({ head: writer.head, target }, { id: String(gone) }, { by, now: at });
-        await writer.append(events);
-      }, ada.id);
-      expect(await ids(board, { channel: "dev" })).toEqual([String(kept)]);
-    });
+    taskVisibilityTests(localBoard);
 
     test("lists a channel, a subtree, or the whole board", async () => {
       const board = await localBoard();
