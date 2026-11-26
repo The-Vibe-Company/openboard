@@ -1,17 +1,22 @@
 import { BoardError, type OrgExport, type Role } from "@openboard/contract";
 import { requireOrgOwner } from "@openboard/core";
 import { EXPORT_ORG_JOB, EXPORT_RUN_MS, type ExportSource, type OrgExports, type OrgScope } from "@openboard/ports";
-import type { Db, Dialect } from "../../db.ts";
+import type { Db, Dialect, Row } from "../../db.ts";
 import { query, sql } from "../../sql.ts";
+import { boardStatements } from "../boards.ts";
 import { invitationStatements as invitations } from "../invitations.ts";
 import { extendLeasedJob, type JobWrites, jobWriter } from "./index.ts";
 import { logEvent, shippingStatements } from "./shipping.ts";
-import { boardStatements } from "../boards.ts";
 
 const lifetime = 86_400_000;
 const s = {
   exportInsert: sql`INSERT INTO org_exports (org_id, id) VALUES (${"orgId"}, ${"id"})`,
   exportRead: sql`SELECT expires_at, failed_at FROM org_exports WHERE org_id = ${"orgId"} AND id = ${"id"}`,
+  exportStatus: sql`SELECT e.id, e.expires_at, e.failed_at FROM memberships m
+    JOIN orgs o ON o.id = m.org_id JOIN users u ON u.id = m.user_id
+    LEFT JOIN org_exports e ON e.org_id = m.org_id AND e.id = ${"id"}
+    WHERE m.org_id = ${"orgId"} AND m.role = 'owner' AND u.public_id = ${"personId"}
+      AND o.deleted_at IS NULL AND u.disabled_at IS NULL`,
   exportStart: sql`UPDATE org_exports SET started_at = ${"at"}
     WHERE org_id = ${"orgId"} AND id = ${"id"} AND started_at IS NULL RETURNING id`,
   exportFinish: sql`UPDATE org_exports SET expires_at = ${"expiresAt"}, failed_at = ${"failedAt"}
@@ -21,7 +26,8 @@ const s = {
     AND failed_at IS NULL AND (expires_at IS NULL OR expires_at > ${"at"}) LIMIT 1`,
   exportAuditHead: sql`SELECT COALESCE(MAX(id), 0) AS head FROM org_export_audit WHERE org_id = ${"orgId"}`,
   exportAuditInsert: sql`INSERT INTO org_export_audit (org_id, id, type, at, actor, export_id)
-    VALUES (${"orgId"}, ${"id"}, ${"type"}, ${"at"}, ${"actor"}, ${"exportId"})`,
+    SELECT ${"orgId"}, COALESCE(MAX(id), 0) + 1, ${"type"}, ${"at"}, ${"actor"}, ${"exportId"}
+    FROM org_export_audit WHERE org_id = ${"orgId"}`,
   exportAuditPage: sql`SELECT id, type, at, actor, export_id FROM org_export_audit
     WHERE org_id = ${"orgId"} AND id > ${"after"} AND id <= ${"head"} ORDER BY id LIMIT ${"limit"}`,
   exportLive: sql`SELECT 1 FROM boards b JOIN orgs o ON o.id = b.org_id
@@ -134,6 +140,12 @@ function runExport(db: Db, dialect: Dialect, orgId: number, jobs: JobWrites): Or
   };
 }
 
+function statusOf(row: Row | undefined, id: string, at: number): OrgExport {
+  const expiresAt = row?.expires_at == null ? null : Number(row.expires_at);
+  if (!row || (expiresAt !== null && expiresAt <= at)) throw new BoardError("not_found", "no such export");
+  return { id, expiresAt, status: row.failed_at != null ? "failed" : expiresAt === null ? "pending" : "ready" };
+}
+
 export function exportsView(db: Db, dialect: Dialect, { orgId }: OrgScope, jobs: JobWrites): OrgExports {
   const keyOf = (id: string) => `exports/${orgId}/${id}.tar.gz`;
 
@@ -141,18 +153,9 @@ export function exportsView(db: Db, dialect: Dialect, { orgId }: OrgScope, jobs:
     const [actor] = await query(tx, dialect, invitations.lockInvitationOrg, { orgId, personId });
     requireOrgOwner((actor?.role ?? "member") as Role);
   }
-  async function read(tx: Db, id: string, at: number): Promise<OrgExport> {
-    const [row] = await query(tx, dialect, s.exportRead, { orgId, id });
-    const expiresAt = row?.expires_at == null ? null : Number(row.expires_at);
-    if (!row || (expiresAt !== null && expiresAt <= at)) throw new BoardError("not_found", "no such export");
-    return { id, expiresAt, status: row.failed_at != null ? "failed" : expiresAt === null ? "pending" : "ready" };
-  }
-
   async function audit(tx: Db, type: string, id: string, personId: string, at: number) {
-    const [top] = await query(tx, dialect, s.exportAuditHead, { orgId });
     await query(tx, dialect, s.exportAuditInsert, {
       orgId,
-      id: Number(top?.head ?? 0) + 1,
       type,
       at,
       actor: `ob:user:${personId}`,
@@ -178,15 +181,17 @@ export function exportsView(db: Db, dialect: Dialect, { orgId }: OrgScope, jobs:
       jobs.committed(EXPORT_ORG_JOB, at);
       return { id, status: "pending", expiresAt: null };
     },
-    readExport: (id, personId, at) =>
-      db.transaction(async (tx) => {
-        await owner(tx, personId);
-        return { ...(await read(tx, id, at)), key: keyOf(id) };
-      }),
+    async readExport(id, personId, at) {
+      const [row] = await query(db, dialect, s.exportStatus, { orgId, personId, id });
+      // A missing owner row is forbidden, while a missing export for an owner is a 404.
+      requireOrgOwner(row ? "owner" : "member");
+      return { ...statusOf(row?.id == null ? undefined : row, id, at), key: keyOf(id) };
+    },
     auditExportDownload: (id, personId, at, admit) =>
       db.transaction(async (tx) => {
         await owner(tx, personId);
-        if ((await read(tx, id, at)).status !== "ready") throw new BoardError("not_found", "no ready export");
+        const [row] = await query(tx, dialect, s.exportRead, { orgId, id });
+        if (statusOf(row, id, at).status !== "ready") throw new BoardError("not_found", "no ready export");
         admit();
         await audit(tx, "ob.export.downloaded", id, personId, at);
       }),

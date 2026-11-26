@@ -1,11 +1,9 @@
-import type { Can } from "@openboard/contract";
+import type { Can, CanInput, Role } from "@openboard/contract";
 import { narrowCan, resolveRankedCan } from "@openboard/core";
 import type { BoardScope, BoardView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { query, sql } from "../sql.ts";
 import { boardStatements } from "./boards.ts";
-import { grantReads } from "./grants.ts";
-import { orgReads } from "./orgs.ts";
 
 interface DeviceCan {
   readonly requested: Can;
@@ -34,7 +32,29 @@ export const devicePlatform = {
 export const deviceScoped = {
   approveDeviceCan: sql`UPDATE device_codes SET can = ${"can"}
     WHERE org_id = ${"orgId"} AND user_code = ${"userCode"}`,
-  deviceBoards: sql`SELECT id FROM boards WHERE org_id = ${"orgId"} AND deleted_at IS NULL`,
+  deviceBoardGrants: sql`WITH live AS (
+    SELECT b.id AS board_id, b.org_id, m.role, u.id AS user_id
+    FROM boards b JOIN memberships m ON m.org_id = b.org_id JOIN users u ON u.id = m.user_id
+    WHERE b.org_id = ${"orgId"} AND b.deleted_at IS NULL AND u.public_id = ${"personId"} AND u.disabled_at IS NULL
+  ), ranked AS (
+    SELECT g.board_id, g.can, g.capped,
+      MIN(CASE p.kind WHEN 'everyone' THEN 2 WHEN 'all-users' THEN 1 ELSE 0 END) AS rank
+    FROM live b JOIN grants g ON g.org_id = b.org_id AND g.board_id = b.board_id
+    JOIN grant_principals p ON p.board_id = g.board_id AND p.grant_id = g.id
+    LEFT JOIN identities i ON i.user_id = b.user_id AND i.provider = 'github' AND p.kind = 'github'
+    WHERE g.org_id = ${"orgId"} AND g.revoked = 0
+      AND ((p.kind = 'user' AND p.key = ${"personId"})
+        OR (p.kind IN ('all-users', 'everyone') AND p.key = '')
+        OR (p.kind = 'github' AND p.key = i.subject))
+    GROUP BY g.board_id, g.id, g.can, g.capped
+    UNION ALL
+    SELECT b.board_id, '{"*":"all"}', 1, 1 FROM live b
+    WHERE b.org_id = ${"orgId"} AND NOT EXISTS (
+      SELECT 1 FROM grants g WHERE g.org_id = ${"orgId"} AND g.board_id = b.board_id AND g.id = 1
+    )
+  )
+  SELECT b.board_id, b.role, g.can, g.capped, g.rank FROM live b
+  LEFT JOIN ranked g ON g.board_id = b.board_id WHERE b.org_id = ${"orgId"}`,
   deviceMemberOrg: sql`SELECT o.slug, o.name FROM orgs o JOIN memberships m ON m.org_id = o.id
     JOIN users u ON u.id = m.user_id
     WHERE m.org_id = ${"orgId"} AND m.user_id = ${"userId"} AND o.deleted_at IS NULL AND u.disabled_at IS NULL`,
@@ -50,14 +70,26 @@ export const deviceScoped = {
 const bytes = (hex: string) => Uint8Array.from(Buffer.from(hex, "hex"));
 
 async function approvalCan(db: Db, dialect: Dialect, orgId: number, personId: string, requested: Can) {
-  const boards: Record<string, Can> = {};
-  for (const row of await query(db, dialect, deviceScoped.deviceBoards, { orgId })) {
-    const keys = { orgId, boardId: Number(row.id) };
-    const member = await orgReads(db, dialect, keys).member(personId);
-    if (!member) continue;
-    const active = await grantReads(db, dialect, keys).personGrants(personId);
-    boards[keys.boardId] = narrowCan(resolveRankedCan(active, member.role), requested);
+  type RankedGrants = Parameters<typeof resolveRankedCan>[0];
+  const grouped = new Map<number, { role: Role; grants: RankedGrants[number][] }>();
+  for (const row of await query(db, dialect, deviceScoped.deviceBoardGrants, { orgId, personId })) {
+    const boardId = Number(row.board_id);
+    const board = grouped.get(boardId) ?? { role: row.role as Role, grants: [] };
+    grouped.set(boardId, board);
+    if (row.can === null) continue;
+    const rank = Number(row.rank);
+    board.grants.push({
+      can: JSON.parse(String(row.can)) as CanInput,
+      capped: Number(row.capped) === 1,
+      level: rank === 0 ? "principal" : rank === 1 ? "group" : "everyone",
+    });
   }
+  const boards = Object.fromEntries(
+    Array.from(grouped, ([boardId, { role, grants }]) => [
+      boardId,
+      narrowCan(resolveRankedCan(grants, role), requested),
+    ]),
+  );
   return JSON.stringify({ requested, boards } satisfies DeviceCan);
 }
 
