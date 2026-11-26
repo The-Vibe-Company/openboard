@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/The-Vibe-Company/openboard/compare/v0.4.0...v0.5.0) (2026-11-26)
+
+
+### Features
+
+* **server:** support native iOS OAuth redirect to openboard:// callback ([#950](https://github.com/The-Vibe-Company/openboard/issues/950)) ([59e1f96](https://github.com/The-Vibe-Company/openboard/commit/59e1f964118deb786ffa9de5923aeee83c597986))
+
 ## [0.4.0](https://github.com/The-Vibe-Company/openboard/compare/v0.3.0...v0.4.0) (2026-11-25)
 
 
