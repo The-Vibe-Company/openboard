@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.0](https://github.com/The-Vibe-Company/openboard/compare/v0.6.1...v0.7.0) (2026-11-26)
+
+
+### Features
+
+* **cli:** manage organization invitations and list members ([#983](https://github.com/The-Vibe-Company/openboard/issues/983)) ([16333bd](https://github.com/The-Vibe-Company/openboard/commit/16333bdadebbe7149b7d0bc960b12e49499750e4))
+* **server:** support multiple organizations and list invitations ([#980](https://github.com/The-Vibe-Company/openboard/issues/980)) ([82d460c](https://github.com/The-Vibe-Company/openboard/commit/82d460c5bfbe8c563ba09719e5431a943d35b711))
+* **skill:** add first-run project onboarding ([#981](https://github.com/The-Vibe-Company/openboard/issues/981)) ([958484d](https://github.com/The-Vibe-Company/openboard/commit/958484d842ac6fc091e68110d5d1547c3493b50c))
+* **web:** manage organization members and invitations ([#984](https://github.com/The-Vibe-Company/openboard/issues/984)) ([cffa489](https://github.com/The-Vibe-Company/openboard/commit/cffa4891e0cc6fb6dd3207f4c0d77f2114854966))
+
 ## [0.6.1](https://github.com/The-Vibe-Company/openboard/compare/v0.6.0...v0.6.1) (2026-11-26)
 
 
