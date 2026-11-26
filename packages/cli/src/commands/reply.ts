@@ -44,8 +44,6 @@ function parse(ctx: CommandContext): ReplyInput {
  * while that message is still the thread's newest.
  */
 export const replyCommand: Command = {
-  words: ["reply"],
-  usage: "ob reply <id> [<text>] [--after <id>] [--no-sync] [--idempotency-key <id>] [--attach <file>]...",
   async run(ctx) {
     const { files, ...input } = parse(ctx);
     const attachments = files.length ? await uploadFiles(ctx, files) : undefined;

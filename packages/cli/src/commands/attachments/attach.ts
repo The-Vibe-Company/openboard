@@ -1,10 +1,9 @@
 import { constants, createWriteStream } from "node:fs";
-import { link, mkdtemp, open, rm } from "node:fs/promises";
+import { type FileHandle, link, mkdtemp, open, rm } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
 import process from "node:process";
 import { pipeline } from "node:stream/promises";
-import { ATTACHMENT_BYTES } from "@openboard/contract";
-import { BoardError } from "@the-vibe-company/openboard";
+import { ATTACHMENT_BYTES, BoardError } from "@openboard/contract";
 import { type Command, type CommandContext, Misuse } from "../index.ts";
 
 const types: Readonly<Record<string, string>> = {
@@ -20,7 +19,7 @@ const types: Readonly<Record<string, string>> = {
   ".zip": "application/zip",
 };
 
-async function fileBytes(path: string) {
+async function withAttachment<T>(path: string, use: (file: FileHandle, size: number) => Promise<T>): Promise<T> {
   try {
     const file = await open(path, constants.O_RDONLY | constants.O_NONBLOCK);
     try {
@@ -32,15 +31,7 @@ async function fileBytes(path: string) {
           next: [{ kind: "run", argv: ["ob", "post", "--help"] }],
         });
       }
-      const data = new Uint8Array(stat.size + 1);
-      let size = 0;
-      while (size < data.length) {
-        const { bytesRead } = await file.read(data, size, data.length - size);
-        if (!bytesRead) break;
-        size += bytesRead;
-      }
-      if (size !== stat.size) throw new BoardError("invalid_request", `${path} changed while it was being read`);
-      return data.subarray(0, size);
+      return await use(file, stat.size);
     } finally {
       await file.close();
     }
@@ -50,16 +41,32 @@ async function fileBytes(path: string) {
   }
 }
 
+function fileBytes(path: string, expected: number) {
+  return withAttachment(path, async (file, size) => {
+    if (size !== expected) throw new BoardError("invalid_request", `${path} changed before it was read`);
+    const data = new Uint8Array(size + 1);
+    let offset = 0;
+    while (offset < data.length) {
+      const { bytesRead } = await file.read(data, offset, data.length - offset);
+      if (!bytesRead) break;
+      offset += bytesRead;
+    }
+    if (offset !== size) throw new BoardError("invalid_request", `${path} changed while it was being read`);
+    return data.subarray(0, size);
+  });
+}
+
 export async function uploadFiles(ctx: CommandContext, paths: readonly string[]) {
   if (paths.length > 10) throw new Misuse("a message carries at most 10 attachments");
-  const files: { bytes: Uint8Array<ArrayBuffer>; name: string; type: string }[] = [];
+  const files: { path: string; size: number }[] = [];
   for (const path of paths) {
-    const name = basename(path);
-    const type = types[extname(name).toLowerCase()] ?? "application/octet-stream";
-    files.push({ bytes: await fileBytes(path), name, type });
+    files.push({ path, size: await withAttachment(path, async (_, size) => size) });
   }
   const ids: string[] = [];
-  for (const { bytes, name, type } of files) {
+  for (const { path, size } of files) {
+    const name = basename(path);
+    const type = types[extname(name).toLowerCase()] ?? "application/octet-stream";
+    const bytes = await fileBytes(path, size);
     const attachment = await ctx.client.upload(bytes, { name, type });
     ids.push(attachment.id);
   }
@@ -84,8 +91,6 @@ function downloadName(response: Response, id: string) {
 }
 
 export const downloadCommand: Command = {
-  words: ["download"],
-  usage: "ob download <id> [path]",
   async run(ctx) {
     const [id, path] = ctx.args;
     if (!id || ctx.args.length > 2) throw new Misuse("supply an attachment ID and optional output path");

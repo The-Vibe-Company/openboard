@@ -1,4 +1,4 @@
-import { BoardError, createClient } from "@the-vibe-company/openboard";
+import { BoardError } from "@openboard/contract";
 import { isSlug, personalBoardUrl, personalConfigPath, storedPersonal, storePersonalLogin } from "../config.ts";
 import { Misuse, type StandaloneContext } from "./index.ts";
 
@@ -13,6 +13,7 @@ function target(arg: string | undefined): { org?: string; board: string } | unde
 /** Ask the board who we are there, so a board that does not exist or is out of reach is never saved. */
 async function checkBoard(ctx: StandaloneContext, boardUrl: string, token: string, name: string): Promise<void> {
   const send = ctx.options.fetch ?? ((request: Request) => fetch(request));
+  const { BoardError, createClient } = await import("@the-vibe-company/openboard");
   const client = createClient({
     url: boardUrl,
     token,
@@ -31,10 +32,7 @@ async function checkBoard(ctx: StandaloneContext, boardUrl: string, token: strin
 }
 
 export const useCommand = {
-  standalone: true,
-  words: ["use"],
-  usage: "ob use <board> | ob use <org>/<board>",
-  async run(ctx: StandaloneContext): Promise<number> {
+  async run(ctx: StandaloneContext) {
     const wanted = target(ctx.args[0]);
     if (!wanted || ctx.args.length !== 1 || ctx.profile !== undefined) {
       throw new Misuse("use takes one board slug, or <org>/<board>");

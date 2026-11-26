@@ -1,4 +1,3 @@
-import { BoardError } from "@the-vibe-company/openboard";
 import { durationPart } from "../duration.ts";
 import { messageLine, shellWord } from "../output.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
@@ -44,8 +43,6 @@ function commandLine(verb: string, target: string, options: string[]): string {
 }
 
 export const waitCommand: Command = {
-  words: ["wait"],
-  usage: "ob wait <channel|id> [--after <cursor>] [--timeout <duration>]",
   async run(ctx) {
     const { target, after, timeout } = parse(ctx);
     const duration = timeout ?? "30m";
@@ -93,6 +90,7 @@ export const waitCommand: Command = {
         return 0;
       }
     } catch (error) {
+      const { BoardError } = await import("@the-vibe-company/openboard");
       if (
         signal.aborted &&
         (error === signal.reason || (error instanceof BoardError && error.code === "unreachable"))

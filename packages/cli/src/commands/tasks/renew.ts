@@ -1,4 +1,4 @@
-import { BoardError, type Client } from "@the-vibe-company/openboard";
+import type { BoardError, Client } from "@the-vibe-company/openboard";
 import { withClaimStorage } from "../../claims.ts";
 import type { CommandContext } from "../index.ts";
 import { printClaim } from "./claim.ts";
@@ -9,6 +9,7 @@ type RenewalInput = Pick<Parameters<Client["renewTask"]>[0], "id" | "lease">;
 
 export async function runRenewTask(ctx: CommandContext, input: RenewalInput): Promise<number> {
   const { actor } = await ctx.client.getMe({});
+  const { BoardError } = await import("@the-vibe-company/openboard");
   const key = { boardUrl: ctx.boardUrl, actor, id: input.id };
   const outcome = await withClaimStorage<RenewalOutcome>(ctx.home, async (read) => {
     const claim = read(key);

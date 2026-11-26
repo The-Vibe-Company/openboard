@@ -1,9 +1,6 @@
 import { closeSync, unlinkSync, writeSync } from "node:fs";
-import { BoardError } from "@the-vibe-company/openboard";
 import { createSecretFile } from "./connections.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
-
-const USAGE = "ob connections rotate <id> [--overlap <duration>] --secret-file <path>";
 
 interface RotateOptions {
   readonly id: string;
@@ -47,8 +44,6 @@ const UNSURE = new Set(["unreachable", "remote_error"]);
  * told the old secret may have stopped and to rotate again.
  */
 export const rotateConnectionCommand: Command = {
-  words: ["connections", "rotate"],
-  usage: USAGE,
   async run(ctx) {
     const { id, overlap, secretFile } = parse(ctx);
     const fd = createSecretFile(secretFile);
@@ -58,6 +53,7 @@ export const rotateConnectionCommand: Command = {
     } catch (error) {
       closeSync(fd);
       unlinkSync(secretFile);
+      const { BoardError } = await import("@the-vibe-company/openboard");
       if (!(error instanceof BoardError) || UNSURE.has(error.code)) {
         ctx.output.err(`the board may have rotated ${id} without answering its new secret: rotate it again`);
       }

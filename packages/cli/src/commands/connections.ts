@@ -2,10 +2,6 @@ import { closeSync, openSync, unlinkSync, writeSync } from "node:fs";
 import type { CanInput, Permission } from "@openboard/contract";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 
-const USAGE =
-  "ob connections create <name> --can <pattern=permissions>… [--direct] [--profiles <pattern,…>] [--claims <n>] " +
-  "--secret-file <path>";
-
 interface CreateOptions {
   readonly name: string;
   readonly can: CanInput;
@@ -88,8 +84,6 @@ export function createSecretFile(path: string): number {
  * and it is removed only when the board refused, never once the connection exists.
  */
 export const createConnectionCommand: Command = {
-  words: ["connections", "create"],
-  usage: USAGE,
   async run(ctx) {
     const options = parse(ctx);
     const fd = createSecretFile(options.secretFile);

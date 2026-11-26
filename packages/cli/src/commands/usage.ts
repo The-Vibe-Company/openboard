@@ -1,65 +1,10 @@
 import { type ErrorCode, operations } from "@openboard/contract";
-import {
-  type Command,
-  connectCommand,
-  createConnectionCommand,
-  createGrantCommand,
-  createInboundCommand,
-  createSchemaCommand,
-  createWebhookCommand,
-  derivedCommands,
-  disableWebhookCommand,
-  downloadCommand,
-  downloadOrgExportCommand,
-  enableWebhookCommand,
-  explainGrantsCommand,
-  exportOrgCommand,
-  loginCommand,
-  messagesCommand,
-  readCommand,
-  replyCommand,
-  rotateConnectionCommand,
-  scheduleCommand,
-  schedulesCommand,
-  tailCommand,
-  updateGrantCommand,
-  useCommand,
-  waitCommand,
-  whoamiCommand,
-} from "./index.ts";
+import { derivedCommands } from "./derived.ts";
+import type { CommandMetadata } from "./index.ts";
+import { handwrittenCommands } from "./reference/registry.ts";
 import type { Handwritten, Schema } from "./reference/types.ts";
+
 import { scheduleReference, schedulesReference } from "./schedule/index.ts";
-
-export type AnyCommand = Command | typeof connectCommand | typeof loginCommand | typeof useCommand;
-
-/** Every `ob` client command, in the order `ob` lists them; the skill's command reference reads this table. */
-export const commands: readonly AnyCommand[] = [
-  connectCommand,
-  loginCommand,
-  exportOrgCommand,
-  downloadOrgExportCommand,
-  downloadCommand,
-  updateGrantCommand,
-  useCommand,
-  createConnectionCommand,
-  createInboundCommand,
-  createWebhookCommand,
-  disableWebhookCommand,
-  enableWebhookCommand,
-  createGrantCommand,
-  explainGrantsCommand,
-  createSchemaCommand,
-  rotateConnectionCommand,
-  readCommand,
-  messagesCommand,
-  replyCommand,
-  scheduleCommand,
-  schedulesCommand,
-  waitCommand,
-  tailCommand,
-  whoamiCommand,
-  ...derivedCommands,
-];
 
 type Contracted = (typeof operations)[number];
 
@@ -327,7 +272,7 @@ function fieldOf(flag: string, used: readonly Contracted[]): Schema | undefined 
   return undefined;
 }
 
-function optionsOf(command: AnyCommand, used: readonly Contracted[], given: Readonly<Record<string, string>>) {
+function optionsOf(command: CommandMetadata, used: readonly Contracted[], given: Readonly<Record<string, string>>) {
   const flags = [...new Set(command.usage.match(/--[a-z][a-z-]*/g) ?? [])];
   return flags.map((flag) => {
     const name = flag.slice(2);
@@ -343,7 +288,7 @@ function errorsOf(used: readonly Contracted[], own: readonly string[]): string[]
   const authenticated = used.some((operation) => operation.scope !== "public") ? AUTHENTICATED : [];
   return [...new Set([...ALWAYS, ...authenticated, ...used.flatMap((operation) => operation.errors), ...own])].sort();
 }
-function referenceOf(command: AnyCommand): CommandReference {
+function referenceOf(command: CommandMetadata): CommandReference {
   const words = command.words.join(" ");
   const derived = operations.find((operation) => operation.cli && operation.cli.command.join(" ") === words);
   const handwritten = derived ? undefined : HANDWRITTEN[words];
@@ -395,5 +340,5 @@ function referenceOf(command: AnyCommand): CommandReference {
 
 /** One entry per `ob` client command: what the skill's `references/commands.md` is generated from. */
 export function commandReference(): CommandReference[] {
-  return commands.map(referenceOf);
+  return [...handwrittenCommands, ...derivedCommands].map(referenceOf);
 }

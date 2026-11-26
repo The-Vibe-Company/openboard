@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { createSchema, InputOf } from "@openboard/contract";
-import { BoardError } from "@the-vibe-company/openboard";
+import { BoardError } from "@openboard/contract";
 import { type Command, type CommandContext, Misuse } from "../index.ts";
 
 function readDefinition(file: string, data: string | undefined): Record<string, unknown> {
@@ -54,8 +54,6 @@ function input(ctx: CommandContext): InputOf<typeof createSchema> {
 }
 
 export const createSchemaCommand: Command = {
-  words: ["schemas", "create"],
-  usage: "ob schemas create <id> (--file <path> | --data <json>) [--description <text>]",
   async run(ctx) {
     const { schema, created } = await ctx.client.createSchema(input(ctx));
     const outcome = created ? "created" : "unchanged";

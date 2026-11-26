@@ -57,8 +57,6 @@ export function reserveSecret(path: string, verbatim: boolean, custom = false): 
 }
 
 export const createWebhookCommand: Command = {
-  words: ["webhooks", "create"],
-  usage: "ob webhooks create --file <spec.json> [--secret-file <path>]",
   async run(ctx) {
     const paths = fileOptions(ctx.args, ctx.optionsEnd, "expected --file <spec.json> [--secret-file <path>]");
     const spec = readSpec<WebhookSpec>(paths.spec);

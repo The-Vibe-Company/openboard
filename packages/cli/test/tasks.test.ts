@@ -433,3 +433,38 @@ test("ob tasks create uploads the file before creating a new task and rejects it
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test.each([
+  ["person:owner+Fixer", "person:owner+Fixer", []],
+  ["person+Fixer", "person+Fixer", []],
+  ["--pool", null, []],
+  ["Fixer", "person:owner+fixer", ["/messages/2?limit=1"]],
+  ["Helper", "person:caller+helper", ["/messages/2?limit=1", "/me"]],
+] as const)("assignment %s resolves an owner only when needed", async (profile, assignee, preflight) => {
+  const board = "http://127.0.0.1:8787/api/local/main";
+  const calls: string[] = [];
+  const code = await runCli(
+    ["tasks", "assign", "#2", profile],
+    { BOARD_URL: board },
+    {
+      output: {
+        out() {},
+        err: (line) => {
+          throw new Error(line);
+        },
+      },
+      async fetch(request) {
+        const path = request.url.slice(board.length);
+        calls.push(path);
+        if (path.startsWith("/messages")) {
+          return Response.json({ message: profile === "Fixer" ? { task: { owner: "person:owner" } } : {} });
+        }
+        if (path === "/me") return Response.json({ principal: "person:caller" });
+        expect(await request.json()).toEqual({ for: assignee });
+        return Response.json({ task: { id: "2" } });
+      },
+    },
+  );
+  expect(code).toBe(0);
+  expect(calls).toEqual([...preflight, "/tasks/2/assign"]);
+});

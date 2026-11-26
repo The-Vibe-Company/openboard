@@ -12,7 +12,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { env, stdin } from "node:process";
-import { BoardError } from "@the-vibe-company/openboard";
+import { BoardError } from "@openboard/contract";
 
 export type CliEnvironment = Readonly<Record<string, string | undefined>>;
 

@@ -1,7 +1,11 @@
-import { type Command, Misuse } from "../index.ts";
+import { type RegisteredCommand as Command, Misuse } from "../index.ts";
+
+export function isQualified(profile: string): boolean {
+  return profile.includes(":") || profile.includes("+");
+}
 
 export function profileActor(owner: string, profile: string): string {
-  return profile.includes(":") || profile.includes("+") ? profile : `${owner}+${profile.toLowerCase()}`;
+  return isQualified(profile) ? profile : `${owner}+${profile.toLowerCase()}`;
 }
 
 export function taskAssignCommand(words: readonly string[]): Command {
@@ -21,9 +25,9 @@ export function taskAssignCommand(words: readonly string[]): Command {
       if (!id || positional.length !== (pool ? 1 : 2)) {
         throw new Misuse("expected a task ID and either a profile or --pool");
       }
-      let assignee: string | null = null;
-      if (profile !== undefined) {
-        const { message } = await ctx.client.readThread({ id });
+      let assignee = profile ?? null;
+      if (profile !== undefined && !isQualified(profile)) {
+        const { message } = await ctx.client.readThread({ id, limit: 1 });
         assignee = profileActor(message.task?.owner ?? (await ctx.client.getMe({})).principal, profile);
       }
       const { task } = await ctx.client.assignTask({ id, for: assignee });

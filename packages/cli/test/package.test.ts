@@ -68,3 +68,27 @@ test("npm packs only the CLI launcher, bundle, licenses and manifest", async () 
     "package.json",
   ]);
 }, 30_000);
+
+test("the npm CLI can print help and reject invalid arguments without loading the SDK", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "openboard-cli-help-"));
+  try {
+    await Bun.write(join(dir, "package.json"), '{"type":"module"}');
+    await Bun.write(join(dir, "main.js"), Bun.file(new URL("dist/main.js", cli)));
+    for (const [args, code, expected] of [
+      [["--help"], 2, "ob tail <channel>"],
+      [["post", "--help"], 0, "ob post <channel>"],
+      [["tail", "--help"], 0, "ob tail <channel>"],
+      [["unknown"], 2, "unknown command: unknown"],
+      [["tail", "dev", "--unknown"], 2, "unknown option --unknown"],
+      [["post", "dev"], 2, "expected a channel"],
+    ] as const) {
+      const script =
+        "import {runCli} from './main.js'; process.exitCode = await runCli(process.argv.slice(1), {BOARD_URL: 'https://board.example'});";
+      const node = Bun.spawnSync([nodePath, "--input-type=module", "-e", script, "--", ...args], { cwd: dir });
+      expect(node.exitCode).toBe(code);
+      expect((code === 0 ? node.stdout : node.stderr).toString()).toContain(expected);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -4,8 +4,6 @@ import { type Command, Misuse } from "../index.ts";
 import { readSpec, reserveSecret, secretFileOptions } from "../webhooks/create.ts";
 
 export const createInboundCommand: Command = {
-  words: ["inbound", "create"],
-  usage: "ob inbound create --file <spec.json> --secret-file <path>",
   async run(ctx) {
     const paths = secretFileOptions(ctx.args, ctx.optionsEnd);
     const spec = readSpec<InboundSpec>(paths.spec);

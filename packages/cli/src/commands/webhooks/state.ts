@@ -2,10 +2,7 @@ import { webhookText } from "../../output.ts";
 import { type Command, Misuse } from "../index.ts";
 
 function stateCommand(enabled: boolean): Command {
-  const action = enabled ? "enable" : "disable";
   return {
-    words: ["webhooks", action],
-    usage: `ob webhooks ${action} <id>`,
     async run(ctx) {
       const [id] = ctx.args;
       if (!id || id.startsWith("--") || ctx.args.length !== 1) throw new Misuse("expected one webhook ID");

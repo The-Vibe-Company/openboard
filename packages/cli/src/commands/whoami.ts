@@ -10,8 +10,6 @@ function expiryText(expiresAt: number, now: number): string {
 }
 
 export const whoamiCommand: Command = {
-  words: ["whoami"],
-  usage: "ob whoami",
   async run(ctx) {
     if (ctx.args.length > 0) throw new Misuse("whoami takes no arguments");
     const me = await ctx.client.getMe({});
