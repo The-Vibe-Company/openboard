@@ -292,7 +292,7 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
   }
   const answer = await (ctx.client[name] as Invoke)(input);
   const format = formats[name];
-  ctx.output.out(ctx.json || !format ? JSON.stringify(answer, null, 2) : format(answer, input));
+  ctx.output.out(ctx.json || !format ? JSON.stringify(answer, null, 2) : format(answer, input, ctx.now));
   return 0;
 }
 

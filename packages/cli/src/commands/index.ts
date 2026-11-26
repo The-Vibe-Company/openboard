@@ -45,4 +45,8 @@ export interface Command {
   run(ctx: CommandContext): Promise<number>;
 }
 
+export interface StandaloneHandler {
+  run(ctx: StandaloneContext): Promise<number>;
+}
+
 export interface RegisteredCommand extends CommandMetadata, Command {}

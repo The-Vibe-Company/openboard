@@ -58,6 +58,8 @@ function root(id: string, text: string, labels: Record<string, string>) {
   return { id, text, labels: { ...labels, "board.task": "ready" }, task: { state: "ready" } };
 }
 
+const listTime = Date.parse("2025-01-01T00:00:00.000Z");
+
 async function tasks(args: readonly string[], answer: unknown, env: typeof ENV & { HOME?: string } = ENV) {
   const lines: string[] = [];
   const urls: string[] = [];
@@ -66,7 +68,7 @@ async function tasks(args: readonly string[], answer: unknown, env: typeof ENV &
     return Response.json(answer);
   };
   const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
-  expect(await runCli(["tasks", ...args], env, { fetch, output })).toBe(0);
+  expect(await runCli(["tasks", ...args], env, { fetch, output, now: () => listTime })).toBe(0);
   return { lines, urls };
 }
 
@@ -81,6 +83,35 @@ test("ob tasks prints one row per task: ID, state, first line, labels", async ()
   const { lines, urls } = await tasks(["dev", "--label", "k=v", "--state", "ready"], page);
   expect(urls).toEqual([`${ENV.BOARD_URL}/tasks?label=k%3Dv&state=ready&channel=dev`]);
   expect(lines).toEqual(["#2  ready  a …\n#3  ready  b  k=v"]);
+});
+
+test("ob tasks shows claim actor and lease remaining, while JSON keeps the original response", async () => {
+  const rows = [
+    ["2025-01-01T00:14:42.000Z", "14m left"],
+    ["2025-01-01T00:00:29.000Z", "<1m left"],
+    ["2025-01-01T00:00:00.000Z", "lease expired"],
+    ["invalid", ""],
+  ];
+  const page = {
+    tasks: rows.map(([until], index) => ({
+      message: {
+        ...root(String(index + 2), "fix the build", {}),
+        task: { state: "claimed", claim: { actor: "codex", until } },
+      },
+      replies: 0,
+      last: null,
+    })),
+    cursor: "5",
+  };
+  expect((await tasks(["--state", "claimed"], page)).lines).toEqual([
+    rows
+      .map(
+        ([, remaining], index) => `#${index + 2}  claimed (codex${remaining ? `, ${remaining}` : ""})  fix the build`,
+      )
+      .join("\n"),
+  ]);
+  const json = await tasks(["--state", "claimed", "--json"], page);
+  expect(json.lines).toEqual([JSON.stringify(page, null, 2)]);
 });
 
 test("ob tasks on a full page prints the command that reads the next one", async () => {

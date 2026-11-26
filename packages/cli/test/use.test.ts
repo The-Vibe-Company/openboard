@@ -122,14 +122,17 @@ test.each([
   [
     "a refused credential",
     async () => Response.json({ error: { code: "unauthorized", message: "no" } }, { status: 401 }),
-    "error: unauthorized: the board acme/ops refused the personal credential",
+    ["error: unauthorized: the board acme/ops refused the personal credential"],
   ],
   [
     "an unreachable board",
     async () => Promise.reject(new TypeError("connection refused")),
-    "error: unreachable: could not check the board acme/ops; it stays unchanged",
+    [
+      "error: unreachable: could not check the board acme/ops; it stays unchanged",
+      "Next step: Check DNS, TLS certificates and network access for the board. Run ob doctor to check your board connection.",
+    ],
   ],
-])("%s keeps the saved board and its private file", async (_name, answer, message) => {
+])("%s keeps the saved board and its private file", async (_name, answer, errors) => {
   const lines = await signedIn(async (env, cli) => {
     const path = personalConfigPath(env) ?? "";
     const before = readFileSync(path, "utf8");
@@ -137,7 +140,7 @@ test.each([
     expect(readFileSync(path, "utf8")).toBe(before);
     expect(statSync(path).mode & 0o777).toBe(0o600);
   }, answer);
-  expect(lines.err).toEqual([message]);
+  expect(lines.err).toEqual(errors);
 });
 
 test("ob use makes the personal sign-in active over an agent connection saved after it", async () => {

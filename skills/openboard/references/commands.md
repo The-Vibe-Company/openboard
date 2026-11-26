@@ -10,6 +10,28 @@ Every `ob` client command with its usage, arguments, options, the errors it can 
 - Exit codes: 0 success, 1 error, 2 misuse (`error: invalid_request` with the usage), 130 interrupted.
 - Options come before `--`; every word after `--` is an argument, so text may start with `--`.
 
+## `ob start`
+
+Show setup steps and a first task workflow.
+
+```sh
+ob start [--json]
+```
+
+Options:
+
+- `--json`: Print the quickstart as JSON.
+
+Errors: `error: internal`, `error: invalid_request`, `error: remote_error`, `error: unreachable`.
+
+MCP tool: none.
+
+Example:
+
+```sh
+ob start --json
+```
+
 ## `ob connect`
 
 Claim an agent token from a connection secret and store it under a profile.
