@@ -5,8 +5,11 @@ import type { Client, ClientOptions } from "@the-vibe-company/openboard";
 import { derivedCommands } from "./commands/derived.ts";
 import { type CommandContext, Misuse, type StandaloneContext } from "./commands/index.ts";
 import { handwrittenCommands } from "./commands/reference/registry.ts";
+import { completion, shells } from "./commands/utility/completion.ts";
+import { showHelp, utilityCommands } from "./commands/utility/help.ts";
 import { clientConfig } from "./config.ts";
-import { consoleOutput, type Output, printError } from "./output.ts";
+import { consoleOutput, type Output, printError, setupHint } from "./output.ts";
+import { version } from "./version.ts";
 
 export { clientEnvironment } from "./config.ts";
 
@@ -38,9 +41,10 @@ function find(words: readonly string[]): AnyCommand | undefined {
     .sort((a, b) => b.words.length - a.words.length)[0];
 }
 
-function usage(output: Output, problem: string): number {
+function usage(output: Output, problem: string, next?: string): number {
   output.err(`error: invalid_request: ${problem}`);
-  for (const command of commands) output.err(`  ${command.usage}`);
+  if (next) output.err(`Next step: ${next}`);
+  output.err("Use ob help to list commands.");
   return 2;
 }
 
@@ -75,24 +79,34 @@ export async function runCli(
   const json = flags.includes("--json");
   const commandWords = flags.filter((arg) => arg !== "--json");
   const words = [...commandWords, ...(end < 0 ? [] : argv.slice(end + 1))];
-  const command = find(commandWords);
-  if (!command) return usage(output, words.length === 0 ? "usage:" : `unknown command: ${words.join(" ")}`);
-  if (end === -1 && words.length === command.words.length + 1 && words.at(-1) === "--help") {
-    output.out(command.usage);
-    if ("help" in command && command.help) output.out(command.help);
+  if (end < 0 && words.length === 1 && (words[0] === "--version" || words[0] === "-V")) {
+    output.out(`ob ${version}`);
     return 0;
   }
+  const helpFlag = end < 0 && (words.at(-1) === "--help" || words.at(-1) === "-h");
+  const utility = utilityCommands.find(({ words: [name] }) => commandWords[0] === name);
+  const command = utility ?? find(commandWords);
+  if (words.length === 0 || (helpFlag && words.length === 1)) return showHelp(output, []);
+  if (helpFlag && command && words.length === command.words.length + 1) {
+    return showHelp(output, words.slice(0, -1));
+  }
+  if (helpFlag && words[0] === "help") return showHelp(output, words.slice(1, -1));
+  if (!command) return usage(output, `unknown command: ${words.join(" ")}`);
   try {
     const optionsEnd = Math.max(0, commandWords.length - command.words.length);
     const args = words.slice(command.words.length);
     const context = { args, optionsEnd, json, output, profile: picked.profile };
-    if ("standalone" in command) {
-      const standalone: StandaloneContext = { ...context, env, options };
-      return await command.run(standalone);
-    }
+    if (!("run" in command)) return await runUtility(command.words[0], { ...context, env, options });
+    if ("standalone" in command) return await command.run({ ...context, env, options });
     const config = clientConfig(env);
     const profile = picked.profile ?? config.profile;
-    if (!config.boardUrl) return usage(output, "BOARD_URL is not set: point it at a board, as `ob serve` prints it");
+    if (!config.boardUrl) {
+      return usage(
+        output,
+        "BOARD_URL is not set: point it at a board, as `ob serve` prints it",
+        json ? undefined : setupHint,
+      );
+    }
     if (!/^https?:$/.test(URL.parse(config.boardUrl)?.protocol ?? "")) {
       return usage(output, "BOARD_URL is not an http(s) URL");
     }
@@ -124,9 +138,21 @@ export async function runCli(
     ) {
       throw error;
     }
-    printError(output, error);
+    printError(output, error, {
+      json,
+      boardCommand: !("standalone" in command) && "run" in command ? command.words.join(" ") : undefined,
+    });
     return 1;
   }
+}
+
+async function runUtility(name: (typeof utilityCommands)[number]["words"][0], ctx: StandaloneContext): Promise<number> {
+  if (name === "help") return showHelp(ctx.output, ctx.args);
+  if (name === "doctor") return (await import("./commands/utility/doctor.ts")).doctor(ctx);
+  const shell = shells.find((value) => ctx.args[0] === value);
+  if (!shell || ctx.args.length !== 1) throw new Misuse("choose bash, zsh or fish");
+  ctx.output.out(completion(shell, [...commands, ...utilityCommands]));
+  return 0;
 }
 
 /** The command can validate arguments before opening the SDK or creating its client. */

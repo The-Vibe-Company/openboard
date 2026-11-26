@@ -75,7 +75,8 @@ test("the npm CLI can print help and reject invalid arguments without loading th
     await Bun.write(join(dir, "package.json"), '{"type":"module"}');
     await Bun.write(join(dir, "main.js"), Bun.file(new URL("dist/main.js", cli)));
     for (const [args, code, expected] of [
-      [["--help"], 2, "ob tail <channel>"],
+      [["--help"], 0, "Messages & channels"],
+      [["-V"], 0, "ob "],
       [["post", "--help"], 0, "ob post <channel>"],
       [["tail", "--help"], 0, "ob tail <channel>"],
       [["unknown"], 2, "unknown command: unknown"],

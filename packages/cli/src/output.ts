@@ -51,8 +51,12 @@ function shellArg(arg: string): string {
 /** The codes whose `next` the CLI prints: the board's way out of a bad input, or of a reply someone answered first. */
 const GUIDED = new Set(["invalid_request", "newer_message", "grant_lockout", "too_large"]);
 
+export const setupHint =
+  "Set BOARD_URL to a board URL, or run ob login <origin> or ob connect <board-url> --as <name>.";
+export const credentialHint = "Run ob login <origin> or ob connect <board-url> --as <name>.";
+
 /** A board error followed by the board's recovery guidance when supplied. */
-export function printError(output: Output, error: BoardError): void {
+export function printError(output: Output, error: BoardError, options: { json: boolean; boardCommand?: string }): void {
   const next = GUIDED.has(error.code) ? error.next : undefined;
   output.err(`error: ${error.code}: ${error.message}`);
   if (error.reason) output.err(`reason: ${error.reason}`);
@@ -62,6 +66,15 @@ export function printError(output: Output, error: BoardError): void {
       output.err(`next: ${step.argv.map(shellArg).join(" ")}`);
     }
   }
+  if (options.json || !options.boardCommand) return;
+  if (error.code === "claim_lost") {
+    const next =
+      options.boardCommand === "tasks block"
+        ? "If you own the task, retry ob tasks block without the stale claim."
+        : "Run ob tasks claim <id> before retrying.";
+    output.err(`Next step: ${next}`);
+  }
+  if (error.code === "unauthorized") output.err(`Next step: ${credentialHint}`);
 }
 
 type Written = {

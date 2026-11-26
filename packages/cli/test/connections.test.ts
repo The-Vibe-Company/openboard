@@ -267,7 +267,7 @@ test("ob connections policy advertises both required pins and rejects a missing 
   const command = ["connections", "policy"];
   const usage = "ob connections policy <id> --as <as> --can <can>";
   expect(await runCli([...command, "--help"], env, { output })).toBe(0);
-  expect(lines.out).toEqual([usage]);
+  expect(lines.out[0]).toBe(usage);
   expect(await runCli([...command, connection.id, "--as", "fixer-2"], env, { output })).toBe(2);
   expect(lines.err[0]).toContain("policy requires --as and --can");
 });

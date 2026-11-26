@@ -147,7 +147,9 @@ test.each([
     expect(await run(true)).toBe(outcome !== "claim_lost" ? 0 : 1);
     expect(lines).toEqual([
       "error: unavailable: retry",
-      outcome !== "claim_lost" ? `${outcome} 2` : "error: claim_lost: claim expired",
+      ...(outcome !== "claim_lost"
+        ? [`${outcome} 2`]
+        : ["error: claim_lost: claim expired", "Next step: Run ob tasks claim <id> before retrying."]),
     ]);
     expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({
       [JSON.stringify([other.boardUrl, other.actor, other.id])]: claim,
@@ -298,7 +300,11 @@ test("ob tasks block clears a stale claim before the owner retries without proof
     expect(await run()).toBe(1);
     expect(await run()).toBe(0);
     expect(bodies).toEqual([{ ...input, epoch: 1, token: "fixture" }, input]);
-    expect(lines).toEqual(["error: claim_lost: expired", "blocked 2"]);
+    expect(lines).toEqual([
+      "error: claim_lost: expired",
+      "Next step: If you own the task, retry ob tasks block without the stale claim.",
+      "blocked 2",
+    ]);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
