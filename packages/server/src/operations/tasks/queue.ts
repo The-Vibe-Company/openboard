@@ -1,6 +1,6 @@
 import { BoardError, type claimNextTask, type InputOf, type OutputOf } from "@openboard/contract";
 import { channelFilter, labelFilters } from "@openboard/core";
-import { tailBoard } from "../../live/fan-out.ts";
+import { withLiveWait } from "../../http/limits.ts";
 import { longPoll, MAX_WAIT_SECONDS } from "../../live/long-poll.ts";
 import type { BoardContext, Handler } from "../index.ts";
 import { makeClaim } from "./claim.ts";
@@ -53,8 +53,7 @@ async function waitForClaim(ctx: BoardContext, input: Input, seconds: number): P
   const deadline = ctx.now() + Math.min(seconds, MAX_WAIT_SECONDS) * 1000;
   const mayClaim = () => !signal.aborted && ctx.now() < deadline;
   const attempt = claimAttempt(ctx, input, mayClaim);
-  const tail = tailBoard(ctx.board, undefined);
-  try {
+  return withLiveWait(ctx.rateLimits, ctx.board, undefined, async (tail) => {
     const filters = { channel: input.channel };
     const page = await longPoll(tail, undefined, seconds, signal, ctx.schedule, async (after, committed) => {
       if (after === undefined) return attempt(ctx.by);
@@ -67,9 +66,7 @@ async function waitForClaim(ctx: BoardContext, input: Input, seconds: number): P
     const claim = page?.events[0];
     if (!claim && !signal.aborted) await ctx.reauthorize();
     return claim ?? { task: null };
-  } finally {
-    tail.close();
-  }
+  });
 }
 
 export const claimNextTaskHandler: Handler<typeof claimNextTask> = async (ctx, input) => {

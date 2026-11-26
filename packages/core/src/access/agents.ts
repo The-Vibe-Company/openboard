@@ -103,9 +103,22 @@ export function matchingPatterns(patterns: string[], spot: string): string[] {
   return patterns.filter((pattern) => covers(pattern, spot)).sort((a, b) => specificity(b) - specificity(a));
 }
 
+/** Find the winning own rule, or the next rule down when omitting the named boundary. */
+export function decidingPattern(can: Can, spot: string, omitSpot = false): string | undefined {
+  if (spot !== "*" && !spot.endsWith("/") && !omitSpot && Object.hasOwn(can, spot)) return spot;
+  const subtree = `${spot}/`;
+  if (Object.hasOwn(can, subtree)) return subtree;
+  for (let end = spot.length; end > 0; end--) {
+    if (spot[end - 1] !== "/" || (omitSpot && end === spot.length)) continue;
+    const ancestor = spot.slice(0, end);
+    if (Object.hasOwn(can, ancestor)) return ancestor;
+  }
+  return !(omitSpot && spot === "*") && Object.hasOwn(can, "*") ? "*" : undefined;
+}
+
 /** What `can` lets in at `spot`, implications included, by its most specific pattern covering it; nothing when none does. */
 export function allowedAt(can: Can, spot: string): readonly Permission[] {
-  const [deciding] = matchingPatterns(Object.keys(can), spot);
+  const deciding = decidingPattern(can, spot);
   return deciding === undefined ? [] : withImplied(can[deciding] ?? []);
 }
 

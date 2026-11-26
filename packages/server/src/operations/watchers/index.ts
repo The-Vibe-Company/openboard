@@ -11,7 +11,7 @@ import { formatId, validateWatchers, type WatchFailed } from "@openboard/core";
 import type { BoardWriter } from "@openboard/ports";
 import { allowedEverywhere, canListMentionActors, canReadChannel, isNarrowedCaller } from "../../auth/access.ts";
 import { callerCan, credentialKind } from "../../deps.ts";
-import { tailBoard } from "../../live/fan-out.ts";
+import { withLiveWait } from "../../http/limits.ts";
 import { longPoll } from "../../live/long-poll.ts";
 import { projectEvent } from "../events.ts";
 import type { BoardContext, Handler } from "../index.ts";
@@ -110,16 +110,13 @@ export const pullWatcherMatchesHandler: Handler<typeof pullWatcherMatches> = asy
   ctx.debitWrite();
   const read = () => leaseMatches(ctx, limit, wait > 0);
   if (!wait) return { matches: (await read()).events };
-  const tail = tailBoard(ctx.board, undefined);
   const signal = AbortSignal.any([ctx.signal, ctx.shutdown]);
-  try {
+  return withLiveWait(ctx.rateLimits, ctx.board, undefined, async (tail) => {
     const page = await longPoll(tail, undefined, wait, signal, ctx.schedule, read);
     // A lease can expire during the wait without anyone writing an event.
     if (page?.events.length || signal.aborted) return { matches: page?.events ?? [] };
     return { matches: (await read()).events };
-  } finally {
-    tail.close();
-  }
+  });
 };
 
 export const ackWatcherMatchHandler: Handler<typeof ackWatcherMatch> = async (

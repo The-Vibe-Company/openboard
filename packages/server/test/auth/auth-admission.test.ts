@@ -66,3 +66,36 @@ test("board HTTP authentication receives the request's abort signal", async () =
     await app.close();
   }
 });
+
+test("auth admission caps the combined waiter queue across IPs and reuses released slots", async () => {
+  const store = openStore(() => NOW);
+  const controller = new AbortController();
+  try {
+    const limits = requestRateLimits(() => NOW, store.platform());
+    const ips = ["198.51.100.1", "198.51.100.2"] as const;
+    const held = await Promise.all(ips.flatMap((ip) => Array.from({ length: 20 }, () => limits.admitAuth(ip))));
+    const cancelled = limits.admitAuth(ips[0], controller.signal);
+    const queued = Array.from({ length: 255 }, (_, index) => limits.admitAuth(ips[index % 2 === 0 ? 0 : 1]));
+    const ip = "198.51.100.1";
+    await expect(limitAuthentication({ rateLimits: limits, ip }, async () => false)).rejects.toMatchObject({
+      code: "rate_limited",
+      next: [{ kind: "wait", seconds: 1 }],
+    });
+    controller.abort();
+    await expect(cancelled).rejects.toBe(controller.signal.reason);
+    const replacement = limits.admitAuth(ip);
+    expect(await limits.admitAuth(ip)).toBe(1);
+    for (const finish of held) {
+      if (typeof finish !== "function") throw new Error("expected an auth slot");
+      finish(false);
+    }
+    for (const waiting of [...queued, replacement]) {
+      const finish = await waiting;
+      if (typeof finish !== "function") throw new Error("expected a queued auth slot");
+      finish(false);
+    }
+  } finally {
+    controller.abort();
+    await store.close();
+  }
+});
