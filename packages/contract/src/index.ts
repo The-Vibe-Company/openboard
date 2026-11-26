@@ -115,6 +115,7 @@ export {
   listSchemas,
   listSyncCopies,
   listSyncTargets,
+  countTasks,
   listTasks,
   listThreads,
   listWatchers,

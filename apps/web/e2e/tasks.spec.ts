@@ -280,3 +280,46 @@ test("active board and queue rows expand in place with the full count and keyboa
     await app.stop();
   }
 });
+
+test("board and queue show active tasks beyond 100 completed tasks and exact counts", async ({ page }) => {
+  const app = await serve();
+  try {
+    await signIn(page, app.url, "ada");
+    const owner = sessionClient(page, app.url);
+    await owner.createOrg({ slug: "acme", name: "Acme" });
+    for (let index = 1; index <= 101; index++) {
+      const { task, claim } = await owner.createTask({ channel: "dev", text: `Historical task ${index}`, claim: true });
+      if (!claim) throw new Error("Expected a claim for the historical task");
+      await owner.completeTask({ id: task.id, epoch: claim.epoch, token: claim.token });
+    }
+    const { task: active } = await owner.createTask({ channel: "dev", text: "Active after history" });
+    await page.goto(`${app.url}/acme/main/tasks`);
+    await expect(page.getByRole("region", { name: "Ready", exact: true })).toContainText("Active after history");
+
+    await page.getByRole("button", { name: "Queue", exact: true }).click();
+    const queue = page.getByRole("list", { name: "Task queue" });
+    await expect(queue).toContainText("Active after history");
+    await expect(page.getByRole("button", { name: "all 102", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "completed 101", exact: true }).click();
+    await expect(queue.getByText("Historical task 100", { exact: true })).toBeVisible();
+    await expect(queue).not.toContainText("Active after history");
+    await page.getByRole("button", { name: "Load older tasks" }).click();
+    await expect(queue.getByText("Historical task 101", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "ready 1", exact: true }).click();
+    await expect(queue).toContainText("Active after history");
+    await owner.createTask({ channel: "dev", text: "Created while viewing queue" });
+    await expect(page.getByRole("button", { name: "ready 2", exact: true })).toBeVisible();
+    await expect(queue).toContainText("Created while viewing queue");
+
+    await page.getByRole("button", { name: "Board", exact: true }).click();
+    const ready = page.getByRole("region", { name: "Ready", exact: true });
+    await expect(ready).toContainText("Created while viewing queue");
+    const { claim } = await owner.claimTask({ id: active.id });
+    await owner.completeTask({ id: active.id, epoch: claim.epoch, token: claim.token });
+    await expect(ready).not.toContainText("Active after history");
+    await expect(page.getByRole("region", { name: "Done", exact: true })).toContainText("Active after history");
+  } finally {
+    await app.stop();
+  }
+});

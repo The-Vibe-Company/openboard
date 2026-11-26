@@ -494,6 +494,13 @@ the board head. Combining an enabled `latest` with `after` returns 400 `invalid_
 The CLI is `ob tasks [channel] [--needs <id>] [--latest]`, the SDK method `listTasks`,
 and the MCP tool `list_tasks`.
 
+OpenBoard's `GET /tasks/counts` returns exact counts for each effective task
+state, plus `open` (waiting, ready, claimed and blocked) and `all`. It accepts
+the same optional channel or subtree filter and applies the same read grants
+as `GET /tasks`. Use `ob tasks counts [channel]`, SDK `countTasks` or MCP
+`count_tasks` to read the counts without paging through task lists. To list
+tasks in a channel named `counts`, use `ob tasks -- counts`.
+
 `POST /tasks/claim` takes a `channel` and optional `lease`. It claims the oldest ready task assigned
 to the caller’s actor first, then the oldest unassigned ready task owned by the caller’s
 principal or one of the principal IDs in `from`. Pass up to 32 additional owners with

@@ -96,6 +96,7 @@ import { completeTask } from "./tasks/complete.ts";
 import { createTask } from "./tasks/create.ts";
 import { failTask } from "./tasks/fail.ts";
 import { blockTask, unblockTask } from "./tasks/hold.ts";
+import { countTasks } from "./tasks/counts.ts";
 import { listTasks } from "./tasks/list.ts";
 import { setTaskNeeds } from "./tasks/needs.ts";
 import { releaseTask } from "./tasks/release.ts";
@@ -187,6 +188,7 @@ export const operations = [
   listSyncCopies,
   listSyncTargets,
   getTaskBatch,
+  countTasks,
   listTasks,
   listThreads,
   listWatchers,
@@ -309,6 +311,7 @@ export {
   listSchemas,
   listSyncCopies,
   listSyncTargets,
+  countTasks,
   listTasks,
   listThreads,
   listWatchers,

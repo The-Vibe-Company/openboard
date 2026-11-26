@@ -15,6 +15,7 @@ import { expectNull, holdsNothingOf } from "./isolation-assertions.ts";
 import { attachmentBoardCases, attachmentWriterCases } from "./isolation-attachments.ts";
 import { seedCase } from "./isolation-case-seeds.ts";
 import { at, boardCreation, type StoreTenant, seedPersonGrant, storeTenant } from "./isolation-seed.ts";
+import { taskBoardCases } from "./isolation-tasks.ts";
 import { webhookWriterCases } from "./isolation-webhooks.ts";
 import { inboundCipher, inboundId } from "./store/inbound.test-suite.ts";
 import { scheduleWriterCases } from "./store/schedules.test-suite.ts";
@@ -129,24 +130,7 @@ const boardCases: Cases<BoardView> = {
   },
   readEvents: (a) => a.board.readEvents(0),
   auditEvents: (a) => a.board.auditEvents(0, 500),
-  taskBatch: async (a, b) => {
-    expect(await b.board.taskBatch(b.actor, b.marker)).toMatchObject({ digest: b.marker });
-    expectNull(await a.board.taskBatch(b.actor, b.marker));
-    expectNull(await b.board.taskBatch(a.actor, b.marker));
-  },
-  taskRoot: async (a, b) => {
-    expectNull(await a.board.taskRoot(b.task));
-    const root = await a.board.taskRoot(a.task);
-    expect(root?.task?.owner).toBe(a.actor);
-    return root;
-  },
-  listTasks: async (a, b) => {
-    const query = { states: ["ready"], limit: 500 };
-    expect((await a.board.listTasks({ ...query, channel: b.channel })).tasks).toEqual([]);
-    const page = await a.board.listTasks(query);
-    expect(page.tasks.map(({ message }) => message.id)).toEqual([String(a.task)]);
-    return page;
-  },
+  ...taskBoardCases,
   thread: async (a, b) => {
     expectNull(await a.board.thread(b.message));
     return a.board.thread(a.message);

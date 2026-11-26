@@ -1,10 +1,16 @@
-import { type QueryClient, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, type QueryKey, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import type { BoardEvent } from "@the-vibe-company/openboard";
 import { useEffect, useMemo, useState } from "react";
 import { boardKeys } from "../../../api/board-keys.ts";
+import {
+  activeBoardTasksQuery,
+  boardTaskCountsQuery,
+  boardTasksQuery,
+  STATE_FILTERS,
+  type StateFilter,
+} from "../../../api/board-tasks.ts";
 import { channelsQuery, type ThreadSummary } from "../../../api/board.ts";
-import { browserClient } from "../../../api/client.ts";
 import { subscribeBoardEvents } from "../../../api/live.ts";
 import { sessionQuery } from "../../../api/session.ts";
 import { taskActorsQuery } from "../../../api/tasks.ts";
@@ -14,40 +20,6 @@ import { Button, EmptyState, PlusIcon, Select } from "../../../ui/index.ts";
 export const Route = createFileRoute("/$org/$board/tasks")({
   component: BoardTasksPage,
 });
-
-const TASK_PAGE_SIZE = 100;
-const STATE_FILTERS = [
-  "open",
-  "waiting",
-  "ready",
-  "claimed",
-  "blocked",
-  "completed",
-  "failed",
-  "canceled",
-  "all",
-] as const;
-type StateFilter = (typeof STATE_FILTERS)[number];
-
-function countByState(allTasks: readonly ThreadSummary[]) {
-  const map: Record<string, number> = { all: allTasks.length, open: 0 };
-  for (const item of allTasks) {
-    const state = item.message.task?.state ?? "ready";
-    map[state] = (map[state] ?? 0) + 1;
-    if (["waiting", "ready", "claimed", "blocked"].includes(state)) map.open = (map.open ?? 0) + 1;
-  }
-  return map;
-}
-
-function filterTasks(allTasks: readonly ThreadSummary[], stateFilter: StateFilter) {
-  return allTasks.filter((item) => {
-    const state = item.message.task?.state;
-    if (!state) return false;
-    if (stateFilter === "all") return true;
-    if (stateFilter === "open") return ["waiting", "ready", "claimed", "blocked"].includes(state);
-    return state === stateFilter;
-  });
-}
 
 function TasksHeader({
   channelFilter,
@@ -101,12 +73,6 @@ function TasksHeader({
 }
 
 type Board = { org: string; board: string };
-type TasksKey = ReturnType<typeof boardTasksKey>;
-
-export function boardTasksKey(board: Board, channelFilter: string) {
-  return [...boardKeys.allTasks(board), { state: "all", channel: channelFilter || undefined }] as const;
-}
-
 function matchesTaskChannel(channel: string, filter: string) {
   if (!filter || channel === filter) return true;
   return filter.endsWith("/") && (channel === filter.slice(0, -1) || channel.startsWith(filter));
@@ -144,7 +110,7 @@ export function taskQueryEnabled({ state }: { state: Parameters<typeof duringTas
   return !duringTaskPagination(state);
 }
 
-export function refreshAfterTaskPagination(client: QueryClient, queryKey: TasksKey) {
+export function refreshAfterTaskPagination(client: QueryClient, queryKey: QueryKey) {
   const cache = client.getQueryCache();
   const filters = { queryKey, exact: true };
   const query = cache.find(filters);
@@ -169,43 +135,159 @@ export function refreshAfterTaskPagination(client: QueryClient, queryKey: TasksK
   };
 }
 
-function useBoardTasks(board: Board, channelFilter: string) {
-  const queryClient = useQueryClient();
-  const queryKey = useMemo(() => boardTasksKey(board, channelFilter), [board, channelFilter]);
-  const query = useInfiniteQuery({
-    queryKey,
-    enabled: taskQueryEnabled,
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam, signal }) =>
-      browserClient(window.location.origin, board).listTasks(
-        { state: "all", ...(channelFilter ? { channel: channelFilter } : {}), after: pageParam, limit: TASK_PAGE_SIZE },
-        { signal },
-      ),
-    getNextPageParam: (page) => (page.tasks.length === TASK_PAGE_SIZE ? page.cursor : undefined),
-  });
-
-  const allTasks = useMemo(() => query.data?.pages.flatMap((page) => page.tasks) ?? [], [query.data]);
-  const taskIds = useMemo(() => new Set(allTasks.map(({ message }) => message.id)), [allTasks]);
-  useEffect(() => refreshAfterTaskPagination(queryClient, queryKey), [queryClient, queryKey]);
-  useEffect(() => {
-    return subscribeBoardEvents(board, (event, invalidate) => {
-      if (affectsBoardTasks(event, channelFilter, (id) => taskIds.has(id))) invalidate(queryKey);
-    });
-  }, [board, channelFilter, queryKey, taskIds]);
-  return { query, queryClient, queryKey, allTasks, viewKey: JSON.stringify([board.org, board.board, channelFilter]) };
+function useTaskEvents(board: Board, channel: string, queryKey: QueryKey, tasks: readonly ThreadSummary[]) {
+  const taskIds = useMemo(() => new Set(tasks.map(({ message }) => message.id)), [tasks]);
+  useEffect(
+    () =>
+      subscribeBoardEvents(board, (event, invalidate) => {
+        if (affectsBoardTasks(event, channel, (id) => taskIds.has(id))) invalidate(queryKey);
+      }),
+    [board, channel, queryKey, taskIds],
+  );
 }
 
-function LoadOlderTasks({ query }: { query: ReturnType<typeof useBoardTasks>["query"] }) {
-  if (!query.hasNextPage) return null;
+const noTasks: readonly ThreadSummary[] = [];
+
+function useBoardTasks(board: Board, channel: string, state: StateFilter, includeRecent = false) {
+  const options = useMemo(
+    () => boardTasksQuery(board, channel, state, includeRecent),
+    [board, channel, state, includeRecent],
+  );
+  const queryClient = useQueryClient();
+  const query = useInfiniteQuery({ ...options, enabled: taskQueryEnabled });
+  const tasks = useMemo(
+    () => query.data?.pages.flatMap((page) => [...page.tasks, ...page.recent]) ?? noTasks,
+    [query.data],
+  );
+  useEffect(() => refreshAfterTaskPagination(queryClient, options.queryKey), [queryClient, options]);
+  useTaskEvents(board, channel, options.queryKey, tasks);
+  return { query, tasks };
+}
+
+function LoadOlderTasks({ queries }: { queries: ReturnType<typeof useBoardTasks>["query"][] }) {
+  const pageable = queries.filter((query) => query.hasNextPage);
+  if (pageable.length === 0) return null;
   return (
     <button
       type="button"
       className="tasks-load-more"
-      disabled={query.isFetching}
-      onClick={() => void query.fetchNextPage({ cancelRefetch: false })}
+      disabled={pageable.some((query) => query.isFetching)}
+      onClick={() => {
+        for (const query of pageable) void query.fetchNextPage({ cancelRefetch: false });
+      }}
     >
-      {query.isFetchingNextPage ? "Loading tasks…" : "Load older tasks"}
+      {pageable.some((query) => query.isFetchingNextPage) ? "Loading tasks…" : "Load older tasks"}
     </button>
+  );
+}
+
+function TaskLoadStatus({ pending, error, empty }: { pending: boolean; error: boolean; empty: boolean }) {
+  if (error) return <p role="alert">Could not load board tasks.</p>;
+  if (pending) return <p role="status">Loading tasks…</p>;
+  if (empty) return <EmptyState>No tasks match the selected filters.</EmptyState>;
+  return null;
+}
+
+function useSettledTasks(board: Board, channel: string, active: readonly ThreadSummary[]) {
+  const [settled, setSettled] = useState<readonly ThreadSummary[]>(noTasks);
+  useEffect(
+    () =>
+      subscribeBoardEvents(board, (event) => {
+        if (!("message" in event) || !matchesTaskChannel(event.message.channel, channel)) return;
+        const { message } = event;
+        if (message.id !== message.thread || !message.task) return;
+        setSettled((previous) => {
+          const retained = previous.find((item) => item.message.id === message.id);
+          const visible = retained ?? active.find((item) => item.message.id === message.id);
+          if (!visible || visible.message.version >= message.version) return previous;
+          const remaining = previous.filter((item) => item.message.id !== message.id);
+          const state = message.task?.state;
+          if (state === "completed" || state === "canceled" || (state === "failed" && !message.deleted)) {
+            return [{ ...visible, message }, ...remaining].slice(0, 100);
+          }
+          return retained ? remaining : previous;
+        });
+      }),
+    [board, channel, active],
+  );
+  return settled;
+}
+
+function KanbanView({ board, channel }: { board: Board; channel: string }) {
+  const options = useMemo(() => activeBoardTasksQuery(board, channel), [board, channel]);
+  const active = useQuery(options);
+  useTaskEvents(board, channel, options.queryKey, active.data ?? noTasks);
+  const completed = useBoardTasks(board, channel, "completed", true);
+  const failed = useBoardTasks(board, channel, "failed", true);
+  const canceled = useBoardTasks(board, channel, "canceled", true);
+  const history = [completed.query, failed.query, canceled.query];
+  const settled = useSettledTasks(board, channel, active.data ?? noTasks);
+  const tasks = useMemo(() => {
+    // A live transition can be reflected in one query before the other queries have refreshed.
+    const latest = new Map<string, ThreadSummary>();
+    for (const item of [
+      ...(active.data ?? noTasks),
+      ...completed.tasks,
+      ...failed.tasks,
+      ...canceled.tasks,
+      ...settled,
+    ]) {
+      const previous = latest.get(item.message.id);
+      if (!previous || previous.message.version < item.message.version) latest.set(item.message.id, item);
+    }
+    return [...latest.values()];
+  }, [active.data, completed.tasks, failed.tasks, canceled.tasks, settled]);
+  const { data: actors } = useQuery(taskActorsQuery(board, tasks.length > 0));
+  return (
+    <>
+      <TaskLoadStatus
+        pending={active.isPending || history.some((query) => query.isPending)}
+        error={active.isError || history.some((query) => query.isError)}
+        empty={tasks.length === 0}
+      />
+      {tasks.length > 0 && <TasksKanban board={board} tasks={tasks} actors={actors} />}
+      <LoadOlderTasks queries={history} />
+    </>
+  );
+}
+
+function QueueView({
+  board,
+  channel,
+  state,
+  setState,
+}: {
+  board: Board;
+  channel: string;
+  state: StateFilter;
+  setState: (state: StateFilter) => void;
+}) {
+  const { query, tasks } = useBoardTasks(board, channel, state);
+  const countsOptions = useMemo(() => boardTaskCountsQuery(board, channel), [board, channel]);
+  const counts = useQuery(countsOptions);
+  useTaskEvents(board, channel, countsOptions.queryKey, noTasks);
+  const { data: actors } = useQuery(taskActorsQuery(board, tasks.length > 0));
+  return (
+    <>
+      <fieldset className="tasks-pills" aria-label="Filter by task state">
+        {STATE_FILTERS.map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            className="tasks-pill"
+            aria-pressed={state === filter}
+            onClick={() => setState(filter)}
+          >
+            <span>{filter}</span>
+            {counts.data && <span className="tasks-pill-count">{counts.data[filter]}</span>}
+          </button>
+        ))}
+      </fieldset>
+      {counts.isError && <p role="alert">Could not load task counts.</p>}
+      <TaskLoadStatus pending={query.isPending} error={query.isError} empty={tasks.length === 0} />
+      {tasks.length > 0 && <TasksQueue key={state} board={board} tasks={tasks} actors={actors} stateFilter={state} />}
+      <LoadOlderTasks queries={[query]} />
+    </>
   );
 }
 
@@ -214,15 +296,13 @@ function BoardTasksPage() {
   const board = useMemo(() => ({ org, board: boardSlug }), [org, boardSlug]);
   const { data: session } = useQuery(sessionQuery);
   const { data: channels = [] } = useQuery(channelsQuery(board));
-  const [stateFilter, setStateFilter] = useState<StateFilter>("open");
   const { channel } = Route.useSearch();
   const [channelFilter, setChannelFilter] = useState(channel ?? "");
   const [layout, setLayout] = useState<"board" | "list">("board");
   const [creating, setCreating] = useState(false);
-  const { query, queryClient, queryKey, allTasks, viewKey } = useBoardTasks(board, channelFilter);
-  const { data: actors } = useQuery(taskActorsQuery(board, allTasks.length > 0));
-  const counts = useMemo(() => countByState(allTasks), [allTasks]);
-  const filtered = useMemo(() => filterTasks(allTasks, stateFilter), [allTasks, stateFilter]);
+  const [state, setState] = useState<StateFilter>("open");
+  const queryClient = useQueryClient();
+  const viewKey = JSON.stringify([org, boardSlug, channelFilter]);
 
   return (
     <section className="board-view board-ledger" aria-labelledby="board-tasks-heading">
@@ -235,22 +315,6 @@ function BoardTasksPage() {
         onLayout={setLayout}
         onToggleNew={() => setCreating((c) => !c)}
       />
-      {layout === "list" && (
-        <fieldset className="tasks-pills" aria-label="Filter by task state">
-          {STATE_FILTERS.map((state) => (
-            <button
-              key={state}
-              type="button"
-              className="tasks-pill"
-              aria-pressed={stateFilter === state}
-              onClick={() => setStateFilter(state)}
-            >
-              <span>{state}</span>
-              <span className="tasks-pill-count">{counts[state] ?? 0}</span>
-            </button>
-          ))}
-        </fieldset>
-      )}
       {creating && (
         <NewTaskForm
           board={board}
@@ -259,32 +323,17 @@ function BoardTasksPage() {
           onCreated={async () => {
             setCreating(false);
             await Promise.all([
-              queryClient.invalidateQueries({ queryKey, exact: true }),
+              queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) }),
               queryClient.invalidateQueries({ queryKey: boardKeys.channels(board), exact: true }),
             ]);
           }}
         />
       )}
-      {query.isPending && <p role="status">Loading tasks…</p>}
-      {query.isError && <p role="alert">Could not load board tasks.</p>}
-      {!query.isPending && !query.isError && allTasks.length === 0 && (
-        <EmptyState>
-          No tasks on this board yet. Create one above or switch any channel composer to Task mode.
-        </EmptyState>
+      {layout === "board" ? (
+        <KanbanView key={viewKey} board={board} channel={channelFilter} />
+      ) : (
+        <QueueView key={viewKey} board={board} channel={channelFilter} state={state} setState={setState} />
       )}
-      {allTasks.length > 0 && layout === "board" && (
-        <TasksKanban key={viewKey} board={board} tasks={allTasks} actors={actors} />
-      )}
-      {allTasks.length > 0 && layout === "list" && (
-        <TasksQueue
-          key={`${viewKey}:${stateFilter}`}
-          board={board}
-          tasks={filtered}
-          actors={actors}
-          stateFilter={stateFilter}
-        />
-      )}
-      <LoadOlderTasks query={query} />
     </section>
   );
 }

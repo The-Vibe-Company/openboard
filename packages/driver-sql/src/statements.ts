@@ -35,6 +35,7 @@ import { hostedRestoreStatements, restorePlatform } from "./views/restore/hosted
 import { restoreStatements } from "./views/restore/index.ts";
 import { scheduleStatements } from "./views/schedules/index.ts";
 import { schemaStatements } from "./views/schemas/registry.ts";
+import { taskCountStatements } from "./views/tasks/counts.ts";
 import { taskListStatements } from "./views/tasks/list.ts";
 import { taskFoldStatements } from "./views/tasks/task-folds.ts";
 import { taskReadStatements } from "./views/tasks/tasks.ts";
@@ -84,6 +85,7 @@ const registry: Readonly<Record<string, Statement<string>>> = Object.freeze({
   ...shippingStatements,
   ...sweepStatements,
   ...taskFoldStatements,
+  ...taskCountStatements,
   ...taskListStatements,
   ...taskReadStatements,
   ...threadStatements,

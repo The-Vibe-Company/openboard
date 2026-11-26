@@ -1,15 +1,11 @@
 import { expect, mock, test } from "bun:test";
 import type { BoardEvent } from "@the-vibe-company/openboard";
+import { boardTasksKey } from "../src/api/board-tasks.ts";
 import { followBoard, subscribeBoardEvents } from "../src/api/live.ts";
-import {
-  affectsBoardTasks,
-  boardTasksKey,
-  refreshAfterTaskPagination,
-  taskQueryEnabled,
-} from "../src/routes/$org/$board/tasks.tsx";
+import { affectsBoardTasks, refreshAfterTaskPagination, taskQueryEnabled } from "../src/routes/$org/$board/tasks.tsx";
 
 const board = { org: "acme", board: "main" };
-const key = boardTasksKey(board, "dev");
+const key = boardTasksKey(board, "dev", "open");
 
 function liveTasks(client: Parameters<typeof followBoard>[1]) {
   const source = Object.assign(new EventTarget(), { close() {} });

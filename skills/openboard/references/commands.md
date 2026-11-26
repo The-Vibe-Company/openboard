@@ -1286,6 +1286,28 @@ Example:
 ob tasks batch id
 ```
 
+## `ob tasks counts`
+
+Count tasks by state in a channel, subtree, or the whole board.
+
+```sh
+ob tasks counts [channel]
+```
+
+Arguments:
+
+- `channel`: A channel by its whole name, or `dev/` for `dev` and every channel under it.
+
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+
+MCP tool: `count_tasks`.
+
+Example:
+
+```sh
+ob tasks counts dev
+```
+
 ## `ob tasks`
 
 List the tasks of a channel, a subtree (`dev/`), or the whole board, each as its thread's summary.
