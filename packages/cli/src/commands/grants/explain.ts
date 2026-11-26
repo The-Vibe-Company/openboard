@@ -52,9 +52,6 @@ function sentence(answer: Explanation, whom: string, connectionSelected: boolean
 }
 
 export const explainGrantsCommand: Command = {
-  words: ["grants", "explain"],
-  usage:
-    "ob grants explain <channel> [--user <id> | --project <id> [--environment <name>] | --github <repository> [--workflow <file>] [--git-branch <branch>] [--event <event>] | --oidc <issuer> [--claim <name=value>]… | --app <id> | --connection <id>]",
   async run(ctx) {
     let principal: GrantPrincipalInput | undefined;
     let channel: string | undefined;

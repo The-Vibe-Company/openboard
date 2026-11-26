@@ -133,3 +133,32 @@ test("posting a 5 MiB file gives recovery guidance without issuing a request", a
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("post rechecks each attachment after the preceding upload", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "ob-cli-attach-"));
+  const first = join(dir, "first.txt");
+  const second = join(dir, "second.txt");
+  const errors: string[] = [];
+  let requests = 0;
+  try {
+    await Promise.all([Bun.write(first, "first"), Bun.write(second, "second")]);
+    const code = await runCli(
+      ["post", "dev", "--attach", first, "--attach", second],
+      { BOARD_URL: "http://127.0.0.1:9876/api/local/main" },
+      {
+        output: { out() {}, err: (line) => errors.push(line) },
+        async fetch(request) {
+          expect(++requests).toBe(1);
+          expect(await request.text()).toBe("first");
+          await Bun.write(second, "changed size");
+          return Response.json({ attachment: { id: "att_first" } });
+        },
+      },
+    );
+    expect(code).toBe(1);
+    expect(requests).toBe(1);
+    expect(errors).toEqual([`error: invalid_request: ${second} changed before it was read`]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

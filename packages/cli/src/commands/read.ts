@@ -63,9 +63,6 @@ async function readChannel(ctx: CommandContext, input: ChannelInput): Promise<vo
 }
 
 export const readCommand: Command = {
-  words: ["read"],
-  usage:
-    "ob read <channel> [--label <key[=value]>]... [--by <handle>] [--mentions <handle>] [--text <text>] [--before <older> | --after <cursor>] [--limit <limit>] | ob read <id> [--after <id>] [--limit <limit>]",
   async run(ctx) {
     const positional: string[] = [];
     const labels: string[] = [];

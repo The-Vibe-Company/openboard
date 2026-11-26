@@ -1,8 +1,10 @@
 import process from "node:process";
 import { setTimeout } from "node:timers/promises";
-import { BoardError, type ClientOptions, createClient, tail } from "@the-vibe-company/openboard";
-import { Misuse, scheduleCommand, type StandaloneContext } from "./commands/index.ts";
-import { type AnyCommand, commands } from "./commands/usage.ts";
+import { BoardError } from "@openboard/contract";
+import type { Client, ClientOptions } from "@the-vibe-company/openboard";
+import { derivedCommands } from "./commands/derived.ts";
+import { type CommandContext, Misuse, type StandaloneContext } from "./commands/index.ts";
+import { handwrittenCommands } from "./commands/reference/registry.ts";
 import { clientConfig } from "./config.ts";
 import { consoleOutput, type Output, printError } from "./output.ts";
 
@@ -19,6 +21,9 @@ export interface CliOptions {
   readonly interrupt?: AbortSignal;
 }
 
+const commands = [...handwrittenCommands, ...derivedCommands];
+type AnyCommand = (typeof commands)[number];
+
 function find(words: readonly string[]): AnyCommand | undefined {
   // A schedule with timing flags may target the channel named "cancel".
   if (
@@ -26,7 +31,7 @@ function find(words: readonly string[]): AnyCommand | undefined {
     words[1] === "cancel" &&
     words.slice(2).some((word) => word === "--in" || word === "--at" || word === "--every")
   ) {
-    return scheduleCommand;
+    return handwrittenCommands.find((command) => command.words.join(" ") === "schedule");
   }
   return commands
     .filter((command) => command.words.every((word, at) => words[at] === word))
@@ -97,10 +102,9 @@ export async function runCli(
       ...(profile === undefined ? {} : { profile }),
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     };
-    return await command.run({
+    const code = await command.run({
       ...context,
-      client: createClient(connection),
-      tail: (input) => tail({ ...input, ...connection }),
+      ...lazyBoard(connection),
       interrupt: () => (options.interrupt ? { signal: options.interrupt, release: () => {} } : nextSigint()),
       boardUrl: config.boardUrl,
       home: env.HOME,
@@ -108,10 +112,39 @@ export async function runCli(
       wait: options.wait ?? setTimeout,
       timeoutSignal: options.timeoutSignal ?? AbortSignal.timeout,
     });
+    // A blocked stdout write can keep the process alive after the SIGINT handler finishes.
+    if (json && code === 130 && !options.interrupt && !options.output && process.stdout.writableLength)
+      process.exit(code);
+    return code;
   } catch (error) {
     if (error instanceof Misuse) return usage(output, `${error.message}: ${command.usage}`);
-    if (!(error instanceof BoardError)) throw error;
+    if (
+      !(error instanceof BoardError) &&
+      !(error instanceof (await import("@the-vibe-company/openboard")).BoardError)
+    ) {
+      throw error;
+    }
     printError(output, error);
     return 1;
   }
+}
+
+/** The command can validate arguments before opening the SDK or creating its client. */
+function lazyBoard(connection: ClientOptions): Pick<CommandContext, "client" | "tail"> {
+  let client: Promise<Client> | undefined;
+  return {
+    client: new Proxy({} as Client, {
+      get:
+        (_, method: keyof Client) =>
+        async (...args: unknown[]) => {
+          client ??= import("@the-vibe-company/openboard").then(({ createClient }) => createClient(connection));
+          const invoke = (await client)[method] as (...args: unknown[]) => Promise<unknown>;
+          return invoke(...args);
+        },
+    }),
+    async *tail(input) {
+      const { tail } = await import("@the-vibe-company/openboard");
+      yield* tail({ ...input, ...connection });
+    },
+  };
 }

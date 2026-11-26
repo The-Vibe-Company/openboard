@@ -1,5 +1,5 @@
-import { parseCanScope } from "@openboard/contract";
-import { BoardError, type Client, createClient } from "@the-vibe-company/openboard";
+import { BoardError, parseCanScope } from "@openboard/contract";
+import type { Client } from "@the-vibe-company/openboard";
 import { isPersonalToken, loginOrigin, personalConfigPath, storePersonalLogin } from "../config.ts";
 import { Misuse, type StandaloneContext } from "./index.ts";
 
@@ -12,7 +12,8 @@ async function deviceRequest<T>(request: Promise<T>): Promise<T> {
     return await request;
   } catch (error) {
     // Remote messages and transport errors may contain values from a sign-in exchange.
-    if (error instanceof BoardError) throw new BoardError(error.code, "the board refused the sign-in request");
+    if (error instanceof (await import("@the-vibe-company/openboard")).BoardError)
+      throw new BoardError(error.code, "the board refused the sign-in request");
     if (error instanceof TypeError) throw invalidResponse();
     throw error;
   }
@@ -69,10 +70,7 @@ async function approve(ctx: StandaloneContext, client: Client, origin: string, c
 }
 
 export const loginCommand = {
-  standalone: true,
-  words: ["login"],
-  usage: "ob login <origin> [--can <scope>]",
-  async run(ctx: StandaloneContext): Promise<number> {
+  async run(ctx: StandaloneContext) {
     const origin = loginOrigin(ctx.args[0]);
     const scoped = ctx.args[1] === "--can" && ctx.optionsEnd >= 2;
     if (!origin || ctx.args.length !== (scoped ? 3 : 1) || ctx.profile !== undefined) {
@@ -83,6 +81,7 @@ export const loginCommand = {
     const path = personalConfigPath(ctx.env);
     if (!path) throw new Misuse("HOME is required to store the personal credential");
     const send = ctx.options.fetch ?? ((request: Request) => fetch(request));
+    const { createClient } = await import("@the-vibe-company/openboard");
     const client = createClient({
       url: origin,
       fetch: (request) => send(new Request(request, { redirect: "error", signal: AbortSignal.timeout(15_000) })),

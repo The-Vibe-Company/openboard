@@ -12,7 +12,7 @@ import {
 import { basename, dirname, join } from "node:path";
 import { kill, pid } from "node:process";
 import { setTimeout } from "node:timers/promises";
-import { BoardError } from "@the-vibe-company/openboard";
+import { BoardError } from "@openboard/contract";
 
 type Claim = { readonly epoch: number; readonly until: string; readonly token: string };
 type ClaimKey = { readonly boardUrl: string; readonly actor: string; readonly id: string };

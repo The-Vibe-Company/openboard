@@ -53,8 +53,6 @@ function parse(ctx: CommandContext): { target: string; options: ReadOptions } {
 }
 
 export const messagesCommand: Command = {
-  words: ["messages"],
-  usage: "ob messages <channel> [--after <cursor>] [--limit <limit>]",
   async run(ctx) {
     const { target, options } = parse(ctx);
     await readChannel(ctx, target, options);

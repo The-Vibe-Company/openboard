@@ -1,4 +1,5 @@
-import { BoardError, type Client } from "@the-vibe-company/openboard";
+import { BoardError } from "@openboard/contract";
+import type { Client } from "@the-vibe-company/openboard";
 import { withClaimStorage } from "../../claims.ts";
 import type { CommandContext } from "../index.ts";
 

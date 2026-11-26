@@ -1,4 +1,4 @@
-import { type Command, Misuse } from "../index.ts";
+import { type RegisteredCommand as Command, Misuse } from "../index.ts";
 
 export function taskNeedsCommand(words: readonly string[]): Command {
   return {

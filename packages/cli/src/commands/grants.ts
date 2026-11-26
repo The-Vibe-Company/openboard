@@ -23,13 +23,6 @@ function canEntries(text: string): [string, CanInput[string]][] {
 }
 
 export const createGrantCommand: Command = {
-  words: ["grants", "create"],
-  usage:
-    "ob grants create --can <pattern=permissions>… [--user <id>] [--project <id> | --all-projects] [--environment <names>] " +
-    "[--github <repository-or-subject>] [--workflow <file>] [--git-branch <branch>] [--event <event>] " +
-    "[--oidc <issuer>] [--claim <name=value>] [--app <id>] [--all-apps] [--all-users] [--everyone] " +
-    "[--connection <id>] [--all-connections] [--lock-me-out]\n" +
-    "ob grants create --file <path|-> [--lock-me-out]",
   async run(ctx) {
     if (ctx.args.slice(0, ctx.optionsEnd).includes("--file")) return createFromFile(ctx);
     const principals: GrantPrincipalInput[] = [];
@@ -111,9 +104,6 @@ function grantLine(
 }
 
 export const updateGrantCommand: Command = {
-  words: ["grants", "update"],
-  usage:
-    "ob grants update <id> [--add-connection <id>] [--remove-connection <id>] [--add-project <id> --environment <names>] [--can <pattern=permissions>…] [--lock-me-out]",
   async run(ctx) {
     const id = ctx.args[0];
     if (!id || id.startsWith("--")) throw new Misuse("give a grant ID");

@@ -1,5 +1,7 @@
-import { expect, test } from "bun:test";
+import { expect, mock, test } from "bun:test";
+import { Writable } from "node:stream";
 import { runCli } from "../src/main.ts";
+import { writeLine } from "../src/stream-output.ts";
 
 const env = { BOARD_URL: "http://127.0.0.1:8787/api/local/main" };
 const author = { name: "fixer-2" };
@@ -124,4 +126,50 @@ test.each([
   expect(await code).toBe(2);
   expect(requests).toEqual([]);
   expect(printed.err[0]).toStartWith("error: invalid_request: ");
+});
+
+test.each(["drain", "interrupt", "EPIPE"] as const)("tail stdout handles %s under backpressure", async (outcome) => {
+  const interrupt = new AbortController();
+  const { promise: writing, resolve: started } = Promise.withResolvers<(error?: Error) => void>();
+  const stream = new Writable({
+    highWaterMark: 1,
+    write(chunk, _, done) {
+      expect(String(chunk)).toBe("event\n");
+      started(done);
+    },
+  });
+  let settled = false;
+  const pending = writeLine(stream, "event", interrupt.signal).then((written) => {
+    settled = true;
+    return written;
+  });
+  const done = await writing;
+  expect(stream.writableNeedDrain).toBe(true);
+  expect(settled).toBe(false);
+  if (outcome === "interrupt") {
+    interrupt.abort();
+    expect(await pending).toBe(false);
+  }
+  done(outcome === "drain" ? undefined : Object.assign(new Error("closed pipe"), { code: "EPIPE" }));
+  expect(await pending).toBe(outcome === "drain");
+  expect(stream.listenerCount("drain")).toBe(0);
+});
+
+test("tail --json stops consuming events while stdout is blocked", async () => {
+  const interrupt = new AbortController();
+  const { promise: blocked, resolve: writing } = Promise.withResolvers<void>();
+  const write = mock(async (_line: string, signal: AbortSignal) => {
+    writing();
+    await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
+    return false;
+  });
+  const pending = runCli(["tail", "dev", "--json", "--last", "2"], env, {
+    interrupt: interrupt.signal,
+    fetch: async () => Response.json({ events: [event("1", "first"), event("2", "second")], cursor: "2" }),
+    output: { out() {}, err() {}, write },
+  });
+  await blocked;
+  interrupt.abort();
+  expect(await pending).toBe(130);
+  expect(write.mock.calls.map(([line]) => line)).toEqual([JSON.stringify(event("1", "first"))]);
 });

@@ -2,7 +2,7 @@ import { createWriteStream } from "node:fs";
 import { link, mkdtemp, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
-import { BoardError } from "@the-vibe-company/openboard";
+import { BoardError } from "@openboard/contract";
 import { type Command, type CommandContext, Misuse } from "../index.ts";
 
 function organization(ctx: CommandContext): string {
@@ -12,8 +12,6 @@ function organization(ctx: CommandContext): string {
 }
 
 export const exportOrgCommand: Command = {
-  words: ["org", "export"],
-  usage: "ob org export",
   async run(ctx) {
     if (ctx.args.length) throw new Misuse("unexpected argument");
     const result = await ctx.client.requestOrgExport({ org: organization(ctx) });
@@ -23,8 +21,6 @@ export const exportOrgCommand: Command = {
 };
 
 export const downloadOrgExportCommand: Command = {
-  words: ["org", "export", "download"],
-  usage: "ob org export download <id> --out <file>",
   async run(ctx) {
     const [id, flag, path] = ctx.args;
     if (!id || flag !== "--out" || !path || ctx.args.length !== 3 || ctx.optionsEnd < 2) {

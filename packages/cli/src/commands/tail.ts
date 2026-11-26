@@ -40,15 +40,16 @@ function eventLine(event: BoardEvent): string | undefined {
 }
 
 export const tailCommand: Command = {
-  words: ["tail"],
-  usage: "ob tail <channel> [--last <n>]",
   async run(ctx) {
     const { channel, last } = parse(ctx);
     const { signal, release } = ctx.interrupt();
     try {
       for await (const event of ctx.tail({ channel, ...(last === undefined ? {} : { last }), signal })) {
         const line = ctx.json ? JSON.stringify(event) : eventLine(event);
-        if (line !== undefined) ctx.output.out(line);
+        if (line === undefined) continue;
+        if (ctx.json && ctx.output.write) {
+          if (!(await ctx.output.write(line, signal))) break;
+        } else ctx.output.out(line);
       }
       return signal.aborted ? 130 : 0;
     } finally {

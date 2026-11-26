@@ -2,16 +2,9 @@ import { readFileSync } from "node:fs";
 import { BoardError, type CliSpec, claimNextTask, createTaskBatch, operations } from "@openboard/contract";
 import { leaseSeconds } from "../duration.ts";
 import { formats } from "../output.ts";
-import { uploadFiles } from "./attachments/attach.ts";
-import { type Command, type CommandContext, Misuse } from "./index.ts";
-import { runCancelSchedule } from "./schedule/index.ts";
-import { profileActor, taskAssignCommand } from "./tasks/assign.ts";
-import { runCancelTask } from "./tasks/cancel.ts";
-import { runClaimNext, runTaskCommand } from "./tasks/claim.ts";
-import { runSettleTask } from "./tasks/complete.ts";
-import { runBlockTask } from "./tasks/hold.ts";
+import { type RegisteredCommand as Command, type CommandContext, Misuse } from "./index.ts";
+import { isQualified, profileActor, taskAssignCommand } from "./tasks/assign.ts";
 import { taskNeedsCommand } from "./tasks/needs.ts";
-import { runRenewTask } from "./tasks/renew.ts";
 
 type Contracted = (typeof operations)[number];
 type Invoke = (input: Readonly<Record<string, unknown>>) => Promise<unknown>;
@@ -218,6 +211,7 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
       }
       if (Array.isArray(input.attachments)) {
         if (createTask && input.re !== undefined) throw new Misuse("--attach requires a new task thread");
+        const { uploadFiles } = await import("./attachments/attach.ts");
         input.attachments = await uploadFiles(ctx, input.attachments);
       }
       return runDerived(ctx, operation.name, input);
@@ -246,26 +240,41 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
     if (ctx.profile === undefined || input.can === undefined) throw new Misuse("policy requires --as and --can");
     input.profile = ctx.profile;
   }
-  if (name === "blockTask") return runBlockTask(ctx, input as { id: string; reason: string; kind?: string });
-  if (name === "cancelSchedule") return runCancelSchedule(ctx, String(input.id));
-  if (name === "cancelTask") return runCancelTask(ctx, input as { id: string; reason: string });
-  if (name === "renewTask") return runRenewTask(ctx, input as { id: string; lease?: number });
+  if (name === "blockTask") {
+    const { runBlockTask } = await import("./tasks/hold.ts");
+    return runBlockTask(ctx, input as { id: string; reason: string; kind?: string });
+  }
+  if (name === "cancelSchedule") {
+    const { runCancelSchedule } = await import("./schedule/index.ts");
+    return runCancelSchedule(ctx, String(input.id));
+  }
+  if (name === "cancelTask") {
+    const { runCancelTask } = await import("./tasks/cancel.ts");
+    return runCancelTask(ctx, input as { id: string; reason: string });
+  }
+  if (name === "renewTask") {
+    const { runRenewTask } = await import("./tasks/renew.ts");
+    return runRenewTask(ctx, input as { id: string; lease?: number });
+  }
   if (name === "failTask") {
+    const { runSettleTask } = await import("./tasks/complete.ts");
     return runSettleTask(ctx, String(input.id), "failed", (proof) =>
       ctx.client.failTask({ ...(input as { id: string; reason: string }), ...proof }),
     );
   }
   if (name === "completeTask" || name === "releaseTask") {
     const action = name;
+    const { runSettleTask } = await import("./tasks/complete.ts");
     return runSettleTask(ctx, String(input.id), action === "completeTask" ? "completed" : "released", (proof) =>
       ctx.client[action]({ ...(input as { id: string; result?: string }), ...proof }),
     );
   }
-  if (name === "createTask" && typeof input.for === "string") {
+  if (name === "createTask" && typeof input.for === "string" && !isQualified(input.for)) {
     input.for = profileActor((await ctx.client.getMe({})).principal, input.for);
   }
   if (name === "claimNextTask") {
     if (!input.channel) throw new Misuse("--channel is required to claim the next task");
+    const { runClaimNext } = await import("./tasks/claim.ts");
     return runClaimNext(ctx, {
       channel: String(input.channel),
       lease: input.lease as number | undefined,
@@ -278,6 +287,7 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
     const invoke = ctx.client[name] as (
       ...args: Parameters<Invoke>
     ) => ReturnType<Parameters<typeof runTaskCommand>[2]>;
+    const { runTaskCommand } = await import("./tasks/claim.ts");
     return runTaskCommand(ctx, name === "claimTask" || input.claim === true, () => invoke(input));
   }
   const answer = await (ctx.client[name] as Invoke)(input);
@@ -341,7 +351,7 @@ function taskCreateWithBatch(single: Command, usesFile: (ctx: CommandContext) =>
 async function batchAssignees(ctx: CommandContext, tasks: unknown[]) {
   const profile = (task: unknown) => {
     if (task === null || typeof task !== "object" || !("for" in task) || typeof task.for !== "string") return;
-    if (!task.for.includes(":") && !task.for.includes("+")) return task.for;
+    if (!isQualified(task.for)) return task.for;
   };
   if (!tasks.some((task) => profile(task) !== undefined)) return tasks;
   const { principal } = await ctx.client.getMe({});

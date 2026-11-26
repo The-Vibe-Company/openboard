@@ -1,3 +1,4 @@
+import process from "node:process";
 import type {
   createChannel,
   getConnection,
@@ -17,18 +18,21 @@ import type {
   unblockTask,
   Webhook,
 } from "@openboard/contract";
-import { BoardError } from "@the-vibe-company/openboard";
+import { BoardError } from "@openboard/contract";
 import { grantsText } from "./grant-views.ts";
+import { writeLine } from "./stream-output.ts";
 
 /** Where the CLI writes; tests hand in their own. */
 export interface Output {
   out(line: string): void;
+  write?(line: string, signal: AbortSignal): Promise<boolean>;
   err(line: string): void;
 }
 
 export const consoleOutput: Output = Object.freeze({
   out: (line: string) => console.log(line),
   err: (line: string) => console.error(line),
+  write: (line: string, signal: AbortSignal) => writeLine(process.stdout, line, signal),
 });
 
 export function webhookText(webhook: Webhook): string {

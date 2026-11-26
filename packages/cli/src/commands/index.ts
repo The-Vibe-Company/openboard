@@ -32,34 +32,17 @@ export interface StandaloneContext
   readonly options: CliOptions;
 }
 
-export interface Command {
+export interface CommandMetadata {
   /** `["read"]`, `["tasks", "claim"]`. */
   readonly words: readonly string[];
   readonly usage: string;
   readonly help?: string;
-  run(ctx: CommandContext): Promise<number>;
 }
 
 export class Misuse extends Error {}
 
-export { downloadCommand } from "./attachments/attach.ts";
-export { connectCommand } from "./connect.ts";
-export { createConnectionCommand } from "./connections.ts";
-export { derivedCommands } from "./derived.ts";
-export { explainGrantsCommand } from "./grants/explain.ts";
-export { createGrantCommand, updateGrantCommand } from "./grants.ts";
-export { createInboundCommand } from "./inbound/index.ts";
-export { loginCommand } from "./login.ts";
-export { messagesCommand } from "./messages.ts";
-export { downloadOrgExportCommand, exportOrgCommand } from "./org/export.ts";
-export { readCommand } from "./read.ts";
-export { replyCommand } from "./reply.ts";
-export { rotateConnectionCommand } from "./rotate.ts";
-export { scheduleCommand, schedulesCommand } from "./schedule/index.ts";
-export { createSchemaCommand } from "./schemas/create.ts";
-export { tailCommand } from "./tail.ts";
-export { useCommand } from "./use.ts";
-export { waitCommand } from "./wait.ts";
-export { createWebhookCommand } from "./webhooks/create.ts";
-export { disableWebhookCommand, enableWebhookCommand } from "./webhooks/state.ts";
-export { whoamiCommand } from "./whoami.ts";
+export interface Command {
+  run(ctx: CommandContext): Promise<number>;
+}
+
+export interface RegisteredCommand extends CommandMetadata, Command {}

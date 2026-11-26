@@ -1,4 +1,3 @@
-import { BoardError, createClient } from "@the-vibe-company/openboard";
 import { agentConfigPath, boardAddress, connectionSecret, isAgentToken, storeAgentClaim } from "../config.ts";
 import { Misuse, type StandaloneContext } from "./index.ts";
 
@@ -28,15 +27,13 @@ function parse(ctx: StandaloneContext) {
 }
 
 export const connectCommand = {
-  standalone: true,
-  words: ["connect"],
-  usage: "ob connect <url> --as <name> [--secret-file <path>]",
-  async run(ctx: StandaloneContext): Promise<number> {
+  async run(ctx: StandaloneContext) {
     const { url, profile, secretFile } = parse(ctx);
     const path = agentConfigPath(ctx.env);
     if (!path) throw new Misuse("HOME is required to store the agent credential");
     const secret = connectionSecret(ctx.env, secretFile, ctx.options.readStdin);
     const send = ctx.options.fetch ?? ((request: Request) => fetch(request));
+    const { BoardError, createClient } = await import("@the-vibe-company/openboard");
     const client = createClient({
       url,
       token: secret,

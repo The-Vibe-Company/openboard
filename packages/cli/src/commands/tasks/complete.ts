@@ -1,4 +1,4 @@
-import { BoardError, type Client } from "@the-vibe-company/openboard";
+import type { BoardError, Client } from "@the-vibe-company/openboard";
 import { withClaimStorage } from "../../claims.ts";
 import type { CommandContext } from "../index.ts";
 
@@ -13,6 +13,7 @@ export async function runSettleTask(
   invoke: (proof: ClaimProof) => ReturnType<Client["completeTask"]>,
 ): Promise<number> {
   const { actor } = await ctx.client.getMe({});
+  const { BoardError } = await import("@the-vibe-company/openboard");
   const key = { boardUrl: ctx.boardUrl, actor, id };
   const outcome = await withClaimStorage<CompletionOutcome>(ctx.home, async (read) => {
     const claim = read(key);

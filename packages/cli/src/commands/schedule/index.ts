@@ -119,9 +119,6 @@ export async function runCancelSchedule(ctx: CommandContext, id: string): Promis
 }
 
 export const scheduleCommand: Command = {
-  words: ["schedule"],
-  usage:
-    "ob schedule <channel|id> [<text>|-] [--in <duration> | --at <ISO time>] [--every <duration> [--until <ISO time> | --for <duration> | --times <count>]] [--no-sync] [--label <k=v>]... [--attach <file>]...",
   async run(ctx) {
     const { files, input } = parse(ctx);
     const attachments = files.length ? await uploadFiles(ctx, files) : undefined;
@@ -151,8 +148,6 @@ export const scheduleReference = {
 } as const;
 
 export const schedulesCommand: Command = {
-  words: ["schedules"],
-  usage: "ob schedules [<id>] [--channel <channel>] [--by <actor|handle>] [--all]",
   async run(ctx) {
     let re: string | undefined;
     let channel: string | undefined;
