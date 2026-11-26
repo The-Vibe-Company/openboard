@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { boardErrorText, boardKeys, threadsQuery } from "../../../../api/board.ts";
 import { browserClient } from "../../../../api/client.ts";
 import { sessionQuery } from "../../../../api/session.ts";
@@ -49,26 +49,41 @@ async function sendThreadReply(
   await Promise.all([refresh(queryKey), refresh(threadsQuery(params, root.channel).queryKey)]);
 }
 
-function threadHeading(root: ThreadMessage | undefined, error: Error | null) {
-  if (root) return markdownPreview(root.deleted ? "" : root.text, root.mentions) || `Thread #${root.id}`;
-  return error ? threadErrorText(error) : null;
+function useThreadHeading(root: ThreadMessage | undefined, id: string, error: Error | null) {
+  const text = root?.deleted ? "" : root?.text;
+  const mentions = root?.mentions;
+  const preview = useMemo(() => (text === undefined ? null : markdownPreview(text, mentions)), [text, mentions]);
+  const title = root ? preview || `Thread #${root.id}` : error && threadErrorText(error);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const focusTarget = root ? id : title;
+  const replyTarget = root && root.id !== id ? id : null;
+  useLayoutEffect(() => {
+    if (focusTarget !== null) heading.current?.focus({ preventScroll: true });
+    if (replyTarget) document.getElementById(`reply-${replyTarget}`)?.scrollIntoView({ block: "nearest" });
+  }, [focusTarget, replyTarget]);
+  return { title, heading };
 }
 
 function ThreadPage() {
   const params = Route.useParams();
-  const options = threadQuery(params, params.id);
-  const thread = useQuery(options);
+  return <ThreadDetail key={JSON.stringify([params.org, params.board, params.id])} params={params} />;
+}
+
+function ThreadDetail({ params }: { params: { org: string; board: string; id: string } }) {
+  const { org, board: slug, id } = params;
+  const board = useMemo(() => ({ org, board: slug }), [org, slug]);
+  const [showHistory, setShowHistory] = useState(false);
   const queryClient = useQueryClient();
+  const options = threadQuery(board, id, showHistory);
+  const thread = useQuery({
+    ...options,
+    initialData: () => (showHistory ? queryClient.getQueryData(threadQuery(board, id).queryKey) : undefined),
+  });
   const { data } = thread;
   const { data: session } = useQuery(sessionQuery);
   const { csrf, person } = session ?? {};
-  const heading = useRef<HTMLHeadingElement>(null);
   const root = data?.message;
-  const title = threadHeading(root, thread.isError ? thread.error : null);
-  const focusTarget = root ? params.id : title;
-  useLayoutEffect(() => {
-    if (focusTarget !== null) heading.current?.focus({ preventScroll: true });
-  }, [focusTarget]);
+  const { title, heading } = useThreadHeading(root, id, thread.isError ? thread.error : null);
   if (title === null) return <p role="status">Loading thread…</p>;
 
   return (
@@ -83,21 +98,20 @@ function ThreadPage() {
       </h1>
       {data && (
         <>
-          {!data.message.deleted && data.message.task && (
-            <TaskState
-              key={data.message.id}
-              board={params}
-              taskId={data.message.id}
-              channel={data.message.channel}
-              task={data.message.task}
-              recordedState={data.message.labels["board.task"]}
-            />
-          )}
-          <ThreadMessages messages={[data.message, ...data.replies]} board={params} />
+          <ThreadTask board={board} message={data.message} />
+          <ThreadMessages
+            root={data.message}
+            replies={data.replies}
+            board={board}
+            principal={person?.principal}
+            csrf={session?.signedIn ? (csrf ?? undefined) : undefined}
+            loadOlder={data.hasOlder ? () => (showHistory ? void thread.refetch() : setShowHistory(true)) : undefined}
+            loading={showHistory && thread.isFetching}
+          />
           {thread.isRefetchError && <p role="alert">{threadErrorText(thread.error)}</p>}
           {person && csrf && (
             <Composer
-              key={JSON.stringify([...options.queryKey, person.principal])}
+              key={person.principal}
               board={params}
               placeholder="Write a reply… Markdown supported"
               onPost={(draft) =>
@@ -131,18 +145,52 @@ function ThreadPage() {
   );
 }
 
+function ThreadTask({ board, message }: { board: { org: string; board: string }; message: ThreadMessage }) {
+  if (message.deleted || !message.task) return null;
+  return (
+    <TaskState
+      key={message.id}
+      board={board}
+      taskId={message.id}
+      channel={message.channel}
+      task={message.task}
+      recordedState={message.labels["board.task"]}
+    />
+  );
+}
+
 function ThreadMessages({
-  messages,
+  root,
+  replies,
   board,
+  principal,
+  csrf,
+  loadOlder,
+  loading,
 }: {
-  messages: readonly ThreadMessage[];
+  root: ThreadMessage;
+  replies: readonly ThreadMessage[];
   board: { org: string; board: string };
+  principal?: string;
+  csrf?: string;
+  loadOlder?: () => void;
+  loading: boolean;
 }) {
   return (
     <ol className="thread-messages" aria-label="Thread messages">
-      {messages.map((message) => (
-        <li key={message.id}>
-          <MessageView message={message} board={board} />
+      <li>
+        <MessageView message={root} board={board} principal={principal} csrf={csrf} />
+      </li>
+      {loadOlder && (
+        <li>
+          <Button variant="secondary" pending={loading} onClick={loadOlder}>
+            Load older replies
+          </Button>
+        </li>
+      )}
+      {replies.map((message) => (
+        <li key={message.id} id={`reply-${message.id}`}>
+          <MessageView message={message} board={board} principal={principal} csrf={csrf} />
         </li>
       ))}
     </ol>

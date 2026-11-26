@@ -2,6 +2,7 @@ import { BoardError } from "@openboard/contract";
 import type { PlatformView, RateLimits } from "@openboard/ports";
 
 import type { ServerConfig } from "../deps.ts";
+import { type Tail, tailBoard } from "../live/fan-out.ts";
 
 export interface RequestLimits {
   readonly rateLimits: RateLimits;
@@ -32,11 +33,10 @@ function tokenBuckets(now: () => number, capacity: number, refillPerMs: number, 
   };
 }
 
-function attachmentAdmission() {
+function concurrentAdmission(capacity: number) {
   let active = 0;
   return () => {
-    // Limit each direction to 64 MiB of attachment payloads per instance.
-    if (active >= 16) return undefined;
+    if (active >= capacity) return undefined;
     active++;
     let released = false;
     return () => {
@@ -72,6 +72,7 @@ function authAdmission(now: () => number): RateLimits["admitAuth"] {
   type Waiter = (admission: Admission) => void;
   type Pending = { count: number; waiters: Set<Waiter> };
   const pending = new Map<string, Pending>();
+  const reserveWaiter = concurrentAdmission(256);
 
   function admit(ip: string, active: Pending): Admission | undefined {
     const retryAfter = failures(ip, false);
@@ -85,7 +86,6 @@ function authAdmission(now: () => number): RateLimits["admitAuth"] {
       for (const resolve of active.waiters) {
         const next = admit(ip, active);
         if (next === undefined) break;
-        active.waiters.delete(resolve);
         resolve(next);
       }
       if (active.count === 0 && active.waiters.size === 0) pending.delete(ip);
@@ -98,23 +98,26 @@ function authAdmission(now: () => number): RateLimits["admitAuth"] {
     const admission = admit(ip, active);
     if (typeof admission === "number") return admission;
     pending.set(ip, active);
-    return (
-      admission ??
-      new Promise<Admission>((resolve, reject) => {
-        const waiter: Waiter = (next) => {
-          signal?.removeEventListener("abort", abort);
-          resolve(next);
-        };
-        const abort = () => {
-          signal?.removeEventListener("abort", abort);
-          active.waiters.delete(waiter);
-          if (active.count === 0 && active.waiters.size === 0) pending.delete(ip);
-          reject(signal?.reason);
-        };
-        active.waiters.add(waiter);
-        signal?.addEventListener("abort", abort);
-      })
-    );
+    if (admission !== undefined) return admission;
+    const release = reserveWaiter();
+    if (!release) return 1;
+    return new Promise<Admission>((resolve, reject) => {
+      const cleanup = () => {
+        signal?.removeEventListener("abort", abort);
+        active.waiters.delete(waiter);
+        release();
+      };
+      const waiter: Waiter = (next) => {
+        cleanup();
+        resolve(next);
+      };
+      const abort = () => {
+        cleanup();
+        reject(signal?.reason);
+      };
+      active.waiters.add(waiter);
+      signal?.addEventListener("abort", abort, { once: true });
+    });
   };
 }
 
@@ -123,7 +126,7 @@ export function requestRateLimits(
   platform: PlatformView,
   { perPrincipal = 20, perOrganization = 500 }: NonNullable<ServerConfig["streamLimits"]> = {},
   observeStream?: (delta: 1 | -1) => void,
-): RateLimits {
+): RateLimits & { reserveLiveWait: ReturnType<typeof concurrentAdmission> } {
   // Integer units: a write costs 1,000 and a refresh costs 10,000.
   const writes = tokenBuckets(now, 1_000_000, 200, 1_000);
   const refreshes = tokenBuckets(now, 60_000, 1, 10_000);
@@ -132,8 +135,10 @@ export function requestRateLimits(
 
   return {
     reserveInbound: inboundAdmission(),
-    reserveUpload: attachmentAdmission(),
-    reserveDownload: attachmentAdmission(),
+    // Limit each direction to 64 MiB of attachment payloads per instance.
+    reserveUpload: concurrentAdmission(16),
+    reserveDownload: concurrentAdmission(16),
+    reserveLiveWait: concurrentAdmission(500),
     reserveStream(org, principal) {
       const orgCount = byOrg.get(org) ?? 0;
       const principalCount = byPrincipal.get(principal) ?? 0;
@@ -182,4 +187,33 @@ export function limitStream(limits: RateLimits, org: string, principal: string):
     });
   }
   return release;
+}
+
+/** Hold a single instance-wide slot until the subscription has closed. */
+export async function withLiveWait<T>(
+  limits: RateLimits,
+  board: Parameters<typeof tailBoard>[0],
+  position: number | undefined,
+  run: (tail: Tail) => Promise<T>,
+): Promise<T> {
+  // The instance attaches this local limit to the rate limits carried through the pipeline.
+  if (!("reserveLiveWait" in limits) || typeof limits.reserveLiveWait !== "function") {
+    throw new Error("missing instance live wait admission");
+  }
+  const release = limits.reserveLiveWait();
+  if (!release) {
+    throw new BoardError("rate_limited", "too many active long polls", {
+      next: [{ kind: "wait", seconds: 1 }],
+    });
+  }
+  try {
+    const tail = tailBoard(board, position);
+    try {
+      return await run(tail);
+    } finally {
+      tail.close();
+    }
+  } finally {
+    release();
+  }
 }

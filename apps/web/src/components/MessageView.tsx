@@ -1,9 +1,8 @@
 import { findBlockFences } from "@openboard/contract";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, Fragment, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { type FormEvent, Fragment, memo, useMemo, useState } from "react";
 import { boardKeys } from "../api/board.ts";
 import { browserClient } from "../api/client.ts";
-import { sessionQuery } from "../api/session.ts";
 import { type ThreadMessage, threadKeys } from "../api/thread.ts";
 import { markdownCodeRanges, renderMarkdown } from "../markdown.ts";
 import { Avatar, Button, Textarea } from "../ui/index.ts";
@@ -32,8 +31,9 @@ function matchesBlock(
   );
 }
 
-function messageBody(message: ThreadMessage, board: Board) {
-  const { text, mentions, blocks } = message;
+type MessageBody = Pick<ThreadMessage, "text" | "mentions" | "blocks">;
+
+function messageBody({ text, mentions, blocks }: MessageBody, board: Board) {
   if (!blocks?.length) return renderMarkdown(text, mentions);
   const fences = findBlockFences(text);
   if (fences.length !== blocks.length) return renderMarkdown(text, mentions);
@@ -67,19 +67,19 @@ function attachmentHref(board: Board, id: string): string {
   return `/api/${encodeURIComponent(board.org)}/${encodeURIComponent(board.board)}/attachments/${encodeURIComponent(id)}`;
 }
 
-function useMessageActions(board: Board, message: ThreadMessage) {
-  const { data: session } = useQuery(sessionQuery);
+type MessageActor = { principal?: string; csrf?: string };
+
+function useMessageActions(board: Board, message: ThreadMessage, { principal, csrf }: MessageActor) {
   const queryClient = useQueryClient();
   const [tool, setTool] = useState<ActiveTool>(null);
   const [editText, setEditText] = useState(message.text);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const canInteract = Boolean(session?.signedIn && session.csrf && !message.deleted);
-  const principal = session?.person?.principal;
-  const client = () => browserClient(window.location.origin, { ...board, csrf: session?.csrf ?? undefined });
+  const canInteract = Boolean(csrf && !message.deleted);
+  const client = () => browserClient(window.location.origin, { ...board, csrf });
 
   async function mutate(work: () => Promise<void>): Promise<boolean> {
-    if (!session?.csrf || busy) return false;
+    if (!csrf || busy) return false;
     setBusy(true);
     setError("");
     try {
@@ -135,8 +135,13 @@ function useMessageActions(board: Board, message: ThreadMessage) {
   };
 }
 
-export function MessageView({ message, board }: { message: ThreadMessage; board: Board }) {
-  const actions = useMessageActions(board, message);
+export const MessageView = memo(function MessageView({
+  message,
+  board,
+  principal,
+  csrf,
+}: { message: ThreadMessage; board: Board } & MessageActor) {
+  const actions = useMessageActions(board, message, { principal, csrf });
   const kind = message.author?.kind;
   const author = message.author?.name ?? message.from ?? message.by.profile ?? message.by.actor;
 
@@ -193,7 +198,7 @@ export function MessageView({ message, board }: { message: ThreadMessage; board:
       />
     </article>
   );
-}
+});
 
 function MessageContent({
   message,
@@ -214,6 +219,11 @@ function MessageContent({
   onCancelEdit: () => void;
   onSubmitEdit: (event: FormEvent) => void;
 }) {
+  const { text, mentions, blocks, revision, deleted } = message;
+  const body = useMemo(
+    () => <Fragment key={revision}>{deleted ? null : messageBody({ text, mentions, blocks }, board)}</Fragment>,
+    [text, mentions, blocks, revision, deleted, board],
+  );
   if (editing) {
     return (
       <form className="message-inline-panel" onSubmit={onSubmitEdit}>
@@ -240,7 +250,7 @@ function MessageContent({
       </p>
     );
   }
-  return <div className="thread-message-text">{messageBody(message, board)}</div>;
+  return <div className="thread-message-text">{body}</div>;
 }
 
 function MessageAttachments({ board, attachments }: { board: Board; attachments: ThreadMessage["attachments"] }) {

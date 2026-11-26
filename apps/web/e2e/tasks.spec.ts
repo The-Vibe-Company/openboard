@@ -240,3 +240,43 @@ test("Done history expands and collapses on the board and in the channel", async
     await app.stop();
   }
 });
+
+test("active board and queue rows expand in place with the full count and keyboard focus", async ({ page }) => {
+  const app = await serve();
+  try {
+    await signIn(page, app.url, "ada");
+    const owner = sessionClient(page, app.url);
+    await owner.createOrg({ slug: "acme", name: "Acme" });
+    for (let index = 1; index <= 26; index++) {
+      await owner.createTask({ channel: "dev", text: `Active task ${index}` });
+    }
+
+    await page.clock.install();
+    await page.goto(`${app.url}/acme/main/tasks`);
+    const ready = page.getByRole("region", { name: "Ready", exact: true });
+    const cards = ready.getByRole("listitem");
+    await expect(ready.getByText("26", { exact: true })).toBeVisible();
+    await expect(cards).toHaveCount(25);
+    await ready.getByRole("button", { name: "Show more (1 more)" }).press("Enter");
+    await expect(cards).toHaveCount(26);
+    await expect(cards.last().getByRole("link")).toBeFocused();
+
+    await page.getByRole("button", { name: "Queue", exact: true }).click();
+    const queue = page.getByRole("list", { name: "Task queue", exact: true });
+    const rows = queue.getByRole("listitem");
+    await expect(rows).toHaveCount(25);
+    await expect(page.getByRole("button", { name: "open 26", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Show more (1 remaining)" }).press("Enter");
+    await expect(rows).toHaveCount(26);
+    const lastLink = rows.last().getByRole("link");
+    const age = lastLink.locator("time");
+    await expect(lastLink).toBeFocused();
+    const previousAge = await age.innerText();
+    await page.clock.fastForward(2000);
+    await expect(age).not.toHaveText(previousAge);
+    await expect(lastLink).toBeFocused();
+    await test.info().attach("board-task-queue-expanded", { body: await page.screenshot(), contentType: "image/png" });
+  } finally {
+    await app.stop();
+  }
+});

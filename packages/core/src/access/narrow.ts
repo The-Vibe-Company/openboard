@@ -1,5 +1,5 @@
 import { BoardError, type Can, parseCanScope } from "@openboard/contract";
-import { allowedAt, matchingPatterns } from "./agents.ts";
+import { allowedAt, decidingPattern } from "./agents.ts";
 import { compileCan } from "./grants.ts";
 
 function invalidScope(problem: string): BoardError {
@@ -25,7 +25,7 @@ export function narrowCan(base: Can, scope: Can): Can {
   );
   return Object.fromEntries(
     Object.entries(intersection).filter(([pattern, permissions]) => {
-      const [, parent] = matchingPatterns(patterns, pattern);
+      const parent = decidingPattern(intersection, pattern, true);
       const inherited = parent === undefined ? [] : (intersection[parent] ?? []);
       return (
         permissions.length !== inherited.length || permissions.some((permission) => !inherited.includes(permission))
