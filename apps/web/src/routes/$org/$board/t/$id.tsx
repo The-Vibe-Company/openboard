@@ -12,8 +12,6 @@ import { TaskState } from "../../../../components/TaskState.tsx";
 import { markdownPreview } from "../../../../markdown.ts";
 import { Badge, Button, ClockIcon } from "../../../../ui/index.ts";
 
-import "./thread.css";
-
 export const Route = createFileRoute("/$org/$board/t/$id")({
   beforeLoad: ({ params }) => {
     if (!/^\d{1,128}$/.test(params.id)) throw notFound();

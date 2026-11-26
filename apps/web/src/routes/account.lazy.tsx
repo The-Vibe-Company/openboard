@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createLazyFileRoute, Navigate } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
 import { Avatar, Button, Card, EmptyState, Table } from "../ui/index.ts";
 import "./account.css";
 
-export const Route = createFileRoute("/account")({ component: Account });
+export const Route = createLazyFileRoute("/account")({ component: Account });
 
 const sessionRejected = (error: unknown) =>
   error instanceof BoardError && (error.code === "unauthorized" || error.code === "forbidden");

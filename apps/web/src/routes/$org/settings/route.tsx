@@ -1,9 +1,9 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
 import { browserClient } from "../../../api/client.ts";
-import "./settings.css";
 
 export const Route = createFileRoute("/$org/settings")({
+  codeSplitGroupings: [["loader"], ["component"], ["errorComponent"]],
   loader: async ({ params, abortController }) => {
     const client = browserClient(window.location.origin);
     const account = await client.getAccount({}, { signal: abortController.signal });

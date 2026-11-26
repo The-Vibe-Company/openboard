@@ -1,9 +1,18 @@
 import { queryOptions, useMutation } from "@tanstack/react-query";
-import { browserClient } from "./client.ts";
+import type { SessionState } from "@openboard/contract";
+
+export async function fetchSession(
+  signal: AbortSignal,
+  send: (url: string, init: RequestInit) => Promise<Response> = fetch,
+): Promise<SessionState> {
+  const response = await send("/api/x/session", { credentials: "same-origin", redirect: "error", signal });
+  if (!response.ok) throw new Error(`Could not load the session (HTTP ${response.status}).`);
+  return response.json();
+}
 
 export const sessionQuery = queryOptions({
   queryKey: ["session"],
-  queryFn: ({ signal }) => browserClient(window.location.origin).getSession({}, { signal }),
+  queryFn: ({ signal }) => fetchSession(signal),
 });
 
 export function useSignOut() {

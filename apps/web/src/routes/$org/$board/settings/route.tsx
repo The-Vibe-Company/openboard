@@ -1,5 +1,4 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
-import "./board-settings.css";
 
 export const Route = createFileRoute("/$org/$board/settings")({
   component: Settings,

@@ -2,14 +2,14 @@ import { type QueryClient, useInfiniteQuery, useQuery, useQueryClient } from "@t
 import { createFileRoute } from "@tanstack/react-router";
 import type { BoardEvent } from "@the-vibe-company/openboard";
 import { useEffect, useMemo, useState } from "react";
-import { boardKeys, channelsQuery, type ThreadSummary } from "../../../api/board.ts";
+import { boardKeys } from "../../../api/board-keys.ts";
+import { channelsQuery, type ThreadSummary } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
 import { subscribeBoardEvents } from "../../../api/live.ts";
 import { sessionQuery } from "../../../api/session.ts";
 import { taskActorsQuery } from "../../../api/tasks.ts";
 import { NewTaskForm, TasksKanban, TasksQueue } from "../../../components/BoardTasksViews.tsx";
 import { Button, EmptyState, PlusIcon, Select } from "../../../ui/index.ts";
-import "./tasks.css";
 
 export const Route = createFileRoute("/$org/$board/tasks")({
   component: BoardTasksPage,
