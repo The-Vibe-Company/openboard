@@ -166,6 +166,7 @@
 }
 .landing-command code {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 :is(.landing-switch, .landing-command, .demo-views) button {
   border: 0;
@@ -188,7 +189,9 @@
   flex-wrap: wrap;
   font: 12px var(--font-mono);
 }
-.landing-quickstart,
+.landing-quickstart {
+  margin-top: 24px;
+}
 .landing-spec {
   margin-top: clamp(38px, 7vw, 88px);
   border-top: 1px solid var(--border);

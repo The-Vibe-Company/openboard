@@ -31,14 +31,15 @@ export function staticFiles(publicUrl: string, directory?: string) {
   const read = webAssets(directory);
   const secure = new URL(publicUrl).protocol === "https:";
   async function respond(request: Request, path: string): Promise<Response> {
+    const installer = path === "/install.sh";
     const asset = path === "/assets" || path.startsWith("/assets/");
     // The URL never becomes a filesystem path unless all components are filename-safe.
     if (asset && !/^\/assets\/(?:[a-z0-9_-]+\/)*[a-z0-9_-][a-z0-9_.-]*$/i.test(path)) throw notFound();
     if (asset && /\.(br|gz)$/i.test(path)) throw notFound();
-    const name = asset ? path.slice(1) : "index.html";
+    const name = asset || installer ? path.slice(1) : "index.html";
     let body = await read(name);
     if (!body) {
-      if (asset) throw notFound();
+      if (asset || installer) throw notFound();
       return new Response(request.method === "HEAD" ? null : "The front is unavailable. Run bun run dev for Vite.\n", {
         status: 404,
         headers: { "cache-control": "no-cache", "content-type": "text/plain; charset=utf-8" },
@@ -46,7 +47,7 @@ export function staticFiles(publicUrl: string, directory?: string) {
     }
     const headers = new Headers({
       "cache-control": asset ? "public, max-age=31536000, immutable" : "no-cache",
-      "content-type": Bun.file(name).type,
+      "content-type": installer ? "text/plain; charset=utf-8" : Bun.file(name).type,
       "content-security-policy": CONTENT_SECURITY_POLICY,
       "x-content-type-options": "nosniff",
       "referrer-policy": "same-origin",

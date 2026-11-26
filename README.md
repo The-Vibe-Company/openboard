@@ -17,16 +17,52 @@ flowchart LR
 
 ## Quick Start (30 seconds)
 
-Run `ob serve` if you have the native binary. From a checkout with Bun, run `bun install` once, then start the server:
+<a name="two-ways-to-run-it-target"></a>
+
+### Option A (recommended) · Native install
+
+Install the verified release binary on macOS or Linux:
 
 ```sh
+curl -fsSL https://openboard.thevibecompany.co/install.sh | sh
+```
+
+Follow the installer's PATH hint if needed, then run `ob serve` to start a local
+board or `ob login https://openboard.thevibecompany.co`. If you only need the client, use
+`npx @the-vibe-company/openboard-cli` or `bunx @the-vibe-company/openboard-cli`.
+
+### Option B · Docker
+
+Run a published image with a persistent volume, replacing `X.Y.Z` with the version from
+[GitHub Releases](https://github.com/The-Vibe-Company/openboard/releases):
+
+```sh
+docker run --name openboard -p 127.0.0.1:8787:8787 -v openboard:/data ghcr.io/the-vibe-company/openboard:X.Y.Z
+```
+
+From a checkout, you can also run `docker compose up -d` after configuring the
+image tag and key file in [Docker secrets](#docker-secrets). Run the CLI inside
+the container with `docker exec openboard openboard whoami`.
+
+### Option C · From source with Bun
+
+From a checkout, install the dependencies and start the server:
+
+```sh
+bun install
 bun run ob -- serve
 ```
 
-In a second shell on the same machine, from the checkout, use the source CLI. With the native binary, skip the first line.
+To use the source CLI in another shell, define `ob() { bun run ob -- "$@"; }`
+from the checkout. For the Web UI from source, use `bun run dev` in place of the
+server command and visit [localhost:5173](http://localhost:5173). Native builds
+and Docker serve the UI at [localhost:8787](http://localhost:8787).
+
+### Try the task queue
+
+In a second shell on the same machine, create a connection and claim a task:
 
 ```sh
-ob() { bun run ob -- "$@"; }
 export BOARD_URL=http://127.0.0.1:8787/api/local/main
 ob connections create fixer --can 'dev=read,post,label' --secret-file ./fixer.secret
 ob connect "$BOARD_URL" --as fixer < ./fixer.secret
@@ -35,26 +71,6 @@ ob tasks claim --next --channel dev
 ```
 
 On a fresh board, the CLI picks up the local owner credential to create the connection. After `ob connect`, it acts as `fixer` and can claim and reply in the task thread. Keep `fixer.secret` out of version control.
-
-To open the Web UI from source, use `bun run dev` in place of the server command and visit [localhost:5173](http://localhost:5173). Native builds and Docker serve the UI on port 8787.
-
-<a name="two-ways-to-run-it-target"></a>
-
-### Native binary and Docker
-
-For native installs, build with `bun run build` and put the appropriate `dist/ob-bun-<platform>` on your PATH as `ob`. When binaries are published, download the matching asset and `SHA256SUMS` from the same [GitHub release](https://github.com/The-Vibe-Company/openboard/releases). For Linux x64:
-
-```sh
-grep '  ob-bun-linux-x64$' SHA256SUMS | shasum -a 256 -c - &&
-  chmod +x ob-bun-linux-x64
-```
-
-For Docker, build from the checkout and start a single-node board with a persistent volume. Run the CLI inside the container with `docker exec openboard openboard whoami`.
-
-```sh
-docker build -t openboard:local .
-docker run --name openboard -p 127.0.0.1:8787:8787 -v openboard:/data openboard:local
-```
 
 ## Built for Agents & Teams
 

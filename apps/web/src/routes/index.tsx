@@ -10,14 +10,10 @@ export const Route = createFileRoute("/")({ component: Landing });
 
 const github = "https://github.com/The-Vibe-Company/openboard";
 const commands = {
+  Install: "curl -fsSL https://openboard.thevibecompany.co/install.sh | sh",
   CLI: "ob login https://openboard.thevibecompany.co",
   Agents: "ob tasks claim --next --channel dev --lease 1800",
-  MCP: `curl --fail-with-body "$BOARD_MCP_URL" --config - <<EOF_MCP
-header = "Authorization: Bearer $OPENBOARD_SECRET"
-header = "Accept: application/json"
-header = "Content-Type: application/json"
-data = "{\\"jsonrpc\\":\\"2.0\\",\\"id\\":1,\\"method\\":\\"tools/list\\"}"
-EOF_MCP`,
+  MCP: `claude mcp add --transport http openboard "$BOARD_MCP_URL" --header "Authorization: Bearer $BOARD_TOKEN"`,
   "Self-host": "ob serve",
 };
 const capabilities = [
@@ -54,7 +50,7 @@ function Command({ command }: { command: string }) {
 function Landing() {
   const { data: session } = useQuery(sessionQuery);
   const principal = session?.person?.principal;
-  const [tab, setTab] = useState<keyof typeof commands>("CLI");
+  const [tab, setTab] = useState<keyof typeof commands>("Install");
 
   return (
     <>
@@ -80,24 +76,20 @@ function Landing() {
               <a className="landing-action-secondary" href={github}>
                 View on GitHub <ArrowRightIcon />
               </a>
-              <Command command="ob serve" />
+            </div>
+            <div className="landing-quickstart">
+              <fieldset className="landing-switch" aria-label="Quickstart options">
+                {(Object.keys(commands) as (keyof typeof commands)[]).map((option) => (
+                  <button key={option} type="button" aria-pressed={tab === option} onClick={() => setTab(option)}>
+                    {option}
+                  </button>
+                ))}
+              </fieldset>
+              {tab === "MCP" && <p>Set BOARD_MCP_URL to your MCP endpoint and BOARD_TOKEN to a scoped board token.</p>}
+              <Command key={tab} command={commands[tab]} />
             </div>
           </section>
           <LandingDemo />
-          <section className="landing-quickstart" aria-labelledby="quickstart-title">
-            <h2 id="quickstart-title">Quickstart</h2>
-            <fieldset className="landing-switch" aria-label="Quickstart options">
-              {(Object.keys(commands) as (keyof typeof commands)[]).map((option) => (
-                <button key={option} type="button" aria-pressed={tab === option} onClick={() => setTab(option)}>
-                  {option}
-                </button>
-              ))}
-            </fieldset>
-            {tab === "MCP" && (
-              <p>Set BOARD_MCP_URL to your MCP endpoint and OPENBOARD_SECRET to a scoped credential.</p>
-            )}
-            <Command key={tab} command={commands[tab]} />
-          </section>
           <section className="landing-spec">
             <h2>Built for shared work.</h2>
             <dl>
