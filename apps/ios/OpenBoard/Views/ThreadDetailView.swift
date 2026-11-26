@@ -5,7 +5,22 @@ struct ThreadDetailView: View {
 
     let threadID: String
 
-    @State private var detail: ThreadDetail?
+    private struct RefreshID: Equatable {
+        let generation: UUID
+        let thread: String
+        let revision: Int
+    }
+
+    @State private var loadedDetail: ThreadDetail?
+    @State private var loadedID: RefreshID?
+    private var refreshID: RefreshID {
+        RefreshID(generation: store.generation, thread: threadID, revision: store.threadInvalidations[threadID] ?? 0)
+    }
+
+    private var detail: ThreadDetail? {
+        guard loadedID?.generation == store.generation, loadedID?.thread == threadID else { return nil }
+        return loadedDetail
+    }
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -45,21 +60,26 @@ struct ThreadDetailView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 60)
                     } else if let detail {
-                        if let task = detail.message.task {
-                            TaskControlCardView(
+                        if let task = detail.message.task, store.me != nil {
+                            let expiry = store.activeLocalClaim(for: detail.message).flatMap { TextFormatting.parseISO($0.until) }
+                            let card = TaskControlCardView(
                                 message: detail.message,
                                 task: task,
                                 isWorking: activeTaskAction,
-                                onClaim: { Task { await runClaim(id: detail.message.id) } },
-                                onRelease: { claim in Task { await runRelease(id: detail.message.id, claim: claim) } },
-                                onUnblock: { Task { await runUnblock(id: detail.message.id) } },
+                                onClaim: { runTaskAction { try await $0.claimTask(id: detail.message.id) } },
+                                onRelease: { claim in
+                                    guard store.activeLocalClaim(for: detail.message) == claim else { return }
+                                    runTaskAction { try await $0.releaseTask(id: detail.message.id, epoch: claim.epoch, token: claim.token) }
+                                },
+                                onUnblock: { runTaskAction { try await $0.unblockTask(id: detail.message.id) } },
                                 onPrompt: { kind in
                                     promptText = ""
                                     promptKind = kind
                                 }
                             )
-                            .padding(.horizontal, 12)
-                            .padding(.top, 12)
+                            TimelineView(.explicit([.now, expiry].compactMap { $0 })) { context in card.id(context.date) }
+                                .padding(.horizontal, 12)
+                                .padding(.top, 12)
                         }
 
                         messageBlock(detail.message, isRoot: true)
@@ -88,8 +108,8 @@ struct ThreadDetailView: View {
                 .padding(.bottom, 20)
             }
             .background(OBTheme.background)
-            .refreshable {
-                await loadThread()
+            .refreshable { [store, threadID] in
+                await store.invalidateThread(threadID)
             }
 
             ComposerBarView(
@@ -98,7 +118,7 @@ struct ThreadDetailView: View {
                 text: $replyText,
                 placeholder: "Reply to #\(threadID)…",
                 isSending: isSendingReply,
-                onSend: { Task { await submitReply() } }
+                onSend: submitReply
             )
         }
         .background(OBTheme.background)
@@ -109,14 +129,12 @@ struct ThreadDetailView: View {
                 LiveStatusBadge(state: store.liveState)
             }
         }
-        .task(id: threadID) {
-            await loadThread()
+        .task(id: refreshID) { [id = refreshID] in
+            await loadThread(id)
         }
-        .onChange(of: store.events.first?.cursor) { _, _ in
-            guard let latest = store.events.first else { return }
-            if latest.threadID == threadID || latest.message?.id == threadID {
-                Task { await loadThread(silent: true) }
-            }
+        .onChange(of: store.generation) {
+            promptKind = nil
+            editingMessage = nil
         }
         .sheet(item: $promptKind) { kind in
             taskPromptSheet(kind)
@@ -165,7 +183,7 @@ struct ThreadDetailView: View {
                                 Label("Edit", systemImage: "pencil")
                             }
                             Button(role: .destructive) {
-                                Task { await runDelete(message) }
+                                runMessageAction { try await $0.deleteMessage(id: message.id) }
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
@@ -225,7 +243,7 @@ struct ThreadDetailView: View {
                 ForEach(sortedReactions, id: \.key) { emoji, actors in
                     let mine = store.me.map { actors.contains($0.actor) } ?? false
                     Button {
-                        Task { await toggleReaction(messageID: message.id, emoji: emoji, remove: mine) }
+                        runMessageAction { try await $0.reactToMessage(id: message.id, emoji: emoji, remove: mine) }
                     } label: {
                         HStack(spacing: 4) {
                             Text(displayEmoji(emoji))
@@ -250,7 +268,7 @@ struct ThreadDetailView: View {
                         let actors = message.reactions[item.key] ?? []
                         let mine = store.me.map { actors.contains($0.actor) } ?? false
                         Button {
-                            Task { await toggleReaction(messageID: message.id, emoji: item.key, remove: mine) }
+                            runMessageAction { try await $0.reactToMessage(id: message.id, emoji: item.key, remove: mine) }
                         } label: {
                             Text("\(item.glyph) \(item.key)")
                         }
@@ -292,7 +310,7 @@ struct ThreadDetailView: View {
                         let chosen = kind
                         let input = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
                         promptKind = nil
-                        Task { await runPromptedAction(chosen, input: input) }
+                        runPromptedAction(chosen, input: input)
                     }
                     .disabled(kind.requiresText && promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
@@ -319,7 +337,9 @@ struct ThreadDetailView: View {
                     Button("Save") {
                         let draft = editDraft.trimmingCharacters(in: .whitespacesAndNewlines)
                         editingMessage = nil
-                        Task { await runEdit(message, newText: draft) }
+                        if !draft.isEmpty {
+                            runMessageAction { try await $0.editMessage(id: message.id, text: draft) }
+                        }
                     }
                     .disabled(editDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
@@ -330,150 +350,89 @@ struct ThreadDetailView: View {
 
     // MARK: - Actions
 
-    private func loadThread(silent: Bool = false) async {
-        guard let api = store.api else { return }
-        if !silent { isLoading = true }
-        defer { isLoading = false }
+    private func loadThread(_ id: RefreshID) async {
+        guard refreshID == id, let api = store.api else { return }
+        if id.revision > 0 { try? await Task.sleep(for: .milliseconds(200)) }
+        guard !Task.isCancelled else { return }
         do {
-            detail = try await api.readThread(id: threadID)
+            let response = try await api.readThread(id: id.thread)
+            guard !Task.isCancelled, refreshID == id else { return }
+            loadedDetail = response
+            loadedID = id
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, refreshID == id else { return }
             errorMessage = error.localizedDescription
         }
+        isLoading = false
     }
 
-    private func submitReply() async {
+    private func submitReply() {
         let trimmed = replyText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isSendingReply, let api = store.api else { return }
+        guard !trimmed.isEmpty, !isSendingReply else { return }
         isSendingReply = true
-        errorMessage = nil
-        defer { isSendingReply = false }
-        do {
-            _ = try await api.postMessage(
-                re: threadID,
-                text: trimmed,
-                idempotencyKey: UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
-            )
+        performAction { api in
+            try await api.postMessage(re: threadID, text: trimmed, idempotencyKey: UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased())
+        } onFinish: {
+            isSendingReply = false
+        } onSuccess: { _ in
             replyText = ""
-            Haptics.success()
-            await loadThread(silent: true)
-        } catch {
-            errorMessage = error.localizedDescription
-            Haptics.error()
         }
     }
 
-    private func toggleReaction(messageID: String, emoji: String, remove: Bool) async {
-        guard let api = store.api else { return }
-        Haptics.light()
-        do {
-            try await api.reactToMessage(id: messageID, emoji: emoji, remove: remove)
-            await loadThread(silent: true)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+    private func runMessageAction(_ operation: @escaping @MainActor (OpenBoardAPI) async throws -> Void) {
+        performAction(operation) { _ in }
     }
 
-    private func runEdit(_ message: BoardMessage, newText: String) async {
-        guard let api = store.api, !newText.isEmpty else { return }
-        do {
-            try await api.editMessage(id: message.id, text: newText)
-            Haptics.success()
-            await loadThread(silent: true)
-        } catch {
-            errorMessage = error.localizedDescription
-            Haptics.error()
-        }
-    }
-
-    private func runDelete(_ message: BoardMessage) async {
-        guard let api = store.api else { return }
-        do {
-            try await api.deleteMessage(id: message.id)
-            Haptics.medium()
-            await loadThread(silent: true)
-        } catch {
-            errorMessage = error.localizedDescription
-            Haptics.error()
-        }
-    }
-
-    private func runClaim(id: String) async {
-        guard let api = store.api else { return }
+    private func runTaskAction(_ operation: @escaping @MainActor (OpenBoardAPI) async throws -> TaskMutationResponse) {
+        guard !activeTaskAction, detail != nil else { return }
         activeTaskAction = true
-        defer { activeTaskAction = false }
-        do {
-            let res = try await api.claimTask(id: id)
-            store.recordClaim(taskID: id, claim: res.claim)
-            store.updateTaskFromMutation(res.task)
-            Haptics.success()
-            await loadThread(silent: true)
-        } catch {
-            errorMessage = error.localizedDescription
-            Haptics.error()
+        performAction(operation, onFinish: { activeTaskAction = false }) { response in
+            store.recordClaim(taskID: response.task.id, claim: response.claim)
+            store.updateTaskFromMutation(response.task)
         }
     }
 
-    private func runRelease(id: String, claim: LocalTaskClaim) async {
-        guard let api = store.api else { return }
-        activeTaskAction = true
-        defer { activeTaskAction = false }
-        do {
-            let res = try await api.releaseTask(id: id, epoch: claim.epoch, token: claim.token)
-            store.recordClaim(taskID: id, claim: nil)
-            store.updateTaskFromMutation(res.task)
-            Haptics.medium()
-            await loadThread(silent: true)
-        } catch {
-            errorMessage = error.localizedDescription
-            Haptics.error()
-        }
-    }
-
-    private func runUnblock(id: String) async {
-        guard let api = store.api else { return }
-        activeTaskAction = true
-        defer { activeTaskAction = false }
-        do {
-            let res = try await api.unblockTask(id: id)
-            store.updateTaskFromMutation(res.task)
-            Haptics.success()
-            await loadThread(silent: true)
-        } catch {
-            errorMessage = error.localizedDescription
-            Haptics.error()
-        }
-    }
-
-    private func runPromptedAction(_ kind: TaskPromptKind, input: String) async {
-        guard let api = store.api, let message = detail?.message else { return }
-        activeTaskAction = true
-        defer { activeTaskAction = false }
-        do {
-            let res: TaskMutationResponse
-            switch kind {
-            case .complete:
-                guard let claim = store.activeLocalClaim(for: message) else { return }
-                res = try await api.completeTask(id: message.id, epoch: claim.epoch, token: claim.token, result: input.isEmpty ? nil : input)
-                store.recordClaim(taskID: message.id, claim: nil)
-            case .fail:
-                guard let claim = store.activeLocalClaim(for: message) else { return }
-                res = try await api.failTask(id: message.id, epoch: claim.epoch, token: claim.token, reason: input)
-                store.recordClaim(taskID: message.id, claim: nil)
-            case .hold:
-                let claim = store.activeLocalClaim(for: message)
-                res = try await api.blockTask(id: message.id, reason: input, claim: claim)
-                store.recordClaim(taskID: message.id, claim: nil)
-            case .cancel:
-                res = try await api.cancelTask(id: message.id, reason: input)
-                store.recordClaim(taskID: message.id, claim: nil)
+    private func performAction<Result: Sendable>(
+        _ operation: @escaping @MainActor (OpenBoardAPI) async throws -> Result,
+        onFinish: @escaping @MainActor () -> Void = {},
+        onSuccess: @escaping @MainActor (Result) -> Void
+    ) {
+        let generation = store.generation
+        Task {
+            defer { onFinish() }
+            guard store.isCurrent(generation), let api = store.api else { return }
+            do {
+                let result = try await operation(api)
+                guard store.isCurrent(generation) else { return }
+                onSuccess(result)
+                Haptics.success()
+                store.invalidateThread(threadID)
+            } catch {
+                guard store.isCurrent(generation), !(error is CancellationError) else { return }
+                errorMessage = error.localizedDescription
+                Haptics.error()
             }
-            store.updateTaskFromMutation(res.task)
-            Haptics.success()
-            await loadThread(silent: true)
-        } catch {
-            errorMessage = error.localizedDescription
-            Haptics.error()
+        }
+    }
+
+    private func runPromptedAction(_ kind: TaskPromptKind, input: String) {
+        guard let message = detail?.message else { return }
+        runTaskAction { api in
+            let claim = store.activeLocalClaim(for: message)
+            switch kind {
+            case .complete, .fail:
+                guard let claim else { throw CancellationError() }
+                if kind == .complete {
+                    return try await api.completeTask(id: message.id, epoch: claim.epoch, token: claim.token, result: input.isEmpty ? nil : input)
+                }
+                return try await api.failTask(id: message.id, epoch: claim.epoch, token: claim.token, reason: input)
+            case .hold:
+                if message.task?.state == .claimed, claim == nil { throw CancellationError() }
+                return try await api.blockTask(id: message.id, reason: input, claim: claim)
+            case .cancel:
+                return try await api.cancelTask(id: message.id, reason: input)
+            }
         }
     }
 }

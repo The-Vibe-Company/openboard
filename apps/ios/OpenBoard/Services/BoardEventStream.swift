@@ -10,10 +10,10 @@ enum LiveConnectionState: Equatable, Sendable {
 struct SSEStreamDecoder: Sendable {
     private var buffer = Data()
     private var eventType = ""
-    private var eventID = ""
+    private var eventID: String?
     private var dataLines: [String] = []
 
-    mutating func consume(byte: UInt8) -> (id: String?, event: BoardEvent)? {
+    mutating func consume(byte: UInt8) -> (id: String?, event: BoardEvent?)? {
         if byte == 0x0A { // '\n'
             let lineData: Data
             if buffer.last == 0x0D { // '\r'
@@ -30,25 +30,25 @@ struct SSEStreamDecoder: Sendable {
         }
     }
 
-    mutating func consume(line: String) -> (id: String?, event: BoardEvent)? {
+    mutating func consume(line: String) -> (id: String?, event: BoardEvent?)? {
         if line.isEmpty {
             defer {
                 eventType = ""
-                eventID = ""
+                eventID = nil
                 dataLines.removeAll(keepingCapacity: true)
             }
-            guard !dataLines.isEmpty else { return nil }
-            let id = eventID.isEmpty ? nil : eventID
-            guard eventType.isEmpty || eventType == "board" else { return nil }
-            let payload = dataLines.joined(separator: "\n")
-            guard let event = SSEFrameParser.parseBoardEvent(from: payload) else { return nil }
-            return (id ?? event.cursor, event)
+            let event = !dataLines.isEmpty && (eventType.isEmpty || eventType == "board")
+                ? SSEFrameParser.parseBoardEvent(from: dataLines.joined(separator: "\n"))
+                : nil
+            guard let id = eventID ?? event?.cursor else { return nil }
+            return (id, event)
         }
         if line.hasPrefix(":") { return nil }
         if line.hasPrefix("event:") {
             eventType = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
         } else if line.hasPrefix("id:") {
-            eventID = line.dropFirst(3).trimmingCharacters(in: .whitespaces)
+            let id = line.dropFirst(3).trimmingCharacters(in: .whitespaces)
+            if !id.contains("\0") { eventID = id }
         } else if line.hasPrefix("data:") {
             let value = line.dropFirst(5)
             dataLines.append(value.hasPrefix(" ") ? String(value.dropFirst()) : String(value))
@@ -57,49 +57,56 @@ struct SSEStreamDecoder: Sendable {
     }
 }
 
-actor BoardEventStream {
+@MainActor
+final class BoardEventStream {
     private var streamTask: Task<Void, Never>?
-    private var lastEventID: String?
 
     func start(
         api: OpenBoardAPI,
-        onState: @escaping @Sendable (LiveConnectionState) -> Void,
-        onEvent: @escaping @Sendable (BoardEvent) -> Void
+        initialCursor: String?,
+        onState: @escaping @MainActor @Sendable (LiveConnectionState) -> Void,
+        onEvent: @escaping @MainActor @Sendable (BoardEvent) -> Void
     ) {
         stop()
-        streamTask = Task {
+        streamTask = Task.detached {
+            var lastEventID = initialCursor
             var retryDelay: UInt64 = 1_000_000_000
             var everConnected = false
             while !Task.isCancelled {
-                onState(everConnected ? .reconnecting : .connecting)
+                await onState(everConnected ? .reconnecting : .connecting)
                 do {
                     let request = try api.eventsStreamRequest(lastEventID: lastEventID)
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
-                    guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-                        throw URLError(.badServerResponse)
-                    }
+                    try Task.checkCancellation()
+                    guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+                    if Self.isTerminal(status: http.statusCode) { break }
+                    guard (200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
                     everConnected = true
                     retryDelay = 1_000_000_000
-                    onState(.connected)
+                    await onState(.connected)
 
                     var decoder = SSEStreamDecoder()
                     for try await byte in bytes {
                         if Task.isCancelled { break }
                         if let frame = decoder.consume(byte: byte) {
                             if let id = frame.id { lastEventID = id }
-                            onEvent(frame.event)
+                            if let event = frame.event { await onEvent(event) }
                         }
                     }
                 } catch {
                     if Task.isCancelled { break }
                 }
                 if Task.isCancelled { break }
-                onState(.reconnecting)
+                await onState(.reconnecting)
                 try? await Task.sleep(nanoseconds: retryDelay)
                 retryDelay = min(retryDelay * 2, 30_000_000_000)
             }
-            onState(.disconnected)
+            if !Task.isCancelled { await onState(.disconnected) }
         }
+    }
+
+    nonisolated static func isTerminal(status: Int) -> Bool {
+        status == 401 || status == 403
     }
 
     func stop() {
