@@ -16,6 +16,8 @@ export interface OidcIssuer {
 }
 
 const KEY_TTL_MS = 300_000;
+const MAX_CACHED_ISSUERS = 128;
+const LEASE_RETRY_MS = 1_000;
 const RELOAD_INTERVAL_MS = 30_000;
 const MAX_RESPONSE_BYTES = 65_536;
 const FETCH_TIMEOUT_MS = 5000;
@@ -157,6 +159,7 @@ function keyCache(fetch: FetchObject, issuer: string, now: Deps["now"], store: K
   let expiresAt = 0;
   let pending: Promise<void> | undefined;
   let nextRead = 0;
+  let leaseRetryAt = 0;
   async function refresh() {
     const stored = await store.readOidcKeys(issuer, now());
     if (stored && stored.expiresAt > expiresAt) {
@@ -167,7 +170,10 @@ function keyCache(fetch: FetchObject, issuer: string, now: Deps["now"], store: K
     const started = now();
     // Hold the lease through both fetch deadlines, then start cooldown when loading finishes.
     const leaseUntil = started + RELOAD_INTERVAL_MS + 2 * FETCH_TIMEOUT_MS;
-    if (!(await store.reserveOidcReload(issuer, started, leaseUntil))) return;
+    if (!(await store.reserveOidcReload(issuer, started, leaseUntil))) {
+      leaseRetryAt = now() + LEASE_RETRY_MS;
+      return;
+    }
     let loaded: { document: string; expiresAt: number } | null = null;
     try {
       const document = await loadDocument(fetch, issuer);
@@ -183,10 +189,11 @@ function keyCache(fetch: FetchObject, issuer: string, now: Deps["now"], store: K
     }
   }
   return {
-    expired: () => !pending && now() >= Math.max(expiresAt, nextRead),
+    evictable: () => !pending && now() >= leaseRetryAt,
+    expired: () => now() >= Math.max(expiresAt, nextRead),
     async keyFor(kid: string) {
       if (now() < expiresAt && cached.has(kid)) return cached.get(kid);
-      if (!pending && now() >= nextRead) {
+      if (!pending && now() >= Math.max(nextRead, leaseRetryAt)) {
         pending = refresh().finally(() => {
           pending = undefined;
         });
@@ -202,7 +209,12 @@ function matchesAudience(aud: unknown, expected: string): boolean {
 }
 
 function issuerVerifier(now: Deps["now"]) {
-  return async (token: string, audience: string, claims: Claims, keyFor: ReturnType<typeof keyCache>["keyFor"]) => {
+  return async (
+    token: string,
+    audience: string,
+    claims: Claims,
+    keyFor: (kid: string) => Promise<CryptoKey | undefined> | undefined,
+  ) => {
     const [head = "", payload = "", signature = ""] = token.split(".");
     const header = decode(head);
     if (
@@ -269,12 +281,23 @@ export function oidcVerifier(deps: Deps, issuer: OidcIssuer, store: KeyStore): C
   const check = issuerVerifier(now);
   const caches = new Map<string, ReturnType<typeof keyCache>>();
   function cacheFor(url: string, fetchObject: FetchObject) {
-    let cache = caches.get(url);
-    if (cache) return cache;
-    for (const [name, entry] of caches) {
-      if (entry.expired()) caches.delete(name);
+    const existing = caches.get(url);
+    if (existing) return existing;
+    if (caches.size >= MAX_CACHED_ISSUERS) {
+      let idle: string | undefined;
+      for (const [name, entry] of caches) {
+        if (!entry.evictable()) continue;
+        idle ??= name;
+        if (entry.expired()) {
+          idle = name;
+          break;
+        }
+      }
+      // Keep existing reloads and their lease-loss cooldowns intact.
+      if (idle === undefined) return undefined;
+      caches.delete(idle);
     }
-    cache = keyCache(fetchObject, url, now, store);
+    const cache = keyCache(fetchObject, url, now, store);
     caches.set(url, cache);
     return cache;
   }
@@ -298,7 +321,7 @@ export function oidcVerifier(deps: Deps, issuer: OidcIssuer, store: KeyStore): C
         )
       )
         return null;
-      const verified = await check(token, audience, claims, cacheFor(url, outbound).keyFor);
+      const verified = await check(token, audience, claims, (kid) => cacheFor(url, outbound)?.keyFor(kid));
       if (!verified) return null;
       const { expiry } = verified;
       const repository = builtIn ? issuer.identify(claims) : null;
