@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { BoardEvent } from "@the-vibe-company/openboard";
+import { createContext, memo, type ReactNode, useContext, useMemo } from "react";
 import { markdownPreview } from "../markdown.ts";
 import { RelativeAge, useRelativeTimeClock } from "./BoardTasksViews.tsx";
 import "../routes/$org/$board/activity.css";
@@ -35,41 +36,56 @@ function eventSummary(event: BoardEvent): { text: string; channel?: string; thre
   return { text: type };
 }
 
-export function ActivityFeed({ board, events }: { board: Board; events: readonly BoardEvent[] }) {
-  const now = useRelativeTimeClock();
+const ActivityClock = createContext(0);
+
+function ActivityAgeClock({ children }: { children: ReactNode }) {
+  return <ActivityClock.Provider value={useRelativeTimeClock()}>{children}</ActivityClock.Provider>;
+}
+
+function ActivityAge({ date }: { date: string }) {
+  return <RelativeAge date={date} now={useContext(ActivityClock)} />;
+}
+
+const ActivityRow = memo(function ActivityRow({ board, event }: { board: Board; event: BoardEvent }) {
+  const info = useMemo(() => eventSummary(event), [event]);
+  const actor = info.actor || "System";
   return (
-    <ol className="activity-feed" aria-label="Live board events">
-      {events.map((event) => {
-        const info = eventSummary(event);
-        const actor = info.actor || "System";
-        return (
-          <li key={event.cursor} className="activity-row">
-            <span className="activity-avatar" aria-hidden="true">
-              {Array.from(actor.trim())[0]?.toLocaleUpperCase() || "·"}
-            </span>
-            <div className="activity-main">
-              <div className="activity-meta">
-                <strong>{actor}</strong>
-                {info.channel && <span>in #{info.channel}</span>}
-                <span className="board-ledger-chip">{event.type}</span>
-                <RelativeAge date={event.createdAt} now={now} />
-              </div>
-              {info.thread ? (
-                <Link
-                  className="activity-summary"
-                  to="/$org/$board/t/$id"
-                  params={{ ...board, id: info.thread }}
-                  search={info.channel ? { channel: info.channel } : {}}
-                >
-                  {info.text}
-                </Link>
-              ) : (
-                <span className="activity-summary">{info.text}</span>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+    <li className="activity-row">
+      <span className="activity-avatar" aria-hidden="true">
+        {Array.from(actor.trim())[0]?.toLocaleUpperCase() || "·"}
+      </span>
+      <div className="activity-main">
+        <div className="activity-meta">
+          <strong>{actor}</strong>
+          {info.channel && <span>in #{info.channel}</span>}
+          <span className="board-ledger-chip">{event.type}</span>
+          <ActivityAge date={event.createdAt} />
+        </div>
+        {info.thread ? (
+          <Link
+            className="activity-summary"
+            to="/$org/$board/t/$id"
+            params={{ ...board, id: info.thread }}
+            search={info.channel ? { channel: info.channel } : {}}
+          >
+            {info.text}
+          </Link>
+        ) : (
+          <span className="activity-summary">{info.text}</span>
+        )}
+      </div>
+    </li>
+  );
+});
+
+export function ActivityFeed({ board, events }: { board: Board; events: readonly BoardEvent[] }) {
+  return (
+    <ActivityAgeClock>
+      <ol className="activity-feed" aria-label="Live board events">
+        {events.map((event) => (
+          <ActivityRow key={event.cursor} board={board} event={event} />
+        ))}
+      </ol>
+    </ActivityAgeClock>
   );
 }

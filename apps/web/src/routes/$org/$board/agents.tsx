@@ -1,10 +1,10 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { Client } from "@the-vibe-company/openboard";
 import { useEffect, useMemo, useState } from "react";
 import { boardErrorText, boardKeys } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
-import { followBoardActors, subscribeBoardEvents } from "../../../api/live.ts";
+import { subscribeBoardEvents } from "../../../api/live.ts";
 import { Avatar, Badge, EmptyState, Table } from "../../../ui/index.ts";
 
 export const Route = createFileRoute("/$org/$board/agents")({
@@ -16,7 +16,6 @@ type ClaimRef = { id: string; channel: string };
 
 function useBoardAgents(org: string, boardSlug: string) {
   const board = useMemo(() => ({ org, board: boardSlug }), [org, boardSlug]);
-  const queryClient = useQueryClient();
   const claimedKey = useMemo(() => [...boardKeys.allTasks(board), "claimed-agents"], [board]);
   const actorsQuery = useQuery({
     queryKey: boardKeys.actors(board),
@@ -30,18 +29,13 @@ function useBoardAgents(org: string, boardSlug: string) {
   });
 
   useEffect(() => {
-    const unsubscribe = subscribeBoardEvents(board, (event, invalidate) => {
-      if (event.type === "actor.seen" || event.type.startsWith("task.")) {
+    return subscribeBoardEvents(board, (event, invalidate) => {
+      if (event.type.startsWith("task.")) {
         invalidate(boardKeys.actors(board));
         invalidate(claimedKey);
       }
     });
-    const stopActors = followBoardActors(board, queryClient);
-    return () => {
-      unsubscribe();
-      stopActors();
-    };
-  }, [board, claimedKey, queryClient]);
+  }, [board, claimedKey]);
   const claimedByActor = useMemo(() => {
     const map = new Map<string, ClaimRef[]>();
     for (const item of claimedQuery.data?.tasks ?? []) {

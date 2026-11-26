@@ -106,6 +106,10 @@ function recordBoardEvent(
     add(boardKeys.channels(board));
     return true;
   }
+  if (event.type === "actor.seen") {
+    addCached(boardKeys.actors(board));
+    return false;
+  }
   if (!("message" in event) || !event.message) return false;
   const { channel, thread, re } = event.message;
   if (event.type.startsWith("task.")) {
@@ -209,7 +213,7 @@ function catchUpChannels(
     });
 }
 
-function boardRefreshes(board: Board, queries: Queries, schedule: Schedule, actorEventsOnly: boolean) {
+function boardRefreshes(board: Board, queries: Queries, schedule: Schedule) {
   const pending = new Map<string, { key: QueryKey; headOnly: boolean }>();
   const threads = new Set<string>();
   const channelPaths = new Set<string>();
@@ -242,7 +246,7 @@ function boardRefreshes(board: Board, queries: Queries, schedule: Schedule, acto
     }
     channelThreads.clear();
     if (reconcile) {
-      const prefix = actorEventsOnly ? boardKeys.actors(board) : ["board", board.org, board.board];
+      const prefix = ["board", board.org, board.board];
       for (const [key] of queries.getQueriesData({ queryKey: prefix })) {
         if (reconcile === "recovery" || key[3] !== "channels") add(key);
       }
@@ -270,12 +274,12 @@ function boardRefreshes(board: Board, queries: Queries, schedule: Schedule, acto
   return {
     onOpen(recovery: boolean) {
       reconcile = recovery ? "recovery" : "initial";
-      if (!recovery && !actorEventsOnly) catchUpChannels(board, queries, controller.signal, add, queue);
+      if (!recovery) catchUpChannels(board, queries, controller.signal, add, queue);
       queue();
     },
     onEvent({ data }: MessageEvent<string>) {
       const event = parseBoardEvent(data);
-      if (!event || event.type === "task.renewed" || actorEventsOnly !== (event.type === "actor.seen")) return;
+      if (!event || event.type === "task.renewed") return;
       notifyLiveListeners(board, event, add);
       if ("message" in event && event.message) channelPaths.add(event.message.channel);
       if (recordBoardEvent(event, board, add, threads, addCached, addThreads) || channelPaths.size || pending.size) {
@@ -298,11 +302,10 @@ export function followBoard(
     return () => clearTimeout(timer);
   },
   onReconnecting?: (reconnecting: boolean) => void,
-  actorEventsOnly = false,
 ) {
   // Channel creation is a bookkeeping event and requires all=true.
   const path = `${boardEventsPath(board)}?all=true`;
-  const refresh = boardRefreshes(board, queries, schedule, actorEventsOnly);
+  const refresh = boardRefreshes(board, queries, schedule);
   let retryDelay = 1000;
   let disconnect = () => {};
   let cancelRetry: (() => void) | undefined;
@@ -358,10 +361,6 @@ export function followBoard(
     cancelGrace?.();
     refresh.stop();
   };
-}
-
-export function followBoardActors(board: Board, queries: Queries) {
-  return followBoard(board, queries, undefined, undefined, undefined, true);
 }
 
 export function useBoardLive({ org, board }: Board, enabled: boolean) {

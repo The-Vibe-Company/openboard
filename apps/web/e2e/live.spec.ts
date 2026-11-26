@@ -143,3 +143,37 @@ test("the browser resumes the board stream after its last SSE checkpoint", async
     await server.stop();
   }
 });
+
+test("the Agents view receives sightings on the existing board stream", async ({ page }) => {
+  const server = await serve();
+  try {
+    await signIn(page, server.url, "ada");
+    const owner = sessionClient(page, server.url);
+    await owner.createOrg({ slug: "acme", name: "Acme" });
+    await owner.postMessage({ channel: "dev", text: "Existing discussion" });
+    const { secret } = await owner.createConnection({
+      name: "writer",
+      can: { "dev/": ["read", "post"] },
+      direct: true,
+    });
+    const api = `${server.url}/api/acme/main`;
+    const streamUrl = `${api}/events?all=true`;
+    const streams: string[] = [];
+    page.on("request", (request) => {
+      if (request.resourceType() === "eventsource") streams.push(request.url());
+    });
+    const stream = page.waitForResponse(streamUrl);
+    await page.goto(`${server.url}/acme/main`);
+    expect((await stream).ok()).toBe(true);
+    await page.getByRole("navigation", { name: "Board views" }).getByRole("link", { name: "Agents" }).click();
+    await expect(page.getByRole("heading", { name: "Agents & Actors" })).toBeVisible();
+    const table = page.getByRole("table", { name: "Board actors" });
+    await expect(table).toContainText("ada");
+    await expect(table.getByText("writer", { exact: true })).toHaveCount(0);
+    await agentWriter(api, secret)("/messages", { channel: "dev", text: "First agent post" });
+    await expect(table.getByText("writer", { exact: true }).first()).toBeVisible();
+    expect(streams).toEqual([streamUrl]);
+  } finally {
+    await server.stop();
+  }
+});

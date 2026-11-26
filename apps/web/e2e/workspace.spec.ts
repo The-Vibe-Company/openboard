@@ -179,6 +179,8 @@ test("mobile shell provides bottom navigation, slide-over drawer, and quick sear
     await expect(page.getByRole("heading", { name: "Activity", exact: true })).toBeVisible();
     await page.screenshot({ path: info.outputPath("screenshots", "mobile-activity-390-dark.png"), fullPage: true });
 
+    const channelList = page.locator('dialog nav[aria-label="Channels"]');
+    await expect(channelList).toHaveCount(0);
     await page.getByRole("button", { name: "Board menu" }).click();
     const drawer = page.getByRole("dialog", { name: "Board navigation" });
     await expect(drawer.getByRole("navigation", { name: "Channels" })).toBeVisible();
@@ -189,6 +191,7 @@ test("mobile shell provides bottom navigation, slide-over drawer, and quick sear
     await expect(drawer.getByLabel("New channel path")).toHaveCSS("font-size", "16px");
     await page.keyboard.press("Escape");
     await expect(drawer).toBeHidden();
+    await expect(channelList).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Board menu" })).toBeFocused();
     expect(await page.locator("body").evaluate((body) => body.style.overflow)).toBe("");
 
