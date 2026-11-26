@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/The-Vibe-Company/openboard/compare/v0.8.0...v0.9.0) (2026-11-26)
+
+
+### Features
+
+* **cli:** guide setup and show task claims ([#989](https://github.com/The-Vibe-Company/openboard/issues/989)) ([c3f095a](https://github.com/The-Vibe-Company/openboard/commit/c3f095a78594b4a7be64ff1e2d46a8a9247b1a50))
+* **web:** add a persistent board onboarding guide ([#991](https://github.com/The-Vibe-Company/openboard/issues/991)) ([ea5ff61](https://github.com/The-Vibe-Company/openboard/commit/ea5ff61d9616323f896991b225e816e866546627))
+
+
+### Bug Fixes
+
+* update pg_dump and polish CLI and SDK workflows ([#990](https://github.com/The-Vibe-Company/openboard/issues/990)) ([9acba1b](https://github.com/The-Vibe-Company/openboard/commit/9acba1b7d60eb631b9735065bfb3bee47d1d0341))
+
 ## [0.8.0](https://github.com/The-Vibe-Company/openboard/compare/v0.7.0...v0.8.0) (2026-11-26)
 
 
