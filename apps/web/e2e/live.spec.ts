@@ -148,6 +148,8 @@ test("the Agents view receives sightings on the existing board stream", async ({
   const server = await serve();
   try {
     await signIn(page, server.url, "ada");
+    // Leave onboarding before setup can redirect it to the board.
+    await page.goto("about:blank");
     const owner = sessionClient(page, server.url);
     await owner.createOrg({ slug: "acme", name: "Acme" });
     await owner.postMessage({ channel: "dev", text: "Existing discussion" });
