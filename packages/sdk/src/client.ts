@@ -89,7 +89,7 @@ export function requestOf(
     token &&
     (!platformMount ||
       operation.auth === "operator" ||
-      operation.orgPersonalToken ||
+      operation.orgPersonalToken !== undefined ||
       (operation.accountBearer && token.startsWith("obp_")))
   ) {
     headers.authorization = `Bearer ${token}`;

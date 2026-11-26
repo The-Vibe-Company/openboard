@@ -95,7 +95,8 @@ export type Operation<
   readonly output: O;
   /** The success media type for a raw string body. Defaults to JSON. */
   readonly responseType?: "image/svg+xml" | "application/gzip" | "text/plain" | "application/octet-stream";
-  readonly orgPersonalToken?: true;
+  /** Minimum organization role when the operation also accepts an unrestricted personal bearer. */
+  readonly orgPersonalToken?: S extends "org" ? "owner" | "admin" | "member" : never;
   readonly invalidInputCode?: ErrorCode;
   /** Report a named body array's maxItems violation before validating individual items. */
   readonly bodyArrayLimitError?: { readonly array: string; readonly code: ErrorCode; readonly message: string };

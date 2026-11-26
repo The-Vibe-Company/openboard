@@ -92,7 +92,7 @@ Options:
 
 - `--json`: Print pending invitations as JSON.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: none.
 
@@ -136,7 +136,7 @@ Options:
 
 - `--json`: Print members as JSON.
 
-Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
+Errors: `error: forbidden`, `error: internal`, `error: invalid_profile`, `error: invalid_request`, `error: not_found`, `error: rate_limited`, `error: remote_error`, `error: unauthorized`, `error: unreachable`.
 
 MCP tool: none.
 
