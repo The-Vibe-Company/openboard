@@ -290,3 +290,43 @@ test("canceling a manual refresh preserves the rotation for another call", async
   await getMe;
   expect(refreshes).toBe(1);
 });
+
+test("task counts shares the connection refresh with a concurrent flat request", async () => {
+  const trace: string[] = [];
+  const counts = {
+    open: 1,
+    waiting: 0,
+    ready: 1,
+    claimed: 0,
+    blocked: 0,
+    completed: 0,
+    failed: 0,
+    canceled: 0,
+    all: 1,
+  };
+  const board = await openboard({
+    url,
+    secret,
+    as: "run-812",
+    ...fakeClock(),
+    async fetch(request) {
+      if (request.url === `${url}/x/connections/claim`) return issued(first, start + 20_000);
+      if (request.url === `${url}/x/connections/refresh`) {
+        trace.push("refresh");
+        expect(request.headers.get("authorization") === `Bearer ${first}`).toBe(true);
+        return issued(second, start + 120_000);
+      }
+      expect(request.url).toBe(`${url}/tasks/counts?channel=dev%2F`);
+      if (request.headers.get("authorization") === `Bearer ${first}`) {
+        trace.push("expired");
+        return unauthorized();
+      }
+      expect(request.headers.get("authorization") === `Bearer ${second}`).toBe(true);
+      trace.push("retried");
+      return Response.json({ counts });
+    },
+  });
+  const query = { channel: "dev/" };
+  expect(await Promise.all([board.tasks.counts(query), board.countTasks(query)])).toEqual([{ counts }, { counts }]);
+  expect(trace.sort()).toEqual(["expired", "expired", "refresh", "retried", "retried"]);
+});

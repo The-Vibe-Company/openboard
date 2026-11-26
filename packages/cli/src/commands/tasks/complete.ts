@@ -1,6 +1,46 @@
+import { completeTask } from "@openboard/contract";
 import type { BoardError, Client } from "@the-vibe-company/openboard";
 import { withClaimStorage } from "../../claims.ts";
-import type { CommandContext } from "../index.ts";
+import { type CommandContext, Misuse } from "../index.ts";
+import { saveTaskClaim } from "./claim.ts";
+
+export async function runCompleteTask(
+  ctx: CommandContext,
+  {
+    id,
+    result,
+    claim,
+  }: {
+    id: string;
+    result?: string;
+    claim?: boolean;
+  },
+): Promise<number> {
+  const settle = () =>
+    runSettleTask(ctx, id, "completed", (proof) => ctx.client.completeTask({ id, result, ...proof }));
+  if (!claim) return settle();
+  const { maxLength } = completeTask.input.body.properties.result;
+  if (result !== undefined && maxLength !== undefined && result.length > maxLength) {
+    throw new Misuse(`result must be at most ${maxLength} characters`);
+  }
+  const { BoardError } = await import("@the-vibe-company/openboard");
+  try {
+    return await settle();
+  } catch (error) {
+    if (!(error instanceof BoardError) || error.code !== "claim_lost") throw error;
+  }
+
+  await saveTaskClaim(ctx, async () => {
+    try {
+      return await ctx.client.claimTask({ id });
+    } catch (error) {
+      if (!(error instanceof BoardError) || error.code !== "task_blocked") throw error;
+      await ctx.client.unblockTask({ id });
+      return ctx.client.claimTask({ id });
+    }
+  });
+  return settle();
+}
 
 type CompletionOutcome = { answer: Awaited<ReturnType<Client["completeTask"]>> } | { error: BoardError };
 

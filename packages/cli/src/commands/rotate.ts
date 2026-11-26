@@ -1,5 +1,5 @@
 import { closeSync, unlinkSync, writeSync } from "node:fs";
-import { createSecretFile } from "./connections.ts";
+import { createSecretFile, resolveConnectionId } from "./connections.ts";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
 
 interface RotateOptions {
@@ -45,7 +45,8 @@ const UNSURE = new Set(["unreachable", "remote_error"]);
  */
 export const rotateConnectionCommand: Command = {
   async run(ctx) {
-    const { id, overlap, secretFile } = parse(ctx);
+    const { id: selector, overlap, secretFile } = parse(ctx);
+    const id = await resolveConnectionId(ctx, selector);
     const fd = createSecretFile(secretFile);
     let rotated: Awaited<ReturnType<typeof ctx.client.rotateConnection>>;
     try {

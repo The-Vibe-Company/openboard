@@ -1,6 +1,14 @@
 import { closeSync, openSync, unlinkSync, writeSync } from "node:fs";
-import type { CanInput, Permission } from "@openboard/contract";
+import { BoardError, type CanInput, type Permission } from "@openboard/contract";
 import { type Command, type CommandContext, Misuse } from "./index.ts";
+
+export async function resolveConnectionId(ctx: CommandContext, selector: string): Promise<string> {
+  if (selector.startsWith("cn_")) return selector;
+  const { connections } = await ctx.client.listConnections({});
+  const connection = connections.find(({ name }) => name === selector);
+  if (!connection) throw new BoardError("not_found", `No active connection named ${selector} on this board.`);
+  return connection.id;
+}
 
 interface CreateOptions {
   readonly name: string;

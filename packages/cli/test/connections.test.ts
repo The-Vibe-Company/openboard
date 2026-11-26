@@ -271,3 +271,35 @@ test("ob connections policy advertises both required pins and rejects a missing 
   expect(await runCli([...command, connection.id, "--as", "fixer-2"], env, { output })).toBe(2);
   expect(lines.err[0]).toContain("policy requires --as and --can");
 });
+
+test.each(["show", "revoke", "rotate"])("ob connections %s resolves an exact name to an ID", async (command) => {
+  const requests: string[] = [];
+  const file = join(dir, "new.secret");
+  const { lines, output } = capture();
+  const fetch = async (request: Request) => {
+    const path = request.url.slice(BOARD_URL.length);
+    requests.push(`${request.method} ${path}`);
+    if (path === "/x/connections") {
+      return Response.json({ connections: [{ name: "laptop-spare", id: "cn_spare" }, connection] });
+    }
+    return Response.json({ ...created, id: connection.id, revokedAt: "now", previousUntil: null });
+  };
+  const options = command === "rotate" ? ["--secret-file", file] : [];
+  expect(await runCli(["connections", command, connection.name, "--json", ...options], env, { fetch, output })).toBe(0);
+  expect(requests).toEqual([
+    "GET /x/connections",
+    command === "show" ? `GET /x/connections/${connection.id}` : `POST /x/connections/${connection.id}/${command}`,
+  ]);
+  expect(JSON.parse(lines.out.join("\n"))).toMatchObject(command === "revoke" ? { id: connection.id } : { connection });
+});
+
+test("ob connections revoke reports an unknown name without attempting revocation", async () => {
+  const { lines, output } = capture();
+  const fetch = async (request: Request) => {
+    expect(request.url).toBe(`${BOARD_URL}/x/connections`);
+    expect(request.method).toBe("GET");
+    return Response.json({ connections: [connection] });
+  };
+  expect(await runCli(["connections", "revoke", "lap"], env, { fetch, output })).toBe(1);
+  expect(lines.err[0]).toBe("error: not_found: No active connection named lap on this board.");
+});

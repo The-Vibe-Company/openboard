@@ -6,7 +6,7 @@ import type { CommandContext } from "../index.ts";
 type TaskAnswer = Awaited<ReturnType<Client["createTask"]>>;
 type QueueAnswer = Awaited<ReturnType<Client["claimNextTask"]>>;
 
-async function saveTaskClaim<T extends TaskAnswer | QueueAnswer>(
+export async function saveTaskClaim<T extends TaskAnswer | QueueAnswer>(
   ctx: CommandContext,
   invoke: () => Promise<T>,
   unlockDuringWrite = false,

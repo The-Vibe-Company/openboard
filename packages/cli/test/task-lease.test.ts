@@ -16,12 +16,12 @@ describe.each([
   ["create", ["create", "dev", "fix the build"], "/tasks", { task: { id: "2" } }],
 ] as const)("ob tasks %s --lease", (_command, args, path, response) => {
   test.each([
-    ["1800", 1800],
+    ["3600", 3600],
+    ["15m", 900],
     ["30s", 30],
     ["30m", 1800],
     ["1h", 3600],
-    ["1h30m", 5400],
-    ["2d", 172_800],
+    ["15m30s", 930],
   ] as const)("sends %s as %i seconds", async (value, seconds) => {
     const home = mkdtempSync(join(tmpdir(), "ob-task-lease-"));
     const requests: unknown[] = [];

@@ -75,3 +75,34 @@ test("facades make the same requests as their flat methods", async () => {
     expect(namespaced).toEqual(original);
   }
 });
+
+test("tasks.counts accepts an omitted input and forwards filters and request options", async () => {
+  const requests: { url: string; aborted: boolean }[] = [];
+  const counts = {
+    open: 2,
+    waiting: 1,
+    ready: 1,
+    claimed: 0,
+    blocked: 0,
+    completed: 1,
+    failed: 0,
+    canceled: 0,
+    all: 3,
+  };
+  const board = createClient({
+    url: "https://board.example/api/local/main",
+    async fetch(request) {
+      requests.push({ url: request.url, aborted: request.signal.aborted });
+      expect(request.method).toBe("GET");
+      return Response.json({ counts });
+    },
+  });
+  expect(await board.tasks.counts()).toEqual({ counts });
+  const controller = new AbortController();
+  controller.abort();
+  expect(await board.tasks.counts({ channel: "dev/" }, { signal: controller.signal })).toEqual({ counts });
+  expect(requests).toEqual([
+    { url: "https://board.example/api/local/main/tasks/counts", aborted: false },
+    { url: "https://board.example/api/local/main/tasks/counts?channel=dev%2F", aborted: true },
+  ]);
+});

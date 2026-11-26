@@ -31,7 +31,7 @@ RUN apt-get update \
     && chmod 0644 /usr/share/keyrings/postgresql.asc \
     && echo "deb [signed-by=/usr/share/keyrings/postgresql.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/postgresql.list \
     && apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client-17 \
+    && apt-get install -y --no-install-recommends postgresql-client-18 \
     && rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/postgresql.list /usr/share/keyrings/postgresql.asc
 RUN useradd --uid 10001 --user-group --home-dir /data --no-create-home openboard \
     && install -d -o openboard -g openboard /data

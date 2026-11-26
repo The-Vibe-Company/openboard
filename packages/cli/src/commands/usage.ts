@@ -1,4 +1,4 @@
-import { type ErrorCode, operations } from "@openboard/contract";
+import { type ErrorCode, claimTask, operations, unblockTask } from "@openboard/contract";
 import { derivedCommands } from "./derived.ts";
 import type { CommandMetadata } from "./index.ts";
 import { handwrittenCommands } from "./reference/registry.ts";
@@ -334,6 +334,11 @@ function referenceOf(command: CommandMetadata): CommandReference {
   const needed = `${shown} [`.split(" ").findIndex((word) => !word.startsWith("<"));
   const meanings = {
     ...handwritten?.options,
+    ...(used.some(({ name }) => ["claimTask", "claimNextTask", "createTask", "renewTask"].includes(name)) && {
+      lease:
+        "Lease length in integer seconds or as a duration such as 30s, 15m, or 1h. The server accepts 30 to 3600 seconds and defaults to 900.",
+    }),
+    ...(derived?.name === "completeTask" && { claim: "Use a saved claim or acquire one, lifting a hold if blocked." }),
     ...(derived?.name === "claimTask" && { next: "Claim the next ready task in --channel." }),
     ...(derived?.name === "assignTask" && { pool: "Return the task to the pool." }),
     ...(derived?.name === "setTaskNeeds" && { none: "Clear every prerequisite." }),
@@ -347,9 +352,16 @@ function referenceOf(command: CommandMetadata): CommandReference {
     command: `ob ${words}`,
     usage: command.usage,
     summary: derived?.summary ?? handwritten?.summary ?? "",
-    arguments: [...args, ...alternative].map((name) => ({ name, meaning: meaningOf(fields.get(name) ?? {}) })),
+    arguments: [...args, ...alternative].map((name) =>
+      name === "id" && shown.startsWith("<name|id>")
+        ? { name: "name|id", meaning: "A unique connection name or a cn_ ID." }
+        : { name, meaning: meaningOf(fields.get(name) ?? {}) },
+    ),
     options: optionsOf(command, used, meanings),
-    errors: errorsOf(used, handwritten?.errors ?? []),
+    errors: errorsOf(
+      used,
+      derived?.name === "completeTask" ? [...claimTask.errors, ...unblockTask.errors] : (handwritten?.errors ?? []),
+    ),
     mcpTools: used
       .filter((operation) => handwritten?.tools?.includes(operation.name) ?? true)
       .flatMap((operation) => (operation.mcp ? [operation.mcp.tool] : [])),

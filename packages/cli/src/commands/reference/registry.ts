@@ -66,7 +66,7 @@ export const handwrittenCommands: readonly (RegisteredCommand | StandaloneComman
   board("ob schemas create <id> (--file <path> | --data <json>) [--description <text>]", () =>
     import("../schemas/create.ts").then((m) => m.createSchemaCommand),
   ),
-  board("ob connections rotate <id> [--overlap <duration>] --secret-file <path>", () =>
+  board("ob connections rotate <name|id> [--overlap <duration>] --secret-file <path>", () =>
     import("../rotate.ts").then((m) => m.rotateConnectionCommand),
   ),
   board(
