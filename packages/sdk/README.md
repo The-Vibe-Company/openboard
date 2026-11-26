@@ -44,3 +44,8 @@ const board = await openboard({ url, token });
 With `token`, the SDK uses that value as supplied. The SDK reads no
 environment variables itself. Tests can inject `fetch`, and secret-based
 connections also accept a clock (`now`) and a timer scheduler (`schedule`).
+
+## Task workers
+
+`runWorker(board, { channel, signal }, handler)` claims and renews tasks.
+Return result text to complete a task, or call `complete()` or `fail()` explicitly.

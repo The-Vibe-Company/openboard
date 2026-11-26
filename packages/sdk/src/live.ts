@@ -129,7 +129,7 @@ function retryAfterMs(value: string | null): number | undefined {
   return Math.max(0, Math.min(RETRY_MAX_MS, delay));
 }
 
-function isTransient(error: unknown): boolean {
+export function isTransient(error: unknown): boolean {
   if (!(error instanceof BoardError)) return false;
   if (error.status === 401 || error.status === 403 || error.code === "invalid_cursor") return false;
   return (
