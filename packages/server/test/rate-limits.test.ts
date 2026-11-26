@@ -104,3 +104,32 @@ test("an organization has its own write burst and refill on each instance, and r
     await cluster.close();
   }
 });
+
+test("organization bearer rejections share authentication admission without throttling browser sessions", async () => {
+  const cluster = makeBrowserApp();
+  try {
+    const app = cluster.instances[0];
+    if (!app) throw new Error("expected a server instance");
+    const { headers } = await browserSession(app.fetch, "ada");
+    const path = `${PUBLIC_URL}/api/x/orgs/acme`;
+    const created = await app.fetch(
+      new Request(`${PUBLIC_URL}/api/x/orgs`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ slug: "acme", name: "Acme" }),
+      }),
+    );
+    expect(created.status).toBe(201);
+    const connection = { ip: "192.0.2.10" };
+    const badBearer = { authorization: "Bearer invalid" };
+    const members = (headers: Record<string, string>) =>
+      app.fetch(new Request(`${path}/members`, { headers }), connection);
+    for (let attempt = 0; attempt < 20; attempt++) expect((await members(badBearer)).status).toBe(401);
+    const limited = await app.fetch(new Request(`${path}/invitations`, { headers: badBearer }), connection);
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).toBe("3");
+    expect((await members(headers)).status).toBe(200);
+  } finally {
+    await cluster.close();
+  }
+});

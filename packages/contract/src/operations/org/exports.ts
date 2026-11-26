@@ -8,13 +8,13 @@ const params = Type.Object({ org: Slug, id: Ref("export", { pattern: "^ex_[0-9a-
 const common = {
   scope: "org",
   access: null,
-  orgPersonalToken: true,
+  orgPersonalToken: "owner",
   cli: false,
   mcp: false,
   why: "Organization owners use the export commands, including streaming the archive to disk.",
   upstream: false,
 } as const;
-const errors = ["unauthorized", "forbidden", "not_found", "not_supported"] as const;
+const errors = ["unauthorized", "forbidden", "not_found", "not_supported", "rate_limited"] as const;
 const output = Type.Object({ export: OrgExport });
 
 export const requestOrgExport = defineOperation({
@@ -48,6 +48,6 @@ export const downloadOrgExport = defineOperation({
   input: { params },
   output: Type.Unsafe<ReadableStream<Uint8Array>>({ type: "string", format: "binary" }),
   responseType: "application/gzip",
-  errors: [...errors, "rate_limited"],
+  errors,
   effects: { readOnly: false, idempotent: false, emits: ["ob.export.downloaded"] },
 });

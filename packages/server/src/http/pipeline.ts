@@ -1,7 +1,7 @@
 import { BoardError, getMe, type Operation, type operations, type previewInvitation } from "@openboard/contract";
 import type { Blobs, Bucket, Jobs, PlatformView, RateLimits } from "@openboard/ports";
 import { type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
-import { accountPersonalToken, exportTokenPerson } from "../auth/personal-tokens.ts";
+import { accountPersonalToken, orgTokenPerson } from "../auth/personal-tokens.ts";
 import { type LoginProvider, providerLinks, signInRoute } from "../auth/providers/index.ts";
 import { liveSession, proveSession, sessionOf, signOut } from "../auth/sessions.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
@@ -117,9 +117,8 @@ async function runAccount(
 }
 
 /**
- * An `org` operation: the browser's session is the person, who must belong to the organization the path names (404
- * otherwise, as for an unknown one, before any CSRF proof is asked). Reading (`access.permission` `read`) takes any
- * member; anything else an admin.
+ * An `org` operation admits a browser session or, when enabled, an unrestricted personal token scoped to the org.
+ * The person's current role is checked before any session CSRF proof is asked.
  */
 async function runOrg(
   request: Request,
@@ -134,13 +133,17 @@ async function runOrg(
   const slug = params.org ?? "";
   const by =
     live?.record.person ??
-    (operation.orgPersonalToken ? await exportTokenPerson(request, slug, pipeline.tenants, at) : null);
+    (operation.orgPersonalToken && request.headers.has("authorization")
+      ? await limitAuthentication(pipeline, () => orgTokenPerson(request, slug, pipeline.tenants, at))
+      : null);
   if (!by) throw new BoardError("unauthorized", "sign in first");
-  const resolve = operation.orgPersonalToken
-    ? pipeline.tenants.ownerOrg
-    : operation.access?.permission === "read"
-      ? pipeline.tenants.memberOrg
-      : pipeline.tenants.adminOrg;
+  const role = operation.orgPersonalToken ?? (operation.access?.permission === "read" ? "member" : "admin");
+  const resolve =
+    role === "owner"
+      ? pipeline.tenants.ownerOrg
+      : role === "member"
+        ? pipeline.tenants.memberOrg
+        : pipeline.tenants.adminOrg;
   const scope = await resolve(slug, by.id);
   if (live) await proveSession(request, live, platform, at, config.publicUrl);
   const input = validate(operation, {

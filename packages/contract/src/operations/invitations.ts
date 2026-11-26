@@ -9,6 +9,7 @@ export const createInvitation = defineOperation({
   summary: "Create an organization invitation link and optionally send it by email.",
   route: { method: "POST", path: "/orgs/:org/invitations" },
   scope: "org",
+  orgPersonalToken: "admin",
   status: 201,
   input: {
     params: Type.Object({ org: Slug }),
@@ -33,7 +34,7 @@ export const createInvitation = defineOperation({
   effects: { readOnly: false, idempotent: false, emits: ["ob.invitation.created"] },
   cli: false,
   mcp: false,
-  why: "An organization administrator creates links with a browser session.",
+  why: "Organization administrators create links in the browser or with ob org invite.",
   upstream: false,
 });
 
@@ -42,14 +43,15 @@ export const listInvitations = defineOperation({
   summary: "List pending invitations for an organization.",
   route: { method: "GET", path: "/orgs/:org/invitations" },
   scope: "org",
+  orgPersonalToken: "admin",
   input: { params: Type.Object({ org: Slug }) },
   output: Type.Object({ invitations: Type.Array(Invitation) }),
-  errors: ["not_found", "unauthorized", "forbidden"],
+  errors: ["not_found", "unauthorized", "forbidden", "rate_limited"],
   access: null,
   effects: { readOnly: true, idempotent: true, emits: [] },
   cli: false,
   mcp: false,
-  why: "An organization administrator lists pending invitations with a browser session.",
+  why: "Organization administrators list pending invitations in the browser or with ob org invitations.",
   upstream: false,
 });
 
@@ -99,14 +101,15 @@ export const revokeInvitation = defineOperation({
   summary: "Revoke an invitation link so it can no longer be accepted.",
   route: { method: "POST", path: "/orgs/:org/invitations/:id/revoke" },
   scope: "org",
+  orgPersonalToken: "admin",
   input: { params: Type.Object({ org: Slug, id: Ref("invitation") }) },
   output: Type.Object({ id: Type.String(), revokedAt: Type.String() }),
-  errors: ["not_found", "unauthorized", "forbidden", "invitation_used"],
+  errors: ["not_found", "unauthorized", "forbidden", "invitation_used", "rate_limited"],
   access: null,
   effects: { readOnly: false, idempotent: false, emits: ["ob.invitation.revoked"] },
   cli: false,
   mcp: false,
-  why: "An organization administrator withdraws links with a browser session.",
+  why: "Organization administrators withdraw links in the browser or with ob org invite revoke.",
   upstream: false,
 });
 
@@ -115,6 +118,7 @@ export const listMembers = defineOperation({
   summary: "List the members of the organization.",
   route: { method: "GET", path: "/orgs/:org/members" },
   scope: "org",
+  orgPersonalToken: "member",
   input: { params: Type.Object({ org: Slug }) },
   output: Type.Object({
     members: Type.Array(
@@ -125,11 +129,11 @@ export const listMembers = defineOperation({
       }),
     ),
   }),
-  errors: ["not_found", "unauthorized", "forbidden"],
+  errors: ["not_found", "unauthorized", "forbidden", "rate_limited"],
   access: { permission: "read", channel: "any" },
   effects: { readOnly: true, idempotent: true, emits: [] },
   cli: false,
   mcp: false,
-  why: "Organization membership is read with a browser session.",
+  why: "Organization members view the roster in the browser or with ob members.",
   upstream: false,
 });

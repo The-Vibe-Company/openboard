@@ -9073,6 +9073,9 @@
         "security": [
           {
             "sessionAuth": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "parameters": [
@@ -9088,11 +9091,11 @@
           {
             "name": "x-ob-csrf",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             },
-            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+            "description": "For session authentication, send the CSRF value from GET /api/x/session and the configured public origin as Origin."
           }
         ],
         "requestBody": {
@@ -9277,6 +9280,9 @@
         "security": [
           {
             "sessionAuth": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "parameters": [
@@ -9385,6 +9391,24 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": {
+                  "type": "integer"
                 }
               }
             }
@@ -21777,6 +21801,24 @@
               }
             }
           },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
           "500": {
             "description": "internal",
             "content": {
@@ -23444,6 +23486,9 @@
         "security": [
           {
             "sessionAuth": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "parameters": [
@@ -23566,6 +23611,24 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "retry-after": {
+                "description": "Seconds until the request may be retried.",
+                "schema": {
+                  "type": "integer"
                 }
               }
             }
@@ -59623,7 +59686,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+            "description": "For session authentication, send the CSRF value from GET /api/x/session and the configured public origin as Origin."
           }
         ],
         "responses": {
@@ -60144,6 +60207,9 @@
         "security": [
           {
             "sessionAuth": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "parameters": [
@@ -60170,11 +60236,11 @@
           {
             "name": "x-ob-csrf",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             },
-            "description": "The session CSRF value from GET /api/x/session. Send the configured public origin as Origin."
+            "description": "For session authentication, send the CSRF value from GET /api/x/session and the configured public origin as Origin."
           }
         ],
         "responses": {

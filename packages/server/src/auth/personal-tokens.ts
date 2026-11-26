@@ -29,7 +29,7 @@ export async function accountPersonalToken(request: Request, platform: PlatformV
   return account.personId;
 }
 
-export async function exportTokenPerson(request: Request, slug: string, tenants: Tenants, at: number) {
+export async function orgTokenPerson(request: Request, slug: string, tenants: Tenants, at: number) {
   const token = bearer(request);
   if (!token || !tokenPattern.test(token)) {
     throw new BoardError("unauthorized", "a personal token is required");
@@ -39,7 +39,7 @@ export async function exportTokenPerson(request: Request, slug: string, tenants:
   if (!person) throw notFound();
   if (person === "inactive") throw new BoardError("unauthorized", "the personal token is inactive");
   if (person.boardBound || person.can !== undefined || request.headers.has(CAN_HEADER)) {
-    throw new BoardError("forbidden", "a narrowed personal token cannot export an organization");
+    throw new BoardError("forbidden", "a narrowed personal token cannot access organization routes");
   }
   return person;
 }
