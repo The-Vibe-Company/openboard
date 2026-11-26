@@ -1,4 +1,4 @@
-import { BoardError, type Message, type Registration } from "@openboard/contract";
+import { BoardError, type Registration } from "@openboard/contract";
 import {
   type BoardEvent,
   checkWatcherLease,
@@ -17,10 +17,13 @@ import {
 } from "@openboard/core";
 import type { BoardKeys, BoardView, BoardWriter } from "@openboard/ports";
 import type { Db, Dialect, Row } from "../../db.ts";
-import { query, sql } from "../../sql.ts";
-import { actorReads } from "../actors.ts";
+import { type Fragment, query, sql } from "../../sql.ts";
 import { messageEvent } from "../events.ts";
-import { messageStatements } from "../messages/statements.ts";
+import type { AutomationEvent } from "../messages.ts";
+
+const matchRows: Fragment = {
+  fragment: ({ name }) => (name === "postgres" ? "jsonb_array_elements(input.data::jsonb)" : "json_each(input.data)"),
+};
 
 export const watcherStatements = {
   registrations: sql`SELECT owner, watch, hash FROM watcher_registrations
@@ -30,8 +33,12 @@ export const watcherStatements = {
     VALUES (${"orgId"}, ${"boardId"}, ${"owner"}, ${"watch"}, ${"hash"}, ${"at"})
     ON CONFLICT (board_id, owner) DO UPDATE SET watch = excluded.watch, hash = excluded.hash, at = excluded.at
     WHERE watcher_registrations.org_id = ${"orgId"} AND watcher_registrations.board_id = ${"boardId"}`,
-  addWatcherMatch: sql`INSERT INTO watcher_matches (org_id, board_id, id, owner, watcher, thread, event, state, next_at, needs_actor_directory)
-    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"owner"}, ${"watcher"}, ${"thread"}, ${"event"}, 'pending', ${"at"}, ${"needsDirectory"})`,
+  addWatcherMatches: sql`WITH input AS (SELECT CAST(${"rows"} AS TEXT) AS data)
+    INSERT INTO watcher_matches (org_id, board_id, id, owner, watcher, thread, event, state, next_at, needs_actor_directory)
+    SELECT ${"orgId"}, ${"boardId"}, value ->> 0, value ->> 1, value ->> 2,
+      ${"thread"}, ${"event"}, 'pending', ${"at"}, CAST(value ->> 3 AS INTEGER)
+    FROM boards CROSS JOIN input CROSS JOIN ${matchRows}
+    WHERE boards.org_id = ${"orgId"} AND boards.id = ${"boardId"}`,
   nextWatcherMatches: sql`SELECT m.id AS match_id, m.watcher, m.attempt, m.lease, e.id, e.type, e.at, e.thread,
       e.message, e.channel, e.actor, e.principal, e.payload
     FROM watcher_matches m JOIN events e ON e.org_id = m.org_id AND e.board_id = m.board_id AND e.id = m.event
@@ -91,65 +98,72 @@ export async function foldWatchersRegistered(db: Db, dialect: Dialect, keys: Boa
   });
 }
 
-/** Read the snapshots before the fold, while the writing transaction still holds its board lock. */
-export async function matchWatchers(db: Db, dialect: Dialect, keys: BoardKeys, event: BoardEvent) {
-  // Previous releases can lease any persisted match, so only match event kinds their readers decode.
-  if (
-    event.type === "task.expired" ||
-    event.type === "task.released" ||
-    event.type === "task.failed" ||
-    event.type === "task.canceled" ||
-    event.type === "task.reopened" ||
-    event.type === "task.needs_changed" ||
-    event.type === "task.blocked" ||
-    event.type === "task.unblocked" ||
-    event.type === "task.assigned" ||
-    event.type === "task.ready" ||
-    !isTailMessageEvent(event)
-  )
-    return;
+async function loadWatchers(db: Db, dialect: Dialect, keys: BoardKeys) {
   const registrations = await watcherReads(db, dialect, keys).watcherRegistrations(null);
-  const watchers = registrations.flatMap(({ owner, watch }) =>
+  return registrations.flatMap(({ owner, watch }) =>
     Object.entries(watch).map(([id, { tail }]) => ({ owner, id, filters: parseTail(tail) })),
   );
-  if (watchers.length === 0) return;
-  const read = async (id: number) => {
-    const [row] = await query(db, dialect, messageStatements.message, { ...keys, id });
-    return row ? (JSON.parse(String(row.view)) as Message) : undefined;
+}
+
+/** Read the snapshots before the fold, while the writing transaction still holds its board lock. */
+export function watcherMatcher(db: Db, dialect: Dialect, keys: BoardKeys) {
+  let watchers: Awaited<ReturnType<typeof loadWatchers>> | undefined;
+  return {
+    invalidate() {
+      watchers = undefined;
+    },
+    async match(event: BoardEvent, { findFilterActors, readMessage }: AutomationEvent) {
+      // Previous releases can lease any persisted match, so only match event kinds their readers decode.
+      if (
+        event.type === "task.expired" ||
+        event.type === "task.released" ||
+        event.type === "task.failed" ||
+        event.type === "task.canceled" ||
+        event.type === "task.reopened" ||
+        event.type === "task.needs_changed" ||
+        event.type === "task.blocked" ||
+        event.type === "task.unblocked" ||
+        event.type === "task.assigned" ||
+        event.type === "task.ready" ||
+        !isTailMessageEvent(event)
+      )
+        return;
+      watchers ??= await loadWatchers(db, dialect, keys);
+      if (!watchers.length) return;
+      const previous = event.type === "message.posted" ? undefined : await readMessage(event.message);
+      const root = event.thread === event.message ? undefined : await readMessage(event.thread);
+      const rows: [id: string, owner: string, watcher: string, needsDirectory: number][] = [];
+      for (const { owner, id: watcher, filters } of watchers) {
+        if (!isTailMessage(event, filters.all)) continue;
+        const { author, mention } = filters;
+        const actors = await findFilterActors(
+          author,
+          mention === undefined ? undefined : mentionFilter(mention, owner, true),
+        );
+        const resolved = {
+          ...filters,
+          authors: author === undefined ? undefined : eventAuthors(author, owner, actors),
+          mentions: mention === undefined ? undefined : eventMentions(mention, owner, actors),
+        };
+        if (!matchesTailEvent(event, resolved, previous, root)) continue;
+        // A caller who cannot read the actor directory may still match a mention written literally.
+        const direct =
+          mention === undefined ||
+          matchesTailEvent(event, { ...resolved, mentions: eventMentions(mention, owner, []) }, previous, root);
+        const id = `${event.id}-${String(rows.length + 1).padStart(12, "0")}`;
+        rows.push([id, owner, watcher, direct ? 0 : 1]);
+      }
+      if (rows.length) {
+        await query(db, dialect, watcherStatements.addWatcherMatches, {
+          ...keys,
+          thread: event.thread,
+          event: event.id,
+          at: event.at,
+          rows: JSON.stringify(rows),
+        });
+      }
+    },
   };
-  const previous = event.type === "message.posted" ? undefined : await read(event.message);
-  const root = event.thread === event.message ? undefined : await read(event.thread);
-  const { findFilterActors } = actorReads(db, dialect, keys);
-  let ordinal = 0;
-  for (const { owner, id: watcher, filters } of watchers) {
-    if (!isTailMessage(event, filters.all)) continue;
-    const { author, mention } = filters;
-    const actors =
-      author === undefined && mention === undefined
-        ? []
-        : await findFilterActors(author, mention === undefined ? undefined : mentionFilter(mention, owner, true));
-    const resolved = {
-      ...filters,
-      authors: author === undefined ? undefined : eventAuthors(author, owner, actors),
-      mentions: mention === undefined ? undefined : eventMentions(mention, owner, actors),
-    };
-    if (!matchesTailEvent(event, resolved, previous, root)) continue;
-    // A caller who cannot read the actor directory may still match a mention written literally.
-    const direct =
-      mention === undefined ||
-      matchesTailEvent(event, { ...resolved, mentions: eventMentions(mention, owner, []) }, previous, root);
-    const id = `${event.id}-${String(++ordinal).padStart(12, "0")}`;
-    await query(db, dialect, watcherStatements.addWatcherMatch, {
-      ...keys,
-      id,
-      owner,
-      watcher,
-      thread: event.thread,
-      event: event.id,
-      at: event.at,
-      needsDirectory: direct ? 0 : 1,
-    });
-  }
 }
 
 export function watcherWriter(
