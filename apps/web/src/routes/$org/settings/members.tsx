@@ -4,7 +4,6 @@ import { BoardError } from "@the-vibe-company/openboard";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { browserClient } from "../../../api/client.ts";
 import { Avatar, Button, Card, Field, Input, Select, Table } from "../../../ui/index.ts";
-import "./members.css";
 
 export const Route = createFileRoute("/$org/settings/members")({ component: OrganizationMembers });
 const settingsRoute = getRouteApi("/$org/settings");

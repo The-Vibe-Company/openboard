@@ -6,6 +6,7 @@ const loadTaskStyles = () => import("./$org/$board/tasks.css");
 const routeStyles: Readonly<Record<string, (() => Promise<unknown>) | undefined>> = {
   "/$org/": () => import("./$org/org.css"),
   "/$org/settings": () => import("./$org/settings/settings.css"),
+  "/$org/settings/members": () => import("./$org/settings/members.css"),
   "/$org/$board": () => import("./$org/$board/shell.css"),
   "/$org/$board/": () => import("./$org/$board/channel.css"),
   "/$org/$board/tasks": loadTaskStyles,
