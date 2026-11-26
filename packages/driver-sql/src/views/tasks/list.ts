@@ -1,4 +1,4 @@
-import type { Message } from "@openboard/contract";
+import type { Message, Task } from "@openboard/contract";
 import { effectiveTask } from "@openboard/core";
 import type { BoardScope, BoardTaskReads } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
@@ -26,8 +26,23 @@ export const matchesTaskLabels = sql`NOT EXISTS (
     ))
   )`;
 
-/** Case-sensitive substring position on both engines. */
-const position: Fragment = { fragment: ({ name }) => (name === "sqlite" ? "instr" : "strpos") };
+// Include stored claims in the index lookup whenever they can supply a requested effective state.
+function bindStates(states: readonly string[]) {
+  const requested = (state: Task["state"]) => (states.includes(state) ? state : null);
+  const ready = requested("ready");
+  const blocked = requested("blocked");
+  const claimed = requested("claimed");
+  return {
+    waiting: requested("waiting"),
+    ready,
+    blocked,
+    completed: requested("completed"),
+    failed: requested("failed"),
+    canceled: requested("canceled"),
+    storedClaimed: claimed ?? (ready || blocked ? "claimed" : null),
+    claimed,
+  };
+}
 
 /** Where a task list names its channels; `splice` puts one of the predicates below in its place. */
 const CHANNELS: Fragment = { fragment: () => "" };
@@ -42,26 +57,40 @@ const needsTask = sql`AND t.id IN (
   WHERE org_id = ${"orgId"} AND board_id = ${"boardId"} AND needs = CAST(${"needs"} AS BIGINT)
 )`;
 
-/**
- * A board's visible tasks, ordered by root ID or activity: states as
- * `,ready,claimed,`, labels on the root, and who wrote the root, owns the task or is assigned it, by ID or handle.
- */
+/** A board's visible tasks, filtered by effective state, root labels and actors. */
 function taskList(
   channels: Statement<"boardId" | "channel" | "under">,
   prerequisite: Statement<"orgId" | "boardId" | "needs"> = sql``,
   latest = false,
+  seekState = false,
 ) {
   const selectOrder: Fragment = { fragment: () => (latest ? "root.active DESC, t.id DESC" : "t.id") };
   const resultOrder: Fragment = { fragment: () => (latest ? "page.active, page.id" : "page.id") };
+  // SQLite otherwise favors the ID range over state on sparse latest lists.
+  const joinRoot: Fragment = {
+    fragment: ({ name }) => {
+      if (name !== "sqlite" || !seekState) return "JOIN";
+      const index = channels === oneChannel ? "tasks_ready" : "tasks_board_state";
+      return `INDEXED BY ${index} CROSS JOIN`;
+    },
+  };
   const list = sql`WITH page AS (
-      SELECT t.board_id, t.id, root.active, root.view, root.replies, root.last_reply
-      FROM tasks AS t JOIN messages AS root ON root.board_id = t.board_id AND root.id = t.id
+      SELECT t.board_id, t.id, root.active
+      FROM tasks AS t ${joinRoot} messages AS root ON root.board_id = t.board_id AND root.id = t.id
       WHERE t.board_id = ${"boardId"} AND ${CHANNELS} AND t.id > CAST(${"after"} AS BIGINT)
         ${PREREQUISITE}
         AND (root.deleted = 0 OR t.state IN ('canceled', 'completed'))
-        AND ${position}(CAST(${"states"} AS TEXT), ',' || (CASE
-          WHEN t.state = 'claimed' AND t.claim_until <= CAST(${"now"} AS BIGINT) THEN CASE WHEN t.blocked_reason IS NULL THEN 'ready' ELSE 'blocked' END
-          ELSE t.state END) || ',') > 0
+        AND t.state IN (
+          ${"waiting"}, ${"ready"}, ${"blocked"}, ${"completed"}, ${"failed"}, ${"canceled"}, ${"storedClaimed"}
+        )
+        AND (t.state <> 'claimed' OR (
+          (t.claim_until IS NULL OR t.claim_until > CAST(${"now"} AS BIGINT)) AND CAST(${"claimed"} AS TEXT) IS NOT NULL
+        ) OR (
+          t.claim_until <= CAST(${"now"} AS BIGINT) AND (
+            (t.blocked_reason IS NULL AND CAST(${"ready"} AS TEXT) IS NOT NULL)
+            OR (t.blocked_reason IS NOT NULL AND CAST(${"blocked"} AS TEXT) IS NOT NULL)
+          )
+        ))
         AND (CAST(${"owner"} AS TEXT) IS NULL OR t.owner = ${"owner"} OR t.owner IN (
           SELECT principal FROM actors WHERE board_id = ${"boardId"} AND lower(handle) = ${"ownerHandle"} AND id = principal
         ))
@@ -75,9 +104,10 @@ function taskList(
         AND ${TASK_LABELS}
       ORDER BY ${selectOrder} LIMIT CAST(${"limit"} AS BIGINT)
     )
-    SELECT boards.head, page.id, page.view, page.replies, reply.view AS last_view
+    SELECT boards.head, page.id, root.view, root.replies, reply.view AS last_view
     FROM boards LEFT JOIN page ON page.board_id = boards.id
-    LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = page.last_reply
+    LEFT JOIN messages AS root ON root.board_id = boards.id AND root.id = page.id
+    LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = root.last_reply
     WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"}
     ORDER BY ${resultOrder}`;
   return splice(splice(splice(list, CHANNELS, channels), PREREQUISITE, prerequisite), TASK_LABELS, matchesTaskLabels);
@@ -93,6 +123,9 @@ export const taskListStatements = {
   listLatestTasks: taskList(oneChannel, undefined, true),
   listLatestSubtreeTasks: taskList(subtreeChannels, undefined, true),
   listLatestBoardTasks: taskList(everyChannel, undefined, true),
+  listLatestTasksByState: taskList(oneChannel, undefined, true, true),
+  listLatestSubtreeTasksByState: taskList(subtreeChannels, undefined, true, true),
+  listLatestBoardTasksByState: taskList(everyChannel, undefined, true, true),
   listLatestTasksNeeding: taskList(oneChannel, needsTask, true),
   listLatestSubtreeTasksNeeding: taskList(subtreeChannels, needsTask, true),
   listLatestBoardTasksNeeding: taskList(everyChannel, needsTask, true),
@@ -108,6 +141,12 @@ const latestTaskListsByScope = {
   board: [taskListStatements.listLatestBoardTasks, taskListStatements.listLatestBoardTasksNeeding],
   channel: [taskListStatements.listLatestTasks, taskListStatements.listLatestTasksNeeding],
   subtree: [taskListStatements.listLatestSubtreeTasks, taskListStatements.listLatestSubtreeTasksNeeding],
+} as const;
+
+const latestTaskListsByState = {
+  board: taskListStatements.listLatestBoardTasksByState,
+  channel: taskListStatements.listLatestTasksByState,
+  subtree: taskListStatements.listLatestSubtreeTasksByState,
 } as const;
 
 /** A board's task list: one statement reads the page, each root's latest reply and the board's head together. */
@@ -134,13 +173,15 @@ export function taskListReads(
       const now = clock();
       const scopeName = channel === undefined ? "board" : under === undefined ? "channel" : "subtree";
       const lists = latest ? latestTaskListsByScope : taskListsByScope;
-      const statement = lists[scopeName][needs === undefined ? 0 : 1];
+      // Let the planner choose for broad lists, ready tasks, and prerequisite lookups.
+      const seekState = latest && needs === undefined && states.length === 1 && states[0] !== "ready";
+      const statement = seekState ? latestTaskListsByState[scopeName] : lists[scopeName][needs === undefined ? 0 : 1];
       const rows = await query(db, dialect, statement, {
         boardId: scope.boardId,
         orgId: scope.orgId,
         channel: channel ?? null,
         under: under ?? null,
-        states: `,${states.join(",")},`,
+        ...bindStates(states),
         labels: JSON.stringify(labels),
         owner: owner ?? null,
         ownerHandle: owner?.toLowerCase() ?? null,

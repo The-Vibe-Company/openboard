@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { listTasks, Message, OutputOf } from "@openboard/contract";
+import type { claimTask, listTasks, Message, OutputOf } from "@openboard/contract";
 import { call, makeApp } from "../support/app.ts";
 
 test("limits matching tasks by activity, returns latest active last and includes the latest reply", async () => {
@@ -46,6 +46,46 @@ test("rejects an after cursor with latest", async () => {
     const response = await call(app, "GET", "/tasks?channel=dev&latest=true&after=2");
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ error: { code: "invalid_request" } });
+  } finally {
+    await app.close();
+  }
+});
+
+test("selects sparse completed tasks by activity across a channel subtree", async () => {
+  const app = makeApp();
+  try {
+    const create = async (channel: string) => {
+      const response = await call(app, "POST", "/tasks", { channel, text: "check the build" });
+      expect(response.status).toBe(201);
+      return ((await response.json()) as { task: Message }).task.id;
+    };
+    const complete = async (channel: string) => {
+      const id = await create(channel);
+      const response = await call(app, "POST", `/tasks/${id}/claim`);
+      expect(response.status).toBe(200);
+      const { claim } = (await response.json()) as OutputOf<typeof claimTask>;
+      const completed = await call(app, "POST", `/tasks/${id}/complete`, { epoch: claim.epoch, token: claim.token });
+      expect(completed.status).toBe(200);
+      return id;
+    };
+    const first = await complete("dev");
+    await complete("dev/web");
+    const latestChild = await complete("dev/web");
+    await complete("dev-other");
+    for (const re of [latestChild, first]) {
+      expect((await call(app, "POST", "/messages", { re, text: "follow-up" })).status).toBe(201);
+    }
+    for (let i = 0; i < 8; i++) await create("dev/web");
+
+    for (const [channel, expected] of [
+      ["dev/", [latestChild, first]],
+      ["dev", [first]],
+    ] as const) {
+      const response = await call(app, "GET", `/tasks?channel=${channel}&state=completed&latest=true&limit=2`);
+      expect(response.status).toBe(200);
+      const { tasks } = (await response.json()) as OutputOf<typeof listTasks>;
+      expect(tasks.map(({ message }) => message.id)).toEqual([...expected]);
+    }
   } finally {
     await app.close();
   }

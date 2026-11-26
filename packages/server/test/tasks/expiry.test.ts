@@ -27,12 +27,14 @@ test("an elapsed lease reads ready and can be reclaimed without a timer; stale c
     now = NOW + 30_000;
     expect(claim.until).toBe(isoTime(now));
     const ready = { id: task.id, task: { state: "ready", epoch: 1, claim: null } };
-    const list = await call(app, "GET", "/tasks?state=ready");
-    expect(list.status).toBe(200);
-    expect(await list.json()).toMatchObject({ tasks: [{ message: ready }] });
-    const claimed = await call(app, "GET", "/tasks?state=claimed");
-    expect(claimed.status).toBe(200);
-    expect(await claimed.json()).toMatchObject({ tasks: [] });
+    for (const latest of ["false", "true"]) {
+      const list = await call(app, "GET", `/tasks?state=ready&latest=${latest}`);
+      expect(list.status).toBe(200);
+      expect(await list.json()).toMatchObject({ tasks: [{ message: ready }] });
+      const claimed = await call(app, "GET", `/tasks?state=claimed&latest=${latest}`);
+      expect(claimed.status).toBe(200);
+      expect(await claimed.json()).toMatchObject({ tasks: [] });
+    }
     const thread = await call(app, "GET", `/messages/${task.id}`);
     expect(thread.status).toBe(200);
     expect(await thread.json()).toMatchObject({ message: { ...ready, labels: { "board.task": "claimed" } } });

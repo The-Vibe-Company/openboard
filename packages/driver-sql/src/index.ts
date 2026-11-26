@@ -60,6 +60,7 @@ import scheduleSendBackfill from "../migrations/0058-schedule-send-backfill.sql"
 import importBoundary from "../migrations/0059-imported-head.sql" with { type: "text" };
 import projectionJobGuards from "../migrations/0060-reproject-job-guards.sql" with { type: "text" };
 import actorSightingsIndex from "../migrations/0061-actor-sightings-index.sql" with { type: "text" };
+import tasksStateIndex from "../migrations/0062-tasks-state-index.sql" with { type: "text" };
 import type { Db, Dialect } from "./db.ts";
 import { checkSchema } from "./readiness.ts";
 import { accountView } from "./views/accounts.ts";
@@ -184,6 +185,7 @@ export const migrations: readonly Migration[] = Object.freeze([
   { version: 59, name: "0059-imported-head", sql: importBoundary },
   { version: 60, name: "0060-reproject-job-guards", sql: projectionJobGuards },
   { version: 61, name: "0061-actor-sightings-index", sql: actorSightingsIndex },
+  { version: 62, name: "0062-tasks-state-index", sql: tasksStateIndex },
 ]);
 
 /** The store's views over one engine: the driver adds its connection, lock and lifecycle. */
