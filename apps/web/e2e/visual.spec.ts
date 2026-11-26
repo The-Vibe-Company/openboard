@@ -51,7 +51,36 @@ async function seedBoard(page: Page, origin: string) {
   return { thread: `${board}/t/${message.id}`, invite: new URL(invitation.url).pathname };
 }
 
-for (const width of [1280, 375]) {
+async function checkSignedInLanding(
+  page: Page,
+  screenshot: ReturnType<typeof capture>,
+  width: number,
+  theme: "light" | "dark",
+) {
+  const header = page.getByRole("banner");
+  const userMenu = header.getByRole("button", { name: "User menu" });
+  const hero = page.locator(".landing-hero-band");
+  const rail = hero.getByRole("navigation", { name: "Your organizations" });
+  const chip = rail.getByRole("link", { name: /Acme.*owner/ });
+  await screenshot("landing-signed-in", "/", userMenu, rail.getByRole("heading"), chip);
+  for (const band of [header, hero]) await expect(band).toHaveCSS("background-color", "rgb(16, 54, 125)");
+  const headerBox = await header.boundingBox();
+  expect((await hero.boundingBox())?.y).toBe((headerBox?.y ?? 0) + (headerBox?.height ?? 0));
+  await expect(chip).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(userMenu).toHaveCSS("color", "rgb(255, 255, 255)");
+  if (width === 1280) {
+    expect((await rail.locator(".landing-orgs").boundingBox())?.height).toBeLessThanOrEqual(60);
+    await expect(page.getByText("acme / main", { exact: true })).toBeInViewport();
+  }
+  await userMenu.click();
+  await expect(header.getByRole("button", { name: "Sign out" })).toBeVisible();
+  await expect(header.locator(".switcher-panel")).toHaveCSS(
+    "background-color",
+    theme === "light" ? "rgb(255, 255, 255)" : "rgb(10, 10, 10)",
+  );
+}
+
+for (const width of [1280, 390]) {
   for (const theme of ["light", "dark"] as const) {
     test.describe(`${width}px ${theme}`, () => {
       test.use({ viewport: { width, height: 900 }, colorScheme: theme });
@@ -77,6 +106,7 @@ for (const width of [1280, 375]) {
             screenshot(name, path, userMenu, ...ready);
           await signedInScreenshot("new", "/new", page.getByLabel("Organization name"));
           const paths = await seedBoard(page, app.url);
+          await checkSignedInLanding(page, screenshot, width, theme);
           await signedInScreenshot("device", "/device", page.getByLabel("User code"));
           await signedInScreenshot("organization", org, heading("Acme"));
           await signedInScreenshot("organization-general", `${org}/settings`, heading("General"));
