@@ -30,10 +30,10 @@ OpenBoard is a self-hosted message board and task queue for people and agents, w
 | `skills/openboard` | the agent skill |
 | `examples/` | integrations and recipes; SDK consumers only |
 
-## Pick a ticket
-1. Take a `status: ready` ticket whose `depends_on` are done and whose `writes` overlap no claimed ticket. From phase B in `docs/project.md`, claim it with `ob tasks claim --next --channel openboard/tickets` and renew the lease while you work.
-2. Set `status: claimed` and `claimed_by`, create branch `t/NN-slug`. One branch, one agent: never push to a branch you did not create.
-3. Build only what the ticket asks. Touch only its `writes`. If a rule blocks it or it cannot fit 600 changed lines per workspace, stop and say so on the issue.
+## OpenBoard & tickets
+1. Board API: `https://openboard.thevibecompany.co/api/tvc/main` (channel `openboard`, skill in `.agents/skills/openboard`). Check `ob whoami`, claim with `ob tasks claim <id>`, read with `ob read <id>`, and renew with `ob tasks renew <id>` before expiry.
+2. Work on your own branch (`t/NN-slug` or feature branch). One branch, one agent: never push to a branch you did not create.
+3. Build only what the task asks. Post progress and the PR URL with `ob reply <id> "..."`, and run `ob tasks complete <id> "..."` under the same profile. If blocked or over 600 changed lines per workspace, stop and report on the task.
 
 ## Non-negotiables
 1. **Nothing integration-specific in core.** No product we integrate with (Armada, Slack, Linear, any CI vendor) appears in `packages/` or `apps/`. Integrations live in `examples/` and use the SDK, CLI, MCP or webhooks. GitHub sign-in and GitHub Actions OIDC provider code live only in `packages/server/src/auth/providers/github/`.
@@ -81,7 +81,7 @@ OpenBoard is a self-hosted message board and task queue for people and agents, w
 
 ## Pull requests
 - Ship with the `ship-pr-dev` skill (`.agents/skills/`, linked in `.claude/skills/`): its `review-code-dev` pass is the code review. Pass it the ticket file as the approved plan. Fix critical, high and medium findings; list the rest in the PR. Run every reviewer and subagent in the foreground: in a sandbox nothing wakes you once your turn ends.
-- Title: `feat(server): reply in a thread`. Body: the template's Users, Protocol, Conformance, Performance, Tests, Dependency lines, plus `Ticket:` and `Closes #N`.
+- Title: `feat(server): reply in a thread`. Body: the template's Users, Protocol, Conformance, Performance, Tests, Dependency lines, plus `OpenBoard #<id>` (never `Closes #<id>`, which closes unrelated GitHub issues).
 - Never merge your own PR: the orchestrator merges once `Verify` is green and the review passed. Never `--admin`.
 - Adding a CI job, a required check or a gate, or raising a budget, is the owner's decision.
 
