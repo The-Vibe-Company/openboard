@@ -88,10 +88,14 @@ struct OpenBoardAPI: Sendable {
     }
 
     func listTasks(channel: String? = nil, state: String = "all", after: String? = nil, limit: Int = 100) async throws -> TasksResponse {
-        var query: [String: String] = ["state": state, "limit": "\(limit)"]
+        var query: [String: String] = ["state": state, "limit": "\(Self.taskPageLimit(limit))"]
         if let channel, !channel.isEmpty { query["channel"] = channel }
         if let after, !after.isEmpty { query["after"] = after }
         return try await request(method: "GET", path: boardPath("/tasks"), query: query)
+    }
+
+    static func taskPageLimit(_ requested: Int) -> Int {
+        min(500, max(1, requested))
     }
 
     func listActors() async throws -> ActorsResponse {

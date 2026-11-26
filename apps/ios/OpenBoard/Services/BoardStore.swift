@@ -4,7 +4,7 @@ import Observation
 @Observable
 @MainActor
 final class BoardStore {
-    var session: SavedSession?
+    private(set) var session: SavedSession?
     var me: MeResponse?
     var channels: [ChannelInfo] = []
     var boardTasks: [ThreadSummary] = []
@@ -22,10 +22,13 @@ final class BoardStore {
     }
 
     private(set) var threadsByChannel: [String: [ThreadSummary]] = [:]
-    private(set) var localClaims: [String: LocalTaskClaim] = [:]
+    private(set) var generation = UUID()
+    private(set) var threadInvalidations: [String: Int] = [:]
+    private var localClaims = KeychainStore.loadClaims()
     private let eventStream = BoardEventStream()
     private var refreshTasks: [String: Task<Void, Never>] = [:]
     private var boardRefreshTask: Task<Void, Never>?
+    private var pending = (tasks: false, actors: false)
 
     var api: OpenBoardAPI? {
         session.map { OpenBoardAPI(session: $0) }
@@ -34,7 +37,6 @@ final class BoardStore {
     init() {
         let savedAppearance = UserDefaults.standard.string(forKey: "ob.appearance")
         self.appearance = savedAppearance.flatMap(AppearancePreference.init(rawValue:)) ?? .system
-        self.localClaims = KeychainStore.loadClaims()
         if let saved = KeychainStore.loadSession() {
             self.session = saved
             Task { await bootstrap() }
@@ -43,8 +45,7 @@ final class BoardStore {
 
     func completeSignIn(_ newSession: SavedSession) async {
         KeychainStore.saveSession(newSession)
-        session = newSession
-        errorBanner = nil
+        reset(to: newSession)
         await bootstrap()
     }
 
@@ -52,17 +53,30 @@ final class BoardStore {
         guard var current = session, current.board != slug else { return }
         current.board = slug
         KeychainStore.saveSession(current)
-        session = current
-        threadsByChannel = [:]
-        boardTasks = []
-        events = []
+        reset(to: current)
         await bootstrap()
     }
 
     func signOut() {
-        Task { await eventStream.stop() }
         KeychainStore.clearSession()
-        session = nil
+        localClaims = [:]
+        reset(to: nil)
+    }
+
+    func isCurrent(_ generation: UUID) -> Bool {
+        self.generation == generation && !Task.isCancelled
+    }
+
+    private func reset(to session: SavedSession?) {
+        generation = UUID()
+        eventStream.stop()
+        refreshTasks.values.forEach { $0.cancel() }
+        refreshTasks = [:]
+        boardRefreshTask?.cancel()
+        boardRefreshTask = nil
+        pending = (false, false)
+        threadInvalidations = [:]
+        self.session = session
         me = nil
         channels = []
         boardTasks = []
@@ -70,36 +84,35 @@ final class BoardStore {
         actorsByID = [:]
         events = []
         threadsByChannel = [:]
-        localClaims = [:]
+        isBootstrapping = false
         liveState = .disconnected
         errorBanner = nil
     }
 
     func bootstrap() async {
-        guard let api else { return }
+        guard let api, !isBootstrapping else { return }
+        let generation = self.generation
         isBootstrapping = true
         errorBanner = nil
-        defer { isBootstrapping = false }
+        defer { if self.generation == generation { isBootstrapping = false } }
         do {
+            let limit = OpenBoardAPI.taskPageLimit(max(100, boardTasks.count))
+            let history = try await api.readEvents(last: 80, all: true)
+            guard isCurrent(generation) else { return }
             async let meReq = api.getMe()
             async let channelsReq = api.listChannels()
-            async let tasksReq = api.listTasks(state: "all", limit: 100)
+            async let tasksReq = api.listTasks(state: "all", limit: limit)
             async let actorsReq = api.listActors()
-            async let eventsReq = api.readEvents(last: 80, all: true)
-
-            me = try await meReq
-            channels = try await channelsReq.channels.sorted { $0.path < $1.path }
-            let taskPage = try await tasksReq
-            boardTasks = taskPage.tasks
-            boardTasksNextCursor = taskPage.tasks.count == 100 ? taskPage.cursor : nil
-            let actorList = try await actorsReq.actors
-            actorsByID = Dictionary(uniqueKeysWithValues: actorList.map { ($0.id, $0) })
-            events = try await eventsReq.events.reversed()
-            startLiveStream(api: api)
-        } catch OpenBoardAPIError.unauthorized(let message) {
-            errorBanner = message
+            let (identity, channelList, taskPage, actors) = try await (meReq, channelsReq, tasksReq, actorsReq)
+            guard isCurrent(generation) else { return }
+            me = identity
+            channels = channelList.channels.sorted { $0.path < $1.path }
+            applyTaskPage(taskPage, limit: limit)
+            actorsByID = Dictionary(uniqueKeysWithValues: actors.actors.map { ($0.id, $0) })
+            events = Array(history.events.reversed())
+            startLiveStream(api: api, initialCursor: history.cursor, generation: generation)
         } catch {
-            errorBanner = error.localizedDescription
+            if isCurrent(generation) { errorBanner = error.localizedDescription }
         }
     }
 
@@ -109,28 +122,31 @@ final class BoardStore {
 
     func refreshChannel(_ channel: String) async {
         guard let api else { return }
+        let generation = self.generation
         do {
             async let threadsReq = api.listThreads(channel: channel, limit: 80)
             async let tasksReq = api.listTasks(channel: channel, state: "all", limit: 100)
             let fetchedThreads = try await threadsReq.threads
             let fetchedTasks = try await tasksReq.tasks
+            guard isCurrent(generation) else { return }
             threadsByChannel[channel] = fetchedThreads
-            mergeChannelTasks(channel: channel, incoming: fetchedTasks)
+            boardTasks = Self.mergeTasks(boardTasks, incoming: fetchedTasks)
         } catch {
-            errorBanner = error.localizedDescription
+            if isCurrent(generation) { errorBanner = error.localizedDescription }
         }
     }
 
     func loadOlderBoardTasks() async {
         guard let api, let cursor = boardTasksNextCursor else { return }
+        let generation = self.generation
         do {
             let page = try await api.listTasks(state: "all", after: cursor, limit: 100)
+            guard isCurrent(generation), boardTasksNextCursor == cursor else { return }
             let existingIDs = Set(boardTasks.map(\.id))
-            let additions = page.tasks.filter { !existingIDs.contains($0.id) }
-            boardTasks.append(contentsOf: additions)
+            boardTasks.append(contentsOf: page.tasks.filter { !existingIDs.contains($0.id) })
             boardTasksNextCursor = page.tasks.count == 100 ? page.cursor : nil
         } catch {
-            errorBanner = error.localizedDescription
+            if isCurrent(generation) { errorBanner = error.localizedDescription }
         }
     }
 
@@ -177,8 +193,10 @@ final class BoardStore {
 
     func createChannel(path: String) async throws -> ChannelInfo {
         guard let api else { throw OpenBoardAPIError.unauthorized("Not signed in.") }
+        let generation = self.generation
         let cleaned = path.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let response = try await api.createChannel(path: cleaned)
+        guard isCurrent(generation) else { throw CancellationError() }
         if !channels.contains(where: { $0.path == response.channel.path }) {
             channels.append(response.channel)
             channels.sort { $0.path < $1.path }
@@ -188,12 +206,14 @@ final class BoardStore {
 
     func postMessage(channel: String, text: String, labels: [String: String]? = nil) async throws -> BoardMessage {
         guard let api else { throw OpenBoardAPIError.unauthorized("Not signed in.") }
+        let generation = self.generation
         let response = try await api.postMessage(
             channel: channel,
             text: text,
             labels: labels,
             idempotencyKey: UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         )
+        guard isCurrent(generation) else { throw CancellationError() }
         let summary = ThreadSummary(message: response.message, replies: 0, last: nil)
         var current = threadsByChannel[channel] ?? []
         if !current.contains(where: { $0.id == summary.id }) {
@@ -205,6 +225,7 @@ final class BoardStore {
 
     func createTask(channel: String, text: String, labels: [String: String]? = nil, needs: [String]? = nil) async throws -> BoardMessage {
         guard let api else { throw OpenBoardAPIError.unauthorized("Not signed in.") }
+        let generation = self.generation
         let response = try await api.createTask(
             channel: channel,
             text: text,
@@ -212,6 +233,7 @@ final class BoardStore {
             needs: needs,
             idempotencyKey: UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         )
+        guard isCurrent(generation) else { throw CancellationError() }
         let summary = ThreadSummary(message: response.task, replies: 0, last: nil)
         if !boardTasks.contains(where: { $0.id == summary.id }) {
             boardTasks.append(summary)
@@ -220,19 +242,19 @@ final class BoardStore {
     }
 
     func recordClaim(taskID: String, claim: LocalTaskClaim?) {
-        if let claim {
-            localClaims[taskID] = claim
-        } else {
-            localClaims.removeValue(forKey: taskID)
+        guard let api, let actor = me?.actor else { return }
+        let scope = ClaimScope(api: api, actor: actor, taskID: taskID)
+        localClaims[scope] = claim
+        if !KeychainStore.saveClaims(localClaims) {
+            errorBanner = "Could not save task claims to Keychain."
         }
-        KeychainStore.saveClaims(localClaims)
     }
 
     func activeLocalClaim(for message: BoardMessage) -> LocalTaskClaim? {
-        guard let task = message.task, task.state == .claimed,
-              let saved = localClaims[message.id], saved.epoch == task.epoch
-        else { return nil }
-        return saved
+        guard let api, let actor = me?.actor, let task = message.task,
+              task.state == .claimed, task.claim?.actor == actor else { return nil }
+        return ClaimScope(api: api, actor: actor, taskID: message.id)
+            .activeClaim(in: localClaims, epoch: task.epoch, now: Date())
     }
 
     func updateTaskFromMutation(_ taskMessage: BoardMessage) {
@@ -244,28 +266,22 @@ final class BoardStore {
         }
     }
 
-    // MARK: - Live SSE
+    private func startLiveStream(api: OpenBoardAPI, initialCursor: String, generation: UUID) {
+        eventStream.start(api: api, initialCursor: initialCursor, onState: { [weak self] state in
+            guard let self, isCurrent(generation) else { return }
+            liveState = state
+        }, onEvent: { [weak self] event in
+            guard let self, isCurrent(generation) else { return }
+            handleLiveEvent(event)
+        })
+    }
 
-    private func startLiveStream(api: OpenBoardAPI) {
-        let stream = eventStream
-        Task { [weak self] in
-            await stream.start(
-                api: api,
-                onState: { [weak self] state in
-                    Task { @MainActor [weak self] in
-                        self?.liveState = state
-                    }
-                },
-                onEvent: { [weak self] event in
-                    Task { @MainActor [weak self] in
-                        self?.handleLiveEvent(event)
-                    }
-                }
-            )
-        }
+    func invalidateThread(_ id: String) {
+        threadInvalidations[id, default: 0] += 1
     }
 
     private func handleLiveEvent(_ event: BoardEvent) {
+        if let id = event.threadID ?? event.message?.id { invalidateThread(id) }
         if !activityPaused && !events.contains(where: { $0.cursor == event.cursor }) {
             events.insert(event, at: 0)
             if events.count > 200 { events.removeLast(events.count - 200) }
@@ -276,9 +292,17 @@ final class BoardStore {
                 channels.sort { $0.path < $1.path }
             }
         }
-        if event.type.hasPrefix("task.") || event.type == "labels.changed" || event.type == "message.edited" || event.type == "message.deleted" {
-            scheduleBoardTasksRefresh()
+        let refreshTasks = event.type.hasPrefix("task.") || ["labels.changed", "message.edited", "message.deleted"].contains(event.type)
+        let actor = event.payload?.by?.actor ?? event.message?.by.actor
+        let refreshActors = event.type == "actor.seen" || actor.map { actorsByID[$0] == nil } == true
+        if refreshTasks, let message = event.message {
+            if let state = message.task?.state, !message.deleted || state == .completed || state == .canceled {
+                updateTaskFromMutation(message)
+            } else if message.deleted {
+                boardTasks.removeAll { $0.id == message.id }
+            }
         }
+        if refreshTasks || refreshActors { scheduleBoardRefresh(tasks: refreshTasks, actors: refreshActors) }
         if let ch = event.channelPath, threadsByChannel[ch] != nil {
             scheduleChannelRefresh(ch)
         }
@@ -293,24 +317,42 @@ final class BoardStore {
         }
     }
 
-    private func scheduleBoardTasksRefresh() {
-        boardRefreshTask?.cancel()
+    private func scheduleBoardRefresh(tasks: Bool, actors: Bool) {
+        pending.tasks = pending.tasks || tasks
+        pending.actors = pending.actors || actors
+        guard boardRefreshTask == nil, let api else { return }
+        let generation = self.generation
         boardRefreshTask = Task {
-            try? await Task.sleep(for: .milliseconds(250))
-            guard !Task.isCancelled, let api else { return }
-            if let page = try? await api.listTasks(state: "all", limit: max(100, boardTasks.count)) {
-                boardTasks = page.tasks
-                boardTasksNextCursor = page.tasks.count >= max(100, boardTasks.count) ? page.cursor : nil
+            while isCurrent(generation), pending.tasks || pending.actors {
+                try? await Task.sleep(for: .milliseconds(250))
+                guard isCurrent(generation) else { return }
+                let limit = OpenBoardAPI.taskPageLimit(max(100, boardTasks.count))
+                let (tasks, actors) = (pending.tasks, pending.actors)
+                pending = (false, false)
+                if tasks, let page = try? await api.listTasks(limit: limit), isCurrent(generation) {
+                    applyTaskPage(page, limit: limit)
+                }
+                if isCurrent(generation), actors, let list = try? await api.listActors(), isCurrent(generation) {
+                    actorsByID = Dictionary(uniqueKeysWithValues: list.actors.map { ($0.id, $0) })
+                }
             }
-            if let actors = try? await api.listActors().actors {
-                actorsByID = Dictionary(uniqueKeysWithValues: actors.map { ($0.id, $0) })
-            }
+            if isCurrent(generation) { boardRefreshTask = nil }
         }
     }
 
-    private func mergeChannelTasks(channel: String, incoming: [ThreadSummary]) {
-        let others = boardTasks.filter { $0.message.channel != channel }
-        boardTasks = others + incoming
+    private func applyTaskPage(_ page: TasksResponse, limit: Int) {
+        let refreshedIDs = Set(page.tasks.map(\.id))
+        if page.tasks.count == limit && boardTasks.contains(where: { !refreshedIDs.contains($0.id) }) {
+            boardTasks = Self.mergeTasks(boardTasks, incoming: page.tasks)
+        } else {
+            boardTasks = page.tasks
+            boardTasksNextCursor = page.tasks.count == limit ? page.cursor : nil
+        }
+    }
+
+    nonisolated static func mergeTasks(_ loaded: [ThreadSummary], incoming: [ThreadSummary]) -> [ThreadSummary] {
+        let updatedIDs = Set(incoming.map(\.id))
+        return incoming + loaded.filter { !updatedIDs.contains($0.id) }
     }
 
     private func filterTasks(_ list: [ThreadSummary], search: String) -> [ThreadSummary] {

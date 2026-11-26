@@ -113,28 +113,54 @@ final class OpenBoardModelsTests: XCTestCase {
 
         let sorted = page.tasks.sorted { BoardStore.doneOrder($0, $1) }
         XCTAssertEqual(sorted.map(\.id), ["182", "5"])
+        XCTAssertEqual(BoardStore.mergeTasks(page.tasks, incoming: [sorted[0]]).map(\.id), ["182", "5"])
+        XCTAssertEqual(OpenBoardAPI.taskPageLimit(501), 500)
     }
 
     func testSSEDecoderDispatchesOnBlankLine() {
         let stream = """
-        : keepalive\r\n
-        id: 42\r\n
-        event: board\r\n
-        data: {"cursor":"42","type":"channel.created","createdAt":"2026-11-25T22:00:00.000Z","message":null,"payload":{"channel":"mobile","thread":null,"name":null,"handle":null,"error":null,"by":null}}\r\n
+        : keepalive\r
+        id: 42\r
+        event: board\r
+        data: {"cursor":"42","type":"channel.created","createdAt":"2026-11-25T22:00:00.000Z","message":null,"payload":{"channel":"mobile","thread":null,"name":null,"handle":null,"error":null,"by":null}}\r
         \r\n
         """
         var decoder = SSEStreamDecoder()
-        var decoded: [(id: String?, event: BoardEvent)] = []
+        var decoded: [(id: String?, event: BoardEvent?)] = []
         for byte in stream.utf8 {
             if let frame = decoder.consume(byte: byte) {
                 decoded.append(frame)
             }
         }
         XCTAssertEqual(decoded.count, 1)
-        XCTAssertEqual(decoded[0].id, "42")
-        XCTAssertEqual(decoded[0].event.type, "channel.created")
-        XCTAssertEqual(decoded[0].event.channelPath, "mobile")
-        XCTAssertEqual(decoded[0].event.summaryText, "Created channel #mobile")
+        XCTAssertEqual(decoded.first?.id, "42")
+        XCTAssertEqual(decoded.first?.event?.type, "channel.created")
+        XCTAssertEqual(decoded.first?.event?.channelPath, "mobile")
+        XCTAssertEqual(decoded.first?.event?.summaryText, "Created channel #mobile")
+    }
+
+    func testSSECheckpointAndTerminalResponses() {
+        var decoder = SSEStreamDecoder()
+        XCTAssertNil(decoder.consume(line: "id: 42"))
+        let checkpoint = decoder.consume(line: "")
+        XCTAssertEqual(checkpoint?.id, "42")
+        XCTAssertNil(checkpoint?.event)
+        XCTAssertNil(decoder.consume(line: ""))
+        XCTAssertTrue(BoardEventStream.isTerminal(status: 401))
+        XCTAssertTrue(BoardEventStream.isTerminal(status: 403))
+        XCTAssertFalse(BoardEventStream.isTerminal(status: 503))
+    }
+
+    func testClaimScopeAndExpiry() {
+        let scope = ClaimScope(api: OpenBoardAPI(origin: "https://example.test"), actor: "actor", taskID: "1")
+        let other = ClaimScope(api: OpenBoardAPI(origin: "https://example.test", board: "other"), actor: "actor", taskID: "1")
+        let proof = LocalTaskClaim(epoch: 1, token: "fixture", until: "1970-01-01T00:00:01.000Z")
+        let claims = [scope: proof]
+        let now = Date(timeIntervalSince1970: 0)
+        XCTAssertEqual(scope.activeClaim(in: claims, epoch: 1, now: now), proof)
+        XCTAssertNil(other.activeClaim(in: claims, epoch: 1, now: now))
+        XCTAssertNil(scope.activeClaim(in: claims, epoch: 2, now: now))
+        XCTAssertNil(scope.activeClaim(in: claims, epoch: 1, now: now.addingTimeInterval(1)))
     }
 
     func testPreviewLineStripsMarkdownAndResolvesMentions() {
