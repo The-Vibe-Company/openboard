@@ -273,3 +273,129 @@ test("reconnect delays double from 250 ms to 10 s with jitter between half and a
   ]);
   expect([0, 1, 6].map((attempt) => retryDelayMs(attempt, () => 0))).toEqual([125, 250, 5000]);
 });
+
+test("an established tail resumes after proxy failures with a bounded Retry-After", async () => {
+  const live = liveResponse();
+  live.push(frame(posted("3", "resumed")));
+  const requests: Request[] = [];
+  const pause = mock(async (_signal?: AbortSignal, _attempt?: number, _retryAfter?: number) => {});
+  const responses = [
+    new Response("", { headers: { "content-type": "text/event-stream" } }),
+    new Response("<html>Bad Gateway</html>", { status: 502 }),
+    new Response("<html>Unavailable</html>", { status: 503, headers: { "retry-after": "60" } }),
+    new Response("<html>Gateway Timeout</html>", { status: 504, headers: { "retry-after": "2" } }),
+    live.response,
+  ];
+  const events = tail({
+    url,
+    after: "2",
+    retryDelay: pause,
+    fetch: async (request) => {
+      requests.push(request);
+      const response = responses.shift();
+      if (!response) throw new Error("unexpected reconnect");
+      return response;
+    },
+  });
+
+  expect((await events.next()).value).toEqual(posted("3", "resumed"));
+  await events.return();
+  expect(pause.mock.calls.map(([, attempt, retryAfter]) => [attempt, retryAfter])).toEqual([
+    [0, undefined],
+    [1, undefined],
+    [2, 10_000],
+    [3, 2_000],
+  ]);
+  expect(requests.map((request) => new URL(request.url).searchParams.get("after"))).toEqual(Array(5).fill("2"));
+});
+
+test.each([
+  [401, "remote_error", "null"],
+  [403, "unavailable", '{"error":{"code":"unavailable"}}'],
+  [400, "invalid_cursor", '{"error":{"code":"invalid_cursor"}}'],
+] as const)("HTTP %i stops an established tail and preserves the status", async (status, code, body) => {
+  const live = liveResponse();
+  live.push(frame(posted("3", "before refusal")));
+  live.close();
+  const pause = mock(async () => {});
+  const fetch = mock(async () => new Response(body, { status })).mockResolvedValueOnce(live.response);
+  const events = tail({ url, after: "2", fetch, retryDelay: pause });
+
+  expect((await events.next()).value).toEqual(posted("3", "before refusal"));
+  const error = await events.next().catch((error: unknown) => error);
+  expect(error).toBeInstanceOf(BoardError);
+  expect(error).toMatchObject({ status, code });
+  expect(pause).toHaveBeenCalledTimes(1);
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+test("rapid SSE EOFs escalate backoff until cursor progress", async () => {
+  const abort = new AbortController();
+  const requests: Request[] = [];
+  const replayed = posted("2", "replayed");
+  const bodies = [": ping\n\n", "id: 2\n\n", frame(replayed), "", "id: 3\n\n"];
+  const pause = mock(async (_signal?: AbortSignal, _attempt?: number) => {
+    if (pause.mock.calls.length === 5) abort.abort();
+  });
+  const events = tail({
+    url,
+    after: "2",
+    signal: abort.signal,
+    retryDelay: pause,
+    fetch: async (request) => {
+      requests.push(request);
+      return new Response(bodies.shift(), { headers: { "content-type": "text/event-stream" } });
+    },
+  });
+
+  expect((await events.next()).value).toEqual(replayed);
+  expect((await events.next()).done).toBe(true);
+  expect(pause.mock.calls.map(([, attempt]) => attempt)).toEqual([0, 1, 2, 3, 0]);
+  expect(requests.map((request) => request.headers.get("last-event-id"))).toEqual([null, null, "2", "2", "2"]);
+});
+
+test("tail reads a final CR-only frame with UTF-8 split across chunks", async () => {
+  const event = posted("3", "☃");
+  const bytes = encoder.encode(frame(event).replaceAll("\n", "\r"));
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const byte of bytes) controller.enqueue(Uint8Array.of(byte));
+      controller.close();
+    },
+  });
+  const fetch = async () => new Response(body, { headers: { "content-type": "text/event-stream" } });
+  const events = tail({ url, after: "2", fetch });
+  expect((await events.next()).value).toEqual(event);
+  await events.return();
+});
+
+test("tail joins a large multi-line frame split across chunks", async () => {
+  const live = liveResponse();
+  const event = posted("3", "large frame");
+  live.push("id: 3\nevent: board\n");
+  for (let chunk = 0; chunk < 64; chunk++) live.push("data:  \n".repeat(512));
+  live.push(`data: ${JSON.stringify(event)}\n\n`);
+  const events = tail({ url, after: "2", fetch: async () => live.response });
+  expect((await events.next()).value).toEqual(event);
+  await events.return();
+});
+
+test.each([
+  ["line", `data: ${" ".repeat(2 * 1024 * 1024)}`],
+  ["frame", `data: ${" ".repeat(1024 * 1024)}\n`.repeat(4)],
+] as const)("tail switches to JSON polling for an oversized SSE %s", async (_limit, text) => {
+  const live = liveResponse();
+  live.push(frame(posted("3", "checkpoint")));
+  live.push(text);
+  const resumed = posted("4", "read using JSON");
+  const fetch = mock(async (_request: Request) => Response.json({ cursor: "4", events: [resumed] }));
+  fetch.mockResolvedValueOnce(live.response);
+  const events = tail({ url, after: "2", fetch });
+  expect((await events.next()).value).toEqual(posted("3", "checkpoint"));
+  expect((await events.next()).value).toEqual(resumed);
+  expect(live.cancelled()).toBe(true);
+  const request = fetch.mock.calls[1]?.[0];
+  expect(new URL(request?.url ?? "").search).toBe("?after=3&wait=30");
+  expect(request?.headers.get("accept")).toBe("application/json");
+  await events.return();
+});
