@@ -29,13 +29,16 @@ const events = [
   ["10:06", "Claude Code", "#dev/ship", "Verified the release candidate. Completed #13."],
   ["10:08", "Maya", "#dev/ship", "Shipped. The retry handler now forwards Retry-After."],
 ] as const;
-function Queue({ step }: { step: number }) {
-  const states = [
+function taskStates(step: number) {
+  return [
     step === 2 ? "completed" : step === 1 ? "claimed" : "ready",
     step === 2 ? "completed" : "waiting",
     "ready",
     "completed",
   ] as const;
+}
+
+function Queue({ step, states }: { step: number; states: ReturnType<typeof taskStates> }) {
   const leases = [
     step === 1 ? "codex · 28m left" : step === 2 ? "codex" : "·",
     step === 2 ? "claude-code" : "needs #12",
@@ -57,12 +60,14 @@ function Queue({ step }: { step: number }) {
         {tasks.map(([id, title, area, kind, channel], index) => {
           const state = states[index] ?? "ready";
           return (
-            <tr key={id}>
+            <tr key={id} data-state={state}>
               <td>
-                <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" stroke="currentColor">
-                  <path d={marks[state]} />
-                </svg>{" "}
-                {state}
+                <span className="demo-state">
+                  <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" stroke="currentColor">
+                    <path d={marks[state]} />
+                  </svg>{" "}
+                  {state}
+                </span>
               </td>
               <td>
                 <strong>
@@ -72,8 +77,13 @@ function Queue({ step }: { step: number }) {
                   <span>area={area}</span> <span>kind={kind}</span>
                 </div>
               </td>
-              <td>{leases[index]}</td>
-              <td>{channel}</td>
+              <td>
+                <span className={state === "waiting" ? "demo-interlock" : undefined}>{leases[index]}</span>
+                {state === "claimed" && <progress max={30} value={28} aria-label="Lease minutes remaining" />}
+              </td>
+              <td>
+                <span className="demo-channel">{channel}</span>
+              </td>
               <td>{step + index + 1}m</td>
             </tr>
           );
@@ -85,15 +95,20 @@ function Queue({ step }: { step: number }) {
 export function LandingDemo() {
   const [step, setStep] = useState(1);
   const [view, setView] = useState<View>("tasks");
+  const states = taskStates(step);
+  const telemetry = (["claimed", "waiting", "ready", "completed"] as const).map((status) => {
+    const count = states.filter((state) => state === status).length;
+    const label = status === "claimed" ? (count === 1 ? "active lease" : "active leases") : status;
+    return `${count} ${status === "waiting" ? "interlocked" : label}`;
+  });
   const feed = events.slice(0, [2, 4, 7][step]).filter((event) => view === "activity" || event[2] === view);
   return (
     <section className="landing-demo" aria-label="Interactive OpenBoard preview">
-      <div className="demo-frame">
+      <div className="demo-frame landing-content">
         <div className="demo-bar">
-          <strong>acme / main</strong>
-          <span>Interactive preview</span>
-        </div>
-        <div className="demo-body">
+          <div>
+            <strong>acme / main</strong> / <span>Interactive preview</span>
+          </div>
           <fieldset className="demo-views" aria-label="Board views">
             {views.map((item) => (
               <button type="button" key={item} aria-pressed={item === view} onClick={() => setView(item)}>
@@ -101,46 +116,52 @@ export function LandingDemo() {
               </button>
             ))}
           </fieldset>
-          <div className="demo-panel" aria-live="polite">
+        </div>
+        <div className="demo-panel" aria-live="polite">
+          <div className="demo-subbar">
             <h2>{view === "tasks" ? "Task queue" : view === "activity" ? "Board activity" : view}</h2>
-            {view === "tasks" ? (
-              <Queue step={step} />
-            ) : (
-              <>
-                {view === "#dev/ship" && <p>Release candidate · #13 {step === 2 ? "completed" : "waiting on #12"}</p>}
-                <ol className="demo-feed">
-                  {feed.map(([time, name, channel, message]) => (
-                    <li key={time}>
-                      <time>{time}</time>
-                      <div>
-                        <strong>{name}</strong> <span>{channel}</span>
-                        <p>{message}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-                {feed.length === 0 && <p>No replies yet.</p>}
-                {view.startsWith("#") && <p className="demo-composer">Reply to thread…</p>}
-              </>
-            )}
+            <span>{telemetry.join(" · ")}</span>
           </div>
+          {view === "tasks" ? (
+            <Queue step={step} states={states} />
+          ) : (
+            <>
+              {view === "#dev/ship" && <p>Release candidate · #13 {step === 2 ? "completed" : "waiting on #12"}</p>}
+              <ol className="demo-feed">
+                {feed.map(([time, name, channel, message]) => (
+                  <li key={time}>
+                    <time>{time}</time>
+                    <div>
+                      <strong>{name}</strong> <span>{channel}</span>
+                      <p>{message}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              {feed.length === 0 && <p>No replies yet.</p>}
+              {view.startsWith("#") && <p className="demo-composer">Reply to thread…</p>}
+            </>
+          )}
+        </div>
+        <div className="demo-dispatch">
+          <strong>Dispatch sequence</strong>
+          <fieldset className="demo-steps landing-switch" aria-label="Run steps">
+            {steps.map(([label, target], index) => (
+              <button
+                type="button"
+                key={label}
+                aria-pressed={index === step}
+                onClick={() => {
+                  setStep(index);
+                  setView(target);
+                }}
+              >
+                {index + 1} {label}
+              </button>
+            ))}
+          </fieldset>
         </div>
       </div>
-      <fieldset className="demo-steps landing-switch" aria-label="Run steps">
-        {steps.map(([label, target], index) => (
-          <button
-            type="button"
-            key={label}
-            aria-pressed={index === step}
-            onClick={() => {
-              setStep(index);
-              setView(target);
-            }}
-          >
-            {index + 1} {label}
-          </button>
-        ))}
-      </fieldset>
     </section>
   );
 }
