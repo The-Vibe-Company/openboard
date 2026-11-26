@@ -14,6 +14,11 @@ test("a fresh board shows how to post until its first thread arrives", async ({ 
     const hint = page.getByRole("heading", { name: "No messages yet" });
     await test.step("show the board URL, commands and settings link, and copy the URL", async () => {
       await expect(hint).toBeVisible();
+      await expect(page.getByText("ob doctor", { exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Open the board guide" })).toHaveAttribute(
+        "href",
+        "/acme/main/guide?channel=general",
+      );
       await expect(page.getByText(url, { exact: true })).toBeVisible();
       await expect(page.getByText(`ob connect ${url} --as <name>`, { exact: false })).toBeVisible();
       await expect(page.getByText("--secret-file <path>", { exact: true })).toBeVisible();
@@ -26,6 +31,9 @@ test("a fresh board shows how to post until its first thread arrives", async ({ 
       await page.getByRole("button", { name: "Copy", exact: true }).click();
       await expect(page.getByRole("status").filter({ hasText: /^Board URL copied\.$/ })).toBeVisible();
       expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(url);
+      await page.getByRole("button", { name: "Copy install" }).click();
+      await expect(page.getByRole("status").filter({ hasText: /^Install command copied\.$/ })).toBeVisible();
+      expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`curl -fsSL ${app.url}/install.sh | sh`);
       await page.getByRole("button", { name: "Copy login" }).click();
       await expect(page.getByRole("status").filter({ hasText: /^Login command copied\.$/ })).toBeVisible();
       expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`ob login ${app.url}`);

@@ -1,5 +1,6 @@
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Button, Input } from "../ui/index.ts";
+import { mcpExamples, sdkConnect, sdkCreateTask, skillInstall } from "./setup-examples.ts";
 import "./SecretOnce.css";
 
 interface Setup {
@@ -25,28 +26,10 @@ function snippets({ boardUrl, name, profiles }: Setup) {
   return [
     {
       label: "CLI",
-      hint: `Save the connection secret to ./${name}.secret in your working directory with owner-only access. The second command claims the next dev task if permitted.`,
-      code: `ob connect "${boardUrl}" --as ${profile} --secret-file ./${name}.secret &&\n  BOARD_URL="${boardUrl}" BOARD_TOKEN= BOARD_PROFILE= ob tasks claim --next --channel dev`,
+      hint: `Save the connection secret to ./${name}.secret with owner-only access. Clear any BOARD_URL, BOARD_TOKEN, and BOARD_PROFILE overrides first.`,
+      code: `ob connect "${boardUrl}" --as ${profile} --secret-file "./${name}.secret" &&\n  ob doctor &&\n  ob tasks`,
     },
-    {
-      label: "Claude Code",
-      hint: `${tokenHint} ob connect saves the claimed agent token in ~/.config/openboard/agent.json.`,
-      code: `claude mcp add --transport http openboard "${mcp}" --header 'Authorization: Bearer \${BOARD_TOKEN}'`,
-    },
-    {
-      label: "Codex",
-      hint: `Add to ~/.codex/config.toml. ${tokenHint}`,
-      code: `[mcp_servers.openboard]\nurl = "${mcp}"\nbearer_token_env_var = "BOARD_TOKEN"`,
-    },
-    {
-      label: "Cursor",
-      hint: `Add the server to .cursor/mcp.json. ${tokenHint}`,
-      code: JSON.stringify(
-        { mcpServers: { openboard: { url: mcp.href, headers: { Authorization: `Bearer \${env:BOARD_TOKEN}` } } } },
-        null,
-        2,
-      ),
-    },
+    ...mcpExamples(boardUrl).map((snippet) => ({ ...snippet, hint: `${snippet.hint} ${tokenHint}` })),
     {
       label: "MCP",
       hint: `Use Streamable HTTP and configure the Authorization header in your client. ${tokenHint}`,
@@ -54,8 +37,13 @@ function snippets({ boardUrl, name, profiles }: Setup) {
     },
     {
       label: "TypeScript SDK",
-      hint: tokenHint,
-      code: `import { createClient } from "@the-vibe-company/openboard";\n\nconst client = createClient({\n  url: "${boardUrl}",\n  token: process.env.BOARD_TOKEN,\n});`,
+      hint: "Set OPENBOARD_SECRET to the connection secret. Set OPENBOARD_TASK_KEY to a unique key for each new task and reuse it on retry. Choose a channel this connection can post to.",
+      code: `import { openboard } from "@the-vibe-company/openboard";\n\n${sdkConnect(boardUrl, profile)}\n\n${sdkCreateTask("your-channel")}`,
+    },
+    {
+      label: "Agent Skill",
+      hint: "Connect with the CLI first. Set task_id to the ID of a ready task you will work on.",
+      code: `${skillInstall}\nob whoami\nob tasks claim "$task_id"`,
     },
   ];
 }
@@ -83,8 +71,30 @@ export function ConnectionSetup(setup: Setup) {
 }
 
 export function ConnectionSnippets(setup: Setup) {
+  return (
+    <SetupTabs
+      label={`Setup snippets for ${setup.name}`}
+      options={snippets(setup).map(({ label, hint, code }) => ({
+        label,
+        content: (
+          <>
+            <p>{hint}</p>
+            <CopySnippet code={code} />
+          </>
+        ),
+      }))}
+    />
+  );
+}
+
+export function SetupTabs({
+  label,
+  options,
+}: {
+  label: string;
+  options: readonly { label: string; content: ReactNode }[];
+}) {
   const id = useId();
-  const options = snippets(setup);
   const [active, setActive] = useState(0);
 
   function move(event: KeyboardEvent<HTMLDivElement>) {
@@ -103,12 +113,7 @@ export function ConnectionSnippets(setup: Setup) {
 
   return (
     <div className="connection-snippets">
-      <div
-        className="connection-snippet-tabs"
-        role="tablist"
-        aria-label={`Setup snippets for ${setup.name}`}
-        onKeyDown={move}
-      >
+      <div className="connection-snippet-tabs" role="tablist" aria-label={label} onKeyDown={move}>
         {options.map(({ label }, index) => (
           <button
             key={label}
@@ -124,7 +129,7 @@ export function ConnectionSnippets(setup: Setup) {
           </button>
         ))}
       </div>
-      {options.map(({ label, code, hint }, index) => (
+      {options.map(({ label, content }, index) => (
         <div
           key={label}
           role="tabpanel"
@@ -134,14 +139,14 @@ export function ConnectionSnippets(setup: Setup) {
           // biome-ignore lint/a11y/noNoninteractiveTabindex: The panel starts with instructions before the copy button.
           tabIndex={0}
         >
-          {active === index && <SnippetContent code={code} hint={hint} />}
+          {active === index && content}
         </div>
       ))}
     </div>
   );
 }
 
-async function copyText(value: string, label: string, setStatus: (status: string) => void) {
+export async function copyText(value: string, label: string, setStatus: (status: string) => void) {
   try {
     await navigator.clipboard.writeText(value);
     setStatus(`${label} copied.`);
@@ -150,17 +155,16 @@ async function copyText(value: string, label: string, setStatus: (status: string
   }
 }
 
-function SnippetContent({ code, hint }: { code: string; hint: string }) {
+export function CopySnippet({ code, label }: { code: string; label?: string }) {
   const [status, setStatus] = useState("");
   return (
     <>
-      <p>{hint}</p>
-      <pre>
+      <pre className="setup-code">
         <code>{code}</code>
       </pre>
       <div className="settings-actions-row">
-        <Button variant="secondary" size="small" onClick={() => void copyText(code, "Snippet", setStatus)}>
-          Copy snippet
+        <Button variant="secondary" size="small" onClick={() => void copyText(code, label ?? "Snippet", setStatus)}>
+          Copy {label ?? "snippet"}
         </Button>
         <span aria-live="polite">{status}</span>
       </div>

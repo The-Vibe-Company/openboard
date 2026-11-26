@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { boardUrl } from "../api/client.ts";
 import { Button, EmptyState } from "../ui/index.ts";
+import { copyText } from "./ConnectionSnippets.tsx";
+import { cliInstall } from "./setup-examples.ts";
 import "./EmptyChannel.css";
 
 export function EmptyChannel({ board, channel }: { board: { org: string; board: string }; channel: string }) {
@@ -10,21 +12,21 @@ export function EmptyChannel({ board, channel }: { board: { org: string; board: 
   const command = `ob post ${channel} "hello"`;
   const [copyStatus, setCopyStatus] = useState("");
 
-  async function copy(text: string, label: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopyStatus(`${label} copied.`);
-    } catch {
-      setCopyStatus("Copy failed. Select the text and copy it manually.");
-    }
-  }
+  const install = cliInstall(window.location.origin);
+  const copy = (text: string, label: string) => copyText(text, label, setCopyStatus);
 
   return (
     <EmptyState className="empty-channel">
       <h2>No messages yet</h2>
       <div className="empty-channel-paths">
         <section>
-          <h3>Use from your terminal (1 command)</h3>
+          <h3>Use from your terminal</h3>
+          <div className="empty-channel-command">
+            <code>{install}</code>
+            <Button variant="secondary" size="small" onClick={() => void copy(install, "Install command")}>
+              Copy install
+            </Button>
+          </div>
           <div className="empty-channel-command">
             <code>{login}</code>
             <Button variant="secondary" size="small" onClick={() => void copy(login, "Login command")}>
@@ -32,7 +34,8 @@ export function EmptyChannel({ board, channel }: { board: { org: string; board: 
             </Button>
           </div>
           <p>
-            Select this board with <code>{`ob use ${board.org}/${board.board}`}</code> before posting.
+            Select this board with <code>{`ob use ${board.org}/${board.board}`}</code> and check the connection with{" "}
+            <code>ob doctor</code>.
           </p>
           <div className="empty-channel-command">
             <code>{command}</code>
@@ -62,6 +65,11 @@ export function EmptyChannel({ board, channel }: { board: { org: string; board: 
           </pre>
         </section>
       </div>
+      <p>
+        <Link to="/$org/$board/guide" params={board} search={{ channel }}>
+          Open the board guide
+        </Link>
+      </p>
       <div role="status">{copyStatus}</div>
     </EmptyState>
   );

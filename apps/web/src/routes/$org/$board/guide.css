@@ -1,0 +1,33 @@
+.board-guide {
+  max-inline-size: 52rem;
+}
+
+.guide-context {
+  padding: calc(3 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+  overflow-wrap: anywhere;
+}
+
+.guide-context p {
+  margin: 0;
+}
+
+.board-guide h2 {
+  margin-block: calc(5 * var(--space)) var(--space);
+  font-size: var(--type-base);
+}
+
+.board-guide h3 {
+  font-size: var(--type-small);
+}
+
+.guide-states li {
+  padding: calc(2 * var(--space));
+  border-block-end: var(--stroke) solid var(--border);
+}
+
+.guide-states strong {
+  font-family: var(--font-mono);
+}
