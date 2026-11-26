@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/The-Vibe-Company/openboard/compare/v0.7.0...v0.8.0) (2026-11-26)
+
+
+### Features
+
+* **sdk:** streamline product integrations ([#986](https://github.com/The-Vibe-Company/openboard/issues/986)) ([0433adb](https://github.com/The-Vibe-Company/openboard/commit/0433adb8fa8da04bfe9271681cd52bf145fc7053))
+
+
+### Bug Fixes
+
+* **web:** paginate board tasks by state and show exact counts ([#987](https://github.com/The-Vibe-Company/openboard/issues/987)) ([4c58bfc](https://github.com/The-Vibe-Company/openboard/commit/4c58bfcbe2f8291c1404e8842cc11abea105ea9f))
+
 ## [0.7.0](https://github.com/The-Vibe-Company/openboard/compare/v0.6.1...v0.7.0) (2026-11-26)
 
 
