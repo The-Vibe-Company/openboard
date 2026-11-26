@@ -59,7 +59,7 @@ export function startJobs(
   handlers: JobHandlers,
   bucket?: Bucket,
   onActivity?: () => Promise<void>,
-): (release?: boolean) => Promise<void> {
+): (deadline: AbortSignal) => Promise<void> {
   const registry = new Map(Object.entries(handlers));
   if (registry.size === 0) return async () => {};
   const kinds = [...registry.keys()];
@@ -112,7 +112,7 @@ export function startJobs(
     active ??= drain(leaseOwner);
     return active;
   });
-  return async (release = false) => {
+  return async (deadline) => {
     stopped = true;
     stop();
     const running = active;
@@ -120,10 +120,10 @@ export function startJobs(
     if (owner === undefined) return;
     const instanceId = instance ?? owner;
     // An unfinished job must keep its lease. Return any others even if the current job hits the shutdown cap.
-    if (release) await releaseLeases(jobs, deps, owner, instanceId, currentJob);
+    await releaseLeases(jobs, deps, owner, instanceId, currentJob);
     await running;
     // A claim might have finished during shutdown, or the current effect might have rolled back.
-    if (release && running) await releaseLeases(jobs, deps, owner, instanceId);
+    if (running && !deadline.aborted) await releaseLeases(jobs, deps, owner, instanceId);
   };
 }
 

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import type { claimTask, createTask, OutputOf, readEvents } from "@openboard/contract";
 import { isoTime } from "@openboard/core";
+import { TASK_EXPIRY_JOB } from "@openboard/ports";
 import { call, makeApp, NOW } from "../support/app.ts";
 import { postgresTestUrl } from "../support/env.ts";
 
@@ -10,8 +11,8 @@ if (postgresTestUrl())
     const runners: Array<() => Promise<number | null>> = [];
     const app = makeApp({
       now: () => now,
-      watchJobs: (_kinds, _schedule, run) => {
-        runners.push(run);
+      watchJobs: (kinds, _schedule, run) => {
+        if (kinds.includes(TASK_EXPIRY_JOB)) runners.push(run);
         return () => {};
       },
     });

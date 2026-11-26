@@ -1,18 +1,22 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { type createApp, jsonLogger, mintLocalOwnerToken } from "../src/index.ts";
-import { BOARD_URL, call, LOCAL_OWNER, makeApp, NOW, OWNER, PUBLIC_URL } from "./support/app.ts";
+import { BOARD_URL, call, failingBoardLookup, LOCAL_OWNER, makeApp, NOW, OWNER, PUBLIC_URL } from "./support/app.ts";
 
 let app: ReturnType<typeof createApp>;
 
 /** An app whose clock moves 7 ms per reading and whose logger keeps every line it prints, parsed. */
-function loggedApp() {
+function loggedApp(failLookup = false) {
   const lines: Record<string, unknown>[] = [];
   let clock = NOW;
   const now = () => {
     clock += 7;
     return clock;
   };
-  app = makeApp({ now, log: jsonLogger({ now, write: (line) => lines.push(JSON.parse(line)) }) });
+  app = makeApp({
+    now,
+    ...(failLookup && { store: failingBoardLookup(now) }),
+    log: jsonLogger({ now, write: (line) => lines.push(JSON.parse(line)) }),
+  });
   return lines;
 }
 
@@ -52,8 +56,7 @@ describe("one JSON log line per request", () => {
   });
 
   test("prints the request line after the error line when the store fails", async () => {
-    const lines = loggedApp();
-    await app.close();
+    const lines = loggedApp(true);
     await call(app, "POST", "/messages", { channel: "dev", text: "hello" });
     expect(lines.map((line) => [line.level, line.msg])).toEqual([
       ["error", "request failed"],

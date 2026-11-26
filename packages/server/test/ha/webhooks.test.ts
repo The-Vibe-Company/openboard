@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { createWebhook, listWebhookDeliveries, OutputOf, postMessage, readEvents } from "@openboard/contract";
-import type { Jobs, Store } from "@openboard/ports";
+import { type Jobs, type Store, WEBHOOK_DELIVERY_JOB } from "@openboard/ports";
 import { type App, createApp, type Deps } from "../../src/index.ts";
 import { signIn } from "../isolation/seed.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL } from "../support/app.ts";
@@ -40,8 +40,8 @@ function instance(
       blobs: db.blobs,
       jobs: {
         ...db.jobs,
-        watch: (_kinds, _schedule, run) => {
-          wake = run;
+        watch: (kinds, _schedule, run) => {
+          if (kinds.includes(WEBHOOK_DELIVERY_JOB)) wake = run;
           return () => {};
         },
       },

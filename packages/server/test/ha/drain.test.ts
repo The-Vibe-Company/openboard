@@ -51,31 +51,41 @@ async function unavailable(response: Response) {
   expect(await response.json()).toMatchObject({ error: { code: "unavailable" } });
 }
 
-test("drain ends a live tail with its cursor and lets an in-flight write commit", async () => {
+function pauseWrites(store: Store, beforeWrite: () => Promise<void>): Store["board"] {
+  return (scope) => {
+    const board = store.board(scope);
+    return new Proxy(board, {
+      get(target, key, receiver) {
+        if (key !== "write") return Reflect.get(target, key, receiver);
+        return async (...args: Parameters<typeof board.write>) => {
+          await beforeWrite();
+          return board.write(...args);
+        };
+      },
+    });
+  };
+}
+
+test.each(["drain", "close"])("%s ends a live tail and lets an in-flight write commit", async (method) => {
   const store = openStore(() => NOW);
   const sibling = store.sibling?.();
   const writeEntered = Promise.withResolvers<void>();
   const writeProceed = Promise.withResolvers<void>();
   const pollParked = Promise.withResolvers<void>();
   let holdWrite = false;
+  let closes = 0;
   const first = instance(
     {
       ...store,
-      board(scope) {
-        const board = store.board(scope);
-        return new Proxy(board, {
-          get(target, key, receiver) {
-            if (key !== "write") return Reflect.get(target, key, receiver);
-            return async (...args: Parameters<typeof board.write>) => {
-              if (holdWrite) {
-                writeEntered.resolve();
-                await writeProceed.promise;
-              }
-              return board.write(...args);
-            };
-          },
-        });
+      async close() {
+        closes++;
+        if (sibling) await store.close();
       },
+      board: pauseWrites(store, async () => {
+        if (!holdWrite) return;
+        writeEntered.resolve();
+        await writeProceed.promise;
+      }),
     },
     "first",
     (delay) => {
@@ -83,7 +93,7 @@ test("drain ends a live tail with its cursor and lets an in-flight write commit"
       return () => {};
     },
   );
-  const second = instance(sibling ?? store, "second", () => () => {});
+  const second = instance(sibling ?? { ...store, close: async () => {} }, "second", () => () => {});
   try {
     const firstId = await postId(await post(first, "before drain"));
     const response = await stream(first, "0");
@@ -99,8 +109,9 @@ test("drain ends a live tail with its cursor and lets an in-flight write commit"
     holdWrite = true;
     const writing = post(first, "in flight");
     await writeEntered.promise;
-    const drained = first.drain();
+    const drained = first[method]();
     expect(first.drain()).toBe(drained);
+    expect(first.close()).toBe(drained);
     let finished = false;
     void drained.then(() => {
       finished = true;
@@ -111,8 +122,10 @@ test("drain ends a live tail with its cursor and lets an in-flight write commit"
     await unavailable(await call(first, "GET", `/events?after=${firstId}&wait=120`));
     expect(await (await polling).json()).toEqual({ cursor: firstId, events: [] });
     expect(finished).toBe(false);
+    expect(closes).toBe(0);
     writeProceed.resolve();
     await drained;
+    expect(closes).toBe(1);
     const secondId = await postId(await writing);
     const thirdId = await postId(await post(second, "after drain"));
 
@@ -125,9 +138,22 @@ test("drain ends a live tail with its cursor and lets an in-flight write commit"
     expect(wire).toEndWith(`retry: 1000\nid: ${thirdId}\n\n`);
   } finally {
     writeProceed.resolve();
-    await Promise.all([first.close(), sibling && second.close()]);
+    await Promise.all([first.close(), second.close()]);
+    if (!sibling) await store.close();
   }
 });
+
+async function queueLeasedJobs(store: Store, peer: Store) {
+  const keys = await store.platform().findBoard("local", "main");
+  if (!keys) throw new Error("expected board");
+  await store.board(testScope(keys)).write(async (writer) => {
+    for (let index = 0; index < 3; index++) await writer.enqueue("drain", NOW, { index });
+  });
+  const abandoned = (await store.jobs.claim(["drain"], { instanceId: "drain-test", claimedAt: NOW })).job;
+  expect(abandoned).not.toBeNull();
+  expect((await peer.jobs.claim(["drain"], { instanceId: "first", claimedAt: NOW })).job).not.toBeNull();
+  return abandoned;
+}
 
 test.each(["job completes", "shutdown cap fires"])("drain releases idle leases when %s", async (outcome) => {
   const store = openStore(() => NOW);
@@ -140,19 +166,24 @@ test.each(["job completes", "shutdown cap fires"])("drain releases idle leases w
   const finalRelease = Promise.withResolvers<void>();
   let deadline: (() => void) | undefined;
   let completed = false;
+  let closed = false;
   const app = instance(
     {
       ...store,
+      async close() {
+        closed = true;
+      },
       jobs: {
         ...store.jobs,
         async release(id, now, exceptId) {
+          expect(closed).toBe(false);
           expect(completed).toBe(exceptId === undefined);
           await store.jobs.release(id, now, exceptId);
           if (exceptId === undefined) finalRelease.resolve();
           else idleReleased.resolve();
         },
-        watch(_kinds, _schedule, run) {
-          wake = run;
+        watch(kinds, _schedule, run) {
+          if (kinds.includes("drain")) wake = run;
           return () => {};
         },
       },
@@ -170,15 +201,8 @@ test.each(["job completes", "shutdown cap fires"])("drain releases idle leases w
     },
   );
   try {
-    const keys = await store.platform().findBoard("local", "main");
-    if (!keys || !wake) throw new Error("expected board and job runner");
-    await store.board(testScope(keys)).write(async (writer) => {
-      for (let index = 0; index < 3; index++) await writer.enqueue("drain", NOW, { index });
-    });
-    const abandoned = (await store.jobs.claim(["drain"], { instanceId: "drain-test", claimedAt: NOW })).job;
-    const foreign = (await peer.jobs.claim(["drain"], { instanceId: "first", claimedAt: NOW })).job;
-    expect(abandoned).not.toBeNull();
-    expect(foreign).not.toBeNull();
+    if (!wake) throw new Error("expected job runner");
+    const abandoned = await queueLeasedJobs(store, peer);
 
     const running = wake();
     await jobStarted.promise;
@@ -193,16 +217,19 @@ test.each(["job completes", "shutdown cap fires"])("drain releases idle leases w
       deadline();
       await drained;
       expect(completed).toBe(false);
+      expect(closed).toBe(true);
     }
     jobProceed.resolve();
     await running;
     await drained;
-    await finalRelease.promise;
+    if (outcome === "job completes") await finalRelease.promise;
+    expect(closed).toBe(true);
     if (!sibling) expect((await peer.jobs.claim(["drain"], lease)).job).toEqual(abandoned);
     expect((await peer.jobs.claim(["drain"], lease)).job).toBeNull();
   } finally {
     jobProceed.resolve();
-    await Promise.all([app.close(), sibling?.close()]);
+    await app.close();
+    await Promise.all([store.close(), sibling?.close()]);
   }
 });
 

@@ -265,6 +265,7 @@ test("OIDC times out a stalled discovery body and reopens key refresh", async ()
     resolveHost,
     now: () => now,
     schedule: (ms, expire) => {
+      if (ms === 10_000) return () => {};
       expect(ms).toBe(5000);
       armed.resolve(expire);
       return () => void cancelled++;

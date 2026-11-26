@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { BOARD_URL, call, LOCAL_OWNER, makeApp, OWNER } from "./support/app.ts";
+import { BOARD_URL, call, failingBoardLookup, LOCAL_OWNER, makeApp, NOW, OWNER } from "./support/app.ts";
 
 let app: ReturnType<typeof makeApp>;
 afterEach(() => app.close());
@@ -310,8 +310,7 @@ describe("answering only for boards and routes that exist", () => {
   });
 
   test("answers 500 internal and logs the stack when the store fails", async () => {
-    app = makeApp();
-    await app.close();
+    app = makeApp({ store: failingBoardLookup(() => NOW) });
     const failed = await answer(call(app, "POST", "/messages", { channel: "dev", text: "x" }));
     expect([failed.status, failed.body.error.code]).toEqual([500, "internal"]);
     expect(app.logged).toHaveLength(1);

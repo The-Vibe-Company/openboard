@@ -80,7 +80,9 @@ function board(webhookFetch: (request: Request) => Promise<Response>) {
     url,
     claims,
     owner: createClient({ url, token: owner.token, fetch: app.fetch }),
-    runJobs: () => Promise.all(wakes.map((wake) => wake())),
+    runJobs: async () => {
+      for (const wake of wakes) await wake();
+    },
     close: async () => {
       await listener.stop(true);
       await app.close();
