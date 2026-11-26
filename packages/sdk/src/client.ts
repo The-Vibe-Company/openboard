@@ -2,7 +2,6 @@ import {
   type Attachment,
   BoardError,
   ERRORS,
-  type ErrorBody,
   type InputOf,
   isErrorCode,
   type NextStep,
@@ -132,35 +131,60 @@ function isNextStep(value: unknown): value is NextStep {
   }
 }
 
+// The contract constrains server-side statuses. An SDK error records the actual HTTP response.
+export class ResponseError extends BoardError {
+  override readonly status: number;
+
+  constructor(status: number, ...args: ConstructorParameters<typeof BoardError>) {
+    super(...args);
+    this.status = status;
+  }
+}
+
+function errorFields(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
 /** The board's answer, or its error envelope thrown as a `BoardError`. */
 export async function answerOf(response: Response, responseType?: Operation["responseType"]): Promise<unknown> {
   if (response.ok && responseType !== undefined) {
     if (responseType === "application/octet-stream") return response;
     const mediaType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
     if (mediaType !== responseType)
-      throw new BoardError("remote_error", `the board did not answer with ${responseType}`);
+      throw new ResponseError(response.status, "remote_error", `the board did not answer with ${responseType}`);
     if (responseType === "application/gzip") {
-      if (!response.body) throw new BoardError("remote_error", "the board did not send an archive");
+      if (!response.body) throw new ResponseError(response.status, "remote_error", "the board did not send an archive");
       return response.body;
     }
     return response.text();
   }
-  const text = await response.text();
+  const text = await response.text().catch((error: unknown) => {
+    if (response.ok) throw error;
+    throw new ResponseError(
+      response.status,
+      "remote_error",
+      `could not read the board's HTTP ${response.status} response`,
+    );
+  });
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;
-    throw new BoardError("remote_error", `the board answered ${response.status} with something that is not JSON`);
+    throw new ResponseError(
+      response.status,
+      "remote_error",
+      `the board answered ${response.status} with something that is not JSON`,
+    );
   }
   if (response.ok) return parsed;
-  const body = (parsed as { error?: Partial<ErrorBody> }).error ?? {};
+  const body = errorFields(errorFields(parsed).error);
   const code = typeof body.code === "string" && isErrorCode(body.code) ? body.code : "remote_error";
   const message = typeof body.message === "string" ? body.message : `the board answered ${response.status}`;
   const [first, second] = Array.isArray(body.next) ? body.next.slice(0, 2).filter(isNextStep) : [];
-  throw new BoardError(code, message, {
-    ...(body.hint === undefined ? {} : { hint: body.hint }),
-    ...(body.reason !== undefined && ERRORS[code].reasons.includes(body.reason) ? { reason: body.reason } : {}),
+  throw new ResponseError(response.status, code, message, {
+    ...(typeof body.hint === "string" ? { hint: body.hint } : {}),
+    ...(typeof body.reason === "string" && ERRORS[code].reasons.includes(body.reason) ? { reason: body.reason } : {}),
     ...(first === undefined ? {} : { next: second === undefined ? [first] : [first, second] }),
   });
 }
