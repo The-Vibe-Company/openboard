@@ -19,6 +19,35 @@ const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
     example: "ob download att_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa out.png",
     errors: ["invalid_request"],
   },
+  "org invite": {
+    summary: "Create a one-time invitation link for the current organization.",
+    operations: ["createInvitation"],
+    example: "ob org invite --email pat@example.com --role admin",
+    options: {
+      email: "Bind the invitation to this email address. Without an address, create a shareable link.",
+      role: "Organization role to grant, member (default) or admin.",
+      "no-send": "Create the link without sending email.",
+      json: "Print the invitation, its one-time URL and any email delivery result as JSON.",
+    },
+  },
+  "org invitations": {
+    summary: "List pending invitations for the current organization.",
+    operations: ["listInvitations"],
+    example: "ob org invitations --json",
+    options: { json: "Print pending invitations as JSON." },
+  },
+  "org invite revoke": {
+    summary: "Revoke a pending invitation by its ID.",
+    operations: ["revokeInvitation"],
+    example: "ob org invite revoke inv_aaaaaaaaaaaaaaaa",
+    options: { json: "Print the revocation result as JSON." },
+  },
+  members: {
+    summary: "List members of the current organization.",
+    operations: ["listMembers"],
+    example: "ob members",
+    options: { json: "Print members as JSON." },
+  },
   "org export": {
     summary: "Request a hosted organization export as its owner.",
     operations: ["requestOrgExport"],

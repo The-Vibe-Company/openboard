@@ -25,7 +25,7 @@ const GROUPS = [
   ],
   ["Tasks", ["tasks"]],
   ["Automation & schemas", ["schedule", "schedules", "webhooks", "inbound", "schemas"]],
-  ["Admin & diagnostics", ["org", "audit", "doctor", "completion"]],
+  ["Admin & diagnostics", ["org", "members", "audit", "doctor", "completion"]],
 ] as const;
 
 export const utilityCommands = [

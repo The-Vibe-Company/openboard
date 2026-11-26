@@ -3,13 +3,9 @@ import { link, mkdtemp, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { BoardError } from "@openboard/contract";
-import { type Command, type CommandContext, Misuse } from "../index.ts";
+import { type Command, Misuse } from "../index.ts";
 
-function organization(ctx: CommandContext): string {
-  const org = /^\/api\/([^/]+)\/[^/]+\/?$/.exec(new URL(ctx.boardUrl).pathname)?.[1];
-  if (!org) throw new Misuse("BOARD_URL must name your organization and board");
-  return org;
-}
+import { organization } from "./organization.ts";
 
 export const exportOrgCommand: Command = {
   async run(ctx) {

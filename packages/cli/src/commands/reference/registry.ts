@@ -22,6 +22,12 @@ export const handwrittenCommands: readonly (RegisteredCommand | StandaloneComman
     import("../connect.ts").then((m) => m.connectCommand),
   ),
   standalone("ob login <origin> [--can <scope>]", () => import("../login.ts").then((m) => m.loginCommand)),
+  board("ob org invite [--email <email>] [--role member|admin] [--no-send] [--json]", () =>
+    import("../org/invitations.ts").then((m) => m.inviteCommand),
+  ),
+  board("ob org invitations [--json]", () => import("../org/invitations.ts").then((m) => m.invitationsCommand)),
+  board("ob org invite revoke <id> [--json]", () => import("../org/invitations.ts").then((m) => m.revokeInviteCommand)),
+  board("ob members [--json]", () => import("../org/invitations.ts").then((m) => m.membersCommand)),
   board("ob org export", () => import("../org/export.ts").then((m) => m.exportOrgCommand)),
   board("ob org export download <id> --out <file>", () =>
     import("../org/export.ts").then((m) => m.downloadOrgExportCommand),
