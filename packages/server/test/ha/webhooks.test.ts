@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { createWebhook, listWebhookDeliveries, OutputOf, postMessage, readEvents } from "@openboard/contract";
-import type { Jobs, Store } from "@openboard/ports";
+import { type Jobs, type Store, WEBHOOK_DELIVERY_JOB } from "@openboard/ports";
 import { type App, createApp, type Deps } from "../../src/index.ts";
 import { signIn } from "../isolation/seed.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL } from "../support/app.ts";
@@ -40,8 +40,8 @@ function instance(
       blobs: db.blobs,
       jobs: {
         ...db.jobs,
-        watch: (_kinds, _schedule, run) => {
-          wake = run;
+        watch: (kinds, _schedule, run) => {
+          if (kinds.includes(WEBHOOK_DELIVERY_JOB)) wake = run;
           return () => {};
         },
       },
@@ -206,11 +206,26 @@ if (postgresTestUrl() && !webhookStressEnabled()) {
 
   test("an accepted delivery is retried with the same webhook-id after a crashed worker's 30 s lease", async () => {
     const f = await fixture();
-    const one = f.instance(f.store, "crashed", async (request) => {
+    let lostWorker = false;
+    const workerStore: Store = {
+      ...f.store,
+      board(scope) {
+        const board = f.store.board(scope);
+        const write: typeof board.write = async (...args) => {
+          if (lostWorker) throw new Error("worker lost before completing delivery");
+          return board.write(...args);
+        };
+        return new Proxy(board, {
+          get(target, key, receiver) {
+            return key === "write" ? write : Reflect.get(target, key, receiver);
+          },
+        });
+      },
+    };
+    const one = f.instance(workerStore, "crashed", async (request) => {
       const response = await f.receiver.fetch(request);
-      // The receiver answered. Losing the worker's store now prevents its completion write.
-      void one.app.close();
-      await f.store.close();
+      // The receiver answered, but the worker never records its result.
+      lostWorker = true;
       return response;
     });
     const two = f.instance(f.peer, "survivor", f.receiver.fetch);
@@ -218,7 +233,6 @@ if (postgresTestUrl() && !webhookStressEnabled()) {
       const hook = await f.subscribe(one.app);
       await f.post(one.app);
       await one.run();
-      await one.app.close();
       const { posts, applied } = f.receiver;
       expect(posts).toHaveLength(1);
       const [first] = posts;

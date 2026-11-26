@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { Jobs } from "@openboard/ports";
+import { type Jobs, WEBHOOK_DELIVERY_JOB } from "@openboard/ports";
 import { call, makeApp, NOW } from "../support/app.ts";
 
 test("signs the same delivered bytes with a fresh Stripe timestamp after lease recovery", async () => {
@@ -10,8 +10,8 @@ test("signs the same delivered bytes with a fresh Stripe timestamp after lease r
     now: () => now,
     secretKey: new Uint8Array(32).fill(12),
     schedule: () => () => {},
-    watchJobs: (_kinds, _schedule, wake) => {
-      wakes.push(wake);
+    watchJobs: (kinds, _schedule, wake) => {
+      if (kinds.includes(WEBHOOK_DELIVERY_JOB)) wakes.push(wake);
       return () => {};
     },
     webhookFetch: async (request) => {

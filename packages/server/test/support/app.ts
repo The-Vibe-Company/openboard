@@ -1,4 +1,5 @@
 import type { Jobs } from "@openboard/ports";
+import { DRAIN_TIMEOUT_MS } from "../../src/app.ts";
 import { type Deps, type Logger, mintLocalOwnerToken, type ServerConfig } from "../../src/index.ts";
 import { createCluster } from "./cluster.ts";
 import { openStore, type TestStore } from "./drivers.ts";
@@ -12,9 +13,28 @@ export const NOW = 1_700_000_000_000;
 /** The local owner token every test app accepts, from fixed bytes so no token-shaped string is written here. */
 export const OWNER = mintLocalOwnerToken(new Uint8Array(42).fill(7));
 
-/** Tests that do not exercise timers fail if they accidentally arm one. */
-export function unexpectedTimer(): never {
+/** Ignore the shutdown deadline and fail if a test accidentally arms a request timer. */
+export function unexpectedTimer(delay: number): () => void {
+  if (delay === DRAIN_TIMEOUT_MS) return () => {};
   throw new Error("unexpected timer");
+}
+
+export function failingBoardLookup(now: () => number): TestStore {
+  const store = openStore(now);
+  return {
+    ...store,
+    platform: () =>
+      new Proxy(store.platform(), {
+        get(target, key, receiver) {
+          if (key === "findBoard") {
+            return async () => {
+              throw new Error("board lookup failed");
+            };
+          }
+          return Reflect.get(target, key, receiver);
+        },
+      }),
+  };
 }
 
 type AppOptions = Pick<

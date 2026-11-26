@@ -57,7 +57,9 @@ function setup() {
     app,
     board: createClient({ url, token: owner.token, fetch: app.fetch }),
     deliveries,
-    drain: () => Promise.all(wakes.map((wake) => wake())),
+    drain: async () => {
+      for (const wake of wakes) await wake();
+    },
     receive: (request: Parameters<typeof receive>[0]) => receive(request),
     install(handler: typeof receive) {
       receive = handler;

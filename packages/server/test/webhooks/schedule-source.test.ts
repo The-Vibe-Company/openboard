@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import type { createSchedule, OutputOf, postMessage } from "@openboard/contract";
+import type { createSchedule, listSchedules, OutputOf, postMessage } from "@openboard/contract";
 import { isoTime } from "@openboard/core";
-import type { Jobs } from "@openboard/ports";
+import { type Jobs, WEBHOOK_DELIVERY_JOB, WEBHOOK_RESEND_JOB } from "@openboard/ports";
 import { call, makeApp, NOW } from "../support/app.ts";
 import { openStore } from "../support/drivers.ts";
 
@@ -9,34 +9,45 @@ const channel = "cron/nightly-deps";
 const first = NOW + 60_000;
 const day = 86_400_000;
 
-function fixture(failFirst = false) {
+function fixture(failFirst = false, beforeDelivery?: () => Promise<void>) {
   let time = NOW;
   const now = () => time;
   const store = openStore(now);
-  const wakes: Array<Parameters<Jobs["watch"]>[2]> = [];
+  const boardWakes: Array<Parameters<Jobs["watch"]>[2]> = [];
+  const webhookWakes: Array<Parameters<Jobs["watch"]>[2]> = [];
   const deliveries: { id: string | null; body: unknown }[] = [];
   const app = makeApp({
     store,
     now,
     secretKey: new Uint8Array(32).fill(12),
     schedule: () => () => {},
-    watchJobs: (_kinds, _schedule, wake) => {
+    watchJobs: (kinds, _schedule, wake) => {
+      const wakes = kinds.includes(WEBHOOK_DELIVERY_JOB) ? webhookWakes : boardWakes;
+      if (wakes === webhookWakes) expect(kinds).toEqual([WEBHOOK_DELIVERY_JOB, WEBHOOK_RESEND_JOB]);
       wakes.push(wake);
-      return () => {};
+      return () => {
+        wakes.splice(wakes.indexOf(wake), 1);
+      };
     },
     webhookFetch: async (request) => {
       deliveries.push({ id: request.headers.get("webhook-id"), body: await request.json() });
+      await beforeDelivery?.();
       return new Response(null, { status: failFirst && deliveries.length === 1 ? 503 : 204 });
     },
   });
+  const runWebhooks = () => Promise.all(webhookWakes.map((wake) => wake()));
+  const runBoard = (at: number) => {
+    time = at;
+    return Promise.all(boardWakes.map((wake) => wake()));
+  };
   return {
     app,
     deliveries,
+    runWebhooks,
+    runBoard,
     async advance(at: number) {
-      time = at;
-      // Poll both independent runners against the same database and clock on Postgres.
-      expect(wakes).toHaveLength(store.sibling ? 2 : 1);
-      await Promise.all(wakes.map((wake) => wake()));
+      await runBoard(at);
+      await runWebhooks();
       expect(app.logged).toEqual([]);
     },
   };
@@ -123,6 +134,35 @@ test("retrying a scheduled webhook keeps the delivery ID and slot", async () => 
     await advance(first + 10_000);
     expect(deliveries).toHaveLength(2);
   } finally {
+    await app.close();
+  }
+});
+
+test("a stalled webhook does not block a due schedule", async () => {
+  const started = Promise.withResolvers<void>();
+  const resume = Promise.withResolvers<void>();
+  const { app, runBoard, runWebhooks } = fixture(false, () => {
+    started.resolve();
+    return resume.promise;
+  });
+  try {
+    await createScheduleSource(app);
+    expect((await call(app, "POST", "/messages", { channel, text: "start delivery" })).status).toBe(201);
+    const delivery = runWebhooks();
+    await started.promise;
+    await runBoard(first);
+    const response = await call(app, "GET", "/schedules");
+    expect(response.status).toBe(200);
+    expect((await response.json()) as OutputOf<typeof listSchedules>).toMatchObject({ schedules: [{ sent: 1 }] });
+    const closing = app.close();
+    const wakesAfterClose = runWebhooks();
+    resume.resolve();
+    expect(await wakesAfterClose).toEqual([]);
+    await delivery;
+    await closing;
+    expect(app.logged).toEqual([]);
+  } finally {
+    resume.resolve();
     await app.close();
   }
 });

@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { DRAIN_TIMEOUT_MS } from "../src/app.ts";
 import { BOARD_URL, call, makeApp, OWNER } from "./support/app.ts";
 
 test("event waits, watcher pulls and task claims share an instance ceiling that recovers on abort and timeout", async () => {
@@ -6,6 +7,7 @@ test("event waits, watcher pulls and task claims share an instance ceiling that 
   let full = Promise.withResolvers<void>();
   const app = makeApp({
     schedule(delay, expire) {
+      if (delay === DRAIN_TIMEOUT_MS) return () => {};
       if (delay !== 5000) throw new Error(`unexpected timer: ${delay}`);
       timers.add(expire);
       if (timers.size === 500) full.resolve();

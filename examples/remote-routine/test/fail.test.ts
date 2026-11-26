@@ -64,7 +64,9 @@ function setup(now: () => number, webhookFetch: (request: Request) => Promise<Re
     credentials,
     fetch: app.fetch,
     board: createClient({ url, token: owner.token, fetch: app.fetch }),
-    runJobs: () => Promise.all(wakes.map((wake) => wake())),
+    runJobs: async () => {
+      for (const wake of wakes) await wake();
+    },
     close: async () => {
       await listener.stop(true);
       await app.close();

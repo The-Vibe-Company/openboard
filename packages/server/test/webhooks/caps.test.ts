@@ -24,8 +24,8 @@ function fixture() {
     signup: "open",
     secretKey: new Uint8Array(32).fill(12),
     schedule: () => () => {},
-    watchJobs: (_kinds, _schedule, wake) => {
-      wakes.push(wake);
+    watchJobs: (kinds, _schedule, wake) => {
+      if (kinds.includes(WEBHOOK_DELIVERY_JOB)) wakes.push(wake);
       return () => {};
     },
     webhookFetch: async (request) => {

@@ -50,7 +50,8 @@ async function bootApp(publicUrl: string, backend: Backend) {
         ? { signup: "open", signIn: { github: { clientId: "example-client", clientSecret: "example-client-secret" } } }
         : { localOwnerTokenHash: backend.owner.hash }),
     },
-    { store, blobs: store.blobs, jobs: store.jobs },
+    // The fixture still needs the store for offline replay after draining the app.
+    { store: { ...store, close: async () => {} }, blobs: store.blobs, jobs: store.jobs },
     {
       now,
       ...(hosted && { fetch: fakeGitHub }),
@@ -63,7 +64,7 @@ async function bootApp(publicUrl: string, backend: Backend) {
       randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
     },
   );
-  return { app, platform: store.platform(), tenantRows };
+  return { app, store, platform: store.platform(), tenantRows };
 }
 
 const foldTables = new Set([
@@ -145,7 +146,15 @@ export async function boot(driver: "sqlite" | "postgres", instances: number) {
     try {
       await proxy?.stop(true);
       await Promise.all(servers.map((server) => server.stop(true)));
-      await Promise.all(apps.map((app) => app.app.close()));
+      await Promise.all(
+        apps.map(async ({ app, store }) => {
+          try {
+            await app.close();
+          } finally {
+            await store.close();
+          }
+        }),
+      );
     } finally {
       try {
         await database?.drop();

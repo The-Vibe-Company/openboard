@@ -43,8 +43,8 @@ function fixture(receive: (message: string, attempt: number) => number | Promise
       timeouts.push(delay);
       return () => {};
     },
-    watchJobs: (_kinds, _schedule, wake) => {
-      wakes.push(wake);
+    watchJobs: (kinds, _schedule, wake) => {
+      if (kinds.includes(WEBHOOK_DELIVERY_JOB)) wakes.push(wake);
       return () => {};
     },
     webhookFetch: async (request) => {

@@ -1,15 +1,19 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { jsonLogger } from "../src/index.ts";
-import { BOARD_URL, call, makeApp, NOW } from "./support/app.ts";
+import { BOARD_URL, call, failingBoardLookup, makeApp, NOW } from "./support/app.ts";
 
 let app: ReturnType<typeof makeApp>;
 afterEach(() => app.close());
 
 /** An app whose logger keeps every line it prints, parsed. */
-function loggedApp() {
+function loggedApp(failLookup = false) {
   const lines: Record<string, unknown>[] = [];
   const now = () => NOW;
-  app = makeApp({ now, log: jsonLogger({ now, write: (line) => lines.push(JSON.parse(line)) }) });
+  app = makeApp({
+    now,
+    ...(failLookup && { store: failingBoardLookup(now) }),
+    log: jsonLogger({ now, write: (line) => lines.push(JSON.parse(line)) }),
+  });
   return lines;
 }
 
@@ -47,8 +51,7 @@ describe("x-request-id", () => {
   });
 
   test("is on an error answer and on the error line logged for it", async () => {
-    const lines = loggedApp();
-    await app.close();
+    const lines = loggedApp(true);
     const response = await app.fetch(new Request(`${BOARD_URL}/channels`, { headers: { "x-request-id": "trace-me" } }));
     expect(response.status).toBe(500);
     expect(response.headers.get("x-request-id")).toBe("trace-me");

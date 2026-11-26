@@ -81,19 +81,30 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
   };
   const compact = compactOnActivity(platform, deps, ports.bucket !== undefined, shutdown.signal);
   const stopBackground = startBackground(ports, pipeline, handlers, compact.run);
-  let draining: Promise<void> | undefined;
   let closing: Promise<void> | undefined;
-  async function finishDrain() {
+  async function finishShutdown() {
+    const deadline = new AbortController();
     const timeout = Promise.withResolvers<void>();
-    const cancel = deps.schedule(DRAIN_TIMEOUT_MS, timeout.resolve);
+    const cancel = deps.schedule(DRAIN_TIMEOUT_MS, () => {
+      deadline.abort();
+      timeout.resolve();
+    });
     try {
-      await Promise.race([Promise.allSettled([...active, stopBackground(true)]), timeout.promise]);
+      const background = stopBackground(deadline.signal);
+      await Promise.race([Promise.allSettled([...active, background]), timeout.promise]);
     } finally {
       cancel();
+      await ports.store.close();
     }
   }
-  async function stop() {
-    await Promise.all([stopBackground(), compact.close()]);
+  function close() {
+    if (!closing) {
+      const done = Promise.withResolvers<void>();
+      closing = done.promise;
+      shutdown.abort();
+      void finishShutdown().then(done.resolve, done.reject);
+    }
+    return closing;
   }
   return {
     fetch: (request: Request, connection?: { readonly ip?: string | undefined }): Promise<Response> =>
@@ -103,18 +114,8 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
           return response;
         }),
       ),
-    drain() {
-      if (!draining) {
-        draining = finishDrain();
-        shutdown.abort();
-      }
-      return draining;
-    },
-    /** Releases the ports it was given. */
-    close() {
-      closing ??= (draining ?? stop()).finally(() => ports.store.close());
-      return closing;
-    },
+    drain: close,
+    close,
   };
 }
 
@@ -136,14 +137,24 @@ function startBackground(ports: Ports, pipeline: Pipeline, handlers: JobHandlers
   const { bucket, config, deps, platform, shutdown } = pipeline;
   if (config.mode === "hosted" && !bucket) deps.log.info("log shipping is off", {});
   const delivery = webhookJob(config, deps);
-  // Older workers only claim event deliveries and cannot send a re-queued ping.
-  const boardJobs = { ...handlers, [WEBHOOK_DELIVERY_JOB]: delivery, [WEBHOOK_RESEND_JOB]: delivery };
   const sweep = sweepOnActivity(platform, deps);
   const maintain = async () => {
     await sweep();
     void pipeline.track(compact());
   };
+  const boardJobs = Object.fromEntries(
+    Object.entries(handlers).filter(([kind]) => kind !== WEBHOOK_DELIVERY_JOB && kind !== WEBHOOK_RESEND_JOB),
+  );
   const stopJobs = startBoardJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, boardJobs, bucket, maintain);
+  const stopWebhooks = startJobs(
+    ports.jobs,
+    pipeline.tenants,
+    deps,
+    config.instanceId,
+    { [WEBHOOK_DELIVERY_JOB]: delivery, [WEBHOOK_RESEND_JOB]: delivery },
+    undefined,
+    maintain,
+  );
   const stopExports =
     bucket && startExportJobs(ports.jobs, pipeline.tenants, deps, config.instanceId, bucket, maintain);
   const stopDump = startDumpJob(ports.store.dumpIfMissing, bucket, deps);
@@ -162,8 +173,10 @@ function startBackground(ports: Ports, pipeline: Pipeline, handlers: JobHandlers
   const stopBackfill = Object.hasOwn(handlers, BACKFILL_BOARD_ORG_JOB)
     ? startBoardOrgBackfill(platform, deps)
     : undefined;
-  return async (release = false) => {
-    await Promise.all([stopJobs, stopExports, stopShipping, stopBackfill, stopDump].map((stop) => stop?.(release)));
+  return async (deadline: AbortSignal) => {
+    await Promise.allSettled(
+      [stopJobs, stopWebhooks, stopExports, stopShipping, stopBackfill, stopDump].map((stop) => stop?.(deadline)),
+    );
   };
 }
 
