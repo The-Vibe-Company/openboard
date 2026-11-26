@@ -8,9 +8,8 @@ import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Deps, Logger, ServerConfig } from "../deps.ts";
 import { runSigned } from "../inbound/receive.ts";
 import { logRequest, type RequestFields, withFields } from "../log.ts";
-import type { Metrics } from "../metrics.ts";
-import { authorizeMetrics } from "../operations/metrics/index.ts";
 import { mcpMethodNotAllowed, mcpPost } from "../mcp/facade.ts";
+import type { Metrics } from "../metrics.ts";
 import {
   type AccountOperation,
   type DeviceOperation,
@@ -18,6 +17,7 @@ import {
   type OrgOperation,
   type PublicOperation,
 } from "../operations/index.ts";
+import { authorizeMetrics } from "../operations/metrics/index.ts";
 import { authenticateBoard, runBoard } from "./board.ts";
 import { errorResponse } from "./errors.ts";
 import { healthProbe } from "./health.ts";
@@ -25,7 +25,7 @@ import { readBody, readQuery, validate } from "./input.ts";
 import { limitWrite, type RequestLimits } from "./limits.ts";
 import { REQUEST_ID, requestIdOf } from "./request-id.ts";
 import { operationResponse } from "./respond.ts";
-import { matchRoute, type Route } from "./router.ts";
+import { matchRoute, type RouteTable } from "./router.ts";
 import { type BoardPath, boardPath, mcpPath, notFound, type Tenants } from "./scope.ts";
 
 type Contracted = (typeof operations)[number];
@@ -55,9 +55,9 @@ export interface Pipeline {
   readonly deps: Deps;
   readonly rateLimits: RateLimits;
   /** Board and public operations, relative to `BOARD_URL`. */
-  readonly routes: readonly Route<Contracted>[];
+  readonly routes: RouteTable<Contracted>;
   /** Platform and organization operations, relative to `/api/x`. */
-  readonly platformRoutes: readonly Route<Contracted>[];
+  readonly platformRoutes: RouteTable<Contracted>;
   readonly tenants: Tenants;
   readonly platform: PlatformView;
   readonly chain: readonly CredentialVerifier[];
@@ -330,10 +330,14 @@ function loggedPath(path: string): string {
 }
 
 /** Every request goes through here, once: tenant from the path, auth, scope, validation, handler (4.4). */
-export async function handle(request: Request, pipeline: Pipeline, ip?: string): Promise<Response> {
+export async function handle(
+  request: Request,
+  pipeline: Pipeline,
+  ip?: string,
+  url = new URL(request.url),
+): Promise<Response> {
   const { now } = pipeline.deps;
   const started = now();
-  const url = new URL(request.url);
   const requestId = requestIdOf(request, url.pathname, pipeline);
   const log = withFields(pipeline.deps.log, { request_id: requestId });
   const logged: RequestLog = {

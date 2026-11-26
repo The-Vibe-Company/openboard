@@ -107,9 +107,12 @@ export function createApp(config: ServerConfig, ports: Ports, deps: Deps, handle
     return closing;
   }
   return {
-    fetch: (request: Request, connection?: { readonly ip?: string | undefined }): Promise<Response> =>
+    fetch: (
+      request: Request,
+      connection?: { readonly ip?: string | undefined; readonly url?: URL },
+    ): Promise<Response> =>
       track(
-        handle(request, pipeline, connection?.ip).then((response) => {
+        handle(request, pipeline, connection?.ip, connection?.url).then((response) => {
           if (response.ok && ["POST", "PUT", "PATCH", "DELETE"].includes(request.method)) void track(compact.run());
           return response;
         }),

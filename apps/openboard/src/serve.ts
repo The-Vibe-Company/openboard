@@ -36,7 +36,8 @@ export async function serve(config: Config): Promise<void> {
       port: config.port,
       maxRequestBodySize: 8 * 1024 * 1024,
       fetch(request, server) {
-        const { pathname } = new URL(request.url);
+        const url = new URL(request.url);
+        const { pathname } = url;
         if (
           (request.method === "GET" && /\/events\/*$/.test(pathname)) ||
           (request.method === "POST" && /\/tasks\/claim\/*$/.test(pathname))
@@ -48,6 +49,7 @@ export async function serve(config: Config): Promise<void> {
         if (config.resend && request.method === "POST" && /^\/api\/x\/orgs\/[^/]+\/invitations\/*$/.test(pathname))
           server.timeout(request, 20);
         return app.fetch(request, {
+          url,
           ip: clientIp(request.headers, server.requestIP(request)?.address, config.trustedProxies),
         });
       },
