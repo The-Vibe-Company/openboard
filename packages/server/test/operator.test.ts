@@ -272,18 +272,16 @@ test("restoration cannot race backup removal, even after the purge lease is rele
   }
 });
 
-test("restoration preserves the one-active-organization membership rule", async () => {
+test("restoration preserves memberships across organizations", async () => {
   const { app, platform, send, store } = await fixture();
   try {
     await setOperatorDeletion(platform, deletion, now);
     expect((await send("", { slug: "another", name: "Another" })).status).toBe(201);
-    const before = await showOperatorOrg(platform, "acme");
-    await expect(setOperatorDeletion(platform, restoration, now)).rejects.toMatchObject({
-      code: "already_in_org",
-    });
-    expect(await showOperatorOrg(platform, "acme")).toEqual(before);
-    expect((await send("/acme/audit")).status).toBe(404);
-    expect((await store.jobs.claim([PURGE_ORG_JOB], { instanceId: "runner", claimedAt: due })).job).not.toBeNull();
+    await setOperatorDeletion(platform, restoration, now);
+    expect(await showOperatorOrg(platform, "acme")).toMatchObject({ deletedAt: null });
+    expect((await send("/acme/audit")).status).toBe(200);
+    expect((await send("/another/audit")).status).toBe(200);
+    expect((await store.jobs.claim([PURGE_ORG_JOB], { instanceId: "runner", claimedAt: due })).job).toBeNull();
   } finally {
     await app.close();
   }

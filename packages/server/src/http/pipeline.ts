@@ -366,6 +366,7 @@ export async function handle(
     logged.op === "createInvitation" ||
     logged.op === "previewInvitation" ||
     logged.op === "acceptInvitation" ||
+    logged.op === "listInvitations" ||
     logged.op === "listMembers"
   ) {
     response.headers.set("cache-control", "no-store");

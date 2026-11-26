@@ -45,7 +45,14 @@ import {
 } from "./inbound/index.ts";
 import { listInboundReceived } from "./inbound/received.ts";
 import { getMetrics } from "./metrics/index.ts";
-import { acceptInvitation, createInvitation, listMembers, previewInvitation, revokeInvitation } from "./invitations.ts";
+import {
+  acceptInvitation,
+  createInvitation,
+  listInvitations,
+  listMembers,
+  previewInvitation,
+  revokeInvitation,
+} from "./invitations.ts";
 import { changeMemberRole, removeMember } from "./memberships.ts";
 import {
   deleteMessage,
@@ -128,6 +135,7 @@ export const operations = [
   createGrant,
   createGrants,
   createInvitation,
+  listInvitations,
   createOrg,
   createSchedule,
   createSchema,
@@ -252,6 +260,7 @@ export {
   createGrants,
   createInbound,
   createInvitation,
+  listInvitations,
   createOrg,
   createSchedule,
   createSchema,

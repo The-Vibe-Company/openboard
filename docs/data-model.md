@@ -275,7 +275,7 @@ CREATE TABLE orgs (
   quotas      TEXT,                             -- JSON overrides of default quotas
   attachment_bytes BIGINT                       -- unique attachment bytes, NULL means zero
 );
-CREATE TABLE memberships (                      -- many-to-many; v1 UX enforces one org per person
+CREATE TABLE memberships (                      -- many-to-many
   org_id      BIGINT  NOT NULL,
   user_id     BIGINT  NOT NULL,
   role        TEXT    NOT NULL,                 -- owner | admin | member

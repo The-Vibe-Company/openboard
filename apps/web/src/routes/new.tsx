@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
 import { AuthPage } from "../components/AuthPage.tsx";
@@ -11,8 +11,7 @@ export const Route = createFileRoute("/new")({ component: NewOrganization });
 
 function NewOrganization() {
   const session = useQuery(sessionQuery);
-  if (session.data?.person)
-    return <OrganizationAccount key={session.data.person.principal} principal={session.data.person.principal} />;
+  if (session.data?.person) return <OrganizationForm key={session.data.person.principal} />;
   if (session.data) return <Navigate to="/signin" replace />;
   return <AccountStatus failed={session.isError} retry={() => void session.refetch()} />;
 }
@@ -34,32 +33,6 @@ function AccountStatus({ failed, retry }: { failed: boolean; retry: () => void }
   );
 }
 
-function OrganizationAccount({ principal }: { principal: string }) {
-  const account = useQuery({
-    queryKey: ["account", principal],
-    queryFn: ({ signal }) => browserClient(window.location.origin).getAccount({}, { signal }),
-  });
-  const slug = account.data?.memberships[0]?.org.slug;
-  const expired = account.error instanceof BoardError && account.error.code === "unauthorized";
-
-  useEffect(() => {
-    if (expired) window.location.replace("/signin");
-  }, [expired]);
-
-  if (slug && !expired) return <Navigate to="/$org/$board" params={{ org: slug, board: "main" }} replace />;
-
-  if (expired || slug || !account.data) {
-    return <AccountStatus failed={account.isError} retry={() => void account.refetch()} />;
-  }
-  return (
-    <OrganizationForm
-      refreshAccount={async () => {
-        await account.refetch();
-      }}
-    />
-  );
-}
-
 function boardHref(org: string, board: string) {
   return `/${encodeURIComponent(org)}/${encodeURIComponent(board)}`;
 }
@@ -75,7 +48,7 @@ function proposeSlug(name: string) {
 
 const slugFormat = "Use 2–39 lowercase letters, numbers, or hyphens. Start with a letter or number.";
 
-function OrganizationForm({ refreshAccount }: { refreshAccount: () => Promise<void> }) {
+function OrganizationForm() {
   const { data: session } = useQuery(sessionQuery);
   const [name, setName] = useState("");
   const [editedSlug, setEditedSlug] = useState<string | null>(null);
@@ -85,10 +58,9 @@ function OrganizationForm({ refreshAccount }: { refreshAccount: () => Promise<vo
     mutationFn: (input: { name: string; slug: string }) =>
       browserClient(window.location.origin, { csrf: session?.csrf ?? undefined }).createOrg(input),
     onSuccess: ({ org, board }) => window.location.assign(boardHref(org.slug, board.slug)),
-    onError: async (error) => {
+    onError: (error) => {
       if (!(error instanceof BoardError)) return;
       if (error.code === "unauthorized") window.location.replace("/signin");
-      if (error.code === "already_in_org") await refreshAccount();
     },
   });
   const code = create.error instanceof BoardError ? create.error.code : undefined;

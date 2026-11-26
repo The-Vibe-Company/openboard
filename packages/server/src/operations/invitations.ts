@@ -2,6 +2,7 @@ import {
   type acceptInvitation,
   BoardError,
   type createInvitation,
+  type listInvitations,
   type listMembers,
   type previewInvitation,
   type revokeInvitation,
@@ -80,6 +81,10 @@ export const revokeInvitationHandler: Handler<typeof revokeInvitation> = async (
   if (outcome === "used") throw new BoardError("invitation_used", "this invitation was already accepted or revoked");
   return { id, revokedAt: isoTime(at) };
 };
+
+export const listInvitationsHandler: Handler<typeof listInvitations> = async ({ org, now }) => ({
+  invitations: await org.listInvitations(now()),
+});
 
 export const listMembersHandler: Handler<typeof listMembers> = async ({ org }) => ({
   members: await org.listMembers(),

@@ -74,6 +74,7 @@ export {
   createGrant,
   createGrants,
   createInvitation,
+  listInvitations,
   createOrg,
   createSchema,
   createTask,

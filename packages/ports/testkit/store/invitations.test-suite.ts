@@ -5,7 +5,7 @@ import type { OpenStore } from "../index.ts";
 
 export function invitationsSuite(driver: string, open: OpenStore): void {
   issueAndJoin(driver, open);
-  refuseSecondOrganization(driver, open);
+  joinAnotherOrganization(driver, open);
   revokeLink(driver, open);
   refuseUsedOrExpired(driver, open);
 }
@@ -82,9 +82,8 @@ function issueAndJoin(driver: string, open: OpenStore): void {
   });
 }
 
-/** D34: v1 lets a person belong to one organization only. */
-function refuseSecondOrganization(driver: string, open: OpenStore): void {
-  test(`${driver}: a person who already belongs to an organization cannot accept an invitation`, async () => {
+function joinAnotherOrganization(driver: string, open: OpenStore): void {
+  test(`${driver}: an existing member leaves a link pending for someone from another organization`, async () => {
     const store = await open();
     try {
       const platform = store.platform();
@@ -106,17 +105,54 @@ function refuseSecondOrganization(driver: string, open: OpenStore): void {
       const beta = await owner("b", "beta");
       const membership = await platform.orgMembership("acme", acme.personId);
       if (!membership) throw new Error("expected the organization's owner");
-      const record = decideInvitation({ role: "member" }, { by: acme.by, id: `inv_${"a".repeat(16)}`, now: at });
-      const tokenHash = new Uint8Array(32).fill(9);
       const org = store.org({ orgId: membership.orgId } as OrgScope);
-      expect(await org.createInvitation({ ...record, personId: acme.personId, at, tokenHash })).toBe(true);
-      const refused = platform.acceptInvitation(tokenHash, beta.personId, at + 1);
-      await expect(refused).rejects.toMatchObject({ code: "already_in_org" });
-      expect(await org.listMembers()).toEqual([
-        { principal: acme.by, role: "owner", profile: { handle: "acme", name: "acme", avatar: null } },
+      const betaMembership = await platform.orgMembership("beta", beta.personId);
+      if (!betaMembership) throw new Error("expected beta's owner");
+      const betaOrg = store.org({ orgId: betaMembership.orgId } as OrgScope);
+      const link = async (letter: string, createdAt: number) => {
+        const record = decideInvitation(
+          { role: "member", email: "guest@example.com" },
+          { by: acme.by, id: `inv_${letter.repeat(16)}`, now: createdAt },
+        );
+        const tokenHash = new Uint8Array(32).fill(letter.charCodeAt(0));
+        expect(await org.createInvitation({ ...record, personId: acme.personId, at: createdAt, tokenHash })).toBe(true);
+        return { ...record, tokenHash };
+      };
+      const expired = await link("z", at);
+      const pending = await link("a", at + 1);
+      const revoked = await link("b", at + 1);
+      const newer = await link("c", at + 2);
+      const tied = await link("d", at + 2);
+      expect(await org.revokeInvitation(revoked.invitation.id, acme.personId, at + 3)).toBe("revoked");
+      expect(await org.listInvitations(expired.expiresAt)).toEqual([
+        tied.invitation,
+        newer.invitation,
+        pending.invitation,
       ]);
-      expect(await platform.orgMembership("acme", beta.personId)).toBeNull();
+      expect(await betaOrg.listInvitations(at + 3)).toEqual([]);
+
+      const record = decideInvitation({ role: "member" }, { by: acme.by, id: `inv_${"e".repeat(16)}`, now: at });
+      const tokenHash = new Uint8Array(32).fill(9);
+      expect(await org.createInvitation({ ...record, personId: acme.personId, at, tokenHash })).toBe(true);
+      await expect(platform.acceptInvitation(tokenHash, acme.personId, at + 1)).rejects.toMatchObject({
+        code: "already_in_org",
+        message: "you already belong to this organization",
+      });
       expect(await platform.invitationPreview(tokenHash)).toMatchObject({ used: false });
+      expect(await platform.acceptInvitation(tokenHash, beta.personId, at + 1)).toEqual({
+        org: { slug: "acme", name: "acme" },
+        role: "member",
+      });
+      expect(await platform.memberships(beta.personId)).toEqual([
+        { org: { slug: "acme", name: "acme" }, role: "member" },
+        { org: { slug: "beta", name: "beta" }, role: "owner" },
+      ]);
+      expect(await org.listInvitations(at + 3)).toEqual([
+        tied.invitation,
+        newer.invitation,
+        pending.invitation,
+        expired.invitation,
+      ]);
     } finally {
       await store.close();
     }

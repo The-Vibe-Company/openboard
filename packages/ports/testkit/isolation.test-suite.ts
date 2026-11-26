@@ -382,6 +382,7 @@ const orgCases: Cases<OrgView> = {
   },
   deleteOrg: async (a, b) => await expect(a.org.deleteOrg(b.personId, at)).rejects.toMatchObject({ code: "not_found" }),
   takeRate: (a, b) => isolatedRates(a.org, b.org),
+  listInvitations: (a) => a.org.listInvitations(at),
   listMembers: (a) => a.org.listMembers(),
   auditEvents: (a) => a.org.auditEvents(0, 500),
   changeMemberRole: async (a, b) =>
@@ -434,6 +435,7 @@ async function digestOf(b: StoreTenant): Promise<string> {
     await b.board.taskRoot(b.task),
     await b.board.listTasks({ states: ["ready"], limit: 500 }),
     await b.org.listMembers(),
+    await b.org.listInvitations(at),
     await b.org.auditEvents(0, 500),
     await b.org.exportAudit(0, 500),
     await b.org.listBoards(),

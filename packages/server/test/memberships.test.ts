@@ -12,6 +12,7 @@ test("an owner promotes a member, a member receives forbidden, and an admin can 
     const lin = await browserSession(app.fetch, "lin");
     const mei = await browserSession(app.fetch, "mei");
     expect((await post("/orgs", { slug: "acme", name: "Acme" }, ada.headers)).status).toBe(201);
+    expect((await post("/orgs", { slug: "beta", name: "Beta" }, mei.headers)).status).toBe(201);
     for (const person of [lin, mei]) {
       const link = await post("/orgs/acme/invitations", { role: "member" }, ada.headers);
       expect(link.status).toBe(201);
@@ -45,6 +46,29 @@ test("an owner promotes a member, a member receives forbidden, and an admin can 
     expect((await post(path, body, { ...ada.headers, "x-ob-csrf": "wrong" })).status).toBe(403);
     expect((await post(path, { role: "reader" }, ada.headers)).status).toBe(400);
     expect((await post(rolePath("u_missing"), body, ada.headers)).status).toBe(404);
+
+    const invitations = "/orgs/acme/invitations";
+    const list = (orgPath: string, headers?: Record<string, string>) =>
+      app.fetch(new Request(`${PUBLIC_URL}/api/x${orgPath}`, { headers }));
+    const pending = await post(invitations, { role: "member", email: "guest@example.com" }, lin.headers);
+    expect(pending.status).toBe(201);
+    const { invitation } = (await pending.json()) as OutputOf<typeof createInvitation>;
+    for (const admin of [ada, lin]) {
+      const response = await list(invitations, admin.headers);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ invitations: [invitation] });
+    }
+    const member = await list(invitations, mei.headers);
+    expect(member.status).toBe(403);
+    expect(await member.json()).toMatchObject({ error: { code: "forbidden" } });
+    const outside = await list("/orgs/beta/invitations", ada.headers);
+    expect(outside.status).toBe(404);
+    expect(outside.headers.get("cache-control")).toBe("no-store");
+    expect(await outside.json()).toMatchObject({ error: { code: "not_found" } });
+    const beta = await list("/orgs/beta/invitations", mei.headers);
+    expect(beta.status).toBe(200);
+    expect(await beta.json()).toEqual({ invitations: [] });
+    expect((await list(invitations)).status).toBe(401);
 
     const demoted = await post(path, { role: "member" }, lin.headers);
     expect(demoted.status).toBe(200);

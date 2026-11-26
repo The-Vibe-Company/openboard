@@ -41,10 +41,9 @@ slashes stripped), and nothing under the API may answer HTML or redirect
 (`src/client/node.ts`, `connect()` and `through()`). Paths win on cost and
 simplicity: one domain and one TLS certificate on Railway (wildcard custom
 domains on Railway: unverified), one cookie origin for a person's session,
-boards addressable without DNS. What subdomains would add, browser origin
-isolation between tenants, is reduced in v1 by one organization per person
-and by CSP ([auth.md](./auth.md#threat-model)); it stays possible later
-because `BOARD_URL` is opaque to clients.
+boards addressable without DNS. Organizations share a browser origin and
+use application-level access checks and CSP ([auth.md](./auth.md#threat-model)).
+Subdomains remain possible because `BOARD_URL` is opaque to clients.
 
 **Slugs.** Organization and board slugs match `[a-z0-9][a-z0-9-]{1,38}` and are
 immutable in v1: `BOARD_URL` lives in agents' environments, and the API may not
@@ -126,7 +125,7 @@ answers. OpenBoard adds:
 | 401 | `unauthorized` | (upstream code) also: a credential bound to another board or organization |
 | 403 | `forbidden` | (upstream code) also: claimed token on a configuration route; a profile other than the pinned one; cookie write without CSRF proof; role too low for an organization route |
 | 404 | `not_found` | (upstream code) also: an organization or board the caller cannot reach |
-| 409 | `profile_taken`, `already_in_org`, `slug_taken` | claim name in use; v1 one-org rule; slug in use |
+| 409 | `profile_taken`, `already_in_org`, `slug_taken` | claim name in use; existing membership in the inviting organization; slug in use |
 | 409 | `last_owner` | demoting or removing the last owner; message: “an organization keeps at least one owner”; hint: “promote another member to owner first” |
 | 410 | `secret_spent`, `invitation_used` | single-use secret claimed; invitation accepted, revoked, or expired |
 | 400 | `invalid_url`, `invalid_signing`, `invalid_rule`, `reserved_slug` | webhook URL refused; bad scheme; bad inbound rule; reserved slug |
@@ -159,7 +158,7 @@ instances. Further requests to `POST /api/x/orgs/:org/invitations` return
 create no link. Revoked invitations still count toward the limit.
 
 On `POST /api/x/orgs`, each validated creation attempt counts toward both
-limits, including attempts that return `409 already_in_org` or `409 slug_taken`.
+limits, including attempts that return `409 slug_taken`.
 All instances share the same limits of three attempts per person and ten per
 client IP per UTC day. Once either limit is reached, further attempts return
 `429 rate_limited` with `retry-after` in seconds until the next UTC day, before
@@ -815,10 +814,10 @@ Request timers use contract route templates and operation names. The endpoint se
 | GET | `/api/x/me` | person | person, identities, memberships (with role), personal tokens |
 | POST | `/api/x/me/identities/:provider/link`; POST `/api/x/me/identities/:provider/:subject/unlink` | person | explicit linking |
 | POST | `/api/x/me/sessions/revoke-all` | person | Revokes all the person's sessions, including the caller. Requires the session cookie, Origin and CSRF proof. Returns `200 { "ok": true }`. |
-| POST | `/api/x/orgs` | person | `{ name, slug }` → organization, owner membership, board `main`; 409 `already_in_org` in v1 if already a member |
+| POST | `/api/x/orgs` | person | `{ name, slug }` → organization, owner membership, board `main` |
 | GET | `/api/x/orgs/:org` | member | |
 | POST | `/api/x/orgs/:org` | admin | rename (display name only) |
-| POST | `/api/x/orgs/:org/delete` | owner | Returns `{ org, deletedAt, purgeAt }` with UTC timestamps 30 days apart and records `ob.org.deleted`. A non-owner member gets 403 `forbidden`. After deletion, board routes answer 404 `not_found` as for an unknown slug, before checking credentials. A signed-in person also receives 404 on organization routes, including repeat deletion. The slug remains reserved, and former memberships no longer count toward the one-organization limit. |
+| POST | `/api/x/orgs/:org/delete` | owner | Returns `{ org, deletedAt, purgeAt }` with UTC timestamps 30 days apart and records `ob.org.deleted`. A non-owner member gets 403 `forbidden`. After deletion, board routes answer 404 `not_found` as for an unknown slug, before checking credentials. A signed-in person also receives 404 on organization routes, including repeat deletion. The slug remains reserved. |
 | POST | `/api/x/orgs/:org/exports` | owner | Queue a hosted export. A narrowed personal bearer receives 403 `forbidden` on all export routes. Returns 202 `{ export: { id, status: "pending", expiresAt: null } }`. |
 | GET | `/api/x/orgs/:org/exports/:id` | owner | Returns `{ export: { id, status, expiresAt } }`. Status is `pending`, `ready`, or `failed`. A non-null `expiresAt` is an epoch millisecond timestamp. |
 | GET | `/api/x/orgs/:org/exports/:id/download` | owner | Stream a ready archive as `application/gzip` with `Cache-Control: no-store`. Pending, failed, expired, unknown, and foreign IDs return 404 `not_found`. |
@@ -826,9 +825,10 @@ Request timers use contract route templates and operation names. The endpoint se
 | POST | `/api/x/orgs/:org/members/:user/role` | admin (owner to grant `owner`) | `{ role }` → `{ principal, role }`; only an owner can demote another owner or themself; 409 `last_owner` if no other owner remains |
 | POST | `/api/x/orgs/:org/members/:user/remove` | admin, or the person themself | `{ principal }` on success (200); only an owner can remove an owner; 409 `last_owner` if no other owner remains; subsequent authenticated board requests from the removed person return 404 |
 | POST | `/api/x/orgs/:org/invitations` | admin | `{ role, email?, send? }` → `{ invitation, url, emailSent? }` |
+| GET | `/api/x/orgs/:org/invitations` | admin | `{ invitations }` contains pending invitation metadata in descending creation time and ID order. Members receive 403 and non-members receive 404. |
 | POST | `/api/x/orgs/:org/invitations/:id/revoke` | admin | → `{ id, revokedAt }` and `ob.invitation.revoked`; 410 `invitation_used` if already accepted or revoked. Accepting a revoked link answers 410 `invitation_used` |
 | GET | `/api/x/invitations/:token` | anyone | organization name, role, expiry (for the accept page) |
-| POST | `/api/x/invitations/accept` | person | `{ token }` → `{ org, role }`. A bound invitation requires a matching verified email (case-insensitive), or returns 403 `invitation_email_mismatch` without consuming the link. |
+| POST | `/api/x/invitations/accept` | person | `{ token }` → `{ org, role }`. An existing member of the inviting organization receives 409 `already_in_org`. Otherwise a bound invitation requires a matching verified email (case-insensitive), or returns 403 `invitation_email_mismatch`. Both errors leave the link usable. |
 | GET, POST | `/api/x/orgs/:org/boards` | member / admin | list; create `{ slug, name }` with seeded grants |
 | POST | `/api/x/orgs/:org/boards/:board/delete` | admin | Returns `{ board, deletedAt }` with an ISO 8601 UTC timestamp and records `ob.board.deleted`. The board leaves the list and its slug remains reserved. Authenticated board routes return 401 `unauthorized` to board-bound credentials and 404 `not_found` to people. Deleting `main` returns 400 `invalid_request` with a hint to delete the organization, and an unknown or already deleted board returns 404 `not_found`. |
 | GET | `/api/x/orgs/:org/audit` | admin | organization events (`org_events`: organization and boards created, invitations created and revoked, members added, role changes, removals), oldest first; a member gets 403 `forbidden`. Query `after` (a cursor it answered) and `limit` (1 to 200, default 100). Returns `{ events, cursor }`, each event `{ cursor, type, createdAt, actor, payload }`; pass `cursor` back as `after`. A cursor past the last event or not decimal answers 400 `invalid_cursor`. No token or hash appears. |
