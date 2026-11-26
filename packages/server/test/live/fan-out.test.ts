@@ -1,18 +1,23 @@
 import { expect, test } from "bun:test";
 import type { CreatedConnection } from "@openboard/contract";
 import type { BoardView, CommittedEvents, Store } from "@openboard/ports";
+import { reauthorizeTogether } from "../../src/http/board.ts";
 import { tailBoard } from "../../src/live/fan-out.ts";
 import { BOARD_URL, call, makeApp, NOW, OWNER } from "../support/app.ts";
 import { openStore } from "../support/drivers.ts";
 
 /** `store`, counting the feed reads every board view sends to storage in `counted`. */
-function counting(store: Store, counted: { reads: number }): Store {
+function counting(store: Store, counted: { reads: number }, headOnly = false): Store {
   return {
     ...store,
     board(scope) {
       const board = store.board(scope);
       return new Proxy(board, {
         get(target, key) {
+          if (headOnly && key === "subscribeEvents") {
+            return (...[after, wake, invalidate]: Parameters<BoardView["subscribeEvents"]>) =>
+              target.subscribeEvents(after, (_page, head) => wake(undefined, head), invalidate);
+          }
           if (key !== "readEvents") return Reflect.get(target, key);
           return (...args: Parameters<BoardView["readEvents"]>) => {
             counted.reads++;
@@ -83,6 +88,110 @@ test("a commit reaches every caught-up tail, from memory without a store read on
     await app.close();
   }
 }, 1000);
+
+test("20 caught-up tails share one forward read on a head-only wake and filter independently", async () => {
+  const { sibling, ...base } = openStore(() => NOW);
+  const counted = { reads: 0 };
+  const reader = streamingApp(counting(base, counted, !sibling));
+  const writer = sibling ? streamingApp(sibling()) : reader;
+  const streams: Stream[] = [];
+  try {
+    const queries = ["", "&channel=ops", "&channel=dev", "&from=other"];
+    for (let i = 0; i < 20; i++) streams.push(await openStream(reader, `?after=0${queries[i % queries.length]}`));
+    for (const body of ["first", "second"]) {
+      counted.reads = 0;
+      const id = await post(writer, "dev", body);
+      const pages = await Promise.all(streams.map((stream) => stream.next()));
+      for (const [i, page] of pages.entries()) {
+        expect(ids(page)).toEqual([i % 2 === 0 ? id : `cursor ${id}`]);
+      }
+      expect(counted.reads).toBe(1);
+    }
+  } finally {
+    await Promise.all(streams.map((stream) => stream.close()));
+    if (writer !== reader) await writer.close();
+    await reader.close();
+  }
+}, 1000);
+
+test("hosted tails share pending authorization only for the same proof and recheck after revocation", async () => {
+  const { sibling, ...base } = openStore(() => NOW);
+  const writer = streamingApp(base);
+  const remote = sibling?.() ?? base;
+  let boardLookups = 0;
+  const reader = makeApp({
+    mode: "hosted",
+    schedule: () => () => {},
+    store: {
+      ...remote,
+      platform: () => {
+        const platform = remote.platform();
+        return new Proxy(platform, {
+          get(target, key) {
+            if (key !== "findBoard") return Reflect.get(target, key);
+            return (...args: Parameters<typeof platform.findBoard>) => {
+              boardLookups++;
+              return platform.findBoard(...args);
+            };
+          },
+        });
+      },
+    },
+  });
+  const create = async (name: string) => {
+    const response = await call(writer, "POST", "/x/connections", { name, direct: true, can: { "*": "all" } });
+    expect(response.status).toBe(201);
+    return (await response.json()) as CreatedConnection;
+  };
+  const revokedStreams: Stream[] = [];
+  let activeStream: Stream | undefined;
+  try {
+    const revoked = await create("revoked-reader");
+    const active = await create("active-reader");
+    for (let i = 0; i < 3; i++) revokedStreams.push(await openStream(reader, "?after=0", revoked.secret));
+    activeStream = await openStream(reader, "?after=0", active.secret);
+    boardLookups = 0;
+    const first = await post(writer, "dev", "before revocation");
+    for (const stream of [...revokedStreams, activeStream]) expect(ids(await stream.next())).toEqual([first]);
+    expect(boardLookups).toBe(2);
+
+    const result = await call(writer, "POST", `/x/connections/${revoked.connection.id}/revoke`);
+    expect(result.status).toBe(200);
+    const second = await post(writer, "dev", "after revocation");
+    const next = ids(await activeStream.next());
+    expect(next.includes(second) ? next : ids(await activeStream.next())).toContain(second);
+    for (const stream of revokedStreams) {
+      expect(await stream.next().catch((error: unknown) => error)).toMatchObject({ code: "unauthorized" });
+    }
+  } finally {
+    await Promise.allSettled([...revokedStreams.map((stream) => stream.close()), activeStream?.close()]);
+    await reader.close();
+    await writer.close();
+  }
+}, 1000);
+
+test("authorization already checking an earlier page cannot admit a later tail", async () => {
+  const pending = new Map<string, ReturnType<typeof reauthorizeTogether>>();
+  const started = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const principal = { actor: "reader", principal: "reader", profile: null };
+  const first = reauthorizeTogether(pending, "proof", async () => {
+    started.resolve();
+    await release.promise;
+    return principal;
+  });
+  const denied = async () => {
+    throw new Error("revoked");
+  };
+  expect(reauthorizeTogether(pending, "proof", denied)).toBe(first);
+  await started.promise;
+  try {
+    await expect(reauthorizeTogether(pending, "proof", denied)).rejects.toThrow("revoked");
+  } finally {
+    release.resolve();
+  }
+  expect(await first).toBe(principal);
+});
 
 test("a slow tail never delays the others: it keeps one queued page, then catches up from the store", async () => {
   const { store, counted } = countingStore();
@@ -202,6 +311,27 @@ test("a late head-only wake skips the store once the cursor covers its head", ()
   wake(undefined, 6);
   wake(undefined, 4);
   expect(tail.take(4)).toBe("store");
+  tail.close();
+});
+
+test("a tail retries a shared snapshot taken before the head it was woken for", () => {
+  let wake: Parameters<BoardView["subscribeEvents"]>[1] = () => {};
+  const board = {
+    subscribeEvents(_from: number, onWake: typeof wake) {
+      wake = onWake;
+      return () => {};
+    },
+  } as unknown as BoardView;
+  const tail = tailBoard(board, 1);
+  tail.take(1);
+  tail.settle({ cursor: 1, head: 1 });
+  wake(undefined, 3);
+
+  expect(tail.take(1)).toBe("store");
+  tail.settle({ cursor: 2, head: 2 });
+  expect(tail.take(2)).toBe("store");
+  tail.settle({ cursor: 3, head: 3 });
+  expect(tail.take(3)).toBe("wait");
   tail.close();
 });
 

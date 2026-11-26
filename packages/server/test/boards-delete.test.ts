@@ -123,28 +123,33 @@ test("refusing to delete main leaves the board list, audit log and main intact",
   });
 });
 
-test("deleting a board wakes a parked event stream without waiting for any new events", async () => {
+test("deleting a board wakes all parked event streams without waiting for any new events", async () => {
   await fixture(
     async (_send, owner, app) => {
       const [first, second = first] = app.instances;
       if (!first || !second) throw new Error("expected a test instance");
-      const stream = await first.fetch(
-        new Request(`${PUBLIC_URL}${ops}/events`, {
-          headers: { ...owner, accept: "text/event-stream" },
-        }),
-      );
-      expect(stream.status).toBe(200);
-      const reader = stream.body?.getReader();
-      if (!reader) throw new Error("expected an event stream");
+      const cancel: (() => Promise<void>)[] = [];
+      const closed: Promise<unknown>[] = [];
       try {
-        expect((await reader.read()).done).toBe(false);
-        expect((await reader.read()).done).toBe(false);
-        const closed = reader.read().catch((error: unknown) => error);
+        for (let i = 0; i < 3; i++) {
+          const stream = await first.fetch(
+            new Request(`${PUBLIC_URL}${ops}/events`, {
+              headers: { ...owner, accept: "text/event-stream" },
+            }),
+          );
+          expect(stream.status).toBe(200);
+          const reader = stream.body?.getReader();
+          if (!reader) throw new Error("expected an event stream");
+          cancel.push(() => reader.cancel());
+          expect((await reader.read()).done).toBe(false);
+          expect((await reader.read()).done).toBe(false);
+          closed.push(reader.read().catch((error: unknown) => error));
+        }
         const deleted = await second.fetch(new Request(`${PUBLIC_URL}${endpoint}`, { method: "POST", headers: owner }));
         expect(deleted.status).toBe(200);
-        expect(await closed).toMatchObject({ code: "not_found" });
+        for (const result of closed) expect(await result).toMatchObject({ code: "not_found" });
       } finally {
-        await reader.cancel().catch(() => undefined);
+        await Promise.allSettled(cancel.map((stop) => stop()));
       }
     },
     () => () => {},

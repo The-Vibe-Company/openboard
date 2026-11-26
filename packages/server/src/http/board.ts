@@ -1,10 +1,20 @@
-import type { operations, RawInput } from "@openboard/contract";
+import {
+  CAN_HEADER,
+  type InputOf,
+  type operations,
+  PROFILE_HEADER,
+  type RawInput,
+  type readEvents,
+} from "@openboard/contract";
 import { checkScheduleTiming, messages } from "@openboard/core";
 import type { BoardView } from "@openboard/ports";
 import { keepInsideCan, narrowCaller } from "../auth/access.ts";
 import { authenticate, type CredentialVerifier, limitAuthentication } from "../auth/chain.ts";
+import { hashToken } from "../auth/secrets.ts";
+import { cookieOf, SESSION_COOKIE } from "../auth/sessions.ts";
 import { refuseClaimedConfiguration } from "../auth/tokens.ts";
 import type { Principal } from "../deps.ts";
+import { sharedForwardReads } from "../live/fan-out.ts";
 import { streamEvents } from "../operations/events.ts";
 import { handlerOf } from "../operations/index.ts";
 import { recoverGrant } from "./errors.ts";
@@ -15,6 +25,53 @@ import { operationResponse } from "./respond.ts";
 import type { BoardPath } from "./scope.ts";
 
 export type BoardOperation = Extract<(typeof operations)[number], { readonly scope: "board" }>;
+
+const liveReads = Symbol("liveReads");
+
+// handle() copies the pipeline for each request. Its tenant resolver belongs to one app.
+interface LiveReads {
+  readonly pages: Map<string, ReturnType<BoardView["readEvents"]>>;
+  readonly authorization: Map<string, Promise<Principal>>;
+}
+
+function liveReadsOf(resolver: Pipeline["tenants"]): LiveReads {
+  const app = resolver as Pipeline["tenants"] & { [liveReads]?: LiveReads };
+  app[liveReads] ??= { pages: new Map(), authorization: new Map() };
+  return app[liveReads];
+}
+
+export function reauthorizeTogether(
+  pending: LiveReads["authorization"],
+  proof: string,
+  verify: () => Promise<Principal>,
+): Promise<Principal> {
+  const existing = pending.get(proof);
+  if (existing) return existing;
+  const work = Promise.resolve().then(() => {
+    // Admit the batch before any credential read. A later tail may already have seen a newer page.
+    pending.delete(proof);
+    return verify();
+  });
+  pending.set(proof, work);
+  return work;
+}
+
+function eventProof(request: Request, audience: string, operation: string, input: InputOf<typeof readEvents>) {
+  const { headers } = request;
+  const authorization = headers.get("authorization");
+  return hashToken(
+    JSON.stringify([
+      audience,
+      operation,
+      authorization,
+      authorization === null ? cookieOf(request, SESSION_COOKIE) : null,
+      headers.get(PROFILE_HEADER),
+      headers.get(CAN_HEADER),
+      input.channel,
+      input.re,
+    ]),
+  );
+}
 
 const NO_STORE_BOARD_OPS = new Set([
   "createWebhook",
@@ -91,15 +148,19 @@ export async function runBoard(
   const implicitBoard = pipeline.config.mode === "local" && path.org === "local" && path.board === "main";
   const context = async (input: unknown) => {
     await keepInsideCan(operation, input, by, board);
-    const reauthorize = async () => {
+    const verify = async () => {
       // A parked request may outlive its board or organization. Resolve it again before returning data.
       const liveBoard = implicitBoard ? board : await requestBoard(pipeline, path, request, chain);
       const current = narrowCaller(request, await authenticate(request, chain, liveBoard, operation.name, audience));
       await keepInsideCan(operation, input, current, liveBoard);
       return current;
     };
+    const feed = operation.name === "readEvents" ? (input as InputOf<typeof readEvents>) : undefined;
+    const live = feed && (stream || feed.wait) ? liveReadsOf(pipeline.tenants) : undefined;
+    const proof = stream && feed && !implicitBoard ? eventProof(request, audience, operation.name, feed) : undefined;
     return {
-      board,
+      // Board and organization slugs stay reserved after deletion, including after purge.
+      board: live ? sharedForwardReads(board, `${path.org}/${path.board}`, live.pages) : board,
       blobs: pipeline.blobs,
       debitWrite: () => limitWrite(pipeline.rateLimits, path.org, operation.effects.readOnly),
       rateLimits: pipeline.rateLimits,
@@ -108,7 +169,7 @@ export async function runBoard(
       ...pipeline.deps,
       boardUrl: `${pipeline.config.publicUrl}/api/${path.org}/${path.board}`,
       webhookConfig: pipeline.config,
-      reauthorize,
+      reauthorize: live && proof ? () => reauthorizeTogether(live.authorization, proof, verify) : verify,
       signal: request.signal,
       shutdown: pipeline.shutdown,
     };
