@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/The-Vibe-Company/openboard/compare/v0.6.0...v0.6.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **web:** integrate the signed-in landing header ([#978](https://github.com/The-Vibe-Company/openboard/issues/978)) ([4415932](https://github.com/The-Vibe-Company/openboard/commit/4415932b119ac2e2ff93055e2fd5d97dda08a838))
+
 ## [0.6.0](https://github.com/The-Vibe-Company/openboard/compare/v0.5.2...v0.6.0) (2026-11-26)
 
 
