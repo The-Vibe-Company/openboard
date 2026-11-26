@@ -1,5 +1,17 @@
 import { expect, test } from "bun:test";
+import type { Message } from "@openboard/contract";
 import { messages, webhookPayload } from "../../src/index.ts";
+
+function edited(message: Message) {
+  const { id, text, by } = message;
+  return {
+    type: "message.edited" as const,
+    cursor: id,
+    createdAt: message.createdAt,
+    message,
+    payload: { id, text, by, from: null },
+  };
+}
 
 test("webhook payload truncates on a UTF-8 boundary and marks the shortened body", () => {
   const { events } = messages.decidePost(
@@ -12,14 +24,7 @@ test("webhook payload truncates on a UTF-8 boundary and marks the shortened body
   const text = "𐐷".repeat(70_000);
   const message = { ...messages.messageView(posted), text };
   const delivery = { id: "dl_example", attempt: 1, webhook: "wh_example", name: "test" };
-  const body = webhookPayload(
-    "http://localhost",
-    "local",
-    "main",
-    delivery,
-    { message, payload: { text } },
-    { ...message, text: "" },
-  );
+  const body = webhookPayload("http://localhost", "local", "main", delivery, edited(message), { ...message, text: "" });
   if (!body) throw new Error("missing encoded body");
   const { truncated, event } = JSON.parse(body);
   expect(truncated).toBe(true);
@@ -40,7 +45,14 @@ test("reserves space for attempt 10 without changing the delivery text", () => {
   const render = (attempt: number, text: string) => {
     const message = { ...messages.messageView(posted), text };
     const delivery = { id: "dl_example", attempt, webhook: "wh_example", name: "test" };
-    const body = webhookPayload("http://localhost", "local", "main", delivery, { message, payload: {} }, message);
+    const event = {
+      type: "message.deleted" as const,
+      cursor: message.id,
+      createdAt: message.createdAt,
+      message,
+      payload: { id: message.id, thread: message.thread, by: message.by, from: null },
+    };
+    const body = webhookPayload("http://localhost", "local", "main", delivery, event, message);
     if (!body) throw new Error("missing encoded body");
     return body;
   };
@@ -64,7 +76,7 @@ test("webhook subject uses the event message's schedule even when it differs fro
   const slot = { id: "s2", n: 1 };
   for (const schedule of [slot, undefined]) {
     const message = { ...root, id: "3", re: root.id, schedule };
-    const body = webhookPayload("http://localhost", "local", "main", delivery, { message, payload: {} }, root);
+    const body = webhookPayload("http://localhost", "local", "main", delivery, edited(message), root);
     if (!body) throw new Error("missing encoded body");
     expect(JSON.parse(body).subject).toMatchObject({
       thread: root.id,

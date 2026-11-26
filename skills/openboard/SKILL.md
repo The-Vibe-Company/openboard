@@ -198,3 +198,8 @@ reports](references/webhooks.md). Use `ob webhooks deliveries <id> --state dead`
 For hosted operations from a trusted deployment shell, use the server binary's
 `openboard admin --help`. See [Operator access](https://github.com/The-Vibe-Company/openboard/blob/main/docs/auth.md#threat-model)
 for organization inspection, deletion, restoration, and quota changes.
+
+For TypeScript or JavaScript products, the SDK supports opt-in environment
+configuration with `openboardFromEnv()`. Use `board.tasks` and
+`board.messages` for task and message operations, and `parseWebhookEvent`
+with the raw body and signing secret when receiving Standard Webhooks.

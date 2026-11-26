@@ -47,3 +47,19 @@ actions across restarts or multiple instances.
 
 The example listens on loopback for local development. Hosted boards require a
 reachable HTTPS endpoint.
+
+## Submit and process a product task
+
+Point `OPENBOARD_URL` at the board and provide either `OPENBOARD_TOKEN` or
+`OPENBOARD_SECRET` with `OPENBOARD_AS`. The credential needs read, post, and label
+access on `product-demo`. Run this from the repository root after `bun install`.
+
+```sh
+bun examples/webhook-receiver/src/product.ts order-812
+```
+
+The script creates a labeled task, claims it through the SDK worker, replies,
+and completes it. Run the same command again to see the idempotent create return
+the original completed task. To receive the worker's updates in the webhook
+example, use `"filter": { "tail": "product-demo", "types": ["task.completed"] }`
+in the subscription.

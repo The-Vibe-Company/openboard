@@ -206,7 +206,7 @@ Universal rules:
 | SQL only in the `packages/driver-*` workspaces (`driver-sql`, `driver-sqlite`, `driver-postgres`): no `.sql` file elsewhere, and no string or template literal elsewhere starting with an uppercase SQL statement head (`SELECT … FROM`, `INSERT INTO`, `UPDATE … SET`, `DELETE FROM`, `CREATE `, `ALTER `, `DROP `, `BEGIN`, `LISTEN`, `NOTIFY`, `PRAGMA`) | all workspaces except `driver-*` and `scripts/ci` fixtures |
 | `bun:sqlite` only in `driver-sqlite`; `SQL` from `bun` only in `driver-postgres`; `driver-sql` imports neither | everywhere |
 | Every registered statement filters on `board_id` or `org_id`, except those listed as platform statements (accounts, sign-in) | `driver-sql` (statement registry test) |
-| `process.env` / `Bun.env` only in `apps/openboard/src/config.ts` and `packages/cli/src/config.ts` | `packages/` and `apps/` in application code (CI scripts, tools and the Playwright config read their own environment) |
+| `process.env` / `Bun.env` only in `apps/openboard/src/config.ts`, `packages/cli/src/config.ts` and `packages/sdk/src/env.ts` | `packages/` and `apps/` in application code (CI scripts, tools and the Playwright config read their own environment) |
 | No `setTimeout`, `setInterval`, `queueMicrotask`, `Date`, `Math.random`, `crypto.randomUUID` (time, timers and IDs come from `deps`) | `contract`, `core`, `ports`, `server` |
 | No module-level `let`/`var`, no module-level mutable object (`new Map()`, `new Set()`, `[]`, `{}` assigned and later mutated), no `static` mutable class fields | all `packages/*/src`, `apps/openboard/src` |
 | `server/src/auth/providers/<name>/**` imported only by `server/src/auth/providers/index.ts` | server |
@@ -395,7 +395,7 @@ Every expected failure is a `BoardError` from `packages/contract/src/errors.ts`.
 | `PORT` | listening port (Railway sets it), default `8787`; the only unprefixed variable |
 
 - Pattern: `OPENBOARD_<AREA>_<NAME>`. Any secret may instead be given as `OPENBOARD_<NAME>_FILE` (a path); setting both is an error. Secrets never come from argv.
-- Clients read upstream's `BOARD_URL` and `BOARD_TOKEN`, plus `OPENBOARD_SECRET` for `ob connect` (only in `packages/cli/src/config.ts`), so `vb` and `ob` share one setup. The SDK reads nothing.
+- The CLI reads upstream's `BOARD_URL` and `BOARD_TOKEN`, plus `OPENBOARD_SECRET` for `ob connect` (only in `packages/cli/src/config.ts`), so `vb` and `ob` share one setup. The SDK reads environment variables only when called through the opt-in `openboardFromEnv` helper.
 - A secret is never an argv value. `ob connect <url> --as <name>` reads the connection secret from stdin, `--secret-file <path>`, or `OPENBOARD_SECRET` (armada: `AGENTS.md` non-negotiable 4).
 - The authoritative list is the `Config` schema, printed by `openboard serve --help`.
 

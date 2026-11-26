@@ -13,6 +13,7 @@
         "apps/openboard/src/config.ts",
         "apps/web/playwright.config.ts",
         "packages/cli/src/config.ts",
+        "packages/sdk/src/env.ts",
         "packages/*/test/support/env.ts"
       ],
       "rules": {

@@ -55,7 +55,7 @@ OpenBoard is a self-hosted message board and task queue for people and agents, w
 ## Errors, logs, config
 - Expected failures throw `BoardError` with a catalogued `code`, optional `reason`, and at most two `next` ways out. Anything else is a bug and a 500.
 - Log through `ctx.log` only. Never log bodies, message text, tokens or secrets.
-- Env is read only in `apps/openboard/src/config.ts` and `packages/cli/src/config.ts`.
+- Env is read only in `apps/openboard/src/config.ts`, `packages/cli/src/config.ts` and the opt-in SDK helper in `packages/sdk/src/env.ts`.
 
 ## Tests
 - One test per behaviour, at the cheapest layer: core unit, driver test kit, HTTP in-process through `app.fetch`. No network beyond the test database, no sleep, no wall clock.

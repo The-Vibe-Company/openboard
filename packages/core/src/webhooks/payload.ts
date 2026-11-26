@@ -1,4 +1,4 @@
-import type { Message } from "@openboard/contract";
+import type { Message, WebhookEvent } from "@openboard/contract";
 
 import { renderWebhookTemplate } from "./template.ts";
 
@@ -53,10 +53,16 @@ function encodeWebhookPayload<T extends { event: { message: Message; payload: ob
   return body;
 }
 
-type Delivery = { id: string; attempt: number; webhook: string; name: string };
+type Delivery = WebhookEvent["delivery"];
+type EventDelivery = Extract<WebhookEvent, { type: "board.event" }>;
 
 export function webhookPing(url: string, org: string, board: string, delivery: Delivery): string {
-  return JSON.stringify({ type: "board.ping", version: 1, delivery, board: { url, org, board } });
+  return JSON.stringify({
+    type: "board.ping",
+    version: 1,
+    delivery,
+    board: { url, org, board },
+  } satisfies WebhookEvent);
 }
 
 export function webhookPayload(
@@ -64,7 +70,7 @@ export function webhookPayload(
   org: string,
   board: string,
   delivery: Delivery,
-  event: { message: Message; payload: object },
+  event: EventDelivery["event"],
   root: Message,
   template: object | null = null,
 ): string | null {
@@ -77,7 +83,7 @@ export function webhookPayload(
     board: { url: `${origin}/api${path}`, org, board },
     subject: webhookSubject(root, event.message, threadUrl),
     event,
-  };
+  } satisfies EventDelivery;
   // Reserve the extra digit in attempt 10 so retries preserve the same event text.
   const maxBytes = delivery.attempt < 10 ? webhookBodyLimit - 1 : webhookBodyLimit;
   return template === null
