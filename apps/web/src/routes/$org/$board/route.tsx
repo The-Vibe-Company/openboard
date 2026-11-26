@@ -32,7 +32,6 @@ import {
   TasksIcon,
   XIcon,
 } from "../../../ui/index.ts";
-import "./shell.css";
 
 type ChannelView = "all" | "messages" | "tasks" | "activity";
 

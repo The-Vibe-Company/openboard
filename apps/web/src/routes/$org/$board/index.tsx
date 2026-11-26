@@ -19,9 +19,9 @@ import { EmptyChannel } from "../../../components/EmptyChannel.tsx";
 import { channelPills, channelTaskLists, type TaskFilter, useChannelTasks } from "../../../components/TaskList.tsx";
 import { ThreadList } from "../../../components/ThreadList.tsx";
 import { Button, FilterIcon, SearchIcon, XIcon } from "../../../ui/index.ts";
-import { ActivityFeed, CATEGORIES, type Category, mergeBoardEvents } from "./activity.tsx";
+import { ActivityFeed } from "../../../components/ActivityFeed.tsx";
+import { CATEGORIES, type Category, mergeBoardEvents } from "./activity.tsx";
 import { useSelectedChannel } from "./route.tsx";
-import "./channel.css";
 
 export const Route = createFileRoute("/$org/$board/")({
   component: BoardThreads,

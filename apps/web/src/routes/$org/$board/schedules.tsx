@@ -7,7 +7,6 @@ import { browserClient } from "../../../api/client.ts";
 import { subscribeBoardEvents } from "../../../api/live.ts";
 import { sessionQuery } from "../../../api/session.ts";
 import { Badge, Button, EmptyState, Input, PlusIcon, Table, Textarea } from "../../../ui/index.ts";
-import "./tasks.css";
 
 export const Route = createFileRoute("/$org/$board/schedules")({
   component: BoardSchedulesPage,

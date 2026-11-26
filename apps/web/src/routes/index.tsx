@@ -1,8 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BoardError } from "@the-vibe-company/openboard";
 import { useState } from "react";
-import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
 import { LandingDemo } from "../components/LandingDemo.tsx";
 import { ArrowRightIcon, Button, Card, PlusIcon } from "../ui/index.ts";
@@ -128,6 +126,10 @@ function Organizations({ principal }: { principal: string }) {
   const account = useQuery({
     queryKey: ["landing-account", principal],
     queryFn: async ({ signal }) => {
+      const [{ browserClient }, { BoardError }] = await Promise.all([
+        import("../api/client.ts"),
+        import("@the-vibe-company/openboard"),
+      ]);
       const result = await browserClient(window.location.origin).getAccount({}, { signal });
       if (result.person.principal !== principal) throw new BoardError("unauthorized", "the browser session changed");
       return result;

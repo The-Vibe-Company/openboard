@@ -6,7 +6,10 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { BoardError, type Client } from "@the-vibe-company/openboard";
+import { boardKeys } from "./board-keys.ts";
 import { browserClient } from "./client.ts";
+
+export { boardKeys } from "./board-keys.ts";
 
 type Board = { org: string; board: string };
 
@@ -17,15 +20,6 @@ type ThreadPage = Awaited<ReturnType<Client["listThreads"]>>;
 type ThreadPages = InfiniteData<ThreadPage, string | undefined>;
 export type ThreadSummary = ThreadPage["threads"][number];
 export type ThreadFilters = { readonly text?: string; readonly label?: readonly string[] };
-
-export const boardKeys = {
-  channels: ({ org, board }: Board) => ["board", org, board, "channels"] as const,
-  threads: ({ org, board }: Board) => ["board", org, board, "threads"] as const,
-  allTasks: ({ org, board }: Board) => ["board", org, board, "all-tasks"] as const,
-  schedules: ({ org, board }: Board) => ["board", org, board, "schedules"] as const,
-  activity: ({ org, board }: Board) => ["board", org, board, "activity"] as const,
-  actors: ({ org, board }: Board) => ["board", org, board, "actors"] as const,
-};
 
 function retry(failureCount: number, error: Error) {
   return !(error instanceof BoardError && error.code === "not_found") && failureCount < 2;

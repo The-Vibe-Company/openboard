@@ -6,7 +6,6 @@ import { boardErrorText, boardKeys } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
 import { followBoardActors, subscribeBoardEvents } from "../../../api/live.ts";
 import { Avatar, Badge, EmptyState, Table } from "../../../ui/index.ts";
-import "./tasks.css";
 
 export const Route = createFileRoute("/$org/$board/agents")({
   component: BoardAgentsPage,

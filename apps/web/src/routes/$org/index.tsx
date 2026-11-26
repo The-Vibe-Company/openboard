@@ -8,6 +8,7 @@ export const Route = createFileRoute("/$org/")({
     // Dedicated front routes are reserved even before their pages ship.
     if (["account", "device", "invite", "new", "signin"].includes(params.org)) throw notFound();
   },
+  codeSplitGroupings: [["loader"], ["component"], ["errorComponent"]],
   loader: async ({ params, abortController }) => {
     const origin = window.location.origin;
     const signal = abortController.signal;
