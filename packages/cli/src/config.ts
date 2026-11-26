@@ -1,5 +1,6 @@
 import {
   closeSync,
+  constants,
   fstatSync,
   lstatSync,
   mkdirSync,
@@ -46,10 +47,12 @@ export function isPersonalToken(token: unknown): token is string {
 }
 
 /** Bind the credential and its activation time to the same file even across an atomic replacement. */
-function readSavedFile(path: string): { text: string; savedAt: bigint } {
-  const fd = openSync(path, "r");
+function readSavedFile(path: string): { text: string; savedAt: bigint } | undefined {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK);
   try {
-    return { text: readFileSync(fd, "utf8"), savedAt: fstatSync(fd, { bigint: true }).mtimeNs };
+    const stat = fstatSync(fd, { bigint: true });
+    if (!stat.isFile()) return undefined;
+    return { text: readFileSync(fd, "utf8"), savedAt: stat.mtimeNs };
   } finally {
     closeSync(fd);
   }
@@ -60,7 +63,9 @@ export function storedPersonal(env: CliEnvironment) {
   const path = personalConfigPath(env);
   if (!path) return undefined;
   try {
-    const { text, savedAt } = readSavedFile(path);
+    const file = readSavedFile(path);
+    if (!file) return undefined;
+    const { text, savedAt } = file;
     const saved = JSON.parse(text) as Partial<PersonalContext & { token: string }> | null;
     if (
       !saved ||
@@ -103,7 +108,9 @@ function storedAgent(env: CliEnvironment) {
   const path = agentConfigPath(env);
   if (!path) return undefined;
   try {
-    const { text, savedAt } = readSavedFile(path);
+    const file = readSavedFile(path);
+    if (!file) return undefined;
+    const { text, savedAt } = file;
     const saved = JSON.parse(text) as Partial<AgentConfig> | null;
     if (!saved || typeof saved.boardUrl !== "string" || boardAddress(saved.boardUrl) !== saved.boardUrl)
       return undefined;
@@ -214,23 +221,27 @@ export interface ClientConfig {
 
 /** The token `ob serve` wrote for a loopback `BOARD_URL`'s port, from `~/.config/openboard/local/<port>.json`. */
 function localOwnerToken(boardUrl: string | undefined, home: string | undefined): string | undefined {
-  const url = URL.parse(boardUrl ?? "");
-  const port = localPort(url);
-  if (!home || !port) return undefined;
-  let text: string;
+  const path = localOwnerConfigPath(boardUrl, home);
+  if (!path) return undefined;
+  let text: string | undefined;
   try {
-    text = readFileSync(join(home, ".config", "openboard", "local", `${port}.json`), "utf8");
+    text = readSavedFile(path)?.text;
   } catch (error) {
     if (UNREADABLE.has((error as NodeJS.ErrnoException).code ?? "")) return undefined;
     throw error;
   }
   try {
-    const token: unknown = (JSON.parse(text) as { token?: unknown } | null)?.token;
+    const token: unknown = text && (JSON.parse(text) as { token?: unknown } | null)?.token;
     return typeof token === "string" && token !== "" ? token : undefined;
   } catch (error) {
     if (error instanceof SyntaxError) return undefined;
     throw error;
   }
+}
+
+export function localOwnerConfigPath(boardUrl: string | undefined, home: string | undefined): string | undefined {
+  const port = localPort(URL.parse(boardUrl ?? ""));
+  return home && port ? join(home, ".config", "openboard", "local", `${port}.json`) : undefined;
 }
 
 /** The loopback owner credential is keyed by port even across alternate loopback hostnames. */

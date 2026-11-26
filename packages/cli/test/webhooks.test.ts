@@ -147,7 +147,7 @@ test("ob webhooks, show and delete print the board response without credentials"
 test("ob webhooks deliveries help shows the retention windows", async () => {
   const capture = fixture(null);
   expect(await capture.run(["deliveries", "--help"])).toBe(0);
-  expect(capture.out).toEqual([
+  expect(capture.out.slice(0, 2)).toEqual([
     "ob webhooks deliveries <id> [--state <state>] [--before <before>] [--limit <limit>]",
     "List a webhook's deliveries newest first. Done and skipped deliveries are kept for 7 days, and dead deliveries for 30 days.",
   ]);

@@ -31,11 +31,11 @@ const serverCommands: Readonly<Record<string, (config: Config, args: readonly st
 async function main(argv: readonly string[]): Promise<void> {
   const name = argv[0];
   if (
-    (name === undefined || (name === "--help" && argv.length === 1)) &&
+    (name === undefined || ((name === "--help" || name === "-h") && argv.length === 1)) &&
     /^openboard(?:-bun-.+)?$/.test(basename(process.execPath))
   ) {
     output.out("Usage: openboard <serve | migrate | admin | restore | import | reproject>");
-    output.out("For board client commands, run ob.");
+    output.out("For board client commands, run ob help. Use openboard --version to print the version.");
     return;
   }
   const command = name !== undefined && Object.hasOwn(serverCommands, name) ? serverCommands[name] : undefined;
