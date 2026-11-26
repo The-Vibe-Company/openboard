@@ -21,3 +21,12 @@
   color: var(--muted);
   font-size: var(--type-small);
 }
+
+.organization-members {
+  display: grid;
+  gap: calc(4 * var(--space));
+}
+
+.organization-members .members-table {
+  overflow-wrap: anywhere;
+}
