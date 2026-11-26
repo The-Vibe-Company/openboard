@@ -90,18 +90,21 @@ async function syncDirectory(path: string): Promise<void> {
   }
 }
 
-async function localSecretKey(home: string, dataDir: string): Promise<Uint8Array> {
-  const dir = join(home, ".config", "openboard");
+async function localSecretKey(home: string, { dataDir, docker }: Config): Promise<Uint8Array> {
+  const root = docker ? dataDir : home;
+  const dir = join(root, ".config", "openboard");
   const path = join(dir, "secret-key");
   try {
     await mkdir(dir, { recursive: true, mode: 0o700 });
-    if (await containsDirectory(dataDir, await realpath(dir)))
+    const withinData = await containsDirectory(dataDir, await realpath(dir));
+    if (docker && !withinData) throw new ConfigError("Docker secret-key directory must stay inside OPENBOARD_DATA_DIR");
+    if (!docker && withinData)
       throw new ConfigError("OPENBOARD_DATA_DIR must not contain the local secret-key directory");
     if (!(await lstat(dir)).isDirectory()) throw new ConfigError("The local secret-key directory must be a directory");
     await chmod(dir, 0o700);
     const key = await loadOrPublishKey(dir, path);
     // A concurrent starter may have published the file. Commit its name and any new parent directories before serving.
-    for (const directory of [dir, dirname(dir), home]) await syncDirectory(directory);
+    for (const directory of [dir, dirname(dir), root]) await syncDirectory(directory);
     return key;
   } catch (error) {
     if (error instanceof ConfigError) throw error;
@@ -109,12 +112,12 @@ async function localSecretKey(home: string, dataDir: string): Promise<Uint8Array
   }
 }
 
-export async function serveSecretKey(config: Config, home: string): Promise<Uint8Array | undefined> {
+export async function serveSecretKey(config: Config, home: string): Promise<Uint8Array> {
   if (config.mode === "hosted") {
     if (!config.secretKey) throw new ConfigError("OPENBOARD_SECRET_KEY is required in hosted mode");
     return config.secretKey;
   }
   if (config.secretKeyFile !== undefined)
     await requireSeparateKeyFile(config.secretKeyFile, config.docker ? [config.dataDir, "/data"] : [config.dataDir]);
-  return config.secretKey ?? (config.docker ? undefined : localSecretKey(home, config.dataDir));
+  return config.secretKey ?? localSecretKey(home, config);
 }

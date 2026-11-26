@@ -221,8 +221,22 @@ function keyFixture() {
 }
 
 test("hosted serve requires a configured secret key", async () => {
-  const config = load({ OPENBOARD_DATABASE_URL: "postgres://127.0.0.1:1/board" });
-  await expect(serveSecretKey(config, "/unused")).rejects.toThrow("OPENBOARD_SECRET_KEY is required in hosted mode");
+  const fixture = keyFixture();
+  try {
+    for (const docker of ["off", "on"]) {
+      const config = load({
+        OPENBOARD_DATABASE_URL: "postgres://127.0.0.1:1/board",
+        OPENBOARD_DATA_DIR: fixture.home,
+        OPENBOARD_DOCKER: docker,
+      });
+      await expect(serveSecretKey(config, fixture.home)).rejects.toThrow(
+        "OPENBOARD_SECRET_KEY is required in hosted mode",
+      );
+    }
+    expect(existsSync(fixture.keyFile)).toBe(false);
+  } finally {
+    fixture.close();
+  }
 });
 
 test("plain local startup persists a private key shared by concurrent and later startups", async () => {
@@ -264,12 +278,39 @@ test("plain local startup rejects a data directory that resolves to the key dire
   }
 });
 
-test("Docker startup uses only a configured key outside the data directory", async () => {
+test("Docker SQLite startup generates a private key on the data volume and reuses it", async () => {
+  const fixture = keyFixture();
+  try {
+    const config = load({ OPENBOARD_DATA_DIR: fixture.home, OPENBOARD_DOCKER: "on" });
+    const key = await serveSecretKey(config, "/unused");
+    expect(key.length).toBe(32);
+    expect(statSync(fixture.keyFile).mode & 0o777).toBe(0o600);
+    expect(await serveSecretKey(config, "/unused")).toEqual(key);
+  } finally {
+    fixture.close();
+  }
+});
+
+test("Docker SQLite rejects a key directory that resolves outside the data volume", async () => {
+  const fixture = keyFixture();
+  try {
+    const dataDir = join(fixture.home, "data");
+    mkdirSync(dataDir);
+    mkdirSync(fixture.configDir, { recursive: true });
+    symlinkSync(join(fixture.home, ".config"), join(dataDir, ".config"));
+    const config = load({ OPENBOARD_DATA_DIR: dataDir, OPENBOARD_DOCKER: "on" });
+    await expect(serveSecretKey(config, fixture.home)).rejects.toThrow("must stay inside OPENBOARD_DATA_DIR");
+    expect(existsSync(fixture.keyFile)).toBe(false);
+  } finally {
+    fixture.close();
+  }
+});
+
+test("Docker startup accepts a configured key file outside the data directory", async () => {
   const fixture = keyFixture();
   const secrets = mkdtempSync(join(tmpdir(), "openboard-mounted-secret-"));
   const env = { OPENBOARD_DATA_DIR: fixture.home, OPENBOARD_DOCKER: "on" };
   try {
-    expect(await serveSecretKey(load(env), fixture.home)).toBeUndefined();
     const key = Buffer.alloc(32, 5);
     const mount = join(secrets, "key");
     writeFileSync(mount, key.toString("base64"), { mode: 0o600 });

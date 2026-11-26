@@ -119,6 +119,7 @@ test("two tenants share dispatch capacity while a capped tenant waits for the ne
   ]);
   // Wake both hosted instances together, so their separate database connections compete for the last slots.
   await f.run();
+  expect(f.app.logged).toEqual([]);
   expect(f.sent.filter((org) => org === "alpha")).toHaveLength(600);
   expect(f.sent.filter((org) => org === "bravo")).toHaveLength(10);
   expect(await f.run()).toEqual(f.app.instances.map(() => nextWindow));
@@ -135,7 +136,6 @@ test("two tenants share dispatch capacity while a capped tenant waits for the ne
   expect(b.deliveries.every((row) => row.state === "done")).toBe(true);
   expect(f.peak()).toBeGreaterThan(0);
   expect(f.peak()).toBeLessThanOrEqual(32);
-  expect(f.app.logged).toEqual([]);
 
   f.advance(nextWindow - 1);
   expect(await f.claim()).toEqual({ job: null, nextDue: nextWindow });

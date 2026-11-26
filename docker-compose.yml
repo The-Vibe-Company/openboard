@@ -1,18 +1,21 @@
 services:
   openboard:
-    image: ghcr.io/the-vibe-company/openboard:${OPENBOARD_IMAGE_TAG:?Set OPENBOARD_IMAGE_TAG to a published tag}
+    image: ghcr.io/the-vibe-company/openboard:${OPENBOARD_IMAGE_TAG:-latest}
     ports:
       - "8787:8787"
-    environment:
-      OPENBOARD_SECRET_KEY_FILE: /run/secrets/openboard_key
     volumes:
       - openboard:/data
-    secrets:
-      - openboard_key
+    # Existing SQLite deployments using openboard-key.txt must retain the key file and secret mount below.
+    # For production HA, mount the same key on every replica and also configure OPENBOARD_DATABASE_URL.
+    # environment:
+    #   OPENBOARD_SECRET_KEY_FILE: /run/secrets/openboard_key
+    #   # OPENBOARD_DATABASE_URL: ${OPENBOARD_DATABASE_URL}
+    # secrets:
+    #   - openboard_key
 
-secrets:
-  openboard_key:
-    file: ./openboard-key.txt
+# secrets:
+#   openboard_key:
+#     file: ./openboard-key.txt
 
 volumes:
   openboard:
