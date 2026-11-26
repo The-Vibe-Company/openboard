@@ -64,74 +64,87 @@ export function splice<K extends string>(outer: Statement<K>, marker: Fragment, 
   });
 }
 
+const FILTER_CTES: Fragment = { fragment: () => "" };
+const FILTER_MATCH: Fragment = { fragment: () => "" };
+const HIT_MATCH: Fragment = { fragment: () => "" };
+const empty = sql``;
+
+const filterCtes = sql`filters AS (SELECT CAST(${"labels"} AS TEXT) AS data),
+  exact_author AS (
+    SELECT board_id, id, kind FROM actors WHERE board_id = ${"boardId"} AND id = CAST(${"authorQuery"} AS TEXT)
+  ), authors AS (
+    SELECT board_id, id, kind FROM exact_author WHERE board_id = ${"boardId"}
+    UNION ALL
+    SELECT board_id, id, kind FROM actors WHERE board_id = ${"boardId"} AND lower(handle) = CAST(${"authorHandle"} AS TEXT)
+      AND NOT EXISTS (SELECT 1 FROM exact_author WHERE board_id = ${"boardId"})
+  ), mentioned AS (
+    SELECT CAST(${"boardId"} AS BIGINT) AS board_id, CAST(${"mentionId"} AS TEXT) AS id,
+      CAST(${"mentionHandle"} AS TEXT) AS handle
+    WHERE CAST(${"mentionId"} AS TEXT) IS NOT NULL
+    UNION
+    SELECT board_id, id, lower(handle) FROM actors WHERE board_id = ${"boardId"} AND CAST(${"mentionResolve"} AS BIGINT) = 1
+      AND (id = CAST(${"mentionId"} AS TEXT) OR lower(handle) = CAST(${"mentionHandle"} AS TEXT))
+  ),`;
+
+const hitMatch = sql`
+  AND (CAST(${"authorActor"} AS TEXT) IS NULL OR hit.actor = ${"authorActor"})
+  AND (CAST(${"authorQuery"} AS TEXT) IS NULL OR EXISTS (
+    SELECT 1 FROM authors WHERE authors.board_id = ${"boardId"}
+      AND (authors.id = hit.actor OR (authors.kind = 'person' AND authors.id = hit.principal))
+  ))
+  AND (CAST(${"mentionId"} AS TEXT) IS NULL OR EXISTS (
+    SELECT 1 FROM mentioned AS mention WHERE mention.board_id = ${"boardId"} AND (
+      ${position}(hit.text, '@[' || mention.id || ']') > 0 OR ${position}(hit.text, '@[' || mention.id || '+') > 0
+      OR (mention.handle IS NOT NULL AND EXISTS (
+        SELECT 1 FROM ${hitMentions} AS settled WHERE hit.board_id = ${"boardId"} AND settled.value ->> 'actor' IS NULL
+          AND (lower(settled.value ->> 'written') = '@' || mention.handle
+            OR substr(lower(settled.value ->> 'written'), 1, length(mention.handle) + 2) = '@' || mention.handle || '/')
+      ))
+    )
+  ))
+  AND (CAST(${"text"} AS TEXT) IS NULL OR hit.text_lower LIKE CAST(${"text"} AS TEXT) ESCAPE '\\')
+  AND NOT EXISTS (
+    SELECT 1 FROM filters CROSS JOIN ${filterRows} AS filter
+    LEFT JOIN ${rootLabels} AS root_label ON root_label.key = filter.value ->> 0
+    LEFT JOIN ${hitLabels} AS hit_label ON hit_label.key = filter.value ->> 0
+    WHERE hit.board_id = ${"boardId"} AND (
+      (root_label.key IS NULL AND hit_label.key IS NULL) OR (
+        filter.value -> 1 IS NOT NULL AND NOT EXISTS (
+          SELECT 1 FROM ${filterValues} AS allowed WHERE hit.board_id = ${"boardId"}
+            AND (allowed.value = root_label.value OR allowed.value = hit_label.value)
+        )
+      )
+    )
+  )`;
+
+// SQLite can favor a board-only primary-key scan here without statistics.
+const replyIndex: Fragment = { fragment: ({ name }) => (name === "sqlite" ? "INDEXED BY messages_re" : "") };
+
+// Independent branches let each correlated lookup use both columns of its respective index.
+const filterProbes = sql`AND EXISTS (
+  SELECT 1 FROM messages AS hit WHERE hit.board_id = ${"boardId"} AND hit.id = root.id ${HIT_MATCH}
+  UNION ALL
+  SELECT 1 FROM messages AS hit ${replyIndex} WHERE hit.board_id = ${"boardId"} AND hit.re = root.id
+    AND (hit.deleted = 0 OR CAST(${"authorQuery"} AS TEXT) IS NOT NULL OR CAST(${"authorActor"} AS TEXT) IS NOT NULL)
+    ${HIT_MATCH}
+)`;
+const filterMatch = splice(splice(filterProbes, HIT_MATCH, hitMatch), HIT_MATCH, hitMatch);
+
 /**
  * A channel's threads by activity between two bounds: the latest of them (`DESC`), or the first (`ASC`). A subtree's
  * add every channel `under` matches; they read by board activity, so one channel's keep its own index.
  */
-function threadList(order: "ASC" | "DESC", subtree = false) {
+function threadList(order: "ASC" | "DESC", channels: Statement<"channel" | "under"> = oneChannel, filtered = false) {
   const direction: Fragment = { fragment: () => order };
 
-  const list = sql`WITH filters AS (SELECT CAST(${"labels"} AS TEXT) AS data),
-    exact_author AS (
-      SELECT board_id, id, kind FROM actors WHERE board_id = ${"boardId"} AND id = CAST(${"authorQuery"} AS TEXT)
-    ), authors AS (
-      SELECT board_id, id, kind FROM exact_author WHERE board_id = ${"boardId"}
-      UNION ALL
-      SELECT board_id, id, kind FROM actors WHERE board_id = ${"boardId"} AND lower(handle) = CAST(${"authorHandle"} AS TEXT)
-        AND NOT EXISTS (SELECT 1 FROM exact_author WHERE board_id = ${"boardId"})
-    ), mentioned AS (
-      SELECT CAST(${"boardId"} AS BIGINT) AS board_id, CAST(${"mentionId"} AS TEXT) AS id,
-        CAST(${"mentionHandle"} AS TEXT) AS handle
-      WHERE CAST(${"mentionId"} AS TEXT) IS NOT NULL
-      UNION
-      SELECT board_id, id, lower(handle) FROM actors WHERE board_id = ${"boardId"} AND CAST(${"mentionResolve"} AS BIGINT) = 1
-        AND (id = CAST(${"mentionId"} AS TEXT) OR lower(handle) = CAST(${"mentionHandle"} AS TEXT))
-    ),
+  const list = sql`WITH ${FILTER_CTES}
     recent AS (
       SELECT root.board_id, root.id, root.active, root.view, root.replies, root.last_reply
       FROM messages AS root
       WHERE root.board_id = ${"boardId"} AND ${CHANNELS} AND root.re IS NULL
         AND (root.active, root.id) < (CAST(${"beforeActive"} AS BIGINT), CAST(${"beforeRoot"} AS BIGINT))
         AND root.active > CAST(${"after"} AS BIGINT)
-        AND ((CAST(${"labels"} AS TEXT) = '[]' AND CAST(${"text"} AS TEXT) IS NULL
-          AND CAST(${"authorQuery"} AS TEXT) IS NULL AND CAST(${"authorActor"} AS TEXT) IS NULL
-          AND CAST(${"mentionId"} AS TEXT) IS NULL) OR EXISTS (
-          SELECT 1 FROM messages AS hit
-          WHERE hit.board_id = ${"boardId"} AND (
-            hit.id = root.id OR (hit.re = root.id AND (
-              hit.deleted = 0 OR CAST(${"authorQuery"} AS TEXT) IS NOT NULL OR CAST(${"authorActor"} AS TEXT) IS NOT NULL
-            ))
-          )
-            AND (CAST(${"authorActor"} AS TEXT) IS NULL OR hit.actor = ${"authorActor"})
-            AND (CAST(${"authorQuery"} AS TEXT) IS NULL OR EXISTS (
-              SELECT 1 FROM authors WHERE authors.board_id = ${"boardId"}
-                AND (authors.id = hit.actor OR (authors.kind = 'person' AND authors.id = hit.principal))
-            ))
-            AND (CAST(${"mentionId"} AS TEXT) IS NULL OR EXISTS (
-              SELECT 1 FROM mentioned AS mention WHERE mention.board_id = ${"boardId"} AND (
-                ${position}(hit.text, '@[' || mention.id || ']') > 0 OR ${position}(hit.text, '@[' || mention.id || '+') > 0
-                OR (mention.handle IS NOT NULL AND EXISTS (
-                  SELECT 1 FROM ${hitMentions} AS settled WHERE hit.board_id = ${"boardId"} AND settled.value ->> 'actor' IS NULL
-                    AND (lower(settled.value ->> 'written') = '@' || mention.handle
-                      OR substr(lower(settled.value ->> 'written'), 1, length(mention.handle) + 2) = '@' || mention.handle || '/')
-                ))
-              )
-            ))
-            AND (CAST(${"text"} AS TEXT) IS NULL OR hit.text_lower LIKE CAST(${"text"} AS TEXT) ESCAPE '\\')
-            AND NOT EXISTS (
-              SELECT 1 FROM filters CROSS JOIN ${filterRows} AS filter
-              LEFT JOIN ${rootLabels} AS root_label ON root_label.key = filter.value ->> 0
-              LEFT JOIN ${hitLabels} AS hit_label ON hit_label.key = filter.value ->> 0
-              WHERE hit.board_id = ${"boardId"} AND (
-                (root_label.key IS NULL AND hit_label.key IS NULL) OR (
-                  filter.value -> 1 IS NOT NULL AND NOT EXISTS (
-                    SELECT 1 FROM ${filterValues} AS allowed WHERE hit.board_id = ${"boardId"}
-                      AND (allowed.value = root_label.value OR allowed.value = hit_label.value)
-                  )
-                )
-              )
-            )
-        ))
+        ${FILTER_MATCH}
       ORDER BY root.active ${direction}, root.id ${direction} LIMIT CAST(${"limit"} AS BIGINT)
     )
     SELECT boards.head, recent.active, recent.id, recent.view, recent.replies, reply.view AS last_view
@@ -139,14 +152,20 @@ function threadList(order: "ASC" | "DESC", subtree = false) {
     LEFT JOIN messages AS reply ON reply.board_id = boards.id AND reply.id = recent.last_reply
     WHERE boards.id = ${"boardId"} AND boards.org_id = ${"orgId"}
     ORDER BY recent.active, recent.id`;
-  return splice(list, CHANNELS, subtree ? subtreeChannels : oneChannel);
+  const byChannel = splice(list, CHANNELS, channels);
+  const withCtes = splice(byChannel, FILTER_CTES, filtered ? filterCtes : empty);
+  return splice(withCtes, FILTER_MATCH, filtered ? filterMatch : empty);
 }
 
 export const threadStatements = {
   listThreads: threadList("DESC"),
   listThreadsAfter: threadList("ASC"),
-  listSubtreeThreads: threadList("DESC", true),
-  listSubtreeThreadsAfter: threadList("ASC", true),
+  listSubtreeThreads: threadList("DESC", subtreeChannels),
+  listSubtreeThreadsAfter: threadList("ASC", subtreeChannels),
+  listFilteredThreads: threadList("DESC", oneChannel, true),
+  listFilteredThreadsAfter: threadList("ASC", oneChannel, true),
+  listFilteredSubtreeThreads: threadList("DESC", subtreeChannels, true),
+  listFilteredSubtreeThreadsAfter: threadList("ASC", subtreeChannels, true),
   thread: threadPage("DESC"),
   threadAfter: threadPage("ASC"),
 };
@@ -155,11 +174,20 @@ export const threadStatements = {
 const oneChannelLists = [threadStatements.listThreads, threadStatements.listThreadsAfter] as const;
 const subtreeLists = [threadStatements.listSubtreeThreads, threadStatements.listSubtreeThreadsAfter] as const;
 
+const filteredChannelLists = [threadStatements.listFilteredThreads, threadStatements.listFilteredThreadsAfter] as const;
+const filteredSubtreeLists = [
+  threadStatements.listFilteredSubtreeThreads,
+  threadStatements.listFilteredSubtreeThreadsAfter,
+] as const;
+
 /** The thread reads of one board's view: one statement reads the message and its replies together. */
 export function threadReads(db: Db, dialect: Dialect, scope: BoardScope): Pick<BoardView, "thread" | "listThreads"> {
   return {
     async listThreads(channel, labels = [], { author, before, after, limit = 50, mentions, text, under } = {}) {
-      const statement = (under === undefined ? oneChannelLists : subtreeLists)[after === undefined ? 0 : 1];
+      const filtered = labels.length > 0 || text !== undefined || author !== undefined || mentions !== undefined;
+      const channelLists = filtered ? filteredChannelLists : oneChannelLists;
+      const subtreeChannelLists = filtered ? filteredSubtreeLists : subtreeLists;
+      const statement = (under === undefined ? channelLists : subtreeChannelLists)[after === undefined ? 0 : 1];
       const authorQuery = author && "query" in author ? author.query : null;
       const rows = await query(db, dialect, statement, {
         authorQuery,
