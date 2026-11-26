@@ -13,6 +13,7 @@ function taskFacade(client: Client) {
     create: client.createTask,
     createBatch: client.createTaskBatch,
     list: client.listTasks,
+    counts: (input: Input<"countTasks"> = {}, request?: CallOptions) => client.countTasks(input, request),
     get: (id: string, query?: Fields<"readThread">, request?: CallOptions) =>
       client.readThread({ ...query, id }, request),
     claim: (id: string, input?: Fields<"claimTask">, request?: CallOptions) =>

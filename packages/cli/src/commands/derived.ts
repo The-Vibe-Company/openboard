@@ -152,8 +152,10 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
   if (operation.name === "claimNextTask") fields.set("label", { schema: { type: "array" }, required: false });
   if (operation.name === "createTask") fields.set("for", { schema: { type: "string" }, required: false });
   // A field's flag is its own name unless the contract gives it upstream's: `--idempotency-key` for `id`.
-  const flags = new Map<string, string>();
-  const options: string[] = [];
+  const complete = operation.name === "completeTask";
+  if (complete) fields.set("claim", { schema: { type: "boolean" }, required: false });
+  const flags = new Map<string, string>(complete ? [["claim", "claim"]] : []);
+  const options: string[] = complete ? ["[--claim]"] : [];
   for (const [name, { schema }] of fields) {
     if (args.includes(name) || alternative?.includes(name) || operation.cli.implicit?.includes(name)) continue;
     const flag = renamed[name] ?? name;
@@ -177,10 +179,11 @@ function derive(operation: Contracted & { cli: CliSpec }): Command {
     flags.set(flag, name);
     options.push(`[--${flag} <key>]...`);
   }
-  const usage =
+  let usage =
     operation.name === "claimNextTask"
       ? "ob tasks claim [--next] --channel <channel> [--lease <lease>] [--label <label>]... [--from <principal>]... [--wait <seconds>]"
       : commandUsage(command, args, fields, options, alternative);
+  if (acceptsConnectionName(operation.name)) usage = usage.replace("<id>", "<name|id>");
   if (operation.name === "claimNextTask") {
     fields.set("next", { schema: { type: "boolean" }, required: false });
     flags.set("next", "next");
@@ -235,6 +238,8 @@ function postFileInput(
   }
 }
 
+const acceptsConnectionName = (name: Contracted["name"]) => name === "getConnection" || name === "revokeConnection";
+
 async function runDerived(ctx: CommandContext, name: Contracted["name"], input: Record<string, unknown>) {
   if (name === "getConnectionPolicy") {
     if (ctx.profile === undefined || input.can === undefined) throw new Misuse("policy requires --as and --can");
@@ -256,17 +261,15 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
     const { runRenewTask } = await import("./tasks/renew.ts");
     return runRenewTask(ctx, input as { id: string; lease?: number });
   }
-  if (name === "failTask") {
-    const { runSettleTask } = await import("./tasks/complete.ts");
-    return runSettleTask(ctx, String(input.id), "failed", (proof) =>
-      ctx.client.failTask({ ...(input as { id: string; reason: string }), ...proof }),
-    );
+  if (name === "completeTask") {
+    const { runCompleteTask } = await import("./tasks/complete.ts");
+    return runCompleteTask(ctx, input as Parameters<typeof runCompleteTask>[1]);
   }
-  if (name === "completeTask" || name === "releaseTask") {
-    const action = name;
+  if (name === "failTask" || name === "releaseTask") {
     const { runSettleTask } = await import("./tasks/complete.ts");
-    return runSettleTask(ctx, String(input.id), action === "completeTask" ? "completed" : "released", (proof) =>
-      ctx.client[action]({ ...(input as { id: string; result?: string }), ...proof }),
+    const { id, reason } = input as { id: string; reason: string };
+    return runSettleTask(ctx, id, name === "failTask" ? "failed" : "released", (proof) =>
+      name === "failTask" ? ctx.client.failTask({ id, reason, ...proof }) : ctx.client.releaseTask({ id, ...proof }),
     );
   }
   if (name === "createTask" && typeof input.for === "string" && !isQualified(input.for)) {
@@ -289,6 +292,10 @@ async function runDerived(ctx: CommandContext, name: Contracted["name"], input: 
     ) => ReturnType<Parameters<typeof runTaskCommand>[2]>;
     const { runTaskCommand } = await import("./tasks/claim.ts");
     return runTaskCommand(ctx, name === "claimTask" || input.claim === true, () => invoke(input));
+  }
+  if (acceptsConnectionName(name)) {
+    const { resolveConnectionId } = await import("./connections.ts");
+    input.id = await resolveConnectionId(ctx, String(input.id));
   }
   const answer = await (ctx.client[name] as Invoke)(input);
   const format = formats[name];

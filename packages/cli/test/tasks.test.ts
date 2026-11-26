@@ -505,3 +505,89 @@ test.each([
   expect(code).toBe(0);
   expect(calls).toEqual([...preflight, "/tasks/2/assign"]);
 });
+
+test.each(["ready", "blocked"])("ob tasks complete --claim completes a %s task", async (state) => {
+  const home = mkdtempSync(join(tmpdir(), "ob-complete-claim-"));
+  const key = { boardUrl: ENV.BOARD_URL, actor: "agent-a", id: "2" };
+  const claim = { epoch: 2, token: "test claim credential", until: "2026-01-01T00:00:00.000Z" };
+  const calls: string[] = [];
+  const lines: string[] = [];
+  const output = { out: (line: string) => lines.push(line), err: (line: string) => lines.push(line) };
+  const fetch = async (request: Request) => {
+    const path = request.url.slice(ENV.BOARD_URL.length);
+    if (path === "/me") return Response.json({ actor: key.actor });
+    calls.push(path);
+    if (path === "/tasks/2/claim") {
+      if (state === "blocked" && calls.length === 1) {
+        return Response.json({ error: { code: "task_blocked", message: "held" } }, { status: 409 });
+      }
+      return Response.json({ task: { id: "2", task: { claim: { actor: key.actor } } }, claim });
+    }
+    if (path === "/tasks/2/unblock") return Response.json({ outcome: "unblocked" });
+    expect(path).toBe("/tasks/2/complete");
+    expect(await request.json()).toEqual({ result: "merged", epoch: claim.epoch, token: claim.token });
+    return Response.json({ task: { id: "2" } });
+  };
+  try {
+    const args = ["tasks", "complete", "2", "merged"];
+    const env = { ...ENV, HOME: home };
+    expect(await runCli(args, env, { fetch, output })).toBe(1);
+    expect(lines[0]).toStartWith("error: claim_lost: No saved claim");
+    expect(calls).toEqual([]);
+    expect(await runCli([...args, "--claim"], env, { fetch, output })).toBe(0);
+    expect(calls).toEqual([
+      "/tasks/2/claim",
+      ...(state === "blocked" ? ["/tasks/2/unblock", "/tasks/2/claim"] : []),
+      "/tasks/2/complete",
+    ]);
+    expect(lines.at(-1)).toBe("completed 2");
+    await withClaimStorage(home, async (read) => {
+      expect(read(key)).toBeUndefined();
+      return { result: null };
+    });
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("ob tasks complete --claim preserves the acquired claim for retry after a completion failure", async () => {
+  const home = mkdtempSync(join(tmpdir(), "ob-complete-retry-"));
+  const actor = "agent-a";
+  const claim = { epoch: 2, token: "test claim credential", until: "2026-01-01T00:00:00.000Z" };
+  let claims = 0;
+  let attempts = 0;
+  const output = { out: () => {}, err: () => {} };
+  const fetch = async (request: Request) => {
+    if (request.url.endsWith("/me")) return Response.json({ actor });
+    if (request.url.endsWith("/claim")) {
+      claims++;
+      return Response.json({ task: { id: "2", task: { claim: { actor } } }, claim });
+    }
+    expect(request.url).toBe(`${ENV.BOARD_URL}/tasks/2/complete`);
+    expect(await request.json()).toEqual({ result: "merged", epoch: claim.epoch, token: claim.token });
+    if (++attempts === 1) {
+      return Response.json({ error: { code: "unavailable", message: "retry" } }, { status: 503 });
+    }
+    return Response.json({ task: { id: "2" } });
+  };
+  try {
+    const args = ["tasks", "complete", "2", "merged", "--claim"];
+    const env = { ...ENV, HOME: home };
+    expect(await runCli(args, env, { fetch, output })).toBe(1);
+    expect(await runCli(args, env, { fetch, output })).toBe(0);
+    expect([claims, attempts]).toEqual([1, 2]);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("ob tasks complete --claim rejects an oversized result before making requests", async () => {
+  const errors: string[] = [];
+  const output = { out: () => {}, err: (line: string) => errors.push(line) };
+  const fetch = async () => {
+    throw new Error("nothing should be sent");
+  };
+  const args = ["tasks", "complete", "2", "x".repeat(1001), "--claim"];
+  expect(await runCli(args, ENV, { fetch, output })).toBe(2);
+  expect(errors[0]).toStartWith("error: invalid_request: result must be at most 1000 characters");
+});
