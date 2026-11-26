@@ -1,6 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { type FormEvent, useEffect, useId, useState } from "react";
+import {
+  createContext,
+  type FormEvent,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ThreadSummary } from "../api/board.ts";
 import { browserClient } from "../api/client.ts";
 import { sessionQuery } from "../api/session.ts";
@@ -11,19 +22,42 @@ import { parseLabelInput } from "./Composer.tsx";
 import { claimHolderText, TaskStateBadge } from "./TaskState.tsx";
 
 type Board = { org: string; board: string };
+type TaskViewProps = { board: Board; tasks: readonly ThreadSummary[]; actors?: ReadonlyMap<string, TaskActor> };
 type NewTaskDraft = { channel: string; text: string; labels: string; needs: string };
 
 const KANBAN_COLUMNS = [
-  { key: "waiting", title: "Waiting", states: ["waiting"] },
-  { key: "ready", title: "Ready", states: ["ready"] },
-  { key: "claimed", title: "Claimed", states: ["claimed"] },
-  { key: "blocked", title: "Blocked", states: ["blocked"] },
-  { key: "done", title: "Done", states: ["completed", "failed", "canceled"] },
+  { key: "waiting", title: "Waiting" },
+  { key: "ready", title: "Ready" },
+  { key: "claimed", title: "Claimed" },
+  { key: "blocked", title: "Blocked" },
+  { key: "done", title: "Done" },
 ] as const;
 
 const INITIAL_DONE = 8;
 const DONE_INCREMENT = 15;
-const QUEUE_PAGE_SIZE = 25;
+const ACTIVE_PAGE_SIZE = 25;
+const AgeClock = createContext(0);
+
+function TaskAgeClock({ children }: { children: ReactNode }) {
+  return <AgeClock.Provider value={useRelativeTimeClock()}>{children}</AgeClock.Provider>;
+}
+
+function useVisibleTasks(initial: number, increment: number) {
+  const [limit, setLimit] = useState(initial);
+  const list = useRef<HTMLUListElement>(null);
+  const focusIndex = useRef<number | undefined>(undefined);
+  const listId = useId();
+  useLayoutEffect(() => {
+    if (focusIndex.current === undefined || focusIndex.current >= limit) return;
+    list.current?.children[focusIndex.current]?.querySelector("a")?.focus();
+    focusIndex.current = undefined;
+  }, [limit]);
+  function show(limit: number, focus: number) {
+    focusIndex.current = focus;
+    setLimit(limit);
+  }
+  return { limit, list, listId, more: () => show(limit + increment, limit), less: () => show(initial, initial - 1) };
+}
 
 function newestTerminalFirst(a: ThreadSummary, b: ThreadSummary) {
   // Settling a task sets the root version to the transition's board event ID.
@@ -48,35 +82,6 @@ async function submitTaskDraft(board: Board, draft: NewTaskDraft, csrf: string |
   });
 }
 
-function TaskField({
-  id,
-  label,
-  placeholder,
-  value,
-  disabled,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  placeholder: string;
-  value: string;
-  disabled: boolean;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label htmlFor={id}>{label}</label>
-      <Input
-        id={id}
-        placeholder={placeholder}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.currentTarget.value)}
-      />
-    </div>
-  );
-}
-
 function NewTaskFields({
   id,
   draft,
@@ -90,33 +95,26 @@ function NewTaskFields({
   disabled: boolean;
   onChange: (patch: Partial<NewTaskDraft>) => void;
 }) {
+  const fields = [
+    ["channel", "ch", "Channel", defaultChannel],
+    ["labels", "lb", "Labels (key=value)", "priority=high, area=web"],
+    ["needs", "nd", "Depends on (task IDs)", "e.g. 12, 18"],
+  ] as const;
   return (
     <>
       <div className="tasks-new-grid">
-        <TaskField
-          id={`${id}-ch`}
-          label="Channel"
-          placeholder={defaultChannel}
-          value={draft.channel}
-          disabled={disabled}
-          onChange={(channel) => onChange({ channel })}
-        />
-        <TaskField
-          id={`${id}-lb`}
-          label="Labels (key=value)"
-          placeholder="priority=high, area=web"
-          value={draft.labels}
-          disabled={disabled}
-          onChange={(labels) => onChange({ labels })}
-        />
-        <TaskField
-          id={`${id}-nd`}
-          label="Depends on (task IDs)"
-          placeholder="e.g. 12, 18"
-          value={draft.needs}
-          disabled={disabled}
-          onChange={(needs) => onChange({ needs })}
-        />
+        {fields.map(([field, suffix, label, placeholder]) => (
+          <div key={field}>
+            <label htmlFor={`${id}-${suffix}`}>{label}</label>
+            <Input
+              id={`${id}-${suffix}`}
+              placeholder={placeholder}
+              value={draft[field]}
+              disabled={disabled}
+              onChange={(e) => onChange({ [field]: e.currentTarget.value })}
+            />
+          </div>
+        ))}
       </div>
       <div>
         <label htmlFor={`${id}-tx`}>Task description</label>
@@ -200,8 +198,9 @@ export function useRelativeTimeClock() {
   return now;
 }
 
-export function RelativeAge({ date, now }: { date: string; now: number }) {
-  const seconds = Math.max(0, Math.floor((now - Date.parse(date)) / 1000));
+export function RelativeAge({ date, now }: { date: string; now?: number }) {
+  const clock = useContext(AgeClock);
+  const seconds = Math.max(0, Math.floor(((now ?? clock) - Date.parse(date)) / 1000));
   const age =
     seconds < 60
       ? `${seconds}s`
@@ -247,74 +246,86 @@ function QueueState({ state, recordedState }: { state: Task["state"]; recordedSt
   );
 }
 
-export function TasksKanban({
-  board,
-  tasks,
-  actors,
-}: {
-  board: Board;
-  tasks: readonly ThreadSummary[];
-  actors?: ReadonlyMap<string, TaskActor>;
-}) {
-  const [visibleDone, setVisibleDone] = useState(INITIAL_DONE);
+function isTerminal(state: string) {
+  return state === "completed" || state === "failed" || state === "canceled";
+}
+
+export function TasksKanban({ board, tasks, actors }: TaskViewProps) {
+  const columns = useMemo(() => {
+    const groups: Record<string, ThreadSummary[]> = { waiting: [], ready: [], claimed: [], blocked: [], done: [] };
+    for (const item of tasks) {
+      const state = item.message.task?.state;
+      if (state) groups[isTerminal(state) ? "done" : state]?.push(item);
+    }
+    groups.done?.sort(newestTerminalFirst);
+    return groups;
+  }, [tasks]);
   return (
     <section className="tasks-kanban" aria-label="Task board">
-      {KANBAN_COLUMNS.map((col) => {
-        const items = tasks.filter(
-          (item) => item.message.task && (col.states as readonly string[]).includes(item.message.task.state),
-        );
-        const done = col.key === "done";
-        const visible = done ? items.sort(newestTerminalFirst).slice(0, visibleDone) : items;
-        const remaining = items.length - visible.length;
-        return (
-          <section key={col.key} className="tasks-column" aria-label={col.title}>
-            <div className="tasks-column-head">
-              <h2>{col.title}</h2>
-              <span>{items.length}</span>
-            </div>
-            <ul className="tasks-column-list">
-              {visible.map((item) => {
-                const task = item.message.task;
-                if (!task) return null;
-                const holder = task.claim ? actors?.get(task.claim.actor) : undefined;
-                return (
-                  <li key={item.message.id}>
-                    <Link
-                      className="tasks-card"
-                      to="/$org/$board/t/$id"
-                      params={{ ...board, id: item.message.id }}
-                      search={{ channel: item.message.channel }}
-                    >
-                      <span className="tasks-card-title">{taskTitle(item)}</span>
-                      <div className="tasks-card-meta">
-                        <span>#{item.message.id}</span>
-                        <span>#{item.message.channel}</span>
-                        {item.replies > 0 && <span>{item.replies} replies</span>}
-                      </div>
-                      <TaskLabels labels={item.message.labels} />
-                      <TaskStateBadge task={task} holder={holder} recordedState={item.message.labels["board.task"]} />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-            {remaining > 0 && (
-              <button
-                type="button"
-                className="tasks-column-more"
-                onClick={() => setVisibleDone((limit) => limit + DONE_INCREMENT)}
+      {KANBAN_COLUMNS.map((column) => (
+        <TasksColumn key={column.key} column={column} board={board} items={columns[column.key] ?? []} actors={actors} />
+      ))}
+    </section>
+  );
+}
+
+function TasksColumn({
+  column,
+  board,
+  items,
+  actors,
+}: {
+  column: (typeof KANBAN_COLUMNS)[number];
+  board: Board;
+  items: readonly ThreadSummary[];
+  actors?: ReadonlyMap<string, TaskActor>;
+}) {
+  const done = column.key === "done";
+  const initial = done ? INITIAL_DONE : ACTIVE_PAGE_SIZE;
+  const { limit, list, listId, more, less } = useVisibleTasks(initial, done ? DONE_INCREMENT : ACTIVE_PAGE_SIZE);
+  const remaining = items.length - limit;
+  return (
+    <section className="tasks-column" aria-label={column.title}>
+      <div className="tasks-column-head">
+        <h2>{column.title}</h2>
+        <span>{items.length}</span>
+      </div>
+      <ul className="tasks-column-list" id={listId} ref={list}>
+        {items.slice(0, limit).map((item) => {
+          const task = item.message.task;
+          if (!task) return null;
+          const holder = task.claim ? actors?.get(task.claim.actor) : undefined;
+          return (
+            <li key={item.message.id}>
+              <Link
+                className="tasks-card"
+                to="/$org/$board/t/$id"
+                params={{ ...board, id: item.message.id }}
+                search={{ channel: item.message.channel }}
               >
-                Show more ({remaining} more)
-              </button>
-            )}
-            {done && visibleDone > INITIAL_DONE && (
-              <button type="button" className="tasks-column-more" onClick={() => setVisibleDone(INITIAL_DONE)}>
-                Show less
-              </button>
-            )}
-          </section>
-        );
-      })}
+                <span className="tasks-card-title">{taskTitle(item)}</span>
+                <div className="tasks-card-meta">
+                  <span>#{item.message.id}</span>
+                  <span>#{item.message.channel}</span>
+                  {item.replies > 0 && <span>{item.replies} replies</span>}
+                </div>
+                <TaskLabels labels={item.message.labels} />
+                <TaskStateBadge task={task} holder={holder} recordedState={item.message.labels["board.task"]} />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      {remaining > 0 && (
+        <button type="button" className="tasks-column-more" aria-controls={listId} onClick={more}>
+          Show more ({remaining} more)
+        </button>
+      )}
+      {done && limit > initial && (
+        <button type="button" className="tasks-column-more" aria-controls={listId} onClick={less}>
+          Show less
+        </button>
+      )}
     </section>
   );
 }
@@ -324,24 +335,18 @@ export function TasksQueue({
   tasks,
   actors,
   stateFilter,
-}: {
-  board: Board;
-  tasks: readonly ThreadSummary[];
-  actors?: ReadonlyMap<string, TaskActor>;
-  stateFilter: Task["state"] | "open" | "all";
-}) {
-  const now = useRelativeTimeClock();
-  const [limit, setLimit] = useState(QUEUE_PAGE_SIZE);
-  const terminal = stateFilter === "completed" || stateFilter === "failed" || stateFilter === "canceled";
-  const ordered = terminal ? [...tasks].sort(newestTerminalFirst) : tasks;
-  const visible = terminal || stateFilter === "all" ? ordered.slice(0, limit) : ordered;
-  const remaining = tasks.length - visible.length;
-  const list = (
-    <ul className="tasks-queue-list" aria-label="Task queue">
-      {visible.map((item) => {
+}: TaskViewProps & { stateFilter: Task["state"] | "open" | "all" }) {
+  const { limit, list, listId, more } = useVisibleTasks(ACTIVE_PAGE_SIZE, ACTIVE_PAGE_SIZE);
+  const terminal = isTerminal(stateFilter);
+  const ordered = useMemo(() => (terminal ? tasks.toSorted(newestTerminalFirst) : tasks), [terminal, tasks]);
+  const remaining = ordered.length - limit;
+  const rows = (
+    <ul className="tasks-queue-list" aria-label="Task queue" id={listId} ref={list}>
+      {ordered.slice(0, limit).map((item) => {
         const task = item.message.task;
         if (!task) return null;
         const { id, channel, labels, createdAt } = item.message;
+        const title = taskTitle(item);
         const status = task.claim
           ? `by ${claimHolderText(task.claim.actor, actors?.get(task.claim.actor))}`
           : task.needs.length
@@ -358,8 +363,8 @@ export function TasksQueue({
               <QueueState state={task.state} recordedState={labels["board.task"]} />
               <div className="tasks-queue-main">
                 <span className="tasks-queue-id">#{id}</span>
-                <span className="tasks-card-title" title={taskTitle(item)}>
-                  {taskTitle(item)}
+                <span className="tasks-card-title" title={title}>
+                  {title}
                 </span>
                 <TaskLabels labels={labels} />
               </div>
@@ -369,7 +374,7 @@ export function TasksQueue({
               <span className="tasks-queue-channel" title={`#${channel}`}>
                 #{channel}
               </span>
-              <RelativeAge date={createdAt} now={now} />
+              <RelativeAge date={createdAt} />
             </Link>
           </li>
         );
@@ -377,17 +382,13 @@ export function TasksQueue({
     </ul>
   );
   return (
-    <>
-      {list}
+    <TaskAgeClock>
+      {rows}
       {remaining > 0 && (
-        <button
-          type="button"
-          className="tasks-load-more"
-          onClick={() => setLimit((current) => current + QUEUE_PAGE_SIZE)}
-        >
+        <button type="button" className="tasks-load-more" aria-controls={listId} onClick={more}>
           Show more ({remaining} remaining)
         </button>
       )}
-    </>
+    </TaskAgeClock>
   );
 }

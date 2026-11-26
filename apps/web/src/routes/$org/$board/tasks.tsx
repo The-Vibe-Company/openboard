@@ -1,5 +1,6 @@
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import type { BoardEvent } from "@the-vibe-company/openboard";
 import { useEffect, useMemo, useState } from "react";
 import { boardKeys, channelsQuery, type ThreadSummary } from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
@@ -99,26 +100,81 @@ function TasksHeader({
   );
 }
 
-function useBoardTasksLive(board: { org: string; board: string }) {
-  const queryClient = useQueryClient();
-  useEffect(() => {
-    return subscribeBoardEvents(board, (event) => {
-      if (
-        event.type.startsWith("task.") ||
-        event.type === "labels.changed" ||
-        event.type === "message.deleted" ||
-        event.type === "message.edited"
-      ) {
-        void queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) });
-      }
-    });
-  }, [board, queryClient]);
-  return queryClient;
+type Board = { org: string; board: string };
+type TasksKey = ReturnType<typeof boardTasksKey>;
+
+export function boardTasksKey(board: Board, channelFilter: string) {
+  return [...boardKeys.allTasks(board), { state: "all", channel: channelFilter || undefined }] as const;
 }
 
-function useBoardTasks(board: { org: string; board: string }, channelFilter: string) {
+function matchesTaskChannel(channel: string, filter: string) {
+  if (!filter || channel === filter) return true;
+  return filter.endsWith("/") && (channel === filter.slice(0, -1) || channel.startsWith(filter));
+}
+
+export function affectsBoardTasks(event: BoardEvent, channelFilter: string, hasTask: (id: string) => boolean) {
+  if (!("message" in event) || !matchesTaskChannel(event.message.channel, channelFilter)) return false;
+  if (event.type.startsWith("task.")) return true;
+  const { id, thread, task } = event.message;
+  switch (event.type) {
+    case "message.posted":
+      return id !== thread && hasTask(thread);
+    case "message.deleted":
+      return Boolean(task) || hasTask(thread);
+    case "message.edited":
+    case "labels.changed":
+      return id === thread && Boolean(task);
+    default:
+      return false;
+  }
+}
+
+function duringTaskPagination({
+  fetchStatus,
+  fetchMeta,
+}: {
+  fetchStatus: string;
+  fetchMeta: { fetchMore?: { direction: string } } | null;
+}) {
+  return fetchStatus !== "idle" && fetchMeta?.fetchMore?.direction === "forward";
+}
+
+// Keep the batcher's automatic refetch from replacing an in-flight page.
+export function taskQueryEnabled({ state }: { state: Parameters<typeof duringTaskPagination>[0] }) {
+  return !duringTaskPagination(state);
+}
+
+export function refreshAfterTaskPagination(client: QueryClient, queryKey: TasksKey) {
+  const cache = client.getQueryCache();
+  const filters = { queryKey, exact: true };
+  const query = cache.find(filters);
+  let pending = false;
+  let stopped = false;
+  const unsubscribe = cache.subscribe((event) => {
+    if (event.type !== "updated" || event.query !== query) return;
+    const { state } = event.query;
+    if (duringTaskPagination(state)) {
+      pending ||= state.isInvalidated;
+    } else if (pending && state.fetchStatus === "idle") {
+      pending = false;
+      // A successful page clears isInvalidated. Refresh after the page has committed.
+      queueMicrotask(() => {
+        if (!stopped) void client.invalidateQueries(filters, { cancelRefetch: false });
+      });
+    }
+  });
+  return () => {
+    stopped = true;
+    unsubscribe();
+  };
+}
+
+function useBoardTasks(board: Board, channelFilter: string) {
+  const queryClient = useQueryClient();
+  const queryKey = useMemo(() => boardTasksKey(board, channelFilter), [board, channelFilter]);
   const query = useInfiniteQuery({
-    queryKey: [...boardKeys.allTasks(board), { state: "all", channel: channelFilter || undefined }],
+    queryKey,
+    enabled: taskQueryEnabled,
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam, signal }) =>
       browserClient(window.location.origin, board).listTasks(
@@ -129,7 +185,14 @@ function useBoardTasks(board: { org: string; board: string }, channelFilter: str
   });
 
   const allTasks = useMemo(() => query.data?.pages.flatMap((page) => page.tasks) ?? [], [query.data]);
-  return { query, allTasks, viewKey: JSON.stringify([board.org, board.board, channelFilter]) };
+  const taskIds = useMemo(() => new Set(allTasks.map(({ message }) => message.id)), [allTasks]);
+  useEffect(() => refreshAfterTaskPagination(queryClient, queryKey), [queryClient, queryKey]);
+  useEffect(() => {
+    return subscribeBoardEvents(board, (event, invalidate) => {
+      if (affectsBoardTasks(event, channelFilter, (id) => taskIds.has(id))) invalidate(queryKey);
+    });
+  }, [board, channelFilter, queryKey, taskIds]);
+  return { query, queryClient, queryKey, allTasks, viewKey: JSON.stringify([board.org, board.board, channelFilter]) };
 }
 
 function LoadOlderTasks({ query }: { query: ReturnType<typeof useBoardTasks>["query"] }) {
@@ -138,7 +201,7 @@ function LoadOlderTasks({ query }: { query: ReturnType<typeof useBoardTasks>["qu
     <button
       type="button"
       className="tasks-load-more"
-      disabled={query.isFetchingNextPage}
+      disabled={query.isFetching}
       onClick={() => void query.fetchNextPage({ cancelRefetch: false })}
     >
       {query.isFetchingNextPage ? "Loading tasks…" : "Load older tasks"}
@@ -149,7 +212,6 @@ function LoadOlderTasks({ query }: { query: ReturnType<typeof useBoardTasks>["qu
 function BoardTasksPage() {
   const { org, board: boardSlug } = Route.useParams();
   const board = useMemo(() => ({ org, board: boardSlug }), [org, boardSlug]);
-  const queryClient = useBoardTasksLive(board);
   const { data: session } = useQuery(sessionQuery);
   const { data: channels = [] } = useQuery(channelsQuery(board));
   const [stateFilter, setStateFilter] = useState<StateFilter>("open");
@@ -157,7 +219,7 @@ function BoardTasksPage() {
   const [channelFilter, setChannelFilter] = useState(channel ?? "");
   const [layout, setLayout] = useState<"board" | "list">("board");
   const [creating, setCreating] = useState(false);
-  const { query, allTasks, viewKey } = useBoardTasks(board, channelFilter);
+  const { query, queryClient, queryKey, allTasks, viewKey } = useBoardTasks(board, channelFilter);
   const { data: actors } = useQuery(taskActorsQuery(board, allTasks.length > 0));
   const counts = useMemo(() => countByState(allTasks), [allTasks]);
   const filtered = useMemo(() => filterTasks(allTasks, stateFilter), [allTasks, stateFilter]);
@@ -197,7 +259,7 @@ function BoardTasksPage() {
           onCreated={async () => {
             setCreating(false);
             await Promise.all([
-              queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) }),
+              queryClient.invalidateQueries({ queryKey, exact: true }),
               queryClient.invalidateQueries({ queryKey: boardKeys.channels(board), exact: true }),
             ]);
           }}

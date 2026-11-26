@@ -349,3 +349,31 @@ test("GET /threads finds threads that mention someone, by handle, ID or me, a pe
   expect(refused.status).toBe(400);
   expect(await refused.json()).toMatchObject({ error: { code: "invalid_request" } });
 });
+
+test("GET /threads pages filtered subtree matches by activity and treats underscore literally", async () => {
+  app = makeApp();
+  const post = async (body: object) => {
+    const response = await call(app, "POST", "/messages", body);
+    expect(response.status).toBe(201);
+    return ((await response.json()) as Thread).message.id;
+  };
+  const olderRoot = await post({ channel: "dev", text: "job_done" });
+  const repliedRoot = await post({ channel: "dev/api", text: "root" });
+  const reply = await post({ re: repliedRoot, text: "job_done" });
+  await post({ channel: "dev/api", text: "jobXdone" });
+  await post({ channel: "elsewhere", text: "job_done" });
+  const path = "/threads?channel=dev/&text=job_done&limit=1";
+  const page = async (cursor = "") => {
+    const response = await call(app, "GET", path + cursor);
+    expect(response.status).toBe(200);
+    const { threads, older } = (await response.json()) as { threads: Thread[]; older: string | null };
+    return { ids: threads.map(({ message }) => message.id), older };
+  };
+
+  const latest = await page();
+  expect(latest).toEqual({ ids: [repliedRoot], older: `${reply}.${repliedRoot}` });
+  expect(await page(`&before=${latest.older}`)).toEqual({ ids: [olderRoot], older: null });
+  expect(await page(`&after=${olderRoot}`)).toMatchObject({ ids: [repliedRoot] });
+  expect((await call(app, "POST", `/messages/${reply}/delete`, {})).status).toBe(200);
+  expect(await page()).toEqual({ ids: [olderRoot], older: null });
+});
