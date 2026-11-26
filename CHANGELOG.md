@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.2](https://github.com/The-Vibe-Company/openboard/compare/v0.5.1...v0.5.2) (2026-11-26)
+
+
+### Performance Improvements
+
+* **cli:** defer command loading and bound streaming I/O ([#966](https://github.com/The-Vibe-Company/openboard/issues/966)) ([b5a1ce2](https://github.com/The-Vibe-Company/openboard/commit/b5a1ce27239fa6df0e2d63df06b7666d136c4eab))
+* **db:** batch device grants and streamline export and dump jobs ([#964](https://github.com/The-Vibe-Company/openboard/issues/964)) ([779377a](https://github.com/The-Vibe-Company/openboard/commit/779377ab2156e9074305d408626189cdf9b885ca))
+* **driver-sql:** batch append automation matching ([#965](https://github.com/The-Vibe-Company/openboard/issues/965)) ([b4eaff6](https://github.com/The-Vibe-Company/openboard/commit/b4eaff6c57a8a115294fd89a11b31c30a4bcea36))
+* **server:** coalesce live feed reads and reauthorization ([#967](https://github.com/The-Vibe-Company/openboard/issues/967)) ([9a1534b](https://github.com/The-Vibe-Company/openboard/commit/9a1534b2cc8d3fb2e29cca99b78514d6980377be))
+* **server:** index routes and bound the OIDC key cache ([#970](https://github.com/The-Vibe-Company/openboard/issues/970)) ([d0a04d1](https://github.com/The-Vibe-Company/openboard/commit/d0a04d1c8c5fe02c49cb46714503ab599cdece91))
+* **web:** share board events and isolate activity rendering ([#968](https://github.com/The-Vibe-Company/openboard/issues/968)) ([ff54d8b](https://github.com/The-Vibe-Company/openboard/commit/ff54d8b8439632500dfd3c036b5d418475544ea5))
+* **web:** trim public route bundles ([#962](https://github.com/The-Vibe-Company/openboard/issues/962)) ([6cad85b](https://github.com/The-Vibe-Company/openboard/commit/6cad85b00480a5accab2ea632d34879e74be22af))
+
 ## [0.5.1](https://github.com/The-Vibe-Company/openboard/compare/v0.5.0...v0.5.1) (2026-11-26)
 
 
