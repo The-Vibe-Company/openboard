@@ -55,6 +55,15 @@ export const setupHint =
   "Set BOARD_URL to a board URL, or run ob login <origin> or ob connect <board-url> --as <name>.";
 export const credentialHint = "Run ob login <origin> or ob connect <board-url> --as <name>.";
 
+const networkChecks = "Check DNS, TLS certificates and network access";
+export const networkHint = `${networkChecks} for the board.`;
+
+class UnreachableReceiver extends BoardError {
+  constructor() {
+    super("unreachable", "the receiver could not be reached");
+  }
+}
+
 /** A board error followed by the board's recovery guidance when supplied. */
 export function printError(output: Output, error: BoardError, options: { json: boolean; boardCommand?: string }): void {
   const next = GUIDED.has(error.code) ? error.next : undefined;
@@ -66,7 +75,12 @@ export function printError(output: Output, error: BoardError, options: { json: b
       output.err(`next: ${step.argv.map(shellArg).join(" ")}`);
     }
   }
-  if (options.json || !options.boardCommand) return;
+  if (options.json) return;
+  if (error.code === "unreachable") {
+    const hint = error instanceof UnreachableReceiver ? `${networkChecks} for the webhook receiver.` : networkHint;
+    output.err(`Next step: ${hint} Run ob doctor to check your board connection.`);
+  }
+  if (!options.boardCommand) return;
   if (error.code === "claim_lost") {
     const next =
       options.boardCommand === "tasks block"
@@ -139,27 +153,43 @@ type TasksInput = {
   readonly limit?: number;
 };
 
+type ListedTask = OutputOf<typeof listTasks>["tasks"][number];
+
+function taskState(task: ListedTask["message"]["task"], now: number): string {
+  if (task?.state !== "claimed" || !task.claim) return task?.state ?? "";
+  const actor = task.claim.actor.replace(
+    /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu,
+    (character) => `\\u{${character.codePointAt(0)?.toString(16)}}`,
+  );
+  const remaining = Date.parse(task.claim.until) - now;
+  if (!Number.isFinite(remaining)) return `claimed (${actor})`;
+  if (remaining <= 0) return `claimed (${actor}, lease expired)`;
+  const minutes = Math.floor(remaining / 60_000);
+  return `claimed (${actor}, ${minutes || "<1"}m left)`;
+}
+
 /** A task on one line: its ID, state, the first line of its text, then its root's labels but the state's. */
-function taskLine({ message }: OutputOf<typeof listTasks>["tasks"][number]): string {
+function taskLine({ message }: ListedTask, now: number): string {
   const [first = "", ...rest] = message.text.trim().split(/\r?\n/);
   const labels = Object.entries(message.labels ?? {})
     .filter(([key]) => key !== "board.task")
     .map(([key, value]) => `${key}=${value}`);
   const text = `${first.trimEnd()}${rest.length > 0 ? " …" : ""}`;
-  return [`#${message.id}`, message.task?.state ?? "", text, ...(labels.length > 0 ? [labels.join(" ")] : [])].join(
+  return [`#${message.id}`, taskState(message.task, now), text, ...(labels.length > 0 ? [labels.join(" ")] : [])].join(
     "  ",
   );
 }
 
 /** One line per task, oldest first, then on a full page the command that reads the next one (upstream `vb tasks`). */
-function tasksText(output: unknown, input: Readonly<Record<string, unknown>>): string {
+function tasksText(output: unknown, input: Readonly<Record<string, unknown>>, now: () => number): string {
   const { tasks, cursor } = output as OutputOf<typeof listTasks>;
   const { channel, state, label = [], by, owner, for: assignee, needs, latest, limit } = input as TasksInput;
   if (tasks.length === 0) {
     const which = state === undefined || state === "open" ? "open " : state === "all" ? "" : `${state} `;
     return `no ${which}tasks${channel === undefined ? "" : ` in ${channel}`}`;
   }
-  const lines = tasks.map(taskLine);
+  const listedAt = now();
+  const lines = tasks.map((task) => taskLine(task, listedAt));
   if (latest || tasks.length < (limit ?? 50)) return lines.join("\n");
   const named = (flag: string, value: string | undefined) => (value === undefined ? [] : [flag, value]);
   const options = [
@@ -190,8 +220,10 @@ function connectionText(connection: ManagedConnection): string {
   return [head, ...(agentLines.length > 0 ? agentLines : ["  no agents"])].join("\n");
 }
 
+type FormatInput = Readonly<Record<string, unknown>>;
+
 /** How a derived command prints its operation's answer and input without `--json`; raw JSON for one not listed. */
-export const formats: Readonly<Record<string, (output: unknown, input: Readonly<Record<string, unknown>>) => string>> =
+export const formats: Readonly<Record<string, (output: unknown, input: FormatInput, now: () => number) => string>> =
   Object.freeze({
     createChannel: (output) => {
       const { channel, created } = output as OutputOf<typeof createChannel>;
@@ -246,7 +278,7 @@ export const formats: Readonly<Record<string, (output: unknown, input: Readonly<
     retryWebhookDelivery: (output) => `queued ${(output as OutputOf<typeof retryWebhookDelivery>).id}`,
     testWebhook: (output) => {
       const { delivery } = output as OutputOf<typeof testWebhook>;
-      if (delivery.status === null) throw new BoardError("unreachable", "the receiver could not be reached");
+      if (delivery.status === null) throw new UnreachableReceiver();
       if (!delivery.ok) throw new BoardError("remote_error", `the receiver answered ${delivery.status}`);
       return `delivered ${delivery.id} ${delivery.status} in ${delivery.ms} ms`;
     },

@@ -2,7 +2,7 @@ import type { Output } from "../../output.ts";
 import { commandReference } from "../usage.ts";
 
 const GROUPS = [
-  ["Quick start", ["login", "connect", "use", "whoami", "help"]],
+  ["Quick start", ["start", "doctor", "login", "connect", "use", "whoami", "help"]],
   ["Auth & boards", ["connections", "grants", "actors", "tokens"]],
   [
     "Messages & channels",
@@ -25,7 +25,7 @@ const GROUPS = [
   ],
   ["Tasks", ["tasks"]],
   ["Automation & schemas", ["schedule", "schedules", "webhooks", "inbound", "schemas"]],
-  ["Admin & diagnostics", ["org", "members", "audit", "doctor", "completion"]],
+  ["Admin & diagnostics", ["org", "members", "audit", "completion"]],
 ] as const;
 
 export const utilityCommands = [
@@ -80,7 +80,15 @@ export function showHelp(output: Output, words: readonly string[]): number {
   output.out(
     [
       "Usage: ob <command> [options]",
-      ...Array.from(sections, ([title, lines]) => [title, ...lines].join("\n")),
+      ...Array.from(sections, ([title, lines]) =>
+        [
+          title,
+          ...(title === "Quick start"
+            ? ["  Next step: Run ob start to get set up or ob doctor to check your connection."]
+            : []),
+          ...lines,
+        ].join("\n"),
+      ),
       "Use ob help <command> for details. Use ob --version to print the version.",
     ].join("\n\n"),
   );

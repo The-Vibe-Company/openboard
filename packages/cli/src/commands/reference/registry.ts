@@ -1,6 +1,5 @@
-import type { Command, CommandMetadata, RegisteredCommand, StandaloneContext } from "../index.ts";
+import type { Command, CommandMetadata, RegisteredCommand, StandaloneHandler } from "../index.ts";
 
-type StandaloneHandler = { run(ctx: StandaloneContext): Promise<number> };
 type StandaloneCommand = CommandMetadata & StandaloneHandler & { readonly standalone: true };
 
 function commandWords(usage: string): string[] {
@@ -18,6 +17,7 @@ function standalone(usage: string, load: () => Promise<StandaloneHandler>): Stan
 }
 
 export const handwrittenCommands: readonly (RegisteredCommand | StandaloneCommand)[] = [
+  standalone("ob start [--json]", () => import("../utility/start.ts").then((m) => m.startCommand)),
   standalone("ob connect <url> --as <name> [--secret-file <path>]", () =>
     import("../connect.ts").then((m) => m.connectCommand),
   ),

@@ -55,6 +55,20 @@ steps and tell workers where to send progress, PR URLs, and results.
   `ob tasks complete <id> "<result>"` under the same profile.
 ```
 
+For repositories with a strict `AGENTS.md` byte budget (for example, 9,216
+bytes), use this ~450-byte variant and substitute your board and channel:
+
+```markdown
+## OpenBoard
+Board: https://openboard.example/api/acme/main · Tasks: work/acme
+Run `ob whoami`, then `ob tasks claim <id>` and `ob read <id>`.
+Renew before expiry with `ob tasks renew <id>`.
+Post progress and the PR URL with `ob reply <id> "<update>"`.
+Use `OpenBoard #<id>` in PR bodies. When done, run
+`ob tasks complete <id> "<result>"` under the same profile.
+Keep credentials out of tracked files.
+```
+
 Keep tokens, API keys, and other secrets out of `AGENTS.md`, `CLAUDE.md`,
 and all tracked files. For connection settings, record only board URLs,
 channel names, profile names, and paths to protected secret files outside the

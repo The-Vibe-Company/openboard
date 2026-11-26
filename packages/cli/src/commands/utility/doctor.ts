@@ -7,7 +7,7 @@ import {
   localOwnerConfigPath,
   personalConfigPath,
 } from "../../config.ts";
-import { credentialHint, setupHint } from "../../output.ts";
+import { credentialHint, networkHint, setupHint } from "../../output.ts";
 import { version } from "../../version.ts";
 import { Misuse, type StandaloneContext } from "../index.ts";
 
@@ -42,13 +42,24 @@ function permissions(path: string | undefined, directory = false): Check {
   }
 }
 
-function tlsError(error: unknown): boolean {
+function networkFailure(error: unknown): Pick<Check, "detail" | "next"> {
   for (let depth = 0; depth < 5 && error instanceof Error; depth++, error = error.cause) {
     const code = "code" in error ? error.code : "";
-    if (/certificate|CERT_|SELF_SIGNED|UNABLE_TO_(?:GET_ISSUER|VERIFY_LEAF)/i.test(`${code} ${error.message}`))
-      return true;
+    const reason = `${code} ${error.message}`;
+    if (/certificate|CERT_|SELF_SIGNED|UNABLE_TO_(?:GET_ISSUER|VERIFY_LEAF)/i.test(reason)) {
+      return {
+        detail: "TLS certificate validation failed",
+        next: "Check for corporate proxy or VPN interception and configure NODE_EXTRA_CA_CERTS with the trusted CA.",
+      };
+    }
+    if (/\b(?:ENOTFOUND|EAI_AGAIN|EAI_NONAME)\b|unable to resolve|could not resolve|DNS lookup/i.test(reason)) {
+      return { detail: "DNS resolution failed", next: "Check the board hostname and your DNS, VPN or proxy settings." };
+    }
+    if (/\b(?:TLS|SSL)\b|ERR_(?:TLS|SSL)_/i.test(reason)) {
+      return { detail: "TLS connection failed", next: "Check HTTPS and the TLS settings on the board or proxy." };
+    }
   }
-  return false;
+  return { detail: "server could not be reached", next: networkHint };
 }
 
 async function readiness(url: URL, send: (request: Request) => Promise<Response>, now: () => number): Promise<Check> {
@@ -67,18 +78,7 @@ async function readiness(url: URL, send: (request: Request) => Promise<Response>
     };
   } catch (error) {
     const latencyMs = now() - start;
-    const tls = tlsError(error);
-    return {
-      name,
-      state: "failed",
-      detail: tls ? "TLS certificate validation failed" : "server could not be reached",
-      latencyMs,
-      ...(tls
-        ? {
-            next: "Check for corporate proxy or VPN interception and configure NODE_EXTRA_CA_CERTS with the trusted CA.",
-          }
-        : {}),
-    };
+    return { name, state: "failed", latencyMs, ...networkFailure(error) };
   }
 }
 
@@ -148,6 +148,7 @@ export async function doctor(ctx: StandaloneContext): Promise<number> {
   const result = {
     ok: checks.every(({ state }) => state !== "failed"),
     version,
+    upgrade: "curl -fsSL https://openboard.thevibecompany.co/install.sh | sh",
     boardUrl: valid ? url.href : null,
     profile: profile ?? null,
     checks,
@@ -163,6 +164,7 @@ export async function doctor(ctx: StandaloneContext): Promise<number> {
             `${name}: ${state} — ${JSON.stringify(detail).slice(1, -1)}`,
             ...(next ? [`Next step: ${next}`] : []),
           ]),
+          `Upgrade ob: ${result.upgrade}`,
         ].join("\n"),
   );
   return result.ok ? 0 : 1;

@@ -11,6 +11,12 @@ type Contracted = (typeof operations)[number];
 const SECRET_FILE = "Where the new secret is written, created with mode 0600; the secret is never printed.";
 
 const HANDWRITTEN: Readonly<Record<string, Handwritten>> = {
+  start: {
+    summary: "Show setup steps and a first task workflow.",
+    operations: [],
+    example: "ob start --json",
+    options: { json: "Print the quickstart as JSON." },
+  },
   schedule: scheduleReference,
   schedules: schedulesReference,
   download: {
