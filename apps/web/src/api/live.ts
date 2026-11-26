@@ -1,7 +1,7 @@
 import { type QueryClient, type QueryKey, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BoardEvent, Client } from "@the-vibe-company/openboard";
 import { useEffect, useState } from "react";
-import { boardKeys, threadsQuery } from "./board.ts";
+import { boardKeys, channelsQuery, hasChannelChangesAfter, refreshThreadHead } from "./board.ts";
 import { browserClient } from "./client.ts";
 import { channelAllTasksQuery, taskActorsQuery, tasksQuery } from "./tasks.ts";
 import { threadKeys } from "./thread.ts";
@@ -9,7 +9,16 @@ import { threadKeys } from "./thread.ts";
 type Board = { org: string; board: string };
 type Schedule = (run: () => void, delay: number) => () => void;
 type ReadThread = Awaited<ReturnType<Client["readThread"]>>;
-type Queries = Pick<QueryClient, "cancelQueries" | "invalidateQueries" | "getQueriesData" | "getQueryState">;
+type Queries = Pick<
+  QueryClient,
+  | "cancelQueries"
+  | "invalidateQueries"
+  | "getQueriesData"
+  | "getQueryState"
+  | "getQueryCache"
+  | "getQueryData"
+  | "setQueryData"
+>;
 type LiveListener = (event: BoardEvent, invalidate: (key: QueryKey) => void) => void;
 
 const liveListeners = new Map<string, Set<LiveListener>>();
@@ -91,6 +100,7 @@ function recordBoardEvent(
   add: (key: QueryKey) => void,
   threads: Set<string>,
   addCached: (key: QueryKey) => void,
+  addThreads: (channel: string, headOnly?: boolean) => void,
 ): boolean {
   if (event.type === "channel.created") {
     add(boardKeys.channels(board));
@@ -105,7 +115,7 @@ function recordBoardEvent(
     if (event.type === "task.claimed" || event.type === "task.assigned" || event.type === "task.created") {
       add(taskActorsQuery(board, true).queryKey);
     }
-    add(threadsQuery(board, channel).queryKey);
+    addThreads(channel);
     return true;
   }
   // The SDK event union does not currently include reactions.
@@ -116,10 +126,12 @@ function recordBoardEvent(
       threads.add(thread);
       return true;
     case "message.posted":
-      add(boardKeys.channels(board));
-      if (re !== null) threads.add(thread);
-      if (re !== null) addCached(channelAllTasksQuery(board, channel).queryKey);
-      break;
+      if (re !== null) {
+        threads.add(thread);
+        addCached(channelAllTasksQuery(board, channel).queryKey);
+      }
+      addThreads(channel, re === null);
+      return true;
     case "message.edited":
       threads.add(thread);
       if (re === null) {
@@ -136,72 +148,142 @@ function recordBoardEvent(
     default:
       return false;
   }
-  add(threadsQuery(board, channel).queryKey);
+  addThreads(channel);
   return true;
 }
 
-function boardRefreshes(board: Board, queries: Queries, schedule: Schedule, actorEventsOnly: boolean) {
-  const pending = new Map<string, QueryKey>();
-  const threads = new Set<string>();
-  let all = false;
-  const running = new Set<string>();
-  let stopped = false;
-  let cancel: (() => void) | undefined;
-
-  function add(key: QueryKey) {
-    pending.set(JSON.stringify(key), key);
-  }
-
-  const addCached = (key: QueryKey) => queries.getQueryState(key) && add(key);
-
-  function queue() {
-    if (!stopped) cancel ??= schedule(flush, 25);
-  }
-
-  function refresh(id: string, queryKey: QueryKey) {
-    running.add(id);
+function refreshQueries(board: Board, queries: Queries, signal: AbortSignal) {
+  function invalidate(queryKey: QueryKey) {
     const filters = { queryKey, exact: true };
     // An initial fetch cannot be restarted by invalidateQueries alone.
     void queries.cancelQueries({ ...filters, predicate: ({ state }) => state.data === undefined });
-    void queries.invalidateQueries(filters).finally(() => {
-      running.delete(id);
-      if (pending.has(id)) queue();
+    return queries.invalidateQueries(filters);
+  }
+  async function refreshHead(queryKey: QueryKey) {
+    let waited: Promise<unknown> | undefined;
+    while (!signal.aborted) {
+      const query = queries.getQueryCache().find({ queryKey, exact: true });
+      if (query?.state.fetchStatus === "fetching" && query.promise) {
+        if (query.promise === waited) break;
+        waited = query.promise;
+        await waited.catch(() => {});
+        continue;
+      }
+      const state = queries.getQueryState(queryKey);
+      if (await refreshThreadHead(board, queries, queryKey, signal)) return;
+      if (queries.getQueryState(queryKey) === state) break;
+    }
+    if (!signal.aborted) await invalidate(queryKey);
+  }
+  return (queryKey: QueryKey, headOnly: boolean) => {
+    if (headOnly && queries.getQueriesData({ queryKey, exact: true, type: "active" }).length > 0) {
+      return refreshHead(queryKey);
+    }
+    return invalidate(queryKey);
+  };
+}
+
+function hasUnknownChannel(queries: Queries, board: Board, paths: ReadonlySet<string>) {
+  if (paths.size === 0) return false;
+  const channels = queries.getQueryData(channelsQuery(board).queryKey)?.channels;
+  const known = new Set(channels?.map(({ path }) => path));
+  return [...paths].some((path) => !known.has(path));
+}
+
+function catchUpChannels(
+  board: Board,
+  queries: Queries,
+  signal: AbortSignal,
+  add: (key: QueryKey) => void,
+  queue: () => void,
+) {
+  const key = channelsQuery(board).queryKey;
+  const index = queries.getQueryData(key);
+  if (!index?.cursor) return;
+  void hasChannelChangesAfter(board, index, signal)
+    .catch(() => true)
+    .then((missed) => {
+      if (!missed || signal.aborted) return;
+      add(key);
+      queue();
     });
+}
+
+function boardRefreshes(board: Board, queries: Queries, schedule: Schedule, actorEventsOnly: boolean) {
+  const pending = new Map<string, { key: QueryKey; headOnly: boolean }>();
+  const threads = new Set<string>();
+  const channelPaths = new Set<string>();
+  const running = new Set<string>();
+  const controller = new AbortController();
+  const refresh = refreshQueries(board, queries, controller.signal);
+  let reconcile: "initial" | "recovery" | undefined;
+  let cancel: (() => void) | undefined;
+
+  function add(key: QueryKey, headOnly = false) {
+    const id = JSON.stringify(key);
+    pending.set(id, { key, headOnly: headOnly && (pending.get(id)?.headOnly ?? true) });
+  }
+
+  const addCached = (key: QueryKey) => queries.getQueryState(key) && add(key);
+  const channelThreads = new Map<string, boolean>();
+  const addThreads = (channel: string, headOnly = false) => {
+    channelThreads.set(channel, headOnly && (channelThreads.get(channel) ?? true));
+  };
+
+  function queue() {
+    if (!controller.signal.aborted) cancel ??= schedule(flush, 25);
   }
 
   function flush() {
     cancel = undefined;
-    if (all) {
-      for (const [key] of queries.getQueriesData({ queryKey: ["board", board.org, board.board] })) add(key);
+    for (const [channel, headOnly] of channelThreads) {
+      const prefix = [...boardKeys.threads(board), channel];
+      for (const [key] of queries.getQueriesData({ queryKey: prefix })) add(key, headOnly);
+    }
+    channelThreads.clear();
+    if (reconcile) {
+      const prefix = actorEventsOnly ? boardKeys.actors(board) : ["board", board.org, board.board];
+      for (const [key] of queries.getQueriesData({ queryKey: prefix })) {
+        if (reconcile === "recovery" || key[3] !== "channels") add(key);
+      }
     } else if (threads.size > 0) {
       for (const [key, data] of queries.getQueriesData<ReadThread>({ queryKey: threadKeys.all(board) })) {
         // A thread may be opened by a reply ID. Until its first read resolves, its root is unknown.
         if (data ? threads.has(data.message.id) : queries.getQueryState(key)?.fetchStatus === "fetching") add(key);
       }
     }
-    all = false;
+    if (hasUnknownChannel(queries, board, channelPaths)) add(boardKeys.channels(board));
+    channelPaths.clear();
+    reconcile = undefined;
     threads.clear();
-    for (const [id, key] of pending) {
+    for (const [id, { key, headOnly }] of pending) {
       if (running.has(id)) continue;
       pending.delete(id);
-      refresh(id, key);
+      running.add(id);
+      void refresh(key, headOnly).finally(() => {
+        running.delete(id);
+        if (pending.has(id)) queue();
+      });
     }
   }
 
   return {
-    onOpen() {
-      // Reconcile reads that started before the connection began or while it was down.
-      all = true;
+    onOpen(recovery: boolean) {
+      reconcile = recovery ? "recovery" : "initial";
+      if (!recovery && !actorEventsOnly) catchUpChannels(board, queries, controller.signal, add, queue);
       queue();
     },
     onEvent({ data }: MessageEvent<string>) {
       const event = parseBoardEvent(data);
-      if (!event || (actorEventsOnly && event.type !== "actor.seen")) return;
+      if (!event || event.type === "task.renewed" || actorEventsOnly !== (event.type === "actor.seen")) return;
       notifyLiveListeners(board, event, add);
-      if (recordBoardEvent(event, board, add, threads, addCached) || pending.size > 0) queue();
+      if ("message" in event && event.message) channelPaths.add(event.message.channel);
+      if (recordBoardEvent(event, board, add, threads, addCached, addThreads) || channelPaths.size || pending.size) {
+        queue();
+      }
     },
     stop() {
-      stopped = true;
+      controller.abort();
       cancel?.();
     },
   };
@@ -218,13 +300,15 @@ export function followBoard(
   onReconnecting?: (reconnecting: boolean) => void,
   actorEventsOnly = false,
 ) {
-  const path = actorEventsOnly ? `${boardEventsPath(board)}?all=true` : boardEventsPath(board);
+  // Channel creation is a bookkeeping event and requires all=true.
+  const path = `${boardEventsPath(board)}?all=true`;
   const refresh = boardRefreshes(board, queries, schedule, actorEventsOnly);
   let retryDelay = 1000;
   let disconnect = () => {};
   let cancelRetry: (() => void) | undefined;
   let cancelGrace: (() => void) | undefined;
   let reconnecting = false;
+  let recovery = false;
 
   function start() {
     cancelRetry = undefined;
@@ -237,9 +321,11 @@ export function followBoard(
         onReconnecting?.(false);
       }
       retryDelay = 1000;
-      refresh.onOpen();
+      refresh.onOpen(recovery);
+      recovery = true;
     }
     function onError() {
+      recovery = true;
       if (onReconnecting && !reconnecting) {
         cancelGrace ??= schedule(() => {
           cancelGrace = undefined;
@@ -275,7 +361,6 @@ export function followBoard(
 }
 
 export function followBoardActors(board: Board, queries: Queries) {
-  // The default stream omits bookkeeping events such as actor.seen.
   return followBoard(board, queries, undefined, undefined, undefined, true);
 }
 

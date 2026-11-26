@@ -14,7 +14,7 @@ export async function openLiveBoard(
   renderSnapshot: () => Promise<void>,
   snapshot = `${api}/threads`,
 ) {
-  const events = `${api}/events`;
+  const events = `${api}/events?all=true`;
   const release = Promise.withResolvers<void>();
   await page.route(
     events,

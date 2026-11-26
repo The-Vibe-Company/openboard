@@ -53,6 +53,11 @@ test("board task events batch one exact key and skip off-channel and ordinary me
     cancelQueries: mock(async () => {}),
     invalidateQueries: mock(async (_filters: unknown) => {}),
     getQueriesData: () => [],
+    getQueryData: <T>() => ({ channels: [{ path: "dev" }, { path: "ops" }] }) as T,
+    setQueryData: () => undefined,
+    getQueryCache: () => {
+      throw new Error("No active thread list");
+    },
     getQueryState: () => undefined,
   };
   const invalidations = () => queries.invalidateQueries.mock.calls.flat();

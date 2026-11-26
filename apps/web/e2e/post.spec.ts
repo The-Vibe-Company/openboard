@@ -113,8 +113,19 @@ test("a refusal keeps the draft and a double click retries it once", async ({ pa
 });
 
 test("a post refreshes a thread list that is still loading", async ({ page, boardUrl }) => {
+  const channelUrl = page.url();
+  await page.goto("about:blank");
   const waiting = Promise.withResolvers<void>();
   const release = Promise.withResolvers<void>();
+  // Hold the startup reconciliation so the composer itself has to refresh the pending list.
+  await page.route(
+    `${boardUrl}/events?all=true`,
+    async (route) => {
+      await release.promise;
+      await route.continue();
+    },
+    { times: 1 },
+  );
   await page.route(
     `${boardUrl}/threads?channel=dev`,
     async (route) => {
@@ -127,7 +138,7 @@ test("a post refreshes a thread list that is still loading", async ({ page, boar
   );
 
   try {
-    await page.reload();
+    await page.goto(channelUrl);
     await waiting.promise;
     await expect(page.getByRole("status").filter({ hasText: "Loading threads" })).toBeVisible();
     await page.getByRole("textbox", { name: "Message" }).fill("while loading");

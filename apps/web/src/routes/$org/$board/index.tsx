@@ -1,19 +1,17 @@
 import { type QueryClient, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useElementScrollRestoration } from "@tanstack/react-router";
 import { BoardError } from "@the-vibe-company/openboard";
+import { type FormEvent, type RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  type FormEvent,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { boardErrorText, boardKeys, type ThreadFilters, type ThreadSummary, threadsQuery } from "../../../api/board.ts";
+  boardErrorText,
+  boardKeys,
+  channelsQuery,
+  type ThreadFilters,
+  type ThreadSummary,
+  threadsQuery,
+} from "../../../api/board.ts";
 import { browserClient } from "../../../api/client.ts";
-import { subscribeBoardEvents, useChannelEvents } from "../../../api/live.ts";
+import { useChannelEvents } from "../../../api/live.ts";
 import { sessionQuery } from "../../../api/session.ts";
 import { channelAllTasksQuery, tasksQuery } from "../../../api/tasks.ts";
 import { Composer, type ComposerDraft, type TaskComposerDraft } from "../../../components/Composer.tsx";
@@ -51,9 +49,7 @@ async function postToChannel(
   queryClient: QueryClient,
   board: Board & { csrf?: string },
   channel: string,
-  selectedChannel: string,
   draft: ComposerDraft,
-  filteredKey: readonly unknown[] | null,
   heading: RefObject<HTMLHeadingElement | null>,
 ) {
   const { message } = await browserClient(window.location.origin, board).postMessage({ channel, ...draft });
@@ -71,9 +67,10 @@ async function postToChannel(
       pages: [{ ...head, threads: nextThreads }, ...older],
     });
   }
-  if (filteredKey) void queryClient.invalidateQueries({ queryKey: filteredKey, exact: true });
   if (heading.current && heading.current.getBoundingClientRect().top < 0) heading.current.scrollIntoView();
-  if (!selectedChannel) void queryClient.invalidateQueries({ queryKey: boardKeys.channels(board), exact: true });
+  if (!queryClient.getQueryData(channelsQuery(board).queryKey)?.channels.some(({ path }) => path === channel)) {
+    void queryClient.invalidateQueries({ queryKey: boardKeys.channels(board), exact: true });
+  }
 }
 
 function ChannelHeader({
@@ -198,15 +195,6 @@ function useChannelFilters() {
 
 function useChannelThreads(board: Board, channel: string, filters?: ThreadFilters) {
   const options = useMemo(() => threadsQuery(board, channel, filters), [board, channel, filters]);
-  const { queryKey } = options;
-  useEffect(() => {
-    if (!filters) return;
-    return subscribeBoardEvents(board, (event, invalidate) => {
-      if ("message" in event && event.message.channel === channel) {
-        invalidate(queryKey);
-      }
-    });
-  }, [board, channel, filters, queryKey]);
   return useInfiniteQuery(options);
 }
 
@@ -226,7 +214,6 @@ function ChannelView({ board, selectedChannel }: { board: Board; selectedChannel
   const [taskFilter, setTaskFilter] = useState<TaskFilter>("Open");
   const queryClient = useQueryClient();
   const f = useChannelFilters();
-  const key = f.filters ? threadsQuery(board, channel, f.filters).queryKey : null;
   const { data: session } = useQuery(sessionQuery);
   const writeScope = { ...board, csrf: session?.csrf ?? undefined };
   const canCompose = view !== "activity" && (!session || session.signedIn);
@@ -245,12 +232,13 @@ function ChannelView({ board, selectedChannel }: { board: Board; selectedChannel
       queryClient.invalidateQueries({ queryKey: boardKeys.allTasks(board) }),
       queryClient.invalidateQueries({ queryKey: threadsQuery(board, channel).queryKey }),
     ]);
-    if (!selectedChannel) void queryClient.invalidateQueries({ queryKey: boardKeys.channels(board), exact: true });
+    if (!queryClient.getQueryData(channelsQuery(board).queryKey)?.channels.some(({ path }) => path === channel)) {
+      void queryClient.invalidateQueries({ queryKey: boardKeys.channels(board), exact: true });
+    }
   }
 
   const manage = (filter: TaskFilter) => switchView("tasks", filter);
-  const post = (draft: ComposerDraft) =>
-    postToChannel(queryClient, writeScope, channel, selectedChannel, draft, key, heading);
+  const post = (draft: ComposerDraft) => postToChannel(queryClient, writeScope, channel, draft, heading);
   const tabs = channelTabs(board, channel, view, tasks.count, switchView);
   return (
     <div className="channel-view">
