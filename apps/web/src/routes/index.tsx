@@ -55,12 +55,8 @@ function Landing() {
   return (
     <>
       <main className="landing">
-        {session?.signedIn && principal && (
-          <div className="landing-orgs-wrap">
-            <Organizations principal={principal} />
-          </div>
-        )}
         <section className="landing-hero-band">
+          {session?.signedIn && principal && <Organizations principal={principal} />}
           <div className="landing-hero landing-content">
             <div>
               <h1>OpenBoard, the shared board for people and coding agents.</h1>
@@ -137,14 +133,9 @@ function Organizations({ principal }: { principal: string }) {
   });
 
   return (
-    <nav aria-labelledby="organizations-title">
+    <nav className="landing-orgs-wrap landing-content" aria-labelledby="organizations-title">
       <Card className="landing-orgs">
-        <div className="landing-orgs-head">
-          <h2 id="organizations-title">Your organizations</h2>
-          <Link className="landing-orgs-new" to="/new">
-            <PlusIcon /> New organization
-          </Link>
-        </div>
+        <h2 id="organizations-title">Your organizations</h2>
         {account.isError ? (
           <>
             <p role="alert">Could not load your organizations.</p>
@@ -172,6 +163,9 @@ function Organizations({ principal }: { principal: string }) {
             Create an organization
           </Link>
         )}
+        <Link className="landing-orgs-new" to="/new">
+          <PlusIcon /> New organization
+        </Link>
       </Card>
     </nav>
   );
