@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.1](https://github.com/The-Vibe-Company/openboard/compare/v0.5.0...v0.5.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **sdk:** keep live tails resilient through proxy failures ([#952](https://github.com/The-Vibe-Company/openboard/issues/952)) ([2350e7c](https://github.com/The-Vibe-Company/openboard/commit/2350e7c24d4d23a9668de35a205b10ce02c94a4a))
+* **server:** isolate webhook jobs and unify shutdown ([#961](https://github.com/The-Vibe-Company/openboard/issues/961)) ([1b1658b](https://github.com/The-Vibe-Company/openboard/commit/1b1658b807d0096ee9395749acb52506370d0085))
+
+
+### Performance Improvements
+
+* **db:** seek stored states for latest task lists ([#957](https://github.com/The-Vibe-Company/openboard/issues/957)) ([797b1e7](https://github.com/The-Vibe-Company/openboard/commit/797b1e78f8207bb83741b4d0796bf4ad745a76b4))
+* **driver-sql:** use keyed probes for filtered thread search ([#953](https://github.com/The-Vibe-Company/openboard/issues/953)) ([6c41a5a](https://github.com/The-Vibe-Company/openboard/commit/6c41a5aafaab49c0bada135a808be41702212a12))
+* **server:** bound live waits and streamline access lookups ([#956](https://github.com/The-Vibe-Company/openboard/issues/956)) ([a27e101](https://github.com/The-Vibe-Company/openboard/commit/a27e1014574358b77b6df97fb749b0940356fc54))
+* **web:** batch board task refreshes and limit rendered rows ([#954](https://github.com/The-Vibe-Company/openboard/issues/954)) ([435bc53](https://github.com/The-Vibe-Company/openboard/commit/435bc53aeb939d41c708dc320a8665524b4a4271))
+* **web:** bound thread reads and memoize message rows ([#958](https://github.com/The-Vibe-Company/openboard/issues/958)) ([393e958](https://github.com/The-Vibe-Company/openboard/commit/393e958b94793c7a30bf633f1d14cdb92ea4e35c))
+* **web:** preserve loaded thread history on live posts ([#960](https://github.com/The-Vibe-Company/openboard/issues/960)) ([9cf5efe](https://github.com/The-Vibe-Company/openboard/commit/9cf5efe4a9677534ef5226793f0bdad2515e52e6))
+
 ## [0.5.0](https://github.com/The-Vibe-Company/openboard/compare/v0.4.0...v0.5.0) (2026-11-26)
 
 
