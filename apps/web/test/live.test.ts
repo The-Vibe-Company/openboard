@@ -13,7 +13,6 @@ const aliasKey = [...threadKeys.all(board), "11"];
 function fixture(
   scheduleTask?: ReturnType<typeof fakeClock>["schedule"],
   onReconnecting?: (reconnecting: boolean) => void,
-  actorEventsOnly = false,
   client?: Queries,
   knownPaths: string[] = [],
 ) {
@@ -31,12 +30,13 @@ function fixture(
     },
     getQueryData: <T>() => ({ channels: knownPaths.map((path) => ({ path })) }) as T,
     setQueryData: () => undefined,
-    getQueryState: () => undefined,
+    getQueryState: ((key: readonly unknown[]) =>
+      key[3] === "actors" ? { data: { actors: [] } } : undefined) as Queries["getQueryState"],
     getQueryCache: () => ({ find: () => undefined }) as unknown as ReturnType<Queries["getQueryCache"]>,
   };
   const clear = mock(() => {});
   const schedule = mock((run: () => void, delay: number) => scheduleTask?.(run, delay) ?? clear);
-  const stop = followBoard(board, client ?? queries, connect, schedule, onReconnecting, actorEventsOnly);
+  const stop = followBoard(board, client ?? queries, connect, schedule, onReconnecting);
   return {
     source,
     connect,
@@ -75,11 +75,6 @@ test("a burst refetches each affected query once, including threads opened by re
   live.event("message.posted", "dev", "10", "10");
   live.event("message.edited", "dev", "10");
   live.event("message.deleted", "dev", "10");
-  live.source.dispatchEvent(
-    new MessageEvent("board", {
-      data: '{"cursor":"15","createdAt":"2026-01-01T00:00:00.000Z","type":"actor.seen","payload":{"name":"Agent","handle":"agent"}}',
-    }),
-  );
   expect(live.schedule).toHaveBeenCalledTimes(1);
   expect(live.invalidate).not.toHaveBeenCalled();
   live.schedule.mock.calls[0]?.[0]();
@@ -115,7 +110,7 @@ test("task and channel events invalidate tasks, threads, actors, channels, and o
 });
 
 test.each(["reaction.added", "reaction.removed"])("%s refreshes open thread detail", (type) => {
-  const live = fixture(undefined, undefined, false, undefined, ["dev"]);
+  const live = fixture(undefined, undefined, undefined, ["dev"]);
   live.event(type, "dev", "10");
   live.schedule.mock.calls[0]?.[0]();
   expect(live.invalidate.mock.calls.flat()).toEqual([{ queryKey: aliasKey, exact: true }]);
@@ -147,22 +142,19 @@ test("malformed SSE JSON is ignored and subsequent events still refresh queries"
   live.stop();
 });
 
-test("actor bookkeeping delivers only sightings and batches subscriber query keys", () => {
-  const live = fixture(undefined, undefined, true);
+test("the board stream delivers actor sightings and batches actor cache refreshes", () => {
+  const live = fixture();
   const receive = mock((type: string) => type);
-  const unsubscribe = subscribeBoardEvents(board, (event, invalidate) => {
-    receive(event.type);
-    invalidate(boardKeys.actors(board));
-  });
+  const unsubscribe = subscribeBoardEvents(board, (event) => receive(event.type));
   try {
     expect(live.connect.mock.calls).toEqual([["/api/acme/main/events?all=true"]]);
-    live.event("task.claimed", "dev", "10");
     live.source.dispatchEvent(
       new MessageEvent("board", {
         data: '{"cursor":"15","createdAt":"2026-01-01T00:00:00.000Z","type":"actor.seen","payload":{"name":"Agent","handle":"agent"}}',
       }),
     );
     expect(receive.mock.calls).toEqual([["actor.seen"]]);
+    expect(live.schedule).toHaveBeenCalledTimes(1);
     live.schedule.mock.calls[0]?.[0]();
     expect(live.invalidate.mock.calls.flat()).toEqual([{ queryKey: boardKeys.actors(board), exact: true }]);
   } finally {
@@ -428,7 +420,7 @@ test("root posts read only the live head and older edits and deletes update load
   }) as typeof fetch);
 
   const { queries, readThreads, readChannels, current } = observedQueries(options);
-  const live = fixture(undefined, undefined, false, queries);
+  const live = fixture(undefined, undefined, queries);
   try {
     await readChannels();
     await readThreads();

@@ -29,28 +29,26 @@ function eventKind(type: string): "message" | "task" | "meta" | "system" {
   return "system";
 }
 
-export function mergeBoardEvents(streamed: readonly BoardEvent[], initial: readonly BoardEvent[], category: Category) {
+function sortBoardEvents(streamed: readonly BoardEvent[], initial: readonly BoardEvent[]) {
   const merged = new Map<string, BoardEvent>();
   for (const item of streamed) merged.set(item.cursor, item);
   for (const item of [...initial].reverse()) {
     if (!merged.has(item.cursor)) merged.set(item.cursor, item);
   }
   return [...merged.values()]
-    .sort((a, b) => {
-      const left = BigInt(a.cursor);
-      const right = BigInt(b.cursor);
-      return left < right ? 1 : left > right ? -1 : 0;
-    })
-    .filter((item) => {
-      if (category === "all") return true;
-      const kind = eventKind(item.type);
-      return (
-        (category === "messages" && kind === "message") ||
-        (category === "tasks" && kind === "task") ||
-        (category === "meta" && kind === "meta") ||
-        (category === "system" && kind === "system")
-      );
-    });
+    .map((event) => ({ event, cursor: BigInt(event.cursor) }))
+    .sort((a, b) => (a.cursor < b.cursor ? 1 : a.cursor > b.cursor ? -1 : 0))
+    .map(({ event }) => event);
+}
+
+function filterBoardEvents(events: BoardEvent[], category: Category) {
+  if (category === "all") return events;
+  const kind = category === "messages" ? "message" : category === "tasks" ? "task" : category;
+  return events.filter((event) => eventKind(event.type) === kind);
+}
+
+export function mergeBoardEvents(streamed: readonly BoardEvent[], initial: readonly BoardEvent[], category: Category) {
+  return filterBoardEvents(sortBoardEvents(streamed, initial), category);
 }
 
 function BoardActivityPage() {
@@ -80,10 +78,9 @@ function BoardActivity({ org, boardSlug }: { org: string; boardSlug: string }) {
     });
   }, [board, paused]);
 
-  const events = useMemo(
-    () => mergeBoardEvents(streamed, initial.data?.events ?? [], category),
-    [streamed, initial.data, category],
-  );
+  const history = initial.data?.events;
+  const sorted = useMemo(() => sortBoardEvents(streamed, history ?? []), [streamed, history]);
+  const events = useMemo(() => filterBoardEvents(sorted, category), [sorted, category]);
 
   return (
     <section className="board-view board-ledger" aria-labelledby="board-activity-heading">

@@ -242,7 +242,9 @@ function BoardSidebar({
           <BotIcon /> Agents
         </Link>
       </nav>
-      <ChannelList params={params} channels={channels} selected={selected} onNavigate={onCloseSidebar} />
+      {(!mobile || sidebarOpen) && (
+        <ChannelList params={params} channels={channels} selected={selected} onNavigate={onCloseSidebar} />
+      )}
       {session?.signedIn && (
         <NewChannelControl params={params} csrf={session.csrf ?? undefined} onCreated={onCreatedChannel} />
       )}
