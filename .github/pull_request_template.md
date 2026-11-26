@@ -1,7 +1,7 @@
 <!-- Describe what this change does and who it helps. -->
 
 Ticket: <!-- .veebee/tickets/NN-slug.md -->
-Closes #<!-- issue number -->
+OpenBoard #<!-- task id (never use Closes #id for OpenBoard tasks) -->
 
 Users: <!-- List changed commands, SDK calls, MCP tools, or screens. Include a transcript or screenshot, or write "none". -->
 
