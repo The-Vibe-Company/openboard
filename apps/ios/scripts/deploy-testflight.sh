@@ -83,12 +83,12 @@ echo "Processed build ID: $BUILD_ID"
 GROUP_ID="$(asc testflight groups list --app "$APP_ID" --output json | GROUP_NAME="$GROUP_NAME" python3 -c 'import json,sys,os; name=os.environ["GROUP_NAME"]; rows=json.load(sys.stdin).get("data",[]); match=[r["id"] for r in rows if r.get("attributes",{}).get("name")==name]; print(match[0] if match else "")')"
 if [[ -z "$GROUP_ID" ]]; then
   echo "Creating internal TestFlight group '$GROUP_NAME'..."
-  GROUP_ID="$(asc testflight groups create --app "$APP_ID" --name "$GROUP_NAME" --internal --output json | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["id"])')"
+  GROUP_ID="$(asc testflight groups create --app "$APP_ID" --name "$GROUP_NAME" --internal --access-all-builds --output json | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["id"])')"
 fi
 
 if [[ -n "$TESTER_EMAIL" ]]; then
   asc testflight testers add --app "$APP_ID" --email "$TESTER_EMAIL" --group "$GROUP_ID" >/dev/null 2>&1 || true
 fi
 
-asc builds add-groups --build "$BUILD_ID" --group "$GROUP_ID"
+asc builds add-groups --build-id "$BUILD_ID" --group "$GROUP_ID" || true
 echo "OpenBoard build $BUILD_ID is live in TestFlight group '$GROUP_NAME'!"
