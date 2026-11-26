@@ -11,14 +11,13 @@ import {
   parseTail,
   webhookMaxAttempts,
 } from "@openboard/core";
-import { type BoardJobWriter, type BoardKeys, type BoardWebhookWriter, WEBHOOK_DELIVERY_JOB } from "@openboard/ports";
+import { type BoardKeys, type BoardWebhookWriter, WEBHOOK_DELIVERY_JOB } from "@openboard/ports";
 import type { Db, Dialect } from "../../db.ts";
 import { type Fragment, query, sql } from "../../sql.ts";
-import { actorReads } from "../actors.ts";
 import { messageEvent } from "../events.ts";
 import type { JobWrites } from "../jobs/index.ts";
 import { notifyUsageDay } from "../jobs/usage.ts";
-import { messageStatements } from "../messages/statements.ts";
+import type { AutomationEvent } from "../messages.ts";
 import { webhookReads, webhookRecord, webhookStatements } from "./webhooks.ts";
 
 // Event positions establish order even if the clock stalls or moves backwards.
@@ -55,10 +54,25 @@ export const earlierDelivery: Fragment = {
   },
 };
 
+const deliveryRows: Fragment = {
+  fragment: ({ name }) =>
+    name === "postgres"
+      ? "jsonb_array_elements(input.data::jsonb) WITH ORDINALITY AS batch(value, key)"
+      : "json_each(input.data) AS batch",
+};
+
 export const deliveryStatements = {
-  addDelivery: sql`INSERT INTO webhook_deliveries
-    (org_id, board_id, id, webhook, event, thread, state, next_at, created_at, root_view)
-    VALUES (${"orgId"}, ${"boardId"}, ${"id"}, ${"webhook"}, ${"event"}, ${"thread"}, 'pending', ${"now"}, ${"now"}, ${"root"})`,
+  addDeliveries: sql`WITH input AS (SELECT CAST(${"rows"} AS TEXT) AS data)
+    INSERT INTO webhook_deliveries
+      (org_id, board_id, id, webhook, event, thread, state, next_at, created_at, root_view)
+    SELECT ${"orgId"}, ${"boardId"}, value ->> 0, value ->> 1, ${"event"}, ${"thread"}, 'pending', ${"now"}, ${"now"}, ${"root"}
+    FROM boards CROSS JOIN input CROSS JOIN ${deliveryRows}
+    WHERE boards.org_id = ${"orgId"} AND boards.id = ${"boardId"}`,
+  addDeliveryJobs: sql`WITH input AS (SELECT CAST(${"rows"} AS TEXT) AS data)
+    INSERT INTO jobs (org_id, board_id, kind, available_at, payload)
+    SELECT ${"orgId"}, ${"boardId"}, ${"kind"}, ${"now"}, value ->> 2
+    FROM boards CROSS JOIN input CROSS JOIN ${deliveryRows}
+    WHERE boards.org_id = ${"orgId"} AND boards.id = ${"boardId"} ORDER BY batch.key`,
   addPing: sql`INSERT INTO webhook_deliveries
     (org_id, board_id, id, webhook, event, thread, type, state, attempt, next_at, created_at)
     SELECT ${"orgId"}, ${"boardId"}, ${"id"}, id, NULL, NULL, 'board.ping', 'sending', 1, ${"now"}, ${"now"}
@@ -232,71 +246,62 @@ export function deliveryWriter(
   };
 }
 
-/** A subscription creates an outbox row and a dispatch job in the originating transaction. */
-export async function matchWebhooks(
-  db: Db,
-  dialect: Dialect,
-  keys: BoardKeys,
-  jobs: BoardJobWriter,
-  event: BoardEvent,
-  now: number,
-  enqueued: JobWrites["committed"],
-) {
-  // Older replicas can lease delivery jobs before they know how to decode this event.
-  if (event.type === "task.blocked" || event.type === "task.assigned" || !isTailMessageEvent(event)) return;
-  const subscriptions = (await webhookReads(db, dialect, keys).webhooks()).filter(({ webhook }) => webhook.enabled);
-  if (!subscriptions.length) return;
-  const read = async (id: number) => {
-    const [row] = await query(db, dialect, messageStatements.message, { ...keys, id });
-    return typeof row?.view === "string" ? (JSON.parse(row.view) as Message) : undefined;
+async function loadSubscriptions(db: Db, dialect: Dialect, keys: BoardKeys) {
+  return (await webhookReads(db, dialect, keys).webhooks())
+    .filter(({ webhook }) => webhook.enabled)
+    .map(({ webhook, ownerActor, directory }) => ({
+      webhook,
+      ownerActor,
+      directory,
+      filters: parseTail(webhook.filter.tail),
+    }));
+}
+
+/** Capture snapshots and persist deliveries before the fold can change them or park dispatch jobs. */
+export function webhookMatcher(db: Db, dialect: Dialect, keys: BoardKeys, enqueued: JobWrites["committed"]) {
+  let subscriptions: Awaited<ReturnType<typeof loadSubscriptions>> | undefined;
+  return {
+    invalidate() {
+      subscriptions = undefined;
+    },
+    async match(event: BoardEvent, { findFilterActors, readMessage }: AutomationEvent, now: number) {
+      // Older replicas can lease delivery jobs before they know how to decode this event.
+      if (event.type === "task.blocked" || event.type === "task.assigned" || !isTailMessageEvent(event)) return;
+      subscriptions ??= await loadSubscriptions(db, dialect, keys);
+      if (!subscriptions.length) return;
+      const previous = event.type === "message.posted" ? undefined : await readMessage(event.message);
+      const threadRoot = event.thread === event.message ? undefined : await readMessage(event.thread);
+      const rows: [id: string, webhook: string, payload: string][] = [];
+      for (const { webhook, ownerActor, directory, filters } of subscriptions) {
+        const { author, mention } = filters;
+        const actors = await findFilterActors(
+          author,
+          mention === undefined || !directory ? undefined : mentionFilter(mention, ownerActor, true),
+        );
+        const resolved = {
+          ...filters,
+          authors: author === undefined ? undefined : eventAuthors(author, ownerActor, actors),
+          mentions: mention === undefined ? undefined : eventMentions(mention, ownerActor, directory ? actors : []),
+        };
+        if (!matchesWebhookFilter(webhook.filter, event, resolved, previous, threadRoot)) continue;
+        const digest = new Uint8Array(
+          await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${webhook.id}:${event.id}`)),
+        );
+        const id = `dl_${base32(digest.subarray(0, 10))}`;
+        rows.push([id, webhook.id, JSON.stringify({ id })]);
+      }
+      if (!rows.length) return;
+      const root =
+        event.thread !== event.message
+          ? threadRoot
+          : event.type === "message.posted"
+            ? messages.messageView(event)
+            : event.payload.view;
+      const params = { ...keys, event: event.id, thread: event.thread, now, rows: JSON.stringify(rows) };
+      await query(db, dialect, deliveryStatements.addDeliveries, { ...params, root: JSON.stringify(root ?? null) });
+      if (dialect.name === "sqlite") notifyUsageDay(now, enqueued);
+      await query(db, dialect, deliveryStatements.addDeliveryJobs, { ...params, kind: WEBHOOK_DELIVERY_JOB });
+      enqueued(WEBHOOK_DELIVERY_JOB, now);
+    },
   };
-  const previous = event.type === "message.posted" ? undefined : await read(event.message);
-  const root =
-    event.thread === event.message
-      ? event.type === "message.posted"
-        ? messages.messageView(event)
-        : event.payload.view
-      : await read(event.thread);
-  const { findFilterActors } = actorReads(db, dialect, keys);
-  for (const { webhook, ownerActor, directory } of subscriptions) {
-    const filters = parseTail(webhook.filter.tail);
-    const { author, mention } = filters;
-    const actors =
-      author === undefined && mention === undefined
-        ? []
-        : await findFilterActors(
-            author,
-            mention === undefined || !directory ? undefined : mentionFilter(mention, ownerActor, true),
-          );
-    const resolved = {
-      ...filters,
-      authors: author === undefined ? undefined : eventAuthors(author, ownerActor, actors),
-      mentions: mention === undefined ? undefined : eventMentions(mention, ownerActor, directory ? actors : []),
-    };
-    if (
-      !matchesWebhookFilter(
-        webhook.filter,
-        event,
-        resolved,
-        previous,
-        event.thread === event.message ? undefined : root,
-      )
-    )
-      continue;
-    const digest = new Uint8Array(
-      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${webhook.id}:${event.id}`)),
-    );
-    const id = `dl_${base32(digest.subarray(0, 10))}`;
-    await query(db, dialect, deliveryStatements.addDelivery, {
-      ...keys,
-      id,
-      webhook: webhook.id,
-      event: event.id,
-      thread: event.thread,
-      now,
-      root: JSON.stringify(root ?? null),
-    });
-    if (dialect.name === "sqlite") notifyUsageDay(now, enqueued);
-    await jobs.enqueue(WEBHOOK_DELIVERY_JOB, now, { id });
-  }
 }

@@ -3,7 +3,7 @@ import { type BoardEvent, checkDailyEvents, dailyEventWindow } from "@openboard/
 import type { BoardGrantReads, BoardKeys, BoardScope, BoardView, BoardWriter, Broadcaster } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { query } from "../sql.ts";
-import { lockBoardAs } from "./actors.ts";
+import { actorReads, lockBoardAs } from "./actors.ts";
 import { findAgent, findAgentByClaimKey } from "./agents.ts";
 import { attachmentReads } from "./attachments/index.ts";
 import { boardIdentity, repairStoredBytes, setHead } from "./boards.ts";
@@ -22,9 +22,50 @@ import { notifyScheduleSend } from "./schedules/send.ts";
 import { schemaWriter } from "./schemas/registry.ts";
 import { notifyTaskExpiry } from "./tasks/task-folds.ts";
 import { taskReads, taskWriter } from "./tasks/tasks.ts";
-import { matchWatchers, watcherWriter } from "./watchers/index.ts";
-import { deliveryWriter, matchWebhooks } from "./webhooks/deliveries.ts";
+import { watcherMatcher, watcherWriter } from "./watchers/index.ts";
+import { deliveryWriter, webhookMatcher } from "./webhooks/deliveries.ts";
 import { webhookWriter } from "./webhooks/webhooks.ts";
+
+type FindFilterActors = BoardView["findFilterActors"];
+
+export interface AutomationEvent {
+  readonly findFilterActors: FindFilterActors;
+  readonly readMessage: (id: number) => Promise<Message | undefined>;
+}
+
+function automationReads(tx: Db, dialect: Dialect, keys: BoardKeys) {
+  const { findFilterActors } = actorReads(tx, dialect, keys);
+  const actors = new Map<string, ReturnType<FindFilterActors>>();
+  return {
+    invalidateActors: () => actors.clear(),
+    event(): AutomationEvent {
+      const snapshots = new Map<number, Promise<Message | undefined>>();
+      return {
+        findFilterActors(author, mention) {
+          if (author === undefined && mention === undefined) return Promise.resolve([]);
+          // IDs are case-sensitive even when the same value also probes lower(handle).
+          const key = JSON.stringify([author, mention?.id, mention?.handle]);
+          let lookup = actors.get(key);
+          if (!lookup) {
+            lookup = findFilterActors(author, mention);
+            actors.set(key, lookup);
+          }
+          return lookup;
+        },
+        readMessage(id) {
+          let snapshot = snapshots.get(id);
+          if (!snapshot) {
+            snapshot = query(tx, dialect, messageStatements.message, { ...keys, id }).then(([row]) =>
+              typeof row?.view === "string" ? (JSON.parse(row.view) as Message) : undefined,
+            );
+            snapshots.set(id, snapshot);
+          }
+          return snapshot;
+        },
+      };
+    },
+  };
+}
 
 /** `committed` collects the appended events, which the broadcaster hands to live tails once the write commits. */
 function eventWriter(
@@ -35,12 +76,14 @@ function eventWriter(
   committed: BoardEvent[],
   usage: ReturnType<typeof messageStorage>,
   measured: number,
-  jobs: ReturnType<typeof jobWriter>,
   enqueued: JobWrites["committed"],
 ): Pick<BoardWriter, "append" | "head"> {
   let { head, hasWatchers, hasWebhooks } = locked;
   const { dailyEvents } = locked;
   let { day, count } = dailyEvents;
+  const automation = automationReads(tx, dialect, keys);
+  const watchers = watcherMatcher(tx, dialect, keys);
+  const webhooks = webhookMatcher(tx, dialect, keys, enqueued);
   return {
     get head() {
       return head;
@@ -60,16 +103,27 @@ function eventWriter(
       for (const event of events) {
         if (event.id !== head + 1) throw new Error(`event ${event.id} does not follow the board's head ${head}`);
         await usage.account(event);
-        if (hasWatchers) await matchWatchers(tx, dialect, keys, event);
-        if (hasWebhooks) await matchWebhooks(tx, dialect, keys, jobs, event, now, enqueued);
+        if (hasWatchers || hasWebhooks) {
+          const reads = automation.event();
+          if (hasWatchers) await watchers.match(event, reads);
+          if (hasWebhooks) await webhooks.match(event, reads, now);
+        }
         await appendEvent(tx, dialect, keys, event);
         if (dialect.name === "sqlite") notifyUsageDay(event.at, enqueued);
+        if (event.type === "actor.seen") automation.invalidateActors();
+        if (event.type === "ob.watchers.registered") {
+          hasWatchers = true;
+          watchers.invalidate();
+        }
         if (
-          (event.type === "ob.webhook.created" || event.type === "ob.webhook.updated") &&
-          event.payload.webhook.enabled
-        )
-          hasWebhooks = true;
-        if (event.type === "ob.watchers.registered") hasWatchers = true;
+          event.type === "ob.webhook.created" ||
+          event.type === "ob.webhook.updated" ||
+          event.type === "ob.webhook.deleted" ||
+          event.type === "ob.webhook.disabled"
+        ) {
+          webhooks.invalidate();
+          if (event.type !== "ob.webhook.deleted" && event.payload.webhook.enabled) hasWebhooks = true;
+        }
         committed.push(event);
         head = event.id;
       }
@@ -92,7 +146,7 @@ function writer(
 ): BoardWriter {
   const preloaded = (id: number) => (id === taskId && committed.length === 0 ? locked.row : undefined);
   const usage = messageStorage(tx, dialect, keys, locked.storage, preloaded);
-  const events = eventWriter(tx, dialect, keys, locked, committed, usage, now, jobs, enqueued);
+  const events = eventWriter(tx, dialect, keys, locked, committed, usage, now, enqueued);
   return {
     ...attachmentReads(tx, dialect, keys),
     ...taskWriter(tx, dialect, keys, preloaded),
