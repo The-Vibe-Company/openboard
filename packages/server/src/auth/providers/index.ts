@@ -2,7 +2,7 @@ import { BoardError, type SignInProvider } from "@openboard/contract";
 import type { PlatformView } from "@openboard/ports";
 import type { Deps, ServerConfig } from "../../deps.ts";
 import type { RequestLimits } from "../../http/limits.ts";
-import { base32 } from "../secrets.ts";
+import { base32, hashToken } from "../secrets.ts";
 import { base64url, cookieOf, hostCookie, mintSession, sameText } from "../sessions.ts";
 import { githubProvider } from "./github/index.ts";
 import { signInWithInvitation } from "./invitation.ts";
@@ -30,7 +30,9 @@ export interface LoginProvider {
 /** The pending sign-in: provider, `state` and PKCE verifier, kept in the browser for 10 minutes, not on a server. */
 const SIGN_IN_COOKIE = "__Host-ob_signin";
 const SIGN_IN_SECONDS = 600;
+const MOBILE_CODE_MS = 120_000;
 const INVITATION_TOKEN = /^[A-Za-z0-9_-]{43}$/;
+const MOBILE_STATE = /^[A-Za-z0-9_-]{16,64}$/;
 const ROUTE = /^\/auth\/([a-z][a-z0-9-]*)\/(start|callback)$/;
 
 /** The providers this server offers: those configured with a client, when outbound HTTP is available. */
@@ -57,21 +59,39 @@ async function start(
   provider: LoginProvider,
   ctx: SignInContext,
   redirectUri: string,
-  invitation: string | null,
+  extra: string | null,
 ): Promise<Response> {
   const state = base64url(ctx.deps.randomBytes(32));
   const verifier = base64url(ctx.deps.randomBytes(32));
   const response = await provider.start({ state, verifier, redirectUri });
   const pending = `${provider.id}.${state}.${verifier}`;
-  const value = invitation && INVITATION_TOKEN.test(invitation) ? `${pending}.${invitation}` : pending;
+  const value = extra ? `${pending}.${extra}` : pending;
   response.headers.set("cache-control", "no-store");
   response.headers.append("set-cookie", hostCookie(SIGN_IN_COOKIE, value, SIGN_IN_SECONDS));
   return response;
 }
 
+async function mobileRedirect(
+  ctx: SignInContext,
+  personId: string,
+  membershipSlug: string | undefined,
+  clientState: string,
+  now: number,
+): Promise<string> {
+  if (!membershipSlug) return `openboard://auth/callback?error=no_org&state=${clientState}`;
+  const deviceCode = base64url(ctx.deps.randomBytes(32));
+  const userCode = base32(ctx.deps.randomBytes(10))
+    .toUpperCase()
+    .replace(/(.{4})(?=.)/g, "$1-");
+  await ctx.platform.startDevice(hashToken(deviceCode), userCode, "OpenBoard iOS", now, now + MOBILE_CODE_MS);
+  const approved = await ctx.platform.approveDevice(userCode, membershipSlug, personId, now);
+  if (!approved) return `openboard://auth/callback?error=approval_failed&state=${clientState}`;
+  return `openboard://auth/callback?code=${deviceCode}&state=${clientState}`;
+}
+
 /** The provider's callback: checks `state`, has the provider prove who it is, then opens a session. */
 async function callback(provider: LoginProvider, ctx: SignInContext, request: Request, redirectUri: string) {
-  const [id, state = "", verifier = "", invitation = ""] = (cookieOf(request, SIGN_IN_COOKIE) ?? "").split(".");
+  const [id, state = "", verifier = "", extra = ""] = (cookieOf(request, SIGN_IN_COOKIE) ?? "").split(".");
   if (id !== provider.id || !sameText(new URL(request.url).searchParams.get("state"), state)) {
     throw new BoardError("unauthorized", "this sign-in was not started in this browser, or took over 10 minutes", {
       hint: `Start again from /auth/${provider.id}/start.`,
@@ -90,8 +110,8 @@ async function callback(provider: LoginProvider, ctx: SignInContext, request: Re
     session: session.record,
     now,
   };
-  const { person, next } = INVITATION_TOKEN.test(invitation)
-    ? await signInWithInvitation(ctx.platform, signup, record, invitation)
+  const { person, next } = INVITATION_TOKEN.test(extra)
+    ? await signInWithInvitation(ctx.platform, signup, record, extra)
     : { person: await ctx.platform.signIn(record), next: undefined };
   if (!person) {
     throw new BoardError(
@@ -103,8 +123,13 @@ async function callback(provider: LoginProvider, ctx: SignInContext, request: Re
     );
   }
   const [membership] = next ? [] : await ctx.platform.memberships(person.id);
+  const mobileState = extra.startsWith("ios:") ? extra.slice(4) : "";
+  const location =
+    mobileState && MOBILE_STATE.test(mobileState)
+      ? await mobileRedirect(ctx, person.id, membership?.org.slug, mobileState, now)
+      : (next ?? (membership ? `/${membership.org.slug}/main` : "/new"));
   const headers = new Headers({
-    location: next ?? (membership ? `/${membership.org.slug}/main` : "/new"),
+    location,
     "cache-control": "no-store",
   });
   headers.append("set-cookie", session.cookie);
@@ -139,6 +164,9 @@ export async function signInRoute(request: Request, url: URL, ctx: SignInContext
     ) {
       throw new BoardError("forbidden", "open the invitation page before starting sign-in");
     }
+    return start(provider, ctx, redirectUri, INVITATION_TOKEN.test(invitation) ? invitation : null);
   }
-  return start(provider, ctx, redirectUri, invitation);
+  const mobile = url.searchParams.get("app") === "ios" ? url.searchParams.get("client_state") : null;
+  const extra = mobile && MOBILE_STATE.test(mobile) ? `ios:${mobile}` : null;
+  return start(provider, ctx, redirectUri, extra);
 }
