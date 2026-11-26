@@ -94,7 +94,7 @@ test("claims once with claim options, then refreshes before expiry even while id
   expect([claimCalls, refreshCalls, boardCalls]).toEqual([1, 1, 2]);
 });
 
-test("shares one refresh after concurrent 401s and retries with the original request body", async () => {
+test("shares one refresh across facade and flat calls after concurrent 401s and retries with the original request body", async () => {
   const trace: string[] = [];
   const board = await openboard({
     url,
@@ -124,7 +124,7 @@ test("shares one refresh after concurrent 401s and retries with the original req
   });
 
   const input = { channel: "work", text: "hello" };
-  await Promise.all([board.postMessage(input), board.postMessage(input)]);
+  await Promise.all([board.messages.post(input), board.postMessage(input)]);
   expect(trace.sort()).toEqual(["expired", "expired", "refresh", "retried", "retried"]);
 });
 

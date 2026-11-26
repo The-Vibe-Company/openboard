@@ -12,13 +12,14 @@ import {
   type postMessage,
   type receiveInboundEvent,
 } from "@openboard/contract";
+import { addFacades } from "./facades.ts";
 
 type Contracted = (typeof operations)[number];
 
 type UploadBytes = Uint8Array<ArrayBuffer> | ArrayBuffer | Blob;
 type UploadOptions = { readonly name: string; readonly type?: string };
 type PostInput = InputOf<typeof postMessage> & ({ text: string } | { attachments: [string, ...string[]] });
-type CallOptions = { readonly signal?: AbortSignal };
+export type CallOptions = { readonly signal?: AbortSignal };
 type SignedCallOptions = CallOptions & {
   readonly signed: {
     readonly headers: NonNullable<RequestInit["headers"]>;
@@ -39,6 +40,8 @@ export type Client = {
             : [options?: CallOptions]
         ) => Promise<OutputOf<Op>>;
 };
+
+export type BoardClient = ReturnType<typeof addFacades>;
 
 export interface ClientOptions {
   /** `BOARD_URL`: `http://127.0.0.1:8787/api/local/main`. */
@@ -201,7 +204,7 @@ export async function reach(send: (request: Request) => Promise<Response>, reque
 }
 
 /** A typed client of one board; it reads no environment and keeps no state between calls. */
-export function createClient(options: ClientOptions): Client {
+export function createClient(options: ClientOptions): BoardClient {
   if (!URL.canParse(options.url)) throw new TypeError(`not a board URL: ${options.url}`);
   const send = options.fetch ?? ((request: Request) => fetch(request));
   const methods = operations.map((operation) => {
@@ -231,5 +234,5 @@ export function createClient(options: ClientOptions): Client {
         ),
     ];
   });
-  return Object.freeze(Object.fromEntries(methods)) as Client;
+  return addFacades(Object.fromEntries(methods) as Client);
 }

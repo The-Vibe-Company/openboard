@@ -1,53 +1,37 @@
 import { parseArgs } from "node:util";
-import { type DeliveryRequest, signingKey, verifyDelivery } from "./verify.ts";
+import { BoardError, parseWebhookEvent, type WebhookEvent } from "@the-vibe-company/openboard";
 
-interface BoardDelivery {
-  thread: string;
-  channel: string;
-  labels: Record<string, string>;
-  event: Record<string, unknown> & { type: string };
-}
-
-function record(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function boardDelivery(body: ArrayBuffer): BoardDelivery | undefined {
-  let payload: unknown;
-  try {
-    payload = JSON.parse(new TextDecoder().decode(body));
-  } catch {
-    return;
-  }
-  if (!record(payload) || payload.type !== "board.event" || payload.version !== 1) return;
-  const { subject, event } = payload;
-  if (!record(subject) || !record(event) || typeof event.type !== "string") return;
-  const { thread, channel, labels } = subject;
-  if (typeof thread !== "string" || typeof channel !== "string" || !record(labels)) return;
-  const entries = Object.entries(labels);
-  if (!entries.every((entry): entry is [string, string] => typeof entry[1] === "string")) return;
-  return { thread, channel, labels: Object.fromEntries(entries), event: { ...event, type: event.type } };
-}
+type EventDelivery = Extract<WebhookEvent, { type: "board.event" }>;
+type BoardDelivery = Pick<EventDelivery["subject"], "thread" | "channel" | "labels"> & {
+  event: EventDelivery["event"];
+};
 
 export function createReceiver(
   secret: string,
   now: () => number,
   onDelivery: (delivery: BoardDelivery, id: string) => void,
 ) {
-  const key = signingKey(secret);
   const seen = new Set<string>();
-  return async (request: DeliveryRequest & Pick<Request, "url" | "method">): Promise<Response> => {
+  return async (
+    request: Pick<Request, "url" | "method" | "arrayBuffer"> & { headers: Iterable<[string, string]> },
+  ): Promise<Response> => {
     if (new URL(request.url).pathname !== "/hook") return new Response(null, { status: 404 });
     if (request.method !== "POST") return new Response(null, { status: 405, headers: { allow: "POST" } });
 
-    const verified = await verifyDelivery(request, key, now());
-    if (!verified) return new Response(null, { status: 401 });
-    const { id, body } = verified;
-    if (seen.has(id)) return new Response(null, { status: 204 });
-    const delivery = boardDelivery(body);
-    if (!delivery) return new Response(null, { status: 400 });
+    const headers = Object.fromEntries(request.headers);
+    const body = new Uint8Array(await request.arrayBuffer());
+    let delivery: WebhookEvent;
+    try {
+      delivery = await parseWebhookEvent({ headers, body, secret, now });
+    } catch (error) {
+      if (!(error instanceof BoardError)) throw error;
+      return new Response(null, { status: error.status });
+    }
+    const { id } = delivery.delivery;
+    if (delivery.type === "board.ping" || seen.has(id)) return new Response(null, { status: 204 });
 
-    onDelivery(delivery, id);
+    const { thread, channel, labels } = delivery.subject;
+    onDelivery({ thread, channel, labels, event: delivery.event }, id);
     seen.add(id);
     return new Response(null, { status: 204 });
   };
@@ -63,11 +47,12 @@ if (import.meta.main) {
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("invalid port");
     const secretFile = Bun.env.WEBHOOK_SECRET_FILE;
     const secret = await (secretFile ? Bun.file(secretFile).text() : Bun.stdin.text());
+    if (!secret.trim()) throw new Error("missing signing secret");
     const fetch = createReceiver(secret.trim(), Date.now, ({ event, channel, thread, labels }, id) => {
       const pairs = Object.entries(labels).map(([key, value]) => `${key}=${value}`);
       console.log(["verified", id, event.type, channel, thread, ...pairs].join(" "));
     });
-    const server = Bun.serve({ hostname: "127.0.0.1", port, fetch });
+    const server = Bun.serve({ hostname: "127.0.0.1", port, fetch, maxRequestBodySize: 256 * 1024 });
     console.log(`listening on ${server.url}hook`);
   } catch {
     console.error(

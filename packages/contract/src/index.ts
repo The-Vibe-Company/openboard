@@ -21,6 +21,7 @@ export * from "./entities/tasks.ts";
 export * from "./entities/threads.ts";
 export { Registration, Watch, WatcherMatch } from "./entities/watchers.ts";
 export type { WebhookDelivery } from "./entities/webhooks/delivery.ts";
+export { isWebhookEvent, type WebhookEvent } from "./entities/webhooks/event.ts";
 export * from "./entities/webhooks/index.ts";
 export {
   BoardError,

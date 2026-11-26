@@ -1,5 +1,5 @@
 import { BoardError, type claimConnection, type InputOf, type OutputOf } from "@openboard/contract";
-import { type Client, type ClientOptions, createClient } from "./client.ts";
+import { type BoardClient, type Client, type ClientOptions, createClient } from "./client.ts";
 
 type ClaimOptions = Omit<InputOf<typeof claimConnection>, "profile"> & {
   readonly secret: string;
@@ -55,7 +55,7 @@ function secretBoardUrl(address: string): string {
 
 function scheduleTimer(callback: () => Promise<void>, delayMs: number): () => void {
   const timer = setTimeout(callback, delayMs);
-  if (typeof timer === "object") timer.unref();
+  if (typeof timer === "object") timer.unref?.();
   return () => clearTimeout(timer);
 }
 
@@ -186,7 +186,7 @@ function managedClient(
   credential: Credential,
   now: () => number,
   schedule: NonNullable<ClaimOptions["schedule"]>,
-): Client {
+): BoardClient {
   const tokens = rotatingCredential(url, send, credential, now, schedule);
   const client = createClient({
     url,
@@ -213,7 +213,7 @@ function managedClient(
 }
 
 /** Connect to a board with an existing token, or claim and automatically refresh an agent credential. */
-export async function openboard(options: OpenBoardOptions): Promise<Client> {
+export async function openboard(options: OpenBoardOptions): Promise<BoardClient> {
   if (options.secret === undefined) {
     if ("secret" in options) throw new BoardError("invalid_request", "provide an obc_ connection secret");
     return createClient(options);
