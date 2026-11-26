@@ -18,7 +18,7 @@ export function startDumpJob(dump: DatabaseDump | undefined, bucket: Bucket | un
     const day = new Date(now).toISOString().slice(0, 10);
     let delay = RETRY;
     const deadline = new AbortController();
-    const cancelDeadline = deps.schedule(MAX_RUN, () => deadline.abort());
+    const cancelDeadline = deps.schedule(MAX_RUN, () => deadline.abort(new Error("Database dump deadline exceeded")));
     const signal = AbortSignal.any([shutdown.signal, deadline.signal]);
     try {
       if (await upload(destination, `dumps/${day}.dump`, signal)) {

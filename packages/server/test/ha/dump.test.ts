@@ -55,11 +55,11 @@ if (postgresTestUrl()) {
     function runner(instance: string, source: typeof store) {
       const bucket: Bucket = {
         async put() {},
-        async *list(prefix) {
-          for (const { key } of writes) if (key.startsWith(prefix)) yield key;
+        list() {
+          throw new Error("Expected an exact-key lookup");
         },
-        async exists() {
-          return false;
+        async exists(key) {
+          return writes.some((write) => write.key === key);
         },
         async read() {
           return null;

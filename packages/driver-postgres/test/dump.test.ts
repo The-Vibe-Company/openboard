@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
+import { fakeBucket } from "@openboard/ports/testkit";
 import { SQL } from "bun";
-import { dumpEnvironment } from "../src/dump.ts";
+import { dumpEnvironment, postgresDump, uploadDump } from "../src/dump.ts";
 import { postgresDriver } from "../src/index.ts";
 import { postgresTestUrl } from "./support/env.ts";
 
@@ -41,8 +42,83 @@ test("pg_dump uses the lock connection’s resolved database, socket and TLS set
   });
 });
 
+test("pg_dump drains stderr, reports the exit status and keeps only safe tail diagnostics", async () => {
+  const command = [
+    "/bin/sh",
+    "-c",
+    `printf 'permission denied\n%070000d\nquery failed for postgres://fixture:canary@localhost/db\n' 0 >&2
+     printf 'partial archive'
+     exit 7`,
+  ];
+  const signal = new AbortController().signal;
+  const drain = async (stream: ReadableStream<Uint8Array>) => {
+    await new Response(stream).bytes();
+  };
+  await expect(uploadDump({ PGPASSWORD: "canary" }, signal, drain, command)).rejects.toThrow(
+    /^pg_dump failed \(exit 7\): query failed$/,
+  );
+});
+
+test("aborting pg_dump interrupts the archive stream and stops the child", async () => {
+  const stop = new AbortController();
+  const reason = new Error("dump cancelled");
+  const upload = async (stream: ReadableStream<Uint8Array>) => {
+    const reader = stream.getReader();
+    try {
+      expect((await reader.read()).done).toBe(false);
+      stop.abort(reason);
+      await reader.read();
+    } finally {
+      reader.releaseLock();
+    }
+  };
+  const command = ["/bin/sh", "-c", "printf archive; kill -STOP $$"];
+  await expect(uploadDump({}, stop.signal, upload, command)).rejects.toBe(reason);
+});
+
 const url = postgresTestUrl();
 if (url) {
+  test("aborting the exact-key probe releases the dump lock before the bucket settles", async () => {
+    const stop = new AbortController();
+    const { bucket } = fakeBucket();
+    const reason = new Error("dump cancelled");
+    const key = "dumps/2026-11-24.dump";
+    const dump = postgresDump(url, () => 100);
+    const pending = Promise.withResolvers<boolean>();
+    const probes: [string, number, AbortSignal?][] = [];
+    try {
+      await expect(
+        dump(
+          {
+            ...bucket,
+            list() {
+              throw new Error("Expected an exact-key lookup");
+            },
+            exists: (...args: [string, number, AbortSignal?]) => {
+              probes.push(args);
+              stop.abort(reason);
+              return pending.promise;
+            },
+          },
+          key,
+          stop.signal,
+        ),
+      ).rejects.toBe(reason);
+      expect(probes).toHaveLength(1);
+      expect(probes[0]?.slice(0, 2)).toEqual([key, 5100]);
+      expect(probes[0]?.[2]?.aborted).toBe(true);
+      const found = {
+        ...bucket,
+        async exists() {
+          return true;
+        },
+      };
+      expect(await dump(found, key, new AbortController().signal)).toBe(true);
+    } finally {
+      pending.resolve(false);
+    }
+  });
+
   test("pg_restore reproduces the rows of every table in a full database dump", async () => {
     await using admin = new SQL(url);
     const name = `t_${crypto.randomUUID().replaceAll("-", "")}`;

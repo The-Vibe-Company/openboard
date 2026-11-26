@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { ErrorBody, OrgExportAuditEvent, OrgExport } from "@openboard/contract";
+import type { ErrorBody, OrgExport, OrgExportAuditEvent } from "@openboard/contract";
 import { exportEvent } from "@openboard/core";
 import { type Bucket, EXPORT_ORG_JOB, type Store } from "@openboard/ports";
 import {
@@ -14,6 +14,7 @@ import { type Headers, personalToken, signIn } from "../isolation/seed.ts";
 import { LOCAL_OWNER, NOW, PUBLIC_URL } from "../support/app.ts";
 import { openSnapshotStore } from "../support/drivers.ts";
 import { postgresTestUrl } from "../support/env.ts";
+
 function fixture(bucket?: Bucket) {
   let now = NOW;
   let nonce = 0;
@@ -209,10 +210,12 @@ if (postgresTestUrl()) {
       expect(pending).toMatchObject({ status: "pending", expiresAt: null });
       expect((await f.send(base, personal, undefined, "POST")).status).toBe(429);
       const url = `${base}/${pending.id}`;
+      expect(await (await f.send(url, owner)).json()).toMatchObject({ export: pending });
       const download = `${url}/download`;
       expect((await f.send(download, owner)).status).toBe(404);
       for (const other of others) {
         expect((await f.send(base, other, undefined, "POST")).status).toBe(403);
+        expect((await f.send(url, other)).status).toBe(403);
         expect((await f.send(download, other)).status).toBe(403);
       }
       for (const path of [url, download]) {

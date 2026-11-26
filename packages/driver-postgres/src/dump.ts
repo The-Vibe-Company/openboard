@@ -1,8 +1,9 @@
-import type { DatabaseDump } from "@openboard/ports";
+import type { Bucket, DatabaseDump } from "@openboard/ports";
 import { SQL } from "bun";
 
 // Separate from the migrator's advisory lock. All replicas contend on the same database.
 const DUMP_LOCK = 0x6f6264756d700001n;
+const LOOKUP_MS = 5_000;
 
 export async function dumpEnvironment(url: string, connection: SQL["options"]): Promise<Record<string, string>> {
   // Bun resolves connection defaults and aliases before opening the lock connection. Use those
@@ -50,8 +51,28 @@ export async function dumpEnvironment(url: string, connection: SQL["options"]): 
   return env;
 }
 
-export function postgresDump(url: string): DatabaseDump {
+async function dumpExists(bucket: Bucket, key: string, deadline: number, signal: AbortSignal): Promise<boolean> {
+  signal.throwIfAborted();
+  // The bucket port guarantees a deadline. Implementations can also honor the signal.
+  const exists: (key: string, deadline: number, signal: AbortSignal) => Promise<boolean> = bucket.exists.bind(bucket);
+  let abort: () => void = () => {};
+  try {
+    const cancelled = new Promise<never>((_, reject) => {
+      abort = () => reject(signal.reason);
+      signal.addEventListener("abort", abort, { once: true });
+    });
+    return await Promise.race([cancelled, exists(key, deadline, signal)]);
+  } catch {
+    signal.throwIfAborted();
+    throw new Error("Database dump existence check failed");
+  } finally {
+    signal.removeEventListener("abort", abort);
+  }
+}
+
+export function postgresDump(url: string, now: () => number = Date.now): DatabaseDump {
   return async (bucket, key, shutdown) => {
+    shutdown.throwIfAborted();
     const disconnected = new AbortController();
     const signal = AbortSignal.any([shutdown, disconnected.signal]);
     await using sql = new SQL(url, {
@@ -66,9 +87,10 @@ export function postgresDump(url: string): DatabaseDump {
     if (!lock?.acquired) return false;
 
     // Closing this dedicated connection releases the lock on every exit path.
-    for await (const existing of bucket.list(key)) {
-      if (existing === key) return true;
-    }
+    const lookup = AbortSignal.any([signal, AbortSignal.timeout(LOOKUP_MS)]);
+    const exists = await dumpExists(bucket, key, now() + LOOKUP_MS, lookup);
+    signal.throwIfAborted();
+    if (exists) return true;
     const env = await dumpEnvironment(url, sql.options);
     signal.throwIfAborted();
     await uploadDump(env, signal, (stream) => bucket.putStream(key, stream));
@@ -76,31 +98,56 @@ export function postgresDump(url: string): DatabaseDump {
   };
 }
 
-async function uploadDump(
+// Server errors and query text can contain arbitrary data. Keep only recognized diagnostic phrases.
+const stderrDiagnostic =
+  /server version mismatch|aborting because of server version mismatch|connection to server|password authentication failed|no password supplied|permission denied|lock timeout|statement timeout|server closed the connection unexpectedly|SSL error|certificate verify failed|could not (?:connect to server|resolve host name|translate host name|write to output file|read from input file|obtain lock on relation)|query failed|out of memory|no space left on device|unrecognized option|terminating connection/gi;
+
+async function stderrTail(stream: ReadableStream<Uint8Array>): Promise<string> {
+  const decoder = new TextDecoder();
+  let tail = "";
+  for await (const chunk of stream) tail = (tail + decoder.decode(chunk, { stream: true })).slice(-4_096);
+  tail = (tail + decoder.decode()).slice(-4_096);
+  const diagnostics = Array.from(tail.matchAll(stderrDiagnostic), ([phrase]) => phrase.toLowerCase()).slice(-8);
+  return diagnostics.join("; ");
+}
+
+export async function uploadDump(
   env: Record<string, string>,
   signal: AbortSignal,
   upload: (stream: ReadableStream<Uint8Array>) => Promise<void>,
+  command?: string[],
 ) {
-  const executable = Bun.which("pg_dump");
+  signal.throwIfAborted();
+  const executable = command?.[0] ?? Bun.which("pg_dump");
   if (!executable) throw new Error("pg_dump is required for hosted backups");
-  const child = Bun.spawn([executable, "--format=custom", "--no-password", "--lock-wait-timeout=30s"], {
+  const child = Bun.spawn(command ?? [executable, "--format=custom", "--no-password", "--lock-wait-timeout=30s"], {
     env,
     stdin: "ignore",
     stdout: "pipe",
-    stderr: "ignore",
+    stderr: "pipe",
     signal,
   });
+  const stderr = stderrTail(child.stderr).catch(() => "");
+  let failure: Error | undefined;
   try {
     const checked = new TransformStream<Uint8Array, Uint8Array>({
       async flush() {
-        if ((await child.exited) !== 0) throw new Error("pg_dump failed");
+        const status = await child.exited;
         signal.throwIfAborted();
+        if (status === 0) return;
+        const tail = await stderr;
+        failure = new Error(`pg_dump failed (exit ${status})${tail ? `: ${tail}` : ""}`);
+        throw failure;
       },
     });
     // The stream reaches EOF only after pg_dump succeeds, so failed dumps cannot be published.
     await upload(child.stdout.pipeThrough(checked, { signal }));
+  } catch {
+    signal.throwIfAborted();
+    throw failure ?? new Error("Database dump upload failed");
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
     await child.exited;
+    await stderr;
   }
 }
