@@ -11,6 +11,7 @@ import {
 } from "@openboard/core";
 import type { CommittedEvents } from "@openboard/ports";
 import { canListMentionActors, canReadChannel, withoutMentionDetails } from "../auth/access.ts";
+import { withLiveWait } from "../http/limits.ts";
 import { tailBoard } from "../live/fan-out.ts";
 import { longPoll } from "../live/long-poll.ts";
 import { eventStream } from "../live/sse.ts";
@@ -38,17 +39,14 @@ async function waitForEvents(
   seconds: number,
   read: ReturnType<typeof prepareFeed>["read"],
 ) {
-  const tail = tailBoard(ctx.board, position);
-  try {
+  return withLiveWait(ctx.rateLimits, ctx.board, position, async (tail) => {
     // A new tail reads the store first, so the wait always resolves a page; the read only satisfies the type.
     const signal = AbortSignal.any([ctx.signal, ctx.shutdown]);
     const page = (await longPoll(tail, position, seconds, signal, ctx.schedule, read)) ?? (await read(position));
     // A timeout can return the last empty page without running its read again.
     if (page.events.length === 0) await ctx.reauthorize();
     return page;
-  } finally {
-    tail.close();
-  }
+  });
 }
 
 export async function streamEvents(
@@ -165,11 +163,19 @@ function prepareFeed(
       }
     }
     const revealMentions = canListMentionActors(current);
+    const readable = new Map<string, boolean>();
     return {
       head,
       cursor,
       events: events
-        .filter((event) => (event.visibility === 1 ? revealMentions : canReadChannel(current, event.channel)))
+        .filter((event) => {
+          if (event.visibility === 1) return revealMentions;
+          const cached = readable.get(event.channel);
+          if (cached !== undefined) return cached;
+          const allowed = canReadChannel(current, event.channel);
+          readable.set(event.channel, allowed);
+          return allowed;
+        })
         .flatMap((event) => projectEvent(event, revealMentions, text !== undefined || mentions !== undefined)),
     };
   };

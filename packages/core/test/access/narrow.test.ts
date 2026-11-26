@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test";
+import type { Can } from "@openboard/contract";
 import { narrowCan, parseCanHeader } from "@openboard/core";
 
+import { allowedAt, matchingPatterns } from "../../src/access/agents.ts";
+import { withImplied } from "../../src/access/grants.ts";
 test("a parsed scope takes all, permission lists, and explicit closures", () => {
   expect(parseCanHeader(" *=all; dev/ = label, read; dev/priv = ;")).toEqual({
     "*": ["read", "post", "react", "label", "sync", "manage"],
@@ -41,4 +44,38 @@ test.each([
 
 test("a valid scope can be exactly 4000 characters", () => {
   expect(parseCanHeader("dev=read".padEnd(4000, ";"))).toEqual({ dev: ["read"] });
+});
+
+test("own exact, subtree and wildcard lookups match the previous scan", () => {
+  const base = parseCanHeader("*=read;dev/=manage;dev=post;dev/private/=;dev/private/ci/=sync;constructor=label");
+  Object.setPrototypeOf(base, { inherited: ["manage"] });
+  const scope = parseCanHeader("*=label;dev/=read,post,sync;dev/private/ci=;dev/private/ci/log=sync");
+  const narrowed = narrowCan(base, scope);
+  const spots = [
+    "*",
+    "dev",
+    "dev/",
+    "dev/build",
+    "dev/private",
+    "dev/private/",
+    "dev/private/test",
+    "dev/private/ci",
+    "dev/private/ci/",
+    "dev/private/ci/log",
+    "dev/private/ci/log/next",
+    "devel",
+    "constructor",
+    "toString",
+    "inherited",
+  ];
+  const scanned = (can: Can, spot: string) => {
+    const [pattern] = matchingPatterns(Object.keys(can), spot);
+    return pattern === undefined ? [] : withImplied(can[pattern] ?? []);
+  };
+  for (const spot of spots) {
+    expect(allowedAt(base, spot)).toEqual(scanned(base, spot));
+    expect(allowedAt(narrowed, spot)).toEqual(
+      scanned(base, spot).filter((permission) => scanned(scope, spot).includes(permission)),
+    );
+  }
 });
