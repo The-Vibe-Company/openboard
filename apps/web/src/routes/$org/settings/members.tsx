@@ -50,7 +50,6 @@ function Members({ org, role }: { org: string; role: Role }) {
               <tr>
                 <th scope="col">Member</th>
                 <th scope="col">Role</th>
-                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -120,24 +119,6 @@ function MemberRow({
     <tr>
       <td>
         <MemberProfile member={member} self={self} />
-      </td>
-      <td>
-        {canEdit ? (
-          <Select
-            aria-label={`Role for ${name}`}
-            value={role}
-            disabled={update.isPending}
-            onChange={(event) => update.mutate(event.currentTarget.value as Role)}
-          >
-            <option value="member">member</option>
-            <option value="admin">admin</option>
-            {actor === "owner" && <option value="owner">owner</option>}
-          </Select>
-        ) : (
-          role
-        )}
-      </td>
-      <td>
         {(self || canEdit) && (
           <Button
             size="small"
@@ -159,6 +140,22 @@ function MemberRow({
               update.variables === "remove" ? "Could not remove member." : "Could not change role.",
             )}
           </p>
+        )}
+      </td>
+      <td>
+        {canEdit ? (
+          <Select
+            aria-label={`Role for ${name}`}
+            value={role}
+            disabled={update.isPending}
+            onChange={(event) => update.mutate(event.currentTarget.value as Role)}
+          >
+            <option value="member">member</option>
+            <option value="admin">admin</option>
+            {actor === "owner" && <option value="owner">owner</option>}
+          </Select>
+        ) : (
+          role
         )}
       </td>
     </tr>

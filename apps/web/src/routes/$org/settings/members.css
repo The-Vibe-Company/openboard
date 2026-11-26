@@ -30,3 +30,7 @@
 .organization-members .members-table {
   overflow-wrap: anywhere;
 }
+
+.organization-members .member-profile + button {
+  margin-block-start: calc(2 * var(--space));
+}
