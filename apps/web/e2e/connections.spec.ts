@@ -27,6 +27,21 @@ async function create(page: Page, name: string) {
   await page.getByRole("button", { name: "Create connection" }).click();
 }
 
+async function expectMcpTools(page: Page, origin: string, mcpUrl: string, secret: string) {
+  const claimed = await page.request.post(`${origin}${endpoint}/claim`, {
+    headers: { Authorization: `Bearer ${secret}` },
+    data: { profile: "approved-agent" },
+  });
+  expect(claimed.status()).toBe(200);
+  const { token } = await claimed.json();
+  const response = await page.request.post(mcpUrl, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json, text/event-stream" },
+    data: { jsonrpc: "2.0", id: 1, method: "tools/list" },
+  });
+  expect(response.status()).toBe(200);
+  expect((await response.json()).result.tools.length).toBeGreaterThan(0);
+}
+
 test("a board owner creates fixer, copies its secret, and posts through ob connect", async ({ page, context }) => {
   const app = await serve();
   try {
@@ -40,7 +55,7 @@ test("a board owner creates fixer, copies its secret, and posts through ob conne
     const boardUrl = `${app.url}/api/acme/main`;
     expect(secret.startsWith("obc_")).toBe(true);
     const cli = modal.getByRole("tabpanel", { name: "CLI" });
-    const cliSnippet = `ob connect "${boardUrl}" --as fixer --secret-file ./fixer.secret &&\n  BOARD_URL="${boardUrl}" BOARD_TOKEN= BOARD_PROFILE= ob tasks claim --next --channel dev`;
+    const cliSnippet = `ob connect "${boardUrl}" --as fixer --secret-file "./fixer.secret" &&\n  ob doctor &&\n  ob tasks`;
     await expect(cli.locator("pre")).toHaveText(cliSnippet);
     await cli.getByRole("button", { name: "Copy snippet" }).click();
     await expect(cli.locator('[aria-live="polite"]')).toHaveText("Snippet copied.");
@@ -92,7 +107,7 @@ test("setup snippets for an existing connection support keyboard tabs and copy t
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
     const cli = page.getByRole("tab", { name: "CLI" });
     await expect(page.getByRole("tabpanel")).toContainText(
-      `ob connect "${app.url}/api/acme/main" --as approved-agent --secret-file ./worker.secret`,
+      `ob connect "${app.url}/api/acme/main" --as approved-agent --secret-file "./worker.secret"`,
     );
 
     const mcp = `${app.url}/mcp/acme/main`;
@@ -100,9 +115,9 @@ test("setup snippets for an existing connection support keyboard tabs and copy t
     const claude = page.getByRole("tab", { name: "Claude Code" });
     await expect(claude).toBeFocused();
     await expect(claude).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tabpanel")).toContainText(
-      `claude mcp add --transport http openboard "${mcp}" --header 'Authorization: Bearer \${BOARD_TOKEN}'`,
-    );
+    expect(JSON.parse(await page.getByRole("tabpanel").locator("pre").innerText())).toEqual({
+      mcpServers: { openboard: { type: "http", url: mcp, headers: { Authorization: `Bearer \${BOARD_TOKEN}` } } },
+    });
     await claude.press("ArrowRight");
     const codex = page.getByRole("tabpanel", { name: "Codex" });
     await codex.getByRole("button", { name: "Copy snippet" }).click();
@@ -119,23 +134,18 @@ test("setup snippets for an existing connection support keyboard tabs and copy t
     const mcpPanel = page.getByRole("tabpanel", { name: "MCP" });
     const [mcpUrl = ""] = (await mcpPanel.locator("pre").innerText()).split("\n");
     expect(mcpUrl).toBe(mcp);
-    const claimed = await page.request.post(`${app.url}${endpoint}/claim`, {
-      headers: { Authorization: `Bearer ${secret}` },
-      data: { profile: "approved-agent" },
-    });
-    expect(claimed.status()).toBe(200);
-    const { token } = await claimed.json();
-    const response = await page.request.post(mcpUrl, {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json, text/event-stream" },
-      data: { jsonrpc: "2.0", id: 1, method: "tools/list" },
-    });
-    expect(response.status()).toBe(200);
-    expect((await response.json()).result.tools.length).toBeGreaterThan(0);
+    await expectMcpTools(page, app.url, mcpUrl, secret);
 
     await page.getByRole("tab", { name: "TypeScript SDK" }).click();
     const sdk = page.getByRole("tabpanel", { name: "TypeScript SDK" });
     await expect(sdk).toContainText(`url: "${app.url}/api/acme/main"`);
-    await expect(sdk).toContainText("token: process.env.BOARD_TOKEN");
+    await expect(sdk).toContainText("secret: process.env.OPENBOARD_SECRET");
+    await expect(sdk).toContainText('as: "approved-agent"');
+    await expect(sdk).toContainText("board.tasks.create");
+    await page.getByRole("tab", { name: "Agent Skill" }).click();
+    await expect(page.getByRole("tabpanel").locator("pre")).toHaveText(
+      'npx skills add The-Vibe-Company/openboard --skill openboard\nob whoami\nob tasks claim "$task_id"',
+    );
     expect((await page.content()).includes(secret)).toBe(false);
 
     await toggle.click();
@@ -258,6 +268,8 @@ test("a member sees the board's 403 and cannot create a connection", async ({ pa
       "Only board owners and organization admins manage connections",
     );
     await expect(memberPage.getByRole("button", { name: "Create connection" })).toHaveCount(0);
+    await memberPage.getByRole("link", { name: "Guide", exact: true }).click();
+    await expect(memberPage.getByRole("heading", { name: "Board guide" })).toBeVisible();
   } finally {
     await member.close();
     await app.stop();

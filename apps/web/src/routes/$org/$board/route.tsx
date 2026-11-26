@@ -30,6 +30,7 @@ import {
   SearchIcon,
   SettingsIcon,
   TasksIcon,
+  TerminalIcon,
   XIcon,
 } from "../../../ui/index.ts";
 
@@ -240,6 +241,9 @@ function BoardSidebar({
         </Link>
         <Link to="/$org/$board/agents" params={params} onClick={onCloseSidebar}>
           <BotIcon /> Agents
+        </Link>
+        <Link to="/$org/$board/guide" params={params} search={true} onClick={onCloseSidebar}>
+          <TerminalIcon /> Guide
         </Link>
       </nav>
       {(!mobile || sidebarOpen) && (
