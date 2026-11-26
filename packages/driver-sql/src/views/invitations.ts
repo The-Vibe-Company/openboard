@@ -1,4 +1,5 @@
 import { BoardError, type InvitationRole, type Role } from "@openboard/contract";
+import { isoTime } from "@openboard/core";
 import type { OrgScope, OrgView, PlatformView } from "@openboard/ports";
 import type { Db, Dialect } from "../db.ts";
 import { forUpdate, query, sql } from "../sql.ts";
@@ -21,6 +22,11 @@ export const invitationStatements = {
     JOIN orgs o ON o.id = i.org_id WHERE i.org_id = ${"orgId"} AND i.token_hash = ${"tokenHash"}
     AND o.deleted_at IS NULL AND i.accepted_at IS NULL AND i.revoked_at IS NULL
     AND i.expires_at > ${"at"}${forUpdate}`,
+  existingMembership: sql`SELECT 1 FROM memberships WHERE org_id = ${"orgId"} AND user_id = ${"userId"}`,
+  listPendingInvitations: sql`SELECT i.id, i.email, i.role, u.public_id, i.created_at, i.expires_at
+    FROM invitations i JOIN users u ON u.id = i.created_by
+    WHERE i.org_id = ${"orgId"} AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ${"at"}
+    ORDER BY i.created_at DESC, i.id DESC`,
   orgMemberCount: sql`SELECT COUNT(*) AS count FROM memberships WHERE org_id = ${"orgId"}`,
   insertInvitedMember: sql`INSERT INTO memberships (org_id, user_id, role, created_at, invited_by)
     SELECT ${"orgId"}, u.id, i.role, ${"at"}, i.created_by FROM invitations i
@@ -52,14 +58,17 @@ export async function redeemInvitation(tx: Db, dialect: Dialect, tokenHash: Uint
   }
   const [person] = await query(tx, dialect, orgStatements.lockPerson, { personId });
   if (!person) return null;
+  const [joined] = await query(tx, dialect, invitationStatements.existingMembership, {
+    orgId,
+    userId: Number(person.id),
+  });
+  if (joined) throw new BoardError("already_in_org", "you already belong to this organization");
   if (
     typeof invitation.email === "string" &&
     (typeof person.email !== "string" || person.email.toLowerCase() !== invitation.email)
   ) {
     throw new BoardError("invitation_email_mismatch", "this invitation requires a matching verified email");
   }
-  const [joined] = await query(tx, dialect, orgStatements.personMemberships, { personId });
-  if (joined) throw new BoardError("already_in_org", "you already belong to an organization");
   const [usage] = await query(tx, dialect, invitationStatements.orgMemberCount, { orgId });
   const quota = exhaustedQuota("members", invitation.quotas, usage?.count);
   if (quota) return quota;
@@ -111,8 +120,19 @@ export function invitationView(
   db: Db,
   dialect: Dialect,
   { orgId }: OrgScope,
-): Pick<OrgView, "createInvitation" | "listMembers" | "revokeInvitation"> {
+): Pick<OrgView, "createInvitation" | "listInvitations" | "listMembers" | "revokeInvitation"> {
   return {
+    async listInvitations(at) {
+      const rows = await query(db, dialect, invitationStatements.listPendingInvitations, { orgId, at });
+      return rows.map((row) => ({
+        id: String(row.id),
+        ...(typeof row.email === "string" && { email: row.email }),
+        role: String(row.role) as InvitationRole,
+        createdBy: `ob:user:${row.public_id}`,
+        createdAt: isoTime(Number(row.created_at)),
+        expiresAt: isoTime(Number(row.expires_at)),
+      }));
+    },
     async listMembers() {
       const rows = await query(db, dialect, invitationStatements.listOrgMembers, { orgId });
       return rows.map((row) => ({

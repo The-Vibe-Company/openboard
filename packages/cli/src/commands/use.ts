@@ -2,7 +2,7 @@ import { BoardError } from "@openboard/contract";
 import { isSlug, personalBoardUrl, personalConfigPath, storedPersonal, storePersonalLogin } from "../config.ts";
 import { Misuse, type StandaloneContext } from "./index.ts";
 
-/** `ops` keeps the signed-in organization; `acme/ops` names it, and it must be that one (one per person in v1). */
+/** `ops` uses the saved token’s organization; `acme/ops` must name that same organization. */
 function target(arg: string | undefined): { org?: string; board: string } | undefined {
   const parts = arg?.split("/") ?? [];
   if (parts.length === 1 && isSlug(parts[0])) return { board: parts[0] };

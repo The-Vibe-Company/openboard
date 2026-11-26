@@ -95,18 +95,19 @@ test("a signed-in person creates an organization, owns it, and gets its board ma
   });
 });
 
-test("the owner of acme creating beta receives 409 already_in_org", async () => {
+test("the owner of acme can create and own beta", async () => {
   const { app, at } = await start(["ada"]);
   const ada = at(0);
   expect((await createOrg(app, { name: "Acme", slug: "acme" }, ada)).status).toBe(201);
 
-  const refused = await createOrg(app, { name: "Beta", slug: "beta" }, ada);
-  expect(refused.status).toBe(409);
-  expect(await errorCode(refused)).toBe("already_in_org");
+  expect((await createOrg(app, { name: "Beta", slug: "beta" }, ada)).status).toBe(201);
   expect(await (await get(app, "/api/x/me", ada)).json()).toMatchObject({
-    memberships: [{ org: { slug: "acme", name: "Acme" }, role: "owner" }],
+    memberships: [
+      { org: { slug: "acme", name: "Acme" }, role: "owner" },
+      { org: { slug: "beta", name: "Beta" }, role: "owner" },
+    ],
   });
-  expect(await store?.platform().findBoard("beta", "main")).toBeNull();
+  expect(await store?.platform().findBoard("beta", "main")).not.toBeNull();
 });
 
 test("a second person creating acme receives 409 slug_taken", async () => {

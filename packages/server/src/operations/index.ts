@@ -62,6 +62,7 @@ import {
 import {
   acceptInvitationHandler,
   createInvitationHandler,
+  listInvitationsHandler,
   listMembersHandler,
   previewInvitationHandler,
   revokeInvitationHandler,
@@ -252,6 +253,7 @@ export const handlers: { readonly [Op in Contracted as Op["name"]]: Handler<Op> 
   createGrant: createGrantHandler,
   createGrants: createGrantsHandler,
   createInvitation: createInvitationHandler,
+  listInvitations: listInvitationsHandler,
   createOrg: createOrgHandler,
   createSchedule: createScheduleHandler,
   createSchema: createSchemaHandler,

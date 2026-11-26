@@ -57,14 +57,14 @@ test("the fourth validated attempt by one person is limited across instances and
     await expectError(await create(ada, "settings"), 400, "reserved_slug");
     const start = app.served.length;
     expect((await create(ada, "first-org")).status).toBe(201);
-    await expectError(await create(ada, "second-org"), 409, "already_in_org");
-    await expectError(await create(ada, "third-org"), 409, "already_in_org");
+    expect((await create(ada, "second-org")).status).toBe(201);
+    expect((await create(ada, "third-org")).status).toBe(201);
     await expectLimited(await create(ada, "fourth-org", OTHER_IP));
     expectAlternation(app, start, 4);
     expect(await platform.findBoard("fourth-org", "main")).toBeNull();
 
     nextDay();
-    await expectError(await create(ada, "fourth-org"), 409, "already_in_org");
+    expect((await create(ada, "fourth-org")).status).toBe(201);
   } finally {
     await app.close();
   }
@@ -79,8 +79,8 @@ test("the eleventh attempt from one IP is limited across people and instances wi
     const sam = await signIn("sam");
     const start = app.served.length;
     expect((await create(ada, "shared-slug")).status).toBe(201);
-    await expectError(await create(ada, "second-org"), 409, "already_in_org");
-    await expectError(await create(ada, "third-org"), 409, "already_in_org");
+    expect((await create(ada, "second-org")).status).toBe(201);
+    expect((await create(ada, "third-org")).status).toBe(201);
     for (const person of [lin, mei]) {
       for (let attempt = 0; attempt < 3; attempt++) {
         await expectError(await create(person, "shared-slug"), 409, "slug_taken");
@@ -94,7 +94,7 @@ test("the eleventh attempt from one IP is limited across people and instances wi
 
     expect((await create(sam, "blocked-org", OTHER_IP)).status).toBe(201);
     nextDay();
-    await expectError(await create(sam, "after-reset"), 409, "already_in_org");
+    expect((await create(sam, "after-reset")).status).toBe(201);
   } finally {
     await app.close();
   }

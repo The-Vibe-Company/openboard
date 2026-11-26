@@ -173,15 +173,15 @@ test("creation requires the organization's administrator and CSRF proof, and can
   }
 });
 
-test("the owner of another organization is refused an invitation and stays out of it", async () => {
-  const { app, acme, other, preview } = await setup();
+test("an existing member is refused without consuming the invitation", async () => {
+  const { app, acme, other, create, preview } = await setup();
   const post = (path: string, headers: Record<string, string>, data: unknown) =>
     app.fetch(new Request(`${PUBLIC_URL}/api/x${path}`, { method: "POST", headers, body: JSON.stringify(data) }));
   try {
-    const link = await post("/orgs/acme/invitations", acme, { role: "member" });
+    const link = await create(acme);
     const { url } = (await link.json()) as OutputOf<typeof createInvitation>;
     const token = new URL(url).pathname.slice("/invite/".length);
-    const accept = await post("/invitations/accept", other, { token });
+    const accept = await post("/invitations/accept", acme, { token });
     expect(accept.status).toBe(409);
     expect(await accept.json()).toMatchObject({ error: { code: "already_in_org" } });
     expect((await preview(token)).status).toBe(200);
@@ -306,7 +306,8 @@ test("an email-bound invitation rejects a different or unverified email and admi
     expect(link.status).toBe(201);
     const { url } = (await link.json()) as OutputOf<typeof createInvitation>;
     const body = { token: new URL(url).pathname.slice("/invite/".length) };
-    for (const person of [owner, unverified]) {
+    const differentEmail = await browserSession(app.fetch, "sam");
+    for (const person of [differentEmail, unverified]) {
       const refused = await post("/invitations/accept", body, person.headers);
       expect(refused.status).toBe(403);
       expect(await refused.json()).toMatchObject({ error: { code: "invitation_email_mismatch" } });

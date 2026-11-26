@@ -83,7 +83,7 @@ test("a board the person cannot reach is refused and the saved board stays", asy
   expect(lines.err).toEqual(["error: not_found: no board acme/nope you can use"]);
 });
 
-test("another organization is refused without asking the board: one organization per person", async () => {
+test("another organization is refused without asking the board: the saved personal token is organization-bound", async () => {
   const lines = await signedIn(async (env, cli) => {
     expect(await cli("use", "other/main")).toBe(1);
     expect(clientConfig(env).boardUrl).toBe(`${origin}/api/acme/main`);

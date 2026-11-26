@@ -65,13 +65,15 @@ test("shows taken and reserved slug errors under the input and stays on /new", a
   }
 });
 
-test("opens the existing organization's main board when a member visits /new", async ({ page }) => {
+test("creates another organization when an owner visits /new", async ({ page }) => {
   const app = await serve();
   try {
     await startOrganization(page, app.url, "ada");
     await createAcme(page, app.url);
     await page.goto(`${app.url}/new`);
-    await expect(page).toHaveURL(`${app.url}/acme-labs/main`);
+    await page.getByLabel("Organization name").fill("Beta Labs");
+    await page.getByRole("button", { name: "Create organization" }).click();
+    await expect(page).toHaveURL(`${app.url}/beta-labs/main`);
   } finally {
     await app.stop();
   }

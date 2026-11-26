@@ -63,14 +63,10 @@ Verified against `docs/01-board/03-identity.md`, `docs/01-board/09-access.md`,
   capped by team role (`09-access.md`, "How grants combine"). Seeded `g2`
   (`all-projects`) and `g3` (`all-apps`) exist for upstream parity and let no
   one in.
-- **v1: one organization per person.** The schema is many-to-many
-  (`memberships`); creating an organization while already a member, or
-  accepting an invitation while already a member elsewhere, answers 409
-  `already_in_org`. What an org
-  switcher needs later: `GET /api/x/me` already lists memberships; the URL
-  already carries the organization, so switching is navigation; sessions are
-  per person, not per organization; personal tokens are per organization, so
-  the CLI keeps one per organization; and the 409 rule is removed.
+- A person can create and join multiple organizations. Each membership has
+  its own role, and the path selects which membership applies. Browser
+  sessions span a person's memberships, while each personal token is scoped
+  to one organization.
 
 ### Sign-up and sign-in
 
@@ -156,6 +152,9 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
 - `POST /api/x/orgs/:org/invitations { role, email? , send? }` (admin+) →
   `{ invitation, url: "<origin>/invite/<token>", emailSent? }`. Token: 256 bits, stored
   hashed, single use, 7 days, revocable.
+- `GET /api/x/orgs/:org/invitations` (admin+) returns pending invitation
+  metadata, newest first. Members receive 403 and non-members receive 404.
+  The response omits raw tokens and token hashes.
 - `GET /api/x/invitations/:token` needs no credential. It returns only
   `{ orgName, role, expiresAt }`; unknown links return 404 and expired,
   revoked or used links return 410 `invitation_used`.
@@ -169,7 +168,8 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
   when delivery is attempted, and the URL stays available if the provider rejects the email.
 - **Accepting:** `POST /api/x/invitations/accept { token }` (signed in) →
   membership with the invited role, `ob.member.added`, invitation marked
-  accepted, all in one transaction.
+  accepted, all in one transaction. A person who already belongs to the
+  inviting organization receives 409 `already_in_org` and the link stays usable.
 
 ### Sessions and CSRF
 
@@ -191,7 +191,7 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
 1. `ob login https://openboard.example` → `POST /api/x/auth/device
    { clientName, can? }` → `{ deviceCode, userCode, verificationUri: "<origin>/device", interval, expiresIn: 600 }`.
 2. The person opens `/device`, signs in, sees the code and the client name
-   and confirms their organization (v1: their only one). With `ob login <origin>
+   and confirms the organization shown by the browser. With `ob login <origin>
    --can 'dev=read'`, the page also shows the requested permissions. The page reads the
    client name, expiry and optional scope through `GET /api/x/auth/device/:userCode`.
    It submits approval through `POST /api/x/auth/device/approve { userCode, org }`
@@ -217,8 +217,8 @@ type ExternalIdentity = { provider: string; subject: string; login: string; name
    `~/.config/openboard/personal.json` (mode 0600). If both a personal
    sign-in and an agent connection match the current board, the CLI uses
    the more recently saved credential.
-   `ob use <board>` or `ob use <org>/<board>` changes it; `BOARD_URL` is
-   derived as `<origin>/api/<org>/<board>`. Upstream `vb` works with
+   `ob use <board>` or `ob use <org>/<board>` changes the board within the
+   token’s organization. `BOARD_URL` is derived as `<origin>/api/<org>/<board>`. Upstream `vb` works with
    `BOARD_URL=… BOARD_TOKEN=obp_…`.
 
 `ob whoami` prints:
@@ -576,7 +576,7 @@ CSRF, XSS), the model covers cross-tenant access.
 | **Replay** | TLS; short TTLs; idempotent claims; fenced task claims; signed webhooks with timestamp and delivery ID |
 | **Webhook forgery (inbound)** | Per-endpoint HMAC over the raw body, constant time, 300 s tolerance, event-ID dedupe |
 | **SSRF and abuse through webhooks** | Mandatory guard below, no per-tenant override; per-organization delivery rate caps; dead letters disable a subscription; creating one needs `manage` everywhere its filter matches; deliveries re-check the creator's read access |
-| **XSS across tenants** (one origin for all organizations) | Sanitized Markdown, strict CSP, attachments sandboxed and never inline except safe types; v1's one-organization-per-person rule limits a stored XSS to its own organization's members |
+| **XSS across tenants** (one origin for all organizations) | Sanitized Markdown, strict CSP, attachments sandboxed and never inline except safe types |
 | **Malware or content hosting through attachments** | Downloads need a credential (no public URLs); `attachment` disposition for unsafe types; per-organization storage quota |
 | **Noisy neighbours** | Per-organization rate limits and quotas; per-board locks isolate write contention; statement and lock timeouts |
 | **Sign-up abuse** | Sign-in through GitHub only in v1; org creation rate-limited per person and IP; `OPENBOARD_SIGNUP` switch |
@@ -595,8 +595,7 @@ commands:
 - `openboard admin delete acme --reason "abuse report"` soft-deletes the
   organization and schedules its purge after 30 days.
 - `openboard admin undelete acme --reason "appeal accepted"` restores the
-  organization within the retention window and cancels the purge. If a retained
-  member has joined another organization, restoration fails with `already_in_org`.
+  organization and its memberships within the retention window and cancels the purge.
 - `openboard admin quota acme boards=20 --reason "customer asked"` updates
   one of `boards`, `members` or `connections` and prints the effective quotas.
 

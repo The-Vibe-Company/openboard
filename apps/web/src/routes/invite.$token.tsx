@@ -18,7 +18,7 @@ function invalidInvitation(code: string | undefined) {
 }
 
 function joinError(code: string | undefined) {
-  if (code === "already_in_org") return "You already belong to an organization. You can only join one.";
+  if (code === "already_in_org") return "You already belong to this organization.";
   if (code === "invitation_email_mismatch") return "This invitation was sent to a different email address.";
   if (code === "quota_exceeded") return "This organization has reached its member limit.";
   return "Could not join the organization. Try again.";

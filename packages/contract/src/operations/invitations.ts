@@ -37,6 +37,22 @@ export const createInvitation = defineOperation({
   upstream: false,
 });
 
+export const listInvitations = defineOperation({
+  name: "listInvitations",
+  summary: "List pending invitations for an organization.",
+  route: { method: "GET", path: "/orgs/:org/invitations" },
+  scope: "org",
+  input: { params: Type.Object({ org: Slug }) },
+  output: Type.Object({ invitations: Type.Array(Invitation) }),
+  errors: ["not_found", "unauthorized", "forbidden"],
+  access: null,
+  effects: { readOnly: true, idempotent: true, emits: [] },
+  cli: false,
+  mcp: false,
+  why: "An organization administrator lists pending invitations with a browser session.",
+  upstream: false,
+});
+
 export const previewInvitation = defineOperation({
   name: "previewInvitation",
   summary: "Preview the organization, role and expiry of an invitation link.",

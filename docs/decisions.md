@@ -441,17 +441,21 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   organizations; memberships many-to-many with roles `owner`, `admin`,
   `member`; link and email invitations (single use, 7 days, optional verified
   email binding); sign-up creates the person's organization (with board
-  `main`) or joins one through an invitation. v1 enforces one organization per
-  person (409 `already_in_org`). Members are capped to read/post/react/label on
-  boards unless a grant gives more; admins and owners are uncapped. Sessions
+  `main`) or joins one through an invitation. Wave 4 allows each person to
+  create and join multiple organizations, superseding the v1 limit. An
+  existing member of the inviting organization receives 409 `already_in_org`
+  without consuming the invitation. Owners and admins can list their
+  organization's pending invitations without exposing tokens. Members are
+  capped to read/post/react/label on boards unless a grant gives more. Admins
+  and owners are uncapped. Sessions
   are per person; personal tokens per organization; connections, grants,
   webhooks, inbound endpoints, schedules, and agent tokens per board. CLI
   sign-in is a board-run device flow that picks the organization; `ob use`
   picks the board; `whoami` shows person, organization, role, board,
   credential. No automatic account linking by email.
-- **Consequence.** Supersedes D14; amends D12. An org switcher later needs
-  only UI and lifting the one-membership rule (URLs, sessions, and tokens are
-  already shaped for it).
+- **Consequence.** Supersedes D14; amends D12. Organization switching in the
+  browser uses the URL and the person's session. Personal tokens remain bound
+  to the organization that issued them.
 - **Last owner (ticket 150, issue #151).** Demoting or removing the last owner
   returns 409 `last_owner` with message “an organization keeps at least one
   owner” and hint “promote another member to owner first”. Check for another
@@ -475,8 +479,8 @@ Stan's N1 to N9 (given), with the architect's choices inside them.
   supplies discovery's `team_id` (`local` for the local alias), and
   `project_id` is null. Subdomains per
   organization rejected for v1: wildcard certificates and DNS on Railway
-  (unverified support), split sessions, for an origin-isolation benefit that
-  one-organization-per-person and CSP mostly cover.
+  (unverified support) and split sessions. Organizations currently share one
+  origin and rely on application-level access checks and CSP.
 - **Consequence.** Refines D8. `BOARD_URL` plus one secret is still a full
   connection; GitHub Actions OIDC audiences are per board.
 

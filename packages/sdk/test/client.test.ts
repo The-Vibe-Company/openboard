@@ -18,6 +18,20 @@ test("a bodyless organization write sends the configured CSRF header", async () 
   expect(await client.removeMember({ org: "acme", user: principal })).toEqual({ principal });
 });
 
+test("listInvitations uses the requested organization's account route", async () => {
+  const result = { invitations: [] };
+  const client = createClient({
+    url: "http://127.0.0.1:8787/api/acme/main",
+    fetch: async (request) => {
+      expect(request.method).toBe("GET");
+      expect(new URL(request.url).pathname).toBe("/api/x/orgs/beta/invitations");
+      return Response.json(result);
+    },
+  });
+
+  expect(await client.listInvitations({ org: "beta" })).toEqual(result);
+});
+
 test("CSRF covers a board write and is omitted on reads", async () => {
   const requests: Request[] = [];
   const client = createClient({

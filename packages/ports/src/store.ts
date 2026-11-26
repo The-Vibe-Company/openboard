@@ -106,6 +106,8 @@ export interface OrgView extends RateView, OrgLogMaintenance, OrgExports {
     readonly at: number;
     readonly admit?: () => void;
   }): Promise<{ principal: string } | null>;
+  /** Pending invitations at `at`, newest first, within the scoped organization. */
+  listInvitations(at: number): Promise<Invitation[]>;
   /** Stores the invitation and audit event together. False if the creator no longer has admin rights here. */
   createInvitation(record: {
     readonly invitation: Invitation;
@@ -179,10 +181,7 @@ export interface PlatformView extends RateView, OidcKeyStore, OperatorReads, Ope
   revokeSession(idHash: string, now: number): Promise<void>;
   /** Revoke every session of the person identified by their public ID. */
   revokeAllSessions(personId: string, now: number): Promise<void>;
-  /**
-   * In one transaction: reject an existing active membership with `already_in_org`, or create the
-   * organization, the person's owner membership, the board and the organization's events.
-   */
+  /** Creates the organization, owner membership, main board and events in one transaction. */
   createOrg(record: CreateOrgRecord): Promise<void>;
   /** Replaces the count quota overrides for one organization; false when the organization is absent. */
   setOrgQuotas(orgId: number, overrides: OrgQuotaOverrides): Promise<boolean>;
@@ -193,7 +192,7 @@ export interface PlatformView extends RateView, OidcKeyStore, OperatorReads, Ope
   /**
    * Redeems the exact token hash and records the membership and audit event in one transaction. An exhausted member
    * quota leaves the invitation unconsumed.
-   * Throws `already_in_org` when the person already belongs to an organization (v1 allows one, D34), and
+   * Throws `already_in_org` when the person already belongs to the inviting organization, leaving the token unconsumed, and
    * `invitation_used` when the invitation was already accepted, revoked, or expired at `at` (single use, 7 days).
    */
   acceptInvitation(

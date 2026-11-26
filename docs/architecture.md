@@ -62,8 +62,6 @@ run while writing this (Bun 1.4.2, local Postgres 17.11, Apple silicon).
   `local()`; an object-storage blob driver makes them possible later.
 - **Billing.** Out of scope. Metering and quotas are designed seams
   ([SaaS seams](#saas-seams)).
-- **Several organizations per person in the UI.** The schema is many-to-many;
-  the v1 UX allows one membership per person.
 - **Multi-region.** One region; a lost region is a restore, not a failover.
 - **Sleeping with no traffic** in hosted mode (small always-on instances).
 

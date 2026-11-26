@@ -56,8 +56,6 @@ export function orgView(db: Db, dialect: Dialect): Pick<PlatformView, "createOrg
       db.transaction(async (tx) => {
         const at = record.now;
         const userId = await lockPerson(tx, dialect, record.personId);
-        const [membership] = await query(tx, dialect, orgStatements.personMemberships, { personId: record.personId });
-        if (membership) throw new BoardError("already_in_org", "you already belong to an organization");
         const [org] = await query(tx, dialect, orgStatements.insertOrg, { ...record.org, userId, at });
         if (!org) {
           throw new BoardError("slug_taken", "this organization slug is already in use", {

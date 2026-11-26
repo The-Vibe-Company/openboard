@@ -112,7 +112,9 @@ test("previews an invitation and signs up with its role on an invite-only server
   await expectMembership(page, board.url, "admin");
 });
 
-test("joins from a signed-in session and shows the used link as invalid", async ({ board }) => {
+test("joins a second organization from a signed-in session and shows the used link as invalid", async ({ board }) => {
+  const other = { name: "Other Studio", slug: "other-studio" };
+  await post(board.existing, board.url, "/orgs", other, 201);
   const link = await invite(board, "member");
   const { existing, url } = board;
   await existing.goto(link.url);
@@ -122,7 +124,13 @@ test("joins from a signed-in session and shows the used link as invalid", async 
   ]);
   expect(accept.request().method()).toBe("POST");
   expect(accept.status()).toBe(200);
-  await expectMembership(existing, url, "member");
+  await expect(existing).toHaveURL(`${url}${destination}`);
+  const account = await existing.request.get(`${url}/api/x/me`);
+  expect(account.ok()).toBe(true);
+  expect((await account.json()).memberships).toEqual([
+    { org: organization, role: "member" },
+    { org: other, role: "owner" },
+  ]);
 
   await existing.goto(link.url);
   await expect(existing.getByRole("alert")).toHaveText("This invitation is no longer valid");
@@ -145,10 +153,9 @@ test("shows an expired invitation as invalid", async ({ board, page }) => {
   await expect(page.getByRole("link", { name: "Sign in with GitHub to join" })).toHaveCount(0);
 });
 
-test("explains why an existing organization member cannot join", async ({ board }) => {
-  await post(board.existing, board.url, "/orgs", { name: "Other Studio", slug: "other-studio" }, 201);
+test("explains why a member cannot join the same organization again", async ({ board }) => {
   const link = await invite(board, "member");
-  const { existing, url } = board;
+  const { owner: existing, url } = board;
   await existing.goto(link.url);
   const [accept] = await Promise.all([
     existing.waitForResponse((response) => response.url() === `${url}/api/x/invitations/accept`),
@@ -156,7 +163,11 @@ test("explains why an existing organization member cannot join", async ({ board 
   ]);
   expect(accept.status()).toBe(409);
   expect(await accept.json()).toMatchObject({ error: { code: "already_in_org" } });
-  await expect(existing.getByRole("alert")).toHaveText("You already belong to an organization. You can only join one.");
+  await expect(existing.getByRole("alert")).toHaveText("You already belong to this organization.");
+  await expect(existing.getByRole("button", { name: "Join Maple Studio" })).toBeVisible();
+  expect(
+    (await existing.request.get(`${url}/api/x/invitations/${new URL(link.url).pathname.split("/").at(-1)}`)).ok(),
+  ).toBe(true);
 });
 
 test("redeems an invitation with a trailing slash after a returning person signs in with GitHub", async ({
@@ -182,13 +193,12 @@ test("returns a signed-in person to the invitation after revocation during GitHu
   expect(new URL(page.url()).searchParams.get("error")).toBe("invitation_used");
 });
 
-test("returns a signed-in person who already belongs to an organization with the reason", async ({ board, page }) => {
-  await post(board.existing, board.url, "/orgs", { name: "Other Studio", slug: "other-studio" }, 201);
+test("returns a signed-in member of the inviting organization with the reason", async ({ board, page }) => {
   const link = await invite(board, "member");
   await page.goto(link.url);
-  await signInToJoin(page, link.url, "returning-person", { returns: true });
+  await signInToJoin(page, link.url, "maple-owner", { returns: true });
   expect(new URL(page.url()).searchParams.get("error")).toBe("already_in_org");
-  await expect(page.getByRole("alert")).toHaveText("You already belong to an organization. You can only join one.");
+  await expect(page.getByRole("alert")).toHaveText("You already belong to this organization.");
 });
 
 test.describe("long organization name", () => {
