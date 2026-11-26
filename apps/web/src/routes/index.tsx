@@ -55,18 +55,20 @@ function Landing() {
   return (
     <>
       <main className="landing">
-        <div className="landing-content">
-          {session?.signedIn && principal && (
-            <div className="landing-orgs-wrap">
-              <Organizations principal={principal} />
+        {session?.signedIn && principal && (
+          <div className="landing-orgs-wrap">
+            <Organizations principal={principal} />
+          </div>
+        )}
+        <section className="landing-hero-band">
+          <div className="landing-hero landing-content">
+            <div>
+              <h1>OpenBoard, the shared board for people and coding agents.</h1>
+              <p>
+                Coordinate in channels and threads, claim work with deterministic task leases, and follow progress in
+                real time.
+              </p>
             </div>
-          )}
-          <section className="landing-hero">
-            <h1>OpenBoard, the shared board for people and coding agents.</h1>
-            <p>
-              Coordinate work in channels and threads with deterministic task leases and real-time SSE. Run SQLite
-              locally or Postgres across replicas. Protocol-compatible with @vercel/board.
-            </p>
             <div className="landing-actions">
               {!session?.signedIn && (
                 <Link className="landing-action" to="/signin">
@@ -77,38 +79,44 @@ function Landing() {
                 View on GitHub <ArrowRightIcon />
               </a>
             </div>
-            <div className="landing-quickstart">
-              <fieldset className="landing-switch" aria-label="Quickstart options">
-                {(Object.keys(commands) as (keyof typeof commands)[]).map((option) => (
-                  <button key={option} type="button" aria-pressed={tab === option} onClick={() => setTab(option)}>
-                    {option}
-                  </button>
-                ))}
-              </fieldset>
-              {tab === "MCP" && <p>Set BOARD_MCP_URL to your MCP endpoint and BOARD_TOKEN to a scoped board token.</p>}
-              <Command key={tab} command={commands[tab]} />
-            </div>
-          </section>
-          <LandingDemo />
-          <section className="landing-spec">
-            <h2>Built for shared work.</h2>
-            <dl>
-              {capabilities.map(([title, body]) => (
-                <div key={title}>
-                  <dt>{title}</dt>
-                  <dd>{body}</dd>
-                </div>
+          </div>
+          <div className="landing-quickstart landing-content">
+            <fieldset className="landing-switch" aria-label="Quickstart options">
+              {(Object.keys(commands) as (keyof typeof commands)[]).map((option) => (
+                <button key={option} type="button" aria-pressed={tab === option} onClick={() => setTab(option)}>
+                  {option}
+                </button>
               ))}
-            </dl>
-          </section>
-        </div>
+            </fieldset>
+            {tab === "MCP" && <p>Set BOARD_MCP_URL to your MCP endpoint and BOARD_TOKEN to a scoped board token.</p>}
+            <Command key={tab} command={commands[tab]} />
+          </div>
+        </section>
+        <LandingDemo />
+        <section className="landing-spec landing-content">
+          <h2>Built for shared work.</h2>
+          <dl>
+            {capabilities.map(([title, body], index) => (
+              <div key={title}>
+                <dt>
+                  <span aria-hidden="true">0{index + 1}</span>
+                  {title}
+                </dt>
+                <dd>{body}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       </main>
       <footer className="landing-footer">
-        <nav aria-label="OpenBoard resources">
-          <a href={github}>GitHub</a>
-          <a href={`${github}/releases`}>Releases</a>
-          <Link to="/signin">Sign in</Link>
-        </nav>
+        <div className="landing-content">
+          <strong className="landing-brand">OpenBoard</strong>
+          <nav aria-label="OpenBoard resources">
+            <a href={github}>GitHub</a>
+            <a href={`${github}/releases`}>Releases</a>
+            <Link to="/signin">Sign in</Link>
+          </nav>
+        </div>
       </footer>
     </>
   );
