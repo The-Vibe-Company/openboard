@@ -51,17 +51,30 @@ test("a member sees an agent's post, reply, edit, and deletion live", async ({ p
     await signIn(page, server.url, "grace");
     await sessionClient(page, server.url).acceptInvitation({ token: new URL(url).pathname.split("/").at(-1) ?? "" });
 
-    const stream = page.waitForResponse(`${api}/events`);
+    await page.route(
+      `${api}/events?all=true`,
+      async (route) => {
+        await write("/messages", { channel: "dev/startup", text: "Posted before the stream opened" });
+        await route.continue();
+      },
+      { times: 1 },
+    );
+    const stream = page.waitForResponse(`${api}/events?all=true`);
     await page.goto(`${server.url}/acme/main?channel=dev`);
     expect((await stream).ok()).toBe(true);
     const rows = page.getByRole("list", { name: "Latest threads" }).getByRole("listitem");
     await expect(rows.first()).toContainText("Earlier discussion");
+    const channels = page.getByRole("navigation", { name: "Channels" });
+    await expect(channels.getByRole("link", { name: "dev/startup" })).toBeVisible();
+
+    await write("/channels", { path: "dev/planning" });
+    await expect(channels.getByRole("link", { name: "dev/planning" })).toBeVisible();
 
     const navigations: string[] = [];
     const streams: string[] = [];
     page.on("request", (request) => {
       if (request.resourceType() === "document") navigations.push(request.url());
-      if (request.url() === `${api}/events`) streams.push(request.url());
+      if (request.url() === `${api}/events?all=true`) streams.push(request.url());
     });
     const posted = performance.now();
     const { message: root } = await write("/messages", { channel: "dev", text: "Live discussion" });
@@ -99,7 +112,12 @@ test("the browser resumes the board stream after its last SSE checkpoint", async
   const checkpoints: string[] = [];
   const server = await serve({
     async onResponse(request, response) {
-      if (new URL(request.url).pathname !== "/api/acme/main/events" || !response.ok) return response;
+      if (
+        new URL(request.url).pathname !== "/api/acme/main/events" ||
+        request.headers.get("accept") !== "text/event-stream" ||
+        !response.ok
+      )
+        return response;
       await response.body?.cancel();
       const cursor = request.headers.get("last-event-id");
       if (cursor !== null) {

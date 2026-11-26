@@ -29,7 +29,7 @@ test("a board shows reconnecting during a restart and catches up in order withou
     await session.createOrg({ slug: "acme", name: "Acme" });
     const { message: root } = await session.postMessage({ channel: "dev", text: "Before the deploy" });
 
-    const stream = page.waitForResponse(`${api}/events`);
+    const stream = page.waitForResponse(`${api}/events?all=true`);
     await page.goto(`${url}/acme/main/t/${root.id}?channel=dev`);
     expect((await stream).ok()).toBe(true);
     const messages = page.getByRole("list", { name: "Thread messages" }).getByRole("article").locator("p");
@@ -55,7 +55,7 @@ test("a board shows reconnecting during a restart and catches up in order withou
       port: Number(new URL(url).port),
       async onResponse(request, response) {
         // Keep the reconnect handshake pending until both replies have committed.
-        if (request.url === `${api}/events`) await posted.promise;
+        if (request.url === `${api}/events?all=true`) await posted.promise;
         return response;
       },
     });

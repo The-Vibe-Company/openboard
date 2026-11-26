@@ -1,29 +1,42 @@
-import { expect, mock, test } from "bun:test";
-import { boardKeys, threadsQuery } from "../src/api/board.ts";
+import { expect, mock, spyOn, test } from "bun:test";
+import { boardKeys, channelsQuery, threadsQuery } from "../src/api/board.ts";
 import { followBoard, subscribeBoardEvents } from "../src/api/live.ts";
 import { taskActorsQuery, tasksQuery } from "../src/api/tasks.ts";
 import { threadKeys } from "../src/api/thread.ts";
 
 const board = { org: "acme", board: "main" };
 const createdAt = "2026-01-01T00:00:00.000Z";
+type Queries = Parameters<typeof followBoard>[1];
+type Filters = NonNullable<Parameters<Queries["getQueriesData"]>[0]>;
 const aliasKey = [...threadKeys.all(board), "11"];
 
 function fixture(
   scheduleTask?: ReturnType<typeof fakeClock>["schedule"],
   onReconnecting?: (reconnecting: boolean) => void,
   actorEventsOnly = false,
+  client?: Queries,
+  knownPaths: string[] = [],
 ) {
   const source = Object.assign(new EventTarget(), { close: mock(() => {}), readyState: 0, CLOSED: 2 });
   const connect = mock((_path: string) => source as unknown as EventSource);
   const queries = {
     cancelQueries: mock(async () => {}),
     invalidateQueries: mock(async (_filters: unknown) => {}),
-    getQueriesData: <T>(): [readonly string[], T][] => [[aliasKey, { message: { id: "10" } } as T]],
+    getQueriesData: <T>({ queryKey, type }: Filters): [readonly unknown[], T | undefined][] => {
+      if (type === "active") return [];
+      if (queryKey?.[3] === "threads") return [[queryKey, undefined]];
+      const entries: [readonly unknown[], T | undefined][] = [[aliasKey, { message: { id: "10" } } as T]];
+      if (queryKey?.length === 3) entries.push([boardKeys.channels(board), undefined]);
+      return entries;
+    },
+    getQueryData: <T>() => ({ channels: knownPaths.map((path) => ({ path })) }) as T,
+    setQueryData: () => undefined,
     getQueryState: () => undefined,
+    getQueryCache: () => ({ find: () => undefined }) as unknown as ReturnType<Queries["getQueryCache"]>,
   };
   const clear = mock(() => {});
   const schedule = mock((run: () => void, delay: number) => scheduleTask?.(run, delay) ?? clear);
-  const stop = followBoard(board, queries, connect, schedule, onReconnecting, actorEventsOnly);
+  const stop = followBoard(board, client ?? queries, connect, schedule, onReconnecting, actorEventsOnly);
   return {
     source,
     connect,
@@ -46,13 +59,13 @@ function fixture(
   };
 }
 
-test("a post in another channel invalidates only that channel's list and the counts", () => {
+test("a post in an unknown channel refreshes the channel index and its thread list", () => {
   const live = fixture();
   live.event("message.posted", "ops", "12");
   live.schedule.mock.calls[0]?.[0]();
   expect(live.invalidate.mock.calls.flat()).toEqual([
-    { queryKey: boardKeys.channels(board), exact: true },
     { queryKey: threadsQuery(board, "ops").queryKey, exact: true },
+    { queryKey: boardKeys.channels(board), exact: true },
   ]);
   live.stop();
 });
@@ -71,10 +84,10 @@ test("a burst refetches each affected query once, including threads opened by re
   expect(live.invalidate).not.toHaveBeenCalled();
   live.schedule.mock.calls[0]?.[0]();
   expect(live.invalidate.mock.calls.flat()).toEqual([
-    { queryKey: boardKeys.channels(board), exact: true },
-    { queryKey: threadsQuery(board, "dev").queryKey, exact: true },
     { queryKey: tasksQuery(board, "dev").queryKey, exact: true },
+    { queryKey: threadsQuery(board, "dev").queryKey, exact: true },
     { queryKey: aliasKey, exact: true },
+    { queryKey: boardKeys.channels(board), exact: true },
   ]);
   live.stop();
 });
@@ -92,20 +105,27 @@ test("task and channel events invalidate tasks, threads, actors, channels, and o
   expect(live.invalidate.mock.calls.flat()).toEqual([
     { queryKey: tasksQuery(board, "dev").queryKey, exact: true },
     { queryKey: taskActorsQuery(board, true).queryKey, exact: true },
-    { queryKey: threadsQuery(board, "dev").queryKey, exact: true },
     { queryKey: tasksQuery(board, "ops").queryKey, exact: true },
-    { queryKey: threadsQuery(board, "ops").queryKey, exact: true },
     { queryKey: boardKeys.channels(board), exact: true },
+    { queryKey: threadsQuery(board, "dev").queryKey, exact: true },
+    { queryKey: threadsQuery(board, "ops").queryKey, exact: true },
     { queryKey: aliasKey, exact: true },
   ]);
   live.stop();
 });
 
 test.each(["reaction.added", "reaction.removed"])("%s refreshes open thread detail", (type) => {
-  const live = fixture();
+  const live = fixture(undefined, undefined, false, undefined, ["dev"]);
   live.event(type, "dev", "10");
   live.schedule.mock.calls[0]?.[0]();
   expect(live.invalidate.mock.calls.flat()).toEqual([{ queryKey: aliasKey, exact: true }]);
+  live.stop();
+});
+
+test("lease renewals on the bookkeeping stream leave queries alone", () => {
+  const live = fixture();
+  live.event("task.renewed", "dev", "10");
+  expect(live.schedule).not.toHaveBeenCalled();
   live.stop();
 });
 
@@ -176,23 +196,25 @@ test("a slow read neither restarts nor holds up an unrelated query", async () =>
   const counts = { queryKey: boardKeys.channels(board), exact: true };
   const channel = { queryKey: threadsQuery(board, "ops").queryKey, exact: true };
   const detail = { queryKey: aliasKey, exact: true };
-  // Return a pending read for the first invalidation, which is the channel counts.
-  live.invalidate.mockImplementationOnce(() => read.promise);
+  live.invalidate.mockImplementation(async (filters) => {
+    if (JSON.stringify(filters) === JSON.stringify(counts)) await read.promise;
+  });
   live.event("message.posted", "ops", "12");
   live.schedule.mock.calls[0]?.[0]();
-  await live.invalidate.mock.results[1]?.value;
+  await live.invalidate.mock.results[0]?.value;
   live.event("message.posted", "ops", "13");
   live.event("message.edited", "dev", "10");
   live.schedule.mock.calls[1]?.[0]();
   expect(live.invalidate.mock.calls.flat()).toEqual([
-    counts,
     channel,
+    counts,
     channel,
     { queryKey: threadsQuery(board, "dev").queryKey, exact: true },
     detail,
   ]);
   read.resolve();
   await read.promise;
+  await Promise.resolve();
   live.schedule.mock.calls[2]?.[0]();
   expect(live.invalidate.mock.calls.at(-1)).toEqual([counts]);
   live.stop();
@@ -209,7 +231,7 @@ test("the same native source retains its cursor across an automatic reconnect", 
   );
   live.source.dispatchEvent(new Event("error"));
   live.source.dispatchEvent(new Event("open"));
-  expect(live.connect.mock.calls).toEqual([["/api/acme/main/events"]]);
+  expect(live.connect.mock.calls).toEqual([["/api/acme/main/events?all=true"]]);
   expect(live.source.close).not.toHaveBeenCalled();
   live.stop();
   expect(live.source.close).toHaveBeenCalledTimes(1);
@@ -231,7 +253,10 @@ test("a terminal error retries with capped backoff and a successful open reconci
   retry?.[0]();
   live.source.dispatchEvent(new Event("open"));
   live.schedule.mock.calls.at(-1)?.[0]();
-  expect(live.invalidate.mock.calls.flat()).toEqual([{ queryKey: aliasKey, exact: true }]);
+  expect(live.invalidate.mock.calls.flat()).toEqual([
+    { queryKey: aliasKey, exact: true },
+    { queryKey: boardKeys.channels(board), exact: true },
+  ]);
   live.stop();
 });
 
@@ -296,4 +321,152 @@ test("stopping the stream cancels a pending banner", () => {
   live.stop();
   clock.advance(1000);
   expect(status.mock.calls).toEqual([]);
+});
+
+function observedQueries(options: ReturnType<typeof threadsQuery>) {
+  const channels = channelsQuery(board);
+  type Data = NonNullable<ReturnType<Queries["getQueryData"]>>;
+  type ThreadPage = Awaited<ReturnType<NonNullable<typeof options.queryFn>>>;
+  const data = new Map<string, Data>();
+  const key = options.queryKey;
+  const state = { status: "success", fetchStatus: "idle", isInvalidated: false } as ReturnType<
+    Queries["getQueryState"]
+  >;
+  const signal = new AbortController().signal;
+  const set = (k: readonly unknown[], value: Data) => data.set(JSON.stringify(k), value);
+  const get = <T>(k: readonly unknown[]) => data.get(JSON.stringify(k)) as T | undefined;
+  const readPage = (pageParam?: string) =>
+    options.queryFn?.({
+      pageParam,
+      signal,
+      queryKey: key,
+      direction: "forward",
+      meta: undefined,
+      client: { getQueryData: get },
+    } as unknown as Parameters<NonNullable<typeof options.queryFn>>[0]);
+  async function readThreads() {
+    const head = await readPage();
+    const before = head?.older ?? undefined;
+    const older = await readPage(before);
+    set(key, { pages: [head, older], pageParams: [undefined, before] });
+  }
+  async function readChannels() {
+    const result = await channels.queryFn?.({ signal } as Parameters<NonNullable<typeof channels.queryFn>>[0]);
+    if (result) set(channels.queryKey, result);
+  }
+  const queries: Queries = {
+    cancelQueries: async () => {},
+    invalidateQueries: async (filters?: Filters) => {
+      if (filters?.queryKey?.[3] === "channels") await readChannels();
+      if (filters?.queryKey?.[3] === "threads") await readThreads();
+    },
+    getQueriesData: <T>(filters: Filters) => (filters.queryKey?.[3] === "threads" ? [[key, get<T>(key)]] : []),
+    getQueryState: (() => state) as Queries["getQueryState"],
+    getQueryCache: () => ({ find: () => undefined }) as unknown as ReturnType<Queries["getQueryCache"]>,
+    getQueryData: get,
+    setQueryData: ((k: readonly unknown[], value: Data) => {
+      set(k, value);
+      return value;
+    }) as Queries["setQueryData"],
+  };
+  return { queries, readThreads, readChannels, current: () => get<{ pages: ThreadPage[] }>(key) };
+}
+
+async function deliver(live: ReturnType<typeof fixture>, type: string, id: string) {
+  live.event(type, "dev", id);
+  live.schedule.mock.calls.at(-1)?.[0]();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+}
+
+function mockBrowserWindow() {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: { location: { origin: "http://localhost" }, history: {} },
+  });
+  return () => {
+    if (previous) Object.defineProperty(globalThis, "window", previous);
+    else Reflect.deleteProperty(globalThis, "window");
+  };
+}
+
+test("root posts read only the live head and older edits and deletes update loaded rows", async () => {
+  const options = threadsQuery(board, "dev", { text: "post" });
+  const calls: string[] = [];
+  const root = (id: string, text = "Example post") => ({ message: { id, text }, replies: 0, last: null });
+  let older = [root("10")];
+  const initial = Array.from({ length: 50 }, (_, index) => root(String(20 + index)));
+  let head = initial;
+  const restoreWindow = mockBrowserWindow();
+  const fetchMock = spyOn(globalThis, "fetch").mockImplementation((async (request: RequestInfo | URL) => {
+    const { pathname, searchParams } = new URL((request as Request).url);
+    const name = pathname.split("/").at(-1);
+    const before = searchParams.get("before");
+    const after = searchParams.get("after");
+    calls.push(`${name}:${before ?? after ?? "head"}`);
+    if (name === "events") return Response.json({ events: [], cursor: "80" });
+    if (name === "channels") {
+      return Response.json(
+        searchParams.has("after")
+          ? { channels: [{ path: "dev" }], cursor: "80" }
+          : { channels: [{ path: "general" }], cursor: "80", next: "second" },
+      );
+    }
+    if (after) {
+      expect(searchParams.get("text")).toBe("post");
+      return Response.json({ threads: [root("81")], cursor: "81" });
+    }
+    const cursor = head === initial ? "80" : "82";
+    if (before) {
+      const rows = before === "21.21" ? [...older, initial[0]] : older;
+      return Response.json({ threads: rows, cursor, older: null });
+    }
+    const limit = Number(searchParams.get("limit") ?? "50");
+    const rows = head.slice(-limit);
+    const boundary = rows[0]?.message.id;
+    return Response.json({ threads: rows, cursor, older: `${boundary}.${boundary}` });
+  }) as typeof fetch);
+
+  const { queries, readThreads, readChannels, current } = observedQueries(options);
+  const live = fixture(undefined, undefined, false, queries);
+  try {
+    await readChannels();
+    await readThreads();
+    const previous = current();
+    expect(calls.filter((call) => call.startsWith("channels:"))).toHaveLength(2);
+    calls.length = 0;
+    live.source.dispatchEvent(new Event("open"));
+    live.schedule.mock.calls.at(-1)?.[0]();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(calls).toEqual(["events:80"]);
+    calls.length = 0;
+
+    head = [...head, root("81")];
+    await deliver(live, "message.posted", "81");
+    expect(calls).toEqual(["threads:80"]);
+    expect(current()?.pages[0]?.threads[0]?.message.id).toBe("81");
+    expect(current()?.pages.at(-1)).toBe(previous?.pages[1]);
+
+    calls.length = 0;
+    older = [root("10", "Edited post")];
+    await deliver(live, "message.edited", "10");
+    expect(calls).toEqual(["threads:head", "threads:21.21"]);
+    expect(
+      current()
+        ?.pages.at(-1)
+        ?.threads.find(({ message }) => message.id === "10")?.message.text,
+    ).toBe("Edited post");
+
+    older = [];
+    await deliver(live, "message.deleted", "10");
+    expect(
+      current()
+        ?.pages.at(-1)
+        ?.threads.map(({ message }) => message.id),
+    ).toEqual(["20"]);
+  } finally {
+    live.stop();
+    fetchMock.mockRestore();
+    restoreWindow();
+  }
 });
