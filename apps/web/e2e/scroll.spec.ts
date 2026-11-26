@@ -49,7 +49,8 @@ async function observeRowCount(page: Page) {
 async function postAfterPaging(page: Page, list: Locator) {
   await page.getByRole("textbox", { name: "Message" }).fill("Posted after reading history");
   await page.getByRole("button", { name: "Post", exact: true }).click();
-  await expect(list.getByRole("listitem").first()).toContainText("Posted after reading history");
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await expect(list.locator('li[data-index="0"]')).toContainText("Posted after reading history");
 }
 
 function watchPagination(page: Page, api: string) {
