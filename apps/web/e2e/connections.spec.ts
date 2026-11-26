@@ -39,10 +39,12 @@ test("a board owner creates fixer, copies its secret, and posts through ob conne
     const secret = await modal.getByLabel("Secret").inputValue();
     const boardUrl = `${app.url}/api/acme/main`;
     expect(secret.startsWith("obc_")).toBe(true);
-    await expect(modal).toContainText(`BOARD_URL=${boardUrl}`);
-    await expect(modal).toContainText(`ob connect ${boardUrl} --as fixer`);
-    await expect(modal).toContainText("export BOARD_PROFILE=fixer");
-    await expect(modal).toContainText('export BOARD_TOKEN="$OPENBOARD_SECRET"');
+    const cli = modal.getByRole("tabpanel", { name: "CLI" });
+    const cliSnippet = `ob connect "${boardUrl}" --as fixer --secret-file ./fixer.secret &&\n  BOARD_URL="${boardUrl}" BOARD_TOKEN= BOARD_PROFILE= ob tasks claim --next --channel dev`;
+    await expect(cli.locator("pre")).toHaveText(cliSnippet);
+    await cli.getByRole("button", { name: "Copy snippet" }).click();
+    await expect(cli.locator('[aria-live="polite"]')).toHaveText("Snippet copied.");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(cliSnippet);
     expect((await modal.innerText()).includes(secret)).toBe(false);
     await modal.getByRole("button", { name: "Copy", exact: true }).click();
     await expect(modal.getByRole("status")).toHaveText("Secret copied.");
@@ -64,6 +66,81 @@ test("a board owner creates fixer, copies its secret, and posts through ob conne
     const listed = await page.request.get(app.url + endpoint);
     expect(listed.status()).toBe(200);
     expect((await listed.text()).includes(secret)).toBe(false);
+  } finally {
+    await app.stop();
+  }
+});
+
+test("setup snippets for an existing connection support keyboard tabs and copy the selected configuration", async ({
+  page,
+  context,
+}) => {
+  const app = await serve();
+  try {
+    const headers = await owner(page, app.url);
+    const created = await page.request.post(app.url + endpoint, {
+      headers,
+      data: { name: "worker", can: { "*": ["read"] }, profiles: ["approved-agent"] },
+    });
+    expect(created.status()).toBe(201);
+    const { secret } = await created.json();
+    await created.dispose();
+    await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: app.url });
+    await page.goto(app.url + settings);
+    const toggle = page.getByRole("button", { name: "Setup snippets for worker" });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const cli = page.getByRole("tab", { name: "CLI" });
+    await expect(page.getByRole("tabpanel")).toContainText(
+      `ob connect "${app.url}/api/acme/main" --as approved-agent --secret-file ./worker.secret`,
+    );
+
+    const mcp = `${app.url}/mcp/acme/main`;
+    await cli.press("ArrowRight");
+    const claude = page.getByRole("tab", { name: "Claude Code" });
+    await expect(claude).toBeFocused();
+    await expect(claude).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel")).toContainText(
+      `claude mcp add --transport http openboard "${mcp}" --header 'Authorization: Bearer \${BOARD_TOKEN}'`,
+    );
+    await claude.press("ArrowRight");
+    const codex = page.getByRole("tabpanel", { name: "Codex" });
+    await codex.getByRole("button", { name: "Copy snippet" }).click();
+    await expect(codex.locator('[aria-live="polite"]')).toHaveText("Snippet copied.");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      `[mcp_servers.openboard]\nurl = "${mcp}"\nbearer_token_env_var = "BOARD_TOKEN"`,
+    );
+
+    await page.getByRole("tab", { name: "Cursor" }).click();
+    expect(JSON.parse(await page.getByRole("tabpanel").locator("pre").innerText())).toEqual({
+      mcpServers: { openboard: { url: mcp, headers: { Authorization: `Bearer \${env:BOARD_TOKEN}` } } },
+    });
+    await page.getByRole("tab", { name: "MCP", exact: true }).click();
+    const mcpPanel = page.getByRole("tabpanel", { name: "MCP" });
+    const [mcpUrl = ""] = (await mcpPanel.locator("pre").innerText()).split("\n");
+    expect(mcpUrl).toBe(mcp);
+    const claimed = await page.request.post(`${app.url}${endpoint}/claim`, {
+      headers: { Authorization: `Bearer ${secret}` },
+      data: { profile: "approved-agent" },
+    });
+    expect(claimed.status()).toBe(200);
+    const { token } = await claimed.json();
+    const response = await page.request.post(mcpUrl, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json, text/event-stream" },
+      data: { jsonrpc: "2.0", id: 1, method: "tools/list" },
+    });
+    expect(response.status()).toBe(200);
+    expect((await response.json()).result.tools.length).toBeGreaterThan(0);
+
+    await page.getByRole("tab", { name: "TypeScript SDK" }).click();
+    const sdk = page.getByRole("tabpanel", { name: "TypeScript SDK" });
+    await expect(sdk).toContainText(`url: "${app.url}/api/acme/main"`);
+    await expect(sdk).toContainText("token: process.env.BOARD_TOKEN");
+    expect((await page.content()).includes(secret)).toBe(false);
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByRole("tablist", { name: "Setup snippets for worker" })).toBeHidden();
   } finally {
     await app.stop();
   }

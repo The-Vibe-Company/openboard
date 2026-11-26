@@ -184,3 +184,49 @@
 .grant-form textarea {
   font-family: var(--font-mono);
 }
+
+.connection-snippets {
+  margin-block-start: calc(2 * var(--space));
+  font-size: var(--type-small);
+}
+
+.connection-snippet-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space);
+  border-block-end: var(--stroke) solid var(--border);
+}
+
+.board-settings .connection-snippet-tabs button {
+  padding: calc(2 * var(--space));
+  border: 0;
+  border-block-end: var(--focus-width) solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.board-settings .connection-snippet-tabs button:hover,
+.board-settings .connection-snippet-tabs button[aria-selected="true"] {
+  color: var(--text);
+}
+
+.board-settings .connection-snippet-tabs button[aria-selected="true"] {
+  border-block-end-color: var(--accent);
+}
+
+.connection-snippets p {
+  color: var(--muted);
+}
+
+.board-settings .connection-snippets pre {
+  margin-block: calc(2 * var(--space));
+  padding: calc(2 * var(--space));
+  border: var(--stroke) solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

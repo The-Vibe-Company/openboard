@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useBlocker } from "@tanstack/react-router";
 import { BoardError, type Client } from "@the-vibe-company/openboard";
 import { type FormEvent, useState } from "react";
-import { browserClient } from "../../../../api/client.ts";
+import { boardUrl as resolveBoardUrl, browserClient } from "../../../../api/client.ts";
 import { sessionQuery } from "../../../../api/session.ts";
+import { connectionProfile, ConnectionSetup, NewConnectionSecret } from "../../../../components/ConnectionSnippets.tsx";
 import { AccessPresets } from "../../../../components/GrantForm.tsx";
 import { SecretOnce } from "../../../../components/SecretOnce.tsx";
 import { Button, Card, Field, Input, Table, Textarea } from "../../../../ui/index.ts";
@@ -43,10 +44,11 @@ function errorMessage(error: unknown, fallback: string) {
 
 function ConnectionsRoute() {
   const { org, board } = Route.useParams();
-  return <Connections key={JSON.stringify([org, board])} org={org} board={board} />;
+  const boardUrl = resolveBoardUrl(window.location.origin, { org, board });
+  return <Connections key={JSON.stringify([org, board])} {...{ org, board, boardUrl }} />;
 }
 
-function Connections({ org, board }: { org: string; board: string }) {
+function Connections({ org, board, boardUrl }: { org: string; board: string; boardUrl: string }) {
   const { data: session } = useQuery(sessionQuery);
   const client = browserClient(window.location.origin, { org, board, csrf: session?.csrf ?? undefined });
   const list = useQuery({
@@ -102,6 +104,7 @@ function Connections({ org, board }: { org: string; board: string }) {
           <CreateConnectionForm onSubmit={create} busy={busy} access={access} setAccess={setAccess} />
           {error && <p role="alert">{error}</p>}
           <ConnectionList
+            boardUrl={boardUrl}
             connections={list.data.connections}
             client={client}
             refresh={list.refetch}
@@ -114,6 +117,7 @@ function Connections({ org, board }: { org: string; board: string }) {
       )}
       {created && (
         <CreatedSecret
+          boardUrl={boardUrl}
           created={created}
           onClose={() => {
             setCreated(undefined);
@@ -198,6 +202,7 @@ function ListLoadError({
 type Listed = Awaited<ReturnType<Client["listConnections"]>>["connections"];
 
 function ConnectionList({
+  boardUrl,
   connections,
   client,
   refresh,
@@ -206,6 +211,7 @@ function ConnectionList({
   setBusy,
   showSecret,
 }: {
+  boardUrl: string;
   connections: Listed;
   client: Client;
   refresh: () => Promise<unknown>;
@@ -234,7 +240,9 @@ function ConnectionList({
                 <code>{connection.secretHint}</code>
               </th>
               <ConnectionActivity connection={connection} />
-              <ConnectionActions {...{ connection, client, refresh, reportError, busy, setBusy, showSecret }} />
+              <ConnectionActions
+                {...{ boardUrl, connection, client, refresh, reportError, busy, setBusy, showSecret }}
+              />
             </tr>
           ))}
         </tbody>
@@ -244,6 +252,7 @@ function ConnectionList({
 }
 
 function ConnectionActions({
+  boardUrl,
   connection,
   client,
   refresh,
@@ -252,6 +261,7 @@ function ConnectionActions({
   setBusy,
   showSecret,
 }: {
+  boardUrl: string;
   connection: Listed[number];
   client: Client;
   refresh: () => Promise<unknown>;
@@ -308,6 +318,7 @@ function ConnectionActions({
       <Button variant="danger" size="small" aria-label={`Revoke ${name}`} disabled={busy} onClick={() => void revoke()}>
         Revoke
       </Button>
+      <ConnectionSetup {...{ boardUrl, name, profiles: connection.profiles }} />
     </td>
   );
 }
@@ -330,19 +341,24 @@ function ConnectionActivity({ connection }: { connection: Listed[number] }) {
   );
 }
 
-function CreatedSecret({ created, onClose }: { created: Created | Rotated; onClose: () => void }) {
+function CreatedSecret({
+  boardUrl,
+  created,
+  onClose,
+}: {
+  boardUrl: string;
+  created: Created | Rotated;
+  onClose: () => void;
+}) {
   const {
     connection: { name, direct, profiles },
     secret,
     env,
   } = created;
-  const preferred = /^[a-z][a-z0-9-]{0,31}$/.test(name) ? name : "agent";
-  const profile = profiles.some((pattern) => {
-    const lower = pattern.toLowerCase();
-    return lower.endsWith("*") ? preferred.startsWith(lower.slice(0, -1)) : preferred === lower;
-  })
-    ? preferred
-    : (profiles[0]?.replace(/\*$/, "") ?? preferred);
+  if (!("previousUntil" in created)) {
+    return <NewConnectionSecret setup={{ boardUrl, name, profiles }} secret={secret} onClose={onClose} />;
+  }
+  const profile = connectionProfile(name, profiles);
   const connect = `ob connect ${env.BOARD_URL} --as ${profile} --secret-file ~/.config/openboard/${name}.secret`;
   const exports = [
     "# Load OPENBOARD_SECRET from your secret store before setting these variables.",
@@ -352,7 +368,7 @@ function CreatedSecret({ created, onClose }: { created: Created | Rotated; onClo
   ].join("\n");
   return (
     <SecretOnce
-      title={"previousUntil" in created ? "Connection rotated" : "Connection created"}
+      title="Connection rotated"
       secret={secret}
       instructions={`BOARD_URL=${env.BOARD_URL}`}
       connect={connect}
