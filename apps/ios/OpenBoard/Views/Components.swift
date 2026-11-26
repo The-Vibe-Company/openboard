@@ -139,50 +139,34 @@ struct TaskRowView: View {
                     .foregroundStyle(OBTheme.faint)
                     .frame(minWidth: 34, alignment: .leading)
 
-                Text(message.previewTitle)
+                MessagePreview(message: message).equatable()
                     .font(.system(size: 14, weight: message.task?.state.isTerminal == true ? .regular : .medium))
                     .foregroundStyle(message.task?.state.isTerminal == true ? OBTheme.muted : OBTheme.text)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-
             HStack(spacing: 8) {
                 if let task = message.task {
                     TaskStateBadgeView(task: task, expired: message.isExpiredClaim, holderName: holderName)
                 }
-
                 if showChannel {
                     Text("#\(message.channel)")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(OBTheme.muted)
                         .lineLimit(1)
                 }
-
-                ForEach(message.visibleLabels.prefix(2), id: \.key) { label in
-                    Text("\(label.key)=\(label.value)")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(OBTheme.muted)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(OBTheme.shade)
-                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                        .lineLimit(1)
-                }
-
+                MessageLabels(labels: message.labels, limit: 2).equatable()
                 Spacer(minLength: 4)
-
                 if summary.replies > 0 {
                     Label("\(summary.replies)", systemImage: "bubble.left")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(OBTheme.faint)
                 }
-
                 Text(TextFormatting.relativeAge(summary.latestActivityDate))
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(OBTheme.faint)
             }
-
             if let detail = terminalDetail(message.task) {
                 Text(detail)
                     .font(.caption)
@@ -220,16 +204,12 @@ struct ThreadRowView: View {
                         .lineLimit(1)
 
                     AuthorKindChip(kind: message.author?.kind)
-
                     Text("·")
                         .foregroundStyle(OBTheme.faint)
-
                     Text(TextFormatting.relativeAge(summary.latestActivityDate))
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(OBTheme.muted)
-
                     Spacer(minLength: 4)
-
                     if summary.replies > 0 {
                         Text("\(summary.replies) \(summary.replies == 1 ? "reply" : "replies")")
                             .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -237,31 +217,50 @@ struct ThreadRowView: View {
                     }
                 }
 
-                Text(message.previewTitle)
+                MessagePreview(message: message).equatable()
                     .font(.system(size: 14))
                     .foregroundStyle(OBTheme.text.opacity(0.88))
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-
-                if !message.visibleLabels.isEmpty {
-                    HStack(spacing: 5) {
-                        ForEach(message.visibleLabels.prefix(3), id: \.key) { label in
-                            Text("\(label.key)=\(label.value)")
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(OBTheme.muted)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1)
-                                .background(OBTheme.shade)
-                                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                        }
-                    }
-                    .padding(.top, 2)
-                }
+                MessageLabels(labels: message.labels, limit: 3).equatable()
             }
         }
         .padding(.vertical, 11)
         .padding(.horizontal, 14)
         .contentShape(Rectangle())
+    }
+}
+
+private struct MessagePreview: View, Equatable {
+    let message: BoardMessage
+
+    var body: some View { Text(message.previewTitle) }
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool { lhs.message == rhs.message }
+}
+
+private struct MessageLabels: View, Equatable {
+    let labels: [String: String]
+    let limit: Int
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool { lhs.labels == rhs.labels && lhs.limit == rhs.limit }
+
+    var body: some View {
+        let visible = BoardMessage.visibleLabels(in: labels).prefix(limit)
+        if !visible.isEmpty {
+            HStack(spacing: limit == 2 ? 8 : 5) {
+                ForEach(visible, id: \.key) { label in
+                    Text("\(label.key)=\(label.value)")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(OBTheme.muted)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, limit == 2 ? 2 : 1)
+                        .background(OBTheme.shade, in: RoundedRectangle(cornerRadius: 4))
+                        .lineLimit(limit == 2 ? 1 : nil)
+                }
+            }
+            .padding(.top, limit == 3 ? 2 : 0)
+        }
     }
 }
 
@@ -351,12 +350,8 @@ struct ComposerBarView: View {
                                 .foregroundStyle(mode == item ? OBTheme.text : OBTheme.muted)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
-                                .background(mode == item ? OBTheme.shade : .clear)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                        .stroke(mode == item ? OBTheme.hairline : .clear, lineWidth: 1)
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                                .background(mode == item ? OBTheme.shade : .clear, in: RoundedRectangle(cornerRadius: 7))
+                                .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(mode == item ? OBTheme.hairline : .clear))
                         }
                     }
                     Spacer()
@@ -369,12 +364,8 @@ struct ComposerBarView: View {
                     .font(.system(size: 15))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
-                    .background(OBTheme.background)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(OBTheme.hairline, lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(OBTheme.background, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(OBTheme.hairline))
 
                 Button(action: onSend) {
                     Group {
@@ -396,8 +387,7 @@ struct ComposerBarView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
+        .padding(.vertical, 10)
         .background(OBTheme.surface)
         .overlay(alignment: .top) {
             Rectangle().fill(OBTheme.hairline).frame(height: 0.75)

@@ -3,7 +3,7 @@ import Foundation
 enum OpenBoardAPIError: LocalizedError, Sendable {
     case invalidURL
     case unauthorized(String)
-    case rateLimited
+    case rateLimited(retryAfter: Int?)
     case server(code: String, message: String, hint: String?)
     case httpStatus(Int, String)
 
@@ -29,17 +29,22 @@ struct OpenBoardAPI: Sendable {
     let board: String
     let token: String?
 
+    private let urlSession: URLSession
     private static let decoder = JSONDecoder()
 
-    init(origin: String, org: String = "tvc", board: String = "main", token: String? = nil) {
+    init(
+        origin: String, org: String = "tvc", board: String = "main",
+        token: String? = nil, urlSession: URLSession = .shared
+    ) {
         self.origin = origin.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         self.org = org
         self.board = board
         self.token = token
+        self.urlSession = urlSession
     }
 
-    init(session: SavedSession) {
-        self.init(origin: session.origin, org: session.org, board: session.board, token: session.token)
+    init(session: SavedSession, urlSession: URLSession = .shared) {
+        self.init(origin: session.origin, org: session.org, board: session.board, token: session.token, urlSession: urlSession)
     }
 
     // MARK: - Device Sign-In
@@ -250,24 +255,36 @@ struct OpenBoardAPI: Sendable {
             req.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
         }
 
-        let (data, response) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await urlSession.data(for: req)
         guard let http = response as? HTTPURLResponse else {
             throw OpenBoardAPIError.httpStatus(0, "No HTTP response")
         }
         if (200..<300).contains(http.statusCode) {
             return try Self.decoder.decode(T.self, from: data)
         }
-        if let envelope = try? Self.decoder.decode(APIErrorEnvelope.self, from: data) {
-            if http.statusCode == 401 || envelope.error.code == "unauthorized" {
-                throw OpenBoardAPIError.unauthorized(envelope.error.message)
-            }
-            if http.statusCode == 429 || envelope.error.code == "rate_limited" {
-                throw OpenBoardAPIError.rateLimited
-            }
-            throw OpenBoardAPIError.server(code: envelope.error.code, message: envelope.error.message, hint: envelope.error.hint)
+        let error = (try? Self.decoder.decode(APIErrorEnvelope.self, from: data))?.error
+        switch http.statusCode {
+        case 401: throw OpenBoardAPIError.unauthorized(error?.message ?? "")
+        case 429: throw OpenBoardAPIError.rateLimited(retryAfter: Self.retryDelay(http))
+        default: break
+        }
+        switch error?.code {
+        case "unauthorized": throw OpenBoardAPIError.unauthorized(error?.message ?? "")
+        case "rate_limited": throw OpenBoardAPIError.rateLimited(retryAfter: Self.retryDelay(http))
+        default: break
+        }
+        if let error {
+            throw OpenBoardAPIError.server(code: error.code, message: error.message, hint: error.hint)
         }
         let bodyText = String(data: data, encoding: .utf8) ?? ""
         throw OpenBoardAPIError.httpStatus(http.statusCode, bodyText)
+    }
+    private static func retryDelay(_ response: HTTPURLResponse) -> Int? {
+        guard let header = response.value(forHTTPHeaderField: "Retry-After")?
+            .trimmingCharacters(in: .whitespaces),
+            header.utf8.allSatisfy({ (48...57).contains($0) })
+        else { return nil }
+        return Int(header)
     }
 }
 

@@ -63,6 +63,10 @@ final class BoardStore {
         reset(to: nil)
     }
 
+    func shouldPresent(_ error: any Error, generation: UUID) -> Bool {
+        isCurrent(generation) && !(error is CancellationError) && (error as? URLError)?.code != .cancelled
+    }
+
     func isCurrent(_ generation: UUID) -> Bool {
         self.generation == generation && !Task.isCancelled
     }
@@ -112,14 +116,12 @@ final class BoardStore {
             events = Array(history.events.reversed())
             startLiveStream(api: api, initialCursor: history.cursor, generation: generation)
         } catch {
-            if isCurrent(generation) { errorBanner = error.localizedDescription }
+            if shouldPresent(error, generation: generation) { errorBanner = error.localizedDescription }
         }
     }
-
     func refreshAll() async {
         await bootstrap()
     }
-
     func refreshChannel(_ channel: String) async {
         guard let api else { return }
         let generation = self.generation
@@ -132,10 +134,9 @@ final class BoardStore {
             threadsByChannel[channel] = fetchedThreads
             boardTasks = Self.mergeTasks(boardTasks, incoming: fetchedTasks)
         } catch {
-            if isCurrent(generation) { errorBanner = error.localizedDescription }
+            if shouldPresent(error, generation: generation) { errorBanner = error.localizedDescription }
         }
     }
-
     func loadOlderBoardTasks() async {
         guard let api, let cursor = boardTasksNextCursor else { return }
         let generation = self.generation
@@ -146,10 +147,9 @@ final class BoardStore {
             boardTasks.append(contentsOf: page.tasks.filter { !existingIDs.contains($0.id) })
             boardTasksNextCursor = page.tasks.count == 100 ? page.cursor : nil
         } catch {
-            if isCurrent(generation) { errorBanner = error.localizedDescription }
+            if shouldPresent(error, generation: generation) { errorBanner = error.localizedDescription }
         }
     }
-
     func pureMessages(in channel: String, search: String = "") -> [ThreadSummary] {
         let rows = (threadsByChannel[channel] ?? []).filter { $0.message.task == nil }
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()

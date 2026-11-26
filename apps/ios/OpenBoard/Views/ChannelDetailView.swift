@@ -33,17 +33,13 @@ struct ChannelDetailView: View {
     @State private var isSending = false
     @State private var sendError: String?
 
-    private var openTasks: [ThreadSummary] { store.openTasks(in: channel, search: searchText) }
-    private var doneTasks: [ThreadSummary] { store.doneTasks(in: channel, search: searchText) }
-    private var pureMessages: [ThreadSummary] { store.pureMessages(in: channel, search: searchText) }
-    private var channelEvents: [BoardEvent] {
-        store.channelEvents(channel).filter { activityCategory == .all || $0.category == activityCategory }
-    }
-
     var body: some View {
+        let openTasks = store.openTasks(in: channel, search: searchText)
+        let doneTasks = selectedView == .all || selectedView == .tasks
+            ? store.doneTasks(in: channel, search: searchText) : []
+        let hasTasks = !openTasks.isEmpty || !doneTasks.isEmpty
         VStack(spacing: 0) {
-            subTabsBar
-
+            subTabsBar(openCount: openTasks.count)
             ScrollView {
                 LazyVStack(spacing: 0) {
                     if let sendError {
@@ -54,14 +50,17 @@ struct ChannelDetailView: View {
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                     }
-
                     switch selectedView {
                     case .all:
-                        allContent
+                        if hasTasks {
+                            taskCard(openTasks, completed: false, historyCount: doneTasks.count)
+                                .padding(.top, 12)
+                        }
+                        messagesSection(showHeader: hasTasks)
                     case .messages:
                         messagesSection(showHeader: false)
                     case .tasks:
-                        tasksWorkspace
+                        tasksWorkspace(openTasks: openTasks, doneTasks: doneTasks)
                     case .activity:
                         activityWorkspace
                     }
@@ -69,9 +68,7 @@ struct ChannelDetailView: View {
                 .padding(.bottom, 16)
             }
             .background(OBTheme.background)
-            .refreshable {
-                await store.refreshChannel(channel)
-            }
+            .refreshable { await store.refreshChannel(channel) }
 
             if selectedView != .activity {
                 ComposerBarView(
@@ -93,23 +90,19 @@ struct ChannelDetailView: View {
                 LiveStatusBadge(state: store.liveState)
             }
         }
-        .task {
-            await store.refreshChannel(channel)
-        }
+        .task { await store.refreshChannel(channel) }
         .onChange(of: selectedView) { _, next in
             if next == .tasks { composerMode = .task }
             if next == .messages { composerMode = .message }
         }
     }
 
-    private var subTabsBar: some View {
+    private func subTabsBar(openCount: Int) -> some View {
         HStack(spacing: 0) {
             ForEach(ChannelSubView.allCases) { tab in
                 let isActive = selectedView == tab
                 Button {
-                    withAnimation(.easeInOut(duration: 0.16)) {
-                        selectedView = tab
-                    }
+                    withAnimation(.easeInOut(duration: 0.16)) { selectedView = tab }
                     Haptics.light()
                 } label: {
                     VStack(spacing: 0) {
@@ -117,22 +110,18 @@ struct ChannelDetailView: View {
                             Text(tab.rawValue)
                                 .font(.system(size: 13, weight: isActive ? .semibold : .medium))
                                 .foregroundStyle(isActive ? OBTheme.text : OBTheme.muted)
-                            if tab == .tasks && !openTasks.isEmpty {
-                                Text("\(openTasks.count)")
+                            if tab == .tasks && openCount > 0 {
+                                Text("\(openCount)")
                                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                                     .foregroundStyle(OBTheme.muted)
                                     .padding(.horizontal, 5)
                                     .padding(.vertical, 1)
-                                    .background(OBTheme.shade)
-                                    .clipShape(Capsule())
+                                    .background(OBTheme.shade, in: Capsule())
                             }
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-
-                        Rectangle()
-                            .fill(isActive ? OBTheme.text : .clear)
-                            .frame(height: 2)
+                        Rectangle().fill(isActive ? OBTheme.text : .clear).frame(height: 2)
                     }
                 }
                 .buttonStyle(.plain)
@@ -144,102 +133,118 @@ struct ChannelDetailView: View {
         }
     }
 
-    @ViewBuilder
-    private var allContent: some View {
-        if !openTasks.isEmpty || !doneTasks.isEmpty {
-            openTasksCard(showHistoryFooter: true)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-        }
-        messagesSection(showHeader: !openTasks.isEmpty || !doneTasks.isEmpty)
-    }
-
-    private func openTasksCard(showHistoryFooter: Bool) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                HStack(spacing: 6) {
-                    Text("Open tasks")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(OBTheme.muted)
-                    Text("\(openTasks.count)")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(OBTheme.muted)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1)
-                        .background(OBTheme.shade)
-                        .clipShape(Capsule())
-                }
-                Spacer()
-                if showHistoryFooter {
-                    Button {
-                        selectedView = .tasks
-                        taskFilter = .open
-                    } label: {
-                        Text("Manage →")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(OBTheme.muted)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-
-            if openTasks.isEmpty {
-                Text("No open tasks in #\(channel)")
+    private func taskCard(_ tasks: [ThreadSummary], completed: Bool, historyCount: Int? = nil) -> some View {
+        let visible = tasks.prefix(completed ? doneLimit : tasks.count)
+        return LazyVStack(spacing: 0) {
+            taskCardHeader(count: tasks.count, completed: completed, showsManage: historyCount != nil)
+            if tasks.isEmpty {
+                Text(completed ? "No completed tasks yet" : "No open tasks in #\(channel)")
                     .font(.caption)
                     .foregroundStyle(OBTheme.faint)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 10)
-            } else {
-                ForEach(openTasks) { item in
-                    Rectangle().fill(OBTheme.hairline).frame(height: 0.75)
-                    NavigationLink(value: ThreadRoute(id: item.id)) {
-                        TaskRowView(
-                            summary: item,
-                            holderName: item.message.task?.claim.map { store.actorDisplayName(for: $0.actor) }
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
             }
-
-            if showHistoryFooter && !doneTasks.isEmpty {
-                Rectangle().fill(OBTheme.hairline).frame(height: 0.75)
-                Button {
-                    selectedView = .tasks
-                    taskFilter = .done
-                    Haptics.light()
-                } label: {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.caption)
-                            .foregroundStyle(OBTheme.success)
-                        Text("\(doneTasks.count) completed in #\(channel)")
-                            .font(.caption)
-                            .foregroundStyle(OBTheme.muted)
-                        Spacer()
-                        Text("View history →")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(OBTheme.muted)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
+            ForEach(visible) { item in
+                NavigationLink(value: ThreadRoute(id: item.id)) {
+                    TaskRowView(
+                        summary: item,
+                        holderName: completed ? nil : item.message.task?.claim.map { store.actorDisplayName(for: $0.actor) }
+                    )
                 }
                 .buttonStyle(.plain)
+                .overlay(alignment: .top) { rowSeparator(leading: 0) }
+            }
+            if let historyCount, historyCount > 0 {
+                historyFooter(count: historyCount)
+            }
+            if completed && !tasks.isEmpty {
+                completedFooter(remaining: tasks.count - visible.count)
             }
         }
-        .background(OBTheme.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(OBTheme.hairline, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(OBTheme.surface, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(OBTheme.hairline))
+        .padding(.horizontal, 12)
+    }
+
+    private func taskCardHeader(count: Int, completed: Bool, showsManage: Bool) -> some View {
+        HStack(spacing: 6) {
+            Text(completed ? "Completed tasks" : "Open tasks")
+                .font(.system(size: 12, weight: .semibold))
+            Text("\(count)")
+                .font(.system(size: 11, design: .monospaced))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1)
+                .background(OBTheme.shade, in: Capsule())
+            Spacer()
+            if completed {
+                Text("newest first").font(.caption2.monospaced()).foregroundStyle(OBTheme.faint)
+            }
+            if showsManage {
+                taskCardButton("Manage →") {
+                    selectedView = .tasks
+                    taskFilter = .open
+                }
+            }
+        }
+        .foregroundStyle(OBTheme.muted)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+    }
+
+    @ViewBuilder
+    private func historyFooter(count: Int) -> some View {
+        Divider()
+        Button {
+            selectedView = .tasks
+            taskFilter = .done
+            Haptics.light()
+        } label: {
+            HStack {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(OBTheme.success)
+                Text("\(count) completed in #\(channel)")
+                Spacer()
+                Text("View history →").fontWeight(.medium)
+            }
+            .font(.caption)
+            .foregroundStyle(OBTheme.muted)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func completedFooter(remaining: Int) -> some View {
+        if remaining > 0 || doneLimit > 8 {
+            Divider()
+            HStack {
+                if remaining > 0 {
+                    taskCardButton("Show more (\(remaining) remaining)", haptic: true) { doneLimit += 15 }
+                }
+                Spacer()
+                if doneLimit > 8 {
+                    taskCardButton("Show less", haptic: true) { doneLimit = 8 }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+        }
+    }
+
+    private func taskCardButton(_ title: String, haptic: Bool = false, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            if haptic { Haptics.light() }
+        } label: {
+            Text(title).font(.caption.weight(.medium)).foregroundStyle(OBTheme.muted)
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
     private func messagesSection(showHeader: Bool) -> some View {
+        let pureMessages = store.pureMessages(in: channel, search: searchText)
         if showHeader {
             Text("MESSAGES")
                 .font(.system(size: 11, weight: .semibold))
@@ -250,7 +255,6 @@ struct ChannelDetailView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 6)
         }
-
         if pureMessages.isEmpty {
             VStack(spacing: 8) {
                 Image(systemName: "bubble.left.and.bubble.right")
@@ -268,156 +272,43 @@ struct ChannelDetailView: View {
                     ThreadRowView(summary: thread)
                 }
                 .buttonStyle(.plain)
-                Rectangle()
-                    .fill(OBTheme.hairline)
-                    .frame(height: 0.75)
-                    .padding(.leading, 57)
+                rowSeparator(leading: 57)
             }
         }
     }
 
     @ViewBuilder
-    private var tasksWorkspace: some View {
+    private func tasksWorkspace(openTasks: [ThreadSummary], doneTasks: [ThreadSummary]) -> some View {
+        let counts = [openTasks.count, doneTasks.count, openTasks.count + doneTasks.count]
         HStack(spacing: 6) {
-            ForEach(ChannelTaskSubFilter.allCases) { pill in
+            ForEach(Array(zip(ChannelTaskSubFilter.allCases, counts)), id: \.0) { pill, count in
                 let active = taskFilter == pill
-                Button {
-                    taskFilter = pill
-                    Haptics.light()
-                } label: {
+                filterPill(active: active, action: { taskFilter = pill }) {
                     HStack(spacing: 4) {
                         Text(pill.rawValue)
-                        Text("\(countFor(pill))")
+                        Text("\(count)")
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundStyle(OBTheme.faint)
                     }
-                    .font(.system(size: 12, weight: active ? .semibold : .medium))
-                    .foregroundStyle(active ? OBTheme.text : OBTheme.muted)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 6)
-                    .background(active ? OBTheme.shade : .clear)
-                    .overlay(
-                        Capsule().stroke(active ? OBTheme.hairline : .clear, lineWidth: 1)
-                    )
-                    .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
             }
             Spacer()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-
         if taskFilter != .done {
-            openTasksCard(showHistoryFooter: false)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 10)
+            taskCard(openTasks, completed: false).padding(.bottom, 10)
         }
-
-        if taskFilter != .open {
-            doneTasksCard
-                .padding(.horizontal, 12)
-        }
-    }
-
-    private var doneTasksCard: some View {
-        let visible = Array(doneTasks.prefix(doneLimit))
-        let remaining = max(0, doneTasks.count - visible.count)
-        return VStack(spacing: 0) {
-            HStack(spacing: 6) {
-                Text("Completed tasks")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(OBTheme.muted)
-                Text("\(doneTasks.count)")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(OBTheme.muted)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 1)
-                    .background(OBTheme.shade)
-                    .clipShape(Capsule())
-                Spacer()
-                Text("newest first")
-                    .font(.caption2.monospaced())
-                    .foregroundStyle(OBTheme.faint)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-
-            if visible.isEmpty {
-                Text("No completed tasks yet")
-                    .font(.caption)
-                    .foregroundStyle(OBTheme.faint)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 10)
-            } else {
-                ForEach(visible) { item in
-                    Rectangle().fill(OBTheme.hairline).frame(height: 0.75)
-                    NavigationLink(value: ThreadRoute(id: item.id)) {
-                        TaskRowView(summary: item, holderName: nil)
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                if remaining > 0 || doneLimit > 8 {
-                    Rectangle().fill(OBTheme.hairline).frame(height: 0.75)
-                    HStack {
-                        if remaining > 0 {
-                            Button {
-                                doneLimit += 15
-                                Haptics.light()
-                            } label: {
-                                Text("Show more (\(remaining) remaining)")
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(OBTheme.muted)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        Spacer()
-                        if doneLimit > 8 {
-                            Button {
-                                doneLimit = 8
-                                Haptics.light()
-                            } label: {
-                                Text("Show less")
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(OBTheme.muted)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-                }
-            }
-        }
-        .background(OBTheme.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(OBTheme.hairline, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        if taskFilter != .open { taskCard(doneTasks, completed: true) }
     }
 
     @ViewBuilder
     private var activityWorkspace: some View {
         HStack(spacing: 6) {
             ForEach(BoardEvent.Category.allCases) { cat in
-                let active = activityCategory == cat
-                Button {
-                    activityCategory = cat
-                    Haptics.light()
-                } label: {
+                filterPill(active: activityCategory == cat, action: { activityCategory = cat }) {
                     Text(cat.rawValue)
-                        .font(.system(size: 12, weight: active ? .semibold : .medium))
-                        .foregroundStyle(active ? OBTheme.text : OBTheme.muted)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(active ? OBTheme.shade : .clear)
-                        .overlay(Capsule().stroke(active ? OBTheme.hairline : .clear, lineWidth: 1))
-                        .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
             }
             Spacer()
             Button {
@@ -428,15 +319,16 @@ struct ChannelDetailView: View {
                     .font(.caption)
                     .foregroundStyle(OBTheme.muted)
                     .padding(7)
-                    .background(OBTheme.shade)
-                    .clipShape(Circle())
+                    .background(OBTheme.shade, in: Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(store.activityPaused ? "Resume stream" : "Pause stream")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-
+        let channelEvents = store.channelEvents(channel).filter {
+            activityCategory == .all || $0.category == activityCategory
+        }
         if channelEvents.isEmpty {
             Text("No activity recorded in #\(channel) yet.")
                 .font(.subheadline)
@@ -452,25 +344,37 @@ struct ChannelDetailView: View {
                 } else {
                     ActivityRowView(event: event)
                 }
-                Rectangle()
-                    .fill(OBTheme.hairline)
-                    .frame(height: 0.75)
-                    .padding(.leading, 52)
+                rowSeparator(leading: 52)
             }
         }
     }
 
-    private func countFor(_ pill: ChannelTaskSubFilter) -> Int {
-        switch pill {
-        case .open: openTasks.count
-        case .done: doneTasks.count
-        case .all: openTasks.count + doneTasks.count
+    private func filterPill<Label: View>(
+        active: Bool, action: @escaping () -> Void, @ViewBuilder label: () -> Label
+    ) -> some View {
+        Button {
+            action()
+            Haptics.light()
+        } label: {
+            label()
+                .font(.system(size: 12, weight: active ? .semibold : .medium))
+                .foregroundStyle(active ? OBTheme.text : OBTheme.muted)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(active ? OBTheme.shade : .clear, in: Capsule())
+                .overlay(Capsule().strokeBorder(active ? OBTheme.hairline : .clear))
         }
+        .buttonStyle(.plain)
+    }
+
+    private func rowSeparator(leading: CGFloat) -> some View {
+        Rectangle().fill(OBTheme.hairline).frame(height: 0.75).padding(.leading, leading)
     }
 
     private func submitComposer() async {
         let trimmed = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isSending else { return }
+        let generation = store.generation
         isSending = true
         sendError = nil
         defer { isSending = false }
@@ -485,6 +389,7 @@ struct ChannelDetailView: View {
             composerText = ""
             Haptics.success()
         } catch {
+            guard store.shouldPresent(error, generation: generation) else { return }
             sendError = error.localizedDescription
             Haptics.error()
         }
