@@ -9,8 +9,8 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     DEVELOPMENT_TEAM: K28B69CWQ7
-    MARKETING_VERSION: "0.4.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.4.1"
+    CURRENT_PROJECT_VERSION: "2"
     TARGETED_DEVICE_FAMILY: "1,2"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     GENERATE_INFOPLIST_FILE: YES
@@ -21,6 +21,26 @@ targets:
     sources:
       - path: OpenBoard
       - path: Resources
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: OpenBoard
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UIApplicationSupportsIndirectInputEvents: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        CFBundleURLTypes:
+          - CFBundleURLName: co.thevibecompany.openboard.auth
+            CFBundleURLSchemes:
+              - openboard
     settings:
       base:
         PRODUCT_NAME: OpenBoard

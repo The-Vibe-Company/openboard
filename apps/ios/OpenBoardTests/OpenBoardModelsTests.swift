@@ -147,4 +147,19 @@ final class OpenBoardModelsTests: XCTestCase {
         let preview = TextFormatting.previewLine("## **Ship** `@act_1` iOS\nSecond line", mentions: mentions, fallback: "Thread")
         XCTAssertEqual(preview, "Ship @stan iOS")
     }
+
+    func testOAuthCallbackParserValidatesStateAndExtractsCode() throws {
+        let state = "abc123def4567890"
+        let startURL = try XCTUnwrap(OAuthCallbackParser.makeAuthURL(origin: "https://openboard.thevibecompany.co/", clientState: state))
+        XCTAssertEqual(startURL.absoluteString, "https://openboard.thevibecompany.co/auth/github/start?app=ios&client_state=\(state)")
+
+        let valid = try XCTUnwrap(URL(string: "openboard://auth/callback?code=secret_code_1&state=\(state)"))
+        XCTAssertEqual(OAuthCallbackParser.parse(url: valid, expectedState: state), .code("secret_code_1"))
+
+        let mismatch = try XCTUnwrap(URL(string: "openboard://auth/callback?code=secret_code_1&state=wrong"))
+        XCTAssertEqual(OAuthCallbackParser.parse(url: mismatch, expectedState: state), .error("Sign-in state mismatch. Please try again."))
+
+        let noOrg = try XCTUnwrap(URL(string: "openboard://auth/callback?error=no_org&state=\(state)"))
+        XCTAssertEqual(OAuthCallbackParser.parse(url: noOrg, expectedState: state), .error("Your GitHub account is not a member of an OpenBoard organization yet."))
+    }
 }

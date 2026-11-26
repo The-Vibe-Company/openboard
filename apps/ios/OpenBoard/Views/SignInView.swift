@@ -1,20 +1,65 @@
-import SafariServices
+import AuthenticationServices
 import SwiftUI
+
+enum OAuthCallbackResult: Equatable, Sendable {
+    case code(String)
+    case error(String)
+}
+
+enum OAuthCallbackParser {
+    static func makeAuthURL(origin: String, clientState: String) -> URL? {
+        let trimmed = origin.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        var components = URLComponents(string: "\(trimmed)/auth/github/start")
+        components?.queryItems = [
+            URLQueryItem(name: "app", value: "ios"),
+            URLQueryItem(name: "client_state", value: clientState),
+        ]
+        return components?.url
+    }
+
+    static func parse(url: URL, expectedState: String) -> OAuthCallbackResult {
+        guard url.scheme?.lowercased() == "openboard",
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else {
+            return .error("Unexpected sign-in callback URL.")
+        }
+        let params = Dictionary(
+            uniqueKeysWithValues: (components.queryItems ?? []).compactMap { item in
+                item.value.map { (item.name, $0) }
+            }
+        )
+        guard params["state"] == expectedState else {
+            return .error("Sign-in state mismatch. Please try again.")
+        }
+        if let err = params["error"] {
+            if err == "no_org" {
+                return .error("Your GitHub account is not a member of an OpenBoard organization yet.")
+            }
+            return .error("Sign-in could not be completed (\(err)).")
+        }
+        guard let code = params["code"], !code.isEmpty else {
+            return .error("Missing authorization code from OpenBoard.")
+        }
+        return .code(code)
+    }
+
+    static func generateState() -> String {
+        (UUID().uuidString + UUID().uuidString)
+            .replacingOccurrences(of: "-", with: "")
+            .lowercased()
+    }
+}
 
 struct SignInView: View {
     @Environment(BoardStore.self) private var store
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
 
     @State private var origin = SavedSession.productionOrigin
     @State private var showServerConfig = false
     @State private var showTokenSheet = false
 
-    @State private var deviceFlow: DeviceStartResponse?
-    @State private var safariURL: URL?
-    @State private var isStarting = false
-    @State private var copiedCode = false
-    @State private var statusMessage: String?
+    @State private var isSigningIn = false
     @State private var errorText: String?
-    @State private var pollTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -22,35 +67,17 @@ struct SignInView: View {
                 OBTheme.background.ignoresSafeArea()
                 ScrollView {
                     VStack(spacing: 28) {
-                        Spacer(minLength: 36)
+                        Spacer(minLength: 48)
                         brandHeader
-
-                        if let flow = deviceFlow {
-                            deviceApprovalCard(flow)
-                        } else {
-                            primaryActionsCard
-                        }
-
+                        primaryActionsCard
                         serverDisclosure
                         Spacer(minLength: 24)
                     }
                     .padding(.horizontal, 22)
                 }
             }
-            .sheet(isPresented: Binding(
-                get: { safariURL != nil },
-                set: { if !$0 { safariURL = nil } }
-            )) {
-                if let url = safariURL {
-                    SafariSheetView(url: url)
-                        .ignoresSafeArea()
-                }
-            }
             .sheet(isPresented: $showTokenSheet) {
                 TokenSignInSheet(origin: origin)
-            }
-            .onDisappear {
-                pollTask?.cancel()
             }
         }
     }
@@ -102,16 +129,16 @@ struct SignInView: View {
     private var primaryActionsCard: some View {
         VStack(spacing: 12) {
             Button {
-                Task { await startDeviceLogin() }
+                Task { await signInWithGitHub() }
             } label: {
                 HStack(spacing: 10) {
-                    if isStarting {
+                    if isSigningIn {
                         ProgressView()
                             .tint(OBTheme.background)
                     } else {
                         Image(systemName: "person.badge.key.fill")
                     }
-                    Text(isStarting ? "Connecting…" : "Sign in to OpenBoard")
+                    Text(isSigningIn ? "Signing in…" : "Continue with GitHub")
                         .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)
@@ -120,7 +147,7 @@ struct SignInView: View {
                 .foregroundStyle(OBTheme.background)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .disabled(isStarting)
+            .disabled(isSigningIn)
 
             Button {
                 showTokenSheet = true
@@ -137,6 +164,7 @@ struct SignInView: View {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
+            .disabled(isSigningIn)
 
             if let errorText {
                 Text(errorText)
@@ -146,99 +174,6 @@ struct SignInView: View {
                     .padding(.top, 4)
             }
         }
-    }
-
-    private func deviceApprovalCard(_ flow: DeviceStartResponse) -> some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("APPROVE ON OPENBOARD")
-                    .font(.caption.weight(.semibold))
-                    .tracking(0.8)
-                    .foregroundStyle(OBTheme.muted)
-                Spacer()
-                ProgressView()
-                    .controlSize(.small)
-            }
-
-            Text(flow.userCode)
-                .font(.system(size: 20, weight: .bold, design: .monospaced))
-                .foregroundStyle(OBTheme.text)
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity)
-                .background(OBTheme.background)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(OBTheme.hairline, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .onTapGesture {
-                    copyCode(flow.userCode)
-                }
-
-            Text("Code copied. Tap below to sign in with GitHub and paste this code to connect your iPhone.")
-                .font(.footnote)
-                .foregroundStyle(OBTheme.muted)
-                .multilineTextAlignment(.center)
-
-            HStack(spacing: 10) {
-                Button {
-                    copyCode(flow.userCode)
-                } label: {
-                    Label(copiedCode ? "Copied" : "Copy code", systemImage: copiedCode ? "checkmark" : "doc.on.doc")
-                        .font(.subheadline.weight(.medium))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(OBTheme.surfaceRaised)
-                        .foregroundStyle(OBTheme.text)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(OBTheme.hairline, lineWidth: 1)
-                        )
-                }
-
-                Button {
-                    if let url = URL(string: flow.verificationUri) {
-                        safariURL = url
-                    }
-                } label: {
-                    Label("Open browser", systemImage: "safari")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(OBTheme.text)
-                        .foregroundStyle(OBTheme.background)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-            }
-
-            if let statusMessage {
-                Text(statusMessage)
-                    .font(.caption)
-                    .foregroundStyle(OBTheme.muted)
-            }
-
-            if let errorText {
-                Text(errorText)
-                    .font(.caption)
-                    .foregroundStyle(OBTheme.danger)
-            }
-
-            Button("Cancel") {
-                pollTask?.cancel()
-                deviceFlow = nil
-                statusMessage = nil
-                errorText = nil
-            }
-            .font(.footnote)
-            .foregroundStyle(OBTheme.muted)
-        }
-        .padding(18)
-        .background(OBTheme.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(OBTheme.hairline, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var serverDisclosure: some View {
@@ -278,79 +213,56 @@ struct SignInView: View {
         }
     }
 
-    private func copyCode(_ code: String) {
-        UIPasteboard.general.string = code
-        copiedCode = true
-        Haptics.light()
-        Task {
-            try? await Task.sleep(for: .seconds(2))
-            copiedCode = false
-        }
-    }
-
-    private func startDeviceLogin() async {
-        isStarting = true
+    private func signInWithGitHub() async {
+        isSigningIn = true
         errorText = nil
-        statusMessage = nil
-        defer { isStarting = false }
+        defer { isSigningIn = false }
 
         let cleanedOrigin = origin.trimmingCharacters(in: .whitespacesAndNewlines)
-        let api = OpenBoardAPI(origin: cleanedOrigin)
-        do {
-            let flow = try await api.startDeviceSignIn(clientName: "OpenBoard iOS")
-            deviceFlow = flow
-            copyCode(flow.userCode)
-            statusMessage = "Waiting for browser approval…"
-            if let url = URL(string: flow.verificationUri) {
-                safariURL = url
-            }
-            startPolling(api: api, flow: flow, origin: cleanedOrigin)
-        } catch {
-            errorText = error.localizedDescription
+        let clientState = OAuthCallbackParser.generateState()
+        guard let authURL = OAuthCallbackParser.makeAuthURL(origin: cleanedOrigin, clientState: clientState) else {
+            errorText = "Invalid server URL."
             Haptics.error()
+            return
         }
-    }
 
-    private func startPolling(api: OpenBoardAPI, flow: DeviceStartResponse, origin: String) {
-        pollTask?.cancel()
-        pollTask = Task {
-            let interval = max(2, flow.interval)
-            let deadline = Date().addingTimeInterval(TimeInterval(flow.expiresIn))
-            while !Task.isCancelled && Date() < deadline {
-                try? await Task.sleep(for: .seconds(interval))
-                guard !Task.isCancelled else { return }
-                do {
-                    let result = try await api.pollDeviceSignIn(deviceCode: flow.deviceCode)
-                    if result.pending == true { continue }
-                    if let token = result.token, let org = result.org {
-                        let boards = result.boards ?? [BoardRef(slug: "main", name: "main", url: nil)]
-                        let defaultBoard = boards.first(where: { $0.slug == "main" })?.slug ?? boards.first?.slug ?? "main"
-                        let saved = SavedSession(
-                            origin: origin,
-                            org: org.slug,
-                            board: defaultBoard,
-                            token: token,
-                            orgName: org.name,
-                            boards: boards
-                        )
-                        safariURL = nil
-                        Haptics.success()
-                        await store.completeSignIn(saved)
-                        return
-                    }
-                } catch OpenBoardAPIError.rateLimited {
-                    continue
-                } catch {
-                    errorText = error.localizedDescription
-                    statusMessage = nil
+        do {
+            let callbackURL = try await webAuthenticationSession.authenticate(
+                using: authURL,
+                callbackURLScheme: "openboard",
+                preferredBrowserSession: .shared
+            )
+
+            switch OAuthCallbackParser.parse(url: callbackURL, expectedState: clientState) {
+            case .error(let message):
+                errorText = message
+                Haptics.error()
+            case .code(let code):
+                let api = OpenBoardAPI(origin: cleanedOrigin)
+                let result = try await api.pollDeviceSignIn(deviceCode: code)
+                guard let token = result.token, let org = result.org else {
+                    errorText = "Sign-in token could not be issued. Please try again."
                     Haptics.error()
                     return
                 }
+                let boards = result.boards ?? [BoardRef(slug: "main", name: "main", url: nil)]
+                let defaultBoard = boards.first(where: { $0.slug == "main" })?.slug ?? boards.first?.slug ?? "main"
+                let saved = SavedSession(
+                    origin: cleanedOrigin,
+                    org: org.slug,
+                    board: defaultBoard,
+                    token: token,
+                    orgName: org.name,
+                    boards: boards
+                )
+                Haptics.success()
+                await store.completeSignIn(saved)
             }
-            if !Task.isCancelled {
-                errorText = "Code expired. Tap Sign in to try again."
-                deviceFlow = nil
-            }
+        } catch let authError as ASWebAuthenticationSessionError where authError.code == .canceledLogin {
+            // User cancelled the native sheet — return quietly.
+        } catch {
+            errorText = error.localizedDescription
+            Haptics.error()
         }
     }
 }
@@ -441,16 +353,4 @@ private struct TokenSignInSheet: View {
             Haptics.error()
         }
     }
-}
-
-private struct SafariSheetView: UIViewControllerRepresentable {
-    let url: URL
-
-    func makeUIViewController(context: Context) -> SFSafariViewController {
-        let vc = SFSafariViewController(url: url)
-        vc.dismissButtonStyle = .close
-        return vc
-    }
-
-    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
