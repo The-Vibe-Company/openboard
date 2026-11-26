@@ -188,4 +188,51 @@ final class OpenBoardModelsTests: XCTestCase {
         let noOrg = try XCTUnwrap(URL(string: "openboard://auth/callback?error=no_org&state=\(state)"))
         XCTAssertEqual(OAuthCallbackParser.parse(url: noOrg, expectedState: state), .error("Your GitHub account is not a member of an OpenBoard organization yet."))
     }
+
+    @MainActor
+    func testProxyErrorsUseStatusCodeAndParseRetryAfterSeconds() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ProxyResponseProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let cases: [(status: String, header: String, seconds: Int?)] = [
+            ("401", "missing", nil), ("429", "120", 120), ("429", "0", 0),
+            ("429", "missing", nil), ("429", "invalid", nil), ("429", "-5", nil),
+            ("429", "1.5", nil), ("429", "999999999999999999999", nil),
+        ]
+        for (status, header, seconds) in cases {
+            let api = OpenBoardAPI(origin: "https://openboard.test", org: status, board: header, urlSession: session)
+            do {
+                _ = try await api.getMe()
+                XCTFail("Expected HTTP \(status) to throw")
+            } catch OpenBoardAPIError.unauthorized(let message) where status == "401" {
+                XCTAssertEqual(message, "")
+            } catch OpenBoardAPIError.rateLimited(let retryAfter) where status == "429" {
+                XCTAssertEqual(retryAfter, seconds, "Retry-After: \(header)")
+            }
+        }
+    }
+}
+
+private final class ProxyResponseProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        // The fixture URL encodes the status and header, independent of other tests.
+        let path = request.url?.pathComponents ?? []
+        guard let url = request.url, path.count == 5, let status = Int(path[2]),
+              let response = HTTPURLResponse(
+                  url: url, statusCode: status, httpVersion: "HTTP/1.1",
+                  headerFields: path[3] == "missing" ? [:] : ["Retry-After": path[3]]
+              )
+        else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data("<html>Proxy error</html>".utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }

@@ -215,7 +215,9 @@ struct BoardMessage: Codable, Equatable, Identifiable, Sendable {
         author?.name ?? from ?? by.profile ?? by.actor
     }
 
-    var visibleLabels: [(key: String, value: String)] {
+    var visibleLabels: [(key: String, value: String)] { Self.visibleLabels(in: labels) }
+
+    static func visibleLabels(in labels: [String: String]) -> [(key: String, value: String)] {
         labels
             .filter { !$0.key.hasPrefix("board.") }
             .sorted { $0.key < $1.key }
